@@ -243,7 +243,11 @@ the user lifecycle. It builds a native self-linked empty robust-list head on
 its writable stack, registers it with exact length 24, and requires success.
 Terminal dispatch copies all 24 bytes under fault recovery, proves the link is
 self-referential and the pending pointer null, and clears that private
-candidate before clear-child-TID processing. It then issues
+candidate before clear-child-TID processing. The application then queries the
+initial stack resource limit through both Linux x86-64 `getrlimit` and
+query-only `prlimit64`. Each call publishes the same 8 MiB soft limit and
+infinite hard limit into a complete writable stack pair under fault recovery;
+the application checks both complete results. It then issues
 terminal `exit_group(0)` without returning to the provider probe. After the
 exact kernel return,
 `TOPAL_KERNEL_USER_IMAGE_ENTRY_OK` proves that entry path completed,

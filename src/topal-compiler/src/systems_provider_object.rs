@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/58";
+    "topal.provider-object.x86_64-qemu-pc-q35/59";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1082,6 +1082,27 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         }
         continuation.jump_if(0x85, "fail");
     }
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // native rlimit pair
+    continuation.bytes(&[0xbf, 0x03, 0x00, 0x00, 0x00]); // RLIMIT_STACK
+    continuation.bytes(&[0x48, 0x89, 0xe6]);
+    continuation.bytes(&[0xb8, 0x61, 0x00, 0x00, 0x00, 0x0f, 0x05]); // getrlimit
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x48, 0x81, 0x3c, 0x24, 0x00, 0x00, 0x80, 0x00]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x08, 0xff]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x31, 0xff]); // current process
+    continuation.bytes(&[0xbe, 0x03, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0x49, 0x89, 0xe2]); // old-limit candidate
+    continuation.bytes(&[0xb8, 0x2e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // prlimit64
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x48, 0x81, 0x3c, 0x24, 0x00, 0x00, 0x80, 0x00]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x08, 0xff]);
+    continuation.jump_if(0x85, "rlimit-buffer-fail");
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bytes(&[0xc7, 0x04, 0x25, 0x08, 0x50, 0x60, 0x00]);
     continuation.bytes(&1_u32.to_le_bytes()); // clear-child-TID word starts nonzero
     continuation.bytes(&[0xbf, 0x08, 0x50, 0x60, 0x00]);
@@ -1135,6 +1156,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
     continuation.jump("fail");
     continuation.bind("read-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.jump("fail");
+    continuation.bind("rlimit-buffer-fail")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.jump("fail");
     continuation.bind("fs-buffer-fail")?;
@@ -1706,6 +1730,10 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "set-tid-address");
     code.bytes(&[0x3d, 0x11, 0x01, 0x00, 0x00]);
     code.jump_if(0x84, "set-robust-list");
+    code.bytes(&[0x83, 0xf8, 0x61]);
+    code.jump_if(0x84, "getrlimit");
+    code.bytes(&[0x3d, 0x2e, 0x01, 0x00, 0x00]);
+    code.jump_if(0x84, "prlimit64");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -1807,6 +1835,78 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump("return-user");
     code.bind("set-robust-list-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("getrlimit")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xff, 0x03]);
+    code.jump_if(0x85, "rlimit-einval");
+    code.bytes(&[0x49, 0x89, 0xf1]);
+    code.jump("rlimit-copy");
+
+    code.bind("prlimit64")?;
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x40, 0x60, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "prlimit64-pid-ok");
+    code.bytes(&[0x48, 0x83, 0xff, 0x01]);
+    code.jump_if(0x85, "rlimit-esrch");
+    code.bind("prlimit64-pid-ok")?;
+    code.bytes(&[0x48, 0x83, 0xfe, 0x03]);
+    code.jump_if(0x85, "rlimit-einval");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x85, "rlimit-einval");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0x50, 0x00, 0x00, 0x00]);
+
+    code.bind("rlimit-copy")?;
+    code.bytes(&[0x4d, 0x89, 0xc8, 0x49, 0x83, 0xc0, 0x10]);
+    code.jump_if(0x82, "rlimit-efault");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x00, 0x60, 0x00]);
+    code.jump_if(0x82, "rlimit-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "rlimit-candidate-ok");
+    code.bind("rlimit-second-range")?;
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "rlimit-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "rlimit-efault");
+    code.bind("rlimit-candidate-ok")?;
+    code.rip_lea(&[0x4c, 0x8d, 0x05], "rlimit-data");
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "rlimit-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "rlimit-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("rlimit-copy-loop")?;
+    code.bytes(&[0x43, 0x8a, 0x04, 0x10]);
+    code.bind("rlimit-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x83, 0xfa, 0x10]);
+    code.jump_if(0x85, "rlimit-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("rlimit-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bind("rlimit-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("rlimit-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("rlimit-esrch")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xfd, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("arch-set-fs")?;
@@ -2245,6 +2345,9 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
     code.bind("uts-data")?;
     code.bytes(&initial_utsname_bytes());
+    code.bind("rlimit-data")?;
+    code.bytes(&0x0080_0000_u64.to_le_bytes());
+    code.bytes(&u64::MAX.to_le_bytes());
     code.finish()
 }
 
@@ -4511,6 +4614,41 @@ mod tests {
                     .windows(13)
                     .any(|bytes| bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xb0, 0, 0, 0, 0, 0, 0, 0]),
             "set_robust_list must register one complete native head and terminally validate its empty state before clearing"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .any(|bytes| bytes == [0xb8, 0x61, 0, 0, 0, 0x0f, 0x05])
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .any(|bytes| bytes == [0xb8, 0x2e, 0x01, 0, 0, 0x0f, 0x05])
+                && entry_payload
+                    .bytes
+                    .windows(8)
+                    .filter(|bytes| *bytes == [0x48, 0x81, 0x3c, 0x24, 0, 0, 0x80, 0])
+                    .count()
+                    == 2
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x61])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0x3d, 0x2e, 0x01, 0, 0])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xfa, 0x10])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x43, 0x88, 0x04, 0x11])
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == 0x0080_0000_u64.to_le_bytes())
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == u64::MAX.to_le_bytes()),
+            "getrlimit and query-only prlimit64 must share complete fault-contained publication of the initial stack limit"
         );
         let user_protect = symbol_bytes(&file, X86_SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY_SYMBOL);
         assert!(

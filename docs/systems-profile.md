@@ -739,6 +739,14 @@ the complete head under fault recovery before clearing private state. This
 qualifies empty libc registration; it does not walk entries, mutate futex
 words, wake waiters, or define multiple-thread recovery.
 
+The bounded initial-resource refinement permits Linux-compatible
+`getrlimit(RLIMIT_STACK)` and query-only
+`prlimit64(self, RLIMIT_STACK, null, old-limit)`. Both publish one native pair
+with an 8 MiB soft limit and unlimited hard limit through a complete writable
+16-byte user extent under fault recovery. This is one immutable process fact,
+not resource mutation, enforcement, accounting, inheritance, or a general
+resource table.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

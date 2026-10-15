@@ -322,6 +322,15 @@ self-referential and the pending pointer null, and clear state before terminal
 publication. Structural and pinned-QEMU evidence shall prove registration,
 terminal copy and checks, state clearing, and teardown rejection.
 
+The initial stack-limit adapter shall lower Linux x86-64 syscalls 97 and 302
+only for a live initial context and finalized executable return continuation.
+It shall accept selector 3; `prlimit64` shall additionally require PID zero or
+one and a null new-limit pointer. Both shall validate a complete writable 16-
+byte output extent, copy the native 8 MiB/`RLIM_INFINITY` pair under fault
+recovery, retain no pointer, and return zero. Structural and pinned-QEMU
+evidence shall prove both dispatch forms, argument rejection, shared complete
+copy, exact application values, and results.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

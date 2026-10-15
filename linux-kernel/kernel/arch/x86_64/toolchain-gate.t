@@ -456,6 +456,8 @@ user-syscall-handler is fn (
     arch-get-fs-result is 0,
     set-tid-address-result is 1,
     set-robust-list-result is 0,
+    getrlimit-result is 0,
+    prlimit64-result is 0,
     exit-group-status is 0
   )
 

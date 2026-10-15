@@ -683,6 +683,27 @@ candidate state at mapping teardown SHALL be invalid. This rule SHALL NOT
 expose a syscall number, user address, native field offset, futex word, list
 walker, wake queue, clone service, or general robust-list authority to source.
 
+### TOPAL-SYSTEMS-USER-RLIMIT-STACK-001 — Initial stack-limit query
+
+The initial-process profile MAY dispatch Linux-compatible
+`getrlimit(RLIMIT_STACK)` and query-only
+`prlimit64(self, RLIMIT_STACK, null, old-limit)` while the user context is live
+and the return continuation lies in the finalized executable mapping. Self
+SHALL admit PID zero or the sealed PID one. The old-limit candidate SHALL name
+a complete writable 16-byte extent in an already-owned user mapping.
+
+Both forms SHALL copy one native pair containing an 8 MiB soft limit and
+`RLIM_INFINITY` hard limit through a fault-contained user-output scope, retain
+no pointer, and return zero. Another process SHALL return `-ESRCH`; another
+resource selector or a nonnull new-limit candidate SHALL return `-EINVAL`; an
+invalid output candidate SHALL return `-EFAULT`, all without partial output.
+
+Wrong values, partial publication, wrong entry state, non-executable return,
+mutation acceptance, retained candidates, or duplicate result SHALL be
+invalid. This rule SHALL NOT expose syscall numbers, selector encodings,
+native field offsets, resource storage, accounting, enforcement, mutation,
+inheritance, cgroups, or general resource-limit authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
