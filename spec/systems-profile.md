@@ -819,6 +819,26 @@ SHALL NOT expose syscall or advice numbers, backing addresses, zeroing
 instructions, page-table formats, lazy faults, other advice classes, reclaim
 pressure, or general VMA authority to source.
 
+### TOPAL-SYSTEMS-USER-CLOCK-MONOTONIC-001 — Bounded monotonic clock query
+
+While the sole initial user context is live and its return continuation lies in
+the finalized executable mapping, the profile MAY admit Linux-compatible
+`clock_gettime` only for `CLOCK_MONOTONIC` and one complete writable native
+16-byte timespec in an already-owned user mapping.
+
+The provider SHALL obtain exactly one observation from its qualified monotonic
+source, convert it to nonnegative seconds and nanoseconds less than one billion,
+publish the complete pair under fault recovery, retain no candidate, and return
+zero. Successive successfully published pairs SHALL be lexicographically
+nondecreasing. Unsupported clock identity SHALL return `-EINVAL`; an invalid
+candidate SHALL return `-EFAULT` without reporting partial output as success.
+
+Constant fabricated time, negative or unnormalized fields, regression, partial
+publication, retained pointers, duplicate results, wrong lifecycle state, or
+non-executable return SHALL be invalid. This rule SHALL NOT expose syscall or
+clock encodings, counters, frequencies, MMIO, rollover state, realtime epochs,
+vDSO, timers, adjustment, namespaces, or general clock authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
