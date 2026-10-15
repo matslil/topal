@@ -1488,10 +1488,37 @@ addresses to source or grant device-register, BAR, interrupt, DMA, or virtio
 authority.
 
 The initial x86-64 Q35 profile SHALL admit only segment zero and the sealed
-observation of register zero at `00:05.0`, expecting the combined modern
-virtio-rng device/vendor value `0x10441af4`. It SHALL NOT claim general PCI
-enumeration, BAR access, capability discovery, bus mastering, virtio feature
-negotiation, interrupts, DMA, or entropy delivery.
+discovery sequence defined by `TOPAL-SYSTEMS-VIRTIO-PCI-DISCOVERY-001`. Its
+first observation SHALL read register zero at `00:05.0` and expect the combined
+modern virtio-rng device/vendor value `0x10441af4`.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-DISCOVERY-001 — Bounded capability discovery
+
+The initial x86-64 Q35 profile SHALL admit exactly the following ordered
+configuration-dword observations for `0000:00:05.0`. Each tuple is
+`(register-offset-bytes, expected-little-endian-value)`:
+
+| Purpose | Required tuples |
+| --- | --- |
+| function identity | `(0x00, 0x10441af4)` |
+| capability head and MSI-X link | `(0x34, 0x00000098)`, `(0x98, 0x00018411)` |
+| virtio PCI-configuration-access capability | `(0x84, 0x05147009)`, `(0x88, 0x00000000)`, `(0x8c, 0x00000000)`, `(0x90, 0x00000000)` |
+| virtio notification capability | `(0x70, 0x02146009)`, `(0x74, 0x00000004)`, `(0x78, 0x00003000)`, `(0x7c, 0x00001000)`, `(0x80, 0x00000004)` |
+| virtio device-configuration capability | `(0x60, 0x04105009)`, `(0x64, 0x00000004)`, `(0x68, 0x00002000)`, `(0x6c, 0x00001000)` |
+| virtio ISR capability | `(0x50, 0x03104009)`, `(0x54, 0x00000004)`, `(0x58, 0x00001000)`, `(0x5c, 0x00001000)` |
+| virtio common-configuration capability | `(0x40, 0x01100009)`, `(0x44, 0x00000004)`, `(0x48, 0x00000000)`, `(0x4c, 0x00001000)` |
+
+The model SHALL assign transaction identities 1 through 24 in source order.
+It SHALL reject any omitted, duplicated, reordered, or substituted request.
+The source/library interpretation SHALL own capability-link traversal,
+vendor/type recognition, preferred-instance choice, capability-length checks,
+BAR association, relative-region checks, and notification-multiplier policy.
+The provider SHALL observe only independent checked PCI dword requests.
+
+The sequence SHALL establish only the pinned transport layout. It SHALL NOT
+grant or claim general PCI enumeration, assigned-BAR discovery or mapping,
+bus mastering, device-register access, virtio feature negotiation, interrupts,
+DMA, or entropy delivery.
 
 ### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
 

@@ -436,6 +436,14 @@ register offset, expected value, and transaction identity in the checked model.
 The checker shall reject out-of-range, misaligned, non-sealed, or unsupported
 requests before lowering and shall not infer PCI enumeration or virtio policy.
 
+The bounded virtio-PCI discovery refinement shall accept only the exact
+24-transaction source sequence for the pinned function. It shall prove link
+order, MSI-X traversal, virtio vendor/type headers, capability lengths, BAR
+indices, BAR-relative offsets, region lengths, and the notification multiplier
+before lowering. Each operation shall retain its request and monotonically
+assigned transaction identity; duplicates, omissions, reordering, alternate
+values, and reads outside the sequence shall be rejected.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -447,10 +455,11 @@ registers, or a generic intrinsic escape. AArch64 and RISC-V review evidence
 shall not mark their backends executable-qualified.
 
 For the bounded Q35 PCI observation, the x86-64 provider shall accept only the
-sealed segment-zero `00:05.0` register-zero request, serialize one mechanism-1
-address/data transaction, compare the exact `0x10441af4` result, and fail
-terminally on mismatch. Structural evidence shall prove generated `0xcf8`
-write and `0xcfc` read instructions without exposing either port to source.
+sealed segment-zero `00:05.0` discovery requests, serialize each mechanism-1
+address/data transaction, compare the request's exact expected value, and fail
+terminally on mismatch. Structural evidence shall prove one generated call per
+request and the shared `0xcf8` write/`0xcfc` read provider operation without
+exposing either port to source.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
