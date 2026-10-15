@@ -577,6 +577,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 unsupported-syscall `ENOSYS` fallback](step-4-unsupported-syscall-enosys.md)
 - [Step 4 bounded initial `sched_yield`](step-4-initial-sched-yield.md)
 - [Step 4 bounded PCI configuration observation](step-4-bounded-pci-configuration-observation.md)
+- [Step 4 bounded virtio-PCI capability discovery](step-4-bounded-virtio-pci-capability-discovery.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
