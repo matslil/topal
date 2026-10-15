@@ -313,6 +313,15 @@ candidate and clear private state before publishing terminal lifecycle state.
 Structural and pinned-QEMU evidence shall prove registration, exact return,
 terminal store/clear ordering, and no retained state at data teardown.
 
+The initial empty robust-list adapter shall lower Linux x86-64 syscall 273 only
+for a live initial context, finalized executable return continuation, exact
+length 24, and a complete readable 24-byte candidate. Registration shall
+retain the candidate privately without access and return zero. Terminal exit
+shall fault-contain a complete 24-byte copy, require the native list link to be
+self-referential and the pending pointer null, and clear state before terminal
+publication. Structural and pinned-QEMU evidence shall prove registration,
+terminal copy and checks, state clearing, and teardown rejection.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
