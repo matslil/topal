@@ -888,6 +888,12 @@ shall prove the exact result and successful continuation into a subsequent
 implemented syscall. Success, process termination, or provider-owned syscall
 selection shall fail closed.
 
+The adapter shall implement Linux `sched_yield` for the sole runnable initial
+thread. It shall return zero through the executable continuation while
+preserving the exact user context and all private process state. It shall use an
+implemented dispatch arm rather than the unsupported fallback and shall not
+invoke a provider context switch when no eligible peer exists.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and

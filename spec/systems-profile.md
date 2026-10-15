@@ -937,6 +937,23 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-USER-SCHED-YIELD-001 — Sole-runnable scheduling point
+
+While the sole initial user context is live and its return continuation lies in
+the finalized executable mapping, the profile MAY dispatch Linux-compatible
+`sched_yield`. With no other eligible user context, dispatch SHALL preserve the
+same context, address-space and thread identities and all private process state,
+and SHALL return zero through the ordinary syscall continuation.
+
+The syscall SHALL have an implemented dispatch arm and SHALL NOT be selected by
+the unsupported-call fallback. The kernel SHALL own the no-peer scheduling
+decision; the provider SHALL NOT fabricate a context transfer or result.
+
+A nonzero result, state change, provider callback, terminal disposition,
+fallback selection, wrong context identity, or non-executable return SHALL be
+invalid. This rule SHALL NOT add runnable collections, priorities, affinity,
+multiple user threads, preemption, migration, or SMP scheduling.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

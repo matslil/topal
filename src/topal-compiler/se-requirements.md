@@ -416,6 +416,11 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The adapter shall dispatch Linux x86-64 syscall 24 as `sched_yield`, preserve
+the sole live user context and all private state, and return zero without a
+provider context-transfer operation. Structural and pinned-QEMU evidence shall
+prove a dedicated arm, exact result, and continued implemented execution.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
