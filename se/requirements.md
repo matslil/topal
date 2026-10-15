@@ -853,6 +853,14 @@ nondecreasing order across successful calls. Unsupported clocks, invalid
 extents, partial output, unnormalized values, or time regression shall return
 the declared Linux error or fail closed.
 
+The adapter shall accept Linux `clock_getres(CLOCK_MONOTONIC)` with either a
+null output or one complete writable native timespec candidate. It shall report
+the exact normalized resolution of the same qualified provider source used by
+`clock_gettime`; the initial x86-64 profile shall report zero seconds and ten
+nanoseconds. Nonnull output shall be complete and fault-contained. Unsupported
+clocks, inconsistent resolution, retained pointers, or partial output shall
+return the declared Linux error or fail closed.
+
 The prepared user address space, suspended user context, completed execution,
 and revoked address space shall retain one exact address-space identity through
 their affine transitions. Preparation, context binding, revocation, and
