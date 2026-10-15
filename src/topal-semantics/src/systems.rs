@@ -107,16 +107,48 @@ pub struct PciConfigurationDwordRequest {
 }
 
 impl PciConfigurationDwordRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG_DISCOVERY: [Self; 24] = [
+        Self::initial_q35_virtio_rng(0x00, 0x1044_1af4),
+        Self::initial_q35_virtio_rng(0x34, 0x0000_0098),
+        Self::initial_q35_virtio_rng(0x98, 0x0001_8411),
+        Self::initial_q35_virtio_rng(0x84, 0x0514_7009),
+        Self::initial_q35_virtio_rng(0x88, 0x0000_0000),
+        Self::initial_q35_virtio_rng(0x8c, 0x0000_0000),
+        Self::initial_q35_virtio_rng(0x90, 0x0000_0000),
+        Self::initial_q35_virtio_rng(0x70, 0x0214_6009),
+        Self::initial_q35_virtio_rng(0x74, 0x0000_0004),
+        Self::initial_q35_virtio_rng(0x78, 0x0000_3000),
+        Self::initial_q35_virtio_rng(0x7c, 0x0000_1000),
+        Self::initial_q35_virtio_rng(0x80, 0x0000_0004),
+        Self::initial_q35_virtio_rng(0x60, 0x0410_5009),
+        Self::initial_q35_virtio_rng(0x64, 0x0000_0004),
+        Self::initial_q35_virtio_rng(0x68, 0x0000_2000),
+        Self::initial_q35_virtio_rng(0x6c, 0x0000_1000),
+        Self::initial_q35_virtio_rng(0x50, 0x0310_4009),
+        Self::initial_q35_virtio_rng(0x54, 0x0000_0004),
+        Self::initial_q35_virtio_rng(0x58, 0x0000_1000),
+        Self::initial_q35_virtio_rng(0x5c, 0x0000_1000),
+        Self::initial_q35_virtio_rng(0x40, 0x0110_0009),
+        Self::initial_q35_virtio_rng(0x44, 0x0000_0004),
+        Self::initial_q35_virtio_rng(0x48, 0x0000_0000),
+        Self::initial_q35_virtio_rng(0x4c, 0x0000_1000),
+    ];
+
     #[must_use]
-    pub const fn initial_q35_virtio_rng_identity() -> Self {
+    pub const fn initial_q35_virtio_rng(register_offset_bytes: u8, expected_value: u32) -> Self {
         Self {
             segment: 0,
             bus: 0,
             device: 5,
             function: 0,
-            register_offset_bytes: 0,
-            expected_value: 0x1044_1af4,
+            register_offset_bytes,
+            expected_value,
         }
+    }
+
+    #[must_use]
+    pub const fn initial_q35_virtio_rng_identity() -> Self {
+        Self::INITIAL_Q35_VIRTIO_RNG_DISCOVERY[0]
     }
 
     #[must_use]
@@ -1381,7 +1413,7 @@ struct BootstrapAuthorityState {
     constructed_user_image_copy_from_completed: bool,
     constructed_user_image_syscall_completed: bool,
     resident_user_image_retained: bool,
-    pci_configuration_observed: bool,
+    pci_configuration_observations: usize,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1633,18 +1665,19 @@ impl BootstrapAuthorityState {
                 self.monotonic_clock_observations += 1;
             }
             SystemsOperation::ObservePciConfigurationDword { request } => {
-                if self.pci_configuration_observed
-                    || !self.allocator_created
+                let expected = PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                    .get(self.pci_configuration_observations);
+                if !self.allocator_created
                     || !self.critical_stack.is_empty()
                     || !request.is_well_formed()
-                    || *request != PciConfigurationDwordRequest::initial_q35_virtio_rng_identity()
+                    || expected != Some(request)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-PCI-CONFIG",
-                        "the initial PCI configuration observation requires the sealed Q35 virtio-rng identity request and a restored bootstrap context",
+                        "the initial PCI configuration observations require the exact sealed Q35 virtio-rng capability-discovery sequence and a restored bootstrap context",
                     ));
                 }
-                self.pci_configuration_observed = true;
+                self.pci_configuration_observations += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3005,6 +3038,14 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires exactly two monotonic-clock observations",
             ));
         }
+        if self.pci_configuration_observations
+            != PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY.len()
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-PCI-CONFIG-LIVE",
+                "bootstrap completion requires the complete sealed virtio-rng PCI capability-discovery sequence",
+            ));
+        }
         if self.deadline != BootstrapDeadlineState::Completed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DEADLINE-EVENT-LIVE",
@@ -3346,6 +3387,7 @@ pub fn model_systems_transitions(
         LocalNotificationProtocol::new("initial-local-notification-source");
     let mut pending_local_notification = None;
     let mut next_clock_observation_identity = 1_u64;
+    let mut next_pci_transaction_identity = 1_u64;
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
@@ -3428,6 +3470,7 @@ pub fn model_systems_transitions(
             &mut storage,
             &mut region,
             &mut atomic,
+            &mut next_pci_transaction_identity,
             &mut transitions,
         )? {
             return Ok(transitions);
@@ -4555,6 +4598,7 @@ fn model_bootstrap_operation(
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
     atomic: &mut Option<AtomicWordLocation>,
+    next_pci_transaction_identity: &mut u64,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
@@ -4616,8 +4660,16 @@ fn model_bootstrap_operation(
             transitions.push(SystemsTransition::ConsoleWrite { text: text.clone() });
         }
         SystemsOperation::ObservePciConfigurationDword { request } => {
+            let transaction_identity = *next_pci_transaction_identity;
+            *next_pci_transaction_identity =
+                transaction_identity.checked_add(1).ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-PCI-CONFIG",
+                        "PCI configuration transaction identity exhausted",
+                    )
+                })?;
             transitions.push(SystemsTransition::ObservePciConfigurationDword {
-                transaction_identity: 1,
+                transaction_identity,
                 request: *request,
             });
         }
@@ -5068,6 +5120,7 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
+            SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
             SYSTEMS_DEADLINE_AFTER.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
@@ -5152,6 +5205,102 @@ mod tests {
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "boot".into(),
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [0],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [1],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [2],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [3],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [4],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [5],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [6],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [7],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [8],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [9],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [10],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [11],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [12],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [13],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [14],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [15],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [16],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [17],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [18],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [19],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [20],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [21],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [22],
+                        },
+                        SystemsOperation::ObservePciConfigurationDword {
+                            request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                                [23],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -5577,8 +5726,18 @@ mod tests {
     #[test]
     fn resumed_debug_break_returns_to_bootstrap_before_fatal() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-OBSERVATION-001.
+        let transitions = model_systems_transitions(&program(SystemsDisposition::Resume))
+            .unwrap()
+            .into_iter()
+            .filter(|transition| {
+                !matches!(
+                    transition,
+                    SystemsTransition::ObservePciConfigurationDword { .. }
+                )
+            })
+            .collect::<Vec<_>>();
         assert_eq!(
-            model_systems_transitions(&program(SystemsDisposition::Resume)).unwrap(),
+            transitions,
             [
                 SystemsTransition::ProvisionBootstrapStorage {
                     capacity_bytes: 65_536,
@@ -6727,7 +6886,14 @@ mod tests {
         );
 
         let mut early = program(SystemsDisposition::Resume);
-        let observation = early.bootstrap.handler.operations.remove(6);
+        let observation_index = early
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, SystemsOperation::ObserveMonotonicClock))
+            .unwrap();
+        let observation = early.bootstrap.handler.operations.remove(observation_index);
         early.bootstrap.handler.operations.insert(4, observation);
         assert_eq!(
             validate_systems_program(&early).unwrap_err().code,

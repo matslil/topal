@@ -98,8 +98,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/74";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/72";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/75";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/73";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1321,7 +1321,7 @@ struct RootEncoder {
     bootstrap_region_offset: Option<u64>,
     atomic_word_offset: Option<u64>,
     local_notification: RootLocalNotificationState,
-    pci_configuration_observed: bool,
+    pci_configuration_observations: usize,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1898,10 +1898,12 @@ impl RootEncoder {
                 "x86 root lowering ended with live critical restoration authority".into(),
             ));
         }
-        if self.role == RootRole::BootstrapWithLocalNotification && !self.pci_configuration_observed
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && self.pci_configuration_observations
+                != CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY.len()
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without its sealed PCI configuration observation".into(),
+                "x86 root lowering ended without its complete sealed PCI capability-discovery sequence".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
@@ -2267,11 +2269,12 @@ impl RootEncoder {
         if self.role != RootRole::BootstrapWithLocalNotification
             || !self.frame_allocator_created
             || self.critical != RootCriticalState::Restored
-            || self.pci_configuration_observed
-            || request != CompilerPciConfigurationDwordRequest::initial_q35_virtio_rng_identity()
+            || CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                .get(self.pci_configuration_observations)
+                != Some(&request)
         {
             return Err(CompileError::Tool(
-                "x86 PCI configuration observation requires the restored bootstrap context and sealed Q35 virtio-rng identity request".into(),
+                "x86 PCI configuration observation requires the restored bootstrap context and exact sealed Q35 virtio-rng capability-discovery sequence".into(),
             ));
         }
         let selector = 0x8000_0000
@@ -2285,7 +2288,7 @@ impl RootEncoder {
         self.bytes
             .extend_from_slice(&request.expected_value.to_le_bytes());
         self.call_checked_bool(ProviderSymbol::ObservePciConfigurationDword)?;
-        self.pci_configuration_observed = true;
+        self.pci_configuration_observations += 1;
         Ok(())
     }
 
@@ -4471,7 +4474,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1859);
+        assert_eq!(relocation_targets.len(), 1944);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4625,14 +4628,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1663
+            1702
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL)
                 .count(),
-            1
+            24
         );
         assert_eq!(
             relocation_targets
@@ -4646,7 +4649,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            67
+            90
         );
         assert_eq!(
             relocation_targets
@@ -4902,20 +4905,41 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 204);
+        assert_eq!(decoded.semantic_trace.len(), 228);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
         decoded.semantic_trace.drain(27..30);
-        assert!(decoded.semantic_trace[31].starts_with(SYSTEMS_PCI_CONFIGURATION_READ_DWORD));
+        for (index, request) in
+            CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                .iter()
+                .enumerate()
+        {
+            assert_eq!(
+                decoded.semantic_trace[31 + index],
+                format!(
+                    "{SYSTEMS_PCI_CONFIGURATION_READ_DWORD}:transaction={}:segment=0:bus=0:device=5:function=0:offset={}:expected={:#010x}",
+                    index + 1,
+                    request.register_offset_bytes,
+                    request.expected_value
+                )
+            );
+        }
         assert_eq!(
-            decoded.semantic_trace[32],
+            decoded.semantic_trace[55],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_PCI_VIRTIO_RNG_OK")
             )
         );
-        decoded.semantic_trace.drain(31..33);
+        assert_eq!(
+            decoded.semantic_trace[56],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK")
+            )
+        );
+        decoded.semantic_trace.drain(31..57);
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
