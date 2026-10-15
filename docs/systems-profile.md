@@ -1234,6 +1234,15 @@ parses capability bytes nor selects a virtio transport, so the same library
 policy can operate above x86 configuration mechanism 1, ECAM, or another
 qualified configuration service.
 
+A PCI region-register access derives a transaction-scoped device session from
+validated function, capability, BAR-index, and BAR-relative-region evidence.
+Source supplies the register protocol, width, direction, value policy, and
+selected PCI configuration-access gateway; it never receives an assigned BAR
+address. A provider may realize the access through that gateway or an opaque
+mapped BAR while preserving the same ordered device effect. Virtio feature and
+status policy therefore remains ordinary checked kernel/library code rather
+than a provider intrinsic.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
