@@ -839,6 +839,26 @@ non-executable return SHALL be invalid. This rule SHALL NOT expose syscall or
 clock encodings, counters, frequencies, MMIO, rollover state, realtime epochs,
 vDSO, timers, adjustment, namespaces, or general clock authority to source.
 
+### TOPAL-SYSTEMS-USER-CLOCK-RESOLUTION-001 — Bounded monotonic resolution
+
+While the sole initial user context is live and its return continuation lies in
+the finalized executable mapping, the profile MAY admit Linux-compatible
+`clock_getres` only for `CLOCK_MONOTONIC`. A null result candidate SHALL return
+zero without output. A nonnull candidate SHALL name a complete writable native
+16-byte timespec in an already-owned user mapping.
+
+The provider SHALL publish the exact normalized resolution of the same
+qualified source used for monotonic observations, retain no candidate, and
+return zero. The initial x86-64 Q35 profile SHALL publish zero seconds and ten
+nanoseconds under fault recovery. Unsupported clock identity SHALL return
+`-EINVAL`; invalid output SHALL return `-EFAULT` without reporting partial
+output as success.
+
+Inconsistent, negative, or unnormalized resolution, partial publication,
+retained pointers, duplicate results, wrong lifecycle state, or non-executable
+return SHALL be invalid. This rule SHALL NOT expose clock encodings, counters,
+frequencies, MMIO, realtime policy, vDSO, timers, or adjustment to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

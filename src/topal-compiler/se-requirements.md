@@ -382,6 +382,13 @@ Structural and pinned-QEMU evidence shall prove two calls, normalized fields,
 nondecreasing order, exact zero results, private target details, and balanced
 temporary storage.
 
+The bounded userspace-resolution adapter shall dispatch Linux x86-64 syscall
+229 only for `CLOCK_MONOTONIC` and an optional complete writable 16-byte
+candidate. It shall return zero for null output, otherwise publish the native
+zero-second/ten-nanosecond pair under page-fault recovery, retain no pointer,
+and agree with the qualified HPET conversion. Structural and pinned-QEMU
+evidence shall prove exact output, null-output success, and balanced storage.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

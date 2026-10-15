@@ -947,7 +947,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 34
+        || fields.len() != 35
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -959,29 +959,30 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[8], "nanosleep-nanoseconds")? != 0
         || field_natural(source, &fields[9], "nanosleep-remainder-candidate")? != 0
         || field_natural(source, &fields[10], "clock-gettime-result")? != 0
-        || field_natural(source, &fields[11], "write-descriptor")? != 1
-        || field_natural(source, &fields[12], "write-maximum-bytes")? != 256
-        || field_natural(source, &fields[13], "read-descriptor")? != 0
-        || field_natural(source, &fields[14], "read-maximum-bytes")? != 256
-        || field_natural(source, &fields[15], "brk-data-page-bytes")? != 4096
-        || field_natural(source, &fields[16], "getppid-result")? != 0
-        || field_natural(source, &fields[17], "gettid-result")? != 1
-        || field_natural(source, &fields[18], "getuid-result")? != 0
-        || field_natural(source, &fields[19], "geteuid-result")? != 0
-        || field_natural(source, &fields[20], "getgid-result")? != 0
-        || field_natural(source, &fields[21], "getegid-result")? != 0
-        || field_natural(source, &fields[22], "arch-set-fs-result")? != 0
-        || field_natural(source, &fields[23], "arch-get-fs-result")? != 0
-        || field_natural(source, &fields[24], "set-tid-address-result")? != 1
-        || field_natural(source, &fields[25], "set-robust-list-result")? != 0
-        || field_natural(source, &fields[26], "getrlimit-result")? != 0
-        || field_natural(source, &fields[27], "prlimit64-result")? != 0
-        || field_natural(source, &fields[28], "rt-sigprocmask-result")? != 0
-        || field_natural(source, &fields[29], "anonymous-page-bytes")? != 4096
-        || field_natural(source, &fields[30], "madvise-result")? != 0
-        || field_natural(source, &fields[31], "mprotect-result")? != 0
-        || field_natural(source, &fields[32], "munmap-result")? != 0
-        || field_natural(source, &fields[33], "exit-group-status")? != 0
+        || field_natural(source, &fields[11], "clock-getres-result")? != 0
+        || field_natural(source, &fields[12], "write-descriptor")? != 1
+        || field_natural(source, &fields[13], "write-maximum-bytes")? != 256
+        || field_natural(source, &fields[14], "read-descriptor")? != 0
+        || field_natural(source, &fields[15], "read-maximum-bytes")? != 256
+        || field_natural(source, &fields[16], "brk-data-page-bytes")? != 4096
+        || field_natural(source, &fields[17], "getppid-result")? != 0
+        || field_natural(source, &fields[18], "gettid-result")? != 1
+        || field_natural(source, &fields[19], "getuid-result")? != 0
+        || field_natural(source, &fields[20], "geteuid-result")? != 0
+        || field_natural(source, &fields[21], "getgid-result")? != 0
+        || field_natural(source, &fields[22], "getegid-result")? != 0
+        || field_natural(source, &fields[23], "arch-set-fs-result")? != 0
+        || field_natural(source, &fields[24], "arch-get-fs-result")? != 0
+        || field_natural(source, &fields[25], "set-tid-address-result")? != 1
+        || field_natural(source, &fields[26], "set-robust-list-result")? != 0
+        || field_natural(source, &fields[27], "getrlimit-result")? != 0
+        || field_natural(source, &fields[28], "prlimit64-result")? != 0
+        || field_natural(source, &fields[29], "rt-sigprocmask-result")? != 0
+        || field_natural(source, &fields[30], "anonymous-page-bytes")? != 4096
+        || field_natural(source, &fields[31], "madvise-result")? != 0
+        || field_natural(source, &fields[32], "mprotect-result")? != 0
+        || field_natural(source, &fields[33], "munmap-result")? != 0
+        || field_natural(source, &fields[34], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -1001,6 +1002,7 @@ fn analyze_user_syscall_handler(
         nanosleep_nanoseconds: 0,
         nanosleep_remainder_candidate: 0,
         clock_gettime_result: 0,
+        clock_getres_result: 0,
         write_descriptor: 1,
         write_maximum_bytes: 256,
         read_descriptor: 0,
