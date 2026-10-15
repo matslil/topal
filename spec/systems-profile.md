@@ -722,6 +722,26 @@ broken alias, incomplete consumption, or unbounded access SHALL be invalid.
 This rule SHALL NOT add process accounting, CPU-time clocks, interval timers,
 scheduler ticks, `times`, or a general auxiliary-vector builder.
 
+### TOPAL-SYSTEMS-USER-AUXV-PLATFORM-001 — Native platform string
+
+The sole initial process MAY receive one native `AT_PLATFORM` auxiliary-vector
+entry. It SHALL immediately follow `AT_CLKTCK`, SHALL precede the unique
+`AT_NULL`, and SHALL point to a complete NUL-terminated platform string inside
+the initialized bounded stack block. The initial x86-64 profile SHALL publish
+exactly `x86_64`.
+
+The platform string SHALL be a distinct object from the executable-name string.
+`argv[0]` and `AT_EXECFN` SHALL retain exact alias identity only with the latter.
+Constructed user code SHALL validate the tag, exact pointer, all platform bytes,
+termination, following `AT_NULL`, alias separation, and complete bounded-block
+consumption before continuing.
+
+An invalid, cross-boundary, unterminated, aliased, missing, duplicate, or
+reordered string, broken executable-name alias, incomplete consumption, or
+using the fact to select a provider SHALL be invalid. This rule SHALL NOT add
+hardware-capability masks, personalities, compatibility ABIs, runtime target
+selection, or a general auxiliary-vector builder.
+
 ### TOPAL-SYSTEMS-USER-RLIMIT-STACK-001 — Initial stack-limit query
 
 The initial-process profile MAY dispatch Linux-compatible
