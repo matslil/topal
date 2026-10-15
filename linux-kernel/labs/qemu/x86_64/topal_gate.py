@@ -33,6 +33,7 @@ MARKERS = (
     b"TOPAL_KERNEL_FRAME_EXTENT_OK",
     b"TOPAL_KERNEL_INTERRUPTS_MASKED",
     b"TOPAL_KERNEL_MEMORY_DESCRIBED",
+    b"TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
     b"TOPAL_KERNEL_ATOMIC_OK",
@@ -205,6 +206,7 @@ def qemu_command(
     emulator = data["emulator"]
     machine = data["machine"]
     firmware = data["firmware"]
+    entropy = data["devices"]["entropy"]
     return [
         emulator["program"],
         "-name",
@@ -247,6 +249,13 @@ def qemu_command(
         ),
         "-device",
         "isa-serial,chardev=serial0,index=0",
+        "-object",
+        f"rng-random,id=entropy0,filename={entropy['backend']}",
+        "-device",
+        (
+            f"{entropy['model']},rng=entropy0,bus=pcie.0,addr=05.0,"
+            f"max-bytes={entropy['max_bytes']},period={entropy['period_ms']}"
+        ),
         "-kernel",
         str(image),
         "-initrd",
@@ -340,7 +349,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/75",
+        "schema": "topal-kernel-toolchain-gate-qemu/76",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

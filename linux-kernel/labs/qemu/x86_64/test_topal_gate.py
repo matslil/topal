@@ -28,7 +28,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             (LAB / "results" / "topal-toolchain-gate.json").read_text(encoding="utf-8")
         )
 
-    def test_command_uses_the_pinned_board_without_guest_devices(self) -> None:
+    def test_command_uses_the_pinned_board_with_only_the_selected_entropy_device(self) -> None:
         command = GATE.qemu_command(
             Path("/tmp/bzImage"),
             Path("/tmp/initramfs.cpio"),
@@ -45,21 +45,25 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn("-initrd", command)
         self.assertIn("isa-serial", joined)
         self.assertIn("serial,id=serial0,path=/dev/pts/9", joined)
+        self.assertIn("rng-random,id=entropy0,filename=/dev/urandom", joined)
+        self.assertIn("virtio-rng-pci-non-transitional", joined)
+        self.assertIn("rng=entropy0,bus=pcie.0,addr=05.0", joined)
+        self.assertIn("max-bytes=1024,period=1000", joined)
         self.assertNotIn("-drive", command)
         self.assertNotIn("-netdev", command)
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/75")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/76")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/70")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/71")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/73",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/74",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/33",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/34",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -109,6 +113,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_FRAME_EXTENT_OK",
                 "TOPAL_KERNEL_INTERRUPTS_MASKED",
                 "TOPAL_KERNEL_MEMORY_DESCRIBED",
+                "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
                 "TOPAL_KERNEL_BOOT",
                 "TOPAL_KERNEL_FAULT_RESUMED",
                 "TOPAL_KERNEL_ATOMIC_OK",
