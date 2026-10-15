@@ -56,6 +56,7 @@ records, not this directory alone, define language meaning.
 - [Bounded initial `AT_ENTRY` auxiliary-vector fact](bounded-initial-auxv-entry.md)
 - [Bounded initial `AT_EXECFN` auxiliary-vector fact](bounded-initial-auxv-execfn.md)
 - [Bounded initial credential auxiliary-vector facts](bounded-initial-auxv-credentials.md)
+- [Bounded initial `AT_SECURE` fact](bounded-initial-auxv-secure.md)
 - [Bounded ELF identity and program-header facts](bounded-elf-identity.md)
 - [Provider-neutral initial boot-resource contract](initial-boot-resource.md)
 - [Bounded external ELF load contract](bounded-external-elf-load.md)

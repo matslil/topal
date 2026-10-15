@@ -713,6 +713,14 @@ credential auxiliary-vector facts. This is not a process table, credential
 transition service, namespace view, supplementary-group model, or reusable
 identity API.
 
+The bounded non-secure-execution refinement adds a zero-valued Linux
+`AT_SECURE` fact to the initial auxiliary vector. It follows the executable and
+credential metadata, precedes `AT_NULL`, and agrees with the absence of any
+privilege-changing execution transition in the sealed profile. The provider
+owns the native tag and stack layout; source observes only the coherent initial
+process fact. This does not add credential mutation, capabilities, security
+modules, secure environment handling, or a general auxiliary-vector builder.
+
 The initial x86-64 thread-pointer refinement permits Linux-compatible
 `arch_prctl(ARCH_SET_FS)` and `arch_prctl(ARCH_GET_FS)` only for the live
 initial thread. A nonzero selected FS base must lie within an already-owned
