@@ -364,6 +364,15 @@ Structural and pinned-QEMU evidence shall prove every admitted transition,
 retained contents across inaccessible state, active-map rejection while none,
 revocation from a protected state, and non-executable publication.
 
+The bounded anonymous-advice adapter shall dispatch Linux x86-64 syscall 28
+only for the exact live anonymous page, a nonzero one-page-or-smaller range,
+and `MADV_DONTNEED`. It shall zero the complete backing through kernel
+authority while preserving the active generation and private none, read-only,
+or read-write NX state. Rejected requests shall preserve prior bytes and state.
+Structural and pinned-QEMU evidence shall prove advice while inaccessible,
+overlapping-map rejection, restored full zero observation, later mutation, and
+unchanged protection semantics.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special

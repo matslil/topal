@@ -797,6 +797,28 @@ selected addresses, page-table formats or instructions, protection keys,
 multiple pages, partial splitting, concurrent edits, or general VMA authority
 to source.
 
+### TOPAL-SYSTEMS-USER-ANON-ADVISE-001 — Bounded anonymous-page advice
+
+While the sole initial user context is live and its bounded anonymous mapping
+generation is active, the profile MAY admit Linux-compatible `madvise` only
+for the exact provider-selected page address, a nonzero length no greater than
+one base page, and `MADV_DONTNEED`. A different address, excessive or zero
+length, unsupported advice, or non-active reservation SHALL return the declared
+Linux error without changing reservation, protection, or contents.
+
+On success the provider SHALL zero every byte of the backing frame through
+kernel authority, SHALL preserve the active generation and its current none,
+read-only, or read-write non-executable protection, and SHALL return zero. The
+operation SHALL remain valid while protection is none. A later admitted access
+after restoring permission SHALL observe zero throughout the advised page.
+
+Partial zeroing, generation or protection change, executable publication,
+state or content change after rejected input, stale contents after success,
+duplicate result, or dependence on user access SHALL be invalid. This rule
+SHALL NOT expose syscall or advice numbers, backing addresses, zeroing
+instructions, page-table formats, lazy faults, other advice classes, reclaim
+pressure, or general VMA authority to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

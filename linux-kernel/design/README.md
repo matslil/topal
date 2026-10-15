@@ -80,6 +80,7 @@ records, not this directory alone, define language meaning.
 - [Initial thread signal mask](initial-signal-mask.md)
 - [Bounded runtime anonymous page](bounded-runtime-anonymous-page.md)
 - [Bounded runtime anonymous-page protection](bounded-runtime-anonymous-protection.md)
+- [Bounded runtime anonymous-page advice](bounded-runtime-anonymous-advice.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
