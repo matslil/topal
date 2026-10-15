@@ -704,6 +704,33 @@ invalid. This rule SHALL NOT expose syscall numbers, selector encodings,
 native field offsets, resource storage, accounting, enforcement, mutation,
 inheritance, cgroups, or general resource-limit authority to source.
 
+### TOPAL-SYSTEMS-USER-SIGNAL-MASK-001 — Initial thread signal mask
+
+The initial-thread profile MAY dispatch Linux-compatible
+`rt_sigprocmask(how, set, old-set, set-size)` while the user context is live
+and the return continuation lies in the finalized executable mapping. Set size
+SHALL be the native eight bytes. A nonnull set candidate SHALL name a complete
+readable eight-byte extent and a nonnull old-set candidate SHALL name a
+complete writable eight-byte extent in already-owned user mappings.
+
+The private blocked-signal word SHALL begin at zero. For nonnull input the
+adapter SHALL copy the complete word under fault recovery, remove the native
+`SIGKILL` and `SIGSTOP` bits, and admit only block, unblock, or replacement.
+It SHALL retain the prior word, commit the resulting private word atomically,
+then publish the complete prior word through a nonnull old-set candidate under
+fault recovery. Null input SHALL leave state unchanged and ignore `how`; null
+output SHALL perform no user write. Terminal teardown SHALL clear private mask
+state.
+
+Wrong size or operation SHALL return `-EINVAL`; an invalid user extent SHALL
+return `-EFAULT`. Partial input, partial output, wrong update ordering, failure
+to remove either unblockable bit, state change after rejected input, wrong
+entry state, non-executable return, retained candidates, or nonzero state at
+mapping teardown SHALL be invalid. This rule SHALL NOT expose the syscall
+number, operation encodings, bit positions, native layout, pending queues,
+actions, delivery, signal frames, restart policy, or general signal authority
+to source.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -345,6 +345,7 @@ pub enum SystemsDisposition {
         set_robust_list_result: u64,
         getrlimit_result: u64,
         prlimit64_result: u64,
+        rt_sigprocmask_result: u64,
         exit_group_status: u64,
     },
     Fatal {
@@ -1209,6 +1210,7 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 set_robust_list_result: 0,
                 getrlimit_result: 0,
                 prlimit64_result: 0,
+                rt_sigprocmask_result: 0,
                 exit_group_status: 0,
             })
     {
@@ -3597,6 +3599,7 @@ fn model_user_execution_transition(
                     set_robust_list_result: _,
                     getrlimit_result: _,
                     prlimit64_result: _,
+                    rt_sigprocmask_result: _,
                     exit_group_status,
                 } => (
                     *getpid_result,
@@ -5233,6 +5236,7 @@ mod tests {
                         set_robust_list_result: 0,
                         getrlimit_result: 0,
                         prlimit64_result: 0,
+                        rt_sigprocmask_result: 0,
                         exit_group_status: 0,
                     },
                     effects: vec![

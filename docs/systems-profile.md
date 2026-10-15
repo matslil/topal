@@ -747,6 +747,14 @@ with an 8 MiB soft limit and unlimited hard limit through a complete writable
 not resource mutation, enforcement, accounting, inheritance, or a general
 resource table.
 
+The bounded initial-signal-mask refinement permits Linux-compatible
+`rt_sigprocmask` for the sole live thread. The private mask begins empty and
+supports native query, block, unblock, and replacement operations over one
+64-bit signal word. Input and optional prior-mask output use complete owned
+user extents under fault recovery; `SIGKILL` and `SIGSTOP` are always removed
+from an installed mask. This defines thread-local mask state only, not signal
+generation, queuing, action registration, delivery, restart, or return.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation

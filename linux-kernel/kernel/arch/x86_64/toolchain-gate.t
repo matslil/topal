@@ -458,6 +458,7 @@ user-syscall-handler is fn (
     set-robust-list-result is 0,
     getrlimit-result is 0,
     prlimit64-result is 0,
+    rt-sigprocmask-result is 0,
     exit-group-status is 0
   )
 
