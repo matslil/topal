@@ -567,6 +567,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 initial stack resource-limit queries](step-4-initial-stack-rlimit-query.md)
 - [Step 4 initial thread signal mask](step-4-initial-signal-mask.md)
 - [Step 4 bounded runtime anonymous page](step-4-bounded-runtime-anonymous-page.md)
+- [Step 4 bounded runtime anonymous-page protection](step-4-bounded-runtime-anonymous-protection.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
