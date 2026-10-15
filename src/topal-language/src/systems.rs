@@ -947,7 +947,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 32
+        || fields.len() != 33
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -977,9 +977,10 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[26], "prlimit64-result")? != 0
         || field_natural(source, &fields[27], "rt-sigprocmask-result")? != 0
         || field_natural(source, &fields[28], "anonymous-page-bytes")? != 4096
-        || field_natural(source, &fields[29], "mprotect-result")? != 0
-        || field_natural(source, &fields[30], "munmap-result")? != 0
-        || field_natural(source, &fields[31], "exit-group-status")? != 0
+        || field_natural(source, &fields[29], "madvise-result")? != 0
+        || field_natural(source, &fields[30], "mprotect-result")? != 0
+        || field_natural(source, &fields[31], "munmap-result")? != 0
+        || field_natural(source, &fields[32], "exit-group-status")? != 0
     {
         return Err(user_context_diagnostic(
             source,
@@ -1017,6 +1018,7 @@ fn analyze_user_syscall_handler(
         prlimit64_result: 0,
         rt_sigprocmask_result: 0,
         anonymous_page_bytes: 4096,
+        madvise_result: 0,
         mprotect_result: 0,
         munmap_result: 0,
         exit_group_status: 0,

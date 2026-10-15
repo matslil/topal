@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/62";
+    "topal.provider-object.x86_64-qemu-pc-q35/63";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -1182,6 +1182,12 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
             continuation.bytes(&[0xb8, 0x0a, 0x00, 0x00, 0x00, 0x0f, 0x05]);
             continuation.bytes(&[0x48, 0x85, 0xc0]);
             continuation.jump_if(0x85, "fail");
+            continuation.bytes(&[0x4c, 0x89, 0xe7]);
+            continuation.bytes(&[0xbe, 0x00, 0x10, 0x00, 0x00]);
+            continuation.bytes(&[0xba, 0x04, 0x00, 0x00, 0x00]); // MADV_DONTNEED
+            continuation.bytes(&[0xb8, 0x1c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+            continuation.bytes(&[0x48, 0x85, 0xc0]);
+            continuation.jump_if(0x85, "fail");
             continuation.bytes(&[0x31, 0xff]);
             continuation.bytes(&[0xbe, 0x00, 0x10, 0x00, 0x00]);
             continuation.bytes(&[0xba, 0x03, 0x00, 0x00, 0x00]);
@@ -1196,6 +1202,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
             continuation.bytes(&[0xba, 0x03, 0x00, 0x00, 0x00]); // read-write
             continuation.bytes(&[0xb8, 0x0a, 0x00, 0x00, 0x00, 0x0f, 0x05]);
             continuation.bytes(&[0x48, 0x85, 0xc0]);
+            continuation.jump_if(0x85, "fail");
+            continuation.bytes(&[0x41, 0x80, 0x3c, 0x24, 0x00]);
+            continuation.jump_if(0x85, "fail");
+            continuation.bytes(&[0x41, 0xc6, 0x04, 0x24, 0xa5]);
+            continuation.bytes(&[0x4c, 0x89, 0xe7]);
+            continuation.bytes(&[0xbe, 0x00, 0x10, 0x00, 0x00, 0x31, 0xd2]); // unsupported advice
+            continuation.bytes(&[0xb8, 0x1c, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+            continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]); // -EINVAL
             continuation.jump_if(0x85, "fail");
             continuation.bytes(&[0x41, 0x80, 0x3c, 0x24, 0xa5]);
             continuation.jump_if(0x85, "fail");
@@ -1896,6 +1910,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "brk");
     code.bytes(&[0x83, 0xf8, 0x0e]);
     code.jump_if(0x84, "rt-sigprocmask");
+    code.bytes(&[0x83, 0xf8, 0x1c]);
+    code.jump_if(0x84, "madvise");
     code.bytes(&[0x83, 0xf8, 0x27]);
     code.jump_if(0x84, "getpid");
     for number in [102_u8, 104, 107, 108, 110] {
@@ -2035,6 +2051,38 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf4, 0xff, 0xff, 0xff]);
     code.jump("return-user");
     code.bind("mprotect-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("madvise")?;
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x85, "madvise-enomem");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "madvise-einval");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x87, "madvise-einval");
+    code.bytes(&[0x48, 0x83, 0xfa, 0x04]);
+    code.jump_if(0x85, "madvise-einval");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x84, "madvise-enomem");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x02]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x04]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0xc0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x89, 0xd0, 0x49, 0x81, 0xc0, 0x00, 0x10, 0x00, 0x00]);
+    code.bind("madvise-zero-loop")?;
+    code.bytes(&[0x49, 0xc7, 0x02, 0, 0, 0, 0, 0x49, 0x83, 0xc2, 0x08]);
+    code.bytes(&[0x4d, 0x39, 0xc2]);
+    code.jump_if(0x85, "madvise-zero-loop");
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("madvise-enomem")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf4, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("madvise-einval")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
@@ -5410,6 +5458,9 @@ mod tests {
                     .windows(3)
                     .any(|bytes| bytes == [0x83, 0xf8, 0x0b])
                 && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x1c])
+                && user_syscall
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_6000_u64.to_le_bytes())
                 && user_syscall
@@ -5424,7 +5475,16 @@ mod tests {
                 && user_syscall
                     .windows(9)
                     .any(|bytes| bytes == [0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0, 0, 0]),
-            "mmap, mprotect, and munmap must publish bounded NX states, track reservation state, and retain terminal revocation"
+            "mmap, mprotect, madvise, and munmap must preserve the bounded generation, publish NX states, and retain terminal revocation"
+        );
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x1c, 0, 0, 0, 0x0f, 0x05])
+                .count(),
+            2,
+            "constructed code must prove inaccessible discard and rejected advice"
         );
         assert_eq!(
             entry_payload
