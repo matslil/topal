@@ -777,6 +777,13 @@ provider-private. This is exact-page protection for one reservation, not
 executable permission, partial splitting, protection keys, concurrent edits,
 or a general virtual-memory-area service.
 
+The bounded anonymous-advice refinement permits Linux-compatible
+`MADV_DONTNEED` on that same live generation. The provider eagerly zeroes the
+complete resident backing through kernel authority while preserving generation
+identity and the current inaccessible, read-only, or read-write non-executable
+protection. This is one exact-page discard contract, not a silent hint, lazy
+fault-backed reclaim, other advice classes, or general memory-pressure policy.
+
 ## External observations and permitted choice
 
 Systems code may observe nondeterminism only through a declared observation
