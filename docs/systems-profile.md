@@ -1251,6 +1251,13 @@ and grant no DMA authority. In particular, merely discovering a queue does not
 make the device live: queue population must still complete before source may
 publish `DRIVER_OK`.
 
+A checked PCI configuration update names one exact-width field, a mask,
+expected masked pre-state, and desired masked post-state. The provider reads,
+verifies, updates only the named bits, and reads back the result under one
+serialized transaction; source owns why those bits change. This permits a
+driver to authorize bus mastering without exposing x86 ports, ECAM addresses,
+or accidentally rewriting adjacent write-one-to-clear status bits.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

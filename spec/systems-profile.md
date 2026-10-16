@@ -1594,6 +1594,27 @@ authority, resize or enable the queue, configure interrupts or bus mastering,
 publish descriptors, notify or poll the device, deliver entropy, or set
 `DRIVER_OK` from these facts.
 
+### TOPAL-SYSTEMS-PCI-CONFIG-UPDATE-001 — Checked masked word update
+
+The bootstrap platform authority MAY derive one transaction-scoped PCI
+configuration-word update. A request SHALL identify segment and BDF, a
+two-byte-aligned register offset in `0..254`, a nonzero 16-bit mask, expected
+masked pre-state, and desired masked post-state. Expected and desired values
+SHALL contain no bits outside the mask.
+
+The provider SHALL serialize one exact-width read, pre-state comparison, one
+exact-width write preserving every unmasked bit, and one exact-width readback
+comparison. Failure of either comparison SHALL enter the fatal disposition.
+The provider SHALL NOT widen the operation into an access that writes an
+adjacent field.
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-DISCOVERY-001`, the initial profile SHALL
+admit exactly one request: segment zero, `00:05.0`, offset `0x04`, mask
+`0x0004`, expected masked pre-state `0x0000`, and desired masked post-state
+`0x0004`. This authorizes PCI bus mastering but SHALL NOT grant a DMA mapping,
+device-visible address, buffer ownership, queue enablement, notification, or
+`DRIVER_OK`.
+
 ### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
 
 A DMA buffer SHALL have exactly one of `CpuOwned`, `Prepared`, `DeviceOwned`,

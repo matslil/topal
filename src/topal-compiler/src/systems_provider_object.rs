@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/73";
+    "topal.provider-object.x86_64-qemu-pc-q35/74";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -102,6 +102,8 @@ pub const X86_SYSTEMS_USER_SYSCALL_SYMBOL: &str = "topal_x86_systems_user_dispat
 pub const X86_SYSTEMS_USER_COPY_FAULT_SYMBOL: &str = "topal_x86_systems_user_copy_page_fault";
 pub const X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL: &str =
     "topal_x86_systems_pci_configuration_read_dword_equals";
+pub const X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL: &str =
+    "topal_x86_systems_pci_configuration_update_word_masked";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL: &str =
@@ -261,6 +263,34 @@ fn pci_region_configuration_gateway(
     code.finish()
 }
 
+fn pci_configuration_update_word() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x89, 0xd1]); // preserve expected value in r9d
+    code.bytes(&[0x41, 0x89, 0xca]); // preserve desired value in r10d
+    code.bytes(&[0x89, 0xf8]); // selector in eax
+    code.bytes(&[0x66, 0xba, 0xf8, 0x0c, 0xef]); // select through 0xcf8
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c]); // base configuration data port
+    code.bytes(&[0x66, 0x44, 0x01, 0xc2]); // add word-within-dword offset
+    code.bytes(&[0x66, 0xed, 0x0f, 0xb7, 0xc0]); // read command word
+    code.bytes(&[0x41, 0x89, 0xc3]); // preserve current word in r11d
+    code.bytes(&[0x21, 0xf0, 0x44, 0x39, 0xc8]); // mask and compare pre-state
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xf7, 0xd6, 0x41, 0x21, 0xf3]); // retain unmasked current bits
+    code.bytes(&[0x45, 0x09, 0xd3, 0x44, 0x89, 0xd8]); // apply desired bits
+    code.bytes(&[0x66, 0xef]); // exact word write
+    code.bytes(&[0xf7, 0xd6]); // restore mask
+    code.bytes(&[0x66, 0xed, 0x0f, 0xb7, 0xc0]); // exact word readback
+    code.bytes(&[0x21, 0xf0, 0x44, 0x39, 0xd0]); // mask and compare post-state
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 1, 0, 0, 0]);
+    code.jump("return");
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0]);
+    code.bind("return")?;
+    code.bytes(&[0xc3]);
+    code.finish()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedSystemsProviderObject {
     pub plan: X86SystemsProviderPlan,
@@ -327,6 +357,12 @@ pub fn generate_x86_64_systems_provider_object(
             X86Instruction::ZeroExtendAlToEax,
             X86Instruction::Return,
         ],
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
+        &pci_configuration_update_word()?,
     );
     append_encoded_function(
         &mut object,
@@ -4530,6 +4566,45 @@ mod tests {
                 );
             }
         }
+        let update = file
+            .symbol_by_name(X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL)
+            .unwrap();
+        let section = file
+            .section_by_index(update.section_index().unwrap())
+            .unwrap();
+        let data = section.data().unwrap();
+        let start = usize::try_from(update.address()).unwrap();
+        let end = start + usize::try_from(update.size()).unwrap();
+        let bytes = &data[start..end];
+        assert_eq!(
+            bytes
+                .windows(5)
+                .filter(|window| *window == [0x66, 0xba, 0xf8, 0x0c, 0xef])
+                .count(),
+            1,
+            "masked word update must select configuration address once"
+        );
+        assert_eq!(
+            bytes
+                .windows(2)
+                .filter(|window| *window == [0x66, 0xed])
+                .count(),
+            2,
+            "masked word update must read pre-state and post-state exactly"
+        );
+        assert_eq!(
+            bytes
+                .windows(2)
+                .filter(|window| *window == [0x66, 0xef])
+                .count(),
+            1,
+            "masked word update must write exactly one command word"
+        );
+        assert!(
+            bytes
+                .windows(4)
+                .any(|window| window == [0x66, 0x44, 0x01, 0xc2])
+        );
         let validator = file.symbol_by_name(X86_SYSTEMS_BOOT_MEMORY_SYMBOL).unwrap();
         assert!(validator.size() > 100);
         let section = file
