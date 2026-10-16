@@ -22,8 +22,11 @@ pub use topal_semantics::{
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition,
-    CriticalDomain as CompilerCriticalDomain, INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE,
-    INITIAL_SYSTEMS_TARGET, KernelExecutionPolicy as CompilerKernelExecutionPolicy,
+    CriticalDomain as CompilerCriticalDomain, DmaBufferRequest as CompilerDmaBufferRequest,
+    DmaBufferRole as CompilerDmaBufferRole, DmaDirection as CompilerDmaDirection,
+    DmaVisibilityPolicy as CompilerDmaVisibilityPolicy, INITIAL_SYSTEMS_BOARD,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
@@ -39,15 +42,16 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_INVALID_REQUEST, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
+    SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -6170,6 +6174,22 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            dma,
+            buffer,
+            create,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, create, "create")
+    {
+        let request = parse_dma_buffer_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::CreateDmaBuffer { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             register,
@@ -6476,6 +6496,84 @@ fn parse_pci_configuration_word_update_request(
             "E-SYSTEMS-PCI-CONFIG-UPDATE",
             span,
             "the initial Q35 profile admits only the sealed virtio-rng bus-master command transition",
+        ));
+    }
+    Ok(request)
+}
+
+fn parse_dma_buffer_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerDmaBufferRequest, Diagnostic> {
+    if fields.len() != 8 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-BUFFER",
+            span,
+            "DMA-buffer creation requires exactly identity, device, translation-domain, size, alignment, direction, visibility, and role fields",
+        ));
+    }
+    let direction_value = field_static_string(source, &fields[5], "direction")?;
+    let direction = match direction_value.as_str() {
+        "bidirectional" => CompilerDmaDirection::Bidirectional,
+        "device-to-memory" => CompilerDmaDirection::DeviceToMemory,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-BUFFER",
+                span,
+                "DMA-buffer direction must be `bidirectional` or `device-to-memory`",
+            ));
+        }
+    };
+    let visibility_value = field_static_string(source, &fields[6], "visibility")?;
+    let visibility = match visibility_value.as_str() {
+        "provider-managed" => CompilerDmaVisibilityPolicy::ProviderManaged,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-BUFFER",
+                span,
+                "DMA-buffer visibility must be `provider-managed`",
+            ));
+        }
+    };
+    let role_value = field_static_string(source, &fields[7], "role")?;
+    let role = match role_value.as_str() {
+        "virtqueue-control" => CompilerDmaBufferRole::VirtqueueControl,
+        "entropy-payload" => CompilerDmaBufferRole::EntropyPayload,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-BUFFER",
+                span,
+                "DMA-buffer role must be `virtqueue-control` or `entropy-payload`",
+            ));
+        }
+    };
+    let request = CompilerDmaBufferRequest {
+        buffer_identity: field_natural(source, &fields[0], "buffer-identity")?,
+        device_identity: field_natural(source, &fields[1], "device-identity")?,
+        translation_domain_identity: field_natural(
+            source,
+            &fields[2],
+            "translation-domain-identity",
+        )?,
+        byte_count: field_natural(source, &fields[3], "byte-count")?,
+        alignment_bytes: field_natural(source, &fields[4], "alignment-bytes")?,
+        direction,
+        visibility,
+        role,
+    };
+    if !request.is_well_formed()
+        || !CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG.contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-BUFFER",
+            span,
+            "the initial Q35 profile admits only the two sealed virtio-rng DMA-buffer requests",
         ));
     }
     Ok(request)
@@ -6815,6 +6913,7 @@ mod tests {
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_DMA_BUFFER_CREATE,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -7198,6 +7297,15 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_PCI_BUS_MASTER_OK".into(),
+                },
+                CompilerSystemsTransition::CreateDmaBuffer {
+                    request: CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                },
+                CompilerSystemsTransition::CreateDmaBuffer {
+                    request: CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[1],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_DMA_BUFFERS_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7770,7 +7878,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 192);
+        assert_eq!(program.bootstrap.handler.operations.len(), 195);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7803,6 +7911,7 @@ mod tests {
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_DMA_BUFFER_CREATE,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -8045,11 +8154,12 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(operation, CompilerSystemsOperation::CreateDmaBuffer { .. })
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD && *effect != SYSTEMS_DMA_BUFFER_CREATE
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE"
@@ -8076,6 +8186,60 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-PCI-CONFIG-UPDATE"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_cpu_owned_dma_buffers() {
+        // TOPAL-SYSTEMS-DMA-BUFFER-001.
+        let mut malformed = CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[0];
+        malformed.alignment_bytes = 0;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(operation, CompilerSystemsOperation::CreateDmaBuffer { .. })
+                    .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(indices.len(), 2);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(indices[1]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-DMA-BUFFER-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            indices[1],
+            duplicated.bootstrap.handler.operations[indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-DMA-BUFFER"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(indices[0], indices[1]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-DMA-BUFFER"
         );
     }
 
