@@ -14,10 +14,10 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerBootstrapStoragePlacement,
-    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerStoreRequest,
-    CompilerDmaBufferPreparationRequest, CompilerDmaBufferReferenceRequest,
-    CompilerDmaBufferRequest, CompilerDmaBufferRole, CompilerDmaDirection,
-    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
+    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerLoadRequest,
+    CompilerDmaBufferIntegerStoreRequest, CompilerDmaBufferPreparationRequest,
+    CompilerDmaBufferReferenceRequest, CompilerDmaBufferRequest, CompilerDmaBufferRole,
+    CompilerDmaDirection, CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
     CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
     CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
@@ -82,7 +82,8 @@ use crate::{
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
     X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL,
-    X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL, X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL, X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
+    X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL, X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
     X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL, X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL,
     X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
@@ -113,8 +114,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/85";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/83";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/86";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/84";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1107,6 +1108,8 @@ enum ProviderSymbol {
     BindDmaBufferReference,
     StoreDmaBufferInteger,
     PrepareDmaBufferForDevice,
+    CompleteDmaBufferForCpu,
+    LoadDmaBufferInteger,
     PublishPciRegionDmaReference,
     ReadPciRegionRegister,
     ReadPciRegionRegisterEventually,
@@ -1179,6 +1182,8 @@ impl ProviderSymbol {
             Self::BindDmaBufferReference => X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL,
             Self::StoreDmaBufferInteger => X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL,
             Self::PrepareDmaBufferForDevice => X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
+            Self::CompleteDmaBufferForCpu => X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL,
+            Self::LoadDmaBufferInteger => X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL,
             Self::PublishPciRegionDmaReference => X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
             Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
             Self::ReadPciRegionRegisterEventually => X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL,
@@ -1268,6 +1273,8 @@ impl ProviderSymbol {
             | Self::BindDmaBufferReference
             | Self::StoreDmaBufferInteger
             | Self::PrepareDmaBufferForDevice
+            | Self::CompleteDmaBufferForCpu
+            | Self::LoadDmaBufferInteger
             | Self::PublishPciRegionDmaReference
             | Self::ReadPciRegionRegister
             | Self::ReadPciRegionRegisterEventually
@@ -1376,6 +1383,8 @@ struct RootEncoder {
     dma_construction_operations: usize,
     dma_buffers_prepared: usize,
     dma_references_published: usize,
+    dma_control_completed: bool,
+    dma_used_ring_reads: usize,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1528,6 +1537,8 @@ struct ProviderSymbols {
     bind_dma_buffer_reference: SymbolId,
     store_dma_buffer_integer: SymbolId,
     prepare_dma_buffer_for_device: SymbolId,
+    complete_dma_buffer_for_cpu: SymbolId,
+    load_dma_buffer_integer: SymbolId,
     publish_pci_region_dma_reference: SymbolId,
     dma_virtqueue_control: SymbolId,
     dma_entropy_payload: SymbolId,
@@ -2026,6 +2037,15 @@ impl RootEncoder {
             return Err(CompileError::Tool(
                 "x86 root lowering ended without all three sealed virtio-rng queue-address publications"
                     .into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
+            && (!self.dma_control_completed
+                || self.dma_used_ring_reads
+                    != CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING.len())
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without CPU return and exact validation of the sealed virtio-rng used ring".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
@@ -2594,6 +2614,63 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&packed_metadata.to_le_bytes());
         self.call_checked_bool(ProviderSymbol::PrepareDmaBufferForDevice)?;
         self.dma_buffers_prepared += 1;
+        Ok(())
+    }
+
+    fn complete_dma_buffer_for_cpu(
+        &mut self,
+        request: CompilerDmaBufferPreparationRequest,
+    ) -> Result<(), CompileError> {
+        let required_accesses = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+            .len()
+            + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len()
+            + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION.len()
+            + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION.len()
+            + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL.len();
+        if self.pci_region_register_accesses != required_accesses
+            || self.dma_control_completed
+            || request != CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1]
+            || !request.is_well_formed()
+        {
+            return Err(CompileError::Tool(
+                "x86 DMA control completion requires the acknowledged virtio-rng signal and exact control metadata".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]);
+        self.rip_relative_symbol(ProviderSymbol::DmaVirtqueueControl, 0)?;
+        self.bytes
+            .extend_from_slice(&[0xbe, 1, 0, 0, 0, 0xba, 1, 0, 0, 0, 0xb9, 1, 0, 0, 0]);
+        self.bytes.extend_from_slice(&[0x41, 0xb8, 1, 0, 0, 0]);
+        self.call_checked_bool(ProviderSymbol::CompleteDmaBufferForCpu)?;
+        self.dma_control_completed = true;
+        Ok(())
+    }
+
+    fn load_dma_buffer_integer(
+        &mut self,
+        request: CompilerDmaBufferIntegerLoadRequest,
+    ) -> Result<(), CompileError> {
+        let expected = CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
+            .get(self.dma_used_ring_reads);
+        if !self.dma_control_completed || expected != Some(&request) || !request.is_well_formed() {
+            return Err(CompileError::Tool(
+                "x86 DMA integer read requires the exact sealed virtio-rng used-ring sequence"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]);
+        self.rip_relative_symbol(ProviderSymbol::DmaVirtqueueControl, 0)?;
+        self.bytes.push(0xbe);
+        self.bytes
+            .extend_from_slice(&(request.offset_bytes as u32).to_le_bytes());
+        self.bytes.push(0xba);
+        self.bytes
+            .extend_from_slice(&u32::from(request.width_bytes).to_le_bytes());
+        self.bytes.extend_from_slice(&[0x48, 0xb9]);
+        self.bytes
+            .extend_from_slice(&request.expected_value.to_le_bytes());
+        self.call_checked_bool(ProviderSymbol::LoadDmaBufferInteger)?;
+        self.dma_used_ring_reads += 1;
         Ok(())
     }
 
@@ -3692,6 +3769,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::PrepareDmaBufferForDevice,
         ),
+        complete_dma_buffer_for_cpu: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CompleteDmaBufferForCpu,
+        ),
+        load_dma_buffer_integer: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::LoadDmaBufferInteger,
+        ),
         publish_pci_region_dma_reference: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::PublishPciRegionDmaReference,
@@ -4254,6 +4339,12 @@ fn encode_operations(
             CompilerSystemsOperation::PrepareDmaBufferForDevice { request } => {
                 encoder.prepare_dma_buffer_for_device(*request)?;
             }
+            CompilerSystemsOperation::CompleteDmaBufferForCpu { request } => {
+                encoder.complete_dma_buffer_for_cpu(*request)?;
+            }
+            CompilerSystemsOperation::LoadDmaBufferIntegerEquals { request } => {
+                encoder.load_dma_buffer_integer(*request)?;
+            }
             CompilerSystemsOperation::PublishPciRegionDmaReference { request } => {
                 encoder.publish_pci_region_dma_reference(*request)?;
             }
@@ -4435,6 +4526,8 @@ fn append_root(
             ProviderSymbol::PrepareDmaBufferForDevice => {
                 provider_symbols.prepare_dma_buffer_for_device
             }
+            ProviderSymbol::CompleteDmaBufferForCpu => provider_symbols.complete_dma_buffer_for_cpu,
+            ProviderSymbol::LoadDmaBufferInteger => provider_symbols.load_dma_buffer_integer,
             ProviderSymbol::PublishPciRegionDmaReference => {
                 provider_symbols.publish_pci_region_dma_reference
             }
@@ -4638,6 +4731,29 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                         request.translation_domain_identity,
                     )
                 }
+                CompilerSystemsTransition::CompleteDmaBufferForCpu { request } => {
+                    let direction = match request.direction {
+                        CompilerDmaDirection::Bidirectional => "bidirectional",
+                        CompilerDmaDirection::DeviceToMemory => "device-to-memory",
+                    };
+                    let role = match request.role {
+                        CompilerDmaBufferRole::VirtqueueControl => "virtqueue-control",
+                        CompilerDmaBufferRole::EntropyPayload => "entropy-payload",
+                    };
+                    format!(
+                        "{identity}:buffer={}:device={}:domain={}:direction={direction}:visibility=provider-managed:role={role}",
+                        request.buffer_identity,
+                        request.device_identity,
+                        request.translation_domain_identity,
+                    )
+                }
+                CompilerSystemsTransition::LoadDmaBufferIntegerEquals { request } => format!(
+                    "{identity}:buffer={}:offset={}:width={}:expected={}",
+                    request.buffer_identity,
+                    request.offset_bytes,
+                    request.width_bytes,
+                    request.expected_value,
+                ),
                 CompilerSystemsTransition::PublishPciRegionDmaReference {
                     transaction_identity,
                     request,
@@ -5094,7 +5210,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2365);
+        assert_eq!(relocation_targets.len(), 2412);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5248,7 +5364,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2032
+            2064
         );
         assert_eq!(
             relocation_targets
@@ -5295,6 +5411,20 @@ mod tests {
         assert_eq!(
             relocation_targets
                 .iter()
+                .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL)
+                .count(),
+            4
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
                 .count(),
             3
@@ -5304,7 +5434,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL)
                 .count(),
-            9
+            14
         );
         assert_eq!(
             relocation_targets
@@ -5346,7 +5476,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            130
+            135
         );
         assert_eq!(
             relocation_targets
@@ -5406,7 +5536,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            48,
+            53,
             "root must derive opaque storage for DMA, atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -5500,6 +5630,8 @@ mod tests {
                 "topal_x86_systems_dma_buffer_bind_reference",
                 "topal_x86_systems_dma_buffer_store_integer",
                 "topal_x86_systems_dma_buffer_prepare_device",
+                "topal_x86_systems_dma_buffer_complete_cpu",
+                "topal_x86_systems_dma_buffer_load_integer_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write_dma_reference",
                 "topal_x86_systems_dma_virtqueue_control",
                 "topal_x86_systems_dma_entropy_payload",
@@ -5613,7 +5745,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 278);
+        assert_eq!(decoded.semantic_trace.len(), 284);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -6286,7 +6418,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[158].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[164].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

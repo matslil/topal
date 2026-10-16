@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/81";
+    "topal.provider-object.x86_64-qemu-pc-q35/82";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -112,6 +112,10 @@ pub const X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL: &str =
     "topal_x86_systems_dma_buffer_store_integer";
 pub const X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL: &str =
     "topal_x86_systems_dma_buffer_prepare_device";
+pub const X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL: &str =
+    "topal_x86_systems_dma_buffer_complete_cpu";
+pub const X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL: &str =
+    "topal_x86_systems_dma_buffer_load_integer_equals";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -439,6 +443,33 @@ fn dma_buffer_prepare_device() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn dma_buffer_load_integer() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x83, 0xfa, 0x02]);
+    code.jump_if(0x85, "dword");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xfe, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x01, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0xb7, 0x04, 0x37, 0x39, 0xc8]);
+    code.jump_if(0x85, "fail");
+    code.jump("success");
+    code.bind("dword")?;
+    code.bytes(&[0x83, 0xfa, 0x04]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x8b, 0x04, 0x37, 0x39, 0xc8]);
+    code.jump_if(0x85, "fail");
+    code.bind("success")?;
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -590,6 +621,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
         &dma_buffer_prepare_device()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL,
+        &dma_buffer_prepare_device()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL,
+        &dma_buffer_load_integer()?,
     );
     append_encoded_function(
         &mut object,
@@ -4967,6 +5010,39 @@ mod tests {
             !bytes
                 .windows(4)
                 .any(|window| window == [0x48, 0x89, 0x14, 0x37])
+        );
+        let complete = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(complete.address()).unwrap();
+        let end = start + usize::try_from(complete.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(7)
+                .any(|window| window == [0x48, 0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfe, 0x01]));
+        assert!(
+            !bytes
+                .windows(4)
+                .any(|window| window == [0x48, 0x89, 0x14, 0x37])
+        );
+        let load = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(load.address()).unwrap();
+        let end = start + usize::try_from(load.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(6)
+                .any(|window| window == [0x0f, 0xb7, 0x04, 0x37, 0x39, 0xc8])
+        );
+        assert!(
+            bytes
+                .windows(5)
+                .any(|window| window == [0x8b, 0x04, 0x37, 0x39, 0xc8])
         );
         let publish = file
             .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)

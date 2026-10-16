@@ -953,6 +953,39 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     value is 1
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL"
+                                                                                                                  completion-resumed dma buffer complete cpu (
+                                                                                                                    buffer-identity is 1,
+                                                                                                                    device-identity is 1,
+                                                                                                                    translation-domain-identity is 1,
+                                                                                                                    direction is "bidirectional",
+                                                                                                                    visibility is "provider-managed",
+                                                                                                                    role is "virtqueue-control"
+                                                                                                                  )
+                                                                                                                  completion-resumed dma buffer integer read equals (
+                                                                                                                    buffer-identity is 1,
+                                                                                                                    offset-bytes is 148,
+                                                                                                                    width-bytes is 2,
+                                                                                                                    expected-value is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed dma buffer integer read equals (
+                                                                                                                    buffer-identity is 1,
+                                                                                                                    offset-bytes is 150,
+                                                                                                                    width-bytes is 2,
+                                                                                                                    expected-value is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed dma buffer integer read equals (
+                                                                                                                    buffer-identity is 1,
+                                                                                                                    offset-bytes is 152,
+                                                                                                                    width-bytes is 4,
+                                                                                                                    expected-value is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed dma buffer integer read equals (
+                                                                                                                    buffer-identity is 1,
+                                                                                                                    offset-bytes is 156,
+                                                                                                                    width-bytes is 4,
+                                                                                                                    expected-value is 32
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_VIRTIO_USED_RING_OK"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
