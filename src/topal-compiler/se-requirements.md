@@ -471,6 +471,12 @@ direction, visibility policy, and role; reject malformed, overlapping,
 omitted, duplicated, reordered, or substituted requests; and leave both
 buffers CPU-owned.
 
+The bounded split-ring refinement shall accept exactly one opaque DMA-reference
+binding and four ordered integer stores after both DMA buffers exist. It shall
+retain buffer identities, offsets, widths, values, device/domain compatibility,
+and CPU ownership; reject malformed, omitted, duplicated, reordered, or
+substituted operations; and never materialize a DMA address in source state.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -507,6 +513,13 @@ distinct zero-initialized 4 KiB pages with 4 KiB alignment, prove their static
 placement and non-overlap, and accept only the two checked creation calls. The
 provider may use the Q35 identity-translated coherent domain but shall expose
 neither page address to source and shall not publish either page to the device.
+
+For bounded CPU-owned DMA construction, the x86-64 provider shall resolve only
+checked opaque identities to the two provider data symbols. It shall perform
+exact-width bounded stores and bind the payload's identity-translated address
+into descriptor zero. Structural evidence shall prove every data-symbol
+relocation, exact store width and offset, complete bounds checks, and absence of
+an address return to source.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,

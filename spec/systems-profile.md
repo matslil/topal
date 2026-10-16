@@ -1651,6 +1651,31 @@ domain. Creation SHALL NOT prepare cache visibility, publish an address or
 descriptor, grant device ownership, enable a queue, set `DRIVER_OK`, notify a
 device, or report completion.
 
+### TOPAL-SYSTEMS-DMA-CONSTRUCT-001 — CPU-owned DMA construction
+
+An integer store SHALL name one `CpuOwned` DMA-buffer identity, byte offset,
+width in one of 1, 2, 4, or 8 bytes, and fitting value. The range SHALL be in
+bounds and naturally aligned. A DMA-reference binding SHALL name a `CpuOwned`
+destination buffer and offset plus a referenced `CpuOwned` buffer and offset in
+the same device and translation domain. It SHALL store the provider-selected
+device-visible reference using the target's required representation without
+returning that representation to source. Both operations SHALL preserve CPU
+ownership.
+
+After `TOPAL-SYSTEMS-DMA-BUFFER-001`, the initial profile SHALL perform exactly
+five operations in order: bind control buffer one offset zero to payload buffer
+two offset zero using an eight-byte reference; store 32 as a four-byte integer
+at control offset 8; store `VIRTQ_DESC_F_WRITE` value 2 as a two-byte integer at
+offset 12; store descriptor identity zero as a two-byte integer at available
+slot offset 132; and store available index one as a two-byte integer at offset
+130. The control buffer SHALL retain queue-size-eight split-ring offsets 0,
+128, and 148, with all otherwise unwritten bytes remaining zero.
+
+The available-index store SHALL occur after descriptor and slot construction.
+Construction SHALL NOT perform preparation or cache maintenance, transfer
+device ownership, publish queue addresses to transport registers, enable the
+queue, set `DRIVER_OK`, notify the device, observe completion, or expose entropy.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

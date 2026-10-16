@@ -22,10 +22,12 @@ pub use topal_semantics::{
     BootstrapStorageRequest as CompilerBootstrapStorageRequest,
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition,
-    CriticalDomain as CompilerCriticalDomain, DmaBufferRequest as CompilerDmaBufferRequest,
-    DmaBufferRole as CompilerDmaBufferRole, DmaDirection as CompilerDmaDirection,
-    DmaVisibilityPolicy as CompilerDmaVisibilityPolicy, INITIAL_SYSTEMS_BOARD,
-    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    CriticalDomain as CompilerCriticalDomain,
+    DmaBufferIntegerStoreRequest as CompilerDmaBufferIntegerStoreRequest,
+    DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
+    DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
+    DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
+    INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
     KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
@@ -43,15 +45,15 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
-    SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+    SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -6190,6 +6192,42 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            dma,
+            buffer,
+            bind,
+            reference,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, bind, "bind")
+        && identifier_is(source, reference, "reference")
+    {
+        let request = parse_dma_buffer_reference_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::BindDmaBufferReference { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            dma,
+            buffer,
+            integer,
+            store,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, integer, "integer")
+        && identifier_is(source, store, "store")
+    {
+        let request = parse_dma_buffer_integer_store_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::StoreDmaBufferInteger { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             register,
@@ -6579,6 +6617,96 @@ fn parse_dma_buffer_request(
     Ok(request)
 }
 
+fn parse_dma_buffer_reference_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerDmaBufferReferenceRequest, Diagnostic> {
+    if fields.len() != 5 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-CONSTRUCT",
+            span,
+            "DMA-reference binding requires destination identity/offset, referenced identity/offset, and width",
+        ));
+    }
+    let width = field_natural(source, &fields[4], "width-bytes")?;
+    let request = CompilerDmaBufferReferenceRequest {
+        destination_buffer_identity: field_natural(
+            source,
+            &fields[0],
+            "destination-buffer-identity",
+        )?,
+        destination_offset_bytes: field_natural(source, &fields[1], "destination-offset-bytes")?,
+        referenced_buffer_identity: field_natural(
+            source,
+            &fields[2],
+            "referenced-buffer-identity",
+        )?,
+        referenced_offset_bytes: field_natural(source, &fields[3], "referenced-offset-bytes")?,
+        width_bytes: u8::try_from(width).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-CONSTRUCT",
+                span,
+                "DMA-reference width exceeds 255",
+            )
+        })?,
+    };
+    if !request.is_well_formed()
+        || request != CompilerDmaBufferReferenceRequest::INITIAL_Q35_VIRTIO_RNG_DESCRIPTOR
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-CONSTRUCT",
+            span,
+            "the initial Q35 profile admits only the sealed virtio-rng descriptor reference",
+        ));
+    }
+    Ok(request)
+}
+
+fn parse_dma_buffer_integer_store_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerDmaBufferIntegerStoreRequest, Diagnostic> {
+    if fields.len() != 4 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-CONSTRUCT",
+            span,
+            "DMA integer store requires buffer identity, offset, width, and value",
+        ));
+    }
+    let width = field_natural(source, &fields[2], "width-bytes")?;
+    let request = CompilerDmaBufferIntegerStoreRequest {
+        buffer_identity: field_natural(source, &fields[0], "buffer-identity")?,
+        offset_bytes: field_natural(source, &fields[1], "offset-bytes")?,
+        width_bytes: u8::try_from(width).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-CONSTRUCT",
+                span,
+                "DMA integer-store width exceeds 255",
+            )
+        })?,
+        value: field_natural(source, &fields[3], "value")?,
+    };
+    if !request.is_well_formed()
+        || !CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING
+            .contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-CONSTRUCT",
+            span,
+            "the initial Q35 profile admits only stores from the sealed virtio-rng split-ring construction",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -6913,7 +7041,9 @@ mod tests {
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -7306,6 +7436,28 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_DMA_BUFFERS_OK".into(),
+                },
+                CompilerSystemsTransition::BindDmaBufferReference {
+                    request: CompilerDmaBufferReferenceRequest::INITIAL_Q35_VIRTIO_RNG_DESCRIPTOR,
+                },
+                CompilerSystemsTransition::StoreDmaBufferInteger {
+                    request:
+                        CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[0],
+                },
+                CompilerSystemsTransition::StoreDmaBufferInteger {
+                    request:
+                        CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[1],
+                },
+                CompilerSystemsTransition::StoreDmaBufferInteger {
+                    request:
+                        CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[2],
+                },
+                CompilerSystemsTransition::StoreDmaBufferInteger {
+                    request:
+                        CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[3],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7878,7 +8030,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 195);
+        assert_eq!(program.bootstrap.handler.operations.len(), 201);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7911,7 +8063,9 @@ mod tests {
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
+                SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -8155,10 +8309,18 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !matches!(operation, CompilerSystemsOperation::CreateDmaBuffer { .. })
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CreateDmaBuffer { .. }
+                    | CompilerSystemsOperation::BindDmaBufferReference { .. }
+                    | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+            )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
-            *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD && *effect != SYSTEMS_DMA_BUFFER_CREATE
+            *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD
+                && *effect != SYSTEMS_DMA_BUFFER_CREATE
+                && *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
+                && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8216,6 +8378,17 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::BindDmaBufferReference { .. }
+                    | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
+                && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-BUFFER-LIVE"
@@ -8240,6 +8413,80 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-DMA-BUFFER"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_cpu_owned_split_ring_construction() {
+        // TOPAL-SYSTEMS-DMA-CONSTRUCT-001.
+        let mut malformed =
+            CompilerDmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[0];
+        malformed.width_bytes = 3;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let bind_index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::BindDmaBufferReference { .. }
+                )
+            })
+            .unwrap();
+        let store_indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(store_indices.len(), 4);
+
+        let mut missing = program.clone();
+        missing
+            .bootstrap
+            .handler
+            .operations
+            .remove(store_indices[3]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-DMA-CONSTRUCT-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            store_indices[1],
+            duplicated.bootstrap.handler.operations[store_indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-DMA-CONSTRUCT"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(bind_index, store_indices[0]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-DMA-CONSTRUCT"
         );
     }
 

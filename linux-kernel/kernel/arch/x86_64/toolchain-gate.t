@@ -579,6 +579,38 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     role is "entropy-payload"
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_DMA_BUFFERS_OK"
+                                                                  restored dma buffer bind reference (
+                                                                    destination-buffer-identity is 1,
+                                                                    destination-offset-bytes is 0,
+                                                                    referenced-buffer-identity is 2,
+                                                                    referenced-offset-bytes is 0,
+                                                                    width-bytes is 8
+                                                                  )
+                                                                  restored dma buffer integer store (
+                                                                    buffer-identity is 1,
+                                                                    offset-bytes is 8,
+                                                                    width-bytes is 4,
+                                                                    value is 32
+                                                                  )
+                                                                  restored dma buffer integer store (
+                                                                    buffer-identity is 1,
+                                                                    offset-bytes is 12,
+                                                                    width-bytes is 2,
+                                                                    value is 2
+                                                                  )
+                                                                  restored dma buffer integer store (
+                                                                    buffer-identity is 1,
+                                                                    offset-bytes is 132,
+                                                                    width-bytes is 2,
+                                                                    value is 0
+                                                                  )
+                                                                  restored dma buffer integer store (
+                                                                    buffer-identity is 1,
+                                                                    offset-bytes is 130,
+                                                                    width-bytes is 2,
+                                                                    value is 1
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"
