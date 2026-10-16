@@ -967,6 +967,14 @@ stores and one opaque same-domain reference to the payload buffer. It shall
 publish available index one only after the descriptor and slot are complete,
 retain CPU ownership, and expose no provider-selected DMA address.
 
+The bounded DMA-preparation refinement shall perform exactly two affine
+ownership transitions after split-ring construction: entropy payload identity
+two followed by virtqueue-control identity one. It shall retain exact
+device/domain, direction, visibility, role, and identity facts; require ordered
+device visibility even when coherent hardware needs no cache instruction;
+reject malformed, omitted, duplicated, reordered, substituted, or premature
+preparation; and prohibit subsequent CPU access while device-owned.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
