@@ -41,6 +41,7 @@ MARKERS = (
     b"TOPAL_KERNEL_DMA_BUFFERS_OK",
     b"TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
     b"TOPAL_KERNEL_DMA_DEVICE_OWNED",
+    b"TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
     b"TOPAL_KERNEL_ATOMIC_OK",
@@ -356,7 +357,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/83",
+        "schema": "topal-kernel-toolchain-gate-qemu/84",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

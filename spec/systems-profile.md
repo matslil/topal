@@ -1705,6 +1705,35 @@ Preparation SHALL NOT publish queue addresses to transport registers, enable a
 queue, set `DRIVER_OK`, notify the device, observe completion, return CPU
 ownership, or expose entropy.
 
+### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
+
+`topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
+validated PCI function, configuration-access capability, BAR-relative region,
+register offset, reference width, `DeviceOwned` DMA-buffer identity and offset,
+and matching device and translation-domain identities. The complete register
+range SHALL be in bounds and valid for the region protocol. The buffer offset
+SHALL be in bounds and the provider-selected reference plus offset SHALL be
+representable at the requested width.
+
+The provider SHALL write the device-visible reference using the target's
+required representation and ordering without returning that representation to
+source. It MAY decompose a logical reference write into smaller accesses only
+when the qualified transport mechanism requires it and SHALL preserve low-to-
+high publication order. The operation SHALL NOT grant CPU access, change DMA
+ownership, or provide a general address/integer conversion.
+
+After `TOPAL-SYSTEMS-DMA-PREPARE-001`, the initial profile SHALL perform
+exactly three 64-bit publications to the pinned virtio common configuration in
+order: control buffer one offset zero to `queue_desc` offset 32, buffer offset
+128 to `queue_driver` offset 40, and buffer offset 148 to `queue_device` offset
+48. Each SHALL name device identity one, translation-domain identity one,
+segment zero, bus zero, device five, function zero, configuration-access
+capability offset 132, BAR four, common-region offset zero, and common-region
+length 4,096.
+
+Publication SHALL NOT enable the queue, set `DRIVER_OK`, notify the device,
+observe completion, return CPU ownership, or expose entropy.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

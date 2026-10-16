@@ -484,6 +484,13 @@ visibility, role, and identity state; reject malformed, omitted, duplicated,
 reordered, substituted, premature, or post-transfer CPU operations; and require
 provider visibility evidence before each transition completes.
 
+The bounded queue-address refinement shall accept exactly three ordered
+PCI-region DMA-reference publications after both preparation transitions. It
+shall retain the exact pinned common region, register, reference width,
+device/domain, buffer identity, and in-buffer offset; reject malformed,
+omitted, duplicated, reordered, substituted, or premature requests; and never
+materialize the provider-selected reference in source state.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -534,6 +541,13 @@ provider-private state. It shall prove coherent identity-domain reachability
 and emit a compiler/device ordering boundary before returning success.
 Structural evidence shall prove exact argument checks, no buffer-address
 return, and no hidden queue publication, enable, notification, or completion.
+
+For bounded queue-address publication, the x86-64 provider shall privately
+resolve the checked control-buffer symbol plus each admitted offset and write
+the 64-bit value through the pinned configuration gateway as ordered low and
+high dwords. Structural evidence shall prove exact region and argument checks,
+three control-symbol relocations, six dword data writes, no address return, and
+no hidden queue enablement or notification.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,

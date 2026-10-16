@@ -35,6 +35,7 @@ pub use topal_semantics::{
     KernelMemoryKind as CompilerKernelMemoryKind,
     PciConfigurationDwordRequest as CompilerPciConfigurationDwordRequest,
     PciConfigurationWordUpdateRequest as CompilerPciConfigurationWordUpdateRequest,
+    PciRegionDmaReferenceRequest as CompilerPciRegionDmaReferenceRequest,
     PciRegionRegisterDirection as CompilerPciRegionRegisterDirection,
     PciRegionRegisterRequest as CompilerPciRegionRegisterRequest,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
@@ -61,16 +62,16 @@ pub use topal_semantics::{
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_RESUME_DEADLINE,
-    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
-    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
-    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
-    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
-    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
-    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
-    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
+    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
+    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
+    SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
+    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
+    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
+    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
+    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -6250,6 +6251,26 @@ fn analyze_operation(
             receiver,
             pci,
             region,
+            write,
+            dma,
+            reference,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, pci, "pci")
+        && identifier_is(source, region, "region")
+        && identifier_is(source, write, "write")
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, reference, "reference")
+    {
+        let request = parse_pci_region_dma_reference_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::PublishPciRegionDmaReference { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            pci,
+            region,
             register,
             direction,
             Expression::Product { fields, .. },
@@ -6949,6 +6970,144 @@ fn parse_pci_region_register_request(
     Ok(request)
 }
 
+fn parse_pci_region_dma_reference_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerPciRegionDmaReferenceRequest, Diagnostic> {
+    if fields.len() != 14 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-PUBLISH",
+            span,
+            "PCI-region DMA-reference publication requires exactly fourteen region, buffer, and domain fields",
+        ));
+    }
+    let width = field_natural(source, &fields[9], "width-bytes")?;
+    let request = CompilerPciRegionDmaReferenceRequest {
+        segment: u16::try_from(field_natural(source, &fields[0], "segment")?).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI segment exceeds 16 bits",
+            )
+        })?,
+        bus: u8::try_from(field_natural(source, &fields[1], "bus")?).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI bus exceeds 8 bits",
+            )
+        })?,
+        device: u8::try_from(field_natural(source, &fields[2], "device")?).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI device exceeds 8 bits",
+            )
+        })?,
+        function: u8::try_from(field_natural(source, &fields[3], "function")?).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI function exceeds 8 bits",
+            )
+        })?,
+        access_capability_offset_bytes: u8::try_from(field_natural(
+            source,
+            &fields[4],
+            "access-capability-offset-bytes",
+        )?)
+        .map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI access-capability offset exceeds 8 bits",
+            )
+        })?,
+        bar: u8::try_from(field_natural(source, &fields[5], "bar")?).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI BAR exceeds 8 bits",
+            )
+        })?,
+        region_offset_bytes: u32::try_from(field_natural(
+            source,
+            &fields[6],
+            "region-offset-bytes",
+        )?)
+        .map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI region offset exceeds 32 bits",
+            )
+        })?,
+        region_length_bytes: u32::try_from(field_natural(
+            source,
+            &fields[7],
+            "region-length-bytes",
+        )?)
+        .map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI region length exceeds 32 bits",
+            )
+        })?,
+        register_offset_bytes: u32::try_from(field_natural(
+            source,
+            &fields[8],
+            "register-offset-bytes",
+        )?)
+        .map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "PCI register offset exceeds 32 bits",
+            )
+        })?,
+        width_bytes: u8::try_from(width).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PUBLISH",
+                span,
+                "DMA-reference width exceeds 8 bits",
+            )
+        })?,
+        buffer_identity: field_natural(source, &fields[10], "buffer-identity")?,
+        buffer_offset_bytes: field_natural(source, &fields[11], "buffer-offset-bytes")?,
+        device_identity: field_natural(source, &fields[12], "device-identity")?,
+        translation_domain_identity: field_natural(
+            source,
+            &fields[13],
+            "translation-domain-identity",
+        )?,
+    };
+    if !request.is_well_formed()
+        || !CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+            .contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-PUBLISH",
+            span,
+            "the initial Q35 profile admits only the three sealed virtio-rng queue-address publications",
+        ));
+    }
+    Ok(request)
+}
+
 fn analyze_disposition(
     source: &SourceText,
     statement: &Statement,
@@ -7132,6 +7291,7 @@ mod tests {
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
                 SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
                 SYSTEMS_PCI_REGION_READ,
+                SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
@@ -7561,6 +7721,27 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_DMA_DEVICE_OWNED".into(),
+                },
+                CompilerSystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 22,
+                    request:
+                        CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                            [0],
+                },
+                CompilerSystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 23,
+                    request:
+                        CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                            [1],
+                },
+                CompilerSystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 24,
+                    request:
+                        CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                            [2],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -8133,7 +8314,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 204);
+        assert_eq!(program.bootstrap.handler.operations.len(), 208);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8164,6 +8345,7 @@ mod tests {
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
                 SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
                 SYSTEMS_PCI_REGION_READ,
+                SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
@@ -8419,6 +8601,7 @@ mod tests {
                     | CompilerSystemsOperation::BindDmaBufferReference { .. }
                     | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
                     | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -8427,6 +8610,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
                 && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
                 && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
+                && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8490,12 +8674,14 @@ mod tests {
                 CompilerSystemsOperation::BindDmaBufferReference { .. }
                     | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
                     | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
                 && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
                 && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
+                && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8575,13 +8761,13 @@ mod tests {
             !matches!(
                 operation,
                 CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
             )
         });
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE);
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
+                && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-CONSTRUCT-LIVE"
@@ -8639,6 +8825,17 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+            )
+        });
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PREPARE-LIVE"
@@ -8663,6 +8860,64 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-DMA-PREPARE"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_virtio_queue_address_publication_sequence() {
+        // TOPAL-SYSTEMS-DMA-PUBLISH-001.
+        let mut malformed =
+            CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES[0];
+        malformed.width_bytes = 4;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(indices.len(), 3);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(indices[2]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-DMA-PUBLISH-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            indices[1],
+            duplicated.bootstrap.handler.operations[indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-DMA-PUBLISH"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(indices[0], indices[1]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-DMA-PUBLISH"
         );
     }
 

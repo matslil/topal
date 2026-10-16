@@ -975,6 +975,14 @@ device visibility even when coherent hardware needs no cache instruction;
 reject malformed, omitted, duplicated, reordered, substituted, or premature
 preparation; and prohibit subsequent CPU access while device-owned.
 
+The bounded queue-address refinement shall publish exactly three opaque
+device-visible references after both DMA buffers become device-owned: control
+offset zero to descriptor register offset 32, control offset 128 to driver
+register offset 40, and control offset 148 to device register offset 48. It
+shall retain the exact common-region, device/domain, buffer, offset, width, and
+order facts; reject malformed, omitted, duplicated, reordered, substituted, or
+premature publication; and expose no address to source.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

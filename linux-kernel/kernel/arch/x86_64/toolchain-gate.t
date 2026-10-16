@@ -628,6 +628,55 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     role is "virtqueue-control"
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_DMA_DEVICE_OWNED"
+                                                                  restored pci region write dma reference (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 32,
+                                                                    width-bytes is 8,
+                                                                    buffer-identity is 1,
+                                                                    buffer-offset-bytes is 0,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1
+                                                                  )
+                                                                  restored pci region write dma reference (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 40,
+                                                                    width-bytes is 8,
+                                                                    buffer-identity is 1,
+                                                                    buffer-offset-bytes is 128,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1
+                                                                  )
+                                                                  restored pci region write dma reference (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 48,
+                                                                    width-bytes is 8,
+                                                                    buffer-identity is 1,
+                                                                    buffer-offset-bytes is 148,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

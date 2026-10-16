@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/77";
+    "topal.provider-object.x86_64-qemu-pc-q35/78";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -119,6 +119,8 @@ pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_write";
+pub const X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL: &str =
+    "topal_x86_systems_pci_region_configuration_gateway_write_dma_reference";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
 pub(crate) const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
 const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
@@ -406,6 +408,55 @@ fn dma_buffer_prepare_device() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xfe, 0x04]); // BAR four
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc1, 0xff, 0x0f, 0x00, 0x00]); // page-aligned buffer
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xfa, 0x20]); // descriptor register
+    code.jump_if(0x85, "driver");
+    code.bytes(&[0x45, 0x85, 0xc0]); // buffer offset zero
+    code.jump_if(0x85, "fail");
+    code.jump("validated");
+    code.bind("driver")?;
+    code.bytes(&[0x83, 0xfa, 0x28]); // driver register
+    code.jump_if(0x85, "device");
+    code.bytes(&[0x41, 0x81, 0xf8, 0x80, 0x00, 0x00, 0x00]); // buffer offset 128
+    code.jump_if(0x85, "fail");
+    code.jump("validated");
+    code.bind("device")?;
+    code.bytes(&[0x83, 0xfa, 0x30]); // device register
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0x81, 0xf8, 0x94, 0x00, 0x00, 0x00]); // buffer offset 148
+    code.jump_if(0x85, "fail");
+    code.bind("validated")?;
+    code.bytes(&[0x4c, 0x01, 0xc1, 0x49, 0x89, 0xcb]); // reference in r11
+    code.bytes(&[0x41, 0x89, 0xfa, 0x41, 0x89, 0xd1]); // selector r10d, target r9d
+
+    code.bytes(&[0x41, 0x8d, 0x42, 0x04, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0x89, 0xf0, 0xef]); // BAR
+    code.bytes(&[0x41, 0x8d, 0x42, 0x08, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0x44, 0x89, 0xc8, 0xef]); // target
+    code.bytes(&[0x41, 0x8d, 0x42, 0x0c, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0xb8, 0x04, 0x00, 0x00, 0x00, 0xef]); // dword
+    code.bytes(&[0x41, 0x8d, 0x42, 0x10, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0x44, 0x89, 0xd8, 0xef]); // low dword
+
+    code.bytes(&[0x41, 0x83, 0xc1, 0x04]); // target high dword
+    code.bytes(&[0x41, 0x8d, 0x42, 0x08, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0x44, 0x89, 0xc8, 0xef]);
+    code.bytes(&[0x41, 0x8d, 0x42, 0x10, 0x66, 0xba, 0xf8, 0x0c, 0xef]);
+    code.bytes(&[0x66, 0xba, 0xfc, 0x0c, 0x4c, 0x89, 0xd8]);
+    code.bytes(&[0x48, 0xc1, 0xe8, 0x20, 0xef]); // high dword
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedSystemsProviderObject {
     pub plan: X86SystemsProviderPlan,
@@ -502,6 +553,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
         &dma_buffer_prepare_device()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
+        &pci_region_write_dma_reference()?,
     );
     append_encoded_function(
         &mut object,
@@ -4846,6 +4903,32 @@ mod tests {
             !bytes
                 .windows(4)
                 .any(|window| window == [0x48, 0x89, 0x14, 0x37])
+        );
+        let publish = file
+            .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(publish.address()).unwrap();
+        let end = start + usize::try_from(publish.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(6)
+                .any(|window| window == [0x81, 0xff, 0x84, 0x28, 0x00, 0x80])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x20]));
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x28]));
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x30]));
+        assert_eq!(
+            bytes
+                .windows(4)
+                .filter(|window| *window == [0x66, 0xba, 0xfc, 0x0c])
+                .count(),
+            6
+        );
+        assert!(
+            bytes
+                .windows(5)
+                .any(|window| window == [0x48, 0xc1, 0xe8, 0x20, 0xef])
         );
         let validator = file.symbol_by_name(X86_SYSTEMS_BOOT_MEMORY_SYMBOL).unwrap();
         assert!(validator.size() > 100);

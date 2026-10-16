@@ -22,15 +22,16 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -44,7 +45,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/77";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/78";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -125,6 +126,7 @@ pub enum X86SystemsLowering {
     PciConfigurationMechanismOneUpdateWord,
     PciConfigurationGatewayRegionRead,
     PciConfigurationGatewayRegionWrite,
+    PciConfigurationGatewayDmaReferenceWrite,
     PolledUart16550PortIo,
     BreakpointVector3,
     InterruptReturn,
@@ -286,6 +288,9 @@ impl X86SystemsLowering {
             }
             Self::PciConfigurationGatewayRegionWrite => {
                 "topal.provider.x86_64.pci-region.configuration-gateway-write/1"
+            }
+            Self::PciConfigurationGatewayDmaReferenceWrite => {
+                "topal.provider.x86_64.pci-region.configuration-gateway-dma-reference-write/1"
             }
             Self::PolledUart16550PortIo => "topal.provider.x86_64.uart16550.polled-port-io/1",
             Self::BreakpointVector3 => "topal.provider.x86_64.exception.breakpoint-vector-3/1",
@@ -558,6 +563,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         }
         SYSTEMS_PCI_REGION_READ => X86SystemsLowering::PciConfigurationGatewayRegionRead,
         SYSTEMS_PCI_REGION_WRITE => X86SystemsLowering::PciConfigurationGatewayRegionWrite,
+        SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE => {
+            X86SystemsLowering::PciConfigurationGatewayDmaReferenceWrite
+        }
         SYSTEMS_CONSOLE_WRITE => X86SystemsLowering::PolledUart16550PortIo,
         SYSTEMS_DEBUG_BREAK => X86SystemsLowering::BreakpointVector3,
         SYSTEMS_RESUME_DEBUG_BREAK => X86SystemsLowering::InterruptReturn,
@@ -682,6 +690,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::PciConfigurationGatewayRegionRead => SYSTEMS_PCI_REGION_READ,
             X86SystemsLowering::PciConfigurationGatewayRegionWrite => SYSTEMS_PCI_REGION_WRITE,
+            X86SystemsLowering::PciConfigurationGatewayDmaReferenceWrite => {
+                SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
+            }
             X86SystemsLowering::PolledUart16550PortIo => SYSTEMS_CONSOLE_WRITE,
             X86SystemsLowering::BreakpointVector3 => SYSTEMS_DEBUG_BREAK,
             X86SystemsLowering::InterruptReturn => SYSTEMS_RESUME_DEBUG_BREAK,
@@ -721,7 +732,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 73);
+        assert_eq!(plan.operations.len(), 74);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -782,6 +793,11 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_PCI_REGION_WRITE
                 && operation.lowering == X86SystemsLowering::PciConfigurationGatewayRegionWrite
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
+                && operation.lowering
+                    == X86SystemsLowering::PciConfigurationGatewayDmaReferenceWrite
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_RELEASE
