@@ -1326,6 +1326,19 @@ ordering remain source-owned policy; the operation identity fixes its attempt
 bound, and the provider supplies only the qualified region-access mechanism and
 bounded retry realization.
 
+After acknowledging a completion signal, checked driver policy may return only
+the shared queue-control DMA buffer to CPU ownership. The transition preserves
+device, translation-domain, direction, visibility, role, and buffer identity;
+the provider must complete device-to-CPU visibility before source can inspect
+the buffer. A coherent target may realize this without a cache instruction,
+while a noncoherent, IOMMU, or bounce-buffer target performs its qualified
+synchronization privately.
+
+Exact-width integer reads from a CPU-owned DMA buffer may then validate
+device-written queue metadata. Such validation proves only the observed control
+fields. It does not return a referenced payload buffer to CPU ownership or make
+payload bytes valid, even when the metadata reports a completed length.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

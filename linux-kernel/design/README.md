@@ -100,6 +100,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio queue activation](bounded-virtio-queue-activation.md)
 - [Bounded virtio queue notification](bounded-virtio-queue-notification.md)
 - [Bounded virtio completion-signal observation](bounded-virtio-completion-signal.md)
+- [Bounded virtio used-ring validation](bounded-virtio-used-ring-validation.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
