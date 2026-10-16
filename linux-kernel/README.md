@@ -437,6 +437,14 @@ records runtime-ELF-derived private state, complete future-heap zeroing,
 query/grow/write-read/shrink/failure behavior, teardown clearing, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The current systems-only driver refinement completes
+[bounded virtio queue activation](design/bounded-virtio-queue-activation.md).
+Its [implementation and qualification report](step-4-bounded-virtio-queue-activation.md)
+records exact queue-enable and `DRIVER_OK` writes and readbacks, reuse of the
+generic PCI-region access abstraction, final-action isolation from earlier
+interrupt-sensitive tests, structural inspection, and two deterministic
+pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -585,6 +593,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded virtio split ring](step-4-bounded-virtio-split-ring.md)
 - [Step 4 bounded DMA device preparation](step-4-bounded-dma-device-preparation.md)
 - [Step 4 bounded virtio queue-address publication](step-4-bounded-virtio-queue-address-publication.md)
+- [Step 4 bounded virtio queue activation](step-4-bounded-virtio-queue-activation.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
