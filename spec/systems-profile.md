@@ -1799,6 +1799,26 @@ SHALL fail closed rather than expose a partial state or retain sample material.
 Mixing SHALL NOT transfer credit, imply readiness, seed a generator, or produce
 random output.
 
+### TOPAL-SYSTEMS-ENTROPY-CREDIT-001 — Affine contribution credit transfer
+
+`topal.systems.entropy.pool.credit-contribution/1` SHALL consume one affine
+pool in the `MixedUncredited` state and one affine untransferred contribution
+token produced for that pool. The request SHALL name nonzero pool,
+contribution, and conditioner-origin identities; the exact prior credited-bit
+count, contribution-bit count, pool capacity, and resulting credited-bit
+count. The result SHALL equal checked addition of prior and contribution bits
+and SHALL NOT exceed capacity.
+
+Success SHALL return the same opaque pool identity in a `Credited` state with
+the resulting count and consume the contribution token. It SHALL preserve the
+opaque pool state byte-for-byte and SHALL have no target-provider lowering.
+Source SHALL NOT observe any pool-state, sample, digest, intermediate byte, or
+address. The token SHALL NOT remain live, be duplicated, or be transferred
+again.
+
+Credit transfer SHALL NOT imply generator readiness, initialize or reseed a
+generator, extract bytes, or authorize userspace delivery.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2008,6 +2028,25 @@ incomplete wipe, or mix before empty-pool creation. This refinement SHALL NOT
 transfer credit, declare readiness, seed or expose a CRNG, populate
 `AT_RANDOM`, implement `getrandom`, recycle or renotify the queue, configure
 asynchronous interrupt delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CREDIT-001 — Bounded first credit transfer
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-MIX-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-ENTROPY-CREDIT-001` operation. It SHALL name
+pool identity one, contribution identity one, conditioner-origin identity one,
+prior credit zero, transferred credit 256, pool capacity 256, and resulting
+credit 256.
+
+The operation SHALL consume contribution identity one, return pool identity
+one in the `Credited` state, preserve its complete 32-byte opaque mixed state,
+and emit no provider operation. The profile SHALL reject another identity,
+origin, prior value, contribution, capacity, result, pre-state, omission,
+duplication, reordering, overflow, reuse, or transfer before successful mixing.
+
+This refinement SHALL NOT declare readiness, initialize, seed, reseed, or
+expose a CRNG, populate `AT_RANDOM`, implement `getrandom`, recycle or renotify
+the queue, configure asynchronous interrupt delivery, reset the device, or
+define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
