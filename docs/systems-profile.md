@@ -1382,6 +1382,15 @@ later operation must explicitly consume the contribution to transfer credit.
 Providers realize the fixed conditioner and wiping mechanics but cannot select
 the construction, retain material, or assign credit.
 
+A checked entropy-credit operation may consume a mixed-but-uncredited pool and
+an affine contribution token created by its completed conditioner transition.
+It returns the same opaque pool identity with a checked bounded credit total
+and consumes the contribution so the claim cannot be applied twice. Credit
+accounting is architecture-independent source policy and receives no provider
+lowering; it neither reads nor changes opaque pool bytes. A fully credited pool
+does not by itself imply generator readiness, reseeding, extraction, or
+userspace delivery.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
