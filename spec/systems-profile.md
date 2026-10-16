@@ -1629,6 +1629,28 @@ SHALL require completed/cancelled device ownership and every provider-specific
 completion obligation. A coherent provider MAY perform no cache instruction
 only with evidence preserving these same transitions.
 
+### TOPAL-SYSTEMS-DMA-BUFFER-001 — Bounded CPU-owned DMA buffers
+
+DMA-buffer creation SHALL identify a validated device, translation domain,
+nonzero byte count, power-of-two alignment, transfer direction, visibility
+policy, and semantic role. It SHALL derive a fresh opaque affine identity in
+the `CpuOwned` state. Every live DMA buffer SHALL be disjoint from all other
+live DMA, ordinary, user, bootstrap, and firmware allocations. Source SHALL
+NOT observe its physical, virtual, bus, or I/O-virtual address.
+
+After `TOPAL-SYSTEMS-PCI-CONFIG-UPDATE-001`, the initial profile SHALL create
+exactly two buffers for device identity one and translation-domain identity
+one, in order: identity one SHALL be a 4,096-byte, 4,096-byte-aligned
+bidirectional `VirtqueueControl` buffer; identity two SHALL be a distinct
+4,096-byte, 4,096-byte-aligned device-to-memory `EntropyPayload` buffer. Both
+SHALL use provider-managed visibility and remain `CpuOwned` in this increment.
+
+The provider SHALL prove storage capacity, alignment, disjointness, zeroed
+initial contents, and compatibility with the selected device/translation
+domain. Creation SHALL NOT prepare cache visibility, publish an address or
+descriptor, grant device ownership, enable a queue, set `DRIVER_OK`, notify a
+device, or report completion.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

@@ -464,6 +464,13 @@ after complete queue discovery. It shall retain the exact function, offset,
 mask, pre-state, and post-state, reject malformed or substituted requests, and
 reject omission or duplication before root completion.
 
+The bounded DMA-buffer refinement shall accept exactly two ordered creation
+requests only after bus-master authorization. It shall retain fresh opaque
+identities, the pinned device and translation domain, exact size/alignment,
+direction, visibility policy, and role; reject malformed, overlapping,
+omitted, duplicated, reordered, or substituted requests; and leave both
+buffers CPU-owned.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -494,6 +501,12 @@ one configuration-mechanism-1 word read, masked pre-state comparison, word
 write preserving unmasked command bits, and word readback comparison. It shall
 use the two-byte command field without writing adjacent PCI status and shall
 remain unaware that bit two grants bus-master permission.
+
+For the bounded DMA-buffer refinement, the x86-64 provider shall reserve two
+distinct zero-initialized 4 KiB pages with 4 KiB alignment, prove their static
+placement and non-overlap, and accept only the two checked creation calls. The
+provider may use the Q35 identity-translated coherent domain but shall expose
+neither page address to source and shall not publish either page to the device.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,

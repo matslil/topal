@@ -558,6 +558,27 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     desired-masked-value is 4
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_PCI_BUS_MASTER_OK"
+                                                                  restored dma buffer create (
+                                                                    buffer-identity is 1,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1,
+                                                                    byte-count is 4096,
+                                                                    alignment-bytes is 4096,
+                                                                    direction is "bidirectional",
+                                                                    visibility is "provider-managed",
+                                                                    role is "virtqueue-control"
+                                                                  )
+                                                                  restored dma buffer create (
+                                                                    buffer-identity is 2,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1,
+                                                                    byte-count is 4096,
+                                                                    alignment-bytes is 4096,
+                                                                    direction is "device-to-memory",
+                                                                    visibility is "provider-managed",
+                                                                    role is "entropy-payload"
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_DMA_BUFFERS_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

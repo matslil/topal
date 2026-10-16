@@ -56,6 +56,7 @@ pub const SYSTEMS_PCI_CONFIGURATION_READ_DWORD: &str =
     "topal.systems.device.pci-configuration.read-dword/1";
 pub const SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD: &str =
     "topal.systems.device.pci-configuration.update-word/1";
+pub const SYSTEMS_DMA_BUFFER_CREATE: &str = "topal.systems.dma.buffer.create/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
 pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.write/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
@@ -197,6 +198,70 @@ impl PciConfigurationWordUpdateRequest {
             && self.mask != 0
             && self.expected_masked_value & !self.mask == 0
             && self.desired_masked_value & !self.mask == 0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DmaDirection {
+    Bidirectional,
+    DeviceToMemory,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DmaVisibilityPolicy {
+    ProviderManaged,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum DmaBufferRole {
+    VirtqueueControl,
+    EntropyPayload,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DmaBufferRequest {
+    pub buffer_identity: u64,
+    pub device_identity: u64,
+    pub translation_domain_identity: u64,
+    pub byte_count: u64,
+    pub alignment_bytes: u64,
+    pub direction: DmaDirection,
+    pub visibility: DmaVisibilityPolicy,
+    pub role: DmaBufferRole,
+}
+
+impl DmaBufferRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG: [Self; 2] = [
+        Self {
+            buffer_identity: 1,
+            device_identity: 1,
+            translation_domain_identity: 1,
+            byte_count: 4096,
+            alignment_bytes: 4096,
+            direction: DmaDirection::Bidirectional,
+            visibility: DmaVisibilityPolicy::ProviderManaged,
+            role: DmaBufferRole::VirtqueueControl,
+        },
+        Self {
+            buffer_identity: 2,
+            device_identity: 1,
+            translation_domain_identity: 1,
+            byte_count: 4096,
+            alignment_bytes: 4096,
+            direction: DmaDirection::DeviceToMemory,
+            visibility: DmaVisibilityPolicy::ProviderManaged,
+            role: DmaBufferRole::EntropyPayload,
+        },
+    ];
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.buffer_identity != 0
+            && self.device_identity != 0
+            && self.translation_domain_identity != 0
+            && self.byte_count != 0
+            && self.alignment_bytes.is_power_of_two()
+            && self.byte_count % self.alignment_bytes == 0
     }
 }
 
@@ -365,6 +430,9 @@ pub enum SystemsOperation {
     UpdatePciConfigurationWord {
         request: PciConfigurationWordUpdateRequest,
     },
+    CreateDmaBuffer {
+        request: DmaBufferRequest,
+    },
     AccessPciRegionRegister {
         request: PciRegionRegisterRequest,
     },
@@ -473,6 +541,7 @@ impl SystemsOperation {
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
             Self::UpdatePciConfigurationWord { .. } => SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
+            Self::CreateDmaBuffer { .. } => SYSTEMS_DMA_BUFFER_CREATE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -692,6 +761,9 @@ pub enum SystemsTransition {
     UpdatePciConfigurationWord {
         transaction_identity: u64,
         request: PciConfigurationWordUpdateRequest,
+    },
+    CreateDmaBuffer {
+        request: DmaBufferRequest,
     },
     AccessPciRegionRegister {
         transaction_identity: u64,
@@ -1024,6 +1096,7 @@ impl SystemsTransition {
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
             Self::UpdatePciConfigurationWord { .. } => SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
+            Self::CreateDmaBuffer { .. } => SYSTEMS_DMA_BUFFER_CREATE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -1579,6 +1652,7 @@ struct BootstrapAuthorityState {
     pci_configuration_observations: usize,
     pci_region_register_accesses: usize,
     pci_bus_master_authorized: bool,
+    dma_buffers_created: usize,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1883,6 +1957,21 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.pci_bus_master_authorized = true;
+            }
+            SystemsOperation::CreateDmaBuffer { request } => {
+                let expected =
+                    DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG.get(self.dma_buffers_created);
+                if !self.pci_bus_master_authorized
+                    || !self.critical_stack.is_empty()
+                    || !request.is_well_formed()
+                    || expected != Some(request)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DMA-BUFFER",
+                        "DMA-buffer creation requires bus-master authorization and the exact sealed CPU-owned virtio-rng buffer sequence",
+                    ));
+                }
+                self.dma_buffers_created += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3264,6 +3353,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE",
                 "bootstrap completion requires the sealed PCI bus-master authorization",
+            ));
+        }
+        if self.dma_buffers_created != DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG.len() {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-DMA-BUFFER-LIVE",
+                "bootstrap completion requires both sealed CPU-owned virtio-rng DMA buffers",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -4913,6 +5008,9 @@ fn model_bootstrap_operation(
                 request: *request,
             });
         }
+        SystemsOperation::CreateDmaBuffer { request } => {
+            transitions.push(SystemsTransition::CreateDmaBuffer { request: *request });
+        }
         SystemsOperation::AccessPciRegionRegister { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -5239,6 +5337,7 @@ fn model_bootstrap_storage_operation(
         }
         SystemsOperation::ObservePciConfigurationDword { .. }
         | SystemsOperation::UpdatePciConfigurationWord { .. }
+        | SystemsOperation::CreateDmaBuffer { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
         }
@@ -5376,6 +5475,7 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_SEND.into(),
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
+            SYSTEMS_DMA_BUFFER_CREATE.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
             SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD.into(),
             SYSTEMS_PCI_REGION_READ.into(),
@@ -5648,6 +5748,12 @@ mod tests {
                         SystemsOperation::UpdatePciConfigurationWord {
                             request:
                                 PciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER,
+                        },
+                        SystemsOperation::CreateDmaBuffer {
+                            request: DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                        },
+                        SystemsOperation::CreateDmaBuffer {
+                            request: DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[1],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -6100,6 +6206,12 @@ mod tests {
                 SystemsTransition::UpdatePciConfigurationWord {
                     transaction_identity: 1,
                     request: PciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER,
+                },
+                SystemsTransition::CreateDmaBuffer {
+                    request: DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                },
+                SystemsTransition::CreateDmaBuffer {
+                    request: DmaBufferRequest::INITIAL_Q35_VIRTIO_RNG[1],
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,

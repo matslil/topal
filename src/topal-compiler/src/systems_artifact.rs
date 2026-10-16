@@ -14,7 +14,8 @@ use object::{
 use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerBootstrapStoragePlacement,
-    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerKernelMappingRequest,
+    CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferRequest,
+    CompilerDmaBufferRole, CompilerDmaDirection, CompilerKernelMappingRequest,
     CompilerPciConfigurationDwordRequest, CompilerPciConfigurationWordUpdateRequest,
     CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
     CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
@@ -46,14 +47,14 @@ use topal_language::compiler::{
 
 #[cfg(test)]
 use topal_language::compiler::{
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
 };
@@ -75,10 +76,10 @@ use crate::{
     X86_SYSTEMS_CONTEXT_TRANSFER_SYMBOL, X86_SYSTEMS_CRITICAL_ENTER_SYMBOL,
     X86_SYSTEMS_CRITICAL_RESTORE_SYMBOL, X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
     X86_SYSTEMS_DEADLINE_ARM_SYMBOL, X86_SYSTEMS_DEADLINE_COMPLETE_SYMBOL,
-    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
-    X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
-    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
-    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+    X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
+    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
+    X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL, X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
     X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
     X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
     X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
@@ -103,8 +104,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/78";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/76";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/79";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/77";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1093,6 +1094,7 @@ enum ProviderSymbol {
     ObserveMonotonicClock,
     ObservePciConfigurationDword,
     UpdatePciConfigurationWord,
+    CreateDmaBuffer,
     ReadPciRegionRegister,
     WritePciRegionRegister,
     ConstructDeadline,
@@ -1157,6 +1159,7 @@ impl ProviderSymbol {
             Self::ObserveMonotonicClock => X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
             Self::ObservePciConfigurationDword => X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
             Self::UpdatePciConfigurationWord => X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
+            Self::CreateDmaBuffer => X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
             Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
             Self::WritePciRegionRegister => X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
             Self::ConstructDeadline => X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
@@ -1236,6 +1239,7 @@ impl ProviderSymbol {
             | Self::ObserveMonotonicClock
             | Self::ObservePciConfigurationDword
             | Self::UpdatePciConfigurationWord
+            | Self::CreateDmaBuffer
             | Self::ReadPciRegionRegister
             | Self::WritePciRegionRegister
             | Self::ConstructDeadline
@@ -1338,6 +1342,7 @@ struct RootEncoder {
     pci_configuration_observations: usize,
     pci_region_register_accesses: usize,
     pci_bus_master_authorized: bool,
+    dma_buffers_created: usize,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1486,6 +1491,7 @@ struct ProviderSymbols {
     observe_monotonic_clock: SymbolId,
     observe_pci_configuration_dword: SymbolId,
     update_pci_configuration_word: SymbolId,
+    create_dma_buffer: SymbolId,
     read_pci_region_register: SymbolId,
     write_pci_region_register: SymbolId,
     construct_deadline: SymbolId,
@@ -1941,6 +1947,14 @@ impl RootEncoder {
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
+            && self.dma_buffers_created != CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG.len()
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without both sealed CPU-owned virtio-rng DMA buffers"
+                    .into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
             && self.local_notification != RootLocalNotificationState::Completed
         {
             return Err(CompileError::Tool(
@@ -2364,6 +2378,44 @@ impl RootEncoder {
             .extend_from_slice(&u32::from(request.register_offset_bytes & 0x02).to_le_bytes());
         self.call_checked_bool(ProviderSymbol::UpdatePciConfigurationWord)?;
         self.pci_bus_master_authorized = true;
+        Ok(())
+    }
+
+    fn create_dma_buffer(&mut self, request: CompilerDmaBufferRequest) -> Result<(), CompileError> {
+        let expected =
+            CompilerDmaBufferRequest::INITIAL_Q35_VIRTIO_RNG.get(self.dma_buffers_created);
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || !self.pci_bus_master_authorized
+            || !request.is_well_formed()
+            || expected != Some(&request)
+        {
+            return Err(CompileError::Tool(
+                "x86 DMA-buffer creation requires bus-master authorization and the exact sealed virtio-rng buffer sequence".into(),
+            ));
+        }
+        let packed_metadata = match request.role {
+            CompilerDmaBufferRole::VirtqueueControl => 0x01_u32,
+            CompilerDmaBufferRole::EntropyPayload => 0x12_u32,
+        };
+        self.bytes.push(0xbf); // buffer identity in edi
+        self.bytes
+            .extend_from_slice(&(request.buffer_identity as u32).to_le_bytes());
+        self.bytes.push(0xbe); // device identity in esi
+        self.bytes
+            .extend_from_slice(&(request.device_identity as u32).to_le_bytes());
+        self.bytes.push(0xba); // translation-domain identity in edx
+        self.bytes
+            .extend_from_slice(&(request.translation_domain_identity as u32).to_le_bytes());
+        self.bytes.push(0xb9); // byte count in ecx
+        self.bytes
+            .extend_from_slice(&(request.byte_count as u32).to_le_bytes());
+        self.bytes.extend_from_slice(&[0x41, 0xb8]); // alignment in r8d
+        self.bytes
+            .extend_from_slice(&(request.alignment_bytes as u32).to_le_bytes());
+        self.bytes.extend_from_slice(&[0x41, 0xb9]); // packed checked metadata in r9d
+        self.bytes.extend_from_slice(&packed_metadata.to_le_bytes());
+        self.call_checked_bool(ProviderSymbol::CreateDmaBuffer)?;
+        self.dma_buffers_created += 1;
         Ok(())
     }
 
@@ -3370,6 +3422,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::UpdatePciConfigurationWord,
         ),
+        create_dma_buffer: undefined_provider_symbol(&mut object, ProviderSymbol::CreateDmaBuffer),
         read_pci_region_register: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ReadPciRegionRegister,
@@ -3904,6 +3957,9 @@ fn encode_operations(
             CompilerSystemsOperation::UpdatePciConfigurationWord { request } => {
                 encoder.update_pci_configuration_word(*request)?;
             }
+            CompilerSystemsOperation::CreateDmaBuffer { request } => {
+                encoder.create_dma_buffer(*request)?;
+            }
             CompilerSystemsOperation::AccessPciRegionRegister { request } => {
                 encoder.access_pci_region_register(*request)?;
             }
@@ -4076,6 +4132,7 @@ fn append_root(
             ProviderSymbol::UpdatePciConfigurationWord => {
                 provider_symbols.update_pci_configuration_word
             }
+            ProviderSymbol::CreateDmaBuffer => provider_symbols.create_dma_buffer,
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
             ProviderSymbol::WritePciRegionRegister => provider_symbols.write_pci_region_register,
             ProviderSymbol::ConstructDeadline => provider_symbols.construct_deadline,
@@ -4222,6 +4279,24 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.expected_masked_value,
                     request.desired_masked_value
                 ),
+                CompilerSystemsTransition::CreateDmaBuffer { request } => {
+                    let direction = match request.direction {
+                        CompilerDmaDirection::Bidirectional => "bidirectional",
+                        CompilerDmaDirection::DeviceToMemory => "device-to-memory",
+                    };
+                    let role = match request.role {
+                        CompilerDmaBufferRole::VirtqueueControl => "virtqueue-control",
+                        CompilerDmaBufferRole::EntropyPayload => "entropy-payload",
+                    };
+                    format!(
+                        "{identity}:buffer={}:device={}:domain={}:bytes={}:alignment={}:direction={direction}:visibility=provider-managed:role={role}",
+                        request.buffer_identity,
+                        request.device_identity,
+                        request.translation_domain_identity,
+                        request.byte_count,
+                        request.alignment_bytes,
+                    )
+                }
                 CompilerSystemsTransition::AccessPciRegionRegister {
                     transaction_identity,
                     request,
@@ -4658,7 +4733,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2088);
+        assert_eq!(relocation_targets.len(), 2119);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4812,7 +4887,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1802
+            1829
         );
         assert_eq!(
             relocation_targets
@@ -4827,6 +4902,13 @@ mod tests {
                 .filter(|target| **target == X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL)
                 .count(),
             1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL)
+                .count(),
+            2
         );
         assert_eq!(
             relocation_targets
@@ -4854,7 +4936,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            112
+            114
         );
         assert_eq!(
             relocation_targets
@@ -5004,6 +5086,7 @@ mod tests {
                 "topal_x86_systems_monotonic_clock_now",
                 "topal_x86_systems_pci_configuration_read_dword_equals",
                 "topal_x86_systems_pci_configuration_update_word_masked",
+                "topal_x86_systems_dma_buffer_create",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",
                 "topal_x86_systems_deadline_after",
@@ -5113,7 +5196,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 253);
+        assert_eq!(decoded.semantic_trace.len(), 256);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -5217,6 +5300,26 @@ mod tests {
             )
         );
         decoded.semantic_trace.drain(31..33);
+        assert_eq!(
+            decoded.semantic_trace[31],
+            format!(
+                "{SYSTEMS_DMA_BUFFER_CREATE}:buffer=1:device=1:domain=1:bytes=4096:alignment=4096:direction=bidirectional:visibility=provider-managed:role=virtqueue-control"
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[32],
+            format!(
+                "{SYSTEMS_DMA_BUFFER_CREATE}:buffer=2:device=1:domain=1:bytes=4096:alignment=4096:direction=device-to-memory:visibility=provider-managed:role=entropy-payload"
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[33],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_DMA_BUFFERS_OK")
+            )
+        );
+        decoded.semantic_trace.drain(31..34);
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
