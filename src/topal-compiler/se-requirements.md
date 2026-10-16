@@ -529,6 +529,13 @@ metadata, lower provider-managed device-to-CPU visibility before returning
 authority, reject malformed or reordered completion, retain the control buffer
 as CPU-owned, and emit no payload read or entropy-credit operation.
 
+The bounded entropy-sample refinement shall accept exactly one fresh opaque
+sample capture after payload completion. It shall validate sample and buffer
+identities, exact offset/count, device/domain/direction/visibility/role facts,
+and zero credited bits; preserve payload ownership; lower one complete exact
+copy between provider-resolved opaque storage objects; expose no address or
+byte value; and reject malformed, partial, duplicated, or reordered capture.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

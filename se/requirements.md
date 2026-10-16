@@ -1024,6 +1024,14 @@ and payload-role facts; require provider-completed device-to-CPU visibility;
 reject malformed, omitted, duplicated, reordered, substituted, or premature
 completion; and assign no entropy credit or payload-byte meaning.
 
+The bounded entropy-sample refinement shall capture exactly 32 bytes from
+offset zero of CPU-owned entropy payload buffer identity two into fresh opaque
+sample identity one while preserving payload ownership. It shall retain the
+exact device, translation-domain, direction, visibility, and role facts;
+record zero credited entropy bits; expose neither address nor byte values;
+reject malformed, omitted, duplicated, reordered, substituted, premature, or
+partially copied capture; and perform no conditioning or userspace delivery.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
