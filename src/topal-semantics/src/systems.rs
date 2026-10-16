@@ -1983,6 +1983,7 @@ struct BootstrapAuthorityState {
     dma_references_published: usize,
     dma_control_completed: bool,
     dma_used_ring_reads: usize,
+    dma_payload_completed: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2386,17 +2387,28 @@ impl BootstrapAuthorityState {
                         + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION.len()
                         + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION.len()
                         + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL.len();
+                let completes_control = !self.dma_control_completed
+                    && *request == DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1]
+                    && self.dma_used_ring_reads == 0;
+                let completes_payload = self.dma_control_completed
+                    && !self.dma_payload_completed
+                    && self.dma_used_ring_reads
+                        == DmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING.len()
+                    && *request == DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0];
                 if self.pci_region_register_accesses != required_region_accesses
-                    || self.dma_control_completed
                     || !request.is_well_formed()
-                    || *request != DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1]
+                    || (!completes_control && !completes_payload)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-DMA-COMPLETE",
-                        "DMA control completion requires the acknowledged virtio-rng signal and the exact sealed control-buffer ownership transition",
+                        "DMA completion requires the exact sealed control-then-payload ownership sequence around virtio-rng used-ring validation",
                     ));
                 }
-                self.dma_control_completed = true;
+                if completes_control {
+                    self.dma_control_completed = true;
+                } else {
+                    self.dma_payload_completed = true;
+                }
             }
             SystemsOperation::LoadDmaBufferIntegerEquals { request } => {
                 let expected = DmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
@@ -3847,6 +3859,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DMA-USED-RING-LIVE",
                 "bootstrap completion requires CPU return and exact validation of the sealed virtio-rng used ring",
+            ));
+        }
+        if !self.dma_payload_completed {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-DMA-PAYLOAD-LIVE",
+                "bootstrap completion requires CPU return of the completed virtio-rng payload",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -6370,6 +6388,9 @@ mod tests {
                             request: DmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
                                 [3],
                         },
+                        SystemsOperation::CompleteDmaBufferForCpu {
+                            request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                        },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
                         SystemsOperation::WaitLocalNotification,
@@ -6878,6 +6899,9 @@ mod tests {
                 },
                 SystemsTransition::LoadDmaBufferIntegerEquals {
                     request: DmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING[3],
+                },
+                SystemsTransition::CompleteDmaBufferForCpu {
+                    request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,

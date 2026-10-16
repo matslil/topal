@@ -1339,6 +1339,14 @@ device-written queue metadata. Such validation proves only the observed control
 fields. It does not return a referenced payload buffer to CPU ownership or make
 payload bytes valid, even when the metadata reports a completed length.
 
+Once checked queue metadata identifies the completed descriptor and length,
+driver policy may separately return that descriptor's payload buffer to CPU
+ownership through the same generic DMA completion protocol. The provider must
+finish device-to-CPU visibility for the payload's direction and role before
+returning authority. Completion exposes neither an address nor payload values
+and assigns no entropy estimate, credit, trust, or consumer policy. Those
+belong to later typed resource protocols above the DMA ownership boundary.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

@@ -49,7 +49,7 @@ use topal_language::compiler::{
 
 #[cfg(test)]
 use topal_language::compiler::{
-    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_CREATE,
+    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
     SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
     SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
@@ -114,8 +114,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/86";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/84";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/87";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/85";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1385,6 +1385,7 @@ struct RootEncoder {
     dma_references_published: usize,
     dma_control_completed: bool,
     dma_used_ring_reads: usize,
+    dma_payload_completed: bool,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -2048,6 +2049,12 @@ impl RootEncoder {
                 "x86 root lowering ended without CPU return and exact validation of the sealed virtio-rng used ring".into(),
             ));
         }
+        if self.role == RootRole::BootstrapWithLocalNotification && !self.dma_payload_completed {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without CPU return of the completed virtio-rng payload"
+                    .into(),
+            ));
+        }
         if self.role == RootRole::BootstrapWithLocalNotification
             && self.local_notification != RootLocalNotificationState::Completed
         {
@@ -2627,22 +2634,47 @@ impl RootEncoder {
             + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION.len()
             + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION.len()
             + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL.len();
+        let completes_control = !self.dma_control_completed
+            && request == CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1]
+            && self.dma_used_ring_reads == 0;
+        let completes_payload = self.dma_control_completed
+            && !self.dma_payload_completed
+            && self.dma_used_ring_reads
+                == CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING.len()
+            && request == CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0];
         if self.pci_region_register_accesses != required_accesses
-            || self.dma_control_completed
-            || request != CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1]
             || !request.is_well_formed()
+            || (!completes_control && !completes_payload)
         {
             return Err(CompileError::Tool(
-                "x86 DMA control completion requires the acknowledged virtio-rng signal and exact control metadata".into(),
+                "x86 DMA completion requires the exact sealed control-then-payload ownership sequence around used-ring validation".into(),
             ));
         }
+        let (symbol, packed_metadata) = match request.role {
+            CompilerDmaBufferRole::VirtqueueControl => {
+                (ProviderSymbol::DmaVirtqueueControl, 0x01_u32)
+            }
+            CompilerDmaBufferRole::EntropyPayload => (ProviderSymbol::DmaEntropyPayload, 0x12_u32),
+        };
         self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]);
-        self.rip_relative_symbol(ProviderSymbol::DmaVirtqueueControl, 0)?;
+        self.rip_relative_symbol(symbol, 0)?;
+        self.bytes.push(0xbe);
         self.bytes
-            .extend_from_slice(&[0xbe, 1, 0, 0, 0, 0xba, 1, 0, 0, 0, 0xb9, 1, 0, 0, 0]);
-        self.bytes.extend_from_slice(&[0x41, 0xb8, 1, 0, 0, 0]);
+            .extend_from_slice(&(request.buffer_identity as u32).to_le_bytes());
+        self.bytes.push(0xba);
+        self.bytes
+            .extend_from_slice(&(request.device_identity as u32).to_le_bytes());
+        self.bytes.push(0xb9);
+        self.bytes
+            .extend_from_slice(&(request.translation_domain_identity as u32).to_le_bytes());
+        self.bytes.extend_from_slice(&[0x41, 0xb8]);
+        self.bytes.extend_from_slice(&packed_metadata.to_le_bytes());
         self.call_checked_bool(ProviderSymbol::CompleteDmaBufferForCpu)?;
-        self.dma_control_completed = true;
+        if completes_control {
+            self.dma_control_completed = true;
+        } else {
+            self.dma_payload_completed = true;
+        }
         Ok(())
     }
 
@@ -5210,7 +5242,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2412);
+        assert_eq!(relocation_targets.len(), 2452);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5364,7 +5396,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2064
+            2101
         );
         assert_eq!(
             relocation_targets
@@ -5413,7 +5445,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL)
                 .count(),
-            1
+            2
         );
         assert_eq!(
             relocation_targets
@@ -5441,7 +5473,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL)
                 .count(),
-            2
+            3
         );
         assert_eq!(
             relocation_targets
@@ -5476,7 +5508,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            135
+            136
         );
         assert_eq!(
             relocation_targets
@@ -5536,7 +5568,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            53,
+            54,
             "root must derive opaque storage for DMA, atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -5745,7 +5777,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 284);
+        assert_eq!(decoded.semantic_trace.len(), 286);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -6210,6 +6242,14 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL")
             )
         );
+        assert!(decoded.semantic_trace[213].starts_with(SYSTEMS_DMA_BUFFER_COMPLETE_CPU));
+        assert_eq!(
+            decoded.semantic_trace[214],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED")
+            )
+        );
         decoded.semantic_trace.drain(195..198);
         decoded.semantic_trace.drain(166..194);
         decoded.semantic_trace.drain(120..136);
@@ -6418,7 +6458,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[164].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[166].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

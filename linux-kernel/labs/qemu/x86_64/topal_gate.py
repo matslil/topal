@@ -90,6 +90,7 @@ MARKERS = (
     b"TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
     b"TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
     b"TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+    b"TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
 )
 
 
@@ -361,7 +362,7 @@ def evidence_record(
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/88",
+        "schema": "topal-kernel-toolchain-gate-qemu/89",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),

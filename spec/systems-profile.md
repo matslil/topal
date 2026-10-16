@@ -1842,6 +1842,25 @@ This refinement SHALL NOT inspect entropy, return payload ownership, recycle or
 renotify the queue, populate `AT_RANDOM`, implement `getrandom`, configure
 asynchronous interrupt delivery, reset the device, or define failure recovery.
 
+### TOPAL-SYSTEMS-VIRTIO-PCI-PAYLOAD-COMPLETE-001 — Bounded payload completion
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-USED-RING-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-DMA-COMPLETE-001` transition for payload
+buffer identity two. The request SHALL retain device identity one,
+translation-domain identity one, device-to-memory direction, provider-managed
+visibility, and the `EntropyPayload` role. Completion SHALL require the prior
+proof that descriptor identity zero, which names payload buffer two offset
+zero, completed with length 32.
+
+The provider SHALL complete device-to-CPU visibility before producing the
+`CpuOwned` payload identity. Control buffer identity one SHALL remain
+`CpuOwned`. Neither transition SHALL read, compare, expose, interpret, or
+assign entropy credit to a payload byte.
+
+This refinement SHALL NOT create or seed an entropy pool, populate `AT_RANDOM`,
+implement `getrandom`, recycle or renotify the queue, configure asynchronous
+interrupt delivery, reset the device, or define failure recovery.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

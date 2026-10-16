@@ -522,6 +522,13 @@ visibility/role metadata, lower provider-managed device-to-CPU visibility
 before any read, reject malformed or reordered operations, and keep the entropy
 payload device-owned and inaccessible.
 
+The bounded virtio payload-completion refinement shall accept exactly one
+payload-buffer DMA completion after all four used-ring observations. It shall
+validate and preserve the exact buffer/device/domain/direction/visibility/role
+metadata, lower provider-managed device-to-CPU visibility before returning
+authority, reject malformed or reordered completion, retain the control buffer
+as CPU-owned, and emit no payload read or entropy-credit operation.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
