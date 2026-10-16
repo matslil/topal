@@ -54,16 +54,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/92")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/93")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/83")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/84")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/90",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/91",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/50",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/51",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -174,6 +174,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
                 "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
                 "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+                "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
             ],
         )
         self.assertEqual(observations["result"], "pass")
