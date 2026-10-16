@@ -1040,6 +1040,13 @@ the exactly derived 256 credited bits; reject malformed, omitted, duplicated,
 reordered, substituted, or premature assessment; and create no provider call,
 pool state, generator state, or random output.
 
+The bounded entropy-pool refinement shall create exactly one affine empty pool
+after that sample assessment. It shall require pool identity one, a 256-bit
+credit capacity, and zero initial credited bits; expose no storage or byte
+representation; create no provider call; reject malformed, omitted,
+duplicated, reordered, substituted, or premature creation; and perform no
+mixing, credit transfer, generator seeding, or random output.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

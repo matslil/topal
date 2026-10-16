@@ -1764,6 +1764,20 @@ payload role, and provider selection SHALL NOT imply trust or choose quality.
 Assessment SHALL NOT mix, condition, health-test, serialize, distribute, seed a
 generator, or produce random output.
 
+### TOPAL-SYSTEMS-ENTROPY-POOL-001 — Opaque affine entropy-pool creation
+
+`topal.systems.entropy.pool.create/1` SHALL produce one fresh affine entropy
+pool in the `Empty` state. The request SHALL name a nonzero pool identity, a
+nonzero credited-entropy capacity in bits, and exactly zero initial credited
+bits not exceeding that capacity.
+
+Creation SHALL establish lifecycle identity only. It SHALL expose no address,
+byte representation, implementation algorithm, or target-provider operation;
+SHALL NOT borrow or consume an assessed sample; and SHALL NOT imply readiness.
+The pool SHALL NOT be duplicated, substituted, or recreated while live.
+Creation SHALL NOT mix material, transfer credit, perform health tests, seed a
+generator, or produce random output.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -1933,6 +1947,23 @@ reordering, or assessment before capture.
 
 This refinement SHALL NOT mix or condition the sample, perform health tests,
 create or seed an entropy pool or CRNG, populate `AT_RANDOM`, implement
+`getrandom`, recycle or renotify the queue, configure asynchronous interrupt
+delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-POOL-001 — Bounded empty pool creation
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-QUALITY-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-ENTROPY-POOL-001` operation. It SHALL create
+pool identity one with a 256-bit credited-entropy capacity and exactly zero
+initial credited bits.
+
+The operation SHALL create no storage or provider call and SHALL reject
+another identity, capacity, initial credit, omission, duplication, reordering,
+or creation before sample assessment. The assessed sample SHALL remain live
+and unchanged.
+
+This refinement SHALL NOT mix or condition the sample, transfer entropy
+credit, perform health tests, seed a CRNG, populate `AT_RANDOM`, implement
 `getrandom`, recycle or renotify the queue, configure asynchronous interrupt
 delivery, reset the device, or define failure recovery.
 
