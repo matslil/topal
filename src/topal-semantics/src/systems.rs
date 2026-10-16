@@ -60,6 +60,8 @@ pub const SYSTEMS_DMA_BUFFER_CREATE: &str = "topal.systems.dma.buffer.create/1";
 pub const SYSTEMS_DMA_BUFFER_BIND_REFERENCE: &str = "topal.systems.dma.buffer.bind-reference/1";
 pub const SYSTEMS_DMA_BUFFER_STORE_INTEGER: &str = "topal.systems.dma.buffer.store-integer/1";
 pub const SYSTEMS_DMA_BUFFER_PREPARE_DEVICE: &str = "topal.systems.dma.buffer.prepare-device/1";
+pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
+    "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
 pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.write/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
@@ -383,6 +385,68 @@ impl DmaBufferPreparationRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PciRegionDmaReferenceRequest {
+    pub segment: u16,
+    pub bus: u8,
+    pub device: u8,
+    pub function: u8,
+    pub access_capability_offset_bytes: u8,
+    pub bar: u8,
+    pub region_offset_bytes: u32,
+    pub region_length_bytes: u32,
+    pub register_offset_bytes: u32,
+    pub width_bytes: u8,
+    pub buffer_identity: u64,
+    pub buffer_offset_bytes: u64,
+    pub device_identity: u64,
+    pub translation_domain_identity: u64,
+}
+
+impl PciRegionDmaReferenceRequest {
+    const fn initial(register_offset_bytes: u32, buffer_offset_bytes: u64) -> Self {
+        Self {
+            segment: 0,
+            bus: 0,
+            device: 5,
+            function: 0,
+            access_capability_offset_bytes: 132,
+            bar: 4,
+            region_offset_bytes: 0,
+            region_length_bytes: 4096,
+            register_offset_bytes,
+            width_bytes: 8,
+            buffer_identity: 1,
+            buffer_offset_bytes,
+            device_identity: 1,
+            translation_domain_identity: 1,
+        }
+    }
+
+    pub const INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES: [Self; 3] = [
+        Self::initial(32, 0),
+        Self::initial(40, 128),
+        Self::initial(48, 148),
+    ];
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.device <= 31
+            && self.function <= 7
+            && self.access_capability_offset_bytes <= 252
+            && self.access_capability_offset_bytes.is_multiple_of(4)
+            && self.bar <= 5
+            && self.region_length_bytes != 0
+            && self.width_bytes == 8
+            && self.register_offset_bytes <= self.region_length_bytes - 8
+            && self.register_offset_bytes.is_multiple_of(8)
+            && self.buffer_identity != 0
+            && self.buffer_offset_bytes <= 4096 - 8
+            && self.device_identity != 0
+            && self.translation_domain_identity != 0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PciRegionRegisterDirection {
     ReadEquals,
     Write,
@@ -559,6 +623,9 @@ pub enum SystemsOperation {
     PrepareDmaBufferForDevice {
         request: DmaBufferPreparationRequest,
     },
+    PublishPciRegionDmaReference {
+        request: PciRegionDmaReferenceRequest,
+    },
     AccessPciRegionRegister {
         request: PciRegionRegisterRequest,
     },
@@ -671,6 +738,7 @@ impl SystemsOperation {
             Self::BindDmaBufferReference { .. } => SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
             Self::StoreDmaBufferInteger { .. } => SYSTEMS_DMA_BUFFER_STORE_INTEGER,
             Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
+            Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -902,6 +970,10 @@ pub enum SystemsTransition {
     },
     PrepareDmaBufferForDevice {
         request: DmaBufferPreparationRequest,
+    },
+    PublishPciRegionDmaReference {
+        transaction_identity: u64,
+        request: PciRegionDmaReferenceRequest,
     },
     AccessPciRegionRegister {
         transaction_identity: u64,
@@ -1238,6 +1310,7 @@ impl SystemsTransition {
             Self::BindDmaBufferReference { .. } => SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
             Self::StoreDmaBufferInteger { .. } => SYSTEMS_DMA_BUFFER_STORE_INTEGER,
             Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
+            Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -1796,6 +1869,7 @@ struct BootstrapAuthorityState {
     dma_buffers_created: usize,
     dma_construction_operations: usize,
     dma_buffers_prepared: usize,
+    dma_references_published: usize,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2159,6 +2233,21 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.dma_buffers_prepared += 1;
+            }
+            SystemsOperation::PublishPciRegionDmaReference { request } => {
+                let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                    .get(self.dma_references_published);
+                if self.dma_buffers_prepared
+                    != DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG.len()
+                    || !request.is_well_formed()
+                    || expected != Some(request)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DMA-PUBLISH",
+                        "PCI-region DMA-reference publication requires both device-owned buffers and the exact sealed descriptor-driver-device register sequence",
+                    ));
+                }
+                self.dma_references_published += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3560,6 +3649,14 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DMA-PREPARE-LIVE",
                 "bootstrap completion requires the exact payload-then-control DMA device-preparation sequence",
+            ));
+        }
+        if self.dma_references_published
+            != PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES.len()
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-DMA-PUBLISH-LIVE",
+                "bootstrap completion requires all three sealed virtio-rng queue-address publications",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5221,6 +5318,20 @@ fn model_bootstrap_operation(
         SystemsOperation::PrepareDmaBufferForDevice { request } => {
             transitions.push(SystemsTransition::PrepareDmaBufferForDevice { request: *request });
         }
+        SystemsOperation::PublishPciRegionDmaReference { request } => {
+            let transaction_identity = *next_pci_region_transaction_identity;
+            *next_pci_region_transaction_identity =
+                transaction_identity.checked_add(1).ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-DMA-PUBLISH",
+                        "PCI-region DMA-reference transaction identity exhausted",
+                    )
+                })?;
+            transitions.push(SystemsTransition::PublishPciRegionDmaReference {
+                transaction_identity,
+                request: *request,
+            });
+        }
         SystemsOperation::AccessPciRegionRegister { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -5551,6 +5662,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::BindDmaBufferReference { .. }
         | SystemsOperation::StoreDmaBufferInteger { .. }
         | SystemsOperation::PrepareDmaBufferForDevice { .. }
+        | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
         }
@@ -5695,6 +5807,7 @@ mod tests {
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
             SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD.into(),
             SYSTEMS_PCI_REGION_READ.into(),
+            SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE.into(),
             SYSTEMS_PCI_REGION_WRITE.into(),
             SYSTEMS_DEADLINE_AFTER.into(),
             SYSTEMS_DEBUG_BREAK.into(),
@@ -5995,6 +6108,21 @@ mod tests {
                         },
                         SystemsOperation::PrepareDmaBufferForDevice {
                             request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
+                        },
+                        SystemsOperation::PublishPciRegionDmaReference {
+                            request:
+                                PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                                    [0],
+                        },
+                        SystemsOperation::PublishPciRegionDmaReference {
+                            request:
+                                PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                                    [1],
+                        },
+                        SystemsOperation::PublishPciRegionDmaReference {
+                            request:
+                                PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                                    [2],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -6474,6 +6602,21 @@ mod tests {
                 },
                 SystemsTransition::PrepareDmaBufferForDevice {
                     request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
+                },
+                SystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 22,
+                    request: PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                        [0],
+                },
+                SystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 23,
+                    request: PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                        [1],
+                },
+                SystemsTransition::PublishPciRegionDmaReference {
+                    transaction_identity: 24,
+                    request: PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                        [2],
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,
