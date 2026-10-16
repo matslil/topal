@@ -1258,6 +1258,16 @@ serialized transaction; source owns why those bits change. This permits a
 driver to authorize bus mastering without exposing x86 ports, ECAM addresses,
 or accidentally rewriting adjacent write-one-to-clear status bits.
 
+DMA-buffer creation derives fresh opaque affine memory identities for one
+validated device and translation domain. Each request carries size, alignment,
+direction, visibility policy, and semantic role. A created buffer begins in
+the CPU-owned state, remains disjoint from every other live allocation, and
+reveals no physical, virtual, bus, or I/O-virtual address. Creation alone does
+not prepare memory, publish descriptors, or grant device access; those require
+later explicit ownership transitions. Providers may use coherent identity
+translation, noncoherent cache maintenance, IOMMU mappings, or bounce storage
+while preserving the same source-visible lifetime and direction contract.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

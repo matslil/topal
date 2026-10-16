@@ -93,6 +93,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio-PCI feature negotiation](bounded-virtio-pci-feature-negotiation.md)
 - [Bounded virtio-PCI queue discovery](bounded-virtio-pci-queue-discovery.md)
 - [Bounded PCI bus-master authorization](bounded-pci-bus-master-authorization.md)
+- [Bounded virtio DMA buffers](bounded-virtio-dma-buffers.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
