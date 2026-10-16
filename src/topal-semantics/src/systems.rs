@@ -54,6 +54,8 @@ pub const INITIAL_SYSTEMS_PROFILE: &str = "topal.systems.x86_64-qemu-pc-q35-10.2
 pub const SYSTEMS_CONSOLE_WRITE: &str = "topal.systems.device.console.write/1";
 pub const SYSTEMS_PCI_CONFIGURATION_READ_DWORD: &str =
     "topal.systems.device.pci-configuration.read-dword/1";
+pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
+pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.write/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
 pub const SYSTEMS_RESUME_DEBUG_BREAK: &str = "topal.systems.disposition.resume-debug-break/1";
 pub const SYSTEMS_FATAL: &str = "topal.systems.disposition.fatal/1";
@@ -160,6 +162,96 @@ impl PciConfigurationDwordRequest {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum PciRegionRegisterDirection {
+    ReadEquals,
+    Write,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PciRegionRegisterRequest {
+    pub segment: u16,
+    pub bus: u8,
+    pub device: u8,
+    pub function: u8,
+    pub access_capability_offset_bytes: u8,
+    pub bar: u8,
+    pub region_offset_bytes: u32,
+    pub region_length_bytes: u32,
+    pub register_offset_bytes: u32,
+    pub width_bytes: u8,
+    pub direction: PciRegionRegisterDirection,
+    pub value: u32,
+}
+
+impl PciRegionRegisterRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG_NEGOTIATION: [Self; 16] = [
+        Self::initial(0x14, 1, PciRegionRegisterDirection::Write, 0),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::ReadEquals, 0),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::Write, 1),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::ReadEquals, 1),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::Write, 3),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::ReadEquals, 3),
+        Self::initial(0x00, 4, PciRegionRegisterDirection::Write, 0),
+        Self::initial(0x04, 4, PciRegionRegisterDirection::ReadEquals, 0x3000_0000),
+        Self::initial(0x00, 4, PciRegionRegisterDirection::Write, 1),
+        Self::initial(0x04, 4, PciRegionRegisterDirection::ReadEquals, 0x0000_0101),
+        Self::initial(0x08, 4, PciRegionRegisterDirection::Write, 0),
+        Self::initial(0x0c, 4, PciRegionRegisterDirection::Write, 0),
+        Self::initial(0x08, 4, PciRegionRegisterDirection::Write, 1),
+        Self::initial(0x0c, 4, PciRegionRegisterDirection::Write, 1),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::Write, 11),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::ReadEquals, 11),
+    ];
+
+    #[must_use]
+    pub const fn initial(
+        register_offset_bytes: u32,
+        width_bytes: u8,
+        direction: PciRegionRegisterDirection,
+        value: u32,
+    ) -> Self {
+        Self {
+            segment: 0,
+            bus: 0,
+            device: 5,
+            function: 0,
+            access_capability_offset_bytes: 0x84,
+            bar: 4,
+            region_offset_bytes: 0,
+            region_length_bytes: 0x1000,
+            register_offset_bytes,
+            width_bytes,
+            direction,
+            value,
+        }
+    }
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        let value_fits = match self.width_bytes {
+            1 => self.value <= u8::MAX as u32,
+            4 => true,
+            _ => false,
+        };
+        let Some(end) = self
+            .register_offset_bytes
+            .checked_add(self.width_bytes as u32)
+        else {
+            return false;
+        };
+        self.device <= 31
+            && self.function <= 7
+            && self.access_capability_offset_bytes <= 236
+            && self.access_capability_offset_bytes % 4 == 0
+            && self.bar <= 5
+            && self.region_length_bytes != 0
+            && end <= self.region_length_bytes
+            && self.register_offset_bytes % self.width_bytes as u32 == 0
+            && value_fits
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsOperation {
     DescribeBootMemory {
@@ -222,6 +314,9 @@ pub enum SystemsOperation {
     },
     ObservePciConfigurationDword {
         request: PciConfigurationDwordRequest,
+    },
+    AccessPciRegionRegister {
+        request: PciRegionRegisterRequest,
     },
     DebugBreak,
     BootstrapAllocate {
@@ -327,6 +422,10 @@ impl SystemsOperation {
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+            Self::AccessPciRegionRegister { request } => match request.direction {
+                PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
+            },
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::BootstrapStoreByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -538,6 +637,10 @@ pub enum SystemsTransition {
     ObservePciConfigurationDword {
         transaction_identity: u64,
         request: PciConfigurationDwordRequest,
+    },
+    AccessPciRegionRegister {
+        transaction_identity: u64,
+        request: PciRegionRegisterRequest,
     },
     ObserveDebugBreak,
     EnterDebugBreak,
@@ -865,6 +968,10 @@ impl SystemsTransition {
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+            Self::AccessPciRegionRegister { request, .. } => match request.direction {
+                PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
+            },
             Self::ObserveDebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::EnterDebugBreak => "topal.systems.entry.synchronous.debug-break/1",
             Self::ResumeDebugBreak => SYSTEMS_RESUME_DEBUG_BREAK,
@@ -1414,6 +1521,7 @@ struct BootstrapAuthorityState {
     constructed_user_image_syscall_completed: bool,
     resident_user_image_retained: bool,
     pci_configuration_observations: usize,
+    pci_region_register_accesses: usize,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1678,6 +1786,22 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.pci_configuration_observations += 1;
+            }
+            SystemsOperation::AccessPciRegionRegister { request } => {
+                let expected = PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                    .get(self.pci_region_register_accesses);
+                if self.pci_configuration_observations
+                    != PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY.len()
+                    || !self.critical_stack.is_empty()
+                    || !request.is_well_formed()
+                    || expected != Some(request)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-PCI-REGION",
+                        "PCI region access requires the completed discovery and exact sealed virtio-rng negotiation sequence",
+                    ));
+                }
+                self.pci_region_register_accesses += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3046,6 +3170,14 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires the complete sealed virtio-rng PCI capability-discovery sequence",
             ));
         }
+        if self.pci_region_register_accesses
+            != PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-PCI-REGION-LIVE",
+                "bootstrap completion requires the complete sealed virtio-rng feature-negotiation sequence",
+            ));
+        }
         if self.deadline != BootstrapDeadlineState::Completed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DEADLINE-EVENT-LIVE",
@@ -3388,6 +3520,7 @@ pub fn model_systems_transitions(
     let mut pending_local_notification = None;
     let mut next_clock_observation_identity = 1_u64;
     let mut next_pci_transaction_identity = 1_u64;
+    let mut next_pci_region_transaction_identity = 1_u64;
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
@@ -3471,6 +3604,7 @@ pub fn model_systems_transitions(
             &mut region,
             &mut atomic,
             &mut next_pci_transaction_identity,
+            &mut next_pci_region_transaction_identity,
             &mut transitions,
         )? {
             return Ok(transitions);
@@ -4599,6 +4733,7 @@ fn model_bootstrap_operation(
     region: &mut Option<BootstrapRegion>,
     atomic: &mut Option<AtomicWordLocation>,
     next_pci_transaction_identity: &mut u64,
+    next_pci_region_transaction_identity: &mut u64,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
@@ -4669,6 +4804,20 @@ fn model_bootstrap_operation(
                     )
                 })?;
             transitions.push(SystemsTransition::ObservePciConfigurationDword {
+                transaction_identity,
+                request: *request,
+            });
+        }
+        SystemsOperation::AccessPciRegionRegister { request } => {
+            let transaction_identity = *next_pci_region_transaction_identity;
+            *next_pci_region_transaction_identity =
+                transaction_identity.checked_add(1).ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-PCI-REGION",
+                        "PCI region transaction identity exhausted",
+                    )
+                })?;
+            transitions.push(SystemsTransition::AccessPciRegionRegister {
                 transaction_identity,
                 request: *request,
             });
@@ -4983,8 +5132,9 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::ObserveMonotonicClock => {
             unreachable!("monotonic-clock observations are modeled by the caller")
         }
-        SystemsOperation::ObservePciConfigurationDword { .. } => {
-            unreachable!("PCI configuration observations are modeled by the caller")
+        SystemsOperation::ObservePciConfigurationDword { .. }
+        | SystemsOperation::AccessPciRegionRegister { .. } => {
+            unreachable!("PCI configuration and region accesses are modeled by the caller")
         }
         SystemsOperation::ConstructDeadline { .. }
         | SystemsOperation::ArmDeadline
@@ -5121,6 +5271,8 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
+            SYSTEMS_PCI_REGION_READ.into(),
+            SYSTEMS_PCI_REGION_WRITE.into(),
             SYSTEMS_DEADLINE_AFTER.into(),
             SYSTEMS_DEBUG_BREAK.into(),
             SYSTEMS_FRAME_ALLOCATOR_CREATE.into(),
@@ -5301,6 +5453,70 @@ mod tests {
                         SystemsOperation::ObservePciConfigurationDword {
                             request: PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                                 [23],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [0],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [1],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [2],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [3],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [4],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [5],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [6],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [7],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [8],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [9],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [10],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [11],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [12],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [13],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [14],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request: PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                                [15],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -5733,6 +5949,7 @@ mod tests {
                 !matches!(
                     transition,
                     SystemsTransition::ObservePciConfigurationDword { .. }
+                        | SystemsTransition::AccessPciRegionRegister { .. }
                 )
             })
             .collect::<Vec<_>>();

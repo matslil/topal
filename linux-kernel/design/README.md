@@ -90,6 +90,7 @@ records, not this directory alone, define language meaning.
 - [Bounded initial `sched_yield`](bounded-initial-sched-yield.md)
 - [Bounded PCI configuration observation](bounded-pci-configuration-observation.md)
 - [Bounded virtio-PCI capability discovery](bounded-virtio-pci-capability-discovery.md)
+- [Bounded virtio-PCI feature negotiation](bounded-virtio-pci-feature-negotiation.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

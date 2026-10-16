@@ -927,6 +927,20 @@ remain unaware of capability and virtio meaning. Assigned BAR addresses, BAR
 mapping, feature negotiation, device-register access, interrupts, DMA, and
 entropy delivery shall remain unavailable.
 
+A PCI region-register refinement shall derive a transaction-scoped device
+session from validated function, configuration-access capability, BAR index,
+BAR-relative extent, register offset, and exact-width protocol evidence. Source
+shall own direction and value policy without receiving an assigned BAR address.
+The provider shall serialize and realize the access through a qualified
+configuration gateway or opaque mapping without interpreting virtio policy.
+
+The bounded virtio negotiation refinement shall perform exactly 16 ordered
+common-configuration accesses. It shall reset and read back status, observe both
+pinned device-feature words, select only `VIRTIO_F_VERSION_1`, and read back
+accepted `FEATURES_OK`. It shall leave `DRIVER_OK` clear until queue discovery,
+setup, and population complete. Queue, interrupt, DMA, and entropy operations
+shall remain unavailable.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

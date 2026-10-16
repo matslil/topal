@@ -15,7 +15,8 @@ use serde::{Deserialize, Serialize};
 use topal_language::compiler::{
     CompilerAtomicOrder, CompilerAtomicWordRequest, CompilerBootstrapStoragePlacement,
     CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerKernelMappingRequest,
-    CompilerPciConfigurationDwordRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
+    CompilerPciConfigurationDwordRequest, CompilerPciRegionRegisterDirection,
+    CompilerPciRegionRegisterRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
     CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
     CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
     SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
@@ -50,9 +51,9 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
-    SYSTEMS_USER_TRANSFER_END,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -75,7 +76,8 @@ use crate::{
     X86_SYSTEMS_DEADLINE_WAIT_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
-    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
+    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL, X86_SYSTEMS_PLATFORM_ABI,
     X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -98,8 +100,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/75";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/73";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/76";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/74";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1087,6 +1089,8 @@ enum ProviderSymbol {
     CompleteLocalNotification,
     ObserveMonotonicClock,
     ObservePciConfigurationDword,
+    ReadPciRegionRegister,
+    WritePciRegionRegister,
     ConstructDeadline,
     ArmDeadline,
     WaitDeadline,
@@ -1148,6 +1152,8 @@ impl ProviderSymbol {
             Self::CompleteLocalNotification => X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
             Self::ObserveMonotonicClock => X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
             Self::ObservePciConfigurationDword => X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+            Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+            Self::WritePciRegionRegister => X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
             Self::ConstructDeadline => X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
             Self::ArmDeadline => X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
             Self::WaitDeadline => X86_SYSTEMS_DEADLINE_WAIT_SYMBOL,
@@ -1224,6 +1230,8 @@ impl ProviderSymbol {
             | Self::CompleteLocalNotification
             | Self::ObserveMonotonicClock
             | Self::ObservePciConfigurationDword
+            | Self::ReadPciRegionRegister
+            | Self::WritePciRegionRegister
             | Self::ConstructDeadline
             | Self::ArmDeadline
             | Self::WaitDeadline
@@ -1322,6 +1330,7 @@ struct RootEncoder {
     atomic_word_offset: Option<u64>,
     local_notification: RootLocalNotificationState,
     pci_configuration_observations: usize,
+    pci_region_register_accesses: usize,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1469,6 +1478,8 @@ struct ProviderSymbols {
     complete_local_notification: SymbolId,
     observe_monotonic_clock: SymbolId,
     observe_pci_configuration_dword: SymbolId,
+    read_pci_region_register: SymbolId,
+    write_pci_region_register: SymbolId,
     construct_deadline: SymbolId,
     arm_deadline: SymbolId,
     wait_deadline: SymbolId,
@@ -1907,6 +1918,14 @@ impl RootEncoder {
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
+            && self.pci_region_register_accesses
+                != CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
+        {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without its complete sealed virtio-rng feature-negotiation sequence".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification
             && self.local_notification != RootLocalNotificationState::Completed
         {
             return Err(CompileError::Tool(
@@ -2289,6 +2308,51 @@ impl RootEncoder {
             .extend_from_slice(&request.expected_value.to_le_bytes());
         self.call_checked_bool(ProviderSymbol::ObservePciConfigurationDword)?;
         self.pci_configuration_observations += 1;
+        Ok(())
+    }
+
+    fn access_pci_region_register(
+        &mut self,
+        request: CompilerPciRegionRegisterRequest,
+    ) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.pci_configuration_observations
+                != CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY.len()
+            || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+                .get(self.pci_region_register_accesses)
+                != Some(&request)
+        {
+            return Err(CompileError::Tool(
+                "x86 PCI region access requires completed discovery and the exact sealed virtio-rng negotiation sequence".into(),
+            ));
+        }
+        let selector = 0x8000_0000
+            | (u32::from(request.bus) << 16)
+            | (u32::from(request.device) << 11)
+            | (u32::from(request.function) << 8)
+            | u32::from(request.access_capability_offset_bytes);
+        let target_offset = request
+            .region_offset_bytes
+            .checked_add(request.register_offset_bytes)
+            .ok_or_else(|| CompileError::Tool("PCI region target offset overflowed".into()))?;
+        self.bytes.push(0xbf); // configuration access selector in edi
+        self.bytes.extend_from_slice(&selector.to_le_bytes());
+        self.bytes.push(0xbe); // BAR index in esi
+        self.bytes
+            .extend_from_slice(&u32::from(request.bar).to_le_bytes());
+        self.bytes.push(0xba); // BAR-relative target offset in edx
+        self.bytes.extend_from_slice(&target_offset.to_le_bytes());
+        self.bytes.push(0xb9); // exact access width in ecx
+        self.bytes
+            .extend_from_slice(&u32::from(request.width_bytes).to_le_bytes());
+        self.bytes.extend_from_slice(&[0x41, 0xb8]); // value in r8d
+        self.bytes.extend_from_slice(&request.value.to_le_bytes());
+        let symbol = match request.direction {
+            CompilerPciRegionRegisterDirection::ReadEquals => ProviderSymbol::ReadPciRegionRegister,
+            CompilerPciRegionRegisterDirection::Write => ProviderSymbol::WritePciRegionRegister,
+        };
+        self.call_checked_bool(symbol)?;
+        self.pci_region_register_accesses += 1;
         Ok(())
     }
 
@@ -3237,6 +3301,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ObservePciConfigurationDword,
         ),
+        read_pci_region_register: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReadPciRegionRegister,
+        ),
+        write_pci_region_register: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::WritePciRegionRegister,
+        ),
         construct_deadline: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ConstructDeadline,
@@ -3760,6 +3832,9 @@ fn encode_operations(
             CompilerSystemsOperation::ObservePciConfigurationDword { request } => {
                 encoder.observe_pci_configuration_dword(*request)?;
             }
+            CompilerSystemsOperation::AccessPciRegionRegister { request } => {
+                encoder.access_pci_region_register(*request)?;
+            }
             CompilerSystemsOperation::ConstructDeadline {
                 duration_nanoseconds,
             } => encoder.construct_deadline(*duration_nanoseconds)?,
@@ -3926,6 +4001,8 @@ fn append_root(
             ProviderSymbol::ObservePciConfigurationDword => {
                 provider_symbols.observe_pci_configuration_dword
             }
+            ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
+            ProviderSymbol::WritePciRegionRegister => provider_symbols.write_pci_region_register,
             ProviderSymbol::ConstructDeadline => provider_symbols.construct_deadline,
             ProviderSymbol::ArmDeadline => provider_symbols.arm_deadline,
             ProviderSymbol::WaitDeadline => provider_symbols.wait_deadline,
@@ -4055,6 +4132,24 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.function,
                     request.register_offset_bytes,
                     request.expected_value
+                ),
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity,
+                    request,
+                } => format!(
+                    "{}:transaction={transaction_identity}:segment={}:bus={}:device={}:function={}:access-capability-offset={}:bar={}:region-offset={}:region-length={}:register-offset={}:width={}:value={:#010x}",
+                    identity,
+                    request.segment,
+                    request.bus,
+                    request.device,
+                    request.function,
+                    request.access_capability_offset_bytes,
+                    request.bar,
+                    request.region_offset_bytes,
+                    request.region_length_bytes,
+                    request.register_offset_bytes,
+                    request.width_bytes,
+                    request.value
                 ),
                 CompilerSystemsTransition::Fatal { message } => {
                     format!("{identity}:sha256:{}", sha256(message.as_bytes()))
@@ -4474,7 +4569,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 1944);
+        assert_eq!(relocation_targets.len(), 2010);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -4628,7 +4723,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1702
+            1736
         );
         assert_eq!(
             relocation_targets
@@ -4636,6 +4731,20 @@ mod tests {
                 .filter(|target| **target == X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL)
                 .count(),
             24
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_PCI_REGION_READ_SYMBOL)
+                .count(),
+            6
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL)
+                .count(),
+            10
         );
         assert_eq!(
             relocation_targets
@@ -4649,7 +4758,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            90
+            106
         );
         assert_eq!(
             relocation_targets
@@ -4798,6 +4907,8 @@ mod tests {
                 "topal_x86_systems_local_notification_complete",
                 "topal_x86_systems_monotonic_clock_now",
                 "topal_x86_systems_pci_configuration_read_dword_equals",
+                "topal_x86_systems_pci_region_configuration_gateway_read_equals",
+                "topal_x86_systems_pci_region_configuration_gateway_write",
                 "topal_x86_systems_deadline_after",
                 "topal_x86_systems_deadline_arm",
                 "topal_x86_systems_deadline_wait",
@@ -4905,7 +5016,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 228);
+        assert_eq!(decoded.semantic_trace.len(), 245);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -4940,6 +5051,33 @@ mod tests {
             )
         );
         decoded.semantic_trace.drain(31..57);
+        for (index, request) in CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+            .iter()
+            .enumerate()
+        {
+            let identity = match request.direction {
+                CompilerPciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                CompilerPciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
+            };
+            assert_eq!(
+                decoded.semantic_trace[31 + index],
+                format!(
+                    "{identity}:transaction={}:segment=0:bus=0:device=5:function=0:access-capability-offset=132:bar=4:region-offset=0:region-length=4096:register-offset={}:width={}:value={:#010x}",
+                    index + 1,
+                    request.register_offset_bytes,
+                    request.width_bytes,
+                    request.value
+                )
+            );
+        }
+        assert_eq!(
+            decoded.semantic_trace[47],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED")
+            )
+        );
+        decoded.semantic_trace.drain(31..48);
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[119].starts_with(SYSTEMS_USER_ADDRESS_SPACE_PREPARE));
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_FRAMES_ALLOCATE));
