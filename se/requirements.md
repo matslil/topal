@@ -990,6 +990,14 @@ write/readback. It shall retain exact region, width, offset, value, and order
 facts; reject malformed, omitted, duplicated, reordered, substituted, or
 premature activation; and leave device-owned buffers inaccessible to the CPU.
 
+The bounded virtio queue-notification refinement shall perform exactly one
+generic two-byte notification-region write after verified activation. It shall
+retain the separate configuration-access capability, discovered notification
+capability, BAR, region, multiplier-derived offset, queue-zero value, and
+prerequisite ownership/order facts; reject malformed, omitted, duplicated,
+reordered, substituted, or premature notification; and grant neither
+completion nor CPU-access authority.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
