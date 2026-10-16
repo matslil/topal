@@ -1016,6 +1016,14 @@ role facts; require provider-completed device-to-CPU visibility before access;
 reject malformed, omitted, duplicated, reordered, substituted, or premature
 transitions and reads; and retain device ownership of the entropy payload.
 
+The bounded virtio payload-completion refinement shall perform exactly one
+affine device-to-CPU completion transition for entropy payload buffer identity
+two after exact used-ring validation. It shall retain device,
+translation-domain, device-to-memory direction, provider-managed visibility,
+and payload-role facts; require provider-completed device-to-CPU visibility;
+reject malformed, omitted, duplicated, reordered, substituted, or premature
+completion; and assign no entropy credit or payload-byte meaning.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
