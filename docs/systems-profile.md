@@ -1372,6 +1372,16 @@ no target provider, and does not consume an assessed sample. Mixing and credit
 transfer require a later distinct checked operation. Pool existence or input
 quality alone cannot imply generator readiness or random output.
 
+A checked pool-mixing operation may consume an assessed opaque sample and an
+empty pool state through a qualified architecture-independent conditioner. It
+returns the same affine pool identity with opaque mixed state, consumes and
+wipes the sample, and creates a separate affine contribution token carrying
+the sample's credit claim. Source observes no bytes or addresses. Mixing does
+not itself change credited pool bits, imply readiness, or produce output; a
+later operation must explicitly consume the contribution to transfer credit.
+Providers realize the fixed conditioner and wiping mechanics but cannot select
+the construction, retain material, or assign credit.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
