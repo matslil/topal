@@ -955,6 +955,12 @@ masked pre-state zero, set only command bit two, preserve every unmasked bit,
 and prove the masked post-state by readback under one serialized transaction.
 It shall not write the adjacent status field or grant DMA-memory authority.
 
+The bounded virtio DMA-buffer refinement shall create exactly two fresh,
+disjoint, 4 KiB-aligned 4 KiB buffers after bus-master authorization. One shall
+be bidirectional shared-control memory and one shall be device-write payload
+memory, both qualified by the pinned device and translation domain and retained
+in `CpuOwned` state. It shall expose no address and grant no device ownership.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
