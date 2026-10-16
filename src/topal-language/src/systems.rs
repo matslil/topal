@@ -29,7 +29,8 @@ pub use topal_semantics::{
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
-    INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
+    EntropySampleCaptureRequest as CompilerEntropySampleCaptureRequest, INITIAL_SYSTEMS_BOARD,
+    INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
     KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
     KernelMappingRights as CompilerKernelMappingRights,
@@ -50,15 +51,15 @@ pub use topal_semantics::{
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
-    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3412,6 +3413,8 @@ fn analyze_kernel_context_decision(
         used_ring_marker_statement,
         complete_payload_statement,
         payload_completion_marker_statement,
+        entropy_sample_statement,
+        entropy_sample_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4139,6 +4142,40 @@ fn analyze_kernel_context_decision(
             "virtio payload completion requires its exact marker",
         ));
     }
+    let entropy_sample = analyze_operation(
+        source,
+        entropy_sample_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_sample
+        != (CompilerSystemsOperation::CaptureEntropySample {
+            request: CompilerEntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_sample_statement),
+            "virtio payload completion must be followed by exact uncredited entropy-sample capture",
+        ));
+    }
+    let entropy_sample_marker = analyze_operation(
+        source,
+        entropy_sample_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_sample_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_sample_marker_statement),
+            "entropy-sample capture requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4265,6 +4302,8 @@ fn analyze_kernel_context_decision(
     operations.push(used_ring_marker);
     operations.push(complete_payload);
     operations.push(payload_completion_marker);
+    operations.push(entropy_sample);
+    operations.push(entropy_sample_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6557,6 +6596,24 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            sample,
+            capture,
+            dma,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, sample, "sample")
+        && identifier_is(source, capture, "capture")
+        && identifier_is(source, dma, "dma")
+    {
+        let request = parse_entropy_sample_capture_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::CaptureEntropySample { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7169,6 +7226,81 @@ fn parse_dma_buffer_integer_load_request(
     Ok(request)
 }
 
+fn parse_entropy_sample_capture_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropySampleCaptureRequest, Diagnostic> {
+    if fields.len() != 10 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-SAMPLE",
+            span,
+            "entropy-sample capture requires sample, buffer, range, device, domain, direction, visibility, role, and credit fields",
+        ));
+    }
+    let direction = match field_static_string(source, &fields[6], "direction")?.as_str() {
+        "device-to-memory" => CompilerDmaDirection::DeviceToMemory,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-ENTROPY-SAMPLE",
+                span,
+                "entropy-sample DMA direction must be `device-to-memory`",
+            ));
+        }
+    };
+    let visibility = match field_static_string(source, &fields[7], "visibility")?.as_str() {
+        "provider-managed" => CompilerDmaVisibilityPolicy::ProviderManaged,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-ENTROPY-SAMPLE",
+                span,
+                "entropy-sample DMA visibility must be `provider-managed`",
+            ));
+        }
+    };
+    let role = match field_static_string(source, &fields[8], "role")?.as_str() {
+        "entropy-payload" => CompilerDmaBufferRole::EntropyPayload,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-ENTROPY-SAMPLE",
+                span,
+                "entropy-sample DMA role must be `entropy-payload`",
+            ));
+        }
+    };
+    let request = CompilerEntropySampleCaptureRequest {
+        sample_identity: field_natural(source, &fields[0], "sample-identity")?,
+        buffer_identity: field_natural(source, &fields[1], "buffer-identity")?,
+        offset_bytes: field_natural(source, &fields[2], "offset-bytes")?,
+        byte_count: field_natural(source, &fields[3], "byte-count")?,
+        device_identity: field_natural(source, &fields[4], "device-identity")?,
+        translation_domain_identity: field_natural(
+            source,
+            &fields[5],
+            "translation-domain-identity",
+        )?,
+        direction,
+        visibility,
+        role,
+        credited_entropy_bits: field_natural(source, &fields[9], "credited-entropy-bits")?,
+    };
+    if !request.is_well_formed()
+        || request != CompilerEntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-SAMPLE",
+            span,
+            "the initial Q35 profile admits only the sealed 32-byte uncredited virtio-rng sample capture",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -7610,7 +7742,22 @@ mod tests {
             operation,
             CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
                 | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
+                | CompilerSystemsOperation::CaptureEntropySample { .. }
         )
+    }
+
+    fn remove_entropy_sample_capture(program: &mut CompilerSystemsProgram) {
+        program.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CaptureEntropySample { .. }
+            )
+        });
+        program
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA);
     }
 
     #[test]
@@ -7672,6 +7819,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -8741,6 +8889,12 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED".into(),
                 },
+                CompilerSystemsTransition::CaptureEntropySample {
+                    request: CompilerEntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -8757,7 +8911,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 225);
+        assert_eq!(program.bootstrap.handler.operations.len(), 227);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8798,6 +8952,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
                 SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -9062,6 +9217,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE"
@@ -9137,6 +9293,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-BUFFER-LIVE"
@@ -9226,6 +9383,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-CONSTRUCT-LIVE"
@@ -9296,6 +9454,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PREPARE-LIVE"
@@ -9364,6 +9523,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PUBLISH-LIVE"
@@ -9438,6 +9598,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9507,6 +9668,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9573,6 +9735,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
                 && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9650,8 +9813,12 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::CompleteDmaBufferForCpu { request }
                     if *request == CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0]
+            ) && !matches!(
+                operation,
+                CompilerSystemsOperation::CaptureEntropySample { .. }
             )
         });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-USED-RING-LIVE"
@@ -9719,6 +9886,13 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CaptureEntropySample { .. }
+            )
+        });
+        remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PAYLOAD-LIVE"
@@ -9769,6 +9943,88 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-DMA-COMPLETE"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_uncredited_entropy_sample_capture() {
+        // TOPAL-SYSTEMS-ENTROPY-SAMPLE-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CAPTURE-001.
+        let mut malformed = CompilerEntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG;
+        malformed.sample_identity = 0;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CaptureEntropySample { .. }
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        remove_entropy_sample_capture(&mut missing);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-SAMPLE-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-SAMPLE"
+        );
+
+        let mut reordered = program.clone();
+        let payload_completion = reordered
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CompleteDmaBufferForCpu { request }
+                        if *request == CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0]
+                )
+            })
+            .unwrap();
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(payload_completion, index);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-SAMPLE"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::CaptureEntropySample { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.byte_count = 31;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-SAMPLE"
         );
     }
 

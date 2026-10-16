@@ -62,6 +62,7 @@ pub const SYSTEMS_DMA_BUFFER_STORE_INTEGER: &str = "topal.systems.dma.buffer.sto
 pub const SYSTEMS_DMA_BUFFER_PREPARE_DEVICE: &str = "topal.systems.dma.buffer.prepare-device/1";
 pub const SYSTEMS_DMA_BUFFER_COMPLETE_CPU: &str = "topal.systems.dma.buffer.complete-cpu/1";
 pub const SYSTEMS_DMA_BUFFER_LOAD_INTEGER: &str = "topal.systems.dma.buffer.load-integer/1";
+pub const SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA: &str = "topal.systems.entropy.sample.capture-dma/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -436,6 +437,47 @@ impl DmaBufferIntegerLoadRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropySampleCaptureRequest {
+    pub sample_identity: u64,
+    pub buffer_identity: u64,
+    pub offset_bytes: u64,
+    pub byte_count: u64,
+    pub device_identity: u64,
+    pub translation_domain_identity: u64,
+    pub direction: DmaDirection,
+    pub visibility: DmaVisibilityPolicy,
+    pub role: DmaBufferRole,
+    pub credited_entropy_bits: u64,
+}
+
+impl EntropySampleCaptureRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG: Self = Self {
+        sample_identity: 1,
+        buffer_identity: 2,
+        offset_bytes: 0,
+        byte_count: 32,
+        device_identity: 1,
+        translation_domain_identity: 1,
+        direction: DmaDirection::DeviceToMemory,
+        visibility: DmaVisibilityPolicy::ProviderManaged,
+        role: DmaBufferRole::EntropyPayload,
+        credited_entropy_bits: 0,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.sample_identity != 0
+            && self.buffer_identity != 0
+            && self.byte_count != 0
+            && self.offset_bytes <= 4096
+            && self.byte_count <= 4096 - self.offset_bytes
+            && self.device_identity != 0
+            && self.translation_domain_identity != 0
+            && self.credited_entropy_bits <= self.byte_count.saturating_mul(8)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PciRegionDmaReferenceRequest {
     pub segment: u16,
     pub bus: u8,
@@ -718,6 +760,9 @@ pub enum SystemsOperation {
     LoadDmaBufferIntegerEquals {
         request: DmaBufferIntegerLoadRequest,
     },
+    CaptureEntropySample {
+        request: EntropySampleCaptureRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -835,6 +880,7 @@ impl SystemsOperation {
             Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
             Self::CompleteDmaBufferForCpu { .. } => SYSTEMS_DMA_BUFFER_COMPLETE_CPU,
             Self::LoadDmaBufferIntegerEquals { .. } => SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
+            Self::CaptureEntropySample { .. } => SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1076,6 +1122,9 @@ pub enum SystemsTransition {
     },
     LoadDmaBufferIntegerEquals {
         request: DmaBufferIntegerLoadRequest,
+    },
+    CaptureEntropySample {
+        request: EntropySampleCaptureRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1418,6 +1467,7 @@ impl SystemsTransition {
             Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
             Self::CompleteDmaBufferForCpu { .. } => SYSTEMS_DMA_BUFFER_COMPLETE_CPU,
             Self::LoadDmaBufferIntegerEquals { .. } => SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
+            Self::CaptureEntropySample { .. } => SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1984,6 +2034,7 @@ struct BootstrapAuthorityState {
     dma_control_completed: bool,
     dma_used_ring_reads: usize,
     dma_payload_completed: bool,
+    entropy_sample_captured: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2423,6 +2474,19 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.dma_used_ring_reads += 1;
+            }
+            SystemsOperation::CaptureEntropySample { request } => {
+                if !self.dma_payload_completed
+                    || self.entropy_sample_captured
+                    || !request.is_well_formed()
+                    || *request != EntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-SAMPLE",
+                        "entropy-sample capture requires the exact sealed uncredited virtio-rng payload range after CPU completion",
+                    ));
+                }
+                self.entropy_sample_captured = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -3865,6 +3929,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DMA-PAYLOAD-LIVE",
                 "bootstrap completion requires CPU return of the completed virtio-rng payload",
+            ));
+        }
+        if !self.entropy_sample_captured {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-SAMPLE-LIVE",
+                "bootstrap completion requires capture of the sealed uncredited virtio-rng sample",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5532,6 +5602,9 @@ fn model_bootstrap_operation(
         SystemsOperation::LoadDmaBufferIntegerEquals { request } => {
             transitions.push(SystemsTransition::LoadDmaBufferIntegerEquals { request: *request });
         }
+        SystemsOperation::CaptureEntropySample { request } => {
+            transitions.push(SystemsTransition::CaptureEntropySample { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -5878,6 +5951,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::PrepareDmaBufferForDevice { .. }
         | SystemsOperation::CompleteDmaBufferForCpu { .. }
         | SystemsOperation::LoadDmaBufferIntegerEquals { .. }
+        | SystemsOperation::CaptureEntropySample { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6020,6 +6094,7 @@ mod tests {
             SYSTEMS_DMA_BUFFER_BIND_REFERENCE.into(),
             SYSTEMS_DMA_BUFFER_COMPLETE_CPU.into(),
             SYSTEMS_DMA_BUFFER_LOAD_INTEGER.into(),
+            SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -6390,6 +6465,9 @@ mod tests {
                         },
                         SystemsOperation::CompleteDmaBufferForCpu {
                             request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                        },
+                        SystemsOperation::CaptureEntropySample {
+                            request: EntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG,
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -6902,6 +6980,9 @@ mod tests {
                 },
                 SystemsTransition::CompleteDmaBufferForCpu {
                     request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                },
+                SystemsTransition::CaptureEntropySample {
+                    request: EntropySampleCaptureRequest::INITIAL_Q35_VIRTIO_RNG,
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,
