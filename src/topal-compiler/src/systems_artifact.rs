@@ -58,9 +58,10 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
-    SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE, SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
-    SYSTEMS_USER_TRANSFER_BEGIN, SYSTEMS_USER_TRANSFER_END,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
+    SYSTEMS_USER_TRANSFER_END,
 };
 
 use crate::artifact::sha256;
@@ -87,7 +88,8 @@ use crate::{
     X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
     X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
-    X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
+    X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
     X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -111,8 +113,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/84";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/82";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/85";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/83";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1107,6 +1109,7 @@ enum ProviderSymbol {
     PrepareDmaBufferForDevice,
     PublishPciRegionDmaReference,
     ReadPciRegionRegister,
+    ReadPciRegionRegisterEventually,
     WritePciRegionRegister,
     ConstructDeadline,
     ArmDeadline,
@@ -1178,6 +1181,7 @@ impl ProviderSymbol {
             Self::PrepareDmaBufferForDevice => X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
             Self::PublishPciRegionDmaReference => X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
             Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
+            Self::ReadPciRegionRegisterEventually => X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL,
             Self::WritePciRegionRegister => X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
             Self::ConstructDeadline => X86_SYSTEMS_DEADLINE_AFTER_SYMBOL,
             Self::ArmDeadline => X86_SYSTEMS_DEADLINE_ARM_SYMBOL,
@@ -1266,6 +1270,7 @@ impl ProviderSymbol {
             | Self::PrepareDmaBufferForDevice
             | Self::PublishPciRegionDmaReference
             | Self::ReadPciRegionRegister
+            | Self::ReadPciRegionRegisterEventually
             | Self::WritePciRegionRegister
             | Self::ConstructDeadline
             | Self::ArmDeadline
@@ -1527,6 +1532,7 @@ struct ProviderSymbols {
     dma_virtqueue_control: SymbolId,
     dma_entropy_payload: SymbolId,
     read_pci_region_register: SymbolId,
+    read_pci_region_register_eventually: SymbolId,
     write_pci_region_register: SymbolId,
     construct_deadline: SymbolId,
     arm_deadline: SymbolId,
@@ -1973,9 +1979,11 @@ impl RootEncoder {
                         .len()
                     + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
                         .len()
+                    + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL
+                        .len()
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without its complete sealed virtio-rng feature-negotiation, queue-discovery, queue-activation, and queue-notification sequences".into(),
+                "x86 root lowering ended without its complete sealed virtio-rng feature-negotiation, queue-discovery, queue-activation, queue-notification, and completion-signal sequences".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification && !self.pci_bus_master_authorized
@@ -2647,6 +2655,9 @@ impl RootEncoder {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len();
                 let activation_len =
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION.len();
+                let notification_len =
+                    CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
+                        .len();
                 let expected = if self.pci_region_register_accesses < negotiation_len {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
                         .get(self.pci_region_register_accesses)
@@ -2658,12 +2669,22 @@ impl RootEncoder {
                 {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                         .get(self.pci_region_register_accesses - negotiation_len - discovery_len)
-                } else {
+                } else if self.pci_region_register_accesses
+                    < negotiation_len + discovery_len + activation_len + notification_len
+                {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION.get(
                         self.pci_region_register_accesses
                             - negotiation_len
                             - discovery_len
                             - activation_len,
+                    )
+                } else {
+                    CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL.get(
+                        self.pci_region_register_accesses
+                            - negotiation_len
+                            - discovery_len
+                            - activation_len
+                            - notification_len,
                     )
                 };
                 expected != Some(&request)
@@ -2673,7 +2694,7 @@ impl RootEncoder {
             }
         {
             return Err(CompileError::Tool(
-                "x86 PCI region access requires completed capability discovery and the exact sealed virtio-rng negotiation, queue-discovery, queue-activation, and queue-notification sequences".into(),
+                "x86 PCI region access requires completed capability discovery and the exact sealed virtio-rng negotiation, queue-discovery, queue-activation, queue-notification, and completion-signal sequences".into(),
             ));
         }
         let selector = 0x8000_0000
@@ -2699,6 +2720,9 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&request.value.to_le_bytes());
         let symbol = match request.direction {
             CompilerPciRegionRegisterDirection::ReadEquals => ProviderSymbol::ReadPciRegionRegister,
+            CompilerPciRegionRegisterDirection::ReadEventuallyEquals => {
+                ProviderSymbol::ReadPciRegionRegisterEventually
+            }
             CompilerPciRegionRegisterDirection::Write => ProviderSymbol::WritePciRegionRegister,
         };
         self.call_checked_bool(symbol)?;
@@ -3684,6 +3708,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ReadPciRegionRegister,
         ),
+        read_pci_region_register_eventually: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ReadPciRegionRegisterEventually,
+        ),
         write_pci_region_register: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::WritePciRegionRegister,
@@ -4413,6 +4441,9 @@ fn append_root(
             ProviderSymbol::DmaVirtqueueControl => provider_symbols.dma_virtqueue_control,
             ProviderSymbol::DmaEntropyPayload => provider_symbols.dma_entropy_payload,
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
+            ProviderSymbol::ReadPciRegionRegisterEventually => {
+                provider_symbols.read_pci_region_register_eventually
+            }
             ProviderSymbol::WritePciRegionRegister => provider_symbols.write_pci_region_register,
             ProviderSymbol::ConstructDeadline => provider_symbols.construct_deadline,
             ProviderSymbol::ArmDeadline => provider_symbols.arm_deadline,
@@ -5063,7 +5094,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2326);
+        assert_eq!(relocation_targets.len(), 2365);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5217,7 +5248,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1995
+            2032
         );
         assert_eq!(
             relocation_targets
@@ -5292,6 +5323,13 @@ mod tests {
         assert_eq!(
             relocation_targets
                 .iter()
+                .filter(|target| **target == X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL)
                 .count(),
             14
@@ -5308,7 +5346,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            129
+            130
         );
         assert_eq!(
             relocation_targets
@@ -5466,6 +5504,7 @@ mod tests {
                 "topal_x86_systems_dma_virtqueue_control",
                 "topal_x86_systems_dma_entropy_payload",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
+                "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",
                 "topal_x86_systems_deadline_after",
                 "topal_x86_systems_deadline_arm",
@@ -5574,7 +5613,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 276);
+        assert_eq!(decoded.semantic_trace.len(), 278);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -5615,6 +5654,9 @@ mod tests {
         {
             let identity = match request.direction {
                 CompilerPciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                CompilerPciRegionRegisterDirection::ReadEventuallyEquals => {
+                    SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                }
                 CompilerPciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
             };
             assert_eq!(
@@ -5643,6 +5685,9 @@ mod tests {
         {
             let identity = match request.direction {
                 CompilerPciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                CompilerPciRegionRegisterDirection::ReadEventuallyEquals => {
+                    SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                }
                 CompilerPciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
             };
             assert_eq!(
@@ -5978,6 +6023,9 @@ mod tests {
         {
             let identity = match request.direction {
                 CompilerPciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                CompilerPciRegionRegisterDirection::ReadEventuallyEquals => {
+                    SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                }
                 CompilerPciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
             };
             assert_eq!(
@@ -6012,6 +6060,22 @@ mod tests {
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED")
+            )
+        );
+        let completion_signal =
+            CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL[0];
+        assert_eq!(
+            decoded.semantic_trace[205],
+            format!(
+                "{SYSTEMS_PCI_REGION_READ_EVENTUALLY}:transaction=30:segment=0:bus=0:device=5:function=0:access-capability-offset={}:bar=4:region-offset=4096:region-length=4096:register-offset=0:width=1:value={:#010x}",
+                completion_signal.access_capability_offset_bytes, completion_signal.value
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[206],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL")
             )
         );
         decoded.semantic_trace.drain(195..198);
@@ -6222,7 +6286,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[156].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[158].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

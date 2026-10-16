@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/80";
+    "topal.provider-object.x86_64-qemu-pc-q35/81";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -117,6 +117,8 @@ pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
+pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
+    "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals";
 pub const X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_write";
 pub const X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL: &str =
@@ -203,6 +205,7 @@ impl X86Instruction {
 #[derive(Clone, Copy)]
 enum PciRegionGatewayOperation {
     ReadEquals,
+    ReadEventuallyEquals,
     Write,
 }
 
@@ -229,6 +232,10 @@ fn pci_region_configuration_gateway(
     code.bytes(&[0x41, 0x8d, 0x42, 0x10]); // configuration data selector
     code.bytes(&[0x66, 0xba, 0xf8, 0x0c, 0xef]);
     code.bytes(&[0x66, 0xba, 0xfc, 0x0c]);
+    if matches!(operation, PciRegionGatewayOperation::ReadEventuallyEquals) {
+        code.bytes(&[0x41, 0xbb]); // bounded attempts in r11d
+        code.bytes(&1_000_000_u32.to_le_bytes());
+    }
     code.bytes(&[0x83, 0xf9, 0x01]); // exact byte access
     code.jump_if(0x84, "byte");
     code.bytes(&[0x83, 0xf9, 0x02]); // exact word access
@@ -239,6 +246,14 @@ fn pci_region_configuration_gateway(
         PciRegionGatewayOperation::ReadEquals => {
             code.bytes(&[0xed, 0x44, 0x39, 0xc0]); // in eax, dx; cmp eax, r8d
             code.jump_if(0x85, "fail");
+        }
+        PciRegionGatewayOperation::ReadEventuallyEquals => {
+            code.bind("dword-retry")?;
+            code.bytes(&[0xed, 0x44, 0x39, 0xc0]);
+            code.jump_if(0x84, "success");
+            code.bytes(&[0x41, 0xff, 0xcb]); // dec r11d
+            code.jump_if(0x85, "dword-retry");
+            code.jump("fail");
         }
         PciRegionGatewayOperation::Write => {
             code.bytes(&[0x44, 0x89, 0xc0, 0xef]); // mov eax, r8d; out dx, eax
@@ -252,6 +267,14 @@ fn pci_region_configuration_gateway(
             code.bytes(&[0x66, 0xed, 0x66, 0x44, 0x39, 0xc0]); // in ax, dx; cmp ax, r8w
             code.jump_if(0x85, "fail");
         }
+        PciRegionGatewayOperation::ReadEventuallyEquals => {
+            code.bind("word-retry")?;
+            code.bytes(&[0x66, 0xed, 0x66, 0x44, 0x39, 0xc0]);
+            code.jump_if(0x84, "success");
+            code.bytes(&[0x41, 0xff, 0xcb]);
+            code.jump_if(0x85, "word-retry");
+            code.jump("fail");
+        }
         PciRegionGatewayOperation::Write => {
             code.bytes(&[0x44, 0x89, 0xc0, 0x66, 0xef]); // mov eax, r8d; out dx, ax
         }
@@ -263,6 +286,14 @@ fn pci_region_configuration_gateway(
         PciRegionGatewayOperation::ReadEquals => {
             code.bytes(&[0xec, 0x44, 0x38, 0xc0]); // in al, dx; cmp al, r8b
             code.jump_if(0x85, "fail");
+        }
+        PciRegionGatewayOperation::ReadEventuallyEquals => {
+            code.bind("byte-retry")?;
+            code.bytes(&[0xec, 0x44, 0x38, 0xc0]);
+            code.jump_if(0x84, "success");
+            code.bytes(&[0x41, 0xff, 0xcb]);
+            code.jump_if(0x85, "byte-retry");
+            code.jump("fail");
         }
         PciRegionGatewayOperation::Write => {
             code.bytes(&[0x44, 0x89, 0xc0, 0xee]); // mov eax, r8d; out dx, al
@@ -501,6 +532,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
         &pci_region_configuration_gateway(PciRegionGatewayOperation::ReadEquals)?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL,
+        &pci_region_configuration_gateway(PciRegionGatewayOperation::ReadEventuallyEquals)?,
     );
     append_encoded_function(
         &mut object,
@@ -4745,6 +4782,7 @@ mod tests {
         }
         for (name, read) in [
             (X86_SYSTEMS_PCI_REGION_READ_SYMBOL, true),
+            (X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL, true),
             (X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL, false),
         ] {
             let symbol = file.symbol_by_name(name).unwrap();
@@ -4805,6 +4843,32 @@ mod tests {
                 );
             }
         }
+        let eventual = file
+            .symbol_by_name(X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL)
+            .unwrap();
+        let section = file
+            .section_by_index(eventual.section_index().unwrap())
+            .unwrap();
+        let data = section.data().unwrap();
+        let start = usize::try_from(eventual.address()).unwrap();
+        let end = start + usize::try_from(eventual.size()).unwrap();
+        let bytes = &data[start..end];
+        assert_eq!(
+            bytes
+                .windows(6)
+                .filter(|window| *window == [0x41, 0xbb, 0x40, 0x42, 0x0f, 0x00])
+                .count(),
+            1,
+            "eventual read must install the exact 1,000,000-attempt bound"
+        );
+        assert_eq!(
+            bytes
+                .windows(3)
+                .filter(|window| *window == [0x41, 0xff, 0xcb])
+                .count(),
+            3,
+            "each width-specific eventual-read path must consume one attempt per mismatch"
+        );
         let update = file
             .symbol_by_name(X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL)
             .unwrap();
