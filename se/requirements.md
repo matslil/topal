@@ -998,6 +998,15 @@ prerequisite ownership/order facts; reject malformed, omitted, duplicated,
 reordered, substituted, or premature notification; and grant neither
 completion nor CPU-access authority.
 
+The bounded virtio completion-signal refinement shall perform exactly one
+generic one-byte ISR-status read-eventually-equals-one operation after
+notification. It shall retain the separate configuration-access capability,
+discovered ISR capability, BAR, region, offset, width, expected queue-interrupt
+bit, 1,000,000-attempt bound, read acknowledgement, and prerequisite order;
+reject malformed, omitted, duplicated, reordered, substituted, premature, or
+unbounded observation; fail closed when the bound is exhausted; and grant
+neither used-ring validity nor CPU-access authority.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

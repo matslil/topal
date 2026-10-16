@@ -1314,6 +1314,18 @@ an event and therefore has no synthetic readback; it grants no completion or
 CPU-access authority. The provider continues to resolve only the qualified
 region-access mechanism.
 
+After submission, checked driver policy may observe and acknowledge a transport
+completion signal through a bounded exact-width device-register observation.
+An eventual-read operation has an explicit finite attempt bound, succeeds on
+the first equal value, and fails closed on exhaustion; it never authorizes an
+unbounded provider wait. Signal observation remains distinct from validating
+device-written queue metadata and from returning DMA ownership: it grants
+neither CPU buffer access nor payload validity. Capability selection, expected
+status, bounded-operation selection, side-effectful acknowledgement, and
+ordering remain source-owned policy; the operation identity fixes its attempt
+bound, and the provider supplies only the qualified region-access mechanism and
+bounded retry realization.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

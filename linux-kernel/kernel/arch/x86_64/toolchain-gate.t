@@ -939,6 +939,20 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     value is 0
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED"
+                                                                                                                  completion-resumed pci region register read eventually equals (
+                                                                                                                    segment is 0,
+                                                                                                                    bus is 0,
+                                                                                                                    device is 5,
+                                                                                                                    function is 0,
+                                                                                                                    access-capability-offset-bytes is 132,
+                                                                                                                    bar is 4,
+                                                                                                                    region-offset-bytes is 4096,
+                                                                                                                    region-length-bytes is 4096,
+                                                                                                                    register-offset-bytes is 0,
+                                                                                                                    width-bytes is 1,
+                                                                                                                    value is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
