@@ -1356,6 +1356,15 @@ records explicit credited entropy, which may be zero. It does not condition,
 mix, health-test, trust, or distribute the sample. Those are later resource
 protocols and cannot be inferred from DMA completion or source role alone.
 
+An opaque raw sample may be assessed through an explicit entropy-source trust
+evidence resource owned by kernel policy. Assessment preserves the affine
+sample identity and bytes while recording a quality ratio and the derived
+credited-bit count. The credited count cannot exceed the sample extent and
+must follow the operation's exact quality calculation. A device class,
+successful DMA completion, semantic payload role, or target provider cannot
+implicitly create trust evidence or select quality. Assessment performs no
+mixing, conditioning, generator seeding, or output.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
