@@ -514,6 +514,14 @@ duplicated, reordered, substituted, premature, or unbounded observation; lower
 exhaustion to checked failure; and retain device ownership without claiming
 used-ring or payload validity.
 
+The bounded virtio used-ring refinement shall accept exactly one control-buffer
+DMA completion after the completion signal and exactly four subsequent integer
+read-equals operations for used flags, index, descriptor identity, and length.
+It shall preserve and validate the exact buffer/device/domain/direction/
+visibility/role metadata, lower provider-managed device-to-CPU visibility
+before any read, reject malformed or reordered operations, and keep the entropy
+payload device-owned and inaccessible.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

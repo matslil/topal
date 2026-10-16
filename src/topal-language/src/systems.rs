@@ -23,6 +23,7 @@ pub use topal_semantics::{
     BootstrapStorageState as CompilerBootstrapStorageState,
     BootstrapStorageTransition as CompilerBootstrapStorageTransition,
     CriticalDomain as CompilerCriticalDomain,
+    DmaBufferIntegerLoadRequest as CompilerDmaBufferIntegerLoadRequest,
     DmaBufferIntegerStoreRequest as CompilerDmaBufferIntegerStoreRequest,
     DmaBufferPreparationRequest as CompilerDmaBufferPreparationRequest,
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
@@ -47,16 +48,17 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
-    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_CREATE,
-    SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
+    SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3402,6 +3404,12 @@ fn analyze_kernel_context_decision(
         queue_notification_marker_statement,
         completion_signal_statement,
         completion_signal_marker_statement,
+        complete_control_statement,
+        used_flags_statement,
+        used_index_statement,
+        used_identifier_statement,
+        used_length_statement,
+        used_ring_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4035,6 +4043,66 @@ fn analyze_kernel_context_decision(
             "virtio completion-signal observation requires its exact marker",
         ));
     }
+    let complete_control = analyze_operation(
+        source,
+        complete_control_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if complete_control
+        != (CompilerSystemsOperation::CompleteDmaBufferForCpu {
+            request: CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(complete_control_statement),
+            "virtio used-ring validation requires exact control-buffer CPU completion",
+        ));
+    }
+    let used_ring_statements = [
+        used_flags_statement,
+        used_index_statement,
+        used_identifier_statement,
+        used_length_statement,
+    ];
+    let mut used_ring_operations = Vec::with_capacity(4);
+    for (statement, request) in used_ring_statements
+        .iter()
+        .zip(CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING)
+    {
+        let operation = analyze_operation(
+            source,
+            statement,
+            CompilerSystemsContextKind::Bootstrap,
+            &completion_resumed,
+        )?;
+        if operation != (CompilerSystemsOperation::LoadDmaBufferIntegerEquals { request }) {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "virtio used-ring validation requires the exact ordered control-field reads",
+            ));
+        }
+        used_ring_operations.push(operation);
+    }
+    let used_ring_marker = analyze_operation(
+        source,
+        used_ring_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if used_ring_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_VIRTIO_USED_RING_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(used_ring_marker_statement),
+            "virtio used-ring validation requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4156,6 +4224,9 @@ fn analyze_kernel_context_decision(
     operations.push(queue_notification_marker);
     operations.push(completion_signal);
     operations.push(completion_signal_marker);
+    operations.push(complete_control);
+    operations.extend(used_ring_operations);
+    operations.push(used_ring_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6386,6 +6457,26 @@ fn analyze_operation(
             receiver,
             dma,
             buffer,
+            integer,
+            read,
+            equals,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, integer, "integer")
+        && identifier_is(source, read, "read")
+        && identifier_is(source, equals, "equals")
+    {
+        let request = parse_dma_buffer_integer_load_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::LoadDmaBufferIntegerEquals { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            dma,
+            buffer,
             prepare,
             device,
             Expression::Product { fields, .. },
@@ -6398,6 +6489,32 @@ fn analyze_operation(
     {
         let request = parse_dma_buffer_preparation_request(source, fields, *span)?;
         return Ok(CompilerSystemsOperation::PrepareDmaBufferForDevice { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            dma,
+            buffer,
+            complete,
+            cpu,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, complete, "complete")
+        && identifier_is(source, cpu, "cpu")
+    {
+        let request = parse_dma_buffer_preparation_request(source, fields, *span)?;
+        if request != CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1] {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-COMPLETE",
+                *span,
+                "the initial Q35 profile admits only completion of the virtqueue control buffer",
+            ));
+        }
+        return Ok(CompilerSystemsOperation::CompleteDmaBufferForCpu { request });
     }
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
@@ -6974,6 +7091,46 @@ fn parse_dma_buffer_preparation_request(
     Ok(request)
 }
 
+fn parse_dma_buffer_integer_load_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerDmaBufferIntegerLoadRequest, Diagnostic> {
+    if fields.len() != 4 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-USED-RING",
+            span,
+            "DMA integer read requires buffer identity, offset, width, and expected value",
+        ));
+    }
+    let width = field_natural(source, &fields[2], "width-bytes")?;
+    let request = CompilerDmaBufferIntegerLoadRequest {
+        buffer_identity: field_natural(source, &fields[0], "buffer-identity")?,
+        offset_bytes: field_natural(source, &fields[1], "offset-bytes")?,
+        width_bytes: u8::try_from(width).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-USED-RING",
+                span,
+                "DMA integer-read width exceeds 255",
+            )
+        })?,
+        expected_value: field_natural(source, &fields[3], "expected-value")?,
+    };
+    if !request.is_well_formed()
+        || !CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING.contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-USED-RING",
+            span,
+            "the initial Q35 profile admits only the sealed virtio-rng used-ring reads",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -7411,6 +7568,10 @@ mod tests {
                         .contains(request)
                     || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL
                         .contains(request)
+        ) || matches!(
+            operation,
+            CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
+                | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
         )
     }
 
@@ -7468,7 +7629,9 @@ mod tests {
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
+                SYSTEMS_DMA_BUFFER_COMPLETE_CPU,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -8512,6 +8675,28 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL".into(),
                 },
+                CompilerSystemsTransition::CompleteDmaBufferForCpu {
+                    request: CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
+                },
+                CompilerSystemsTransition::LoadDmaBufferIntegerEquals {
+                    request: CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
+                        [0],
+                },
+                CompilerSystemsTransition::LoadDmaBufferIntegerEquals {
+                    request: CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
+                        [1],
+                },
+                CompilerSystemsTransition::LoadDmaBufferIntegerEquals {
+                    request: CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
+                        [2],
+                },
+                CompilerSystemsTransition::LoadDmaBufferIntegerEquals {
+                    request: CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING
+                        [3],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_USED_RING_OK".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -8528,7 +8713,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 217);
+        assert_eq!(program.bootstrap.handler.operations.len(), 223);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8564,7 +8749,9 @@ mod tests {
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
+                SYSTEMS_DMA_BUFFER_COMPLETE_CPU,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -8828,6 +9015,8 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
                 && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
                 && *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8901,6 +9090,8 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
                 && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
                 && *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8988,6 +9179,8 @@ mod tests {
             *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
                 && *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
                 && *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -9056,6 +9249,8 @@ mod tests {
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE
                 && *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -9120,11 +9315,11 @@ mod tests {
             .handler
             .operations
             .retain(|operation| !is_queue_finalization(operation));
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY);
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PUBLISH-LIVE"
@@ -9188,13 +9383,17 @@ mod tests {
                         .contains(request)
                         || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL
                             .contains(request)
+            ) && !matches!(
+                operation,
+                CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
+                    | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
             )
         });
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY);
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9253,13 +9452,17 @@ mod tests {
                 CompilerSystemsOperation::AccessPciRegionRegister { request }
                     if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_COMPLETION_SIGNAL
                         .contains(request)
+            ) && !matches!(
+                operation,
+                CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
+                    | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
             )
         });
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY);
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9314,11 +9517,18 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
+                    | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_PCI_REGION_READ_EVENTUALLY
+                && *effect != SYSTEMS_DMA_BUFFER_COMPLETE_CPU
+                && *effect != SYSTEMS_DMA_BUFFER_LOAD_INTEGER
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9345,6 +9555,89 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_virtio_used_ring_validation() {
+        // TOPAL-SYSTEMS-DMA-COMPLETE-001, TOPAL-SYSTEMS-VIRTIO-PCI-USED-RING-001.
+        let mut malformed =
+            CompilerDmaBufferIntegerLoadRequest::INITIAL_Q35_VIRTIO_RNG_USED_RING[0];
+        malformed.width_bytes = 3;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let complete_index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
+                )
+            })
+            .unwrap();
+        let read_indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(read_indices.len(), 4);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(read_indices[3]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-DMA-USED-RING-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            read_indices[1],
+            duplicated.bootstrap.handler.operations[read_indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-DMA-USED-RING"
+        );
+
+        let mut reordered = program.clone();
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(read_indices[0], read_indices[1]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-DMA-USED-RING"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::CompleteDmaBufferForCpu { request } =
+            &mut substituted.bootstrap.handler.operations[complete_index]
+        {
+            *request = CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0];
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-DMA-COMPLETE"
         );
     }
 
