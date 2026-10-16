@@ -1411,6 +1411,14 @@ output publication. Source observes neither key nor output bytes; a separate
 checked delivery operation must consume the output object into a selected
 kernel or userspace interface.
 
+A checked initial-process random delivery may consume one opaque output object
+into a prepared but not yet entered user stack. The qualified Linux profile
+fixes the `AT_RANDOM` tag, 16-byte object extent, complete in-stack bounds,
+output partition and discard policy, and ordering before context entry. The
+provider copies and verifies the selected bytes, wipes and verifies the entire
+consumed output object, and returns a refined entry-ready process capability.
+Source observes neither the random bytes nor their provider-selected address.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
