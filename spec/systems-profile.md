@@ -1676,6 +1676,35 @@ Construction SHALL NOT perform preparation or cache maintenance, transfer
 device ownership, publish queue addresses to transport registers, enable the
 queue, set `DRIVER_OK`, notify the device, observe completion, or expose entropy.
 
+### TOPAL-SYSTEMS-DMA-PREPARE-001 — DMA device preparation
+
+`topal.systems.dma.buffer.prepare-device/1` SHALL consume one exclusively
+`CpuOwned` DMA buffer and produce the same opaque identity in `DeviceOwned`
+state. The request SHALL name and exactly match its nonzero buffer, device, and
+translation-domain identities, direction, provider-managed visibility policy,
+and semantic role. Preparation SHALL be permitted only after every required
+CPU write and opaque reference binding for that buffer is complete.
+
+Before the transition succeeds, the provider SHALL complete and order every
+required mapping, pinning, cache clean/invalidate, bounce copy, translation
+installation, and visibility action for the named direction and role. A
+coherent no-instruction realization SHALL retain equivalent checked evidence.
+After success, source SHALL NOT read, write, bind, prepare again, reclaim, or
+otherwise exercise CPU authority over the buffer until a later typed
+completion or failure transition returns ownership.
+
+After `TOPAL-SYSTEMS-DMA-CONSTRUCT-001`, the initial profile SHALL prepare
+exactly two buffers in order. It SHALL first prepare identity two for device-to-
+memory access as `EntropyPayload`, then prepare identity one for bidirectional
+access as `VirtqueueControl`. Both SHALL name device identity one, translation-
+domain identity one, and provider-managed visibility. The referenced payload
+therefore SHALL become device-accessible before control metadata that exposes
+its reference.
+
+Preparation SHALL NOT publish queue addresses to transport registers, enable a
+queue, set `DRIVER_OK`, notify the device, observe completion, return CPU
+ownership, or expose entropy.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

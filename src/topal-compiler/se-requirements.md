@@ -477,6 +477,13 @@ retain buffer identities, offsets, widths, values, device/domain compatibility,
 and CPU ownership; reject malformed, omitted, duplicated, reordered, or
 substituted operations; and never materialize a DMA address in source state.
 
+The bounded DMA-preparation refinement shall accept exactly two ordered
+ownership transitions after split-ring construction: payload identity two,
+then control identity one. It shall retain exact device/domain, direction,
+visibility, role, and identity state; reject malformed, omitted, duplicated,
+reordered, substituted, premature, or post-transfer CPU operations; and require
+provider visibility evidence before each transition completes.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -520,6 +527,13 @@ exact-width bounded stores and bind the payload's identity-translated address
 into descriptor zero. Structural evidence shall prove every data-symbol
 relocation, exact store width and offset, complete bounds checks, and absence of
 an address return to source.
+
+For bounded DMA device preparation, the x86-64 provider shall accept only the
+checked payload-then-control sequence and preserve opaque identities in
+provider-private state. It shall prove coherent identity-domain reachability
+and emit a compiler/device ordering boundary before returning success.
+Structural evidence shall prove exact argument checks, no buffer-address
+return, and no hidden queue publication, enable, notification, or completion.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
