@@ -1243,6 +1243,14 @@ mapped BAR while preserving the same ordered device effect. Virtio feature and
 status policy therefore remains ordinary checked kernel/library code rather
 than a provider intrinsic.
 
+Queue discovery is source-owned device policy over the same checked region
+transactions. After confirmed feature negotiation, source selects a queue and
+observes its capacity, enable state, and transport-relative notification
+identity before allocating DMA memory. These facts carry no assigned address
+and grant no DMA authority. In particular, merely discovering a queue does not
+make the device live: queue population must still complete before source may
+publish `DRIVER_OK`.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
