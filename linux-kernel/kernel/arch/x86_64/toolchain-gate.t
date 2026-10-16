@@ -86,7 +86,192 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     register-offset-bytes is 0,
                                                                     expected-value is 272898804
                                                                   )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 52,
+                                                                    expected-value is 152
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 152,
+                                                                    expected-value is 99345
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 132,
+                                                                    expected-value is 85225481
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 136,
+                                                                    expected-value is 0
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 140,
+                                                                    expected-value is 0
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 144,
+                                                                    expected-value is 0
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 112,
+                                                                    expected-value is 34889737
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 116,
+                                                                    expected-value is 4
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 120,
+                                                                    expected-value is 12288
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 124,
+                                                                    expected-value is 4096
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 128,
+                                                                    expected-value is 4
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 96,
+                                                                    expected-value is 68177929
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 100,
+                                                                    expected-value is 4
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 104,
+                                                                    expected-value is 8192
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 108,
+                                                                    expected-value is 4096
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 80,
+                                                                    expected-value is 51396617
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 84,
+                                                                    expected-value is 4
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 88,
+                                                                    expected-value is 4096
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 92,
+                                                                    expected-value is 4096
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 64,
+                                                                    expected-value is 17825801
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 68,
+                                                                    expected-value is 4
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 72,
+                                                                    expected-value is 0
+                                                                  )
+                                                                  restored pci configuration dword read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 76,
+                                                                    expected-value is 4096
+                                                                  )
                                                                   restored console write "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK"
+                                                                  restored console write "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

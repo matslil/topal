@@ -1225,6 +1225,15 @@ walking, BAR interpretation, or driver binding. Thus an x86 port-I/O lowering
 and an ECAM lowering preserve the same source meaning without making PCI bus
 policy a compiler intrinsic.
 
+The bounded virtio-PCI discovery refinement composes those transactions into a
+source-owned, ordered capability walk. The checked source follows the PCI
+capability links, recognizes the virtio vendor capabilities, validates their
+BAR-relative regions, and records the selected transport layout. Each provider
+call remains one generic configuration dword transaction. The provider neither
+parses capability bytes nor selects a virtio transport, so the same library
+policy can operate above x86 configuration mechanism 1, ECAM, or another
+qualified configuration service.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

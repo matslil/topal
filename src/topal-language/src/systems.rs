@@ -6132,12 +6132,14 @@ fn analyze_operation(
         && identifier_is(source, equals, "equals")
     {
         let request = parse_pci_configuration_dword_request(source, fields, *span)?;
-        if request != CompilerPciConfigurationDwordRequest::initial_q35_virtio_rng_identity() {
+        if !CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+            .contains(&request)
+        {
             return Err(source_diagnostic(
                 source,
                 "E-SYSTEMS-PCI-CONFIG",
                 *span,
-                "the initial Q35 profile admits only the sealed segment-zero 00:05.0 register-zero virtio-rng identity observation",
+                "the initial Q35 profile admits only requests from the sealed segment-zero 00:05.0 virtio-rng capability-discovery sequence",
             ));
         }
         return Ok(CompilerSystemsOperation::ObservePciConfigurationDword { request });
@@ -6607,11 +6609,129 @@ mod tests {
                 },
                 CompilerSystemsTransition::ObservePciConfigurationDword {
                     transaction_identity: 1,
-                    request: CompilerPciConfigurationDwordRequest::initial_q35_virtio_rng_identity(
-                    ),
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [0],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 2,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [1],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 3,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [2],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 4,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [3],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 5,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [4],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 6,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [5],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 7,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [6],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 8,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [7],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 9,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [8],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 10,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [9],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 11,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [10],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 12,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [11],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 13,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [12],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 14,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [13],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 15,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [14],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 16,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [15],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 17,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [16],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 18,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [17],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 19,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [18],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 20,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [19],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 21,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [20],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 22,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [21],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 23,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [22],
+                },
+                CompilerSystemsTransition::ObservePciConfigurationDword {
+                    transaction_identity: 24,
+                    request: CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
+                        [23],
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7184,7 +7304,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 143);
+        assert_eq!(program.bootstrap.handler.operations.len(), 167);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7293,7 +7413,7 @@ mod tests {
 
     #[test]
     fn requires_the_sealed_bounded_pci_configuration_observation() {
-        // TOPAL-SYSTEMS-PCI-CONFIG-001.
+        // TOPAL-SYSTEMS-PCI-CONFIG-001, TOPAL-SYSTEMS-VIRTIO-PCI-DISCOVERY-001.
         for source in [
             memory_source().replace("expected-value is 272898804", "expected-value is 0"),
             memory_source().replace(
@@ -7309,6 +7429,57 @@ mod tests {
             .unwrap_err();
             assert_eq!(error.code, "E-SYSTEMS-PCI-CONFIG");
         }
+    }
+
+    #[test]
+    fn requires_the_complete_ordered_virtio_pci_capability_discovery() {
+        // TOPAL-SYSTEMS-VIRTIO-PCI-DISCOVERY-001.
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let pci_indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::ObservePciConfigurationDword { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(pci_indices.len(), 24);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(pci_indices[1]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations[pci_indices[1]] =
+            duplicated.bootstrap.handler.operations[pci_indices[0]].clone();
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(pci_indices[1], pci_indices[2]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG"
+        );
     }
 
     #[test]

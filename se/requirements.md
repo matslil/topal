@@ -918,6 +918,15 @@ returning the authority or fail terminally. The provider shall select and
 serialize the configuration mechanism without owning enumeration, matching,
 resource assignment, capability walking, virtio negotiation, or driver binding.
 
+The bounded virtio-PCI discovery refinement shall compose exactly 24 such
+transactions into the sealed source-owned walk for `0000:00:05.0`. It shall
+follow the conventional capability links through MSI-X and five virtio vendor
+capabilities, validate every admitted virtio header and BAR-relative region,
+and retain an ordered transaction identity for every read. The provider shall
+remain unaware of capability and virtio meaning. Assigned BAR addresses, BAR
+mapping, feature negotiation, device-register access, interrupts, DMA, and
+entropy delivery shall remain unavailable.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
