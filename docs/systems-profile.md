@@ -1347,6 +1347,15 @@ returning authority. Completion exposes neither an address nor payload values
 and assigns no entropy estimate, credit, trust, or consumer policy. Those
 belong to later typed resource protocols above the DMA ownership boundary.
 
+A CPU-owned DMA payload may be borrowed by a checked entropy-sample capture
+operation. Capture names an exact in-buffer range and produces a fresh opaque
+raw-sample identity while preserving payload ownership. The provider resolves
+private CPU mappings and performs a complete exact-byte copy into kernel-owned
+sample storage; source receives neither address nor byte values. Capture also
+records explicit credited entropy, which may be zero. It does not condition,
+mix, health-test, trust, or distribute the sample. Those are later resource
+protocols and cannot be inferred from DMA completion or source role alone.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

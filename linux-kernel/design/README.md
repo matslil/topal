@@ -102,6 +102,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio completion-signal observation](bounded-virtio-completion-signal.md)
 - [Bounded virtio used-ring validation](bounded-virtio-used-ring-validation.md)
 - [Bounded virtio payload completion](bounded-virtio-payload-completion.md)
+- [Bounded entropy-sample capture](bounded-entropy-sample-capture.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
