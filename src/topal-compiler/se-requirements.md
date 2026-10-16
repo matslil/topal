@@ -571,6 +571,15 @@ pool as credited, emit no provider operation, and reject malformed, omitted,
 duplicated, reordered, substituted, overflowing, reused, or premature
 transfer.
 
+The bounded initial-CRNG refinement shall accept exactly one generator
+initialization after contribution credit. It shall validate pool, generator,
+and algorithm identity one; generation one; 32 key bytes; required and observed
+credit 256; the credited-pool pre-state; and exact ordering. The provider shall
+copy and verify all 32 opaque pool-state bytes into distinct generator storage,
+wipe and verify all 32 consumed pool bytes, and return success only after both
+actions. The root shall publish one ready affine generator and reject malformed,
+partial, duplicated, reordered, substituted, or premature initialization.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

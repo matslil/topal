@@ -1065,6 +1065,15 @@ create no provider call; reject malformed, omitted, duplicated, reordered,
 substituted, overflowing, or premature transfer; and imply neither readiness
 nor random output.
 
+The bounded initial-CRNG refinement shall consume the fully credited pool into
+fresh generator identity one after credit transfer. It shall require pool,
+generator, and algorithm identity one; generation one; key extent 32; required
+and observed credit 256; transfer the complete opaque conditioned state as the
+ChaCha20 key; verify the copy; wipe and verify all pool bytes; and publish only
+a ready affine generator. It shall reject malformed, omitted, duplicated,
+reordered, substituted, premature, partially copied, or incompletely wiped
+initialization and shall produce no random output.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
