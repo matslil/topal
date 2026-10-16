@@ -445,6 +445,13 @@ generic PCI-region access abstraction, final-action isolation from earlier
 interrupt-sensitive tests, structural inspection, and two deterministic
 pinned-QEMU runs.
 
+The following systems-only driver refinement performs one
+[bounded virtio queue notification](design/bounded-virtio-queue-notification.md).
+Its [implementation and qualification report](step-4-bounded-virtio-queue-notification.md)
+records source-owned queue-zero selection and notify-offset arithmetic, reuse
+of generic PCI-region access, an exact event write with no synthetic readback,
+structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -594,6 +601,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded DMA device preparation](step-4-bounded-dma-device-preparation.md)
 - [Step 4 bounded virtio queue-address publication](step-4-bounded-virtio-queue-address-publication.md)
 - [Step 4 bounded virtio queue activation](step-4-bounded-virtio-queue-activation.md)
+- [Step 4 bounded virtio queue notification](step-4-bounded-virtio-queue-notification.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

@@ -1306,6 +1306,14 @@ back before notification is permitted. The provider continues to implement
 only the qualified register-access mechanism and does not infer queue, feature,
 status-bit, or notification policy.
 
+Once activation is verified, checked driver policy may submit published work
+through an exact-width transaction to a discovered notification region. Queue
+selection, notification-offset arithmetic, ordering after device-ownership
+transfer, and the submitted value remain source-owned policy. Notification is
+an event and therefore has no synthetic readback; it grants no completion or
+CPU-access authority. The provider continues to resolve only the qualified
+region-access mechanism.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

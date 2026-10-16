@@ -1752,6 +1752,27 @@ status semantics.
 Activation SHALL NOT notify the queue, observe completion, return CPU
 ownership, consume entropy, reset the device, or define failure recovery.
 
+### TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-NOTIFY-001 — Bounded queue notification
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-ACTIVATE-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-PCI-REGION-001` write against the pinned
+region described by notification capability at configuration offset 112,
+through the separate configuration-access capability at offset 132. The
+request SHALL name BAR 4, region offset 12,288, region length 4,096, register
+offset zero, width two, and value zero. Value zero SHALL select queue zero,
+whose previously observed notification offset is zero; the discovered
+multiplier four therefore SHALL yield register offset zero.
+
+The write SHALL occur only after both DMA buffers are device-owned, all three
+queue references are published, queue enablement is confirmed, and final
+`DRIVER_OK` status is confirmed. It SHALL represent an event and SHALL NOT
+require or fabricate readback. The provider SHALL remain unaware of virtio
+queue selection and notification semantics.
+
+Notification SHALL NOT establish completion, permit CPU access to either DMA
+buffer, inspect the used ring, consume entropy, reset the device, or define
+failure recovery.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,
