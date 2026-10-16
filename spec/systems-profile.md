@@ -1572,6 +1572,28 @@ The profile SHALL NOT claim arbitrary register access, alternate features,
 queue selection or setup, interrupt configuration, bus mastering, DMA,
 notification, completion, entropy delivery, or failed-device recovery.
 
+### TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-DISCOVERY-001 — Bounded queue discovery
+
+After successful `TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001`, the initial
+profile SHALL perform exactly the following ordered common-configuration
+accesses. Tuples are `(direction, register-offset-bytes, width-bytes, value)`:
+
+| Phase | Required tuples |
+| --- | --- |
+| observe queue count | `(read, 0x12, 2, 1)` |
+| select queue zero | `(write, 0x16, 2, 0)` |
+| observe selected queue | `(read, 0x18, 2, 8)`, `(read, 0x1c, 2, 0)`, `(read, 0x1e, 2, 0)` |
+
+The model SHALL continue the PCI region transaction sequence with identities
+17 through 21 in source order. The observations SHALL prove that queue zero exists, admits at
+most eight descriptors, is disabled, and has notification identity zero. Each
+access SHALL preserve exact two-byte semantics. Any mismatch SHALL be fatal.
+
+The profile SHALL NOT derive a CPU or device-visible address, grant DMA
+authority, resize or enable the queue, configure interrupts or bus mastering,
+publish descriptors, notify or poll the device, deliver entropy, or set
+`DRIVER_OK` from these facts.
+
 ### TOPAL-SYSTEMS-DMA-001 — DMA ownership protocol
 
 A DMA buffer SHALL have exactly one of `CpuOwned`, `Prepared`, `DeviceOwned`,

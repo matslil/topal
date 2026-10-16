@@ -481,6 +481,72 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     value is 11
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED"
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 18,
+                                                                    width-bytes is 2,
+                                                                    value is 1
+                                                                  )
+                                                                  restored pci region register write (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 22,
+                                                                    width-bytes is 2,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 24,
+                                                                    width-bytes is 2,
+                                                                    value is 8
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 28,
+                                                                    width-bytes is 2,
+                                                                    value is 0
+                                                                  )
+                                                                  restored pci region register read equals (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    access-capability-offset-bytes is 132,
+                                                                    bar is 4,
+                                                                    region-offset-bytes is 0,
+                                                                    region-length-bytes is 4096,
+                                                                    register-offset-bytes is 30,
+                                                                    width-bytes is 2,
+                                                                    value is 0
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

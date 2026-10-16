@@ -453,6 +453,12 @@ exact 16-operation sequence through confirmed `FEATURES_OK`, leave `DRIVER_OK`
 clear for later queue setup, and reject omission, duplication, reordering,
 substitution, or a status transition not confirmed by a following read.
 
+The bounded virtio queue-discovery refinement shall accept only the exact five
+operations after feature negotiation. It shall retain a distinct ordered
+identity, exact two-byte width, and complete request for every queue fact. It
+shall reject omissions, duplicates, reordering, substituted values, premature
+queue access, and any attempt to derive DMA authority or `DRIVER_OK`.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -472,9 +478,9 @@ exposing either port to source.
 
 For bounded PCI region access, the x86-64 provider shall configure the selected
 Virtio PCI Configuration Access capability and access its data field using the
-register's exact byte or dword width. It shall serialize the complete gateway
+register's exact byte, word, or dword width. It shall serialize the complete gateway
 transaction with other configuration accesses and shall not interpret common
-configuration offsets, feature bits, or status values. Structural evidence
+configuration offsets, feature bits, status values, or queue facts. Structural evidence
 shall prove the private mechanism-1 access sequences and one typed provider
 call for each checked region transaction.
 

@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/72";
+    "topal.provider-object.x86_64-qemu-pc-q35/73";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
@@ -216,6 +216,8 @@ fn pci_region_configuration_gateway(
     code.bytes(&[0x66, 0xba, 0xfc, 0x0c]);
     code.bytes(&[0x83, 0xf9, 0x01]); // exact byte access
     code.jump_if(0x84, "byte");
+    code.bytes(&[0x83, 0xf9, 0x02]); // exact word access
+    code.jump_if(0x84, "word");
     code.bytes(&[0x83, 0xf9, 0x04]); // exact dword access
     code.jump_if(0x85, "fail");
     match operation {
@@ -225,6 +227,18 @@ fn pci_region_configuration_gateway(
         }
         PciRegionGatewayOperation::Write => {
             code.bytes(&[0x44, 0x89, 0xc0, 0xef]); // mov eax, r8d; out dx, eax
+        }
+    }
+    code.jump("success");
+
+    code.bind("word")?;
+    match operation {
+        PciRegionGatewayOperation::ReadEquals => {
+            code.bytes(&[0x66, 0xed, 0x66, 0x44, 0x39, 0xc0]); // in ax, dx; cmp ax, r8w
+            code.jump_if(0x85, "fail");
+        }
+        PciRegionGatewayOperation::Write => {
+            code.bytes(&[0x44, 0x89, 0xc0, 0x66, 0xef]); // mov eax, r8d; out dx, ax
         }
     }
     code.jump("success");
@@ -4493,6 +4507,11 @@ mod tests {
                         .windows(4)
                         .any(|window| window == [0xec, 0x44, 0x38, 0xc0])
                 );
+                assert!(
+                    bytes
+                        .windows(6)
+                        .any(|window| window == [0x66, 0xed, 0x66, 0x44, 0x39, 0xc0])
+                );
             } else {
                 assert!(
                     bytes
@@ -4503,6 +4522,11 @@ mod tests {
                     bytes
                         .windows(4)
                         .any(|window| window == [0x44, 0x89, 0xc0, 0xee])
+                );
+                assert!(
+                    bytes
+                        .windows(5)
+                        .any(|window| window == [0x44, 0x89, 0xc0, 0x66, 0xef])
                 );
             }
         }
