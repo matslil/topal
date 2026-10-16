@@ -3398,6 +3398,8 @@ fn analyze_kernel_context_decision(
         driver_ok_write_statement,
         driver_ok_read_statement,
         queue_activation_marker_statement,
+        queue_notification_statement,
+        queue_notification_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -3963,6 +3965,40 @@ fn analyze_kernel_context_decision(
             "virtio queue activation requires its exact completion marker",
         ));
     }
+    let queue_notification = analyze_operation(
+        source,
+        queue_notification_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if queue_notification
+        != (CompilerSystemsOperation::AccessPciRegionRegister {
+            request: CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION[0],
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(queue_notification_statement),
+            "verified virtio queue activation must be followed by the exact queue-zero notification",
+        ));
+    }
+    let queue_notification_marker = analyze_operation(
+        source,
+        queue_notification_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if queue_notification_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(queue_notification_marker_statement),
+            "virtio queue notification requires its exact completion marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4080,6 +4116,8 @@ fn analyze_kernel_context_decision(
     ];
     operations.extend(queue_activation_operations);
     operations.push(queue_activation_marker);
+    operations.push(queue_notification);
+    operations.push(queue_notification_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -7010,13 +7048,15 @@ fn parse_pci_region_register_request(
             || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY
                 .contains(&request)
             || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                .contains(&request)
+            || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
                 .contains(&request))
     {
         return Err(source_diagnostic(
             source,
             "E-SYSTEMS-PCI-REGION",
             span,
-            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation, queue-discovery, and queue-activation sequences",
+            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation, queue-discovery, queue-activation, and queue-notification sequences",
         ));
     }
     Ok(request)
@@ -7294,12 +7334,14 @@ mod tests {
         SOURCE.to_owned()
     }
 
-    fn is_queue_activation(operation: &CompilerSystemsOperation) -> bool {
+    fn is_queue_finalization(operation: &CompilerSystemsOperation) -> bool {
         matches!(
             operation,
             CompilerSystemsOperation::AccessPciRegionRegister { request }
                 if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                     .contains(request)
+                    || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
+                        .contains(request)
         )
     }
 
@@ -8382,6 +8424,15 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE".into(),
                 },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 29,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
+                            [0],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -8398,7 +8449,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 213);
+        assert_eq!(program.bootstrap.handler.operations.len(), 215);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8618,7 +8669,7 @@ mod tests {
                 .then_some(index)
             })
             .collect::<Vec<_>>();
-        assert_eq!(indices.len(), 25);
+        assert_eq!(indices.len(), 26);
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[17]);
@@ -8679,7 +8730,7 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !is_queue_activation(operation)
+            !is_queue_finalization(operation)
                 && !matches!(
                     operation,
                     CompilerSystemsOperation::CreateDmaBuffer { .. }
@@ -8754,7 +8805,7 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !is_queue_activation(operation)
+            !is_queue_finalization(operation)
                 && !matches!(
                     operation,
                     CompilerSystemsOperation::BindDmaBufferReference { .. }
@@ -8844,7 +8895,7 @@ mod tests {
             .operations
             .remove(store_indices[3]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !is_queue_activation(operation)
+            !is_queue_finalization(operation)
                 && !matches!(
                     operation,
                     CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
@@ -8913,7 +8964,7 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !is_queue_activation(operation)
+            !is_queue_finalization(operation)
                 && !matches!(
                     operation,
                     CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
@@ -8986,7 +9037,7 @@ mod tests {
             .bootstrap
             .handler
             .operations
-            .retain(|operation| !is_queue_activation(operation));
+            .retain(|operation| !is_queue_finalization(operation));
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PUBLISH-LIVE"
@@ -9028,12 +9079,28 @@ mod tests {
             .operations
             .iter()
             .enumerate()
-            .filter_map(|(index, operation)| is_queue_activation(operation).then_some(index))
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::AccessPciRegionRegister { request }
+                        if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                            .contains(request)
+                )
+                .then_some(index)
+            })
             .collect::<Vec<_>>();
         assert_eq!(indices.len(), 4);
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[3]);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::AccessPciRegionRegister { request }
+                    if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
+                        .contains(request)
+            )
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION-LIVE"
@@ -9057,6 +9124,60 @@ mod tests {
             .swap(indices[0], indices[1]);
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_virtio_queue_notification() {
+        // TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-NOTIFY-001.
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::AccessPciRegionRegister { request }
+                        if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_NOTIFICATION
+                            .contains(request)
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::AccessPciRegionRegister { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.value = 1;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
         );
     }
