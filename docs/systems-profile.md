@@ -1298,6 +1298,14 @@ identity-translated, IOMMU, bounce-buffer, configuration-gateway, and mapped-
 MMIO realizations share one source-level operation without creating a general
 integer/address conversion.
 
+Once every required queue reference is published, checked driver policy may
+enable the queue and publish its ready status through ordinary exact-width
+device-register transactions. Queue enablement must be read back before the
+driver advertises readiness, and the final ready status must itself be read
+back before notification is permitted. The provider continues to implement
+only the qualified register-access mechanism and does not infer queue, feature,
+status-bit, or notification policy.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
