@@ -1008,6 +1008,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     credited-entropy-bits is 0
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED"
+                                                                                                                  completion-resumed entropy sample assess quality (
+                                                                                                                    sample-identity is 1,
+                                                                                                                    source-identity is 1,
+                                                                                                                    trust-evidence-identity is 1,
+                                                                                                                    byte-count is 32,
+                                                                                                                    quality-parts-per-thousand-twenty-four is 1024,
+                                                                                                                    credited-entropy-bits is 256
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {

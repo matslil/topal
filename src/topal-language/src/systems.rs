@@ -29,7 +29,8 @@ pub use topal_semantics::{
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
-    EntropySampleCaptureRequest as CompilerEntropySampleCaptureRequest, INITIAL_SYSTEMS_BOARD,
+    EntropySampleCaptureRequest as CompilerEntropySampleCaptureRequest,
+    EntropySampleQualityRequest as CompilerEntropySampleQualityRequest, INITIAL_SYSTEMS_BOARD,
     INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
     KernelExecutionPolicy as CompilerKernelExecutionPolicy,
     KernelMappingRequest as CompilerKernelMappingRequest,
@@ -51,15 +52,16 @@ pub use topal_semantics::{
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
-    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3415,6 +3417,8 @@ fn analyze_kernel_context_decision(
         payload_completion_marker_statement,
         entropy_sample_statement,
         entropy_sample_marker_statement,
+        entropy_quality_statement,
+        entropy_quality_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4176,6 +4180,40 @@ fn analyze_kernel_context_decision(
             "entropy-sample capture requires its exact marker",
         ));
     }
+    let entropy_quality = analyze_operation(
+        source,
+        entropy_quality_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_quality
+        != (CompilerSystemsOperation::AssessEntropySampleQuality {
+            request: CompilerEntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_quality_statement),
+            "entropy-sample capture must be followed by exact Q35 quality assessment",
+        ));
+    }
+    let entropy_quality_marker = analyze_operation(
+        source,
+        entropy_quality_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_quality_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_quality_marker_statement),
+            "entropy-sample quality assessment requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4304,6 +4342,8 @@ fn analyze_kernel_context_decision(
     operations.push(payload_completion_marker);
     operations.push(entropy_sample);
     operations.push(entropy_sample_marker);
+    operations.push(entropy_quality);
+    operations.push(entropy_quality_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6614,6 +6654,24 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            sample,
+            assess,
+            quality,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, sample, "sample")
+        && identifier_is(source, assess, "assess")
+        && identifier_is(source, quality, "quality")
+    {
+        let request = parse_entropy_sample_quality_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::AssessEntropySampleQuality { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7301,6 +7359,44 @@ fn parse_entropy_sample_capture_request(
     Ok(request)
 }
 
+fn parse_entropy_sample_quality_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropySampleQualityRequest, Diagnostic> {
+    if fields.len() != 6 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-QUALITY",
+            span,
+            "entropy-sample quality assessment requires sample, source, trust evidence, extent, quality, and credit fields",
+        ));
+    }
+    let request = CompilerEntropySampleQualityRequest {
+        sample_identity: field_natural(source, &fields[0], "sample-identity")?,
+        source_identity: field_natural(source, &fields[1], "source-identity")?,
+        trust_evidence_identity: field_natural(source, &fields[2], "trust-evidence-identity")?,
+        byte_count: field_natural(source, &fields[3], "byte-count")?,
+        quality_parts_per_1024: field_natural(
+            source,
+            &fields[4],
+            "quality-parts-per-thousand-twenty-four",
+        )?,
+        credited_entropy_bits: field_natural(source, &fields[5], "credited-entropy-bits")?,
+    };
+    if !request.is_well_formed()
+        || request != CompilerEntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-QUALITY",
+            span,
+            "the initial Q35 profile admits only the sealed fully credited 32-byte virtio-rng sample assessment",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -7743,6 +7839,7 @@ mod tests {
             CompilerSystemsOperation::CompleteDmaBufferForCpu { .. }
                 | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
                 | CompilerSystemsOperation::CaptureEntropySample { .. }
+                | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
         )
     }
 
@@ -7751,13 +7848,13 @@ mod tests {
             !matches!(
                 operation,
                 CompilerSystemsOperation::CaptureEntropySample { .. }
+                    | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
             )
         });
-        program
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA);
+        program.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA
+                && *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY
+        });
     }
 
     #[test]
@@ -7819,6 +7916,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -8895,6 +8993,12 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED".into(),
                 },
+                CompilerSystemsTransition::AssessEntropySampleQuality {
+                    request: CompilerEntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -8911,7 +9015,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 227);
+        assert_eq!(program.bootstrap.handler.operations.len(), 229);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8952,6 +9056,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -10025,6 +10130,88 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-SAMPLE"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_trusted_entropy_sample_quality() {
+        // TOPAL-SYSTEMS-ENTROPY-QUALITY-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-QUALITY-001.
+        let mut malformed = CompilerEntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG;
+        malformed.quality_parts_per_1024 = 1023;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::AssessEntropySampleQuality { .. }
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-QUALITY-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-QUALITY"
+        );
+
+        let mut reordered = program.clone();
+        let capture = reordered
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CaptureEntropySample { .. }
+                )
+            })
+            .unwrap();
+        reordered.bootstrap.handler.operations.swap(capture, index);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-QUALITY"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::AssessEntropySampleQuality { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.quality_parts_per_1024 = 512;
+            request.credited_entropy_bits = 128;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-QUALITY"
         );
     }
 
