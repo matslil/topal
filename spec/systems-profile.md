@@ -1778,6 +1778,27 @@ The pool SHALL NOT be duplicated, substituted, or recreated while live.
 Creation SHALL NOT mix material, transfer credit, perform health tests, seed a
 generator, or produce random output.
 
+### TOPAL-SYSTEMS-ENTROPY-MIX-001 — Opaque assessed-sample pool mixing
+
+`topal.systems.entropy.pool.mix-sample/1` SHALL consume one affine pool in the
+`Empty` state and one affine opaque sample in the `Assessed` state. The request
+SHALL name nonzero pool, sample, conditioner, and contribution identities; a
+nonzero sample byte count; and an untransferred credited-entropy contribution
+not exceeding the sample extent or pool capacity.
+
+Success SHALL return the same pool identity in a `MixedUncredited` state,
+consume the sample identity, and produce one fresh affine contribution token.
+The token SHALL retain the request's credit claim while the pool credited-bit
+count remains unchanged. Source SHALL NOT observe any input, pool-state, or
+intermediate byte or address.
+
+The selected conditioner SHALL be fixed by the qualified profile and SHALL
+have architecture-independent byte semantics. The provider SHALL completely
+write the opaque pool state and wipe the consumed sample before success. It
+SHALL fail closed rather than expose a partial state or retain sample material.
+Mixing SHALL NOT transfer credit, imply readiness, seed a generator, or produce
+random output.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -1966,6 +1987,27 @@ This refinement SHALL NOT mix or condition the sample, transfer entropy
 credit, perform health tests, seed a CRNG, populate `AT_RANDOM`, implement
 `getrandom`, recycle or renotify the queue, configure asynchronous interrupt
 delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-MIX-001 — Bounded first pool mix
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-POOL-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-ENTROPY-MIX-001` operation. It SHALL name
+pool identity one, assessed sample identity one, conditioner identity one,
+contribution identity one, byte count 32, and 256 contribution bits.
+
+Conditioner identity one SHALL compute BLAKE2s-256 over the exact 32 sample
+bytes with the eight-byte BLAKE2s personalization `TopalRNG`. The provider
+SHALL publish the complete 32-byte digest as opaque pool state, wipe all 32 raw
+sample-storage bytes, and return success only after both actions. The pool
+SHALL retain zero credited bits and the contribution token SHALL retain 256
+untransferred bits.
+
+The profile SHALL reject another identity, extent, conditioner, contribution,
+credit, pre-state, omission, duplication, reordering, partial pool write,
+incomplete wipe, or mix before empty-pool creation. This refinement SHALL NOT
+transfer credit, declare readiness, seed or expose a CRNG, populate
+`AT_RANDOM`, implement `getrandom`, recycle or renotify the queue, configure
+asynchronous interrupt delivery, reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

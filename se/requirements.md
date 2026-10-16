@@ -1047,6 +1047,15 @@ representation; create no provider call; reject malformed, omitted,
 duplicated, reordered, substituted, or premature creation; and perform no
 mixing, credit transfer, generator seeding, or random output.
 
+The bounded entropy-mixing refinement shall consume that assessed sample and
+empty pool through conditioner identity one, BLAKE2s-256 personalized by the
+eight bytes `TopalRNG`. It shall produce the same pool identity with exactly 32
+opaque mixed-state bytes and zero credited pool bits, consume and completely
+wipe the 32-byte sample, and produce affine contribution identity one carrying
+256 untransferred credited bits. It shall reject malformed, omitted,
+duplicated, reordered, substituted, premature, partially written, or
+incompletely wiped mixing and shall create no random output.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
