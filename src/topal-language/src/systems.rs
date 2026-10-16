@@ -28,6 +28,7 @@ pub use topal_semantics::{
     KernelMappingRights as CompilerKernelMappingRights,
     KernelMemoryKind as CompilerKernelMemoryKind,
     PciConfigurationDwordRequest as CompilerPciConfigurationDwordRequest,
+    PciConfigurationWordUpdateRequest as CompilerPciConfigurationWordUpdateRequest,
     PciRegionRegisterDirection as CompilerPciRegionRegisterDirection,
     PciRegionRegisterRequest as CompilerPciRegionRegisterRequest,
     PhysicalFrameRequest as CompilerPhysicalFrameRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
@@ -51,16 +52,17 @@ pub use topal_semantics::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE,
-    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP,
-    SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_WRITE, SYSTEMS_RESUME_DEADLINE,
+    SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -6151,6 +6153,24 @@ fn analyze_operation(
         && let [
             receiver,
             pci,
+            configuration,
+            word,
+            update,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, pci, "pci")
+        && identifier_is(source, configuration, "configuration")
+        && identifier_is(source, word, "word")
+        && identifier_is(source, update, "update")
+    {
+        let request = parse_pci_configuration_word_update_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::UpdatePciConfigurationWord { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
+            pci,
             region,
             register,
             direction,
@@ -6332,6 +6352,130 @@ fn parse_pci_configuration_dword_request(
             "E-SYSTEMS-PCI-CONFIG",
             span,
             "PCI configuration request requires device 0..31, function 0..7, and a four-byte-aligned register offset in 0..252",
+        ));
+    }
+    Ok(request)
+}
+
+fn parse_pci_configuration_word_update_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerPciConfigurationWordUpdateRequest, Diagnostic> {
+    const LABELS: [&str; 8] = [
+        "segment",
+        "bus",
+        "device",
+        "function",
+        "register-offset-bytes",
+        "mask",
+        "expected-masked-value",
+        "desired-masked-value",
+    ];
+    if fields.len() != LABELS.len() {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-CONFIG-UPDATE",
+            span,
+            "PCI configuration-word update requires exactly the sealed function, offset, mask, pre-state, and post-state fields",
+        ));
+    }
+    let mut values = [0_u64; 8];
+    for ((field, expected_label), value) in fields.iter().zip(LABELS).zip(&mut values) {
+        let Some(label) = field.label else {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                field.value.span(),
+                format!("PCI configuration-word update requires named `{expected_label}`"),
+            ));
+        };
+        if source.slice(label) != expected_label {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                label,
+                format!(
+                    "PCI configuration-word update requires `{expected_label}` in source order"
+                ),
+            ));
+        }
+        *value = parse_storage_natural(source, &field.value)?;
+    }
+    let request = CompilerPciConfigurationWordUpdateRequest {
+        segment: u16::try_from(values[0]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI segment exceeds 65535",
+            )
+        })?,
+        bus: u8::try_from(values[1]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI bus exceeds 255",
+            )
+        })?,
+        device: u8::try_from(values[2]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI device exceeds 31",
+            )
+        })?,
+        function: u8::try_from(values[3]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI function exceeds 7",
+            )
+        })?,
+        register_offset_bytes: u8::try_from(values[4]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI configuration-word offset exceeds 255",
+            )
+        })?,
+        mask: u16::try_from(values[5]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI configuration-word mask exceeds 65535",
+            )
+        })?,
+        expected_masked_value: u16::try_from(values[6]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI configuration-word expected value exceeds 65535",
+            )
+        })?,
+        desired_masked_value: u16::try_from(values[7]).map_err(|_| {
+            source_diagnostic(
+                source,
+                "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                span,
+                "PCI configuration-word desired value exceeds 65535",
+            )
+        })?,
+    };
+    if !request.is_well_formed()
+        || request != CompilerPciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-PCI-CONFIG-UPDATE",
+            span,
+            "the initial Q35 profile admits only the sealed virtio-rng bus-master command transition",
         ));
     }
     Ok(request)
@@ -6667,6 +6811,7 @@ mod tests {
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+                SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
@@ -7045,6 +7190,14 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED".into(),
+                },
+                CompilerSystemsTransition::UpdatePciConfigurationWord {
+                    transaction_identity: 1,
+                    request:
+                        CompilerPciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_PCI_BUS_MASTER_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7617,7 +7770,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 190);
+        assert_eq!(program.bootstrap.handler.operations.len(), 192);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7646,6 +7799,7 @@ mod tests {
                 SYSTEMS_CRITICAL_RESTORE,
                 SYSTEMS_CONSOLE_WRITE,
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+                SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
                 SYSTEMS_PCI_REGION_READ,
                 SYSTEMS_PCI_REGION_WRITE,
                 SYSTEMS_FATAL,
@@ -7857,6 +8011,71 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_pci_bus_master_authorization() {
+        // TOPAL-SYSTEMS-PCI-CONFIG-UPDATE-001.
+        let mut malformed =
+            CompilerPciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER;
+        malformed.mask = 0;
+        assert!(!malformed.is_well_formed());
+        malformed = CompilerPciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER;
+        malformed.expected_masked_value = 1;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::UpdatePciConfigurationWord { .. }
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG-UPDATE"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::UpdatePciConfigurationWord { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.desired_masked_value = 0;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-PCI-CONFIG-UPDATE"
         );
     }
 

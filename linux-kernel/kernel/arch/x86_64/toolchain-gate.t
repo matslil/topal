@@ -547,6 +547,17 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     value is 0
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED"
+                                                                  restored pci configuration word update (
+                                                                    segment is 0,
+                                                                    bus is 0,
+                                                                    device is 5,
+                                                                    function is 0,
+                                                                    register-offset-bytes is 4,
+                                                                    mask is 4,
+                                                                    expected-masked-value is 0,
+                                                                    desired-masked-value is 4
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_PCI_BUS_MASTER_OK"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"

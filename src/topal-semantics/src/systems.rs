@@ -54,6 +54,8 @@ pub const INITIAL_SYSTEMS_PROFILE: &str = "topal.systems.x86_64-qemu-pc-q35-10.2
 pub const SYSTEMS_CONSOLE_WRITE: &str = "topal.systems.device.console.write/1";
 pub const SYSTEMS_PCI_CONFIGURATION_READ_DWORD: &str =
     "topal.systems.device.pci-configuration.read-dword/1";
+pub const SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD: &str =
+    "topal.systems.device.pci-configuration.update-word/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
 pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.write/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
@@ -159,6 +161,42 @@ impl PciConfigurationDwordRequest {
             && self.function <= 7
             && self.register_offset_bytes <= 252
             && self.register_offset_bytes % 4 == 0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct PciConfigurationWordUpdateRequest {
+    pub segment: u16,
+    pub bus: u8,
+    pub device: u8,
+    pub function: u8,
+    pub register_offset_bytes: u8,
+    pub mask: u16,
+    pub expected_masked_value: u16,
+    pub desired_masked_value: u16,
+}
+
+impl PciConfigurationWordUpdateRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG_BUS_MASTER: Self = Self {
+        segment: 0,
+        bus: 0,
+        device: 5,
+        function: 0,
+        register_offset_bytes: 0x04,
+        mask: 0x0004,
+        expected_masked_value: 0,
+        desired_masked_value: 0x0004,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.device <= 31
+            && self.function <= 7
+            && self.register_offset_bytes <= 254
+            && self.register_offset_bytes % 2 == 0
+            && self.mask != 0
+            && self.expected_masked_value & !self.mask == 0
+            && self.desired_masked_value & !self.mask == 0
     }
 }
 
@@ -324,6 +362,9 @@ pub enum SystemsOperation {
     ObservePciConfigurationDword {
         request: PciConfigurationDwordRequest,
     },
+    UpdatePciConfigurationWord {
+        request: PciConfigurationWordUpdateRequest,
+    },
     AccessPciRegionRegister {
         request: PciRegionRegisterRequest,
     },
@@ -431,6 +472,7 @@ impl SystemsOperation {
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+            Self::UpdatePciConfigurationWord { .. } => SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -646,6 +688,10 @@ pub enum SystemsTransition {
     ObservePciConfigurationDword {
         transaction_identity: u64,
         request: PciConfigurationDwordRequest,
+    },
+    UpdatePciConfigurationWord {
+        transaction_identity: u64,
+        request: PciConfigurationWordUpdateRequest,
     },
     AccessPciRegionRegister {
         transaction_identity: u64,
@@ -977,6 +1023,7 @@ impl SystemsTransition {
             Self::RestoreCritical { .. } => SYSTEMS_CRITICAL_RESTORE,
             Self::ConsoleWrite { .. } => SYSTEMS_CONSOLE_WRITE,
             Self::ObservePciConfigurationDword { .. } => SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+            Self::UpdatePciConfigurationWord { .. } => SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -1531,6 +1578,7 @@ struct BootstrapAuthorityState {
     resident_user_image_retained: bool,
     pci_configuration_observations: usize,
     pci_region_register_accesses: usize,
+    pci_bus_master_authorized: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1818,6 +1866,23 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.pci_region_register_accesses += 1;
+            }
+            SystemsOperation::UpdatePciConfigurationWord { request } => {
+                if self.pci_region_register_accesses
+                    != PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
+                        + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len()
+                    || self.pci_bus_master_authorized
+                    || !self.critical_stack.is_empty()
+                    || !request.is_well_formed()
+                    || *request
+                        != PciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                        "PCI configuration update requires complete queue discovery and the exact sealed bus-master command transition",
+                    ));
+                }
+                self.pci_bus_master_authorized = true;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3195,6 +3260,12 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires the complete sealed virtio-rng feature-negotiation and queue-discovery sequences",
             ));
         }
+        if !self.pci_bus_master_authorized {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE",
+                "bootstrap completion requires the sealed PCI bus-master authorization",
+            ));
+        }
         if self.deadline != BootstrapDeadlineState::Completed {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DEADLINE-EVENT-LIVE",
@@ -3538,6 +3609,7 @@ pub fn model_systems_transitions(
     let mut next_clock_observation_identity = 1_u64;
     let mut next_pci_transaction_identity = 1_u64;
     let mut next_pci_region_transaction_identity = 1_u64;
+    let mut next_pci_update_transaction_identity = 1_u64;
     let mut deadline_state = BootstrapDeadlineState::Fresh;
     let mut next_deadline_event_identity = 1_u64;
     let mut kernel_context_state = BootstrapKernelContextState::Fresh;
@@ -3622,6 +3694,7 @@ pub fn model_systems_transitions(
             &mut atomic,
             &mut next_pci_transaction_identity,
             &mut next_pci_region_transaction_identity,
+            &mut next_pci_update_transaction_identity,
             &mut transitions,
         )? {
             return Ok(transitions);
@@ -4751,6 +4824,7 @@ fn model_bootstrap_operation(
     atomic: &mut Option<AtomicWordLocation>,
     next_pci_transaction_identity: &mut u64,
     next_pci_region_transaction_identity: &mut u64,
+    next_pci_update_transaction_identity: &mut u64,
     transitions: &mut Vec<SystemsTransition>,
 ) -> Result<bool, SystemsModelError> {
     match operation {
@@ -4821,6 +4895,20 @@ fn model_bootstrap_operation(
                     )
                 })?;
             transitions.push(SystemsTransition::ObservePciConfigurationDword {
+                transaction_identity,
+                request: *request,
+            });
+        }
+        SystemsOperation::UpdatePciConfigurationWord { request } => {
+            let transaction_identity = *next_pci_update_transaction_identity;
+            *next_pci_update_transaction_identity =
+                transaction_identity.checked_add(1).ok_or_else(|| {
+                    SystemsModelError::new(
+                        "E-SYSTEMS-PCI-CONFIG-UPDATE",
+                        "PCI configuration update transaction identity exhausted",
+                    )
+                })?;
+            transitions.push(SystemsTransition::UpdatePciConfigurationWord {
                 transaction_identity,
                 request: *request,
             });
@@ -5150,6 +5238,7 @@ fn model_bootstrap_storage_operation(
             unreachable!("monotonic-clock observations are modeled by the caller")
         }
         SystemsOperation::ObservePciConfigurationDword { .. }
+        | SystemsOperation::UpdatePciConfigurationWord { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
         }
@@ -5288,6 +5377,7 @@ mod tests {
             SYSTEMS_LOCAL_NOTIFICATION_WAIT.into(),
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
+            SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD.into(),
             SYSTEMS_PCI_REGION_READ.into(),
             SYSTEMS_PCI_REGION_WRITE.into(),
             SYSTEMS_DEADLINE_AFTER.into(),
@@ -5554,6 +5644,10 @@ mod tests {
                         SystemsOperation::AccessPciRegionRegister {
                             request:
                                 PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[4],
+                        },
+                        SystemsOperation::UpdatePciConfigurationWord {
+                            request:
+                                PciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER,
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -6002,6 +6096,10 @@ mod tests {
                 SystemsTransition::CreateFrameAllocator,
                 SystemsTransition::ConsoleWrite {
                     text: "boot".into(),
+                },
+                SystemsTransition::UpdatePciConfigurationWord {
+                    transaction_identity: 1,
+                    request: PciConfigurationWordUpdateRequest::INITIAL_Q35_VIRTIO_RNG_BUS_MASTER,
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,
