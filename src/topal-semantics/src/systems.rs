@@ -59,6 +59,7 @@ pub const SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD: &str =
 pub const SYSTEMS_DMA_BUFFER_CREATE: &str = "topal.systems.dma.buffer.create/1";
 pub const SYSTEMS_DMA_BUFFER_BIND_REFERENCE: &str = "topal.systems.dma.buffer.bind-reference/1";
 pub const SYSTEMS_DMA_BUFFER_STORE_INTEGER: &str = "topal.systems.dma.buffer.store-integer/1";
+pub const SYSTEMS_DMA_BUFFER_PREPARE_DEVICE: &str = "topal.systems.dma.buffer.prepare-device/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
 pub const SYSTEMS_PCI_REGION_WRITE: &str = "topal.systems.device.pci-region.write/1";
 pub const SYSTEMS_DEBUG_BREAK: &str = "topal.systems.machine.debug-break/1";
@@ -344,6 +345,44 @@ impl DmaBufferIntegerStoreRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct DmaBufferPreparationRequest {
+    pub buffer_identity: u64,
+    pub device_identity: u64,
+    pub translation_domain_identity: u64,
+    pub direction: DmaDirection,
+    pub visibility: DmaVisibilityPolicy,
+    pub role: DmaBufferRole,
+}
+
+impl DmaBufferPreparationRequest {
+    pub const INITIAL_Q35_VIRTIO_RNG: [Self; 2] = [
+        Self {
+            buffer_identity: 2,
+            device_identity: 1,
+            translation_domain_identity: 1,
+            direction: DmaDirection::DeviceToMemory,
+            visibility: DmaVisibilityPolicy::ProviderManaged,
+            role: DmaBufferRole::EntropyPayload,
+        },
+        Self {
+            buffer_identity: 1,
+            device_identity: 1,
+            translation_domain_identity: 1,
+            direction: DmaDirection::Bidirectional,
+            visibility: DmaVisibilityPolicy::ProviderManaged,
+            role: DmaBufferRole::VirtqueueControl,
+        },
+    ];
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.buffer_identity != 0
+            && self.device_identity != 0
+            && self.translation_domain_identity != 0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PciRegionRegisterDirection {
     ReadEquals,
     Write,
@@ -517,6 +556,9 @@ pub enum SystemsOperation {
     StoreDmaBufferInteger {
         request: DmaBufferIntegerStoreRequest,
     },
+    PrepareDmaBufferForDevice {
+        request: DmaBufferPreparationRequest,
+    },
     AccessPciRegionRegister {
         request: PciRegionRegisterRequest,
     },
@@ -628,6 +670,7 @@ impl SystemsOperation {
             Self::CreateDmaBuffer { .. } => SYSTEMS_DMA_BUFFER_CREATE,
             Self::BindDmaBufferReference { .. } => SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
             Self::StoreDmaBufferInteger { .. } => SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+            Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -856,6 +899,9 @@ pub enum SystemsTransition {
     },
     StoreDmaBufferInteger {
         request: DmaBufferIntegerStoreRequest,
+    },
+    PrepareDmaBufferForDevice {
+        request: DmaBufferPreparationRequest,
     },
     AccessPciRegionRegister {
         transaction_identity: u64,
@@ -1191,6 +1237,7 @@ impl SystemsTransition {
             Self::CreateDmaBuffer { .. } => SYSTEMS_DMA_BUFFER_CREATE,
             Self::BindDmaBufferReference { .. } => SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
             Self::StoreDmaBufferInteger { .. } => SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+            Self::PrepareDmaBufferForDevice { .. } => SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
                 PciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
@@ -1748,6 +1795,7 @@ struct BootstrapAuthorityState {
     pci_bus_master_authorized: bool,
     dma_buffers_created: usize,
     dma_construction_operations: usize,
+    dma_buffers_prepared: usize,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2096,6 +2144,21 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.dma_construction_operations += 1;
+            }
+            SystemsOperation::PrepareDmaBufferForDevice { request } => {
+                let expected = DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG
+                    .get(self.dma_buffers_prepared);
+                if self.dma_construction_operations
+                    != 1 + DmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING.len()
+                    || !request.is_well_formed()
+                    || expected != Some(request)
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-DMA-PREPARE",
+                        "DMA device preparation requires complete split-ring construction and the exact sealed payload-then-control ownership sequence",
+                    ));
+                }
+                self.dma_buffers_prepared += 1;
             }
             _ if !self.allocator_created => {
                 return Err(SystemsModelError::new(
@@ -3491,6 +3554,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DMA-CONSTRUCT-LIVE",
                 "bootstrap completion requires the exact CPU-owned virtio-rng split-ring construction",
+            ));
+        }
+        if self.dma_buffers_prepared != DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG.len() {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-DMA-PREPARE-LIVE",
+                "bootstrap completion requires the exact payload-then-control DMA device-preparation sequence",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5149,6 +5218,9 @@ fn model_bootstrap_operation(
         SystemsOperation::StoreDmaBufferInteger { request } => {
             transitions.push(SystemsTransition::StoreDmaBufferInteger { request: *request });
         }
+        SystemsOperation::PrepareDmaBufferForDevice { request } => {
+            transitions.push(SystemsTransition::PrepareDmaBufferForDevice { request: *request });
+        }
         SystemsOperation::AccessPciRegionRegister { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -5478,6 +5550,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CreateDmaBuffer { .. }
         | SystemsOperation::BindDmaBufferReference { .. }
         | SystemsOperation::StoreDmaBufferInteger { .. }
+        | SystemsOperation::PrepareDmaBufferForDevice { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
         }
@@ -5617,6 +5690,7 @@ mod tests {
             SYSTEMS_MONOTONIC_CLOCK_NOW.into(),
             SYSTEMS_DMA_BUFFER_CREATE.into(),
             SYSTEMS_DMA_BUFFER_BIND_REFERENCE.into(),
+            SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
             SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD.into(),
@@ -5915,6 +5989,12 @@ mod tests {
                         SystemsOperation::StoreDmaBufferInteger {
                             request:
                                 DmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[3],
+                        },
+                        SystemsOperation::PrepareDmaBufferForDevice {
+                            request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                        },
+                        SystemsOperation::PrepareDmaBufferForDevice {
+                            request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -6388,6 +6468,12 @@ mod tests {
                 },
                 SystemsTransition::StoreDmaBufferInteger {
                     request: DmaBufferIntegerStoreRequest::INITIAL_Q35_VIRTIO_RNG_SPLIT_RING[3],
+                },
+                SystemsTransition::PrepareDmaBufferForDevice {
+                    request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                },
+                SystemsTransition::PrepareDmaBufferForDevice {
+                    request: DmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,

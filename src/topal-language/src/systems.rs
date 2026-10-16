@@ -24,6 +24,7 @@ pub use topal_semantics::{
     BootstrapStorageTransition as CompilerBootstrapStorageTransition,
     CriticalDomain as CompilerCriticalDomain,
     DmaBufferIntegerStoreRequest as CompilerDmaBufferIntegerStoreRequest,
+    DmaBufferPreparationRequest as CompilerDmaBufferPreparationRequest,
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
@@ -45,8 +46,9 @@ pub use topal_semantics::{
     SYSTEMS_BOOTSTRAP_STORAGE_RELEASE, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
-    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
-    SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_CREATE,
+    SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
     SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
     SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
     SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
@@ -6228,6 +6230,24 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            dma,
+            buffer,
+            prepare,
+            device,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, dma, "dma")
+        && identifier_is(source, buffer, "buffer")
+        && identifier_is(source, prepare, "prepare")
+        && identifier_is(source, device, "device")
+    {
+        let request = parse_dma_buffer_preparation_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::PrepareDmaBufferForDevice { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             register,
@@ -6707,6 +6727,79 @@ fn parse_dma_buffer_integer_store_request(
     Ok(request)
 }
 
+fn parse_dma_buffer_preparation_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerDmaBufferPreparationRequest, Diagnostic> {
+    if fields.len() != 6 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-PREPARE",
+            span,
+            "DMA device preparation requires buffer, device, translation-domain, direction, visibility, and role fields",
+        ));
+    }
+    let direction = match field_static_string(source, &fields[3], "direction")?.as_str() {
+        "bidirectional" => CompilerDmaDirection::Bidirectional,
+        "device-to-memory" => CompilerDmaDirection::DeviceToMemory,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PREPARE",
+                span,
+                "DMA preparation direction must be `bidirectional` or `device-to-memory`",
+            ));
+        }
+    };
+    let visibility = match field_static_string(source, &fields[4], "visibility")?.as_str() {
+        "provider-managed" => CompilerDmaVisibilityPolicy::ProviderManaged,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PREPARE",
+                span,
+                "DMA preparation visibility must be `provider-managed`",
+            ));
+        }
+    };
+    let role = match field_static_string(source, &fields[5], "role")?.as_str() {
+        "virtqueue-control" => CompilerDmaBufferRole::VirtqueueControl,
+        "entropy-payload" => CompilerDmaBufferRole::EntropyPayload,
+        _ => {
+            return Err(source_diagnostic(
+                source,
+                "E-SYSTEMS-DMA-PREPARE",
+                span,
+                "DMA preparation role must be `virtqueue-control` or `entropy-payload`",
+            ));
+        }
+    };
+    let request = CompilerDmaBufferPreparationRequest {
+        buffer_identity: field_natural(source, &fields[0], "buffer-identity")?,
+        device_identity: field_natural(source, &fields[1], "device-identity")?,
+        translation_domain_identity: field_natural(
+            source,
+            &fields[2],
+            "translation-domain-identity",
+        )?,
+        direction,
+        visibility,
+        role,
+    };
+    if !request.is_well_formed()
+        || !CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG.contains(&request)
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-DMA-PREPARE",
+            span,
+            "the initial Q35 profile admits only the sealed payload and control DMA-preparation requests",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -7043,6 +7136,7 @@ mod tests {
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -7458,6 +7552,15 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK".into(),
+                },
+                CompilerSystemsTransition::PrepareDmaBufferForDevice {
+                    request: CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
+                },
+                CompilerSystemsTransition::PrepareDmaBufferForDevice {
+                    request: CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_DMA_DEVICE_OWNED".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -8030,7 +8133,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 201);
+        assert_eq!(program.bootstrap.handler.operations.len(), 204);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8065,6 +8168,7 @@ mod tests {
                 SYSTEMS_FATAL,
                 SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
                 SYSTEMS_DMA_BUFFER_CREATE,
+                SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -8314,6 +8418,7 @@ mod tests {
                 CompilerSystemsOperation::CreateDmaBuffer { .. }
                     | CompilerSystemsOperation::BindDmaBufferReference { .. }
                     | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+                    | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -8321,6 +8426,7 @@ mod tests {
                 && *effect != SYSTEMS_DMA_BUFFER_CREATE
                 && *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
                 && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
+                && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8383,11 +8489,13 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::BindDmaBufferReference { .. }
                     | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+                    | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
                 && *effect != SYSTEMS_DMA_BUFFER_STORE_INTEGER
+                && *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -8463,6 +8571,17 @@ mod tests {
             .handler
             .operations
             .remove(store_indices[3]);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+            )
+        });
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-CONSTRUCT-LIVE"
@@ -8487,6 +8606,63 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-DMA-CONSTRUCT"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_dma_device_preparation_sequence() {
+        // TOPAL-SYSTEMS-DMA-PREPARE-001.
+        let mut malformed = CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0];
+        malformed.buffer_identity = 0;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                )
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(indices.len(), 2);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(indices[1]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-DMA-PREPARE-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            indices[1],
+            duplicated.bootstrap.handler.operations[indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-DMA-PREPARE"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(indices[0], indices[1]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-DMA-PREPARE"
         );
     }
 

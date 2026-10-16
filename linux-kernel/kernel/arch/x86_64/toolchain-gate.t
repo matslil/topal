@@ -611,6 +611,23 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                     value is 1
                                                                   )
                                                                   restored console write "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK"
+                                                                  restored dma buffer prepare device (
+                                                                    buffer-identity is 2,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1,
+                                                                    direction is "device-to-memory",
+                                                                    visibility is "provider-managed",
+                                                                    role is "entropy-payload"
+                                                                  )
+                                                                  restored dma buffer prepare device (
+                                                                    buffer-identity is 1,
+                                                                    device-identity is 1,
+                                                                    translation-domain-identity is 1,
+                                                                    direction is "bidirectional",
+                                                                    visibility is "provider-managed",
+                                                                    role is "virtqueue-control"
+                                                                  )
+                                                                  restored console write "TOPAL_KERNEL_DMA_DEVICE_OWNED"
                                                                   restored console write "TOPAL_KERNEL_BOOT"
                                                                   restored debug break
                                                                   restored console write "TOPAL_KERNEL_FAULT_RESUMED"
