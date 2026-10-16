@@ -607,6 +607,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded virtio payload completion](step-4-bounded-virtio-payload-completion.md)
 - [Step 4 bounded entropy-sample capture](step-4-bounded-entropy-sample-capture.md)
 - [Step 4 bounded entropy-sample quality attribution](step-4-bounded-entropy-sample-quality.md)
+- [Step 4 bounded entropy-pool creation](step-4-bounded-entropy-pool-creation.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
