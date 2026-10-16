@@ -583,6 +583,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded PCI bus-master authorization](step-4-bounded-pci-bus-master-authorization.md)
 - [Step 4 bounded virtio DMA buffers](step-4-bounded-virtio-dma-buffers.md)
 - [Step 4 bounded virtio split ring](step-4-bounded-virtio-split-ring.md)
+- [Step 4 bounded DMA device preparation](step-4-bounded-dma-device-preparation.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

@@ -54,16 +54,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/82")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/83")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/76")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/77")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/80",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/81",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/40",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/41",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -120,6 +120,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_PCI_BUS_MASTER_OK",
                 "TOPAL_KERNEL_DMA_BUFFERS_OK",
                 "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
+                "TOPAL_KERNEL_DMA_DEVICE_OWNED",
                 "TOPAL_KERNEL_BOOT",
                 "TOPAL_KERNEL_FAULT_RESUMED",
                 "TOPAL_KERNEL_ATOMIC_OK",
