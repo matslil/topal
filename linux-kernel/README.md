@@ -604,6 +604,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded virtio queue notification](step-4-bounded-virtio-queue-notification.md)
 - [Step 4 bounded virtio completion signal](step-4-bounded-virtio-completion-signal.md)
 - [Step 4 bounded virtio used-ring validation](step-4-bounded-virtio-used-ring-validation.md)
+- [Step 4 bounded virtio payload completion](step-4-bounded-virtio-payload-completion.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
