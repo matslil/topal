@@ -17,23 +17,23 @@ use topal_language::compiler::{
     CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerLoadRequest,
     CompilerDmaBufferIntegerStoreRequest, CompilerDmaBufferPreparationRequest,
     CompilerDmaBufferReferenceRequest, CompilerDmaBufferRequest, CompilerDmaBufferRole,
-    CompilerDmaDirection, CompilerEntropyPoolMixRequest, CompilerEntropyPoolRequest,
-    CompilerEntropySampleCaptureRequest, CompilerEntropySampleQualityRequest,
-    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
-    CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
-    CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
-    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
-    CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
-    CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
-    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    CompilerDmaDirection, CompilerEntropyPoolCreditRequest, CompilerEntropyPoolMixRequest,
+    CompilerEntropyPoolRequest, CompilerEntropySampleCaptureRequest,
+    CompilerEntropySampleQualityRequest, CompilerKernelMappingRequest,
+    CompilerPciConfigurationDwordRequest, CompilerPciConfigurationWordUpdateRequest,
+    CompilerPciRegionDmaReferenceRequest, CompilerPciRegionRegisterDirection,
+    CompilerPciRegionRegisterRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
+    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
+    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
+    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -53,16 +53,17 @@ use topal_language::compiler::{
 use topal_language::compiler::{
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
-    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
-    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
+    SYSTEMS_ENTROPY_POOL_MIX_SAMPLE, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
+    SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END,
@@ -119,8 +120,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/91";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/89";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/92";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/90";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1407,6 +1408,7 @@ struct RootEncoder {
     entropy_sample_assessed: bool,
     entropy_pool_created: bool,
     entropy_pool_mixed: bool,
+    entropy_pool_credited: bool,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -2100,6 +2102,11 @@ impl RootEncoder {
         if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_pool_mixed {
             return Err(CompileError::Tool(
                 "x86 root lowering ended without the sealed first entropy-pool mix".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_pool_credited {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without the sealed first entropy-credit transfer".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
@@ -2841,6 +2848,23 @@ impl RootEncoder {
         self.rip_relative_symbol(ProviderSymbol::EntropyPoolState, 0)?;
         self.call_checked_bool(ProviderSymbol::MixEntropyPoolSample)?;
         self.entropy_pool_mixed = true;
+        Ok(())
+    }
+
+    fn credit_entropy_pool_contribution(
+        &mut self,
+        request: CompilerEntropyPoolCreditRequest,
+    ) -> Result<(), CompileError> {
+        if !self.entropy_pool_mixed
+            || self.entropy_pool_credited
+            || !request.is_well_formed()
+            || request != CompilerEntropyPoolCreditRequest::INITIAL_Q35
+        {
+            return Err(CompileError::Tool(
+                "x86 entropy-credit transfer requires the exact sealed mixed pool and first contribution".into(),
+            ));
+        }
+        self.entropy_pool_credited = true;
         Ok(())
     }
 
@@ -4543,6 +4567,9 @@ fn encode_operations(
             CompilerSystemsOperation::MixEntropyPoolSample { request } => {
                 encoder.mix_entropy_pool_sample(*request)?;
             }
+            CompilerSystemsOperation::CreditEntropyPoolContribution { request } => {
+                encoder.credit_entropy_pool_contribution(*request)?;
+            }
             CompilerSystemsOperation::PublishPciRegionDmaReference { request } => {
                 encoder.publish_pci_region_dma_reference(*request)?;
             }
@@ -4989,6 +5016,16 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.contribution_identity,
                     request.byte_count,
                     request.contribution_entropy_bits,
+                ),
+                CompilerSystemsTransition::CreditEntropyPoolContribution { request } => format!(
+                    "{identity}:pool={}:contribution={}:conditioner-origin={}:prior-credited-entropy-bits={}:contribution-entropy-bits={}:credit-capacity-bits={}:resulting-credited-entropy-bits={}",
+                    request.pool_identity,
+                    request.contribution_identity,
+                    request.conditioner_origin_identity,
+                    request.prior_credited_entropy_bits,
+                    request.contribution_entropy_bits,
+                    request.credit_capacity_bits,
+                    request.resulting_credited_entropy_bits,
                 ),
                 CompilerSystemsTransition::PublishPciRegionDmaReference {
                     transaction_identity,
@@ -5446,7 +5483,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2596);
+        assert_eq!(relocation_targets.len(), 2630);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5600,7 +5637,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2237
+            2271
         );
         assert_eq!(
             relocation_targets
@@ -6013,7 +6050,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 294);
+        assert_eq!(decoded.semantic_trace.len(), 296);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -6538,6 +6575,19 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_ENTROPY_POOL_MIXED")
             )
         );
+        assert_eq!(
+            decoded.semantic_trace[223],
+            format!(
+                "{SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION}:pool=1:contribution=1:conditioner-origin=1:prior-credited-entropy-bits=0:contribution-entropy-bits=256:credit-capacity-bits=256:resulting-credited-entropy-bits=256"
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[224],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_ENTROPY_POOL_CREDITED")
+            )
+        );
         decoded.semantic_trace.drain(195..198);
         decoded.semantic_trace.drain(166..194);
         decoded.semantic_trace.drain(120..136);
@@ -6746,7 +6796,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[174].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[176].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

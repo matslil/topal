@@ -1032,6 +1032,16 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     contribution-entropy-bits is 256
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_POOL_MIXED"
+                                                                                                                  completion-resumed entropy pool credit contribution (
+                                                                                                                    pool-identity is 1,
+                                                                                                                    contribution-identity is 1,
+                                                                                                                    conditioner-origin-identity is 1,
+                                                                                                                    prior-credited-entropy-bits is 0,
+                                                                                                                    contribution-entropy-bits is 256,
+                                                                                                                    credit-capacity-bits is 256,
+                                                                                                                    resulting-credited-entropy-bits is 256
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_POOL_CREDITED"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
