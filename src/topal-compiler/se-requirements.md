@@ -491,6 +491,12 @@ device/domain, buffer identity, and in-buffer offset; reject malformed,
 omitted, duplicated, reordered, substituted, or premature requests; and never
 materialize the provider-selected reference in source state.
 
+The bounded virtio queue-activation refinement shall accept exactly four
+additional PCI-region transactions after complete queue-address publication.
+It shall require queue-enable write/readback followed by `DRIVER_OK`
+write/readback, reject malformed, omitted, duplicated, reordered, substituted,
+or premature operations, and retain device ownership of both DMA buffers.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -548,6 +554,12 @@ the 64-bit value through the pinned configuration gateway as ordered low and
 high dwords. Structural evidence shall prove exact region and argument checks,
 three control-symbol relocations, six dword data writes, no address return, and
 no hidden queue enablement or notification.
+
+For bounded queue activation, the x86-64 provider shall reuse the qualified
+configuration-gateway byte/word register access without interpreting the
+virtio offsets or values. Structural evidence shall prove four typed calls,
+exact access widths, serialized write/readback pairs, and no queue notification
+or completion hidden in the provider.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,

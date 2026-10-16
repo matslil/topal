@@ -496,6 +496,13 @@ impl PciRegionRegisterRequest {
         Self::initial(0x1e, 2, PciRegionRegisterDirection::ReadEquals, 0),
     ];
 
+    pub const INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION: [Self; 4] = [
+        Self::initial(0x1c, 2, PciRegionRegisterDirection::Write, 1),
+        Self::initial(0x1c, 2, PciRegionRegisterDirection::ReadEquals, 1),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::Write, 15),
+        Self::initial(0x14, 1, PciRegionRegisterDirection::ReadEquals, 15),
+    ];
+
     #[must_use]
     pub const fn initial(
         register_offset_bytes: u32,
@@ -2138,22 +2145,31 @@ impl BootstrapAuthorityState {
             SystemsOperation::AccessPciRegionRegister { request } => {
                 let negotiation_len =
                     PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len();
+                let discovery_len =
+                    PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len();
                 let expected = if self.pci_region_register_accesses < negotiation_len {
                     PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
                         .get(self.pci_region_register_accesses)
-                } else {
+                } else if self.pci_region_register_accesses < negotiation_len + discovery_len {
                     PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY
                         .get(self.pci_region_register_accesses - negotiation_len)
+                } else {
+                    PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                        .get(self.pci_region_register_accesses - negotiation_len - discovery_len)
                 };
                 if self.pci_configuration_observations
                     != PciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY.len()
                     || !self.critical_stack.is_empty()
+                    || (self.pci_region_register_accesses >= negotiation_len + discovery_len
+                        && self.dma_references_published
+                            != PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+                                .len())
                     || !request.is_well_formed()
                     || expected != Some(request)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-PCI-REGION",
-                        "PCI region access requires the completed capability discovery and exact sealed virtio-rng negotiation and queue-discovery sequences",
+                        "PCI region access requires the completed capability discovery and exact sealed virtio-rng negotiation, queue-discovery, and queue-activation sequences",
                     ));
                 }
                 self.pci_region_register_accesses += 1;
@@ -3616,15 +3632,6 @@ impl BootstrapAuthorityState {
                 "bootstrap completion requires the complete sealed virtio-rng PCI capability-discovery sequence",
             ));
         }
-        if self.pci_region_register_accesses
-            != PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
-                + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len()
-        {
-            return Err(SystemsModelError::new(
-                "E-SYSTEMS-PCI-REGION-LIVE",
-                "bootstrap completion requires the complete sealed virtio-rng feature-negotiation and queue-discovery sequences",
-            ));
-        }
         if !self.pci_bus_master_authorized {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE",
@@ -3657,6 +3664,16 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-DMA-PUBLISH-LIVE",
                 "bootstrap completion requires all three sealed virtio-rng queue-address publications",
+            ));
+        }
+        if self.pci_region_register_accesses
+            != PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
+                + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len()
+                + PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION.len()
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-PCI-REGION-LIVE",
+                "bootstrap completion requires the complete sealed virtio-rng feature-negotiation, queue-discovery, and queue-activation sequences",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -6123,6 +6140,22 @@ mod tests {
                             request:
                                 PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
                                     [2],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request:
+                                PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[0],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request:
+                                PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[1],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request:
+                                PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[2],
+                        },
+                        SystemsOperation::AccessPciRegionRegister {
+                            request:
+                                PciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[3],
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,

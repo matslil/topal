@@ -872,6 +872,59 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   returned-frames is completion-resumed user address space reclaim revoked-space
                                                                                                                   completion-resumed frames release returned-frames
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
+                                                                                                                  completion-resumed pci region register write (
+                                                                                                                    segment is 0,
+                                                                                                                    bus is 0,
+                                                                                                                    device is 5,
+                                                                                                                    function is 0,
+                                                                                                                    access-capability-offset-bytes is 132,
+                                                                                                                    bar is 4,
+                                                                                                                    region-offset-bytes is 0,
+                                                                                                                    region-length-bytes is 4096,
+                                                                                                                    register-offset-bytes is 28,
+                                                                                                                    width-bytes is 2,
+                                                                                                                    value is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed pci region register read equals (
+                                                                                                                    segment is 0,
+                                                                                                                    bus is 0,
+                                                                                                                    device is 5,
+                                                                                                                    function is 0,
+                                                                                                                    access-capability-offset-bytes is 132,
+                                                                                                                    bar is 4,
+                                                                                                                    region-offset-bytes is 0,
+                                                                                                                    region-length-bytes is 4096,
+                                                                                                                    register-offset-bytes is 28,
+                                                                                                                    width-bytes is 2,
+                                                                                                                    value is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed pci region register write (
+                                                                                                                    segment is 0,
+                                                                                                                    bus is 0,
+                                                                                                                    device is 5,
+                                                                                                                    function is 0,
+                                                                                                                    access-capability-offset-bytes is 132,
+                                                                                                                    bar is 4,
+                                                                                                                    region-offset-bytes is 0,
+                                                                                                                    region-length-bytes is 4096,
+                                                                                                                    register-offset-bytes is 20,
+                                                                                                                    width-bytes is 1,
+                                                                                                                    value is 15
+                                                                                                                  )
+                                                                                                                  completion-resumed pci region register read equals (
+                                                                                                                    segment is 0,
+                                                                                                                    bus is 0,
+                                                                                                                    device is 5,
+                                                                                                                    function is 0,
+                                                                                                                    access-capability-offset-bytes is 132,
+                                                                                                                    bar is 4,
+                                                                                                                    region-offset-bytes is 0,
+                                                                                                                    region-length-bytes is 4096,
+                                                                                                                    register-offset-bytes is 20,
+                                                                                                                    width-bytes is 1,
+                                                                                                                    value is 15
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {

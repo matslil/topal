@@ -111,8 +111,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/82";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/80";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/83";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/81";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1969,9 +1969,11 @@ impl RootEncoder {
             && self.pci_region_register_accesses
                 != CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len()
                     + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len()
+                    + CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                        .len()
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without its complete sealed virtio-rng feature-negotiation and queue-discovery sequences".into(),
+                "x86 root lowering ended without its complete sealed virtio-rng feature-negotiation, queue-discovery, and queue-activation sequences".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification && !self.pci_bus_master_authorized
@@ -2639,18 +2641,26 @@ impl RootEncoder {
             || {
                 let negotiation_len =
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.len();
+                let discovery_len =
+                    CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY.len();
                 let expected = if self.pci_region_register_accesses < negotiation_len {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
                         .get(self.pci_region_register_accesses)
-                } else {
+                } else if self.pci_region_register_accesses < negotiation_len + discovery_len {
                     CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY
                         .get(self.pci_region_register_accesses - negotiation_len)
+                } else {
+                    CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                        .get(self.pci_region_register_accesses - negotiation_len - discovery_len)
                 };
                 expected != Some(&request)
+                    || (self.pci_region_register_accesses >= negotiation_len + discovery_len
+                        && self.dma_references_published
+                            != CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES.len())
             }
         {
             return Err(CompileError::Tool(
-                "x86 PCI region access requires completed capability discovery and the exact sealed virtio-rng negotiation and queue-discovery sequences".into(),
+                "x86 PCI region access requires completed capability discovery and the exact sealed virtio-rng negotiation, queue-discovery, and queue-activation sequences".into(),
             ));
         }
         let selector = 0x8000_0000
@@ -5040,7 +5050,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2250);
+        assert_eq!(relocation_targets.len(), 2290);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5194,7 +5204,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            1929
+            1961
         );
         assert_eq!(
             relocation_targets
@@ -5264,14 +5274,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_READ_SYMBOL)
                 .count(),
-            10
+            12
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL)
                 .count(),
-            11
+            13
         );
         assert_eq!(
             relocation_targets
@@ -5285,7 +5295,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            124
+            128
         );
         assert_eq!(
             relocation_targets
@@ -5551,7 +5561,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 269);
+        assert_eq!(decoded.semantic_trace.len(), 274);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -5948,6 +5958,33 @@ mod tests {
         assert!(decoded.semantic_trace[195].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
         assert_eq!(decoded.semantic_trace[196], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[197].starts_with(SYSTEMS_CONSOLE_WRITE));
+        for (index, request) in
+            CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                .iter()
+                .enumerate()
+        {
+            let identity = match request.direction {
+                CompilerPciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
+                CompilerPciRegionRegisterDirection::Write => SYSTEMS_PCI_REGION_WRITE,
+            };
+            assert_eq!(
+                decoded.semantic_trace[198 + index],
+                format!(
+                    "{identity}:transaction={}:segment=0:bus=0:device=5:function=0:access-capability-offset=132:bar=4:region-offset=0:region-length=4096:register-offset={}:width={}:value={:#010x}",
+                    index + 25,
+                    request.register_offset_bytes,
+                    request.width_bytes,
+                    request.value
+                )
+            );
+        }
+        assert_eq!(
+            decoded.semantic_trace[202],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE")
+            )
+        );
         decoded.semantic_trace.drain(195..198);
         decoded.semantic_trace.drain(166..194);
         decoded.semantic_trace.drain(120..136);
@@ -6156,7 +6193,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[149].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[154].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

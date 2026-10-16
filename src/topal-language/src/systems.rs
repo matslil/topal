@@ -3393,6 +3393,11 @@ fn analyze_kernel_context_decision(
         reclaim_user_space,
         release_user_frames,
         backing_marker_statement,
+        queue_enable_write_statement,
+        queue_enable_read_statement,
+        driver_ok_write_statement,
+        driver_ok_read_statement,
+        queue_activation_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -3916,122 +3921,167 @@ fn analyze_kernel_context_decision(
             "user backing release requires its exact marker",
         ));
     }
+    let mut queue_activation_operations = Vec::new();
+    for (statement, request) in [
+        queue_enable_write_statement,
+        queue_enable_read_statement,
+        driver_ok_write_statement,
+        driver_ok_read_statement,
+    ]
+    .into_iter()
+    .zip(CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION)
+    {
+        let operation = analyze_operation(
+            source,
+            statement,
+            CompilerSystemsContextKind::Bootstrap,
+            &completion_resumed,
+        )?;
+        if operation != (CompilerSystemsOperation::AccessPciRegionRegister { request }) {
+            return Err(user_context_diagnostic(
+                source,
+                statement_span(statement),
+                "user teardown must be followed by the exact virtio queue-activation sequence",
+            ));
+        }
+        queue_activation_operations.push(operation);
+    }
+    let queue_activation_marker = analyze_operation(
+        source,
+        queue_activation_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if queue_activation_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(queue_activation_marker_statement),
+            "virtio queue activation requires its exact completion marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
         CompilerSystemsContextKind::Bootstrap,
         &completion_resumed,
     )?;
+    let mut operations = vec![
+        CompilerSystemsOperation::BootstrapAllocate { request },
+        CompilerSystemsOperation::CreateKernelCompletion,
+        CompilerSystemsOperation::CreateKernelContext,
+        CompilerSystemsOperation::BootstrapAllocate {
+            request: completion_request,
+        },
+        CompilerSystemsOperation::CreateKernelContext,
+        CompilerSystemsOperation::BootstrapAllocate {
+            request: terminal_request,
+        },
+        CompilerSystemsOperation::CreateKernelContext,
+        CompilerSystemsOperation::CreateRunnableQueue { capacity: 3 },
+        CompilerSystemsOperation::EnqueueRunnableContext,
+        CompilerSystemsOperation::EnqueueRunnableContext,
+        CompilerSystemsOperation::EnqueueRunnableContext,
+        CompilerSystemsOperation::DequeueRunnableContext,
+        CompilerSystemsOperation::TransferKernelContextUntilDeadline,
+        CompilerSystemsOperation::TakePreemptedKernelContext,
+        preemption_marker,
+        CompilerSystemsOperation::EnqueueRunnableContext,
+        CompilerSystemsOperation::DequeueRunnableContext,
+        CompilerSystemsOperation::TransferKernelContextUntilCompletion,
+        CompilerSystemsOperation::DequeueRunnableContext,
+        CompilerSystemsOperation::TransferKernelContext,
+        terminal_marker,
+        CompilerSystemsOperation::ReclaimKernelContext,
+        CompilerSystemsOperation::SignalBlockedKernelCompletion,
+        CompilerSystemsOperation::EnqueueRunnableContext,
+        CompilerSystemsOperation::DequeueRunnableContext,
+        CompilerSystemsOperation::TransferKernelContext,
+        cooperative_marker,
+        CompilerSystemsOperation::ReclaimKernelContext,
+        CompilerSystemsOperation::DequeueRunnableContext,
+        CompilerSystemsOperation::TransferKernelContext,
+        completion_marker,
+        CompilerSystemsOperation::ReclaimKernelContext,
+        CompilerSystemsOperation::ConsumeKernelCompletion,
+        CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: backing_request,
+            failure_message: backing_failure,
+        },
+        CompilerSystemsOperation::PrepareUserAddressSpace,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: scratch_request,
+            failure_message: scratch_failure_message,
+        },
+        CompilerSystemsOperation::MapUserAddressSpace,
+        CompilerSystemsOperation::InstallUserMappingEntryTrampoline,
+        CompilerSystemsOperation::ProtectUserMappingReadOnly,
+        CompilerSystemsOperation::VerifyUserMappingEntryTrampoline,
+        CompilerSystemsOperation::PermitUserMappingExecute,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: data_request,
+            failure_message: data_failure_message,
+        },
+        CompilerSystemsOperation::MapUserAddressSpace,
+        CompilerSystemsOperation::StoreUserMappingByte,
+        CompilerSystemsOperation::ProtectUserMappingReadOnly,
+        CompilerSystemsOperation::LoadUserMappingByte,
+        CompilerSystemsOperation::PermitUserMappingWritableData,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: anonymous_request,
+            failure_message: anonymous_failure_message,
+        },
+        CompilerSystemsOperation::ReserveAnonymousUserMapping,
+        image_ready_marker,
+        boot_resource_marker,
+        CompilerSystemsOperation::PrepareUserProbe {
+            process_identity: 1,
+        },
+        CompilerSystemsOperation::EnterUserContext,
+        user_read_marker,
+        user_copy_to_marker,
+        user_copy_from_marker,
+        user_marker,
+        entry_marker,
+        stack_marker,
+        auxv_marker,
+        auxv_entry_marker,
+        auxv_execfn_marker,
+        auxv_credentials_marker,
+        elf_marker,
+        external_elf_marker,
+        external_elf_copy_marker,
+        runtime_extent_marker,
+        runtime_entry_marker,
+        runtime_data_marker,
+        external_bss_marker,
+        data_marker,
+        writable_data_marker,
+        image_copy_to_marker,
+        image_copy_from_marker,
+        image_syscall_marker,
+        retained_marker,
+        CompilerSystemsOperation::ReleaseAnonymousUserMapping,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+        CompilerSystemsOperation::UnmapUserAddressSpace,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+        CompilerSystemsOperation::UnmapUserAddressSpace,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+        mapping_marker,
+        disjoint_marker,
+        CompilerSystemsOperation::CompleteUserExecution,
+        CompilerSystemsOperation::ReclaimUserAddressSpace,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+        backing_marker,
+    ];
+    operations.extend(queue_activation_operations);
+    operations.push(queue_activation_marker);
     Ok(CheckedBootstrapRegionDecision {
-        operations: vec![
-            CompilerSystemsOperation::BootstrapAllocate { request },
-            CompilerSystemsOperation::CreateKernelCompletion,
-            CompilerSystemsOperation::CreateKernelContext,
-            CompilerSystemsOperation::BootstrapAllocate {
-                request: completion_request,
-            },
-            CompilerSystemsOperation::CreateKernelContext,
-            CompilerSystemsOperation::BootstrapAllocate {
-                request: terminal_request,
-            },
-            CompilerSystemsOperation::CreateKernelContext,
-            CompilerSystemsOperation::CreateRunnableQueue { capacity: 3 },
-            CompilerSystemsOperation::EnqueueRunnableContext,
-            CompilerSystemsOperation::EnqueueRunnableContext,
-            CompilerSystemsOperation::EnqueueRunnableContext,
-            CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContextUntilDeadline,
-            CompilerSystemsOperation::TakePreemptedKernelContext,
-            preemption_marker,
-            CompilerSystemsOperation::EnqueueRunnableContext,
-            CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContextUntilCompletion,
-            CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContext,
-            terminal_marker,
-            CompilerSystemsOperation::ReclaimKernelContext,
-            CompilerSystemsOperation::SignalBlockedKernelCompletion,
-            CompilerSystemsOperation::EnqueueRunnableContext,
-            CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContext,
-            cooperative_marker,
-            CompilerSystemsOperation::ReclaimKernelContext,
-            CompilerSystemsOperation::DequeueRunnableContext,
-            CompilerSystemsOperation::TransferKernelContext,
-            completion_marker,
-            CompilerSystemsOperation::ReclaimKernelContext,
-            CompilerSystemsOperation::ConsumeKernelCompletion,
-            CompilerSystemsOperation::ConsumeEmptyRunnableQueue,
-            CompilerSystemsOperation::AllocatePhysicalFrames {
-                request: backing_request,
-                failure_message: backing_failure,
-            },
-            CompilerSystemsOperation::PrepareUserAddressSpace,
-            CompilerSystemsOperation::AllocatePhysicalFrames {
-                request: scratch_request,
-                failure_message: scratch_failure_message,
-            },
-            CompilerSystemsOperation::MapUserAddressSpace,
-            CompilerSystemsOperation::InstallUserMappingEntryTrampoline,
-            CompilerSystemsOperation::ProtectUserMappingReadOnly,
-            CompilerSystemsOperation::VerifyUserMappingEntryTrampoline,
-            CompilerSystemsOperation::PermitUserMappingExecute,
-            CompilerSystemsOperation::AllocatePhysicalFrames {
-                request: data_request,
-                failure_message: data_failure_message,
-            },
-            CompilerSystemsOperation::MapUserAddressSpace,
-            CompilerSystemsOperation::StoreUserMappingByte,
-            CompilerSystemsOperation::ProtectUserMappingReadOnly,
-            CompilerSystemsOperation::LoadUserMappingByte,
-            CompilerSystemsOperation::PermitUserMappingWritableData,
-            CompilerSystemsOperation::AllocatePhysicalFrames {
-                request: anonymous_request,
-                failure_message: anonymous_failure_message,
-            },
-            CompilerSystemsOperation::ReserveAnonymousUserMapping,
-            image_ready_marker,
-            boot_resource_marker,
-            CompilerSystemsOperation::PrepareUserProbe {
-                process_identity: 1,
-            },
-            CompilerSystemsOperation::EnterUserContext,
-            user_read_marker,
-            user_copy_to_marker,
-            user_copy_from_marker,
-            user_marker,
-            entry_marker,
-            stack_marker,
-            auxv_marker,
-            auxv_entry_marker,
-            auxv_execfn_marker,
-            auxv_credentials_marker,
-            elf_marker,
-            external_elf_marker,
-            external_elf_copy_marker,
-            runtime_extent_marker,
-            runtime_entry_marker,
-            runtime_data_marker,
-            external_bss_marker,
-            data_marker,
-            writable_data_marker,
-            image_copy_to_marker,
-            image_copy_from_marker,
-            image_syscall_marker,
-            retained_marker,
-            CompilerSystemsOperation::ReleaseAnonymousUserMapping,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            CompilerSystemsOperation::UnmapUserAddressSpace,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            CompilerSystemsOperation::UnmapUserAddressSpace,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            mapping_marker,
-            disjoint_marker,
-            CompilerSystemsOperation::CompleteUserExecution,
-            CompilerSystemsOperation::ReclaimUserAddressSpace,
-            CompilerSystemsOperation::ReleasePhysicalFrames,
-            backing_marker,
-        ],
+        operations,
         disposition,
     })
 }
@@ -6958,13 +7008,15 @@ fn parse_pci_region_register_request(
         || !(CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
             .contains(&request)
             || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY
+                .contains(&request)
+            || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                 .contains(&request))
     {
         return Err(source_diagnostic(
             source,
             "E-SYSTEMS-PCI-REGION",
             span,
-            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation and queue-discovery sequences",
+            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation, queue-discovery, and queue-activation sequences",
         ));
     }
     Ok(request)
@@ -7240,6 +7292,15 @@ mod tests {
 
     fn memory_source() -> String {
         SOURCE.to_owned()
+    }
+
+    fn is_queue_activation(operation: &CompilerSystemsOperation) -> bool {
+        matches!(
+            operation,
+            CompilerSystemsOperation::AccessPciRegionRegister { request }
+                if CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
+                    .contains(request)
+        )
     }
 
     #[test]
@@ -8298,6 +8359,29 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_BACKING_OK".into(),
                 },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 25,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[0],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 26,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[1],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 27,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[2],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 28,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION[3],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -8314,7 +8398,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 208);
+        assert_eq!(program.bootstrap.handler.operations.len(), 213);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -8438,7 +8522,7 @@ mod tests {
                 "register-offset-bytes is 0,\n                                                                    expected-value",
                 "register-offset-bytes is 2,\n                                                                    expected-value",
             ),
-            memory_source().replace("device is 5", "device is 32"),
+            memory_source().replacen("device is 5", "device is 32", 1),
         ] {
             let error = analyze_systems_for_compiler(
                 &source,
@@ -8534,7 +8618,7 @@ mod tests {
                 .then_some(index)
             })
             .collect::<Vec<_>>();
-        assert_eq!(indices.len(), 21);
+        assert_eq!(indices.len(), 25);
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[17]);
@@ -8595,14 +8679,15 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !matches!(
-                operation,
-                CompilerSystemsOperation::CreateDmaBuffer { .. }
-                    | CompilerSystemsOperation::BindDmaBufferReference { .. }
-                    | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
-                    | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
-                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
-            )
+            !is_queue_activation(operation)
+                && !matches!(
+                    operation,
+                    CompilerSystemsOperation::CreateDmaBuffer { .. }
+                        | CompilerSystemsOperation::BindDmaBufferReference { .. }
+                        | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+                        | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                        | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+                )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD
@@ -8669,13 +8754,14 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !matches!(
-                operation,
-                CompilerSystemsOperation::BindDmaBufferReference { .. }
-                    | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
-                    | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
-                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
-            )
+            !is_queue_activation(operation)
+                && !matches!(
+                    operation,
+                    CompilerSystemsOperation::BindDmaBufferReference { .. }
+                        | CompilerSystemsOperation::StoreDmaBufferInteger { .. }
+                        | CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                        | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+                )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_DMA_BUFFER_BIND_REFERENCE
@@ -8758,11 +8844,12 @@ mod tests {
             .operations
             .remove(store_indices[3]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !matches!(
-                operation,
-                CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
-                    | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
-            )
+            !is_queue_activation(operation)
+                && !matches!(
+                    operation,
+                    CompilerSystemsOperation::PrepareDmaBufferForDevice { .. }
+                        | CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+                )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_DMA_BUFFER_PREPARE_DEVICE
@@ -8826,10 +8913,11 @@ mod tests {
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[1]);
         missing.bootstrap.handler.operations.retain(|operation| {
-            !matches!(
-                operation,
-                CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
-            )
+            !is_queue_activation(operation)
+                && !matches!(
+                    operation,
+                    CompilerSystemsOperation::PublishPciRegionDmaReference { .. }
+                )
         });
         missing
             .bootstrap
@@ -8894,6 +8982,11 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(indices[2]);
+        missing
+            .bootstrap
+            .handler
+            .operations
+            .retain(|operation| !is_queue_activation(operation));
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-DMA-PUBLISH-LIVE"
@@ -8918,6 +9011,53 @@ mod tests {
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-DMA-PUBLISH"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_virtio_queue_activation_sequence() {
+        // TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-ACTIVATE-001.
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let indices = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .enumerate()
+            .filter_map(|(index, operation)| is_queue_activation(operation).then_some(index))
+            .collect::<Vec<_>>();
+        assert_eq!(indices.len(), 4);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(indices[3]);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            indices[1],
+            duplicated.bootstrap.handler.operations[indices[0]].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
+        );
+
+        let mut reordered = program;
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(indices[0], indices[1]);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-PCI-REGION"
         );
     }
 
