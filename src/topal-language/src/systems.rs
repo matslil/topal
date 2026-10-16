@@ -6471,13 +6471,16 @@ fn parse_pci_region_register_request(
         })?,
     };
     if !request.is_well_formed()
-        || !CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION.contains(&request)
+        || !(CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION
+            .contains(&request)
+            || CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY
+                .contains(&request))
     {
         return Err(source_diagnostic(
             source,
             "E-SYSTEMS-PCI-REGION",
             span,
-            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation sequence",
+            "the initial Q35 profile admits only requests from the sealed virtio-rng feature-negotiation and queue-discovery sequences",
         ));
     }
     Ok(request)
@@ -7014,6 +7017,34 @@ mod tests {
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED".into(),
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 17,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[0],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 18,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[1],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 19,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[2],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 20,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[3],
+                },
+                CompilerSystemsTransition::AccessPciRegionRegister {
+                    transaction_identity: 21,
+                    request:
+                        CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[4],
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_BOOT".into(),
@@ -7586,7 +7617,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 184);
+        assert_eq!(program.bootstrap.handler.operations.len(), 190);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -7767,14 +7798,18 @@ mod tests {
     }
 
     #[test]
-    fn requires_the_complete_ordered_virtio_pci_feature_negotiation() {
-        // TOPAL-SYSTEMS-PCI-REGION-001, TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001.
+    fn requires_the_complete_ordered_virtio_pci_transport_observation() {
+        // TOPAL-SYSTEMS-PCI-REGION-001, TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-DISCOVERY-001.
         let mut malformed = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION[0];
         malformed.register_offset_bytes = 1;
         malformed.width_bytes = 4;
         assert!(!malformed.is_well_formed());
         malformed = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_NEGOTIATION[0];
         malformed.region_length_bytes = 20;
+        assert!(!malformed.is_well_formed());
+        malformed = CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_DISCOVERY[0];
+        malformed.value = 65_536;
         assert!(!malformed.is_well_formed());
 
         let program = analyze_systems_for_compiler(
@@ -7796,18 +7831,18 @@ mod tests {
                 .then_some(index)
             })
             .collect::<Vec<_>>();
-        assert_eq!(indices.len(), 16);
+        assert_eq!(indices.len(), 21);
 
         let mut missing = program.clone();
-        missing.bootstrap.handler.operations.remove(indices[1]);
+        missing.bootstrap.handler.operations.remove(indices[17]);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
         );
 
         let mut duplicated = program.clone();
-        duplicated.bootstrap.handler.operations[indices[1]] =
-            duplicated.bootstrap.handler.operations[indices[0]].clone();
+        duplicated.bootstrap.handler.operations[indices[17]] =
+            duplicated.bootstrap.handler.operations[indices[16]].clone();
         assert_eq!(
             validate_systems_program(&duplicated).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
@@ -7818,7 +7853,7 @@ mod tests {
             .bootstrap
             .handler
             .operations
-            .swap(indices[1], indices[2]);
+            .swap(indices[17], indices[18]);
         assert_eq!(
             validate_systems_program(&reordered).unwrap_err().code,
             "E-SYSTEMS-PCI-REGION"
