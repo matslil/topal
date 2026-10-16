@@ -1391,6 +1391,16 @@ lowering; it neither reads nor changes opaque pool bytes. A fully credited pool
 does not by itself imply generator readiness, reseeding, extraction, or
 userspace delivery.
 
+A checked generator-initialization operation may consume a fully credited
+opaque pool into one fresh affine generator. The qualified profile fixes the
+algorithm, exact key extent, initial generation, and credit threshold. The
+provider transfers the complete opaque state into distinct generator storage,
+wipes the consumed pool, and fails closed on a partial transfer or wipe; source
+observes neither storage object nor any key byte. Success establishes an
+explicit ready generator but produces no random output. Extraction, fast key
+erasure, generation advancement, reseeding, and interface delivery require
+later distinct operations.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
