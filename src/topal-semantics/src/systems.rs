@@ -65,6 +65,7 @@ pub const SYSTEMS_DMA_BUFFER_LOAD_INTEGER: &str = "topal.systems.dma.buffer.load
 pub const SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA: &str = "topal.systems.entropy.sample.capture-dma/1";
 pub const SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY: &str =
     "topal.systems.entropy.sample.assess-quality/1";
+pub const SYSTEMS_ENTROPY_POOL_CREATE: &str = "topal.systems.entropy.pool.create/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -514,6 +515,28 @@ impl EntropySampleQualityRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyPoolRequest {
+    pub pool_identity: u64,
+    pub credit_capacity_bits: u64,
+    pub initial_credited_entropy_bits: u64,
+}
+
+impl EntropyPoolRequest {
+    pub const INITIAL_Q35: Self = Self {
+        pool_identity: 1,
+        credit_capacity_bits: 256,
+        initial_credited_entropy_bits: 0,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.pool_identity != 0
+            && self.credit_capacity_bits != 0
+            && self.initial_credited_entropy_bits == 0
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PciRegionDmaReferenceRequest {
     pub segment: u16,
     pub bus: u8,
@@ -802,6 +825,9 @@ pub enum SystemsOperation {
     AssessEntropySampleQuality {
         request: EntropySampleQualityRequest,
     },
+    CreateEntropyPool {
+        request: EntropyPoolRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -921,6 +947,7 @@ impl SystemsOperation {
             Self::LoadDmaBufferIntegerEquals { .. } => SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
             Self::CaptureEntropySample { .. } => SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
             Self::AssessEntropySampleQuality { .. } => SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+            Self::CreateEntropyPool { .. } => SYSTEMS_ENTROPY_POOL_CREATE,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1168,6 +1195,9 @@ pub enum SystemsTransition {
     },
     AssessEntropySampleQuality {
         request: EntropySampleQualityRequest,
+    },
+    CreateEntropyPool {
+        request: EntropyPoolRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1512,6 +1542,7 @@ impl SystemsTransition {
             Self::LoadDmaBufferIntegerEquals { .. } => SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
             Self::CaptureEntropySample { .. } => SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
             Self::AssessEntropySampleQuality { .. } => SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+            Self::CreateEntropyPool { .. } => SYSTEMS_ENTROPY_POOL_CREATE,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -2080,6 +2111,7 @@ struct BootstrapAuthorityState {
     dma_payload_completed: bool,
     entropy_sample_captured: bool,
     entropy_sample_assessed: bool,
+    entropy_pool_created: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2545,6 +2577,19 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.entropy_sample_assessed = true;
+            }
+            SystemsOperation::CreateEntropyPool { request } => {
+                if !self.entropy_sample_assessed
+                    || self.entropy_pool_created
+                    || !request.is_well_formed()
+                    || *request != EntropyPoolRequest::INITIAL_Q35
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-POOL",
+                        "entropy-pool creation requires the exact sealed empty 256-bit pool after sample assessment",
+                    ));
+                }
+                self.entropy_pool_created = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -3999,6 +4044,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-ENTROPY-QUALITY-LIVE",
                 "bootstrap completion requires assessment of the captured virtio-rng sample under explicit Q35 trust evidence",
+            ));
+        }
+        if !self.entropy_pool_created {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-POOL-LIVE",
+                "bootstrap completion requires creation of the sealed empty entropy pool",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5672,6 +5723,9 @@ fn model_bootstrap_operation(
         SystemsOperation::AssessEntropySampleQuality { request } => {
             transitions.push(SystemsTransition::AssessEntropySampleQuality { request: *request });
         }
+        SystemsOperation::CreateEntropyPool { request } => {
+            transitions.push(SystemsTransition::CreateEntropyPool { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6020,6 +6074,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::LoadDmaBufferIntegerEquals { .. }
         | SystemsOperation::CaptureEntropySample { .. }
         | SystemsOperation::AssessEntropySampleQuality { .. }
+        | SystemsOperation::CreateEntropyPool { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6164,6 +6219,7 @@ mod tests {
             SYSTEMS_DMA_BUFFER_LOAD_INTEGER.into(),
             SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA.into(),
             SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY.into(),
+            SYSTEMS_ENTROPY_POOL_CREATE.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -6540,6 +6596,9 @@ mod tests {
                         },
                         SystemsOperation::AssessEntropySampleQuality {
                             request: EntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG,
+                        },
+                        SystemsOperation::CreateEntropyPool {
+                            request: EntropyPoolRequest::INITIAL_Q35,
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -7058,6 +7117,9 @@ mod tests {
                 },
                 SystemsTransition::AssessEntropySampleQuality {
                     request: EntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG,
+                },
+                SystemsTransition::CreateEntropyPool {
+                    request: EntropyPoolRequest::INITIAL_Q35,
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,

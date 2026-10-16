@@ -1017,6 +1017,12 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     credited-entropy-bits is 256
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED"
+                                                                                                                  completion-resumed entropy pool create (
+                                                                                                                    pool-identity is 1,
+                                                                                                                    credit-capacity-bits is 256,
+                                                                                                                    initial-credited-entropy-bits is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_POOL_CREATED"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
