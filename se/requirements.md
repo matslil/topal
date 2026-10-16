@@ -961,6 +961,12 @@ be bidirectional shared-control memory and one shall be device-write payload
 memory, both qualified by the pinned device and translation domain and retained
 in `CpuOwned` state. It shall expose no address and grant no device ownership.
 
+The bounded virtio split-ring refinement shall construct descriptor zero and
+available entry zero in the CPU-owned control buffer through bounded integer
+stores and one opaque same-domain reference to the payload buffer. It shall
+publish available index one only after the descriptor and slot are complete,
+retain CPU ownership, and expose no provider-selected DMA address.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
