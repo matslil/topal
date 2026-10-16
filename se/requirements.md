@@ -949,6 +949,12 @@ shall use exact two-byte semantics. DMA authority, queue enablement,
 notification, `DRIVER_OK`, interrupts, and entropy delivery shall remain
 unavailable.
 
+The bounded PCI bus-master refinement shall perform one masked two-byte update
+of the pinned function's command register after queue discovery. It shall prove
+masked pre-state zero, set only command bit two, preserve every unmasked bit,
+and prove the masked post-state by readback under one serialized transaction.
+It shall not write the adjacent status field or grant DMA-memory authority.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

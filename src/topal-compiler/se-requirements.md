@@ -459,6 +459,11 @@ identity, exact two-byte width, and complete request for every queue fact. It
 shall reject omissions, duplicates, reordering, substituted values, premature
 queue access, and any attempt to derive DMA authority or `DRIVER_OK`.
 
+The bounded PCI command refinement shall accept one masked word update only
+after complete queue discovery. It shall retain the exact function, offset,
+mask, pre-state, and post-state, reject malformed or substituted requests, and
+reject omission or duplication before root completion.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -483,6 +488,12 @@ transaction with other configuration accesses and shall not interpret common
 configuration offsets, feature bits, status values, or queue facts. Structural evidence
 shall prove the private mechanism-1 access sequences and one typed provider
 call for each checked region transaction.
+
+For the bounded bus-master authorization, the x86-64 provider shall serialize
+one configuration-mechanism-1 word read, masked pre-state comparison, word
+write preserving unmasked command bits, and word readback comparison. It shall
+use the two-byte command field without writing adjacent PCI status and shall
+remain unaware that bit two grants bus-master permission.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
