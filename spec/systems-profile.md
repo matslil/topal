@@ -1709,6 +1709,25 @@ Preparation SHALL NOT publish queue addresses to transport registers, enable a
 queue, set `DRIVER_OK`, notify the device, observe completion, return CPU
 ownership, or expose entropy.
 
+### TOPAL-SYSTEMS-DMA-COMPLETE-001 — DMA completion for CPU
+
+`topal.systems.dma.buffer.complete-cpu/1` SHALL consume one exclusively
+`DeviceOwned` DMA buffer and produce the same opaque identity in `CpuOwned`
+state. The request SHALL name and exactly match its nonzero buffer, device, and
+translation-domain identities, direction, provider-managed visibility policy,
+and semantic role. Completion SHALL require prior device completion evidence
+for the submitted operation that owns the buffer.
+
+Before the transition succeeds, the provider SHALL complete and order every
+required mapping, cache invalidate, DMA synchronization, bounce copy, and
+visibility action for the named direction and role. A coherent no-cache-
+instruction realization SHALL retain equivalent checked ordering evidence.
+After success, source MAY perform naturally aligned, in-bounds integer
+read-equals operations of width 1, 2, 4, or 8 over the CPU-owned buffer. A
+mismatch SHALL enter the fatal disposition. Neither completion nor a matching
+read SHALL return ownership of another buffer or expose a provider-selected
+address.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -1799,6 +1818,29 @@ queue, completion, and acknowledgement policy.
 This refinement SHALL NOT configure asynchronous interrupt delivery, inspect
 the used ring, return DMA ownership, consume entropy, reset the device, or
 define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-USED-RING-001 — Bounded used-ring validation
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-COMPLETION-SIGNAL-001`, the initial profile
+SHALL perform exactly one `TOPAL-SYSTEMS-DMA-COMPLETE-001` transition for
+control buffer identity one. The request SHALL retain device identity one,
+translation-domain identity one, bidirectional direction, provider-managed
+visibility, and the `VirtqueueControl` role. Payload buffer identity two SHALL
+remain `DeviceOwned`.
+
+The profile SHALL then perform exactly four ordered DMA-buffer integer
+read-equals operations over the CPU-owned control buffer: two-byte value zero
+at absolute used-ring flags offset 148, two-byte value one at used index offset
+150, four-byte descriptor identity zero at first used-element offset 152, and
+four-byte completed length 32 at offset 156. The used ring begins at control
+offset 148, so these are used-ring-relative offsets 0, 2, 4, and 8. These
+observations SHALL prove only
+that descriptor zero completed with the requested length. They SHALL NOT grant
+CPU ownership of the payload or establish any payload-byte value.
+
+This refinement SHALL NOT inspect entropy, return payload ownership, recycle or
+renotify the queue, populate `AT_RANDOM`, implement `getrandom`, configure
+asynchronous interrupt delivery, reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

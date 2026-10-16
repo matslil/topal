@@ -1007,6 +1007,15 @@ reject malformed, omitted, duplicated, reordered, substituted, premature, or
 unbounded observation; fail closed when the bound is exhausted; and grant
 neither used-ring validity nor CPU-access authority.
 
+The bounded virtio used-ring refinement shall perform exactly one affine
+device-to-CPU completion transition for the shared control buffer after the
+acknowledged transport signal, followed by exact-width reads proving used
+flags zero, index one, descriptor identity zero, and completed length 32. It
+shall retain buffer, device, translation-domain, direction, visibility, and
+role facts; require provider-completed device-to-CPU visibility before access;
+reject malformed, omitted, duplicated, reordered, substituted, or premature
+transitions and reads; and retain device ownership of the entropy payload.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
