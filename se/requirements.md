@@ -941,6 +941,14 @@ accepted `FEATURES_OK`. It shall leave `DRIVER_OK` clear until queue discovery,
 setup, and population complete. Queue, interrupt, DMA, and entropy operations
 shall remain unavailable.
 
+The bounded virtio queue-discovery refinement shall perform exactly five
+ordered common-configuration accesses after confirmed feature negotiation. It
+shall observe one queue, select queue zero, establish capacity eight, prove the
+queue remains disabled, and retain notification identity zero. The accesses
+shall use exact two-byte semantics. DMA authority, queue enablement,
+notification, `DRIVER_OK`, interrupts, and entropy delivery shall remain
+unavailable.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
