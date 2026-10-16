@@ -99,6 +99,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio queue-address publication](bounded-virtio-queue-address-publication.md)
 - [Bounded virtio queue activation](bounded-virtio-queue-activation.md)
 - [Bounded virtio queue notification](bounded-virtio-queue-notification.md)
+- [Bounded virtio completion-signal observation](bounded-virtio-completion-signal.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
