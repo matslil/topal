@@ -1268,6 +1268,15 @@ later explicit ownership transitions. Providers may use coherent identity
 translation, noncoherent cache maintenance, IOMMU mappings, or bounce storage
 while preserving the same source-visible lifetime and direction contract.
 
+While a DMA buffer is exclusively CPU-owned, checked integer stores may update
+bounded naturally aligned fields. A checked DMA-reference binding stores a
+provider-selected device-visible address derived from another compatible DMA
+identity without making that address an ordinary source value. Both buffers
+must belong to the same validated device and translation domain, and binding
+preserves their ownership. Identity-translated, IOMMU, and bounce-buffer
+providers therefore share one source operation while resolving different
+address representations privately.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
