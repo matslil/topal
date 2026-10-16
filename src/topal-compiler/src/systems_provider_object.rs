@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/75";
+    "topal.provider-object.x86_64-qemu-pc-q35/76";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -106,6 +106,10 @@ pub const X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL: &str =
 pub const X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL: &str =
     "topal_x86_systems_pci_configuration_update_word_masked";
 pub const X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL: &str = "topal_x86_systems_dma_buffer_create";
+pub const X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL: &str =
+    "topal_x86_systems_dma_buffer_bind_reference";
+pub const X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL: &str =
+    "topal_x86_systems_dma_buffer_store_integer";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -332,6 +336,49 @@ fn dma_buffer_create() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn dma_buffer_bind_reference() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x83, 0xf8, 0x08]); // cmp r8d, 8
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00]); // cmp rsi, 4088
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x07, 0x00, 0x00, 0x00]); // test rsi, 7
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xf9, 0xff, 0x0f, 0x00, 0x00]); // cmp rcx, 4095
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0x01, 0xca]); // add rdx, rcx
+    code.bytes(&[0x48, 0x89, 0x14, 0x37]); // mov [rdi+rsi], rdx
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn dma_buffer_store_integer() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x83, 0xfa, 0x02]); // cmp edx, 2
+    code.jump_if(0x85, "dword");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xfe, 0x0f, 0x00, 0x00]); // cmp rsi, 4094
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x01, 0x00, 0x00, 0x00]); // test rsi, 1
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x66, 0x89, 0x0c, 0x37]); // mov [rdi+rsi], cx
+    code.jump("success");
+    code.bind("dword")?;
+    code.bytes(&[0x83, 0xfa, 0x04]); // cmp edx, 4
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]); // cmp rsi, 4092
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]); // test rsi, 3
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x89, 0x0c, 0x37]); // mov [rdi+rsi], ecx
+    code.bind("success")?;
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedSystemsProviderObject {
     pub plan: X86SystemsProviderPlan,
@@ -410,6 +457,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
         &dma_buffer_create()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL,
+        &dma_buffer_bind_reference()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL,
+        &dma_buffer_store_integer()?,
     );
     append_encoded_function(
         &mut object,
@@ -4709,6 +4768,34 @@ mod tests {
         assert!(bytes.windows(3).any(|window| window == [0x83, 0xff, 0x02]));
         assert_eq!(bytes.iter().filter(|byte| **byte == 0xc3).count(), 2);
         assert!(!bytes.iter().any(|byte| matches!(*byte, 0xec..=0xef)));
+        let bind = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(bind.address()).unwrap();
+        let end = start + usize::try_from(bind.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(4)
+                .any(|window| window == [0x48, 0x89, 0x14, 0x37])
+        );
+        assert!(
+            bytes
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00])
+        );
+        let store = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(store.address()).unwrap();
+        let end = start + usize::try_from(store.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(4)
+                .any(|window| window == [0x66, 0x89, 0x0c, 0x37])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x89, 0x0c, 0x37]));
         let validator = file.symbol_by_name(X86_SYSTEMS_BOOT_MEMORY_SYMBOL).unwrap();
         assert!(validator.size() > 100);
         let section = file
