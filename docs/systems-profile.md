@@ -1288,6 +1288,16 @@ ownership. Preparing referenced payload storage before queue-control storage
 lets portable driver policy establish device accessibility before exposing a
 descriptor that names it.
 
+A device-register DMA-reference publication names a validated device region,
+register, reference width, device-owned buffer identity, in-buffer offset, and
+matching device and translation domain. The provider writes the corresponding
+device-visible address without returning it to source. Register selection and
+publication order remain checked driver policy; translation, target byte order,
+and any legal access-width decomposition remain provider mechanics. Thus
+identity-translated, IOMMU, bounce-buffer, configuration-gateway, and mapped-
+MMIO realizations share one source-level operation without creating a general
+integer/address conversion.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

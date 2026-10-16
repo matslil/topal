@@ -96,6 +96,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio DMA buffers](bounded-virtio-dma-buffers.md)
 - [Bounded virtio split ring](bounded-virtio-split-ring.md)
 - [Bounded DMA device preparation](bounded-dma-device-preparation.md)
+- [Bounded virtio queue-address publication](bounded-virtio-queue-address-publication.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
