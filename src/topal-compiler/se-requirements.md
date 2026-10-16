@@ -536,6 +536,14 @@ and zero credited bits; preserve payload ownership; lower one complete exact
 copy between provider-resolved opaque storage objects; expose no address or
 byte value; and reject malformed, partial, duplicated, or reordered capture.
 
+The bounded entropy-quality refinement shall accept exactly one assessment of
+the captured raw sample. It shall validate the exact sample/source/evidence
+identities, 32-byte extent, 1024/1024 quality, derived 256-bit credit, raw
+pre-state, and capture ordering; preserve opaque bytes and affine identity;
+model the transition as source-owned kernel policy with no provider operation;
+and reject malformed, omitted, duplicated, reordered, substituted, or
+premature assessment.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

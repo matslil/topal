@@ -1746,6 +1746,24 @@ integer. The sample identity SHALL remain affine and its credited-entropy fact
 SHALL remain explicit. Capture SHALL NOT condition, mix, health-test, trust,
 credit beyond the request, distribute, or destroy the source buffer.
 
+### TOPAL-SYSTEMS-ENTROPY-QUALITY-001 — Explicit sample-quality attribution
+
+`topal.systems.entropy.sample.assess-quality/1` SHALL consume one affine opaque
+sample in the `Raw` state and return the same identity in the `Assessed` state.
+The request SHALL name a nonzero sample identity, entropy-source identity,
+nonforgeable trust-evidence identity, nonzero sample byte count, quality from
+zero through 1024 parts per 1024, and a credited-entropy bit count.
+
+The credited count SHALL equal
+`floor(byte-count * 8 * quality-parts-per-1024 / 1024)` and SHALL NOT exceed
+the sample extent. The named evidence SHALL authorize the exact source and
+quality under the selected deployment profile. Assessment SHALL preserve the
+sample bytes without observing or exposing them and SHALL be a kernel-policy
+transition with no target-provider lowering. Device type, successful transport,
+payload role, and provider selection SHALL NOT imply trust or choose quality.
+Assessment SHALL NOT mix, condition, health-test, serialize, distribute, seed a
+generator, or produce random output.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -1897,6 +1915,26 @@ This refinement SHALL NOT condition or mix the sample, perform health tests,
 credit entropy, create a CRNG, populate `AT_RANDOM`, implement `getrandom`,
 recycle or renotify the queue, configure asynchronous interrupt delivery,
 reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-QUALITY-001 — Bounded sample assessment
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CAPTURE-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-ENTROPY-QUALITY-001` operation. It SHALL
+assess sample identity one with source identity one, trust-evidence identity
+one, byte count 32, quality 1024 parts per 1024, and exactly 256 credited
+entropy bits.
+
+Trust-evidence identity one SHALL record the initial Q35 profile's explicit
+trusted-host entropy assumption. It SHALL NOT be derivable from virtio device
+identity or provider success. The operation SHALL preserve the opaque sample
+bytes and identity, create no provider call, and reject another state,
+identity, source, evidence, extent, quality, credit, omission, duplication,
+reordering, or assessment before capture.
+
+This refinement SHALL NOT mix or condition the sample, perform health tests,
+create or seed an entropy pool or CRNG, populate `AT_RANDOM`, implement
+`getrandom`, recycle or renotify the queue, configure asynchronous interrupt
+delivery, reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
