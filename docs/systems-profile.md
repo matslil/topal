@@ -1277,6 +1277,17 @@ preserves their ownership. Identity-translated, IOMMU, and bounce-buffer
 providers therefore share one source operation while resolving different
 address representations privately.
 
+A DMA preparation transition consumes exclusive CPU ownership and produces the
+same opaque identity under exclusive device ownership. Before returning, the
+provider completes every mapping, pinning, cache-maintenance, and ordering
+action required by the buffer's direction, visibility policy, role, device,
+and translation domain. Even when coherent identity-translated hardware needs
+no cache instruction, the checked ownership and ordering boundary remains.
+Source cannot access the buffer again until a completion transition returns CPU
+ownership. Preparing referenced payload storage before queue-control storage
+lets portable driver policy establish device accessibility before exposing a
+descriptor that names it.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
