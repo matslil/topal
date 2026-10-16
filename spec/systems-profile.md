@@ -1531,12 +1531,16 @@ extent SHALL fit within the region without overflow. The value SHALL fit the
 access width. Invalid or target-unrepresentable requests SHALL be rejected
 before artifact generation.
 
-Each operation SHALL perform exactly one observable register access of the
-specified width and direction, consume the transaction session, and return the
-bootstrap authority only after completion. A read SHALL prove equality or
-enter the fatal disposition. A write SHALL publish exactly the supplied value.
-Neither access may be invented, removed, duplicated, widened, combined, or
-reordered across a conflicting event.
+An ordinary operation SHALL perform exactly one observable register access of
+the specified width and direction. A bounded eventual read SHALL perform at
+least one and no more than its operation-specific static bound, SHALL succeed
+on the first value equal to the request, and SHALL enter the fatal disposition
+if the bound is exhausted. Every operation SHALL consume the transaction
+session and return the bootstrap authority only after completion. An ordinary
+read SHALL prove equality or enter the fatal disposition. A write SHALL publish
+exactly the supplied value. No access may be invented, removed, widened,
+combined, or reordered across a conflicting event; repetition is permitted
+only by the bounded eventual-read operation within its declared bound.
 
 Source/library code SHALL own device identity, capability selection, BAR and
 relative-region selection, register protocol, width, direction, value and
@@ -1772,6 +1776,29 @@ queue selection and notification semantics.
 Notification SHALL NOT establish completion, permit CPU access to either DMA
 buffer, inspect the used ring, consume entropy, reset the device, or define
 failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-COMPLETION-SIGNAL-001 — Bounded completion signal
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-NOTIFY-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-PCI-REGION-001` bounded
+read-eventually-equals operation through the separate configuration-access
+capability at offset 132 to the region described by the pinned ISR-status
+capability at configuration offset 80. The request SHALL name BAR 4, region
+offset 4,096, region length 4,096, register offset zero, width one, expected
+value one, and an attempt bound of 1,000,000. The provider SHALL perform at
+least one and at most 1,000,000 serialized one-byte reads, SHALL succeed on the
+first value one, and SHALL enter the fatal disposition if the bound is
+exhausted. Bit zero SHALL denote a used-buffer notification, and the matching
+read SHALL acknowledge that signal.
+
+The observation SHALL require the exact prior notification. It SHALL NOT imply
+used-ring validity, completed length, payload validity, or CPU ownership of
+either DMA buffer. The provider SHALL remain unaware of virtio interrupt,
+queue, completion, and acknowledgement policy.
+
+This refinement SHALL NOT configure asynchronous interrupt delivery, inspect
+the used ring, return DMA ownership, consume entropy, reset the device, or
+define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

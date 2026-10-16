@@ -505,6 +505,15 @@ malformed, omitted, duplicated, reordered, substituted, or premature
 notification; and retain device ownership of both DMA buffers without
 fabricating completion.
 
+The bounded virtio completion-signal refinement shall accept exactly one
+additional PCI-region read-eventually-equals-one operation after queue
+notification. It shall require the separate configuration-access capability,
+discovered ISR capability, and exact BAR, region, offset, width,
+queue-interrupt bit, and 1,000,000-attempt bound; reject malformed, omitted,
+duplicated, reordered, substituted, premature, or unbounded observation; lower
+exhaustion to checked failure; and retain device ownership without claiming
+used-ring or payload validity.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -574,6 +583,12 @@ configuration-gateway word write without interpreting queue or notification
 meaning. Structural evidence shall prove one typed call, capability-relative
 region selection, exact width/value, serialized write, and no hidden readback,
 completion, or ownership transition.
+
+For bounded completion-signal observation, the x86-64 provider shall reuse the
+qualified configuration-gateway byte read without interpreting ISR or queue
+meaning. Structural evidence shall prove one typed call, exact capability-
+relative region and expected value, serialized read/compare acknowledgement,
+and no hidden ring access or ownership transition.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
