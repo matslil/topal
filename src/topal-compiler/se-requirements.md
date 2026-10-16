@@ -591,6 +591,17 @@ and return success only after every action. The root shall publish ready
 generation two and one affine output object and reject malformed, partial,
 duplicated, reordered, substituted, or premature extraction.
 
+The bounded initial-`AT_RANDOM` refinement shall accept exactly one opaque-
+output delivery after extraction and before initial user-context entry. It
+shall validate output, address-space, and Linux-interface identity one; source
+extent 32; selected offset zero and extent 16; discarded offset 16 and extent
+16; auxiliary tag 25; single-use policy; the prepared pre-state; and exact
+ordering. The provider shall publish and verify one distinct bounded 16-byte
+stack object, wipe and verify all 32 provider-output bytes, and return success
+only after every action. The root shall permit entry only from the randomized
+entry-ready state and reject malformed, partial, duplicated, reordered,
+substituted, reused, or premature delivery.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
