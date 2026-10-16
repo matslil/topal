@@ -1734,6 +1734,24 @@ length 4,096.
 Publication SHALL NOT enable the queue, set `DRIVER_OK`, notify the device,
 observe completion, return CPU ownership, or expose entropy.
 
+### TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-ACTIVATE-001 — Bounded queue activation
+
+After `TOPAL-SYSTEMS-DMA-PUBLISH-001`, the initial profile SHALL perform
+exactly four ordered `TOPAL-SYSTEMS-PCI-REGION-001` transactions against the
+pinned common configuration. It SHALL write value one with width two at
+`queue_enable` offset 28, read back value one with width two at offset 28, write
+value 15 with width one at `device_status` offset 20, and read back value 15
+with width one at offset 20.
+
+The final status SHALL equal `ACKNOWLEDGE | DRIVER | FEATURES_OK | DRIVER_OK`.
+Each write SHALL precede and be confirmed by its corresponding read. Activation
+SHALL require complete queue-address publication and SHALL preserve the
+device-owned DMA buffers. The provider SHALL remain unaware of virtio queue and
+status semantics.
+
+Activation SHALL NOT notify the queue, observe completion, return CPU
+ownership, consume entropy, reset the device, or define failure recovery.
+
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
 A systems allocation SHALL be fallible and SHALL name one live pool/region,

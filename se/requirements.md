@@ -983,6 +983,13 @@ shall retain the exact common-region, device/domain, buffer, offset, width, and
 order facts; reject malformed, omitted, duplicated, reordered, substituted, or
 premature publication; and expose no address to source.
 
+The bounded virtio queue-activation refinement shall perform exactly four
+generic common-region transactions after all queue addresses are published:
+queue-enable write/readback followed by final `DRIVER_OK` status
+write/readback. It shall retain exact region, width, offset, value, and order
+facts; reject malformed, omitted, duplicated, reordered, substituted, or
+premature activation; and leave device-owned buffers inaccessible to the CPU.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
