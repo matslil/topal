@@ -1052,6 +1052,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     observed-pool-entropy-bits is 256
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_GENERATOR_READY"
+                                                                                                                  completion-resumed entropy generator extract (
+                                                                                                                    generator-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    prior-generation is 1,
+                                                                                                                    resulting-generation is 2,
+                                                                                                                    output-identity is 1,
+                                                                                                                    block-byte-count is 64,
+                                                                                                                    output-offset-bytes is 32,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    counter is 0,
+                                                                                                                    nonce-identity is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_OUTPUT_READY"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
