@@ -1365,6 +1365,13 @@ successful DMA completion, semantic payload role, or target provider cannot
 implicitly create trust evidence or select quality. Assessment performs no
 mixing, conditioning, generator seeding, or output.
 
+Kernel policy may create an opaque affine entropy-pool resource with an
+explicit credit capacity and zero initial credit. Creation establishes
+lifecycle identity only: it exposes no storage or byte representation, invokes
+no target provider, and does not consume an assessed sample. Mixing and credit
+transfer require a later distinct checked operation. Pool existence or input
+quality alone cannot imply generator readiness or random output.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
