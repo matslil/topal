@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/91";
+    "topal.provider-object.x86_64-qemu-pc-q35/92";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2426,7 +2426,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
     continuation.jump_if(0x85, "fs-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
-    continuation.bytes(&[0x48, 0x81, 0xec, 0x00, 0x01, 0x00, 0x00]); // small getrandom result
+    continuation.bytes(&[0x48, 0x81, 0xec, 0x00, 0x01, 0x00, 0x00]); // bounded getrandom result
     continuation.bytes(&[0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // zero length
     continuation.bytes(&[0x48, 0x85, 0xc0]);
@@ -2472,6 +2472,13 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump_if(0x85, "getrandom-buffer-fail");
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24]);
     continuation.bytes(&[0x4c, 0x8b, 0x9c, 0x24, 0xf8, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xbf, 0x00, 0x10, 0x60, 0x00]); // complete writable data page
+    continuation.bytes(&[0xbe, 0x00, 0x02, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x00, 0x02, 0x00, 0x00]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x25, 0x00, 0x10, 0x60, 0x00]);
+    continuation.bytes(&[0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]);
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
@@ -3169,7 +3176,7 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "getrandom-einval");
     code.bytes(&[0x49, 0x83, 0xe0, 0x06, 0x49, 0x83, 0xf8, 0x06]);
     code.jump_if(0x84, "getrandom-einval");
-    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x01, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x02, 0x00, 0x00]);
     code.jump_if(0x87, "getrandom-einval");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "getrandom-zero");
@@ -6587,8 +6594,8 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
                 .count(),
-            8,
-            "ring-3 must exercise four non-consuming cases, two bounded successes, one full-output call, and one maximum small request"
+            9,
+            "ring-3 must preserve the prior eight getrandom calls and add one maximum large request"
         );
         assert!(
             entry_payload
@@ -6612,16 +6619,23 @@ assert bytes(output) == block[32:]
             "ring-3 must read the last qword of the maximum 256-byte small request"
         );
         assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]),
+            "ring-3 must read the last qword of the maximum 512-byte large request"
+        );
+        assert!(
             user_syscall
                 .windows(7)
-                .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x01, 0x00, 0x00])
+                .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x02, 0x00, 0x00])
                 && user_syscall
                     .windows(4)
                     .any(|bytes| bytes == [0x48, 0x83, 0xfa, 0x20])
                 && user_syscall
                     .windows(5)
                     .any(|bytes| bytes == [0xba, 0x20, 0x00, 0x00, 0x00]),
-            "getrandom must cap complete requests at 256 bytes and split them into 32-byte outputs"
+            "getrandom must cap complete requests at 512 bytes and split them into 32-byte outputs"
         );
         assert!(
             initial_stack
