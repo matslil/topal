@@ -686,6 +686,16 @@ lookup, set/get, unsupported command, alias flag independence, `dup2` clearing,
 closed-slot rejection, exact results, and ordered
 `TOPAL_KERNEL_USER_FCNTL_OK` observation.
 
+The bounded initial-descriptor `fstat` refinement shall lower one immutable
+console metadata value and the native 144-byte x86-64 layout through checked
+dispatch policy. The provider shall map syscall 5, look up description identity
+before user access, validate a complete writable extent, privately stage every
+field and zero byte, publish under generated fault recovery, and retain no user
+pointer. The ring-3 image and provider-object evidence shall prove exact object,
+ttyS0 device, character-mode, ownership, link, size, block, timestamp, padding,
+alias-equality, `EBADF`, `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_FSTAT_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
