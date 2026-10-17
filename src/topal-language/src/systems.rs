@@ -29,6 +29,7 @@ pub use topal_semantics::{
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
+    EntropyGeneratorRequest as CompilerEntropyGeneratorRequest,
     EntropyPoolCreditRequest as CompilerEntropyPoolCreditRequest,
     EntropyPoolMixRequest as CompilerEntropyPoolMixRequest,
     EntropyPoolRequest as CompilerEntropyPoolRequest,
@@ -55,17 +56,18 @@ pub use topal_semantics::{
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
-    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_POOL_CREATE,
-    SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
-    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
+    SYSTEMS_ENTROPY_POOL_MIX_SAMPLE, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3429,6 +3431,8 @@ fn analyze_kernel_context_decision(
         entropy_mix_marker_statement,
         entropy_credit_statement,
         entropy_credit_marker_statement,
+        entropy_generator_statement,
+        entropy_generator_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4326,6 +4330,40 @@ fn analyze_kernel_context_decision(
             "entropy-credit transfer requires its exact marker",
         ));
     }
+    let entropy_generator = analyze_operation(
+        source,
+        entropy_generator_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_generator
+        != (CompilerSystemsOperation::InitializeEntropyGenerator {
+            request: CompilerEntropyGeneratorRequest::INITIAL_Q35,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_generator_statement),
+            "entropy credit must be followed by exact generation-one CRNG initialization",
+        ));
+    }
+    let entropy_generator_marker = analyze_operation(
+        source,
+        entropy_generator_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_generator_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_ENTROPY_GENERATOR_READY".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_generator_marker_statement),
+            "entropy-generator initialization requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4462,6 +4500,8 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_mix_marker);
     operations.push(entropy_credit);
     operations.push(entropy_credit_marker);
+    operations.push(entropy_generator);
+    operations.push(entropy_generator_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6842,6 +6882,22 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            generator,
+            initialize,
+            Expression::Product { fields, span },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, generator, "generator")
+        && identifier_is(source, initialize, "initialize")
+    {
+        let request = parse_entropy_generator_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::InitializeEntropyGenerator { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7677,6 +7733,43 @@ fn parse_entropy_pool_credit_request(
     Ok(request)
 }
 
+fn parse_entropy_generator_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropyGeneratorRequest, Diagnostic> {
+    if fields.len() != 7 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-GENERATOR",
+            span,
+            "entropy-generator initialization requires pool, generator, algorithm, generation, key extent, required credit, and observed credit fields",
+        ));
+    }
+    let request = CompilerEntropyGeneratorRequest {
+        pool_identity: field_natural(source, &fields[0], "pool-identity")?,
+        generator_identity: field_natural(source, &fields[1], "generator-identity")?,
+        algorithm_identity: field_natural(source, &fields[2], "algorithm-identity")?,
+        generation: field_natural(source, &fields[3], "generation")?,
+        key_byte_count: field_natural(source, &fields[4], "key-byte-count")?,
+        required_entropy_bits: field_natural(source, &fields[5], "required-entropy-bits")?,
+        observed_pool_entropy_bits: field_natural(
+            source,
+            &fields[6],
+            "observed-pool-entropy-bits",
+        )?,
+    };
+    if !request.is_well_formed() || request != CompilerEntropyGeneratorRequest::INITIAL_Q35 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-GENERATOR",
+            span,
+            "the initial Q35 profile admits only the sealed generation-one 32-byte ChaCha20 initialization",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -8123,6 +8216,7 @@ mod tests {
                 | CompilerSystemsOperation::CreateEntropyPool { .. }
                 | CompilerSystemsOperation::MixEntropyPoolSample { .. }
                 | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
         )
     }
 
@@ -8135,6 +8229,7 @@ mod tests {
                     | CompilerSystemsOperation::CreateEntropyPool { .. }
                     | CompilerSystemsOperation::MixEntropyPoolSample { .. }
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                    | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
             )
         });
         program.bootstrap.handler.effects.retain(|effect| {
@@ -8143,6 +8238,8 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREATE
                 && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
         });
     }
 
@@ -8205,6 +8302,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
                 SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
@@ -9309,6 +9407,12 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_ENTROPY_POOL_CREDITED".into(),
                 },
+                CompilerSystemsTransition::InitializeEntropyGenerator {
+                    request: CompilerEntropyGeneratorRequest::INITIAL_Q35,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ENTROPY_GENERATOR_READY".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -9325,7 +9429,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 235);
+        assert_eq!(program.bootstrap.handler.operations.len(), 237);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -9366,6 +9470,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
                 SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
@@ -10480,6 +10585,7 @@ mod tests {
                 CompilerSystemsOperation::CreateEntropyPool { .. }
                     | CompilerSystemsOperation::MixEntropyPoolSample { .. }
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                    | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -10487,6 +10593,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREATE
                 && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -10570,12 +10677,14 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::MixEntropyPoolSample { .. }
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                    | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_POOL_CREATE
                 && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -10661,11 +10770,13 @@ mod tests {
             !matches!(
                 operation,
                 CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                    | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -10743,11 +10854,16 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::InitializeEntropyGenerator { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+                && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-CREDIT-LIVE"
@@ -10793,6 +10909,82 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-CREDIT"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_initial_entropy_generator() {
+        // TOPAL-SYSTEMS-ENTROPY-GENERATOR-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-GENERATOR-001.
+        let mut malformed = CompilerEntropyGeneratorRequest::INITIAL_Q35;
+        malformed.key_byte_count = 31;
+        assert!(!malformed.is_well_formed());
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::InitializeEntropyGenerator { .. }
+                )
+            })
+            .unwrap();
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-GENERATOR-LIVE"
+        );
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-GENERATOR"
+        );
+        let mut reordered = program.clone();
+        let credit = reordered
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                )
+            })
+            .unwrap();
+        reordered.bootstrap.handler.operations.swap(credit, index);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-GENERATOR"
+        );
+        let mut substituted = program;
+        if let CompilerSystemsOperation::InitializeEntropyGenerator { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.algorithm_identity = 2;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-GENERATOR"
         );
     }
 

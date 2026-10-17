@@ -1819,6 +1819,25 @@ again.
 Credit transfer SHALL NOT imply generator readiness, initialize or reseed a
 generator, extract bytes, or authorize userspace delivery.
 
+### TOPAL-SYSTEMS-ENTROPY-GENERATOR-001 — Opaque affine generator initialization
+
+`topal.systems.entropy.generator.initialize/1` SHALL consume one affine pool in
+the `Credited` state and produce one fresh affine generator in the `Ready`
+state. The request SHALL name nonzero pool, generator, algorithm, and initial
+generation identities; a nonzero key byte count; and exact required and
+observed pool-credit counts. Observed credit SHALL meet the required threshold.
+
+The qualified algorithm SHALL define architecture-independent key-byte
+semantics. The provider SHALL transfer the complete opaque pool state into
+distinct generator-key storage, verify the complete transfer, wipe the
+consumed pool storage, and verify the complete wipe before success. It SHALL
+fail closed rather than publish a partial key, retain the pool state, or expose
+any byte or address. Source SHALL NOT observe the pool state, key, storage,
+intermediate value, or target instruction.
+
+Initialization SHALL NOT extract output, advance generation, perform fast key
+erasure, reseed, or authorize interface delivery.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2047,6 +2066,28 @@ This refinement SHALL NOT declare readiness, initialize, seed, reseed, or
 expose a CRNG, populate `AT_RANDOM`, implement `getrandom`, recycle or renotify
 the queue, configure asynchronous interrupt delivery, reset the device, or
 define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-GENERATOR-001 — Bounded initial CRNG seeding
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CREDIT-001`, the initial profile SHALL
+perform exactly one `TOPAL-SYSTEMS-ENTROPY-GENERATOR-001` operation. It SHALL
+name pool identity one, generator identity one, ChaCha20 algorithm identity
+one, generation one, key extent 32, required credit 256, and observed credit
+256.
+
+The provider SHALL move all 32 bytes of the opaque BLAKE2s-conditioned pool
+state without byte transformation into distinct generator-key storage, verify
+all 32 destination bytes, wipe all 32 pool-state bytes, and verify the wipe.
+Success SHALL consume the pool and publish only generator identity one in the
+`Ready` state.
+
+The profile SHALL reject another identity, algorithm, generation, extent,
+credit, pre-state, omission, duplication, reordering, partial copy, retained
+pool byte, or initialization before credit transfer. This refinement SHALL NOT
+construct a ChaCha20 block, produce output, perform fast key erasure, reseed,
+populate `AT_RANDOM`, implement `getrandom`, recycle or renotify the queue,
+configure asynchronous interrupt delivery, reset the device, or define failure
+recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

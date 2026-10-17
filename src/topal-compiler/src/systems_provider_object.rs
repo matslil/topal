@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/84";
+    "topal.provider-object.x86_64-qemu-pc-q35/85";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -121,11 +121,15 @@ pub const X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL: &str =
     "topal_x86_systems_entropy_capture_dma_sample";
 pub const X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL: &str =
     "topal_x86_systems_entropy_mix_blake2s_pool_sample";
+pub const X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL: &str =
+    "topal_x86_systems_entropy_initialize_chacha20_generator";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
 pub const X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL: &str = "topal_x86_systems_raw_entropy_sample";
 pub const X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL: &str = "topal_x86_systems_entropy_pool_state";
+pub const X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL: &str =
+    "topal_x86_systems_entropy_generator_key";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -662,6 +666,56 @@ fn entropy_mix_blake2s_pool_sample() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_initialize_chacha20_generator() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x89, 0x06, 0x48, 0x3b, 0x06]);
+        } else {
+            code.bytes(&[
+                0x48, 0x8b, 0x47, offset, 0x48, 0x89, 0x46, offset, 0x48, 0x3b, 0x46, offset,
+            ]);
+        }
+        code.jump_if(0x85, "fail_wipe");
+    }
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x07]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x47, offset]);
+        }
+    }
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x0b, 0x07]);
+        } else {
+            code.bytes(&[0x48, 0x0b, 0x47, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail_wipe");
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail_wipe")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x07, 0x48, 0x89, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x47, offset, 0x48, 0x89, 0x46, offset]);
+        }
+    }
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -841,6 +895,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL,
+        &entropy_initialize_chacha20_generator()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -912,7 +972,6 @@ pub fn generate_x86_64_systems_provider_object(
         section: SymbolSection::Section(storage),
         flags: SymbolFlags::None,
     });
-
     let dma_storage = object.add_section(
         Vec::new(),
         X86_SYSTEMS_DMA_STORAGE_SECTION.as_bytes().to_vec(),
@@ -961,6 +1020,17 @@ pub fn generate_x86_64_systems_provider_object(
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL.as_bytes().to_vec(),
         value: pool_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+    let generator_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL.as_bytes().to_vec(),
+        value: generator_offset,
         size: 32,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
@@ -5027,7 +5097,7 @@ assert bytes(pool) == expected
             .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
             .unwrap();
         assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
-        assert_eq!(entropy_storage.size(), 64);
+        assert_eq!(entropy_storage.size(), 96);
         assert_eq!(entropy_storage.align(), 32);
         let raw_sample = file
             .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
@@ -5041,6 +5111,15 @@ assert bytes(pool) == expected
         assert_eq!(pool_state.size(), 32);
         assert_eq!(pool_state.address(), 32);
         assert_eq!(pool_state.section_index(), entropy_storage.index().into());
+        let generator_key = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL)
+            .unwrap();
+        assert_eq!(generator_key.size(), 32);
+        assert_eq!(generator_key.address(), 64);
+        assert_eq!(
+            generator_key.section_index(),
+            entropy_storage.index().into()
+        );
         let note = file
             .section_by_name(X86_SYSTEMS_PROVIDER_NOTE_SECTION)
             .unwrap()
@@ -5443,6 +5522,36 @@ assert bytes(pool) == expected
         }
         #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
         check_entropy_mix_against_independent_reference(bytes);
+        let initialize = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(initialize.address()).unwrap();
+        let end = start + usize::try_from(initialize.size()).unwrap();
+        let bytes = &data[start..end];
+        for offset in [0_u8, 8, 16, 24] {
+            let load = if offset == 0 {
+                vec![0x48, 0x8b, 0x07]
+            } else {
+                vec![0x48, 0x8b, 0x47, offset]
+            };
+            let publish = if offset == 0 {
+                vec![0x48, 0x89, 0x06]
+            } else {
+                vec![0x48, 0x89, 0x46, offset]
+            };
+            let wipe = if offset == 0 {
+                vec![0x48, 0x89, 0x07]
+            } else {
+                vec![0x48, 0x89, 0x47, offset]
+            };
+            for sequence in [load, publish, wipe] {
+                assert!(
+                    bytes
+                        .windows(sequence.len())
+                        .any(|window| window == sequence)
+                );
+            }
+        }
         let publish = file
             .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
             .unwrap();
