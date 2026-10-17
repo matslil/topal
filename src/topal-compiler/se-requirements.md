@@ -662,6 +662,19 @@ its final successful read, verify a later read and repeated close both return
 shall prove initialization, lookup, transition, rejection, complete teardown
 clearing, and the ordered `TOPAL_KERNEL_USER_CLOSE_OK` observation.
 
+The bounded initial-descriptor duplication refinement shall lower table count
+three, `EBADF` value nine, `EMFILE` value 24, and the three fixed description
+identities and access modes through checked dispatch policy. The x86-64
+provider shall map native syscalls 32 and 33 to lowest-free duplication and
+validation-before-replacement duplication, preserve aliases across one-slot
+close, and make read/write authorize the mapped description. The ring-3 image
+shall prove full-table rejection, zero-slot allocation, source-slot close
+survival, alias restoration, write-only read rejection without input, invalid-
+source nonreplacement, error-description replacement, exact close results,
+and terminal clearing. Provider-object and physical evidence shall prove the
+private mapping encoding, exact branches and returns, no premature state
+change, and ordered `TOPAL_KERNEL_USER_DUP_OK` observation.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
