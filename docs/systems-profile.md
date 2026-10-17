@@ -1429,6 +1429,17 @@ consumes the capability, and wipes the entire provider output. Native syscall
 numbers, registers, pointer validation, and copy-fault recovery remain provider
 details, while source observes neither random bytes nor an address.
 
+A checked reusable user-random binding may consume a ready generator together
+with one live initial reservation into an affine process-lifetime service. The
+reserved output supplies the first successful request. Each later successful
+request performs a fresh generator transition with key replacement before
+publication; complete argument and user-range validation precedes that
+transition, and every call wipes its full output after the requested prefix is
+copied. Zero and rejected requests do not advance the generator. Process exit
+consumes the service only after the provider destroys any live output, the
+generator key, and private service state. Source observes neither secret state
+nor target syscall, register, exception, or copy mechanics.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
