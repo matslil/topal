@@ -1059,8 +1059,24 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     incompatible-flag-mask is 6,
                                                                                                                     single-use is 1
                                                                                                                   )
+                                                                                                                  completion-resumed entropy user random bind reusable (
+                                                                                                                    generator-identity is 1,
+                                                                                                                    generation is 3,
+                                                                                                                    initial-output-identity is 2,
+                                                                                                                    block-byte-count is 64,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    maximum-delivery-byte-count is 16,
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    supported-flag-mask is 7,
+                                                                                                                    incompatible-flag-mask is 6,
+                                                                                                                    reserved-first-output is 1,
+                                                                                                                    reusable is 1
+                                                                                                                  )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
