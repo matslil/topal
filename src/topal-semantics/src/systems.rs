@@ -1491,6 +1491,8 @@ pub enum SystemsDisposition {
         write_maximum_bytes: u64,
         read_descriptor: u64,
         read_maximum_bytes: u64,
+        initial_descriptor_count: u64,
+        bad_descriptor_error: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -2484,6 +2486,8 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 write_maximum_bytes: 256,
                 read_descriptor: 0,
                 read_maximum_bytes: 256,
+                initial_descriptor_count: 3,
+                bad_descriptor_error: 9,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2578,6 +2582,7 @@ struct BootstrapAuthorityState {
     anonymous_user_mapping_reserved: bool,
     initial_boot_resource_validated: bool,
     constructed_user_read_completed: bool,
+    constructed_user_close_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -3977,6 +3982,22 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_read_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_CLOSE_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_read_completed
+                    || self.constructed_user_close_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-close witness requires the completed constructed read and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_close_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -3986,6 +4007,7 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.constructed_user_read_completed
+                    || !self.constructed_user_close_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -5550,6 +5572,8 @@ fn model_user_execution_transition(
                     write_maximum_bytes: _,
                     read_descriptor: _,
                     read_maximum_bytes: _,
+                    initial_descriptor_count: _,
+                    bad_descriptor_error: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -7519,6 +7543,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_CLOSE_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -7702,6 +7729,8 @@ mod tests {
                         write_maximum_bytes: 256,
                         read_descriptor: 0,
                         read_maximum_bytes: 256,
+                        initial_descriptor_count: 3,
+                        bad_descriptor_error: 9,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -7811,6 +7840,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                         || text == "TOPAL_KERNEL_USER_READ_OK"
+                        || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8380,6 +8410,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_CLOSE_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -9207,6 +9240,7 @@ mod tests {
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                             || text == "TOPAL_KERNEL_USER_READ_OK"
+                            || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"

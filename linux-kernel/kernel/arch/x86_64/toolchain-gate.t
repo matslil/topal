@@ -1101,6 +1101,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_CLOSE_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -1357,7 +1358,9 @@ user-syscall-handler is fn (
     munmap-result is 0,
     exit-group-status is 0,
     unsupported-syscall-error is 38,
-    sched-yield-result is 0
+    sched-yield-result is 0,
+    initial-descriptor-count is 3,
+    bad-descriptor-error is 9
   )
 
 lang systems artifact (
