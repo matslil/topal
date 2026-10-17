@@ -431,6 +431,38 @@ or disposition with any live construction state SHALL be invalid. This rule
 SHALL grant no payload byte access, active-address-space attachment, final
 permission, executable entry, or runtime image-selection authority.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ZERO-001 — Complete inactive payload initialization
+
+`static image construction zero payload` SHALL consume the exact live
+`StaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001`. Success SHALL produce one affine
+`ZeroedStaticImageConstruction` owning the same 503-frame payload and
+one-frame metadata extents. The operation SHALL write zero to every byte of
+the complete `503 * 4096` byte payload and SHALL independently verify that
+complete result before success. It SHALL preserve all 503 initial RW/NX leaves
+in their original order and all nine absent entries. The construction SHALL
+remain unreachable from every active address space.
+
+The initial x86-64 provider SHALL revalidate the complete input intervals and
+exact live leaf table before modifying payload contents. It SHALL perform the
+complete zeroing and readback through provider-private target access, SHALL
+reject any mismatch, and SHALL NOT expose an address, byte, mapping, loop, or
+target coherence operation to source. No partial initialization SHALL become
+observable and failure SHALL select the fatal action.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK`
+observation while the zeroed construction is live. In this profile, `static
+image construction revoke metadata` SHALL accept only that zeroed refinement;
+the metadata-release, payload-reclaim, and whole-release obligations of
+`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+
+Wrong owner or extent, duplicate zeroing, revocation before complete zeroing,
+missing or duplicate observation, any nonzero verified byte, leaf-table
+change, release before return, or disposition with either uninitialized or
+zeroed construction state live SHALL be invalid. This rule SHALL NOT copy file
+bytes, grant ordinary payload access, apply final permissions, attach an active
+address space, publish an entry, or make an image runtime-selectable.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
