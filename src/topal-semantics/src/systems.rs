@@ -74,6 +74,8 @@ pub const SYSTEMS_ENTROPY_GENERATOR_INITIALIZE: &str =
 pub const SYSTEMS_ENTROPY_GENERATOR_EXTRACT: &str = "topal.systems.entropy.generator.extract/1";
 pub const SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM: &str =
     "topal.systems.entropy.output.deliver-initial-auxv-random/1";
+pub const SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM: &str =
+    "topal.systems.entropy.output.reserve-initial-user-random/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -681,6 +683,19 @@ impl EntropyGeneratorExtractRequest {
         nonce_identity: 0,
     };
 
+    pub const INITIAL_Q35_GETRANDOM: Self = Self {
+        generator_identity: 1,
+        algorithm_identity: 1,
+        prior_generation: 2,
+        resulting_generation: 3,
+        output_identity: 2,
+        block_byte_count: 64,
+        output_offset_bytes: 32,
+        output_byte_count: 32,
+        counter: 0,
+        nonce_identity: 0,
+    };
+
     #[must_use]
     pub const fn is_well_formed(self) -> bool {
         self.generator_identity != 0
@@ -695,6 +710,67 @@ impl EntropyGeneratorExtractRequest {
             }
             && match self.output_offset_bytes.checked_add(self.output_byte_count) {
                 Some(end) => end == self.block_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyOutputReservationRequest {
+    pub output_identity: u64,
+    pub source_byte_count: u64,
+    pub selected_offset_bytes: u64,
+    pub maximum_delivery_byte_count: u64,
+    pub discarded_offset_bytes: u64,
+    pub discarded_byte_count: u64,
+    pub process_identity: u64,
+    pub interface_identity: u64,
+    pub service_identity: u64,
+    pub supported_flag_mask: u64,
+    pub incompatible_flag_mask: u64,
+    pub single_use: bool,
+}
+
+impl EntropyOutputReservationRequest {
+    pub const INITIAL_GETRANDOM: Self = Self {
+        output_identity: 2,
+        source_byte_count: 32,
+        selected_offset_bytes: 0,
+        maximum_delivery_byte_count: 16,
+        discarded_offset_bytes: 16,
+        discarded_byte_count: 16,
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        supported_flag_mask: 7,
+        incompatible_flag_mask: 6,
+        single_use: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.output_identity != 0
+            && self.source_byte_count != 0
+            && self.maximum_delivery_byte_count != 0
+            && self.process_identity != 0
+            && self.interface_identity != 0
+            && self.service_identity != 0
+            && self.supported_flag_mask != 0
+            && self.incompatible_flag_mask != 0
+            && self.incompatible_flag_mask & !self.supported_flag_mask == 0
+            && self.single_use
+            && match self
+                .selected_offset_bytes
+                .checked_add(self.maximum_delivery_byte_count)
+            {
+                Some(end) => end == self.discarded_offset_bytes,
+                None => false,
+            }
+            && match self
+                .discarded_offset_bytes
+                .checked_add(self.discarded_byte_count)
+            {
+                Some(end) => end == self.source_byte_count,
                 None => false,
             }
     }
@@ -1061,6 +1137,9 @@ pub enum SystemsOperation {
     DeliverInitialAuxvRandom {
         request: EntropyOutputDeliveryRequest,
     },
+    ReserveInitialUserRandom {
+        request: EntropyOutputReservationRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -1187,6 +1266,9 @@ impl SystemsOperation {
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
             Self::DeliverInitialAuxvRandom { .. } => {
                 SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
+            Self::ReserveInitialUserRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
             }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
@@ -1453,6 +1535,9 @@ pub enum SystemsTransition {
     },
     DeliverInitialAuxvRandom {
         request: EntropyOutputDeliveryRequest,
+    },
+    ReserveInitialUserRandom {
+        request: EntropyOutputReservationRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1804,6 +1889,9 @@ impl SystemsTransition {
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
             Self::DeliverInitialAuxvRandom { .. } => {
                 SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
+            Self::ReserveInitialUserRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
             }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
@@ -2379,6 +2467,9 @@ struct BootstrapAuthorityState {
     entropy_generator_ready: bool,
     entropy_generator_extracted: bool,
     initial_auxv_random_delivered: bool,
+    initial_getrandom_extracted: bool,
+    initial_user_random_reserved: bool,
+    initial_user_random_delivered: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2899,17 +2990,28 @@ impl BootstrapAuthorityState {
                 self.entropy_generator_ready = true;
             }
             SystemsOperation::ExtractEntropyGenerator { request } => {
-                if !self.entropy_generator_ready
-                    || self.entropy_generator_extracted
-                    || !request.is_well_formed()
-                    || *request != EntropyGeneratorExtractRequest::INITIAL_Q35
-                {
+                if !self.entropy_generator_ready || !request.is_well_formed() {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-ENTROPY-EXTRACT",
-                        "entropy-generator extraction requires the exact sealed ready generation-one ChaCha20 request",
+                        "entropy-generator extraction requires the next exact sealed ready ChaCha20 generation",
                     ));
                 }
-                self.entropy_generator_extracted = true;
+                if *request == EntropyGeneratorExtractRequest::INITIAL_Q35
+                    && !self.entropy_generator_extracted
+                {
+                    self.entropy_generator_extracted = true;
+                } else if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM
+                    && self.entropy_generator_extracted
+                    && self.initial_auxv_random_delivered
+                    && !self.initial_getrandom_extracted
+                {
+                    self.initial_getrandom_extracted = true;
+                } else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-EXTRACT",
+                        "entropy-generator extraction requires the next exact sealed ready ChaCha20 generation",
+                    ));
+                }
             }
             SystemsOperation::DeliverInitialAuxvRandom { request } => {
                 if !self.entropy_generator_extracted
@@ -2927,6 +3029,23 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.initial_auxv_random_delivered = true;
+            }
+            SystemsOperation::ReserveInitialUserRandom { request } => {
+                if !self.initial_getrandom_extracted
+                    || self.initial_user_random_reserved
+                    || !request.is_well_formed()
+                    || *request != EntropyOutputReservationRequest::INITIAL_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-RESERVE",
+                        "initial getrandom reservation requires the exact live second output and prepared resident initial process before entry",
+                    ));
+                }
+                self.initial_user_random_reserved = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -4042,12 +4161,17 @@ impl BootstrapAuthorityState {
                         "user entry requires the exact prepared probe with both image mappings resident",
                     ));
                 };
-                if !self.critical_stack.is_empty() || !self.initial_auxv_random_delivered {
+                if !self.critical_stack.is_empty()
+                    || !self.initial_auxv_random_delivered
+                    || !self.initial_user_random_reserved
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user entry requires the exact prepared probe, delivered initial AT_RANDOM object, and restored kernel context",
+                        "user entry requires the exact prepared probe, delivered initial AT_RANDOM object, reserved initial getrandom output, and restored kernel context",
                     ));
                 }
+                self.initial_user_random_reserved = false;
+                self.initial_user_random_delivered = true;
                 self.user_execution =
                     BootstrapUserExecutionState::CompletedWithResidentImage(backing);
             }
@@ -4441,6 +4565,15 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-ENTROPY-DELIVER-LIVE",
                 "bootstrap completion requires affine delivery of the first entropy output to initial AT_RANDOM",
+            ));
+        }
+        if !self.initial_getrandom_extracted
+            || self.initial_user_random_reserved
+            || !self.initial_user_random_delivered
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-RESERVE-LIVE",
+                "bootstrap completion requires affine reservation and consumption of the second entropy output by initial getrandom",
             ));
         }
         Ok(())
@@ -6109,6 +6242,9 @@ fn model_bootstrap_operation(
         SystemsOperation::DeliverInitialAuxvRandom { request } => {
             transitions.push(SystemsTransition::DeliverInitialAuxvRandom { request: *request });
         }
+        SystemsOperation::ReserveInitialUserRandom { request } => {
+            transitions.push(SystemsTransition::ReserveInitialUserRandom { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6463,6 +6599,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::InitializeEntropyGenerator { .. }
         | SystemsOperation::ExtractEntropyGenerator { .. }
         | SystemsOperation::DeliverInitialAuxvRandom { .. }
+        | SystemsOperation::ReserveInitialUserRandom { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6613,6 +6750,7 @@ mod tests {
             SYSTEMS_ENTROPY_GENERATOR_INITIALIZE.into(),
             SYSTEMS_ENTROPY_GENERATOR_EXTRACT.into(),
             SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM.into(),
+            SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -7113,7 +7251,16 @@ mod tests {
                         SystemsOperation::DeliverInitialAuxvRandom {
                             request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
                         },
+                        SystemsOperation::ExtractEntropyGenerator {
+                            request: EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM,
+                        },
+                        SystemsOperation::ReserveInitialUserRandom {
+                            request: EntropyOutputReservationRequest::INITIAL_GETRANDOM,
+                        },
                         SystemsOperation::EnterUserContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
                         },
@@ -7360,6 +7507,11 @@ mod tests {
             .handler
             .operations
             .retain(|operation| match operation {
+                SystemsOperation::ExtractEntropyGenerator { request }
+                    if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM =>
+                {
+                    false
+                }
                 SystemsOperation::CreateKernelContext
                 | SystemsOperation::CreateKernelCompletion
                 | SystemsOperation::CreateRunnableQueue { .. }
@@ -7389,6 +7541,7 @@ mod tests {
                 | SystemsOperation::ReleaseAnonymousUserMapping
                 | SystemsOperation::PrepareUserProbe { .. }
                 | SystemsOperation::DeliverInitialAuxvRandom { .. }
+                | SystemsOperation::ReserveInitialUserRandom { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
                 | SystemsOperation::ReclaimUserAddressSpace
@@ -7818,6 +7971,12 @@ mod tests {
                 SystemsTransition::DeliverInitialAuxvRandom {
                     request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
                 },
+                SystemsTransition::ExtractEntropyGenerator {
+                    request: EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM,
+                },
+                SystemsTransition::ReserveInitialUserRandom {
+                    request: EntropyOutputReservationRequest::INITIAL_GETRANDOM,
+                },
                 SystemsTransition::EnterUserExecution {
                     process_identity: 1,
                     kernel_continuation_identity: 1,
@@ -7937,6 +8096,9 @@ mod tests {
                 SystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_READ_OK".into(),
@@ -8794,6 +8956,10 @@ mod tests {
             .retain(|operation| {
                 !matches!(
                     operation,
+                    SystemsOperation::ExtractEntropyGenerator { request }
+                        if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM
+                ) && !matches!(
+                    operation,
                     SystemsOperation::ConsumeKernelCompletion
                         | SystemsOperation::ConsumeEmptyRunnableQueue
                         | SystemsOperation::PrepareUserAddressSpace
@@ -8812,6 +8978,7 @@ mod tests {
                         | SystemsOperation::ReleaseAnonymousUserMapping
                         | SystemsOperation::PrepareUserProbe { .. }
                         | SystemsOperation::DeliverInitialAuxvRandom { .. }
+                        | SystemsOperation::ReserveInitialUserRandom { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
                         | SystemsOperation::ReclaimUserAddressSpace
