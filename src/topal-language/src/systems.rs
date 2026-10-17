@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 56
+        || fields.len() != 61
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1038,6 +1038,11 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[53], "console-mode")? != 8576
         || field_natural(source, &fields[54], "console-special-device")? != 17408
         || field_natural(source, &fields[55], "console-block-size")? != 4096
+        || field_natural(source, &fields[56], "terminal-layout-bytes")? != 36
+        || field_natural(source, &fields[57], "terminal-get-attributes-request")? != 21505
+        || field_natural(source, &fields[58], "terminal-control-flags")? != 2239
+        || field_natural(source, &fields[59], "terminal-minimum-input")? != 1
+        || field_natural(source, &fields[60], "not-a-terminal-error")? != 25
     {
         return Err(user_context_diagnostic(
             source,
@@ -1081,6 +1086,11 @@ fn analyze_user_syscall_handler(
         console_mode: 8576,
         console_special_device: 17408,
         console_block_size: 4096,
+        terminal_layout_bytes: 36,
+        terminal_get_attributes_request: 21505,
+        terminal_control_flags: 2239,
+        terminal_minimum_input: 1,
+        not_a_terminal_error: 25,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3463,6 +3473,7 @@ fn analyze_kernel_context_decision(
         user_dup_marker_statement,
         user_fcntl_marker_statement,
         user_fstat_marker_statement,
+        user_tcgets_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3676,6 +3687,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_fstat_marker_statement),
             "returned user execution requires its exact descriptor-stat marker",
+        ));
+    }
+    let user_tcgets_marker = analyze_operation(
+        source,
+        user_tcgets_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_tcgets_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_tcgets_marker_statement),
+            "returned user execution requires its exact terminal-attributes marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4857,6 +4885,7 @@ fn analyze_kernel_context_decision(
         user_dup_marker,
         user_fcntl_marker,
         user_fstat_marker,
+        user_tcgets_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -10054,6 +10083,9 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
                 },
+                CompilerSystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
@@ -10278,7 +10310,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 255);
+        assert_eq!(program.bootstrap.handler.operations.len(), 256);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
