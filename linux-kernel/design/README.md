@@ -127,6 +127,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF page realization](bounded-static-elf-page-realization.md)
 - [Bounded static ELF frame extent](bounded-static-elf-frame-extent.md)
 - [Bounded static ELF mapping resources](bounded-static-elf-mapping-resources.md)
+- [Bounded static ELF leaf publication](bounded-static-elf-leaf-publication.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
