@@ -806,6 +806,16 @@ every byte, compare input and output descriptions, reject an unknown live-
 console request, and reject a closed slot. Fabricated cooked behavior, partial
 publication, wrong precedence, or retained pointers shall fail closed.
 
+The initial descriptor adapter shall expose the shared console's immutable
+unspecified geometry through Linux `ioctl(TIOCGWINSZ)`. The x86-64 adapter
+shall publish the complete native eight-byte `winsize` with zero rows, columns,
+and pixel dimensions; retain descriptor-before-request-before-pointer
+precedence; privately stage and fault-contain the complete value; and preserve
+exact `EBADF`, `ENOTTY`, and `EFAULT`. Ring-3 qualification shall inspect every
+byte, compare input and output descriptions, and reject a closed slot. Invented
+or host-derived geometry, partial publication, wrong precedence, or retained
+pointers shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from

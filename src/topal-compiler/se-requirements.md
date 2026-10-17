@@ -707,6 +707,16 @@ object evidence shall prove input/output equality, every exact byte, unknown-
 request `ENOTTY`, closed-slot `EBADF`, invalid-candidate `EFAULT`, and ordered
 `TOPAL_KERNEL_USER_TCGETS_OK` behavior.
 
+The bounded initial-console geometry refinement shall lower
+`TIOCGWINSZ=0x5413` and the native eight-byte x86-64 `winsize` layout through
+checked dispatch policy. The provider shall retain descriptor-before-request-
+before-pointer precedence, privately stage four zero unsigned 16-bit geometry
+components, validate one complete writable extent, publish under generated
+fault recovery, and retain no pointer. Ring-3 and provider-object evidence
+shall prove input/output equality, every byte, closed-slot `EBADF`, invalid-
+candidate `EFAULT`, retained unknown-request `ENOTTY`, and ordered
+`TOPAL_KERNEL_USER_WINSIZE_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
