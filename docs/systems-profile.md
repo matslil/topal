@@ -1440,6 +1440,13 @@ consumes the service only after the provider destroys any live output, the
 generator key, and private service state. Source observes neither secret state
 nor target syscall, register, exception, or copy mechanics.
 
+A bounded full-output refinement may raise the per-call delivery limit to the
+complete provider-output extent. The request still validates the complete user
+range before changing generator state, consumes at most one output object,
+copies and verifies exactly the requested prefix, and wipes the complete output
+even when every output byte was selected. The extent is a property of the
+qualified generator contract rather than an architecture syscall mechanism.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

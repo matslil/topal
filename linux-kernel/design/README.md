@@ -112,6 +112,7 @@ records, not this directory alone, define language meaning.
 - [Bounded initial `AT_RANDOM` delivery](bounded-initial-auxv-random.md)
 - [Bounded initial `getrandom`](bounded-initial-getrandom.md)
 - [Reusable process `getrandom` service](reusable-process-getrandom.md)
+- [Full-output process `getrandom`](full-output-process-getrandom.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
