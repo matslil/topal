@@ -315,6 +315,9 @@ second-page terminal path returns to the exact kernel continuation.
 The compiler additionally validates and derives a bounded static-ELF plan for
 the pinned 503-page BusyBox shape, but deliberately rejects it as runtime-
 selectable until its affine allocation and mapping lifecycle is implemented.
+It now also derives all 503 ordered virtual-page/frame facts, whole-span zero
+before four exact copies, and final W^X-safe permissions including RELRO, while
+granting no physical authority.
 Consequently this planning refinement adds no marker and leaves all gate
 artifacts and hashes unchanged.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
