@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/88";
+    "topal.provider-object.x86_64-qemu-pc-q35/89";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -129,6 +129,8 @@ pub const X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL: &str =
     "topal_x86_systems_entropy_deliver_initial_auxv_random";
 pub const X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL: &str =
     "topal_x86_systems_entropy_reserve_initial_user_random";
+pub const X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL: &str =
+    "topal_x86_systems_entropy_bind_reusable_user_random";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -137,6 +139,8 @@ pub const X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL: &str = "topal_x86_systems_entro
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL: &str =
     "topal_x86_systems_entropy_generator_key";
 pub const X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL: &str = "topal_x86_systems_entropy_output";
+pub const X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL: &str =
+    "topal_x86_systems_entropy_user_random_service";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -926,6 +930,51 @@ fn entropy_reserve_initial_user_random() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_bind_reusable_user_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // live generator key
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]); // fresh service state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]); // AT_RANDOM delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x8f, 0xd8, 0, 0, 0]); // reserved first output
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd1]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf1]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x0b, 0x02]);
+        } else {
+            code.bytes(&[0x48, 0x0b, 0x42, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0x32]);
+    code.bytes(&[0x48, 0x89, 0x4a, 0x08]);
+    code.bytes(&[0xc6, 0x42, 0x10, 0x01]); // reserved first output is live
+    code.bytes(&[0x48, 0x89, 0x97, 0xd8, 0, 0, 0]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -1129,6 +1178,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
+        &entropy_bind_reusable_user_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -1270,6 +1325,19 @@ pub fn generate_x86_64_systems_provider_object(
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL.as_bytes().to_vec(),
         value: output_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+    let user_random_service_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL
+            .as_bytes()
+            .to_vec(),
+        value: user_random_service_offset,
         size: 32,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
@@ -2384,6 +2452,12 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
     continuation.jump_if(0x85, "getrandom-buffer-fail");
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
@@ -3085,9 +3159,22 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "getrandom-einval");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "getrandom-zero");
-    code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]); // private output
-    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]); // private service
+    code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x80, 0x79, 0x10, 0x01]);
+    code.jump_if(0x84, "getrandom-output-ready");
+    code.bytes(&[0x80, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x51, 0x57, 0x56]); // retain service, destination, and length
+    code.bytes(&[0x48, 0x8b, 0x39, 0x48, 0x8b, 0x71, 0x08]);
+    code.call("getrandom-extract-chacha20");
+    code.bytes(&[0x5e, 0x5f, 0x59, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bind("getrandom-output-ready")?;
+    code.bytes(&[0x4c, 0x8b, 0x49, 0x08]);
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x10, 0x60, 0x00]);
     code.jump_if(0x82, "getrandom-efault");
     code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x01, 0xf2]); // checked end
@@ -3118,8 +3205,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     }
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xd8, 0, 0, 0, 0, 0, 0, 0]);
-    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 2]);
+    code.bytes(&[0xc6, 0x41, 0x10, 0x00]);
+    code.bytes(&[0x48, 0xff, 0x41, 0x18]);
     code.bytes(&[0x48, 0x89, 0xf0]);
     code.jump("return-user");
     code.bind("getrandom-zero")?;
@@ -4036,8 +4123,44 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xd0, 0, 0, 0, 2]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xd0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0x79, 0x18, 0x02]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x01, 0x4c, 0x8b, 0x49, 0x08]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x89, 0x00, 0x49, 0x89, 0x01, 0x48, 0x89, 0x01]);
+        } else {
+            code.bytes(&[
+                0x49, 0x89, 0x40, offset, 0x49, 0x89, 0x41, offset, 0x48, 0x89, 0x41, offset,
+            ]);
+        }
+    }
+    code.bytes(&[0x31, 0xd2]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x0b, 0x10, 0x49, 0x0b, 0x11, 0x48, 0x0b, 0x11]);
+        } else {
+            code.bytes(&[
+                0x49, 0x0b, 0x50, offset, 0x49, 0x0b, 0x51, offset, 0x48, 0x0b, 0x51, offset,
+            ]);
+        }
+    }
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xd8, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 0]);
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "exit-anonymous-already-revoked");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x02]);
@@ -4124,6 +4247,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bind("rlimit-data")?;
     code.bytes(&0x0080_0000_u64.to_le_bytes());
     code.bytes(&u64::MAX.to_le_bytes());
+    code.bind("getrandom-extract-chacha20")?;
+    code.bytes(&entropy_extract_chacha20_generator()?);
     code.finish()
 }
 
@@ -5227,6 +5352,11 @@ impl X86FunctionEncoder {
         self.fixup(label);
     }
 
+    fn call(&mut self, label: &'static str) {
+        self.bytes.push(0xe8);
+        self.fixup(label);
+    }
+
     fn rip_lea(&mut self, opcode: &[u8], label: &'static str) {
         self.bytes.extend_from_slice(opcode);
         self.fixup(label);
@@ -5495,7 +5625,7 @@ assert bytes(output) == block[32:]
             .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
             .unwrap();
         assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
-        assert_eq!(entropy_storage.size(), 128);
+        assert_eq!(entropy_storage.size(), 160);
         assert_eq!(entropy_storage.align(), 32);
         let raw_sample = file
             .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
@@ -5525,6 +5655,15 @@ assert bytes(output) == block[32:]
         assert_eq!(entropy_output.address(), 96);
         assert_eq!(
             entropy_output.section_index(),
+            entropy_storage.index().into()
+        );
+        let user_random_service = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL)
+            .unwrap();
+        assert_eq!(user_random_service.size(), 32);
+        assert_eq!(user_random_service.address(), 128);
+        assert_eq!(
+            user_random_service.section_index(),
             entropy_storage.index().into()
         );
         let note = file
@@ -6394,6 +6533,17 @@ assert bytes(output) == block[32:]
                     .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
             "initial getrandom reservation must retain only a private affine output reference"
         );
+        let getrandom_binding =
+            symbol_bytes(&file, X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL);
+        assert!(
+            getrandom_binding
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x97, 0xd8, 0, 0, 0])
+                && getrandom_binding
+                    .windows(4)
+                    .any(|bytes| bytes == [0xc6, 0x42, 0x10, 0x01]),
+            "reusable getrandom binding must replace the reservation with sealed service state"
+        );
         let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
         assert!(
             user_syscall
@@ -6401,11 +6551,11 @@ assert bytes(output) == block[32:]
                 .any(|bytes| bytes == [0x3d, 0x3e, 0x01, 0, 0])
                 && user_syscall
                     .windows(9)
-                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0])
+                    .any(|bytes| bytes == [0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0])
                 && user_syscall
-                    .windows(9)
-                    .any(|bytes| bytes == [0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 2]),
-            "native syscall 318 must validate and consume the reserved output exactly once"
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0xff, 0x41, 0x18]),
+            "native syscall 318 must validate and count each reusable service delivery"
         );
         let entry_payload = initial_user_entry_payload().unwrap();
         assert_eq!(
@@ -6414,8 +6564,8 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
                 .count(),
-            5,
-            "ring-3 must exercise four non-consuming cases and one successful getrandom call"
+            6,
+            "ring-3 must exercise four non-consuming cases and two successful getrandom calls"
         );
         assert!(
             entry_payload

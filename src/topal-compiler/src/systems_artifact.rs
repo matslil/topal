@@ -21,21 +21,21 @@ use topal_language::compiler::{
     CompilerEntropyOutputDeliveryRequest, CompilerEntropyOutputReservationRequest,
     CompilerEntropyPoolCreditRequest, CompilerEntropyPoolMixRequest, CompilerEntropyPoolRequest,
     CompilerEntropySampleCaptureRequest, CompilerEntropySampleQualityRequest,
-    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
-    CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
-    CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
-    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
-    CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
-    CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
-    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
-    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
-    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
-    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
-    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
-    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    CompilerEntropyUserRandomServiceRequest, CompilerKernelMappingRequest,
+    CompilerPciConfigurationDwordRequest, CompilerPciConfigurationWordUpdateRequest,
+    CompilerPciRegionDmaReferenceRequest, CompilerPciRegionRegisterDirection,
+    CompilerPciRegionRegisterRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
+    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
+    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
+    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
+    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
+    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
+    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
+    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -60,14 +60,15 @@ use topal_language::compiler::{
     SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM, SYSTEMS_ENTROPY_POOL_CREATE,
     SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
     SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
-    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
-    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
+    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
+    SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END,
@@ -100,9 +101,11 @@ use crate::{
     X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
     X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL, X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
     X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL, X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
-    X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
-    X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
-    X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL, X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL, X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL, X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL,
+    X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
     X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL,
     X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL, X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
     X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
@@ -128,8 +131,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/96";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/94";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/97";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/95";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -144,7 +147,7 @@ pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 47] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 48] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -189,6 +192,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 47] = [
     X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_SYSCALL_SYMBOL,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
+    X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
     "topal_x86_systems_uart16550_write",
     "topal_x86_systems_interrupt_return",
     "topal_x86_systems_fatal",
@@ -1130,6 +1134,7 @@ enum ProviderSymbol {
     ExtractEntropyGenerator,
     DeliverInitialAuxvRandom,
     ReserveInitialUserRandom,
+    BindReusableUserRandom,
     PublishPciRegionDmaReference,
     ReadPciRegionRegister,
     ReadPciRegionRegisterEventually,
@@ -1177,6 +1182,7 @@ enum ProviderSymbol {
     EntropyPoolState,
     EntropyGeneratorKey,
     EntropyOutput,
+    EntropyUserRandomService,
 }
 
 impl ProviderSymbol {
@@ -1218,6 +1224,7 @@ impl ProviderSymbol {
             Self::ReserveInitialUserRandom => {
                 X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL
             }
+            Self::BindReusableUserRandom => X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
             Self::PublishPciRegionDmaReference => X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
             Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
             Self::ReadPciRegionRegisterEventually => X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL,
@@ -1279,6 +1286,7 @@ impl ProviderSymbol {
             Self::EntropyPoolState => X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL,
             Self::EntropyGeneratorKey => X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL,
             Self::EntropyOutput => X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL,
+            Self::EntropyUserRandomService => X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL,
         }
     }
 
@@ -1290,7 +1298,8 @@ impl ProviderSymbol {
             | Self::RawEntropySample
             | Self::EntropyPoolState
             | Self::EntropyGeneratorKey
-            | Self::EntropyOutput => SymbolKind::Data,
+            | Self::EntropyOutput
+            | Self::EntropyUserRandomService => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
             | Self::BeginTranslation
@@ -1323,6 +1332,7 @@ impl ProviderSymbol {
             | Self::ExtractEntropyGenerator
             | Self::DeliverInitialAuxvRandom
             | Self::ReserveInitialUserRandom
+            | Self::BindReusableUserRandom
             | Self::PublishPciRegionDmaReference
             | Self::ReadPciRegionRegister
             | Self::ReadPciRegionRegisterEventually
@@ -1444,6 +1454,7 @@ struct RootEncoder {
     initial_auxv_random_delivered: bool,
     initial_getrandom_extracted: bool,
     initial_user_random_reserved: bool,
+    user_random_service_bound: bool,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1564,6 +1575,7 @@ enum RootUserExecutionState {
     PreparedWithResidentImage,
     RandomizedEntryReady,
     UserRandomReservedEntryReady,
+    UserRandomServiceEntryReady,
     CompletedWithResidentImage,
     CompletedWithResidentImageAnonymousReleased,
     CompletedWithExecutableImage,
@@ -1606,6 +1618,7 @@ struct ProviderSymbols {
     extract_entropy_generator: SymbolId,
     deliver_initial_auxv_random: SymbolId,
     reserve_initial_user_random: SymbolId,
+    bind_reusable_user_random: SymbolId,
     publish_pci_region_dma_reference: SymbolId,
     dma_virtqueue_control: SymbolId,
     dma_entropy_payload: SymbolId,
@@ -1613,6 +1626,7 @@ struct ProviderSymbols {
     entropy_pool_state: SymbolId,
     entropy_generator_key: SymbolId,
     entropy_output: SymbolId,
+    entropy_user_random_service: SymbolId,
     read_pci_region_register: SymbolId,
     read_pci_region_register_eventually: SymbolId,
     write_pci_region_register: SymbolId,
@@ -2174,10 +2188,12 @@ impl RootEncoder {
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
-            && (!self.initial_getrandom_extracted || !self.initial_user_random_reserved)
+            && (!self.initial_getrandom_extracted
+                || self.initial_user_random_reserved
+                || !self.user_random_service_bound)
         {
             return Err(CompileError::Tool(
-                "x86 root lowering ended without the sealed initial getrandom reservation".into(),
+                "x86 root lowering ended without the sealed reusable getrandom service".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
@@ -3052,6 +3068,33 @@ impl RootEncoder {
         Ok(())
     }
 
+    fn bind_reusable_user_random(
+        &mut self,
+        request: CompilerEntropyUserRandomServiceRequest,
+    ) -> Result<(), CompileError> {
+        if !self.initial_user_random_reserved
+            || self.user_random_service_bound
+            || self.user_execution != RootUserExecutionState::UserRandomReservedEntryReady
+            || !request.is_well_formed()
+            || request != CompilerEntropyUserRandomServiceRequest::INITIAL_GETRANDOM
+        {
+            return Err(CompileError::Tool(
+                "x86 reusable getrandom binding requires the exact live generation-three reservation and entry-ready process"
+                    .into(),
+            ));
+        }
+        self.load_bootstrap_storage_address(176)?;
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]);
+        self.rip_relative_symbol(ProviderSymbol::EntropyGeneratorKey, 0)?;
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x15]);
+        self.rip_relative_symbol(ProviderSymbol::EntropyUserRandomService, 0)?;
+        self.call_checked_bool(ProviderSymbol::BindReusableUserRandom)?;
+        self.initial_user_random_reserved = false;
+        self.user_random_service_bound = true;
+        self.user_execution = RootUserExecutionState::UserRandomServiceEntryReady;
+        Ok(())
+    }
+
     fn publish_pci_region_dma_reference(
         &mut self,
         request: CompilerPciRegionDmaReferenceRequest,
@@ -3873,10 +3916,11 @@ impl RootEncoder {
 
     fn enter_user_context(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.user_execution != RootUserExecutionState::UserRandomReservedEntryReady
+            || self.user_execution != RootUserExecutionState::UserRandomServiceEntryReady
+            || !self.user_random_service_bound
         {
             return Err(CompileError::Tool(
-                "x86 user entry requires the randomized and getrandom-reserved entry-ready context with both resident image mappings"
+                "x86 user entry requires the randomized and reusable-getrandom-bound entry-ready context with both resident image mappings"
                     .into(),
             ));
         }
@@ -4179,6 +4223,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ReserveInitialUserRandom,
         ),
+        bind_reusable_user_random: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::BindReusableUserRandom,
+        ),
         publish_pci_region_dma_reference: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::PublishPciRegionDmaReference,
@@ -4204,6 +4252,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             ProviderSymbol::EntropyGeneratorKey,
         ),
         entropy_output: undefined_provider_symbol(&mut object, ProviderSymbol::EntropyOutput),
+        entropy_user_random_service: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::EntropyUserRandomService,
+        ),
         read_pci_region_register: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ReadPciRegionRegister,
@@ -4787,6 +4839,9 @@ fn encode_operations(
             CompilerSystemsOperation::ReserveInitialUserRandom { request } => {
                 encoder.reserve_initial_user_random(*request)?;
             }
+            CompilerSystemsOperation::BindReusableUserRandom { request } => {
+                encoder.bind_reusable_user_random(*request)?;
+            }
             CompilerSystemsOperation::PublishPciRegionDmaReference { request } => {
                 encoder.publish_pci_region_dma_reference(*request)?;
             }
@@ -4982,6 +5037,7 @@ fn append_root(
             ProviderSymbol::ReserveInitialUserRandom => {
                 provider_symbols.reserve_initial_user_random
             }
+            ProviderSymbol::BindReusableUserRandom => provider_symbols.bind_reusable_user_random,
             ProviderSymbol::PublishPciRegionDmaReference => {
                 provider_symbols.publish_pci_region_dma_reference
             }
@@ -4991,6 +5047,9 @@ fn append_root(
             ProviderSymbol::EntropyPoolState => provider_symbols.entropy_pool_state,
             ProviderSymbol::EntropyGeneratorKey => provider_symbols.entropy_generator_key,
             ProviderSymbol::EntropyOutput => provider_symbols.entropy_output,
+            ProviderSymbol::EntropyUserRandomService => {
+                provider_symbols.entropy_user_random_service
+            }
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
             ProviderSymbol::ReadPciRegionRegisterEventually => {
                 provider_symbols.read_pci_region_register_eventually
@@ -5306,6 +5365,22 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.supported_flag_mask,
                     request.incompatible_flag_mask,
                     request.single_use,
+                ),
+                CompilerSystemsTransition::BindReusableUserRandom { request } => format!(
+                    "{identity}:generator={}:generation={}:initial-output={}:block-bytes={}:output-bytes={}:maximum-delivery-bytes={}:process={}:interface={}:service={}:supported-flags={}:incompatible-flags={}:reserved-first-output={}:reusable={}",
+                    request.generator_identity,
+                    request.generation,
+                    request.initial_output_identity,
+                    request.block_byte_count,
+                    request.output_byte_count,
+                    request.maximum_delivery_byte_count,
+                    request.process_identity,
+                    request.interface_identity,
+                    request.service_identity,
+                    request.supported_flag_mask,
+                    request.incompatible_flag_mask,
+                    request.reserved_first_output,
+                    request.reusable,
                 ),
                 CompilerSystemsTransition::PublishPciRegionDmaReference {
                     transaction_identity,
@@ -5763,7 +5838,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2787);
+        assert_eq!(relocation_targets.len(), 2831);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5917,7 +5992,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2408
+            2447
         );
         assert_eq!(
             relocation_targets
@@ -6015,7 +6090,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL)
                 .count(),
-            3
+            4
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL)
+                .count(),
+            1
         );
         assert_eq!(
             relocation_targets
@@ -6064,14 +6146,14 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            56
+            57
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            143
+            144
         );
         assert_eq!(
             relocation_targets
@@ -6131,7 +6213,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            61,
+            62,
             "root must derive opaque storage for DMA, atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -6233,6 +6315,7 @@ mod tests {
                 "topal_x86_systems_entropy_extract_chacha20_generator",
                 "topal_x86_systems_entropy_deliver_initial_auxv_random",
                 "topal_x86_systems_entropy_reserve_initial_user_random",
+                "topal_x86_systems_entropy_bind_reusable_user_random",
                 "topal_x86_systems_pci_region_configuration_gateway_write_dma_reference",
                 "topal_x86_systems_dma_virtqueue_control",
                 "topal_x86_systems_dma_entropy_payload",
@@ -6240,6 +6323,7 @@ mod tests {
                 "topal_x86_systems_entropy_pool_state",
                 "topal_x86_systems_entropy_generator_key",
                 "topal_x86_systems_entropy_output",
+                "topal_x86_systems_entropy_user_random_service",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",
@@ -6350,12 +6434,18 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 305);
+        assert_eq!(decoded.semantic_trace.len(), 307);
         assert!(
             decoded
                 .semantic_trace
                 .iter()
                 .any(|entry| entry.starts_with(SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM))
+        );
+        assert!(
+            decoded
+                .semantic_trace
+                .iter()
+                .any(|entry| entry.starts_with(SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE))
         );
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
@@ -6607,165 +6697,172 @@ mod tests {
         );
         assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_USER_CONTEXT_PREPARE));
         assert_eq!(
-            decoded.semantic_trace[198],
+            decoded.semantic_trace[199],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_GETRANDOM_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[199],
+            decoded.semantic_trace[200],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[201],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_READ_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[203],
+            decoded.semantic_trace[205],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[204],
+            decoded.semantic_trace[206],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[205],
+            decoded.semantic_trace[207],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[206],
+            decoded.semantic_trace[208],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[207],
+            decoded.semantic_trace[209],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[208],
+            decoded.semantic_trace[210],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[209],
+            decoded.semantic_trace[211],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[210],
+            decoded.semantic_trace[212],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[211],
+            decoded.semantic_trace[213],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[212],
+            decoded.semantic_trace[214],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[213],
+            decoded.semantic_trace[215],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[214],
+            decoded.semantic_trace[216],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[215],
+            decoded.semantic_trace[217],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[216],
+            decoded.semantic_trace[218],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[217],
+            decoded.semantic_trace[219],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[218],
+            decoded.semantic_trace[220],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[219],
+            decoded.semantic_trace[221],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[220],
+            decoded.semantic_trace[222],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[221],
+            decoded.semantic_trace[223],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
         assert!(
-            decoded.semantic_trace[222].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
+            decoded.semantic_trace[224].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
         );
-        assert_eq!(decoded.semantic_trace[223], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[224].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
         assert_eq!(decoded.semantic_trace[225], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[226].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
         assert_eq!(decoded.semantic_trace[227], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[228].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[229].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[231].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[232], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[233].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[228].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[229], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[230].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[231].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[233].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[234], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[235].starts_with(SYSTEMS_CONSOLE_WRITE));
         for (index, request) in
             CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                 .iter()
@@ -6938,8 +7035,8 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK")
             )
         );
-        decoded.semantic_trace[137..234].rotate_left(33);
-        decoded.semantic_trace.drain(198..201);
+        decoded.semantic_trace[137..236].rotate_left(33);
+        decoded.semantic_trace.drain(200..203);
         decoded.semantic_trace.drain(169..197);
         decoded.semantic_trace.drain(120..136);
         decoded.semantic_trace.drain(118..120);
@@ -7104,6 +7201,8 @@ mod tests {
             decoded.semantic_trace[120]
                 .starts_with(SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM)
         );
+        assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE));
+        decoded.semantic_trace.remove(121);
         assert!(decoded.semantic_trace[121].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
         assert!(decoded.semantic_trace[122].starts_with("topal.systems.entry.user-syscall/1"));
         assert!(
@@ -7149,6 +7248,14 @@ mod tests {
         );
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[148],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
+            )
+        );
+        decoded.semantic_trace.remove(148);
         assert!(decoded.semantic_trace[148].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[149].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[150].starts_with(SYSTEMS_CONSOLE_WRITE));
