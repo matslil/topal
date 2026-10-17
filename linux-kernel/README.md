@@ -746,6 +746,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF page realization](step-4-bounded-static-elf-page-realization.md)
 - [Step 4 bounded static ELF frame extent](step-4-bounded-static-elf-frame-extent.md)
 - [Step 4 bounded static ELF mapping resources](step-4-bounded-static-elf-mapping-resources.md)
+- [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
