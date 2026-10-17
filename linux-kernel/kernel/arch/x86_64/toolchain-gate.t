@@ -90,13 +90,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                           )
                                                                             Ok static-elf-construction then {
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK"
-                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                              zeroed-static-elf-construction is unmapped static image construction zero payload (
                                                                                 owner is static-elf-construction,
+                                                                                extent is complete
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK"
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is zeroed-static-elf-construction,
                                                                                 resource is metadata
                                                                               )
                                                                               unmapped frames release returned-static-elf-metadata
                                                                               returned-static-elf-payload is unmapped static image construction reclaim (
-                                                                                owner is static-elf-construction,
+                                                                                owner is zeroed-static-elf-construction,
                                                                                 resource is payload
                                                                               )
                                                                               unmapped frames release returned-static-elf-payload

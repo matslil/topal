@@ -441,7 +441,7 @@ fn analyze_static_elf_frame_sequence(
         construction_span,
         "static ELF initial leaves require witness, revocation, and exact resource return",
     )?;
-    let [leaves_marker, revoke] = constructed else {
+    let [leaves_marker, zero] = constructed else {
         return Err(translation_edit_diagnostic(
             source,
             construction_success.span(),
@@ -465,21 +465,52 @@ fn analyze_static_elf_frame_sequence(
             "static ELF initial leaves must publish their exact marker before revocation",
         ));
     }
+    let (zeroed_construction_name, after_zero) = parse_static_image_payload_zero(
+        source,
+        zero,
+        allocator_context,
+        &construction_name,
+    )?;
+    let [zero_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] = after_zero
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(zero),
+            "static ELF payload zeroing requires its exact witness and revocation",
+        ));
+    };
+    let zero_marker = analyze_operation(
+        source,
+        zero_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &zero_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(after_zero.first().expect("marker exists")),
+            "static ELF payload zeroing must publish its exact marker before revocation",
+        ));
+    }
     let (returned_metadata, after_revoke) = parse_static_image_resource_return(
         source,
         revoke,
         allocator_context,
-        &construction_name,
+        &zeroed_construction_name,
         "revoke",
         "metadata",
     )?;
-    let [metadata_release, reclaim, payload_release, rest @ ..] = after_revoke else {
+    if !after_revoke.is_empty() {
         return Err(translation_edit_diagnostic(
             source,
             statement_span(revoke),
-            "static ELF revocation must release metadata before reclaiming payload",
+            "static ELF revocation must return exactly one affine resource",
         ));
-    };
+    }
     parse_physical_frame_release(
         source,
         metadata_release,
@@ -490,7 +521,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         reclaim,
         allocator_context,
-        &construction_name,
+        &zeroed_construction_name,
         "reclaim",
         "payload",
     )?;
@@ -524,6 +555,8 @@ fn analyze_static_elf_frame_sequence(
             failure_message: construction_failure_message,
         },
         leaves_marker,
+        CompilerSystemsOperation::ZeroStaticImageConstructionPayload,
+        zero_marker,
         CompilerSystemsOperation::RevokeStaticImageConstructionMetadata,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::ReclaimStaticImageConstructionPayload,
@@ -534,6 +567,87 @@ fn analyze_static_elf_frame_sequence(
         operations,
         disposition: checked.disposition,
     })
+}
+
+fn parse_static_image_payload_zero<'a>(
+    source: &SourceText,
+    statement: &'a Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<(String, &'a [Statement]), Diagnostic> {
+    let (name, items, span, declarations) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => (*name, items, *span, declarations.as_slice()),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span, &[][..]),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image payload zeroing must refine the live affine construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, zero, payload, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload zeroing requires its exact owner and complete extent",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, zero, "zero")
+        || !identifier_is(source, payload, "payload")
+        || fields.len() != 2
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload zeroing requires its exact owner and complete extent",
+        ));
+    }
+    let mut owner = None;
+    let mut extent = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image payload-zeroing parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "extent" => extent = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image payload-zeroing parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || extent != Some("complete") {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload zeroing requires the exact live construction and complete extent",
+        ));
+    }
+    Ok((source.slice(name).to_owned(), declarations))
 }
 
 fn parse_static_image_construction_prepare(

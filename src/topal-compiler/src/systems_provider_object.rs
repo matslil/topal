@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/103";
+    "topal.provider-object.x86_64-qemu-pc-q35/104";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -27,6 +27,8 @@ pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boo
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
 pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
     "topal_x86_systems_static_image_prepare_initial_leaves";
+pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
+    "topal_x86_systems_static_image_zero_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_initial_leaves";
 pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
@@ -1209,6 +1211,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
         &static_image_prepare_initial_leaves()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+        &static_image_zero_payload()?,
     );
     append_encoded_function(
         &mut object,
@@ -5710,13 +5718,16 @@ fn emit_static_image_resource_validation(
     code.bind("resources-disjoint")
 }
 
-fn emit_static_image_leaf_verification(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+fn emit_static_image_leaf_verification(
+    code: &mut X86FunctionEncoder,
+    loop_label: &'static str,
+) -> Result<(), CompileError> {
     code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
     code.bytes(&[0x48, 0x89, 0xf7]); // metadata cursor
     code.bytes(&[0x49, 0xb9]);
     code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes()); // present/user/write/NX
     code.bytes(&[0xb9, 0xf7, 0x01, 0x00, 0x00]);
-    code.bind("verify-leaves")?;
+    code.bind(loop_label)?;
     code.bytes(&[0x4c, 0x89, 0xd0]);
     code.bytes(&[0x4c, 0x09, 0xc8]);
     code.bytes(&[0x48, 0x39, 0x07]);
@@ -5724,7 +5735,7 @@ fn emit_static_image_leaf_verification(code: &mut X86FunctionEncoder) -> Result<
     code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
     code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
     code.bytes(&[0xff, 0xc9]);
-    code.jump_if(0x85, "verify-leaves");
+    code.jump_if(0x85, loop_label);
     code.bytes(&[0x31, 0xc0]);
     code.bytes(&[0xb9, 0x09, 0x00, 0x00, 0x00]);
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // nine entries remain absent
@@ -5756,7 +5767,30 @@ fn static_image_prepare_initial_leaves() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x81, 0xea, 0x00, 0x70, 0x1f, 0x00]);
     code.bytes(&[0x4c, 0x89, 0xd7]); // restore payload base
     code.bytes(&[0x4c, 0x89, 0xde]); // restore metadata base
-    emit_static_image_leaf_verification(&mut code)?;
+    emit_static_image_leaf_verification(&mut code, "verify-leaves")?;
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_zero_payload() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-before-zero")?;
+    code.bytes(&[0x49, 0x81, 0xea, 0x00, 0x70, 0x1f, 0x00]); // payload base
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0xee, 0x03, 0x00]); // 503 * 4096 / 8 qwords
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // zero complete payload
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0xee, 0x03, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // verify complete payload
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-after-zero")?;
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -5766,7 +5800,7 @@ fn static_image_prepare_initial_leaves() -> Result<Vec<u8>, CompileError> {
 fn static_image_revoke_initial_leaves() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_image_resource_validation(&mut code)?;
-    emit_static_image_leaf_verification(&mut code)?;
+    emit_static_image_leaf_verification(&mut code, "verify-leaves")?;
     code.bytes(&[0x48, 0x89, 0xf7]);
     code.bytes(&[0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
@@ -7015,6 +7049,52 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             prepare
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
+        );
+
+        let zero_payload = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(zero_payload.address()).unwrap();
+        let end = start + usize::try_from(zero_payload.size()).unwrap();
+        let zero_payload = &data[start..end];
+        assert_eq!(
+            zero_payload
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0x00, 0xee, 0x03, 0x00])
+                .count(),
+            2,
+            "payload zeroing and readback must each cover 503 complete pages"
+        );
+        assert_eq!(
+            zero_payload
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
+                })
+                .count(),
+            2,
+            "the exact live leaves must be verified before and after zeroing"
+        );
+        assert_eq!(
+            zero_payload
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xab])
+                .count(),
+            1
+        );
+        assert_eq!(
+            zero_payload
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xaf])
+                .count(),
+            3
+        );
+        assert_eq!(
+            zero_payload
                 .windows(3)
                 .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
                 .count(),
