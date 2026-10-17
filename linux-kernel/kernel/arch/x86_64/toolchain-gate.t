@@ -995,6 +995,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     role is "entropy-payload"
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED"
+                                                                                                                  completion-resumed entropy sample capture dma (
+                                                                                                                    sample-identity is 1,
+                                                                                                                    buffer-identity is 2,
+                                                                                                                    offset-bytes is 0,
+                                                                                                                    byte-count is 32,
+                                                                                                                    device-identity is 1,
+                                                                                                                    translation-domain-identity is 1,
+                                                                                                                    direction is "device-to-memory",
+                                                                                                                    visibility is "provider-managed",
+                                                                                                                    role is "entropy-payload",
+                                                                                                                    credited-entropy-bits is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {

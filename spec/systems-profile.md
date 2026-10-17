@@ -1728,6 +1728,24 @@ mismatch SHALL enter the fatal disposition. Neither completion nor a matching
 read SHALL return ownership of another buffer or expose a provider-selected
 address.
 
+### TOPAL-SYSTEMS-ENTROPY-SAMPLE-001 — Opaque DMA entropy-sample capture
+
+`topal.systems.entropy.sample.capture-dma/1` SHALL borrow one exclusively
+`CpuOwned` DMA buffer and produce one fresh opaque raw-sample identity while
+returning the same buffer in `CpuOwned` state. The request SHALL name the
+nonzero sample and buffer identities, an in-bounds byte offset and nonzero byte
+count, the buffer's device and translation-domain identities, direction,
+provider-managed visibility policy, semantic role, and a credited-entropy bit
+count no greater than the captured extent.
+
+The provider SHALL copy every named byte exactly once from the completed CPU
+view into distinct kernel-owned sample storage and SHALL fail closed rather
+than return a partial sample. Source SHALL NOT observe the sample address or
+bytes, compare or branch on its contents, serialize it, or convert it to an
+integer. The sample identity SHALL remain affine and its credited-entropy fact
+SHALL remain explicit. Capture SHALL NOT condition, mix, health-test, trust,
+credit beyond the request, distribute, or destroy the source buffer.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -1860,6 +1878,25 @@ assign entropy credit to a payload byte.
 This refinement SHALL NOT create or seed an entropy pool, populate `AT_RANDOM`,
 implement `getrandom`, recycle or renotify the queue, configure asynchronous
 interrupt delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CAPTURE-001 — Bounded raw sample capture
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-PAYLOAD-COMPLETE-001`, the initial profile
+SHALL perform exactly one `TOPAL-SYSTEMS-ENTROPY-SAMPLE-001` operation. It SHALL
+create sample identity one from payload buffer identity two, offset zero, byte
+count 32, device identity one, translation-domain identity one,
+device-to-memory direction, provider-managed visibility, the `EntropyPayload`
+role, and zero credited entropy bits.
+
+The payload buffer SHALL remain `CpuOwned`. The sample SHALL remain opaque,
+raw, affine, and uncredited. The profile SHALL reject another identity, range,
+metadata, quality, omission, duplication, reordering, or capture before payload
+completion.
+
+This refinement SHALL NOT condition or mix the sample, perform health tests,
+credit entropy, create a CRNG, populate `AT_RANDOM`, implement `getrandom`,
+recycle or renotify the queue, configure asynchronous interrupt delivery,
+reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

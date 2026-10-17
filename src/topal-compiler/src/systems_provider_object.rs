@@ -17,10 +17,11 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/82";
+    "topal.provider-object.x86_64-qemu-pc-q35/83";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
+pub const X86_SYSTEMS_ENTROPY_STORAGE_SECTION: &str = ".bss.topal.entropy";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
@@ -116,9 +117,12 @@ pub const X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL: &str =
     "topal_x86_systems_dma_buffer_complete_cpu";
 pub const X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL: &str =
     "topal_x86_systems_dma_buffer_load_integer_equals";
+pub const X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL: &str =
+    "topal_x86_systems_entropy_capture_dma_sample";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
+pub const X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL: &str = "topal_x86_systems_raw_entropy_sample";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -470,6 +474,34 @@ fn dma_buffer_load_integer() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_capture_dma_sample() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x83, 0xfa, 0x01]); // sample identity one
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xf9, 0x02]); // payload buffer identity two
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0x83, 0xf8, 0x20]); // exact 32-byte range
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x45, 0x85, 0xc9]); // explicitly uncredited
+    code.jump_if(0x85, "fail");
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x07]);
+            code.bytes(&[0x48, 0x89, 0x06]);
+            code.bytes(&[0x48, 0x3b, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x8b, 0x47, offset]);
+            code.bytes(&[0x48, 0x89, 0x46, offset]);
+            code.bytes(&[0x48, 0x3b, 0x46, offset]);
+        }
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -637,6 +669,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+        &entropy_capture_dma_sample()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -734,6 +772,23 @@ pub fn generate_x86_64_systems_provider_object(
         scope: SymbolScope::Linkage,
         weak: false,
         section: SymbolSection::Section(dma_storage),
+        flags: SymbolFlags::None,
+    });
+
+    let entropy_storage = object.add_section(
+        Vec::new(),
+        X86_SYSTEMS_ENTROPY_STORAGE_SECTION.as_bytes().to_vec(),
+        SectionKind::UninitializedData,
+    );
+    let sample_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL.as_bytes().to_vec(),
+        value: sample_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
         flags: SymbolFlags::None,
     });
 
@@ -4738,6 +4793,18 @@ mod tests {
         assert_eq!(control.size(), 4096);
         assert_eq!(payload.size(), 4096);
         assert_eq!(payload.address() - control.address(), 4096);
+        let entropy_storage = file
+            .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
+            .unwrap();
+        assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
+        assert_eq!(entropy_storage.size(), 32);
+        assert_eq!(entropy_storage.align(), 32);
+        let raw_sample = file
+            .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
+            .unwrap();
+        assert_eq!(raw_sample.size(), 32);
+        assert_eq!(raw_sample.address(), 0);
+        assert_eq!(raw_sample.section_index(), entropy_storage.index().into());
         let note = file
             .section_by_name(X86_SYSTEMS_PROVIDER_NOTE_SECTION)
             .unwrap()
@@ -5044,6 +5111,57 @@ mod tests {
                 .windows(5)
                 .any(|window| window == [0x8b, 0x04, 0x37, 0x39, 0xc8])
         );
+        let capture = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(capture.address()).unwrap();
+        let end = start + usize::try_from(capture.size()).unwrap();
+        let bytes = &data[start..end];
+        for validation in [
+            &[0x83, 0xfa, 0x01][..],
+            &[0x83, 0xf9, 0x02],
+            &[0x41, 0x83, 0xf8, 0x20],
+            &[0x45, 0x85, 0xc9],
+        ] {
+            assert!(
+                bytes
+                    .windows(validation.len())
+                    .any(|window| window == validation)
+            );
+        }
+        for (load, store, verify) in [
+            (
+                &[0x48, 0x8b, 0x07][..],
+                &[0x48, 0x89, 0x06][..],
+                &[0x48, 0x3b, 0x06][..],
+            ),
+            (
+                &[0x48, 0x8b, 0x47, 8][..],
+                &[0x48, 0x89, 0x46, 8][..],
+                &[0x48, 0x3b, 0x46, 8][..],
+            ),
+            (
+                &[0x48, 0x8b, 0x47, 16][..],
+                &[0x48, 0x89, 0x46, 16][..],
+                &[0x48, 0x3b, 0x46, 16][..],
+            ),
+            (
+                &[0x48, 0x8b, 0x47, 24][..],
+                &[0x48, 0x89, 0x46, 24][..],
+                &[0x48, 0x3b, 0x46, 24][..],
+            ),
+        ] {
+            for sequence in [load, store, verify] {
+                assert_eq!(
+                    bytes
+                        .windows(sequence.len())
+                        .filter(|window| *window == sequence)
+                        .count(),
+                    1,
+                    "capture must load, copy, and verify each qword exactly once"
+                );
+            }
+        }
         let publish = file
             .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
             .unwrap();
