@@ -632,6 +632,15 @@ full-output call, wipe and verify the complete output, increment delivery state
 only after success, and retain no output remainder. The ring-3 probe shall
 preserve the preceding calls and read four qwords from the added request.
 
+The bounded small-request `getrandom` refinement shall lower one exact checked
+service expansion with output extent 32, maximum output count eight, maximum
+delivery 256, and complete-request policy. The x86-64 provider shall validate
+the full range before extraction, iterate at most eight fresh outputs in order,
+replace the key before each publication, copy and verify every chunk, wipe each
+complete output, and increment delivery state exactly once. The ring-3 probe
+shall preserve prior calls, require a 256-byte return, and read the first and
+last qwords without constraining them.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

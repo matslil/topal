@@ -1128,6 +1128,16 @@ unchanged for zero and rejected calls. Qualification shall execute the existing
 two 16-byte successes followed by one 32-byte success and observe every
 returned qword without constraining secret-derived values.
 
+The bounded small-request `getrandom` refinement shall consume the live service
+into one service admitting complete requests through 256 bytes and at most
+eight 32-byte outputs per call. It shall validate the complete writable range
+before the first state transition; replace the persistent key before each fresh
+output; copy ordered chunks; wipe and verify every complete output; retain no
+remainder; return only the exact full length; and increment interface delivery
+state once. Zero and rejected calls shall not change service state, and the
+refinement shall expose no loop, key, byte, address, syscall, register, or
+target fault mechanism to source.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

@@ -1447,6 +1447,15 @@ copies and verifies exactly the requested prefix, and wipes the complete output
 even when every output byte was selected. The extent is a property of the
 qualified generator contract rather than an architecture syscall mechanism.
 
+A checked small-request refinement may consume a live reusable user-random
+service into a service that can satisfy one request from a bounded sequence of
+fresh output objects. It names the maximum output count and complete-request
+policy. The provider validates the entire user range before the first state
+transition, replaces the key before each fresh output is published, copies each
+selected chunk in order, wipes every complete output, and reports one completed
+interface delivery only after the full request. Source observes neither the
+chunk loop nor cryptographic, syscall, register, address, or fault mechanics.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
