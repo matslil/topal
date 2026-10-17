@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 84 ordered serial markers. The generated real-mode adapter
+and waits for the 85 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -299,6 +299,13 @@ unsigned 16-bit fields privately, admits only a complete writable extent,
 copies under fault recovery, and retains no user pointer. The ordered
 `TOPAL_KERNEL_USER_WINSIZE_OK` witness establishes truthful serial-console
 geometry discovery without inventing host- or harness-dependent dimensions.
+The continuation then invokes Linux x86-64 `lseek` on input and output with
+`SEEK_CUR` and a nonzero offset, requiring exact `-ESPIPE` because the shared
+console is a stream and owns no file position. Mode five on live output returns
+`-EINVAL`; the same mode on closed slot zero later returns `-EBADF`, proving
+descriptor lookup precedes mode classification. The ordered
+`TOPAL_KERNEL_USER_LSEEK_OK` witness establishes non-seekability without
+fabricating zero-position success or hidden per-description offset state.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range
