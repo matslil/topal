@@ -1094,6 +1094,18 @@ ready address space. It shall reject malformed, omitted, duplicated, reordered,
 substituted, premature, partially copied, incompletely wiped, or reused
 delivery and shall not expose random bytes or an address to source.
 
+The bounded initial-`getrandom` refinement shall freshly extract generation two
+to generation three as opaque output identity two and reserve that output for
+process, Linux interface, and user-random service identity one before entry. It
+shall require source extent 32, a maximum selected prefix of 16 bytes, discard
+the unused selected suffix and bytes 16 through 31, accept only the current
+Linux flag mask 7 while rejecting combinations containing mask 6, and permit
+one successful nonempty request. Zero, flag-error, length-error, and complete-
+range-fault results shall not consume the reservation. Success shall copy and
+verify the requested prefix, wipe and verify all provider output, consume the
+reservation, and expose neither random bytes, an address, nor a native syscall
+number to source.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
