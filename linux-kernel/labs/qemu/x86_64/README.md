@@ -416,8 +416,9 @@ QEMU identity, and observed serial bytes by digest.
 
 The publication gate also creates a deterministic clean-room 2,024,544-byte
 static ELF with the approved eleven program headers and 503-page plan, passes
-it through `--static-user-image`, verifies exact-byte `static-user.elf`
-publication, and verifies its canonical provenance digest. This file is not
-BusyBox and is not placed in the initramfs: the current 12 KiB
-`initial-user.elf` remains the sole `init` member until the approved static
-copy lifecycle is implemented.
+it through `--static-user-image`, and verifies exact-byte `static-user.elf`
+artifact and boot provenance. The deterministic initramfs contains `init`
+followed by `static-user.elf`; the provider validates both archive records and
+the static ELF metadata while excluding the complete resource from allocation.
+This file is not BusyBox, remains provider-private, and is not selected or
+copied into the inactive construction yet.

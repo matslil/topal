@@ -62,23 +62,24 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/115")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/116")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/104")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/105")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/113",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/114",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/68",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/69",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
-            "topal.boot-resource.x86_64-initial-newc/1",
+            "topal.boot-resource.x86_64-initial-newc/2",
         )
         self.assertEqual(evidence["boot_resource_member"], "init")
-        self.assertEqual(evidence["boot_resource_bytes"], 12_528)
+        self.assertEqual(evidence["static_boot_resource_member"], "static-user.elf")
+        self.assertEqual(evidence["boot_resource_bytes"], 2_037_200)
         self.assertEqual(evidence["initial_user_image_bytes"], 12_288)
         self.assertEqual(evidence["initial_user_image_input"], "supplied")
         self.assertEqual(evidence["static_user_image_bytes"], 2_024_544)
