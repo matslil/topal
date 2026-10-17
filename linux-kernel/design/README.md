@@ -125,6 +125,7 @@ records, not this directory alone, define language meaning.
 - [Bounded multipage initial executable](bounded-multipage-initial-executable.md)
 - [Bounded static ELF load plan](bounded-static-elf-load-plan.md)
 - [Bounded static ELF page realization](bounded-static-elf-page-realization.md)
+- [Bounded static ELF frame extent](bounded-static-elf-frame-extent.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
