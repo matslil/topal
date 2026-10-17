@@ -119,6 +119,7 @@ records, not this directory alone, define language meaning.
 - [Initial standard-descriptor duplication](initial-descriptor-duplication.md)
 - [Initial descriptor `fcntl` metadata](initial-descriptor-fcntl.md)
 - [Initial descriptor `fstat`](initial-descriptor-fstat.md)
+- [Initial console `TCGETS`](initial-console-tcgets.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
