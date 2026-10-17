@@ -465,8 +465,10 @@ def evidence_record(
     data = manifest()
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
+    if boot["static_user_image_sha256"] != digest(static_user_image):
+        raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/115",
+        "schema": "topal-kernel-toolchain-gate-qemu/116",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -481,13 +483,14 @@ def evidence_record(
         "boot_schema": boot["schema"],
         "boot_resource_schema": boot["boot_resource_schema"],
         "boot_resource_member": boot["boot_resource_member"],
+        "static_boot_resource_member": boot["static_boot_resource_member"],
         "boot_resource_bytes": boot["boot_resource_bytes"],
         "initial_user_image_bytes": boot["initial_user_image_bytes"],
         "initial_user_image_sha256": boot["initial_user_image_sha256"],
         "generated_initial_user_image_sha256": digest(generated_initial_user_image),
         "initial_user_image_input": "supplied",
-        "static_user_image_bytes": static_user_image.stat().st_size,
-        "static_user_image_sha256": digest(static_user_image),
+        "static_user_image_bytes": boot["static_user_image_bytes"],
+        "static_user_image_sha256": boot["static_user_image_sha256"],
         "static_user_image_input": "supplied-clean-room-fixture",
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),

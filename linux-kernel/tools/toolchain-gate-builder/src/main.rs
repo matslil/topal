@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 
 use topal_compiler::{
     SYSTEMS_INITIAL_USER_IMAGE_FILE, SYSTEMS_KERNEL_FILE, SYSTEMS_PROVENANCE_FILE,
-    SystemsArtifactProvenance, publish_x86_64_linux_boot_image,
+    SYSTEMS_STATIC_USER_IMAGE_FILE, SystemsArtifactProvenance, publish_x86_64_linux_boot_image,
 };
 
 fn main() {
@@ -47,13 +47,20 @@ fn publish(linked: &Path, destination: &Path) -> Result<(), Box<dyn Error>> {
     }
     let kernel_path = linked.join(SYSTEMS_KERNEL_FILE);
     let initial_user_image_path = linked.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
+    let static_user_image_path = linked.join(SYSTEMS_STATIC_USER_IMAGE_FILE);
     let provenance_path = linked.join(SYSTEMS_PROVENANCE_FILE);
     let kernel = fs::read(&kernel_path)?;
     let initial_user_image = fs::read(&initial_user_image_path)?;
+    let static_user_image = fs::read(&static_user_image_path)?;
     let provenance: SystemsArtifactProvenance =
         serde_json::from_slice(&fs::read(&provenance_path)?)?;
-    let boot =
-        publish_x86_64_linux_boot_image(&kernel, &provenance, &initial_user_image, destination)?;
+    let boot = publish_x86_64_linux_boot_image(
+        &kernel,
+        &provenance,
+        &initial_user_image,
+        &static_user_image,
+        destination,
+    )?;
     println!("{}", boot.image.display());
     Ok(())
 }
@@ -64,7 +71,8 @@ mod tests {
 
     use topal_compiler::{
         LlvmTools, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
-        publish_x86_64_systems_artifact,
+        publish_x86_64_systems_artifact_with_static_user_image,
+        qualified_x86_64_static_user_image_fixture,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
@@ -88,7 +96,13 @@ mod tests {
         .unwrap();
         let tools = LlvmTools::discover(None).unwrap();
         let linked = parent.join("linked");
-        publish_x86_64_systems_artifact(&program, &tools, &linked).unwrap();
+        publish_x86_64_systems_artifact_with_static_user_image(
+            &program,
+            &tools,
+            &qualified_x86_64_static_user_image_fixture(),
+            &linked,
+        )
+        .unwrap();
         let boot = parent.join("boot");
         publish(&linked, &boot).unwrap();
         assert!(boot.join(X86_BOOT_IMAGE_FILE).is_file());
@@ -97,8 +111,17 @@ mod tests {
         let initial_user_image = linked.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
         let mut tampered = fs::read(&initial_user_image).unwrap();
         tampered[0] ^= 0xff;
-        fs::write(&initial_user_image, tampered).unwrap();
+        fs::write(&initial_user_image, &tampered).unwrap();
         let rejected = parent.join("tampered-boot");
+        assert!(publish(&linked, &rejected).is_err());
+        assert!(!rejected.exists());
+        tampered[0] ^= 0xff;
+        fs::write(&initial_user_image, tampered).unwrap();
+        let static_user_image = linked.join(SYSTEMS_STATIC_USER_IMAGE_FILE);
+        let mut tampered = fs::read(&static_user_image).unwrap();
+        tampered[0] ^= 0xff;
+        fs::write(&static_user_image, tampered).unwrap();
+        let rejected = parent.join("tampered-static-boot");
         assert!(publish(&linked, &rejected).is_err());
         assert!(!rejected.exists());
         fs::remove_dir_all(parent).unwrap();

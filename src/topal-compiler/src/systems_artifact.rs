@@ -138,7 +138,7 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/113";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/114";
 pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/103";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
@@ -583,6 +583,68 @@ struct StaticElfPagePlan {
     entry: u64,
     tls: Option<StaticElfTlsPlan>,
     relro_pages: Option<StaticElfInterval>,
+}
+
+/// Construct deterministic clean-room bytes with the qualified static-ELF metadata shape.
+///
+/// The payload is not an application and exists only for structural qualification.
+#[must_use]
+pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
+    fn put_u16(image: &mut [u8], offset: usize, value: u16) {
+        image[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_u32(image: &mut [u8], offset: usize, value: u32) {
+        image[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_u64(image: &mut [u8], offset: usize, value: u64) {
+        image[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_program_header(
+        image: &mut [u8],
+        index: usize,
+        row: (u32, u32, u64, u64, u64, u64, u64),
+    ) {
+        let (kind, flags, file_offset, virtual_address, file_size, memory_size, alignment) = row;
+        let offset = 64 + index * 56;
+        put_u32(image, offset, kind);
+        put_u32(image, offset + 4, flags);
+        put_u64(image, offset + 8, file_offset);
+        put_u64(image, offset + 16, virtual_address);
+        put_u64(image, offset + 24, virtual_address);
+        put_u64(image, offset + 32, file_size);
+        put_u64(image, offset + 40, memory_size);
+        put_u64(image, offset + 48, alignment);
+    }
+
+    let mut image = vec![0_u8; 2_024_544];
+    image[0..16].copy_from_slice(&[0x7f, b'E', b'L', b'F', 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]);
+    put_u16(&mut image, 16, 2);
+    put_u16(&mut image, 18, 62);
+    put_u32(&mut image, 20, 1);
+    put_u64(&mut image, 24, 0x004a_6580);
+    put_u64(&mut image, 32, 64);
+    put_u16(&mut image, 52, 64);
+    put_u16(&mut image, 54, 56);
+    put_u16(&mut image, 56, 11);
+    for (index, row) in [
+        (1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_b285, 0x18_b285, 0x1000),
+        (1, 4, 0x18_d000, 0x0058_d000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1e_4660, 0x005e_5660, 0x9728, 0x1_0b68, 0x1000),
+        (4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4),
+        (4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8),
+        (0x6474_e553, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (0x6474_e551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_e552, 4, 0x1e_4660, 0x005e_5660, 0x79a0, 0x79a0, 1),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        put_program_header(&mut image, index, row);
+    }
+    image
 }
 
 fn elf_u16(image: &[u8], offset: usize) -> u16 {
@@ -6845,103 +6907,8 @@ mod tests {
         image[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
     }
 
-    #[allow(clippy::too_many_arguments)] // Mirrors one ELF64 program-header row.
-    fn put_program_header(
-        image: &mut [u8],
-        index: usize,
-        kind: u32,
-        flags: u32,
-        file_offset: u64,
-        virtual_address: u64,
-        file_size: u64,
-        memory_size: u64,
-        alignment: u64,
-    ) {
-        let offset = 64 + index * 56;
-        put_u32(image, offset, kind);
-        put_u32(image, offset + 4, flags);
-        put_u64(image, offset + 8, file_offset);
-        put_u64(image, offset + 16, virtual_address);
-        put_u64(image, offset + 24, virtual_address);
-        put_u64(image, offset + 32, file_size);
-        put_u64(image, offset + 40, memory_size);
-        put_u64(image, offset + 48, alignment);
-    }
-
     fn busybox_shaped_static_elf() -> Vec<u8> {
-        let mut image = vec![0_u8; 2_024_544];
-        image[0..16].copy_from_slice(&[0x7f, b'E', b'L', b'F', 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]);
-        put_u16(&mut image, 16, 2);
-        put_u16(&mut image, 18, 62);
-        put_u32(&mut image, 20, 1);
-        put_u64(&mut image, 24, 0x004a_6580);
-        put_u64(&mut image, 32, 64);
-        put_u16(&mut image, 52, 64);
-        put_u16(&mut image, 54, 56);
-        put_u16(&mut image, 56, 11);
-
-        put_program_header(&mut image, 0, 1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000);
-        put_program_header(
-            &mut image,
-            1,
-            1,
-            5,
-            0x1000,
-            0x0040_1000,
-            0x18_b285,
-            0x18_b285,
-            0x1000,
-        );
-        put_program_header(
-            &mut image,
-            2,
-            1,
-            4,
-            0x18_d000,
-            0x0058_d000,
-            0x5_7040,
-            0x5_7040,
-            0x1000,
-        );
-        put_program_header(
-            &mut image,
-            3,
-            1,
-            6,
-            0x1e_4660,
-            0x005e_5660,
-            0x9728,
-            0x1_0b68,
-            0x1000,
-        );
-        put_program_header(&mut image, 4, 4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8);
-        put_program_header(&mut image, 5, 4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4);
-        put_program_header(&mut image, 6, 4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4);
-        put_program_header(&mut image, 7, 7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8);
-        put_program_header(
-            &mut image,
-            8,
-            0x6474_e553,
-            4,
-            0x2a8,
-            0x0040_02a8,
-            0x20,
-            0x20,
-            8,
-        );
-        put_program_header(&mut image, 9, 0x6474_e551, 6, 0, 0, 0, 0, 0x10);
-        put_program_header(
-            &mut image,
-            10,
-            0x6474_e552,
-            4,
-            0x1e_4660,
-            0x005e_5660,
-            0x79a0,
-            0x79a0,
-            1,
-        );
-        image
+        qualified_x86_64_static_user_image_fixture()
     }
 
     #[test]

@@ -8,8 +8,10 @@ use object::{
 };
 use topal_language::compiler::CompilerSystemsProgram;
 
+use crate::systems_artifact::qualified_x86_64_static_user_image_fixture;
 use crate::systems_boot_resource::{
-    X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET, generate_initial_boot_resource,
+    X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET, X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET,
+    generate_initial_boot_resource,
 };
 use crate::{
     CompileError, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsProviderPlan,
@@ -17,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/104";
+    "topal.provider-object.x86_64-qemu-pc-q35/105";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1513,7 +1515,9 @@ fn append_user_functions(
 
 fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
-    let expected_boot_resource = generate_initial_boot_resource(&initial_user_elf_file()?)?;
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let expected_boot_resource =
+        generate_initial_boot_resource(&initial_user_elf_file()?, &static_user_image)?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
     if probe.len() > 4096 {
         return Err(CompileError::Tool(
@@ -1555,12 +1559,17 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     let image_end =
         X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + initial_user_elf_file()?.len();
+    let static_payload_offset = X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize;
+    let static_metadata_end = static_payload_offset + 64 + 11 * 56;
+    let static_image_end = static_payload_offset + static_user_image.len();
     let metadata_offsets = (0..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize)
         .chain(
             X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + 256,
         )
-        .chain(image_end..expected_boot_resource.len())
+        .chain(image_end..static_payload_offset)
+        .chain(static_payload_offset..static_metadata_end)
+        .chain(static_image_end..expected_boot_resource.len())
         .filter(|offset| {
             let code_size_fields = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET
@@ -5486,7 +5495,10 @@ fn append_encoded_function(
 fn emit_initial_boot_resource_handoff_validation(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
-    let expected = generate_initial_boot_resource(&initial_user_elf_file()?)?;
+    let expected = generate_initial_boot_resource(
+        &initial_user_elf_file()?,
+        &qualified_x86_64_static_user_image_fixture(),
+    )?;
     let expected_size = u32::try_from(expected.len())
         .map_err(|_| CompileError::Tool("initial boot resource exceeds u32".into()))?;
     code.bytes(&[0x83, 0xbe, 0xc0, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_image
