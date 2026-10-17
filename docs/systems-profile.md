@@ -693,6 +693,17 @@ and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
 signals, partial reads, and terminal policy remain profile limits rather than
 Linux-wide semantics.
 
+The initial descriptor-close refinement gives the Linux personality a bounded
+private descriptor table for the three inherited standard descriptors. A
+successful `close` changes exactly one live descriptor to closed and returns
+zero; an invalid or already closed descriptor returns `-EBADF` without state
+change. The existing bounded `read` and `write` paths consult the same state
+before input, user-memory access, or output, and terminal process teardown
+clears it. Portable source selects the descriptor count and error policy but
+does not observe the provider's table representation, native syscall number,
+or register convention. This is a process-lifetime compatibility refinement,
+not a VFS object model or general descriptor-allocation interface.
+
 The bounded initial-heap refinement gives the initial process one byte-granular
 program-break state within the already-owned RW/NX data page. Its initial value
 is derived from the validated ELF data-memory extent; zero requests query that
