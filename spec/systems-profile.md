@@ -1911,6 +1911,8 @@ affine process-lifetime service before the named process first enters user
 context. The request SHALL name matching nonzero generator, initial-output,
 process, interface, and service identities; the exact ready generation, block
 and per-call extents, flag policy, first-output policy, and reusable policy.
+The maximum per-call delivery extent SHALL NOT exceed the provider-output
+extent.
 
 The service SHALL exclusively own the generator and reserved first output.
 Zero and rejected calls SHALL NOT change either. Each successful nonempty call
@@ -2302,6 +2304,41 @@ than 16 bytes, pre-readiness blocking, signal interruption, concurrent
 callers, fork or exec inheritance, `/dev/random`, `/dev/urandom`, vDSO
 delivery, reseeding, per-processor generators, batching, queue recycling,
 asynchronous interrupt delivery, reset, or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-FULL-OUTPUT-001 — Full-output process `getrandom`
+
+The current initial profile SHALL refine
+`TOPAL-SYSTEMS-USER-GETRANDOM-REPEATED-001` by binding the same generator,
+reservation, process, Linux interface, and user-random service identities with
+maximum per-call delivery extent 32, equal to the qualified provider-output
+extent. All other identities, extents, flag masks, ownership policies, and
+teardown obligations SHALL remain unchanged.
+
+The preceding `TOPAL-SYSTEMS-ENTROPY-RESERVE-001` request SHALL likewise name
+maximum delivery extent 32, selected offset zero, discarded offset 32, and
+discarded extent zero. It SHALL remain a live single-use reservation until the
+reusable binding consumes it; the larger partition SHALL NOT permit direct
+delivery after binding.
+
+Each successful nonempty call SHALL consume exactly one reserved or freshly
+extracted 32-byte output, copy and verify exactly 1 through 32 requested bytes,
+wipe and verify all 32 output bytes, retain no remainder, and preserve only the
+successor generator. A request larger than 32 SHALL return `-EINVAL`; zero,
+`-EINVAL`, and `-EFAULT` results SHALL NOT extract, consume output, increment
+the delivery count, or otherwise change service state. Complete argument and
+writable-range validation SHALL precede each later extraction.
+
+The constructed ring-3 image SHALL retain the four non-consuming probes and
+two 16-byte successes, then complete one 32-byte request after a fresh
+extraction. It SHALL read all four returned qwords without constraining their
+values. The profile SHALL reject another maximum, a multi-output request,
+partial copy, incomplete verification or wipe, retained suffix, premature
+advance, wrong delivery count, or changed teardown behavior. This refinement
+SHALL NOT provide requests larger than one output, partial completion,
+pre-readiness blocking, signal interruption, concurrent callers, fork or exec
+inheritance, `/dev/random`, `/dev/urandom`, vDSO delivery, reseeding,
+per-processor generators, batching, queue recycling, asynchronous interrupt
+delivery, reset, or recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
