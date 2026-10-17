@@ -1138,6 +1138,14 @@ state once. Zero and rejected calls shall not change service state, and the
 refinement shall expose no loop, key, byte, address, syscall, register, or
 target fault mechanism to source.
 
+The bounded large-request `getrandom` refinement shall consume that service
+into one service admitting signal-free complete requests through 512 bytes
+and at most 16 32-byte outputs per call. It shall preserve whole-range
+validation before state change, ordered chunking, per-output key replacement,
+complete copy verification and erasure, no retained remainder, exact return
+length, and one interface delivery update. The numeric bound shall remain a
+profile constant rather than a portable architecture page-size operation.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
