@@ -507,6 +507,14 @@ aliases, lookup-before-pointer error precedence, complete writable-range
 validation, private staging, fault recovery, closed-slot `EBADF`, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The following systems-only userspace refinement adds
+[bounded `TCGETS` terminal discovery](design/initial-console-tcgets.md).
+Its [implementation and qualification report](step-4-initial-console-tcgets.md)
+records the exact native 36-byte raw `termios`, shared input/output attributes,
+descriptor/request/pointer error precedence, complete writable-range staging
+and fault recovery, exact `EBADF`/`ENOTTY`/`EFAULT`, structural inspection, and
+two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -677,6 +685,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 initial standard-descriptor duplication](step-4-initial-descriptor-duplication.md)
 - [Step 4 initial descriptor `fcntl` metadata](step-4-initial-descriptor-fcntl.md)
 - [Step 4 initial descriptor `fstat` metadata](step-4-initial-descriptor-fstat.md)
+- [Step 4 initial console `TCGETS`](step-4-initial-console-tcgets.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
