@@ -611,6 +611,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded entropy-pool mixing](step-4-bounded-entropy-pool-mixing.md)
 - [Step 4 bounded entropy-credit transfer](step-4-bounded-entropy-credit-transfer.md)
 - [Step 4 bounded initial CRNG seeding](step-4-bounded-initial-crng-seeding.md)
+- [Step 4 bounded CRNG extraction](step-4-bounded-crng-extraction.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

@@ -71,6 +71,7 @@ pub const SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION: &str =
     "topal.systems.entropy.pool.credit-contribution/1";
 pub const SYSTEMS_ENTROPY_GENERATOR_INITIALIZE: &str =
     "topal.systems.entropy.generator.initialize/1";
+pub const SYSTEMS_ENTROPY_GENERATOR_EXTRACT: &str = "topal.systems.entropy.generator.extract/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -651,6 +652,53 @@ impl EntropyGeneratorRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyGeneratorExtractRequest {
+    pub generator_identity: u64,
+    pub algorithm_identity: u64,
+    pub prior_generation: u64,
+    pub resulting_generation: u64,
+    pub output_identity: u64,
+    pub block_byte_count: u64,
+    pub output_offset_bytes: u64,
+    pub output_byte_count: u64,
+    pub counter: u64,
+    pub nonce_identity: u64,
+}
+
+impl EntropyGeneratorExtractRequest {
+    pub const INITIAL_Q35: Self = Self {
+        generator_identity: 1,
+        algorithm_identity: 1,
+        prior_generation: 1,
+        resulting_generation: 2,
+        output_identity: 1,
+        block_byte_count: 64,
+        output_offset_bytes: 32,
+        output_byte_count: 32,
+        counter: 0,
+        nonce_identity: 0,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.generator_identity != 0
+            && self.algorithm_identity != 0
+            && self.prior_generation != 0
+            && self.output_identity != 0
+            && self.block_byte_count != 0
+            && self.output_byte_count != 0
+            && match self.prior_generation.checked_add(1) {
+                Some(result) => result == self.resulting_generation,
+                None => false,
+            }
+            && match self.output_offset_bytes.checked_add(self.output_byte_count) {
+                Some(end) => end == self.block_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PciRegionDmaReferenceRequest {
     pub segment: u16,
     pub bus: u8,
@@ -951,6 +999,9 @@ pub enum SystemsOperation {
     InitializeEntropyGenerator {
         request: EntropyGeneratorRequest,
     },
+    ExtractEntropyGenerator {
+        request: EntropyGeneratorExtractRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -1074,6 +1125,7 @@ impl SystemsOperation {
             Self::MixEntropyPoolSample { .. } => SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+            Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1333,6 +1385,9 @@ pub enum SystemsTransition {
     },
     InitializeEntropyGenerator {
         request: EntropyGeneratorRequest,
+    },
+    ExtractEntropyGenerator {
+        request: EntropyGeneratorExtractRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1681,6 +1736,7 @@ impl SystemsTransition {
             Self::MixEntropyPoolSample { .. } => SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+            Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -2253,6 +2309,7 @@ struct BootstrapAuthorityState {
     entropy_pool_mixed: bool,
     entropy_pool_credited: bool,
     entropy_generator_ready: bool,
+    entropy_generator_extracted: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2771,6 +2828,19 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.entropy_generator_ready = true;
+            }
+            SystemsOperation::ExtractEntropyGenerator { request } => {
+                if !self.entropy_generator_ready
+                    || self.entropy_generator_extracted
+                    || !request.is_well_formed()
+                    || *request != EntropyGeneratorExtractRequest::INITIAL_Q35
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-EXTRACT",
+                        "entropy-generator extraction requires the exact sealed ready generation-one ChaCha20 request",
+                    ));
+                }
+                self.entropy_generator_extracted = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -4249,6 +4319,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-ENTROPY-GENERATOR-LIVE",
                 "bootstrap completion requires the sealed ready entropy generator",
+            ));
+        }
+        if !self.entropy_generator_extracted {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-EXTRACT-LIVE",
+                "bootstrap completion requires the sealed first entropy-generator extraction",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5935,6 +6011,9 @@ fn model_bootstrap_operation(
         SystemsOperation::InitializeEntropyGenerator { request } => {
             transitions.push(SystemsTransition::InitializeEntropyGenerator { request: *request });
         }
+        SystemsOperation::ExtractEntropyGenerator { request } => {
+            transitions.push(SystemsTransition::ExtractEntropyGenerator { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6287,6 +6366,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::MixEntropyPoolSample { .. }
         | SystemsOperation::CreditEntropyPoolContribution { .. }
         | SystemsOperation::InitializeEntropyGenerator { .. }
+        | SystemsOperation::ExtractEntropyGenerator { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6435,6 +6515,7 @@ mod tests {
             SYSTEMS_ENTROPY_POOL_MIX_SAMPLE.into(),
             SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION.into(),
             SYSTEMS_ENTROPY_GENERATOR_INITIALIZE.into(),
+            SYSTEMS_ENTROPY_GENERATOR_EXTRACT.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -6823,6 +6904,9 @@ mod tests {
                         },
                         SystemsOperation::InitializeEntropyGenerator {
                             request: EntropyGeneratorRequest::INITIAL_Q35,
+                        },
+                        SystemsOperation::ExtractEntropyGenerator {
+                            request: EntropyGeneratorExtractRequest::INITIAL_Q35,
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -7353,6 +7437,9 @@ mod tests {
                 },
                 SystemsTransition::InitializeEntropyGenerator {
                     request: EntropyGeneratorRequest::INITIAL_Q35,
+                },
+                SystemsTransition::ExtractEntropyGenerator {
+                    request: EntropyGeneratorExtractRequest::INITIAL_Q35,
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,
