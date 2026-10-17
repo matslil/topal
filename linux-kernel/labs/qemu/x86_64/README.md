@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 72 ordered serial markers. The generated real-mode adapter
+and waits for the 73 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -164,6 +164,13 @@ its mappings revoked, its three relevant virtual locations invalidated, its
 opaque address-space state reclaimed, its exact affine ownership returned, and
 the extent released by source. Construction, user-context binding, revocation,
 and reclaim are separate checked operations in the artifact trace. The
+`TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK` marker precedes user entry and is
+reachable only after the first conditioned CRNG output has copied and verified
+16 bytes in the enlarged initial stack, published native `AT_RANDOM`, wiped and
+verified the complete 32-byte provider output, and refined the prepared address
+space to its single-use entry-ready state. The ring-3 probe reads both random
+qwords without constraining their values and validates the tag, pointer,
+strings, terminator, and exact 336-byte stack extent. The
 `TOPAL_KERNEL_FRAME_DISJOINT_OK` marker additionally requires the prepared
 address space and one source-owned frame to coexist without overlap, followed
 by release of that frame before user-context binding. The preceding

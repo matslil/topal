@@ -1859,6 +1859,24 @@ target instruction. The prior generator generation SHALL NOT remain live.
 Extraction SHALL NOT deliver the output object to a kernel or userspace
 interface, perform another block, reseed, or authorize output reuse.
 
+### TOPAL-SYSTEMS-ENTROPY-DELIVER-001 — Opaque affine output delivery
+
+`topal.systems.entropy.output.deliver-initial-auxv-random/1` SHALL consume one
+affine opaque output object and refine one prepared, not-yet-entered user
+address space to an entry-ready state. The request SHALL name nonzero output,
+address-space, and interface identities; source, selected, delivered, and
+discarded extents that form one exact nonoverlapping partition; the qualified
+interface tag; and single-use policy. The complete destination object SHALL be
+within initialized writable user-stack storage before entry.
+
+The provider SHALL copy and verify the complete selected output into the
+interface object, then wipe and verify the entire consumed provider output
+before success. It SHALL fail closed rather than publish a partial object,
+retain reusable provider output, or permit premature user entry. Source SHALL
+NOT observe an output byte, user or backing address, stack representation,
+temporary value, or target instruction. Delivery SHALL NOT modify the ready
+generator or imply another extraction.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2133,6 +2151,31 @@ This refinement SHALL NOT populate `AT_RANDOM`, implement `getrandom` or
 `/dev/random`, deliver to a kernel consumer, compute another block, reseed,
 recycle or renotify the queue, configure asynchronous interrupt delivery,
 reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-USER-AUXV-RANDOM-001 — Bounded initial `AT_RANDOM`
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-EXTRACT-001` and before initial user-
+context entry, the initial profile SHALL perform exactly one
+`TOPAL-SYSTEMS-ENTROPY-DELIVER-001` operation. It SHALL name output identity
+one, address-space and Linux-interface identity one, source extent 32, selected
+offset zero and extent 16, discarded offset 16 and extent 16, auxiliary tag 25,
+and single-use delivery.
+
+The x86-64 provider SHALL add one native `AT_RANDOM` entry before `AT_NULL`
+whose value points to a distinct complete 16-byte object inside the initialized
+bounded stack. It SHALL copy and verify output bytes 0 through 15 into that
+object, wipe and verify all 32 provider-output bytes, and publish the address
+space as `RandomizedEntryReady`. The constructed user image SHALL validate the
+ordered tag, exact provider pointer, complete readable object, nonoverlap with
+the vector and strings, unchanged strings, exact terminator, and complete
+enlarged-block consumption.
+
+The profile SHALL reject another identity, interface, tag, extent, partition,
+pre-state, omission, duplication, reordering, partial copy, retained output,
+reuse, or user entry before delivery. This refinement SHALL NOT implement
+`getrandom` or `/dev/random`, return a remainder object, compute another block,
+reseed, recycle or renotify the queue, configure asynchronous interrupt
+delivery, reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

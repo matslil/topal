@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/86";
+    "topal.provider-object.x86_64-qemu-pc-q35/87";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -125,6 +125,8 @@ pub const X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL: &str =
     "topal_x86_systems_entropy_initialize_chacha20_generator";
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL: &str =
     "topal_x86_systems_entropy_extract_chacha20_generator";
+pub const X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_entropy_deliver_initial_auxv_random";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -153,7 +155,7 @@ pub(crate) const INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET: usize = 104;
 pub(crate) const INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET: usize = 152;
 pub(crate) const INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET: usize = 160;
 pub(crate) const INITIAL_USER_DATA_CAPACITY: usize = 4096;
-const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1ee0;
+const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1eb0;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
@@ -837,6 +839,70 @@ fn entropy_extract_chacha20_generator() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_deliver_initial_auxv_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // affine 32-byte output
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x01]); // prepared probe, not entered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 0]); // not previously delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]); // allocator-owned backing
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+
+    for offset in [0_u8, 8] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x8b, 0x46, offset]);
+        }
+        code.bytes(&[0x48, 0x89, 0x81]);
+        code.bytes(&(0x1fe0_u32 + u32::from(offset)).to_le_bytes());
+        code.bytes(&[0x48, 0x3b, 0x81]);
+        code.bytes(&(0x1fe0_u32 + u32::from(offset)).to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x46, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x8b, 0x06]);
+    for offset in [8_u8, 16, 24] {
+        code.bytes(&[0x48, 0x0b, 0x46, offset]);
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail_wipe");
+    code.bytes(&[0xc6, 0x87, 0xd0, 0, 0, 0, 1]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fail_wipe")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x46, offset]);
+        }
+    }
+    for offset in [0x1fe0_u32, 0x1fe8] {
+        code.bytes(&[0x48, 0x89, 0x81]);
+        code.bytes(&offset.to_le_bytes());
+    }
+    code.bytes(&[0xc6, 0x87, 0xd0, 0, 0, 0, 0]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -1024,6 +1090,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL,
         &entropy_extract_chacha20_generator()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+        &entropy_deliver_initial_auxv_random()?,
     );
     append_encoded_function(
         &mut object,
@@ -1471,14 +1543,14 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     for (index, chunk) in initial_user_stack_bytes().chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
-        let displacement = u32::try_from(0x1ee0 + index * 8).map_err(|_| {
+        let displacement = u32::try_from(0x1eb0 + index * 8).map_err(|_| {
             CompileError::Tool("initial user stack displacement exceeds u32".into())
         })?;
         code.bytes(&[0x49, 0x89, 0x82]);
         code.bytes(&displacement.to_le_bytes());
     }
     code.bytes(&[0x4d, 0x8b, 0x99, 0x88, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x4d, 0x89, 0x9a, 0x18, 0x1f, 0x00, 0x00]); // runtime AT_ENTRY
+    code.bytes(&[0x4d, 0x89, 0x9a, 0xe8, 0x1e, 0x00, 0x00]); // runtime AT_ENTRY
     code.bytes(&[0x4d, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
     code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]); // clear frame
@@ -1500,6 +1572,8 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x41, 0x0f, 0x01, 0x38]); // invlpg [r8]
     }
 
+    code.bytes(&[0xc6, 0x87, 0xc0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xc6, 0x87, 0xd0, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -1711,16 +1785,16 @@ struct InitialUserEntryPayload {
     nanosleep_return_address: u64,
 }
 
-fn initial_user_stack_bytes() -> [u8; 288] {
-    let mut bytes = [0_u8; 288];
+fn initial_user_stack_bytes() -> [u8; 336] {
+    let mut bytes = [0_u8; 336];
     bytes[0..8].copy_from_slice(&1_u64.to_le_bytes());
-    bytes[8..16].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[8..16].copy_from_slice(&0x0060_1fc8_u64.to_le_bytes());
     bytes[32..40].copy_from_slice(&6_u64.to_le_bytes());
     bytes[40..48].copy_from_slice(&4096_u64.to_le_bytes());
     bytes[48..56].copy_from_slice(&9_u64.to_le_bytes());
     bytes[56..64].copy_from_slice(&0_u64.to_le_bytes());
     bytes[64..72].copy_from_slice(&31_u64.to_le_bytes());
-    bytes[72..80].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[72..80].copy_from_slice(&0x0060_1fc8_u64.to_le_bytes());
     for (offset, tag) in [(80, 11_u64), (96, 12), (112, 13), (128, 14)] {
         bytes[offset..offset + 8].copy_from_slice(&tag.to_le_bytes());
     }
@@ -1734,9 +1808,11 @@ fn initial_user_stack_bytes() -> [u8; 288] {
     bytes[208..216].copy_from_slice(&17_u64.to_le_bytes());
     bytes[216..224].copy_from_slice(&100_u64.to_le_bytes());
     bytes[224..232].copy_from_slice(&15_u64.to_le_bytes());
-    bytes[232..240].copy_from_slice(&0x0060_1fe0_u64.to_le_bytes());
-    bytes[256..263].copy_from_slice(b"x86_64\0");
-    bytes[272..283].copy_from_slice(b"topal-probe");
+    bytes[232..240].copy_from_slice(&0x0060_1fc0_u64.to_le_bytes());
+    bytes[240..248].copy_from_slice(&25_u64.to_le_bytes());
+    bytes[248..256].copy_from_slice(&0x0060_1fe0_u64.to_le_bytes());
+    bytes[272..279].copy_from_slice(b"x86_64\0");
+    bytes[280..291].copy_from_slice(b"topal-probe");
     bytes
 }
 
@@ -1806,7 +1882,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x01]); // argc = 1
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x08]);
-    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // argv[0]
+    entry.bytes(&0x0060_1fc8_u32.to_le_bytes()); // argv[0]
     entry.jump_if(0x85, "entry-fail");
     for displacement in [0x10_u8, 0x18] {
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, 0x00]);
@@ -1827,7 +1903,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x40, 0x1f]); // AT_EXECFN
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x48]);
-    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // same string as argv[0]
+    entry.bytes(&0x0060_1fc8_u32.to_le_bytes()); // same string as argv[0]
     entry.jump_if(0x85, "entry-fail");
     for (displacement, tag) in [(0x50_u8, 11_u8), (0x60, 12), (0x70, 13)] {
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, tag]);
@@ -1855,8 +1931,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         (0xd0, 17),
         (0xd8, 100),
         (0xe0, 15),
-        (0xf0, 0),
-        (0xf8, 0),
+        (0xf0, 25),
+        (0x100, 0),
+        (0x108, 0),
     ] {
         entry.bytes(&[0x48, 0x83, 0xbc, 0x24]);
         entry.bytes(&displacement.to_le_bytes());
@@ -1865,24 +1942,33 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     }
     entry.bytes(&[0x48, 0x81, 0xbc, 0x24]);
     entry.bytes(&0xe8_u32.to_le_bytes());
+    entry.bytes(&0x0060_1fc0_u32.to_le_bytes());
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x81, 0xbc, 0x24]);
+    entry.bytes(&0xf8_u32.to_le_bytes());
     entry.bytes(&0x0060_1fe0_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"x86_64\0\0").to_le_bytes());
     entry.bytes(&[0x48, 0x39, 0x84, 0x24]);
-    entry.bytes(&0x100_u32.to_le_bytes());
+    entry.bytes(&0x110_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"topal-pr").to_le_bytes());
     entry.bytes(&[0x48, 0x39, 0x84, 0x24]);
-    entry.bytes(&0x110_u32.to_le_bytes());
+    entry.bytes(&0x118_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x81, 0xbc, 0x24]);
-    entry.bytes(&0x118_u32.to_le_bytes());
+    entry.bytes(&0x120_u32.to_le_bytes());
     entry.bytes(&u32::from_le_bytes(*b"obe\0").to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x8b, 0x84, 0x24]);
+    entry.bytes(&0x130_u32.to_le_bytes()); // read complete first random qword
+    entry.bytes(&[0x48, 0x8b, 0x8c, 0x24]);
+    entry.bytes(&0x138_u32.to_le_bytes()); // read complete second random qword
+    entry.bytes(&[0x48, 0x09, 0xc8]); // consume both values without constraining them
     entry.bytes(&[0x48, 0x81, 0xc4]);
-    entry.bytes(&288_u32.to_le_bytes()); // consume bounded initial block
+    entry.bytes(&336_u32.to_le_bytes()); // consume bounded initial block
     entry.bytes(&[0x49, 0xba]);
     entry.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
@@ -2833,6 +2919,8 @@ fn user_enter_initial_context() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x3f, 0x01]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x89, 0x67, 0x08]); // continuation RSP
     code.bytes(&[0xc6, 0x07, 0x02]);
@@ -6049,7 +6137,7 @@ assert bytes(output) == block[32:]
                 .any(|bytes| bytes == [0x4c, 0x89, 0x9f, 0x88, 0, 0, 0])
                 && user_address_prepare
                     .windows(7)
-                    .any(|bytes| bytes == [0x4d, 0x89, 0x9a, 0x18, 0x1f, 0, 0]),
+                    .any(|bytes| bytes == [0x4d, 0x89, 0x9a, 0xe8, 0x1e, 0, 0]),
             "address-space preparation must validate and retain one ELF entry for AT_ENTRY"
         );
         let initial_stack = initial_user_stack_bytes();
@@ -6059,7 +6147,7 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[8..16].try_into().unwrap()),
-            0x0060_1ff0
+            0x0060_1fc8
         );
         assert_eq!(initial_stack[16..32], [0; 16]);
         assert_eq!(
@@ -6084,7 +6172,7 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[72..80].try_into().unwrap()),
-            0x0060_1ff0
+            0x0060_1fc8
         );
         for (offset, tag) in [(80, 11_u64), (96, 12), (112, 13), (128, 14)] {
             assert_eq!(
@@ -6126,12 +6214,44 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[232..240].try_into().unwrap()),
+            0x0060_1fc0
+        );
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[240..248].try_into().unwrap()),
+            25
+        );
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[248..256].try_into().unwrap()),
             0x0060_1fe0
         );
-        assert_eq!(initial_stack[240..256], [0; 16]);
-        assert_eq!(&initial_stack[256..263], b"x86_64\0");
-        assert_eq!(&initial_stack[272..283], b"topal-probe");
-        assert_eq!(initial_stack[283], 0);
+        assert_eq!(initial_stack[256..272], [0; 16]);
+        assert_eq!(&initial_stack[272..279], b"x86_64\0");
+        assert_eq!(&initial_stack[280..291], b"topal-probe");
+        assert_eq!(initial_stack[291], 0);
+        assert_eq!(initial_stack[304..320], [0; 16]);
+        let auxv_random_delivery = symbol_bytes(
+            &file,
+            X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+        );
+        assert!(
+            auxv_random_delivery
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x81, 0xe0, 0x1f, 0, 0])
+                && auxv_random_delivery
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x81, 0xe8, 0x1f, 0, 0])
+                && auxv_random_delivery
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0xd0, 0, 0, 0, 1]),
+            "initial AT_RANDOM delivery must copy both selected qwords and publish entry readiness"
+        );
+        let user_enter = symbol_bytes(&file, X86_SYSTEMS_USER_ENTER_SYMBOL);
+        assert!(
+            user_enter
+                .windows(7)
+                .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
+            "initial user entry must reject an address space without AT_RANDOM delivery"
+        );
         assert!(
             initial_stack
                 .chunks_exact(8)
@@ -6271,12 +6391,12 @@ assert bytes(output) == block[32:]
                     .bytes
                     .windows(12)
                     .any(|bytes| bytes
-                        == [0x48, 0x81, 0xbc, 0x24, 0xe8, 0, 0, 0, 0xe0, 0x1f, 0x60, 0])
+                        == [0x48, 0x81, 0xbc, 0x24, 0xe8, 0, 0, 0, 0xc0, 0x1f, 0x60, 0])
                 && entry_payload
                     .bytes
                     .windows(7)
-                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x20, 0x01, 0, 0]),
-            "constructed user code must validate AT_SECURE, AT_CLKTCK, and AT_PLATFORM before consuming the enlarged initial block"
+                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x50, 0x01, 0, 0]),
+            "constructed user code must validate AT_SECURE, AT_CLKTCK, AT_PLATFORM, and the enlarged initial block"
         );
         assert!(
             entry_payload
@@ -6453,7 +6573,7 @@ assert bytes(output) == block[32:]
                 && entry_payload
                     .bytes
                     .windows(9)
-                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x48, 0xf0, 0x1f, 0x60, 0x00])
+                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x48, 0xc8, 0x1f, 0x60, 0x00])
                 && entry_payload
                     .bytes
                     .windows(6)
@@ -6486,7 +6606,7 @@ assert bytes(output) == block[32:]
                 && entry_payload
                     .bytes
                     .windows(7)
-                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x20, 0x01, 0, 0]),
+                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x50, 0x01, 0, 0]),
             "constructed entry must validate process facts and resident program-header metadata before consuming the complete bounded stack"
         );
         assert!(

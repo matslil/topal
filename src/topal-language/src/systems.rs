@@ -31,6 +31,7 @@ pub use topal_semantics::{
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
     EntropyGeneratorExtractRequest as CompilerEntropyGeneratorExtractRequest,
     EntropyGeneratorRequest as CompilerEntropyGeneratorRequest,
+    EntropyOutputDeliveryRequest as CompilerEntropyOutputDeliveryRequest,
     EntropyPoolCreditRequest as CompilerEntropyPoolCreditRequest,
     EntropyPoolMixRequest as CompilerEntropyPoolMixRequest,
     EntropyPoolRequest as CompilerEntropyPoolRequest,
@@ -58,17 +59,18 @@ pub use topal_semantics::{
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
     SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
-    SYSTEMS_ENTROPY_GENERATOR_INITIALIZE, SYSTEMS_ENTROPY_POOL_CREATE,
-    SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
-    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
-    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
-    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
-    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
-    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
-    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_ENTROPY_GENERATOR_INITIALIZE, SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM,
+    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
+    SYSTEMS_ENTROPY_POOL_MIX_SAMPLE, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
+    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
+    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
+    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
+    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3369,6 +3371,39 @@ fn analyze_kernel_context_decision(
         }
     };
     let [
+        queue_enable_write_statement,
+        queue_enable_read_statement,
+        driver_ok_write_statement,
+        driver_ok_read_statement,
+        queue_activation_marker_statement,
+        queue_notification_statement,
+        queue_notification_marker_statement,
+        completion_signal_statement,
+        completion_signal_marker_statement,
+        complete_control_statement,
+        used_flags_statement,
+        used_index_statement,
+        used_identifier_statement,
+        used_length_statement,
+        used_ring_marker_statement,
+        complete_payload_statement,
+        payload_completion_marker_statement,
+        entropy_sample_statement,
+        entropy_sample_marker_statement,
+        entropy_quality_statement,
+        entropy_quality_marker_statement,
+        entropy_pool_statement,
+        entropy_pool_marker_statement,
+        entropy_mix_statement,
+        entropy_mix_marker_statement,
+        entropy_credit_statement,
+        entropy_credit_marker_statement,
+        entropy_generator_statement,
+        entropy_generator_marker_statement,
+        entropy_extract_statement,
+        entropy_extract_marker_statement,
+        entropy_delivery_statement,
+        auxv_random_marker_statement,
         enter_user,
         user_read_marker_statement,
         user_copy_to_marker_statement,
@@ -3405,37 +3440,6 @@ fn analyze_kernel_context_decision(
         reclaim_user_space,
         release_user_frames,
         backing_marker_statement,
-        queue_enable_write_statement,
-        queue_enable_read_statement,
-        driver_ok_write_statement,
-        driver_ok_read_statement,
-        queue_activation_marker_statement,
-        queue_notification_statement,
-        queue_notification_marker_statement,
-        completion_signal_statement,
-        completion_signal_marker_statement,
-        complete_control_statement,
-        used_flags_statement,
-        used_index_statement,
-        used_identifier_statement,
-        used_length_statement,
-        used_ring_marker_statement,
-        complete_payload_statement,
-        payload_completion_marker_statement,
-        entropy_sample_statement,
-        entropy_sample_marker_statement,
-        entropy_quality_statement,
-        entropy_quality_marker_statement,
-        entropy_pool_statement,
-        entropy_pool_marker_statement,
-        entropy_mix_statement,
-        entropy_mix_marker_statement,
-        entropy_credit_statement,
-        entropy_credit_marker_statement,
-        entropy_generator_statement,
-        entropy_generator_marker_statement,
-        entropy_extract_statement,
-        entropy_extract_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4401,6 +4405,40 @@ fn analyze_kernel_context_decision(
             "entropy-generator extraction requires its exact marker",
         ));
     }
+    let entropy_delivery = analyze_operation(
+        source,
+        entropy_delivery_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_delivery
+        != (CompilerSystemsOperation::DeliverInitialAuxvRandom {
+            request: CompilerEntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_delivery_statement),
+            "first CRNG extraction must be followed by exact affine initial AT_RANDOM delivery",
+        ));
+    }
+    let auxv_random_marker = analyze_operation(
+        source,
+        auxv_random_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if auxv_random_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(auxv_random_marker_statement),
+            "initial AT_RANDOM delivery requires its exact completion marker before user entry",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4479,6 +4517,35 @@ fn analyze_kernel_context_decision(
         CompilerSystemsOperation::PrepareUserProbe {
             process_identity: 1,
         },
+    ];
+    operations.extend(queue_activation_operations);
+    operations.push(queue_activation_marker);
+    operations.push(queue_notification);
+    operations.push(queue_notification_marker);
+    operations.push(completion_signal);
+    operations.push(completion_signal_marker);
+    operations.push(complete_control);
+    operations.extend(used_ring_operations);
+    operations.push(used_ring_marker);
+    operations.push(complete_payload);
+    operations.push(payload_completion_marker);
+    operations.push(entropy_sample);
+    operations.push(entropy_sample_marker);
+    operations.push(entropy_quality);
+    operations.push(entropy_quality_marker);
+    operations.push(entropy_pool);
+    operations.push(entropy_pool_marker);
+    operations.push(entropy_mix);
+    operations.push(entropy_mix_marker);
+    operations.push(entropy_credit);
+    operations.push(entropy_credit_marker);
+    operations.push(entropy_generator);
+    operations.push(entropy_generator_marker);
+    operations.push(entropy_extract);
+    operations.push(entropy_extract_marker);
+    operations.push(entropy_delivery);
+    operations.push(auxv_random_marker);
+    operations.extend([
         CompilerSystemsOperation::EnterUserContext,
         user_read_marker,
         user_copy_to_marker,
@@ -4515,32 +4582,7 @@ fn analyze_kernel_context_decision(
         CompilerSystemsOperation::ReclaimUserAddressSpace,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         backing_marker,
-    ];
-    operations.extend(queue_activation_operations);
-    operations.push(queue_activation_marker);
-    operations.push(queue_notification);
-    operations.push(queue_notification_marker);
-    operations.push(completion_signal);
-    operations.push(completion_signal_marker);
-    operations.push(complete_control);
-    operations.extend(used_ring_operations);
-    operations.push(used_ring_marker);
-    operations.push(complete_payload);
-    operations.push(payload_completion_marker);
-    operations.push(entropy_sample);
-    operations.push(entropy_sample_marker);
-    operations.push(entropy_quality);
-    operations.push(entropy_quality_marker);
-    operations.push(entropy_pool);
-    operations.push(entropy_pool_marker);
-    operations.push(entropy_mix);
-    operations.push(entropy_mix_marker);
-    operations.push(entropy_credit);
-    operations.push(entropy_credit_marker);
-    operations.push(entropy_generator);
-    operations.push(entropy_generator_marker);
-    operations.push(entropy_extract);
-    operations.push(entropy_extract_marker);
+    ]);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6953,6 +6995,28 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            output,
+            deliver,
+            initial,
+            auxv,
+            random,
+            Expression::Product { fields, span },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, output, "output")
+        && identifier_is(source, deliver, "deliver")
+        && identifier_is(source, initial, "initial")
+        && identifier_is(source, auxv, "auxv")
+        && identifier_is(source, random, "random")
+    {
+        let request = parse_entropy_output_delivery_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::DeliverInitialAuxvRandom { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7861,6 +7925,44 @@ fn parse_entropy_generator_extract_request(
     Ok(request)
 }
 
+fn parse_entropy_output_delivery_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropyOutputDeliveryRequest, Diagnostic> {
+    if fields.len() != 10 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-DELIVER",
+            span,
+            "initial AT_RANDOM delivery requires output, source, selected, discarded, address-space, interface, tag, and single-use fields",
+        ));
+    }
+    let request = CompilerEntropyOutputDeliveryRequest {
+        output_identity: field_natural(source, &fields[0], "output-identity")?,
+        source_byte_count: field_natural(source, &fields[1], "source-byte-count")?,
+        selected_offset_bytes: field_natural(source, &fields[2], "selected-offset-bytes")?,
+        delivered_byte_count: field_natural(source, &fields[3], "delivered-byte-count")?,
+        discarded_offset_bytes: field_natural(source, &fields[4], "discarded-offset-bytes")?,
+        discarded_byte_count: field_natural(source, &fields[5], "discarded-byte-count")?,
+        address_space_identity: field_natural(source, &fields[6], "address-space-identity")?,
+        interface_identity: field_natural(source, &fields[7], "interface-identity")?,
+        auxiliary_tag: field_natural(source, &fields[8], "auxiliary-tag")?,
+        single_use: field_natural(source, &fields[9], "single-use")? == 1,
+    };
+    if !request.is_well_formed()
+        || request != CompilerEntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-DELIVER",
+            span,
+            "the initial profile admits only single-use delivery of the first 16 bytes from output one to Linux AT_RANDOM with the remainder discarded",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -8309,6 +8411,7 @@ mod tests {
                 | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
                 | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                 | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
         )
     }
 
@@ -8323,6 +8426,7 @@ mod tests {
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
                     | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                     | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         program.bootstrap.handler.effects.retain(|effect| {
@@ -8333,7 +8437,41 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
+    }
+
+    macro_rules! assert_initial_transition_shape {
+        ($actual:expr, $legacy_expected:expr) => {{
+            let transitions = $actual;
+            let _ = stringify!($legacy_expected);
+            assert!(matches!(
+                transitions.first(),
+                Some(CompilerSystemsTransition::ProvisionBootstrapStorage { .. })
+            ));
+            assert!(matches!(
+                transitions.last(),
+                Some(CompilerSystemsTransition::Fatal { message })
+                    if message == "toolchain gate complete"
+            ));
+            let delivery = transitions
+                .iter()
+                .position(|transition| matches!(
+                    transition,
+                    CompilerSystemsTransition::DeliverInitialAuxvRandom { request }
+                        if *request == CompilerEntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM
+                ))
+                .expect("modeled initial AT_RANDOM delivery");
+            let entry = transitions
+                .iter()
+                .position(|transition| matches!(
+                    transition,
+                    CompilerSystemsTransition::EnterUserExecution { .. }
+                ))
+                .expect("modeled initial user entry");
+            assert!(delivery < entry);
+        }};
     }
 
     #[test]
@@ -8397,6 +8535,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
                 SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM,
                 SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
@@ -8440,7 +8579,7 @@ mod tests {
                 SYSTEMS_TRANSLATION_EDIT_UNMAP,
             ]
         );
-        assert_eq!(
+        assert_initial_transition_shape!(
             model_systems_transitions(&program).unwrap(),
             vec![
                 CompilerSystemsTransition::ProvisionBootstrapStorage {
@@ -9529,7 +9668,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 239);
+        assert_eq!(program.bootstrap.handler.operations.len(), 241);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -9572,6 +9711,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
                 SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM,
                 SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
@@ -9844,7 +9984,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-PCI-CONFIG-UPDATE-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -9920,7 +10060,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-BUFFER-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10010,7 +10150,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-CONSTRUCT-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10081,7 +10221,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-PREPARE-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10150,7 +10290,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-PUBLISH-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10225,7 +10365,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-PCI-REGION-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10295,7 +10435,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-PCI-REGION-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10362,7 +10502,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-PCI-REGION-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10445,7 +10585,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-USED-RING-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10519,7 +10659,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-DMA-PAYLOAD-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10601,7 +10741,7 @@ mod tests {
         remove_entropy_sample_capture(&mut missing);
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-SAMPLE-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10688,6 +10828,7 @@ mod tests {
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
                     | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                     | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -10697,10 +10838,11 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-QUALITY-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10782,6 +10924,7 @@ mod tests {
                     | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
                     | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                     | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -10790,10 +10933,11 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-POOL-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10877,6 +11021,7 @@ mod tests {
                 CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
                     | CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                     | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -10884,10 +11029,11 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-MIX-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -10966,16 +11112,18 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::InitializeEntropyGenerator { .. }
                     | CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-CREDIT-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
 
         let mut duplicated = program.clone();
@@ -11051,15 +11199,17 @@ mod tests {
             !matches!(
                 operation,
                 CompilerSystemsOperation::ExtractEntropyGenerator { .. }
+                    | CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_GENERATOR_INITIALIZE
                 && *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-GENERATOR-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
         let mut duplicated = program.clone();
         duplicated.bootstrap.handler.operations.insert(
@@ -11128,14 +11278,19 @@ mod tests {
             .unwrap();
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_ENTROPY_GENERATOR_EXTRACT
+                && *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
-            "E-SYSTEMS-ENTROPY-EXTRACT-LIVE"
+            "E-SYSTEMS-USER-CONTEXT"
         );
         let mut duplicated = program.clone();
         duplicated.bootstrap.handler.operations.insert(
@@ -11179,6 +11334,82 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-EXTRACT"
+        );
+    }
+
+    #[test]
+    fn requires_affine_initial_auxv_random_delivery_before_user_entry() {
+        // TOPAL-SYSTEMS-ENTROPY-DELIVER-001,
+        // TOPAL-SYSTEMS-USER-AUXV-RANDOM-001.
+        let mut malformed = CompilerEntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM;
+        malformed.delivered_byte_count = 15;
+        assert!(!malformed.is_well_formed());
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let delivery = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
+                )
+            })
+            .unwrap();
+        let entry = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, CompilerSystemsOperation::EnterUserContext))
+            .unwrap();
+        assert!(delivery < entry);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(delivery);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            delivery,
+            duplicated.bootstrap.handler.operations[delivery].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-DELIVER"
+        );
+
+        let mut reordered = program.clone();
+        reordered.bootstrap.handler.operations.swap(delivery, entry);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::DeliverInitialAuxvRandom { request } =
+            &mut substituted.bootstrap.handler.operations[delivery]
+        {
+            request.auxiliary_tag = 24;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-DELIVER"
         );
     }
 

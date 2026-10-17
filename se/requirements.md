@@ -1084,6 +1084,16 @@ malformed, omitted, duplicated, reordered, substituted, premature, partially
 published, or incompletely wiped extraction and shall perform no interface
 delivery.
 
+The bounded initial-`AT_RANDOM` refinement shall consume opaque output identity
+one into prepared address-space identity one before its first context entry. It
+shall require Linux interface identity one, source extent 32, selected offset
+zero and extent 16, discarded offset 16 and extent 16, auxiliary tag 25, and
+single-use delivery; copy and verify a distinct in-stack 16-byte object; wipe
+and verify the complete provider output; and return only a randomized entry-
+ready address space. It shall reject malformed, omitted, duplicated, reordered,
+substituted, premature, partially copied, incompletely wiped, or reused
+delivery and shall not expose random bytes or an address to source.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
