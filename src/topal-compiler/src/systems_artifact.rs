@@ -17,21 +17,22 @@ use topal_language::compiler::{
     CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerLoadRequest,
     CompilerDmaBufferIntegerStoreRequest, CompilerDmaBufferPreparationRequest,
     CompilerDmaBufferReferenceRequest, CompilerDmaBufferRequest, CompilerDmaBufferRole,
-    CompilerDmaDirection, CompilerEntropySampleCaptureRequest, CompilerKernelMappingRequest,
-    CompilerPciConfigurationDwordRequest, CompilerPciConfigurationWordUpdateRequest,
-    CompilerPciRegionDmaReferenceRequest, CompilerPciRegionRegisterDirection,
-    CompilerPciRegionRegisterRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
-    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
-    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
-    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
-    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    CompilerDmaDirection, CompilerEntropySampleCaptureRequest, CompilerEntropySampleQualityRequest,
+    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
+    CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
+    CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
+    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
+    CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
+    CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
+    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -51,15 +52,15 @@ use topal_language::compiler::{
 use topal_language::compiler::{
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
-    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
-    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
-    SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END,
@@ -115,8 +116,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/88";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/86";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/89";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/87";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1394,6 +1395,7 @@ struct RootEncoder {
     dma_used_ring_reads: usize,
     dma_payload_completed: bool,
     entropy_sample_captured: bool,
+    entropy_sample_assessed: bool,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -2068,6 +2070,12 @@ impl RootEncoder {
         if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_sample_captured {
             return Err(CompileError::Tool(
                 "x86 root lowering ended without the sealed uncredited virtio-rng sample capture"
+                    .into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_sample_assessed {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without the sealed trusted-host virtio-rng sample assessment"
                     .into(),
             ));
         }
@@ -2753,6 +2761,23 @@ impl RootEncoder {
             .extend_from_slice(&(request.credited_entropy_bits as u32).to_le_bytes());
         self.call_checked_bool(ProviderSymbol::CaptureEntropySample)?;
         self.entropy_sample_captured = true;
+        Ok(())
+    }
+
+    fn assess_entropy_sample_quality(
+        &mut self,
+        request: CompilerEntropySampleQualityRequest,
+    ) -> Result<(), CompileError> {
+        if !self.entropy_sample_captured
+            || self.entropy_sample_assessed
+            || !request.is_well_formed()
+            || request != CompilerEntropySampleQualityRequest::INITIAL_Q35_VIRTIO_RNG
+        {
+            return Err(CompileError::Tool(
+                "x86 entropy-sample quality assessment requires the exact sealed Q35 trust evidence and full-quality credit after capture".into(),
+            ));
+        }
+        self.entropy_sample_assessed = true;
         Ok(())
     }
 
@@ -4438,6 +4463,9 @@ fn encode_operations(
             CompilerSystemsOperation::CaptureEntropySample { request } => {
                 encoder.capture_entropy_sample(*request)?;
             }
+            CompilerSystemsOperation::AssessEntropySampleQuality { request } => {
+                encoder.assess_entropy_sample_quality(*request)?;
+            }
             CompilerSystemsOperation::PublishPciRegionDmaReference { request } => {
                 encoder.publish_pci_region_dma_reference(*request)?;
             }
@@ -4857,6 +4885,15 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.byte_count,
                     request.device_identity,
                     request.translation_domain_identity,
+                    request.credited_entropy_bits,
+                ),
+                CompilerSystemsTransition::AssessEntropySampleQuality { request } => format!(
+                    "{identity}:sample={}:source={}:trust-evidence={}:bytes={}:quality-parts-per-1024={}:credited-entropy-bits={}",
+                    request.sample_identity,
+                    request.source_identity,
+                    request.trust_evidence_identity,
+                    request.byte_count,
+                    request.quality_parts_per_1024,
                     request.credited_entropy_bits,
                 ),
                 CompilerSystemsTransition::PublishPciRegionDmaReference {
@@ -5315,7 +5352,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2492);
+        assert_eq!(relocation_targets.len(), 2528);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5469,7 +5506,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2137
+            2173
         );
         assert_eq!(
             relocation_targets
@@ -5866,7 +5903,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 288);
+        assert_eq!(decoded.semantic_trace.len(), 290);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -6352,6 +6389,19 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED")
             )
         );
+        assert_eq!(
+            decoded.semantic_trace[217],
+            format!(
+                "{SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY}:sample=1:source=1:trust-evidence=1:bytes=32:quality-parts-per-1024=1024:credited-entropy-bits=256"
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[218],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED")
+            )
+        );
         decoded.semantic_trace.drain(195..198);
         decoded.semantic_trace.drain(166..194);
         decoded.semantic_trace.drain(120..136);
@@ -6560,7 +6610,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[168].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[170].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

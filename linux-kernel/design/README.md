@@ -103,6 +103,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio used-ring validation](bounded-virtio-used-ring-validation.md)
 - [Bounded virtio payload completion](bounded-virtio-payload-completion.md)
 - [Bounded entropy-sample capture](bounded-entropy-sample-capture.md)
+- [Bounded entropy-sample quality attribution](bounded-entropy-sample-quality.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

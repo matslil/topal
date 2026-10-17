@@ -1032,6 +1032,14 @@ record zero credited entropy bits; expose neither address nor byte values;
 reject malformed, omitted, duplicated, reordered, substituted, premature, or
 partially copied capture; and perform no conditioning or userspace delivery.
 
+The bounded entropy-quality refinement shall assess exactly that captured raw
+sample under one explicit initial-profile trust evidence resource. It shall
+preserve sample identity and opaque bytes; require source identity one,
+trust-evidence identity one, byte count 32, quality 1024 parts per 1024, and
+the exactly derived 256 credited bits; reject malformed, omitted, duplicated,
+reordered, substituted, or premature assessment; and create no provider call,
+pool state, generator state, or random output.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
