@@ -757,6 +757,21 @@ continuation. Stateless success, I/O through a closed entry, retained state,
 provider-selected policy, or a general VFS/descriptor-allocation model shall
 fail closed or remain unavailable as applicable.
 
+The initial descriptor adapter shall refine each live entry into a mapping to
+one fixed access-mode-bearing open description. Linux `dup` shall install the
+same description in the lowest closed slot, return `-EBADF` for an invalid
+source, and return `-EMFILE` without state change when the three-slot table is
+full. Linux `dup2` shall validate its source before atomically replacing the
+destination, preserve an equal live source/destination, and return `-EBADF`
+without replacement for invalid arguments. Closing either alias shall preserve
+the other, and read/write shall authorize the shared description rather than
+the slot number. Ring-3 qualification shall cover full-table rejection,
+lowest-free selection, source-slot close survival, output-mode read rejection,
+invalid-source nonreplacement, error-description replacement, exact returns,
+and terminal mapping clearing. Live-bit-only copying, altered access mode,
+non-lowest selection, premature replacement, or retained mappings shall fail
+closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from
