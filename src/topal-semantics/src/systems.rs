@@ -80,6 +80,8 @@ pub const SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE: &str =
     "topal.systems.entropy.user-random.bind-reusable/1";
 pub const SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS: &str =
     "topal.systems.entropy.user-random.expand-small-requests/1";
+pub const SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS: &str =
+    "topal.systems.entropy.user-random.expand-large-requests/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -859,6 +861,17 @@ impl EntropyUserRandomSmallRequest {
         complete_request: true,
     };
 
+    pub const LARGE_GETRANDOM: Self = Self {
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        algorithm_identity: 1,
+        output_byte_count: 32,
+        maximum_output_count: 16,
+        maximum_delivery_byte_count: 512,
+        complete_request: true,
+    };
+
     #[must_use]
     pub const fn is_well_formed(self) -> bool {
         self.process_identity != 0
@@ -1248,6 +1261,9 @@ pub enum SystemsOperation {
     ExpandSmallUserRandomRequests {
         request: EntropyUserRandomSmallRequest,
     },
+    ExpandLargeUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -1381,6 +1397,9 @@ impl SystemsOperation {
             Self::BindReusableUserRandom { .. } => SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
             Self::ExpandSmallUserRandomRequests { .. } => {
                 SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+            }
+            Self::ExpandLargeUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
             }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
@@ -1655,6 +1674,9 @@ pub enum SystemsTransition {
         request: EntropyUserRandomServiceRequest,
     },
     ExpandSmallUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
+    },
+    ExpandLargeUserRandomRequests {
         request: EntropyUserRandomSmallRequest,
     },
     PublishPciRegionDmaReference {
@@ -2014,6 +2036,9 @@ impl SystemsTransition {
             Self::BindReusableUserRandom { .. } => SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
             Self::ExpandSmallUserRandomRequests { .. } => {
                 SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+            }
+            Self::ExpandLargeUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
             }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
@@ -2593,6 +2618,7 @@ struct BootstrapAuthorityState {
     initial_user_random_reserved: bool,
     user_random_service_bound: bool,
     user_random_small_requests_enabled: bool,
+    user_random_large_requests_enabled: bool,
     user_random_service_completed: bool,
     initial_user_random_delivered: bool,
 }
@@ -3208,6 +3234,25 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.user_random_small_requests_enabled = true;
+            }
+            SystemsOperation::ExpandLargeUserRandomRequests { request } => {
+                if !self.user_random_service_bound
+                    || !self.user_random_small_requests_enabled
+                    || self.user_random_large_requests_enabled
+                    || self.user_random_service_completed
+                    || !request.is_well_formed()
+                    || *request != EntropyUserRandomSmallRequest::LARGE_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-USER-LARGE-REQUEST",
+                        "large-request getrandom refinement requires the exact live small-request service and prepared resident initial process before entry",
+                    ));
+                }
+                self.user_random_large_requests_enabled = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -4327,6 +4372,7 @@ impl BootstrapAuthorityState {
                     || !self.initial_auxv_random_delivered
                     || !self.user_random_service_bound
                     || !self.user_random_small_requests_enabled
+                    || !self.user_random_large_requests_enabled
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -4335,6 +4381,7 @@ impl BootstrapAuthorityState {
                 }
                 self.user_random_service_bound = false;
                 self.user_random_small_requests_enabled = false;
+                self.user_random_large_requests_enabled = false;
                 self.user_random_service_completed = true;
                 self.initial_user_random_delivered = true;
                 self.user_execution =
@@ -4736,6 +4783,7 @@ impl BootstrapAuthorityState {
             || self.initial_user_random_reserved
             || self.user_random_service_bound
             || self.user_random_small_requests_enabled
+            || self.user_random_large_requests_enabled
             || !self.user_random_service_completed
             || !self.initial_user_random_delivered
         {
@@ -6420,6 +6468,10 @@ fn model_bootstrap_operation(
             transitions
                 .push(SystemsTransition::ExpandSmallUserRandomRequests { request: *request });
         }
+        SystemsOperation::ExpandLargeUserRandomRequests { request } => {
+            transitions
+                .push(SystemsTransition::ExpandLargeUserRandomRequests { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6777,6 +6829,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ReserveInitialUserRandom { .. }
         | SystemsOperation::BindReusableUserRandom { .. }
         | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+        | SystemsOperation::ExpandLargeUserRandomRequests { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6930,6 +6983,7 @@ mod tests {
             SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM.into(),
             SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE.into(),
             SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS.into(),
+            SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -7442,6 +7496,9 @@ mod tests {
                         SystemsOperation::ExpandSmallUserRandomRequests {
                             request: EntropyUserRandomSmallRequest::INITIAL_GETRANDOM,
                         },
+                        SystemsOperation::ExpandLargeUserRandomRequests {
+                            request: EntropyUserRandomSmallRequest::LARGE_GETRANDOM,
+                        },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
@@ -7454,6 +7511,9 @@ mod tests {
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
@@ -7738,6 +7798,7 @@ mod tests {
                 | SystemsOperation::ReserveInitialUserRandom { .. }
                 | SystemsOperation::BindReusableUserRandom { .. }
                 | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+                | SystemsOperation::ExpandLargeUserRandomRequests { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
                 | SystemsOperation::ReclaimUserAddressSpace
@@ -8179,6 +8240,9 @@ mod tests {
                 SystemsTransition::ExpandSmallUserRandomRequests {
                     request: EntropyUserRandomSmallRequest::INITIAL_GETRANDOM,
                 },
+                SystemsTransition::ExpandLargeUserRandomRequests {
+                    request: EntropyUserRandomSmallRequest::LARGE_GETRANDOM,
+                },
                 SystemsTransition::EnterUserExecution {
                     process_identity: 1,
                     kernel_continuation_identity: 1,
@@ -8310,6 +8374,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_READ_OK".into(),
@@ -9192,6 +9259,7 @@ mod tests {
                         | SystemsOperation::ReserveInitialUserRandom { .. }
                         | SystemsOperation::BindReusableUserRandom { .. }
                         | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+                        | SystemsOperation::ExpandLargeUserRandomRequests { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
                         | SystemsOperation::ReclaimUserAddressSpace
