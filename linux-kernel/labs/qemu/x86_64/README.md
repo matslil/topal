@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 85 ordered serial markers. The generated real-mode adapter
+and waits for the 86 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -306,6 +306,12 @@ console is a stream and owns no file position. Mode five on live output returns
 descriptor lookup precedes mode classification. The ordered
 `TOPAL_KERNEL_USER_LSEEK_OK` witness establishes non-seekability without
 fabricating zero-position success or hidden per-description offset state.
+The executable image now occupies one affine contiguous two-frame extent. Both
+x86-64 leaves are copied and verified while RW/NX, made read-only before either
+becomes executable, invalidated together after permission changes, and revoked
+together before the original extent is returned. Entry is in the second page,
+and `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` is emitted only after the
+second-page terminal path returns to the exact kernel continuation.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range

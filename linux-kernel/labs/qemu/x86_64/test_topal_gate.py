@@ -54,24 +54,24 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/109")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/110")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/99")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/100")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/107",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/108",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/67",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/68",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
             "topal.boot-resource.x86_64-initial-newc/1",
         )
         self.assertEqual(evidence["boot_resource_member"], "init")
-        self.assertGreater(evidence["boot_resource_bytes"], 0)
-        self.assertGreater(evidence["initial_user_image_bytes"], 0)
+        self.assertEqual(evidence["boot_resource_bytes"], 12_528)
+        self.assertEqual(evidence["initial_user_image_bytes"], 12_288)
         self.assertEqual(evidence["initial_user_image_input"], "supplied")
         self.assertEqual(evidence["serial_input_utf8"], "read")
         self.assertEqual(
@@ -153,6 +153,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
                 "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
                 "TOPAL_KERNEL_USER_WRITE_OK",
+                "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",

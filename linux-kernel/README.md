@@ -531,6 +531,14 @@ records stream non-seekability without position state, descriptor-before-mode
 precedence, exact `EBADF`/`EINVAL`/`ESPIPE`, input/output and closed-slot
 probes, structural inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only image refinement adds a
+[bounded multipage initial executable](design/bounded-multipage-initial-executable.md).
+Its [implementation and qualification report](step-4-bounded-multipage-initial-executable.md)
+records one affine two-frame code extent, adjacent x86-64 leaves, complete
+two-page copy and verification, extent-wide W^X transitions, a second-page
+entry and terminal path, atomic whole-extent return, structural inspection,
+and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -704,6 +712,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 initial console `TCGETS`](step-4-initial-console-tcgets.md)
 - [Step 4 initial console `TIOCGWINSZ`](step-4-initial-console-winsize.md)
 - [Step 4 initial console `lseek`](step-4-initial-console-lseek.md)
+- [Step 4 bounded multipage initial executable](step-4-bounded-multipage-initial-executable.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
