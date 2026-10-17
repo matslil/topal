@@ -1106,6 +1106,18 @@ verify the requested prefix, wipe and verify all provider output, consume the
 reservation, and expose neither random bytes, an address, nor a native syscall
 number to source.
 
+The reusable process-`getrandom` refinement shall consume the ready generation-
+three generator and the live initial reservation into one affine process-
+lifetime service before entry. The reserved output shall supply the first
+successful request. Every later successful request shall validate its complete
+arguments and writable range before a fresh extraction, replace the persistent
+key before publication, return and verify at most 16 requested bytes, discard
+the remainder, and wipe and verify the complete output. Zero and rejected
+requests shall not advance the generator. Process exit shall destroy any live
+output, generator key, and private service state. The refinement shall expose
+no secret byte, address, generation representation, syscall number, register,
+or target mechanism to source.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated
