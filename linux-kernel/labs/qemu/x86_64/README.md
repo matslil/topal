@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 81 ordered serial markers. The generated real-mode adapter
+and waits for the 82 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -270,6 +270,17 @@ clears the new slot, `dup2` clears the replaced destination bit, and a closed
 slot returns `-EBADF` before command decoding. `TOPAL_KERNEL_USER_FCNTL_OK`
 and terminal flag erasure establish the separation between descriptor flags
 and shared open-description access modes.
+The continuation additionally invokes Linux x86-64 `fstat` on standard output
+and requires the complete native 144-byte `struct stat`: one shared console
+object, character-device mode `0600`, root ownership, inode and link count one,
+`ttyS0` device identity, 4 KiB preferred block size, and zero size, blocks,
+timestamps, and padding. It then duplicates output into slot zero and proves
+all eighteen qwords are identical before closing the alias. A final `fstat` on
+that closed slot returns `-EBADF` before candidate access. Dispatch resolves the
+description before pointer validation, admits only a complete overflow-free
+writable mapping range, builds the whole layout in private staging, copies it
+under fault recovery, and retains no user pointer. The ordered
+`TOPAL_KERNEL_USER_FSTAT_OK` witness establishes this bounded native ABI path.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range

@@ -162,6 +162,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_USER_CLOSE_OK",
                 "TOPAL_KERNEL_USER_DUP_OK",
                 "TOPAL_KERNEL_USER_FCNTL_OK",
+                "TOPAL_KERNEL_USER_FSTAT_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_FROM_OK",
                 "TOPAL_KERNEL_USER_SYSCALL_OK",
