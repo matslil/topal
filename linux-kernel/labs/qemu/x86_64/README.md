@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 82 ordered serial markers. The generated real-mode adapter
+and waits for the 83 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -281,6 +281,15 @@ description before pointer validation, admits only a complete overflow-free
 writable mapping range, builds the whole layout in private staging, copies it
 under fault recovery, and retains no user pointer. The ordered
 `TOPAL_KERNEL_USER_FSTAT_OK` witness establishes this bounded native ABI path.
+The continuation then issues `ioctl(TCGETS)` on input and output, validates the
+complete native 36-byte raw `termios`, and proves both console descriptions
+return identical attributes. An unsupported request on the live console
+returns `-ENOTTY` without candidate access, while a later query on closed slot
+zero returns `-EBADF` before request or pointer handling. The provider stages
+all bytes privately, admits only a complete writable extent, copies under
+fault recovery, and retains no user pointer. The ordered
+`TOPAL_KERNEL_USER_TCGETS_OK` witness establishes terminal discovery without
+claiming unimplemented canonical, echo, signal, or output-conversion behavior.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range
