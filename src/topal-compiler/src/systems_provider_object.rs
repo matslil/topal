@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/106";
+    "topal.provider-object.x86_64-qemu-pc-q35/107";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -33,6 +33,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_zero_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_copy_payload";
+pub const X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL: &str =
+    "topal_x86_systems_static_image_seal_permissions";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_initial_leaves";
 pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
@@ -1227,6 +1229,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
         &static_image_copy_payload()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
+        &static_image_seal_permissions()?,
     );
     append_encoded_function(
         &mut object,
@@ -5763,6 +5771,48 @@ fn emit_static_image_leaf_verification(
     Ok(())
 }
 
+fn emit_static_image_sealed_leaf_verification(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    fn emit_role(
+        code: &mut X86FunctionEncoder,
+        label: &'static str,
+        count: u32,
+        flags: u64,
+    ) -> Result<(), CompileError> {
+        code.bytes(&[0x49, 0xb9]);
+        code.bytes(&flags.to_le_bytes());
+        code.bytes(&[0xb9]);
+        code.bytes(&count.to_le_bytes());
+        code.bind(label)?;
+        code.bytes(&[0x4c, 0x89, 0xd0]);
+        code.bytes(&[0x4c, 0x09, 0xc8]);
+        code.bytes(&[0x48, 0x39, 0x07]);
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+        code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+        code.bytes(&[0xff, 0xc9]);
+        code.jump_if(0x85, label);
+        Ok(())
+    }
+
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x48, 0x89, 0xf7]); // metadata cursor
+    emit_role(code, "verify-sealed-header", 1, 0x8000_0000_0000_0005)?;
+    emit_role(code, "verify-sealed-executable", 396, 0x0000_0000_0000_0005)?;
+    emit_role(
+        code,
+        "verify-sealed-immutable-relro",
+        96,
+        0x8000_0000_0000_0005,
+    )?;
+    emit_role(code, "verify-sealed-writable", 10, 0x8000_0000_0000_0007)?;
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
 fn static_image_prepare_initial_leaves() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_image_resource_validation(&mut code)?;
@@ -5895,10 +5945,125 @@ fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn static_image_seal_permissions() -> Result<Vec<u8>, CompileError> {
+    const LOADS: [(u32, u32, u32); 4] = [
+        (0, 0, 0x6e0),
+        (0x1000, 0x1000, 0x18_b285),
+        (0x18_d000, 0x18_d000, 0x5_7040),
+        (0x1e_4660, 0x1e_5660, 0x9728),
+    ];
+    const ZERO_GAPS: [(u32, u32); 4] = [
+        (0x6e0, 0x920),
+        (0x18_c285, 0xd7b),
+        (0x1e_4040, 0x1620),
+        (0x1e_ed88, 0x8278),
+    ];
+    const RO_NX: u64 = 0x8000_0000_0000_0005;
+    const RO_X: u64 = 0x0000_0000_0000_0005;
+    const RW_NX: u64 = 0x8000_0000_0000_0007;
+
+    fn emit_content_cursors(code: &mut X86FunctionEncoder, source: u32, destination: u32) {
+        code.bytes(&[0x4c, 0x89, 0xde]);
+        code.bytes(&[0x48, 0x81, 0xc6]);
+        code.bytes(&source.to_le_bytes());
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&destination.to_le_bytes());
+    }
+
+    fn emit_leaf_role(
+        code: &mut X86FunctionEncoder,
+        label: &'static str,
+        count: u32,
+        flags: u64,
+        verify: bool,
+    ) -> Result<(), CompileError> {
+        code.bytes(&[0x49, 0xb9]);
+        code.bytes(&flags.to_le_bytes());
+        code.bytes(&[0xb9]);
+        code.bytes(&count.to_le_bytes());
+        code.bind(label)?;
+        code.bytes(&[0x4c, 0x89, 0xd0]);
+        code.bytes(&[0x4c, 0x09, 0xc8]);
+        if verify {
+            code.bytes(&[0x48, 0x39, 0x07]);
+            code.jump_if(0x85, "fail");
+            code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+        } else {
+            code.bytes(&[0x48, 0xab]);
+        }
+        code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+        code.bytes(&[0xff, 0xc9]);
+        code.jump_if(0x85, label);
+        Ok(())
+    }
+
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let static_metadata_offsets = (0..7).chain(16..40).chain(52..58).chain(64..64 + 11 * 56);
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56]);
+    code.bytes(&[0x49, 0x89, 0xcb]); // retain boot_params
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-initial-leaves-before-seal")?;
+    code.bytes(&[0x4c, 0x89, 0xde]);
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    for offset in static_metadata_offsets {
+        let displacement = u32::try_from(X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + offset)
+            .map_err(|_| CompileError::Tool("static ELF metadata offset exceeds u32".into()))?;
+        code.bytes(&[0x41, 0x80, 0xb8]);
+        code.bytes(&displacement.to_le_bytes());
+        code.bytes(&[static_user_image[offset]]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4d, 0x89, 0xc3]);
+    code.bytes(&[0x49, 0x81, 0xc3]);
+    code.bytes(&X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]);
+    for (source, destination, length) in LOADS {
+        emit_content_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa6]);
+        code.jump_if(0x85, "fail");
+    }
+    for (start, length) in ZERO_GAPS {
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&start.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xae]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // payload cursor
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24]); // metadata cursor
+    code.bytes(&[0xfc]);
+    emit_leaf_role(&mut code, "seal-header", 1, RO_NX, false)?;
+    emit_leaf_role(&mut code, "seal-executable", 396, RO_X, false)?;
+    emit_leaf_role(&mut code, "seal-immutable-relro", 96, RO_NX, false)?;
+    emit_leaf_role(&mut code, "seal-writable", 10, RW_NX, false)?;
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24]);
+    emit_leaf_role(&mut code, "verify-header", 1, RO_NX, true)?;
+    emit_leaf_role(&mut code, "verify-executable", 396, RO_X, true)?;
+    emit_leaf_role(&mut code, "verify-immutable-relro", 96, RO_NX, true)?;
+    emit_leaf_role(&mut code, "verify-writable", 10, RW_NX, true)?;
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn static_image_revoke_initial_leaves() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_image_resource_validation(&mut code)?;
-    emit_static_image_leaf_verification(&mut code, "verify-leaves")?;
+    emit_static_image_sealed_leaf_verification(&mut code)?;
     code.bytes(&[0x48, 0x89, 0xf7]);
     code.bytes(&[0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
@@ -7283,18 +7448,103 @@ assert bytes(output) == block[32:]
             "the populated bytes must be published before verification"
         );
 
+        let seal_permissions =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL);
+        assert!(seal_permissions.len() > 8_000);
+        assert_eq!(&seal_permissions[..2], &[0x57, 0x56]);
+        assert_eq!(
+            seal_permissions
+                .windows(3)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0xa6])
+                .count(),
+            4,
+            "permission sealing must revalidate all four populated intervals"
+        );
+        assert_eq!(
+            seal_permissions
+                .windows(3)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0xae])
+                .count(),
+            4,
+            "permission sealing must revalidate all four preserved-zero intervals"
+        );
+        for (flags, count) in [
+            (0x8000_0000_0000_0005_u64, 1_u32),
+            (0x0000_0000_0000_0005_u64, 396),
+            (0x8000_0000_0000_0005_u64, 96),
+            (0x8000_0000_0000_0007_u64, 10),
+        ] {
+            let mut instruction = vec![0x49, 0xb9];
+            instruction.extend_from_slice(&flags.to_le_bytes());
+            instruction.push(0xb9);
+            instruction.extend_from_slice(&count.to_le_bytes());
+            assert_eq!(
+                seal_permissions
+                    .windows(instruction.len())
+                    .filter(|bytes| *bytes == instruction)
+                    .count(),
+                2,
+                "each final role must appear once for publication and once for readback"
+            );
+        }
+        assert_eq!(
+            seal_permissions
+                .windows(2)
+                .filter(|bytes| *bytes == [0x48, 0xab])
+                .count(),
+            4,
+            "permission sealing must publish exactly four contiguous role runs"
+        );
+        assert_eq!(
+            seal_permissions
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1,
+            "the complete inactive leaf rewrite must be published once"
+        );
+        assert_eq!(
+            seal_permissions
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xaf])
+                .count(),
+            2,
+            "the nine absent leaves must be verified before and after sealing"
+        );
+        assert!(
+            seal_permissions
+                .windows(3)
+                .filter(|bytes| *bytes == [0x41, 0x80, 0xb8])
+                .count()
+                >= 653,
+            "permission sealing must revalidate approved ELF metadata"
+        );
+
         let revoke = file
             .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL)
             .unwrap();
         let start = usize::try_from(revoke.address()).unwrap();
         let end = start + usize::try_from(revoke.size()).unwrap();
         let revoke = &data[start..end];
-        assert!(
-            revoke
-                .windows(10)
-                .any(|bytes| bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
-            "revocation must first verify the exact live leaf policy"
-        );
+        for (flags, count) in [
+            (0x8000_0000_0000_0005_u64, 1_u32),
+            (0x0000_0000_0000_0005_u64, 396),
+            (0x8000_0000_0000_0005_u64, 96),
+            (0x8000_0000_0000_0007_u64, 10),
+        ] {
+            let mut instruction = vec![0x49, 0xb9];
+            instruction.extend_from_slice(&flags.to_le_bytes());
+            instruction.push(0xb9);
+            instruction.extend_from_slice(&count.to_le_bytes());
+            assert_eq!(
+                revoke
+                    .windows(instruction.len())
+                    .filter(|bytes| *bytes == instruction)
+                    .count(),
+                1,
+                "revocation must first verify every sealed leaf role"
+            );
+        }
         assert_eq!(
             revoke
                 .windows(5)

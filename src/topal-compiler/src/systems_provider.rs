@@ -35,6 +35,7 @@ use topal_language::compiler::{
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
@@ -57,7 +58,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/106";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/107";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -71,6 +72,7 @@ pub enum X86SystemsLowering {
     ConstructInitialStaticImageLeaves,
     ZeroStaticImagePayload,
     CopyStaticImagePayload,
+    SealStaticImagePermissions,
     RevokeInitialStaticImageLeaves,
     ReturnStaticImagePayload,
     AdoptBootstrapIdentityMapping,
@@ -177,6 +179,9 @@ impl X86SystemsLowering {
             }
             Self::ZeroStaticImagePayload => "topal.provider.x86_64.static-image.zero-payload/1",
             Self::CopyStaticImagePayload => "topal.provider.x86_64.static-image.copy-payload/1",
+            Self::SealStaticImagePermissions => {
+                "topal.provider.x86_64.static-image.seal-permissions/1"
+            }
             Self::RevokeInitialStaticImageLeaves => {
                 "topal.provider.x86_64.static-image.revoke-initial-leaves/1"
             }
@@ -551,6 +556,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD => {
             X86SystemsLowering::CopyStaticImagePayload
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS => {
+            X86SystemsLowering::SealStaticImagePermissions
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA => {
             X86SystemsLowering::RevokeInitialStaticImageLeaves
         }
@@ -694,6 +702,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::CopyStaticImagePayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
+            }
+            X86SystemsLowering::SealStaticImagePermissions => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
             }
             X86SystemsLowering::RevokeInitialStaticImageLeaves => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
@@ -871,7 +882,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 89);
+        assert_eq!(plan.operations.len(), 90);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -921,6 +932,10 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
                 && operation.lowering == X86SystemsLowering::CopyStaticImagePayload
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
+                && operation.lowering == X86SystemsLowering::SealStaticImagePermissions
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
