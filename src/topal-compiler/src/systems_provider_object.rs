@@ -5841,10 +5841,7 @@ fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     }
 
     let static_user_image = qualified_x86_64_static_user_image_fixture();
-    let static_metadata_offsets = (0..7)
-        .chain(16..40)
-        .chain(52..58)
-        .chain(64..64 + 11 * 56);
+    let static_metadata_offsets = (0..7).chain(16..40).chain(52..58).chain(64..64 + 11 * 56);
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x57, 0x56]); // retain payload and metadata identities
     code.bytes(&[0x49, 0x89, 0xcb]); // retain boot_params
@@ -7200,6 +7197,90 @@ assert bytes(output) == block[32:]
                 .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
                 .count(),
             1
+        );
+
+        let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
+        assert!(copy_payload.len() > 8_000);
+        assert_eq!(&copy_payload[..2], &[0x57, 0x56]);
+        assert_eq!(
+            copy_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0xa4])
+                .count(),
+            4,
+            "copy lowering must contain exactly four bounded source-to-payload copies"
+        );
+        assert_eq!(
+            copy_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0xa6])
+                .count(),
+            4,
+            "copy lowering must compare all four copied intervals"
+        );
+        assert_eq!(
+            copy_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0xae])
+                .count(),
+            4,
+            "copy lowering must verify all four preserved-zero intervals"
+        );
+        for length in [0x6e0_u32, 0x18_b285, 0x5_7040, 0x9728] {
+            let mut instruction = vec![0xb9];
+            instruction.extend_from_slice(&length.to_le_bytes());
+            assert_eq!(
+                copy_payload
+                    .windows(instruction.len())
+                    .filter(|bytes| *bytes == instruction)
+                    .count(),
+                2,
+                "each file interval must be copied and compared exactly once"
+            );
+        }
+        for length in [0x920_u32, 0xd7b, 0x1620, 0x8278] {
+            let mut instruction = vec![0xb9];
+            instruction.extend_from_slice(&length.to_le_bytes());
+            assert_eq!(
+                copy_payload
+                    .windows(instruction.len())
+                    .filter(|bytes| *bytes == instruction)
+                    .count(),
+                1,
+                "each preserved-zero interval must be checked exactly once"
+            );
+        }
+        assert!(
+            copy_payload
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x81, 0xc3, 0xf4, 0x30, 0x00, 0x00]),
+            "copy lowering must derive the static member at archive offset 12532"
+        );
+        assert!(
+            copy_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0x41, 0x80, 0xb8])
+                .count()
+                >= 653,
+            "copy lowering must revalidate every approved ELF identity and program-header byte"
+        );
+        assert_eq!(
+            copy_payload
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
+                })
+                .count(),
+            2,
+            "the exact live leaves must be verified before and after copying"
+        );
+        assert_eq!(
+            copy_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1,
+            "the populated bytes must be published before verification"
         );
 
         let revoke = file

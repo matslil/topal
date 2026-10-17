@@ -10121,6 +10121,16 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
+        let mut revoke_before_copy = program.clone();
+        revoke_before_copy.bootstrap.handler.operations.remove(6);
+        refresh_bootstrap_effects(&mut revoke_before_copy);
+        assert_eq!(
+            validate_systems_program(&revoke_before_copy)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-STATIC-IMAGE"
+        );
+
         let mut live = program;
         live.bootstrap.handler.operations.truncate(5);
         refresh_bootstrap_effects(&mut live);

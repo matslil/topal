@@ -12600,6 +12600,58 @@ mod tests {
     }
 
     #[test]
+    fn requires_exact_static_elf_payload_copy() {
+        // TOPAL-SYSTEMS-STATIC-ELF-COPY-001.
+        for (source, expected) in [
+            (
+                SOURCE.replacen(
+                    "owner is zeroed-static-elf-construction",
+                    "owner is static-elf-construction",
+                    1,
+                ),
+                "exact zeroed construction",
+            ),
+            (
+                SOURCE.replace(
+                    "source is retained-static-user-elf",
+                    "source is other-resource",
+                ),
+                "retained static ELF",
+            ),
+            (
+                SOURCE.replace(
+                    "plan is bounded-static-elf-four-loads",
+                    "plan is other-plan",
+                ),
+                "four-load plan",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is populated-static-elf-construction",
+                    "owner is zeroed-static-elf-construction",
+                    1,
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
     fn rejects_wrong_handler_signatures_and_open_entry_sets() {
         // TOPAL-SYSTEMS-ENTRY-001, TOPAL-SYSTEMS-VOCABULARY-001.
         let wrong_signature =
