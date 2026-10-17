@@ -220,12 +220,14 @@ provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
 sizes. The executable x86-64 slice admits statically proved extents of one,
 two, three, or exactly 503 frames aligned to one frame. The 503-frame shape is
-derived from the pinned static-ELF page plan and is qualified by sequential
-whole-extent allocation and release without mapping authority. Each request
-still returns one indivisible affine extent. Other counts, multiple live
-extents except the separately sealed disjoint probe, extent splitting, dynamic
-requests, and reclamation remain unavailable. Mapping is admitted only through
-the separately qualified opaque capability below.
+derived from the pinned static-ELF page plan. Its mapping-resource refinement
+keeps that payload extent live while allocating one separate metadata frame,
+then releases metadata before payload. The provider proves the two complete
+extents disjoint without exposing either base. Each request still returns one
+indivisible affine extent. Other counts, other simultaneously live source-
+owned shapes, extent splitting, dynamic requests, and reclamation remain
+unavailable. Mapping is admitted only through separately qualified opaque
+capabilities below; simultaneous ownership alone grants no mapping authority.
 
 ### Opaque kernel mapping
 

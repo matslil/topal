@@ -347,10 +347,11 @@ non-overlap, ownership, and provenance observations remain equivalent.
 The initial x86-64 executable profile SHALL admit only the static allocation
 shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
 alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`, and
-`(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL produce one indivisible
-extent and SHALL require release of that complete extent. The profile SHALL
-reject every other count or alignment, a dynamic request, extent splitting,
-and more than one simultaneously live extent before artifact publication.
+`(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL
+produce one indivisible extent and SHALL require release of that complete
+extent. The profile SHALL reject every other count or alignment, a dynamic
+request, extent splitting, and simultaneously live source-owned extents except
+the exact refinements specified below before artifact publication.
 
 ### TOPAL-SYSTEMS-STATIC-ELF-FRAMES-001 — Exact static-image frame extent
 
@@ -370,6 +371,28 @@ alignment, overlap, arithmetic overflow, missing or duplicate observation,
 release before observation, continuation before release, or recoverable
 disposition with the extent live SHALL be invalid. This rule SHALL NOT map,
 read, write, execute, or make the planned static image runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001 — Disjoint mapping resources
+
+After the exact 503-frame static-ELF payload allocation and its required
+payload observation, the initial x86-64 root SHALL keep that complete extent
+live and MAY request exactly one `(1, 1)` translation-metadata extent. The
+provider SHALL receive the complete opaque payload interval as exclusion
+evidence and SHALL prove that the metadata interval is aligned and disjoint
+from the payload, every retained reservation, the boot resource, and every
+non-allocatable range before returning success. Both complete intervals SHALL
+remain within the qualified first-GiB bootstrap mapping ceiling.
+
+Success SHALL create two distinct affine owners and SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK` observation while both remain
+live. Source SHALL then release the complete metadata extent followed by the
+complete payload extent before any later bootstrap transition. Either failure
+SHALL select the fatal action. A hidden allocation, overlap, partial interval,
+arithmetic overflow, wrong request order or shape, missing or duplicate
+observation, reversed or partial release, extent combination or splitting, or
+disposition while either owner remains live SHALL be invalid. This rule SHALL
+grant no byte access, table-entry construction, mapping publication, target
+address, or runtime image-selection authority.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`

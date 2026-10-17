@@ -117,6 +117,14 @@ no-address-authority invariants. The executable bootstrap model shall require
 the request after the three-frame extent is returned, one witness while the
 extent is live, and whole release before later operations.
 
+The mapping-resource refinement shall model the exact nested one-frame
+metadata allocation while the 503-frame payload owner remains live. It shall
+retain two distinct affine identities, require provider-proved whole-interval
+disjointness, require one observation while both are live, transition back to
+payload-only ownership when metadata is released, and require final payload
+release before continuation. Wrong nesting, overlap, reversed release,
+combination, splitting, and completion with either resource live shall fail.
+
 The kernel-mapping increment shall model consuming frame ownership into one
 opaque provider-qualified kernel mapping; explicit rights, execution, and
 normal-memory policy; bounded retained byte contents; consuming unmap which

@@ -91,6 +91,18 @@ reject intermediate or larger counts, non-unit alignment, partial selection,
 overlap, duplicate witness, and continuation with live ownership. No mapping
 or byte-access authority shall be introduced.
 
+The static-ELF mapping-resource increment shall admit only a nested literal
+one-frame, unit-aligned metadata request while the exact 503-frame payload
+extent remains live. The checker shall require the payload witness first, one
+pair witness while both owners are live, metadata release before payload
+release, fatal-only failures, and no later transition with either owner. The
+x86-64 root shall pass the complete retained payload interval as opaque
+provider exclusion evidence; provider lowering shall validate the exclusion,
+select a complete disjoint E820 interval below 1 GiB, and publish no partial
+ownership. Structural and negative tests shall reject overlap, unsupported
+nesting, wrong order, hidden allocation, and incomplete unwind. Neither owner
+shall acquire byte-access or leaf-publication authority in this increment.
+
 The kernel-mapping increment shall accept only the approved static
 read-write, non-executable normal-memory request. It shall consume the one live
 frame extent into an affine mapping, admit statically bounded plain byte

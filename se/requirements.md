@@ -419,13 +419,15 @@ extent behavior shall fail closed.
 The bounded multi-frame qualification shall remain exclusive to the systems
 feature and shall add no address or pointer conversion. The initial x86-64
 profile shall admit only static requests for one, two, three, or exactly 503
-contiguous base frames with unit alignment, return every request as one
-indivisible affine extent, and require whole-extent release before any later
-bootstrap transition or disposition. The exact 503-frame request shall occur
-only after the earlier extent is returned, shall be selected wholly within one
-normalized E820 RAM run while excluding reservations, and shall be observed
-once before whole release. Other counts, non-unit alignment, dynamic requests,
-extent splitting, and multiple simultaneously live extents shall fail closed.
+contiguous base frames with unit alignment and return every request as one
+indivisible affine extent. The exact 503-frame payload request shall occur only
+after the earlier extent is returned and shall be selected wholly within one
+normalized E820 RAM run while excluding reservations. Its mapping-resource
+refinement shall admit exactly one nested unit metadata frame, prove the two
+complete intervals disjoint, observe the pair once, release metadata first,
+and then release the payload. Other counts, non-unit alignment, dynamic
+requests, extent splitting, other simultaneous source-owned shapes, reversed
+release, and disposition with either extent live shall fail closed.
 
 The bounded disjoint-extent refinement shall admit exactly one additional
 static one-frame, unit-aligned source-owned extent while one prepared initial
