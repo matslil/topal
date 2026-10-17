@@ -260,6 +260,17 @@ shall prove complete two-leaf lifecycle, no W+X phase, second-page execution,
 exact return, and the ordered
 `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker.
 
+The bounded static-ELF plan increment shall derive one immutable checked plan
+before any supplied executable metadata can influence artifact construction.
+The parser shall validate the complete ELF64 header and bounded program-header
+table, exact four R/RX/R/RW load roles, file/memory/page interval arithmetic,
+page congruence and disjointness, entry containment, non-executable stack,
+optional TLS and RELRO containment, no interpreter or W+X, and the x86-64
+512-page one-leaf-table bound. Tests shall reproduce the pinned BusyBox-shaped
+envelope without committing third-party bytes and shall reject each malformed
+class independently. The existing sealed two-page runtime validator shall
+remain stricter and shall not select a plan-only image.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

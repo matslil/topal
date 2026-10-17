@@ -511,6 +511,18 @@ return shall precede one
 single-leaf permission change or invalidation, W+X authority, entry outside the
 two-page extent, partial unmap, or split return shall fail closed.
 
+The bounded static-ELF planning refinement shall parse the complete ELF64 and
+program-header table before exposing any load fact to artifact construction.
+It shall reject wrong class, data encoding, version, type, machine, header
+sizes, table bounds, program-header count, interpreter presence, interval or
+arithmetic overflow, file-out-of-bounds data, incongruent or invalid
+alignment, overlapping rounded load pages, W+X, wrong four-role ordering,
+entry outside R/X, executable stack, TLS outside R/W, RELRO outside R/W, and
+an x86-64 span exceeding 512 pages or one aligned 2 MiB leaf-table window.
+Success shall retain only immutable checked interval, permission, entry, TLS,
+RELRO, and stack facts. It shall grant no frame, mapping, copy, or entry
+authority and shall not make the planned image runtime-selectable.
+
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
 ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and

@@ -523,6 +523,36 @@ either mapping live, and recoverable exit with live construction authority
 SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
 contents or define a loader or general process-image interface.
 
+### TOPAL-SYSTEMS-STATIC-ELF-PLAN-001 — Bounded static ELF load plan
+
+Before artifact construction consumes any supplied static-executable fact, the
+x86-64 compiler SHALL validate a complete ELF64, little-endian, current-version
+`ET_EXEC`/`EM_X86_64` header and its complete 56-byte program-header table.
+The table SHALL contain at most 16 entries, exactly four ordered `PT_LOAD`
+entries with final roles R, R/X, R, and R/W, no `PT_INTERP`, exactly one
+non-executable `PT_GNU_STACK`, at most one `PT_TLS`, and at most one
+`PT_GNU_RELRO`.
+
+Every load entry SHALL have `p_filesz <= p_memsz`, an overflow-free file range
+inside the complete input, an overflow-free user virtual range, power-of-two
+alignment of at least 4096, congruent file and virtual offsets modulo 4096,
+and a nonempty, disjoint page-rounded interval. No load role SHALL combine W
+and X. Entry SHALL lie inside the R/X memory interval. A present TLS file and
+memory interval SHALL lie inside the R/W load memory interval. A present RELRO
+page interval SHALL be nonempty and lie inside the page-rounded R/W interval.
+The combined x86-64 load span SHALL contain at most 512 pages and SHALL lie
+inside one aligned 2 MiB leaf-table window.
+
+Success SHALL produce an immutable plan containing only the validated header
+identity, entry, four file/memory/page intervals and permission roles, total
+page span, optional TLS extents, optional RELRO pages, and non-executable stack
+fact. The plan SHALL contain no borrowed input pointer and SHALL grant no
+allocation, mapping, copy, permission, entry, or source-visible address
+authority. Any failed condition SHALL reject the complete plan before artifact
+publication. This rule SHALL NOT make the image runtime-selectable or admit
+PIE, relocation, dynamic loading, overlapping load pages, executable stacks,
+or more than one leaf-table window.
+
 ### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
 
 `user mapping permit writable data` SHALL consume only the generation-two

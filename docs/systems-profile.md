@@ -638,6 +638,16 @@ exact return. This refines the sealed image role; it exposes no page-table
 entry, physical address, target instruction, general segment size, or W+X
 state.
 
+The bounded static-ELF planning refinement validates a complete supplied
+ELF64 file before deriving immutable load facts. It separates four ordered
+read-only, executable, read-only-data, and writable-data/BSS load roles;
+contains entry, TLS, RELRO, and stack policy within those checked roles; and
+computes page-rounded intervals without granting mapping authority. The
+initial x86-64 bound admits at most 512 pages inside one aligned 2 MiB
+leaf-table window. This compiler-owned plan is portable file policy plus a
+target qualification bound, not a source-visible ELF parser, allocator, page
+table, or executable-selection operation.
+
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
 and before either mapping is unmapped. At that boundary one RO/X code mapping
