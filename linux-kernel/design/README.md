@@ -121,6 +121,7 @@ records, not this directory alone, define language meaning.
 - [Initial descriptor `fstat`](initial-descriptor-fstat.md)
 - [Initial console `TCGETS`](initial-console-tcgets.md)
 - [Initial console `TIOCGWINSZ`](initial-console-winsize.md)
+- [Initial console `lseek`](initial-console-lseek.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
