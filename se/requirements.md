@@ -418,8 +418,8 @@ extent behavior shall fail closed.
 
 The bounded multi-frame qualification shall remain exclusive to the systems
 feature and shall add no address or pointer conversion. The initial x86-64
-profile shall admit only static requests for one or three contiguous base
-frames with unit alignment, return either request as one indivisible affine
+profile shall admit only static requests for one, two, or three contiguous base
+frames with unit alignment, return every request as one indivisible affine
 extent, and require whole-extent release before any later bootstrap transition
 or disposition. Other counts, non-unit alignment, dynamic requests, extent
 splitting, and multiple simultaneously live extents shall fail closed.
@@ -490,15 +490,26 @@ absent; and complete target translation observation before success. Use on the
 code generation, use before verification, identity substitution, W+X,
 source-visible permissions, or unmap through stale authority shall fail closed.
 
-The bounded resident-image refinement shall allocate distinct one-frame code
-and data extents, retain finalized executable-code ownership while constructing
-immutable data, and prove both mappings coexist with pairwise-disjoint backing
-and sealed placements. Data unmap and release shall precede code unmap and
-release; user preparation shall require both mappings absent. A third mapping,
+The bounded resident-image refinement shall allocate a distinct two-frame code
+extent and one-frame data extent, retain finalized executable-code ownership
+while constructing immutable data, and prove both mappings coexist with
+pairwise-disjoint backing and sealed placements. Data unmap and release shall
+precede whole-code-extent unmap and release; user preparation shall require
+both mappings absent. A third mapping,
 backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
 release while mapped, or recoverable disposition with either mapping live shall
 fail closed. Provider-private placement and revocation mechanics shall remain
 unobservable.
+
+The bounded multipage-executable refinement shall map both frames of the code
+extent at adjacent virtual base pages, copy and verify the complete external
+segment, remove write authority from both leaves before granting either execute
+authority, and revoke and return the extent only as a whole. The initial x86-64
+entry and successful terminal path shall execute from the second page. Exact
+return shall precede one
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker. Partial publication,
+single-leaf permission change or invalidation, W+X authority, entry outside the
+two-page extent, partial unmap, or split return shall fail closed.
 
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident

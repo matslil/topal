@@ -345,8 +345,9 @@ Allocation choice and coalescing MAY vary only when success, failure, alignment,
 non-overlap, ownership, and provenance observations remain equivalent.
 
 The initial x86-64 executable profile SHALL admit only the static allocation
-shapes `(frame-count: 1, alignment-frames: 1)` and `(frame-count: 3,
-alignment-frames: 1)`. Either successful request SHALL produce one indivisible
+shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
+alignment-frames: 1)`, and `(frame-count: 3, alignment-frames: 1)`. Every
+successful request SHALL produce one indivisible
 extent and SHALL require release of that complete extent. The profile SHALL
 reject every other count or alignment, a dynamic request, extent splitting,
 and more than one simultaneously live extent before artifact publication.
@@ -442,8 +443,9 @@ cross-role substitution, unclassified unmap, unauthorized write-authority
 restoration, and W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
 permission representation, or target validation mechanism.
 
-The bounded resident-image refinement SHALL consume two separately allocated
-one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
+The bounded resident-image refinement SHALL consume a separately allocated
+two-frame extent and one-frame extent into distinct sealed `probe-code` and
+`probe-data` mappings.
 `ExecutableCodeMapping` SHALL remain live while the data mapping advances to
 `ImmutableDataMapping` or `WritableDataMapping`; the provider SHALL prove the address-space backing and
 both mapping extents are pairwise disjoint. The two finalized mappings SHALL
@@ -457,6 +459,32 @@ released. A third mapping, backing reuse, swapped placement or role, cross-role
 unmap, code-first teardown, release while mapped, or recoverable exit with live
 construction authority SHALL be invalid. This refinement SHALL NOT constitute
 a general mapping collection, layout API, application image, or loader.
+
+### TOPAL-SYSTEMS-MULTIPAGE-EXECUTABLE-001 — Bounded multipage executable role
+
+The sealed `probe-code` mapping SHALL consume the exact `(2, 1)` physical-frame
+extent as one affine object and SHALL publish two virtually adjacent base-page
+leaves. Both leaves SHALL begin writable and non-executable for construction.
+Complete external-segment copy SHALL precede removal of write authority from
+both leaves; complete content verification SHALL precede executable promotion
+of either leaf. Translation and instruction-observation completion for both
+leaves SHALL precede observable promotion success. No leaf SHALL possess write
+and execute authority concurrently.
+
+The initial x86-64 executable segment SHALL have equal file and memory sizes,
+eight-byte alignment, a size greater than 4096 and no greater than 8192 bytes,
+and an entry contained in its second page. Its successful terminal
+`exit_group` path SHALL execute from that page. After exact kernel-continuation
+restoration, source SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` observation before image teardown.
+
+Unmap SHALL revoke both leaves, complete target observation for both virtual
+pages, and return the exact original two-frame extent. Partial publication,
+protection, verification, promotion, invalidation, revocation, or return;
+nonadjacent placement; split backing ownership; out-of-extent entry; missing or
+early observation; and W+X authority SHALL be invalid. This rule SHALL NOT
+admit arbitrary segment counts or sizes, sparse mappings, demand paging,
+relocations, or dynamic loading.
 
 The resident-image readiness qualification SHALL emit exactly one
 `TOPAL_KERNEL_USER_IMAGE_READY` console observation after

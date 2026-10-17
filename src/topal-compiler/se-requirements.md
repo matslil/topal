@@ -248,6 +248,18 @@ one BSS byte before terminal success. The root shall emit the exact ordered
 return. Structural tests shall reject code-role use, preverification use,
 identity substitution, stale unmap, missing invalidation, or W+X permission.
 
+The bounded multipage-executable increment shall accept a two-frame
+`probe-code` extent and keep the one-frame `probe-data` extent distinct. The
+x86-64 provider shall publish adjacent leaves for both code frames, copy and
+compare the complete runtime-sized segment across their boundary, remove write
+authority from both leaves before setting execute on either, invalidate both
+virtual pages after permission or presence changes, and unmap and return the
+original extent as one unit. The generated ELF entry and successful terminal
+path shall execute from the second page. Structural and pinned-QEMU evidence
+shall prove complete two-leaf lifecycle, no W+X phase, second-page execution,
+exact return, and the ordered
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

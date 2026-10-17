@@ -550,8 +550,10 @@ backing while either address-space or user-execution state owns it. Target
 page-table roles, virtual placement, publication, invalidation, and entry
 mechanics remain provider-private.
 
-The bounded allocator may return one additional opaque one-frame extent while
-the initial prepared address space owns its three-frame backing. The allocator
+The bounded allocator may return one additional opaque unit-aligned extent
+while the initial prepared address space owns its three-frame backing. The
+sealed image profile admits a two-frame code extent or a one-frame data extent.
+The allocator
 must prove the complete extents disjoint. Source must release the additional
 extent before transferring the prepared space into user execution. This closed
 qualification does not expose either base, permit a third live extent, split
@@ -618,11 +620,23 @@ the writable-data refinement exactly as it does other final role owners.
 
 The bounded residency refinement replaces sequential backing reuse with two
 separately allocated disjoint extents and sealed `probe-code` and `probe-data`
-placements. Executable code remains mapped while immutable or writable data is
-built, so both role-specific affine refinements coexist. Source then unmaps and
-releases data before unmapping and releasing code. User preparation requires both
-mappings revoked and both returned extents released. This is exactly a two-
-mapping construction proof, not a general mapping collection or image loader.
+placements. The current code role consumes one indivisible two-frame extent;
+the data role consumes one frame. Executable code remains mapped while
+immutable or writable data is built, so both role-specific affine refinements
+coexist. Source then unmaps and releases data before unmapping and releasing
+the complete code extent. User preparation requires both mappings revoked and
+both returned extents released. This is exactly a two-mapping construction
+proof, not a general mapping collection or image loader.
+
+The bounded multipage-executable refinement publishes both frames of the code
+extent as adjacent virtual base pages. Copy, read-only protection, complete
+content verification, executable promotion, translation and instruction
+observation, invalidation, unmap, and affine return apply to the whole extent.
+The initial x86-64 image places its entry and successful terminal path in the
+second page and emits `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` only after
+exact return. This refines the sealed image role; it exposes no page-table
+entry, physical address, target instruction, general segment size, or W+X
+state.
 
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
