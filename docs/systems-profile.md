@@ -1419,6 +1419,16 @@ provider copies and verifies the selected bytes, wipes and verifies the entire
 consumed output object, and returns a refined entry-ready process capability.
 Source observes neither the random bytes nor their provider-selected address.
 
+A checked user-random reservation may consume a fresh opaque output object into
+one process and interface capability before entry without performing the user
+copy. The qualified profile fixes the maximum delivery extent, output discard
+partition, accepted and incompatible interface flags, and single-use policy.
+Argument and complete-range validation failures preserve the reservation; the
+first successful nonempty request copies and verifies the selected prefix,
+consumes the capability, and wipes the entire provider output. Native syscall
+numbers, registers, pointer validation, and copy-fault recovery remain provider
+details, while source observes neither random bytes nor an address.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
