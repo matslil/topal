@@ -331,6 +331,20 @@ deterministic clean-room fixture with approved metadata and independent
 payload bytes, cover rejected shape classes and exact-byte publication, and
 prove that the current boot resource does not consume the new artifact.
 
+The static-ELF boot-transport increment shall require the canonical
+`static-user.elf` output and verify its artifact-provenance digest before boot
+publication. It shall generate exactly one deterministic uncompressed newc
+archive with ordered `init`, `static-user.elf`, and terminal records, copy both
+payloads exactly, and bind the archive plus both member names, sizes, and
+SHA-256 digests in boot provenance. The x86-64 provider shall validate the
+extended handoff bounds, exact archive length, both headers and padding, the
+terminal record, and the complete approved static ELF header/program-header
+metadata while leaving caller-owned payload bytes unembedded. Frame allocation
+shall exclude the whole enlarged resource. Tests shall reject missing,
+unbound, changed, or reordered static input, prove exact two-member layout and
+digest binding, and retain deterministic pinned-QEMU execution without making
+the static member source-visible or runnable.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

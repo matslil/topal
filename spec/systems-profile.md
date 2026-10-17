@@ -736,6 +736,40 @@ package the static image for boot, expose its bytes to source, copy it into a
 construction, publish final permissions or entry authority, or make it
 runtime-selectable.
 
+### TOPAL-SYSTEMS-STATIC-ELF-BOOT-001 — Immutable static-image boot transport
+
+The qualified x86-64 boot adapter SHALL require both canonical
+`initial-user.elf` and `static-user.elf` outputs and SHALL verify each SHA-256
+digest against artifact provenance before creating boot publication state. It
+SHALL construct exactly one deterministic uncompressed `newc` resource using
+schema `topal.boot-resource.x86_64-initial-newc/2`: regular executable member
+`init`, regular executable member `static-user.elf`, then `TRAILER!!!`, with
+canonical zero ownership, timestamp, device, checksum, and padding fields.
+
+The `init` payload interval SHALL remain `[116, 12404)`. The static member
+header SHALL begin at byte 12404, its exact 2,024,544-byte payload SHALL occupy
+`[12532, 2037076)`, and the terminal record SHALL produce a total archive size
+of 2,037,200 bytes. The adapter SHALL copy both canonical inputs exactly and
+SHALL bind the complete resource digest plus both member names, byte counts,
+and payload digests in boot provenance. Missing, duplicate, changed, unbound,
+renamed, reordered, truncated, or overflowing input SHALL fail before the boot
+directory becomes visible.
+
+The initial x86-64 provider SHALL validate the complete Linux initrd handoff,
+the exact total size, both archive headers and padding, terminal record, and
+the complete approved ELF header and eleven program-header rows at static
+payload offset 12532. It SHALL retain the whole immutable resource extent as
+reserved and frame allocation SHALL exclude that complete extent. Provider
+code SHALL NOT embed or compare caller-owned static payload bytes beyond the
+approved metadata. Existing `TOPAL_KERNEL_BOOT_RESOURCE_OK` success SHALL
+require this extended validation.
+
+The static member SHALL remain provider-private and inactive. This rule SHALL
+NOT expose an archive member, byte, address, or file lookup to source, copy
+static payload bytes into a construction, apply final permissions, attach an
+address space, publish an entry, replace `init`, or make the static image
+runtime-selectable.
+
 ### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
 
 `user mapping permit writable data` SHALL consume only the generation-two
