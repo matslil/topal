@@ -605,6 +605,49 @@ open-file-description sharing, filesystem objects, sockets, pipes, polling,
 close-on-exec, fork or exec inheritance, concurrent close, signals,
 cancellation, device-specific release, or deferred writeback errors.
 
+### TOPAL-SYSTEMS-USER-DUP-001 — Bounded initial descriptor duplication
+
+The three-entry initial descriptor state SHALL refine each live entry into a
+mapping to one fixed open-description identity and access mode. Initially,
+descriptor zero SHALL reference a readable console-input description,
+descriptor one SHALL reference a writable console-output description, and
+descriptor two SHALL reference a distinct writable console-error description.
+`read` and `write` SHALL authorize the referenced description rather than the
+integer slot. Closing one mapping SHALL NOT invalidate another mapping to the
+same description.
+
+Linux-compatible `dup` SHALL return `-EBADF` for a negative, out-of-range, or
+closed source without state change. Given a live source, it SHALL install the
+same description in the lowest closed slot and return that slot, or return
+`-EMFILE` with unchanged state when no slot is closed. Source SHALL name Linux
+`EMFILE` value 24 in addition to the existing count and `EBADF` policy.
+
+Linux-compatible `dup2` SHALL validate the source before modifying an existing
+destination. An invalid or closed source or out-of-range destination SHALL
+return `-EBADF` without changing any mapping. Equal live source and destination
+SHALL return that number unchanged. Otherwise dispatch SHALL atomically replace
+the destination mapping with the source description and return the destination
+number. No allocation failure SHALL occur after validation in this fixed table.
+
+The constructed ring-3 image SHALL prove `dup(1)` returns `-EMFILE` while the
+table is full. After the existing close of zero, it SHALL require `dup(1)` to
+return zero, close one, use `dup2(0, 1)` to restore the alias, and require a
+read through zero to return `-EBADF` without consuming input because the shared
+description is write-only. It SHALL then close zero, prove `dup2(-1, 0)` leaves
+zero closed, install descriptor two at zero with `dup2(2, 0)`, close zero, and
+terminate with only one and two live. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_DUP_OK` observation after exact returns and before later
+image-lifecycle witnesses. Terminal completion SHALL clear every mapping.
+
+The profile SHALL reject a live-bit-only duplicate, non-lowest `dup` result,
+destination mutation after invalid-source `dup2`, close of all aliases through
+one slot, access-mode change, missing or reordered qualification calls, or a
+mapping retained after process return. This rule SHALL NOT define `dup3`,
+`fcntl`, close-on-exec, descriptors above two, dynamic open descriptions, VFS
+paths, general reference counts, pipes, sockets, polling, fork or exec
+inheritance, concurrent lookup/close, signals, cancellation, or final device
+release.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user
