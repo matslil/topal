@@ -795,6 +795,17 @@ every field and padding byte, and reject a closed slot. Slot-derived identity,
 regular-file kind, access-mode permissions, partial publication, host time, or
 retained pointers shall fail closed.
 
+The initial descriptor adapter shall expose the shared console's immutable raw
+terminal attributes through Linux `ioctl(TCGETS)`. The x86-64 adapter shall
+publish the complete native 36-byte `termios` with raw input/output/local
+flags, `B38400|CS8|CREAD|CLOCAL`, line discipline zero, and only `VMIN=1` among
+the 19 control bytes. It shall enforce descriptor-before-command-before-
+pointer precedence, privately stage and fault-contain the complete value, and
+return exact `EBADF`, `ENOTTY`, or `EFAULT`. Ring-3 qualification shall inspect
+every byte, compare input and output descriptions, reject an unknown live-
+console request, and reject a closed slot. Fabricated cooked behavior, partial
+publication, wrong precedence, or retained pointers shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from

@@ -719,6 +719,43 @@ This rule SHALL NOT define path lookup, `stat`, `lstat`, `newfstatat`, `statx`,
 mounts, mutable inode metadata, terminal ioctls, dynamic device registration,
 or general VFS state.
 
+### TOPAL-SYSTEMS-USER-TCGETS-001 — Bounded initial console attributes
+
+The console object shared by the three fixed initial open descriptions SHALL
+own one immutable raw terminal-attribute value. Every description and alias
+SHALL expose identical attributes independently of access mode and descriptor
+flags.
+
+The x86-64 personality SHALL implement Linux `ioctl` request `TCGETS=0x5401`
+with the complete native 36-byte `struct termios`: zero input, output, and
+local flag words; control flags `B38400|CS8|CREAD|CLOCAL` (`0x8bf`); line
+discipline zero; and 19 control bytes all zero except `VMIN=1`. The value SHALL
+describe the current exact-fill raw serial path and SHALL NOT advertise
+canonical processing, echo, signal generation, or output conversion.
+
+Dispatch SHALL look up a live descriptor before request decoding and decode
+the request before candidate access. Invalid or closed descriptors SHALL
+return `-EBADF`. Unsupported requests on the live console SHALL return
+`-ENOTTY` without candidate access. `TCGETS` SHALL construct the whole value in
+private staging, validate one overflow-free complete writable 36-byte extent,
+publish it under fault recovery, return zero only after complete visibility,
+and retain no user pointer. Invalid, read-only, wrapping, cross-hole, or
+incomplete candidates SHALL return `-EFAULT` without partial publication.
+
+The constructed ring-3 image SHALL query standard input and output into
+disjoint writable extents, validate every byte, prove both values identical,
+reject an unsupported live-console request with `-ENOTTY`, and reject `TCGETS`
+on slot zero after its final close with `-EBADF`. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_TCGETS_OK` observation after exact returns and before later
+image-lifecycle witnesses.
+
+The profile SHALL reject fabricated cooked flags, slot-derived terminal state,
+command decoding before descriptor lookup, pointer access before accepted
+request, partial publication, wrong errno, or retained user pointers. This
+rule SHALL NOT define `TCSETS*`, `termios2`, window size, sessions, process
+groups, job control, canonical input, echo, signal generation, ptys, polling,
+dynamically opened ttys, or a general ioctl registry.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user
