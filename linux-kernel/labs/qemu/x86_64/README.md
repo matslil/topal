@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 87 ordered serial markers. The generated real-mode adapter
+and waits for the 88 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -153,8 +153,11 @@ reachable only after the same provider proves that a complete static
 three-frame extent lies in one E820 RAM run and the root releases it as a
 whole. `TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK` next proves that the exact
 503-frame application extent also fits one qualified E820 RAM run and remains
-one affine owner until source releases it. The final context markers prove
-that the deadline interrupts
+one affine owner. `TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK` then proves
+that a separately owned metadata frame was selected outside that complete
+payload interval while both owners remained live; source releases metadata and
+then payload before continuing. The final context markers prove that the
+deadline interrupts
 the worker in its sealed region, the handler returns to the exact dispatcher,
 source runs the terminal and completion workers in the checked order, and
 redispatch resumes then retires both suspended workers. The final user marker
