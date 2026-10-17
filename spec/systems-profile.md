@@ -489,10 +489,14 @@ address space. The operation SHALL expose no member name, offset, address,
 byte, loop, archive representation, or target coherence mechanism to source.
 
 Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK`
-observation while the populated construction is live. In this profile,
-`static image construction revoke metadata` SHALL accept only the populated
-refinement; the complete metadata-release, payload-reclaim, and whole-release
-obligations of `TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+observation while the populated construction is live. Absent a later selected
+construction refinement, `static image construction revoke metadata` SHALL
+accept only the populated refinement. When
+`TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` is selected, revocation SHALL NOT
+accept the populated owner before permission sealing succeeds. The complete
+metadata-release, payload-reclaim, and whole-release obligations of
+`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` apply unchanged after the last selected
+construction refinement.
 
 Wrong owner, source, plan, resource, interval, order, copied byte, preserved-
 zero byte, or leaf state; duplicate copy; copy before complete zeroing;
@@ -501,6 +505,45 @@ an uninitialized, zeroed, or populated construction live SHALL be invalid.
 This rule SHALL NOT apply final permissions, attach an active address space,
 publish an entry, initialize TLS or stack state, or make the image runtime-
 selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001 — Verified inactive final permissions
+
+`static image construction seal permissions` SHALL consume the exact live
+`PopulatedStaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-COPY-001`. It SHALL accept only plan
+`bounded-static-elf-wx-relro`. Success SHALL produce one affine
+`SealedStaticImageConstruction` owning the same 503-frame payload and
+one-frame metadata extents.
+
+The initial x86-64 provider SHALL revalidate both construction extents, all
+503 ordered initial RW/NX leaves, nine absent entries, and the complete
+populated payload before changing any leaf. It SHALL atomically publish these
+final ordinal roles over the inactive construction: header `[0, 1)` as user
+RO/NX; executable `[1, 397)` as user RO/X; immutable data `[397, 485)` as user
+RO/NX; GNU RELRO `[485, 493)` as user RO/NX; and remaining writable data and
+BSS `[493, 503)` as user RW/NX. Thus the final table SHALL contain exactly 97
+RO/NX, 396 RO/X, and 10 RW/NX leaves, with no writable-executable leaf.
+
+Before success, the provider SHALL read back every leaf, verify the original
+payload-frame identity and ordinal order with its exact final role, and verify
+that all nine remaining entries are absent. The construction SHALL remain
+unreachable from every active address space. Target permission bits,
+page-table entries, page ordinals, addresses, loops, publication barriers,
+cache maintenance, and translation invalidation SHALL remain provider-private.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK`
+observation while the sealed construction is live. In this profile,
+`static image construction revoke metadata` SHALL accept only the sealed
+refinement; the complete metadata-release, payload-reclaim, and whole-release
+obligations of `TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+
+Wrong owner, plan, resource, interval, ordinal, frame identity, role, count,
+W+X state, absent entry, or order; duplicate sealing; sealing before complete
+population; revocation before sealing; missing or duplicate observation; or
+disposition with an uninitialized, zeroed, populated, or sealed construction
+live SHALL be invalid. This rule SHALL NOT attach an active address space,
+construct upper translation levels, publish an entry, initialize TLS or stack
+state, or make the image runtime-selectable.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
