@@ -691,6 +691,51 @@ before artifact publication. This rule SHALL NOT make the image runtime-
 selectable or require one physically contiguous extent outside the current
 x86-64 qualification profile.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001 — Caller-owned static image publication
+
+Qualified x86-64 systems publication MAY accept exactly one caller-selected
+static executable through `--static-user-image PATH`. The compiler SHALL read
+the complete file and derive successful
+`TOPAL-SYSTEMS-STATIC-ELF-PLAN-001` and
+`TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001` results before creating publication
+state. The admitted qualification shape SHALL additionally require exactly
+2,024,544 file bytes, eleven program headers, entry `0x4a6580`, four exact
+load tuples `(offset, virtual, file-size, memory-size, alignment)` of
+`(0, 0x400000, 0x6e0, 0x6e0, 0x1000)`,
+`(0x1000, 0x401000, 0x18b285, 0x18b285, 0x1000)`,
+`(0x18d000, 0x58d000, 0x57040, 0x57040, 0x1000)`, and
+`(0x1e4660, 0x5e5660, 0x9728, 0x10b68, 0x1000)`. Those loads SHALL produce
+503 adjacent pages from `0x400000` through `0x5f7000`, and each load physical
+address field SHALL equal its virtual address field. TLS SHALL have file
+tuple `(0x1e4660, 0x40)`, memory tuple `(0x5e5660, 0x82)`, and alignment
+eight. The remaining rows SHALL be the three exact `PT_NOTE` tuples
+`(0x2a8, 0x4002a8, 0x20, 0x20, 8)`,
+`(0x2c8, 0x4002c8, 0x24, 0x24, 4)`, and
+`(0x1e4020, 0x5e4020, 0x20, 0x20, 4)`; one `PT_GNU_PROPERTY` row equal to
+the first note tuple; one non-executable `PT_GNU_STACK` row with alignment
+`0x10`; and one `PT_GNU_RELRO` tuple
+`(0x1e4660, 0x5e5660, 0x79a0, 0x79a0, 1)`. Address-bearing rows SHALL have
+equal virtual and physical address fields. Page-rounded GNU RELRO SHALL be
+`[0x5e5000, 0x5ed000)`.
+
+Success SHALL atomically publish the complete input bytes as the sole
+`static-user.elf` output and SHALL bind that canonical filename and SHA-256
+digest in artifact provenance. No host input path SHALL enter an artifact or
+its provenance. Omitting the option SHALL preserve the existing canonical
+output set; selecting it SHALL add exactly one output. The distinct
+`--initial-user-image` input and `initial-user.elf` output SHALL retain their
+existing boot-resource meaning and MAY coexist with the static image without
+substitution.
+
+Unreadable input, duplicate selection, use outside qualified systems
+publication, failed plan derivation, any noncanonical shape fact, write or
+digest failure, destination collision, or an output not bound by provenance
+SHALL fail before the destination directory becomes visible. This rule SHALL
+NOT require repository possession or redistribution of the external binary,
+package the static image for boot, expose its bytes to source, copy it into a
+construction, publish final permissions or entry authority, or make it
+runtime-selectable.
+
 ### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
 
 `user mapping permit writable data` SHALL consume only the generation-two

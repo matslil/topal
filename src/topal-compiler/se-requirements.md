@@ -316,6 +316,21 @@ counts, complete ordered coverage, zero-before-copy, no W+X state, and rejection
 of gaps or malformed inherited plans. It shall grant no runtime authority or
 make the image selectable.
 
+The supplied static-ELF artifact increment shall accept one
+`--static-user-image PATH` only for qualified systems publication, read and
+validate the complete input before creating publication state, and require the
+exact approved 2,024,544-byte, eleven-program-header, 503-page x86-64 shape.
+On success it shall publish those exact bytes as canonical `static-user.elf`
+and bind that canonical name and SHA-256 digest in artifact provenance without
+recording the host path. The option shall remain distinct from
+`--initial-user-image`; omitting it shall preserve the existing output set and
+selecting it shall add exactly one provenance-bound output. Unreadable,
+duplicate, nonsystems, malformed, noncanonical-shape, partially written, or
+unbound input shall fail before atomic publication. Tests shall use a
+deterministic clean-room fixture with approved metadata and independent
+payload bytes, cover rejected shape classes and exact-byte publication, and
+prove that the current boot resource does not consume the new artifact.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
