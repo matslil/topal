@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 75 ordered serial markers. The generated real-mode adapter
+and waits for the 76 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -177,8 +177,11 @@ x86-64 `getrandom` service. The ring-3 probe verifies zero length, unknown and
 incompatible flags, a guard-crossing range, and one successful 16-byte copy
 without advancing on a rejected call. The following
 `TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK` marker additionally requires a fresh
-ChaCha20 extraction and a second successful 16-byte copy. Both complete output
-objects are wiped after use; clean process teardown then wipes and verifies the
+ChaCha20 extraction and a second successful 16-byte copy. The following
+`TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK` marker requires another fresh
+extraction, one successful complete 32-byte copy, and observation of all four
+returned qwords without constraining their values. All complete output objects
+are wiped after use; clean process teardown then wipes and verifies the
 remaining generator key and service state. The
 `TOPAL_KERNEL_FRAME_DISJOINT_OK` marker additionally requires the prepared
 address space and one source-owned frame to coexist without overlap, followed
