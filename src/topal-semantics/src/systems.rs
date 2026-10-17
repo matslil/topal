@@ -1510,6 +1510,11 @@ pub enum SystemsDisposition {
         console_mode: u64,
         console_special_device: u64,
         console_block_size: u64,
+        terminal_layout_bytes: u64,
+        terminal_get_attributes_request: u64,
+        terminal_control_flags: u64,
+        terminal_minimum_input: u64,
+        not_a_terminal_error: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -2522,6 +2527,11 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 console_mode: 8576,
                 console_special_device: 17408,
                 console_block_size: 4096,
+                terminal_layout_bytes: 36,
+                terminal_get_attributes_request: 21505,
+                terminal_control_flags: 2239,
+                terminal_minimum_input: 1,
+                not_a_terminal_error: 25,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2620,6 +2630,7 @@ struct BootstrapAuthorityState {
     constructed_user_dup_completed: bool,
     constructed_user_fcntl_completed: bool,
     constructed_user_fstat_completed: bool,
+    constructed_user_tcgets_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -4083,6 +4094,22 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_fstat_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_TCGETS_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_fstat_completed
+                    || self.constructed_user_tcgets_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "terminal-attributes witness requires the fstat witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_tcgets_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -4096,6 +4123,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_dup_completed
                     || !self.constructed_user_fcntl_completed
                     || !self.constructed_user_fstat_completed
+                    || !self.constructed_user_tcgets_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -5679,6 +5707,11 @@ fn model_user_execution_transition(
                     console_mode: _,
                     console_special_device: _,
                     console_block_size: _,
+                    terminal_layout_bytes: _,
+                    terminal_get_attributes_request: _,
+                    terminal_control_flags: _,
+                    terminal_minimum_input: _,
+                    not_a_terminal_error: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -7660,6 +7693,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -7862,6 +7898,11 @@ mod tests {
                         console_mode: 8576,
                         console_special_device: 17408,
                         console_block_size: 4096,
+                        terminal_layout_bytes: 36,
+                        terminal_get_attributes_request: 21505,
+                        terminal_control_flags: 2239,
+                        terminal_minimum_input: 1,
+                        not_a_terminal_error: 25,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -7975,6 +8016,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_DUP_OK"
                         || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                         || text == "TOPAL_KERNEL_USER_FSTAT_OK"
+                        || text == "TOPAL_KERNEL_USER_TCGETS_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8556,6 +8598,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -9387,6 +9432,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_DUP_OK"
                             || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                             || text == "TOPAL_KERNEL_USER_FSTAT_OK"
+                            || text == "TOPAL_KERNEL_USER_TCGETS_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
