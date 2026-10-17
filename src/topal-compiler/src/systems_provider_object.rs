@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/90";
+    "topal.provider-object.x86_64-qemu-pc-q35/91";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2426,7 +2426,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
     continuation.jump_if(0x85, "fs-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
-    continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // bounded getrandom result
+    continuation.bytes(&[0x48, 0x81, 0xec, 0x00, 0x01, 0x00, 0x00]); // small getrandom result
     continuation.bytes(&[0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // zero length
     continuation.bytes(&[0x48, 0x85, 0xc0]);
@@ -2465,7 +2465,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump_if(0x85, "getrandom-buffer-fail");
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
     continuation.bytes(&[0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]);
-    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x00, 0x01, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x00, 0x01, 0x00, 0x00]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24]);
+    continuation.bytes(&[0x4c, 0x8b, 0x9c, 0x24, 0xf8, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -2491,7 +2498,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.jump("fail");
     continuation.bind("getrandom-buffer-fail")?;
-    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
     bytes.extend(continuation.finish()?);
@@ -3162,18 +3169,26 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "getrandom-einval");
     code.bytes(&[0x49, 0x83, 0xe0, 0x06, 0x49, 0x83, 0xf8, 0x06]);
     code.jump_if(0x84, "getrandom-einval");
-    code.bytes(&[0x48, 0x83, 0xfe, 0x20]);
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x01, 0x00, 0x00]);
     code.jump_if(0x87, "getrandom-einval");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "getrandom-zero");
     code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]); // private service
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x01, 0xf2]); // checked end
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x87, "getrandom-efault");
+    code.bytes(&[0x56]); // retain exact syscall length until every output succeeds
+    code.bind("getrandom-output-loop")?;
     code.bytes(&[0x80, 0x79, 0x10, 0x01]);
     code.jump_if(0x84, "getrandom-output-ready");
     code.bytes(&[0x80, 0x79, 0x10, 0x00]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x51, 0x57, 0x56]); // retain service, destination, and length
+    code.bytes(&[0x51, 0x57, 0x56]); // retain service, destination, and remaining length
     code.bytes(&[0x48, 0x8b, 0x39, 0x48, 0x8b, 0x71, 0x08]);
     code.call("getrandom-extract-chacha20");
     code.bytes(&[0x5e, 0x5f, 0x59, 0x85, 0xc0]);
@@ -3182,15 +3197,13 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x49, 0x08]);
     code.bytes(&[0x4d, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x10, 0x60, 0x00]);
-    code.jump_if(0x82, "getrandom-efault");
-    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x01, 0xf2]); // checked end
-    code.jump_if(0x82, "getrandom-efault");
-    code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x20, 0x60, 0x00]);
-    code.jump_if(0x87, "getrandom-efault");
+    code.bytes(&[0x48, 0x89, 0xf2, 0x48, 0x83, 0xfa, 0x20]); // chunk=min(remaining,32)
+    code.jump_if(0x86, "getrandom-chunk-ready");
+    code.bytes(&[0xba, 0x20, 0x00, 0x00, 0x00]);
+    code.bind("getrandom-chunk-ready")?;
     code.bytes(&[0x45, 0x31, 0xc0]);
     code.bind("getrandom-copy-loop")?;
-    code.bytes(&[0x4c, 0x39, 0xc6]);
+    code.bytes(&[0x49, 0x39, 0xd0]);
     code.jump_if(0x84, "getrandom-copy-complete");
     code.bytes(&[0x43, 0x8a, 0x04, 0x01, 0x42, 0x88, 0x04, 0x07]);
     code.bytes(&[0x42, 0x3a, 0x04, 0x07]);
@@ -3213,8 +3226,11 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xc6, 0x41, 0x10, 0x00]);
+    code.bytes(&[0x48, 0x01, 0xd7, 0x48, 0x29, 0xd6]);
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x85, "getrandom-output-loop");
     code.bytes(&[0x48, 0xff, 0x41, 0x18]);
-    code.bytes(&[0x48, 0x89, 0xf0]);
+    code.bytes(&[0x58]);
     code.jump("return-user");
     code.bind("getrandom-zero")?;
     code.bytes(&[0x31, 0xc0]);
@@ -6571,8 +6587,8 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
                 .count(),
-            7,
-            "ring-3 must exercise four non-consuming cases, two bounded successes, and one full-output getrandom call"
+            8,
+            "ring-3 must exercise four non-consuming cases, two bounded successes, one full-output call, and one maximum small request"
         );
         assert!(
             entry_payload
@@ -6587,6 +6603,25 @@ assert bytes(output) == block[32:]
                 .windows(10)
                 .any(|bytes| bytes == [0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]),
             "ring-3 must read the complete four-qword provider output without constraining it"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x9c, 0x24, 0xf8, 0x00, 0x00, 0x00]),
+            "ring-3 must read the last qword of the maximum 256-byte small request"
+        );
+        assert!(
+            user_syscall
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x01, 0x00, 0x00])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xfa, 0x20])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0xba, 0x20, 0x00, 0x00, 0x00]),
+            "getrandom must cap complete requests at 256 bytes and split them into 32-byte outputs"
         );
         assert!(
             initial_stack
