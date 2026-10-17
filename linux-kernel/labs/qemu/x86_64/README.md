@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 67 ordered serial markers. The generated real-mode adapter
+and waits for the 68 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the

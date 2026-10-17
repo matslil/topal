@@ -104,6 +104,7 @@ records, not this directory alone, define language meaning.
 - [Bounded virtio payload completion](bounded-virtio-payload-completion.md)
 - [Bounded entropy-sample capture](bounded-entropy-sample-capture.md)
 - [Bounded entropy-sample quality attribution](bounded-entropy-sample-quality.md)
+- [Bounded entropy-pool creation](bounded-entropy-pool-creation.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

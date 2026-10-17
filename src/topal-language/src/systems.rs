@@ -29,6 +29,7 @@ pub use topal_semantics::{
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
+    EntropyPoolRequest as CompilerEntropyPoolRequest,
     EntropySampleCaptureRequest as CompilerEntropySampleCaptureRequest,
     EntropySampleQualityRequest as CompilerEntropySampleQualityRequest, INITIAL_SYSTEMS_BOARD,
     INITIAL_SYSTEMS_PROFILE, INITIAL_SYSTEMS_TARGET,
@@ -52,16 +53,16 @@ pub use topal_semantics::{
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
-    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
-    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_POOL_CREATE,
+    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -3419,6 +3420,8 @@ fn analyze_kernel_context_decision(
         entropy_sample_marker_statement,
         entropy_quality_statement,
         entropy_quality_marker_statement,
+        entropy_pool_statement,
+        entropy_pool_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4214,6 +4217,40 @@ fn analyze_kernel_context_decision(
             "entropy-sample quality assessment requires its exact marker",
         ));
     }
+    let entropy_pool = analyze_operation(
+        source,
+        entropy_pool_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_pool
+        != (CompilerSystemsOperation::CreateEntropyPool {
+            request: CompilerEntropyPoolRequest::INITIAL_Q35,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_pool_statement),
+            "entropy-sample assessment must be followed by exact empty-pool creation",
+        ));
+    }
+    let entropy_pool_marker = analyze_operation(
+        source,
+        entropy_pool_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_pool_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_ENTROPY_POOL_CREATED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_pool_marker_statement),
+            "entropy-pool creation requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4344,6 +4381,8 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_sample_marker);
     operations.push(entropy_quality);
     operations.push(entropy_quality_marker);
+    operations.push(entropy_pool);
+    operations.push(entropy_pool_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6672,6 +6711,22 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            pool,
+            create,
+            Expression::Product { fields, .. },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, pool, "pool")
+        && identifier_is(source, create, "create")
+    {
+        let request = parse_entropy_pool_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::CreateEntropyPool { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7397,6 +7452,39 @@ fn parse_entropy_sample_quality_request(
     Ok(request)
 }
 
+fn parse_entropy_pool_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropyPoolRequest, Diagnostic> {
+    if fields.len() != 3 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-POOL",
+            span,
+            "entropy-pool creation requires identity, credit-capacity, and initial-credit fields",
+        ));
+    }
+    let request = CompilerEntropyPoolRequest {
+        pool_identity: field_natural(source, &fields[0], "pool-identity")?,
+        credit_capacity_bits: field_natural(source, &fields[1], "credit-capacity-bits")?,
+        initial_credited_entropy_bits: field_natural(
+            source,
+            &fields[2],
+            "initial-credited-entropy-bits",
+        )?,
+    };
+    if !request.is_well_formed() || request != CompilerEntropyPoolRequest::INITIAL_Q35 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-POOL",
+            span,
+            "the initial Q35 profile admits only the sealed empty 256-bit entropy pool",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -7840,6 +7928,7 @@ mod tests {
                 | CompilerSystemsOperation::LoadDmaBufferIntegerEquals { .. }
                 | CompilerSystemsOperation::CaptureEntropySample { .. }
                 | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
+                | CompilerSystemsOperation::CreateEntropyPool { .. }
         )
     }
 
@@ -7849,11 +7938,13 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::CaptureEntropySample { .. }
                     | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
+                    | CompilerSystemsOperation::CreateEntropyPool { .. }
             )
         });
         program.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA
                 && *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY
+                && *effect != SYSTEMS_ENTROPY_POOL_CREATE
         });
     }
 
@@ -7916,6 +8007,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -8999,6 +9091,12 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED".into(),
                 },
+                CompilerSystemsTransition::CreateEntropyPool {
+                    request: CompilerEntropyPoolRequest::INITIAL_Q35,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ENTROPY_POOL_CREATED".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -9015,7 +9113,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 229);
+        assert_eq!(program.bootstrap.handler.operations.len(), 231);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -9056,6 +9154,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
+                SYSTEMS_ENTROPY_POOL_CREATE,
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_FRAMES_ALLOCATE,
@@ -10161,11 +10260,16 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CreateEntropyPool { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY
+                && *effect != SYSTEMS_ENTROPY_POOL_CREATE
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-QUALITY-LIVE"
@@ -10212,6 +10316,91 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-QUALITY"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_empty_entropy_pool() {
+        // TOPAL-SYSTEMS-ENTROPY-POOL-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-POOL-001.
+        let mut malformed = CompilerEntropyPoolRequest::INITIAL_Q35;
+        malformed.initial_credited_entropy_bits = 1;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CreateEntropyPool { .. }
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_POOL_CREATE);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-POOL-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-POOL"
+        );
+
+        let mut reordered = program.clone();
+        let assessment = reordered
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::AssessEntropySampleQuality { .. }
+                )
+            })
+            .unwrap();
+        reordered
+            .bootstrap
+            .handler
+            .operations
+            .swap(assessment, index);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-POOL"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::CreateEntropyPool { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.credit_capacity_bits = 128;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-POOL"
         );
     }
 
