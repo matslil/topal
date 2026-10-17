@@ -3061,14 +3061,14 @@ fn analyze_kernel_context_decision(
         parse_physical_frame_allocation(source, scratch_subject, &completion_resumed)?;
     if scratch_request
         != (CompilerPhysicalFrameRequest {
-            frame_count: 1,
+            frame_count: 2,
             alignment_frames: 1,
         })
     {
         return Err(user_context_diagnostic(
             source,
             scratch_subject.span(),
-            "the disjoint live-extent probe requires exactly one frame aligned to one frame",
+            "the disjoint executable extent requires exactly two frames aligned to one frame",
         ));
     }
     let CompilerSystemsDisposition::Fatal {
@@ -3471,6 +3471,7 @@ fn analyze_kernel_context_decision(
         entropy_getrandom_small_request_statement,
         entropy_getrandom_large_request_statement,
         enter_user,
+        multipage_executable_marker_statement,
         user_getrandom_marker_statement,
         user_getrandom_repeated_marker_statement,
         user_getrandom_full_output_marker_statement,
@@ -3529,6 +3530,23 @@ fn analyze_kernel_context_decision(
     };
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let multipage_executable_marker = analyze_operation(
+        source,
+        multipage_executable_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if multipage_executable_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(multipage_executable_marker_statement),
+            "returned user execution requires its exact multipage-executable marker",
+        ));
+    }
     let user_getrandom_marker = analyze_operation(
         source,
         user_getrandom_marker_statement,
@@ -4919,6 +4937,7 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_getrandom_large_request);
     operations.extend([
         CompilerSystemsOperation::EnterUserContext,
+        multipage_executable_marker,
         user_getrandom_marker,
         user_getrandom_repeated_marker,
         user_getrandom_full_output_marker,
@@ -9932,7 +9951,7 @@ mod tests {
                 },
                 CompilerSystemsTransition::AllocatePhysicalFrames {
                     request: CompilerPhysicalFrameRequest {
-                        frame_count: 1,
+                        frame_count: 2,
                         alignment_frames: 1,
                     },
                 },
@@ -10362,7 +10381,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 258);
+        assert_eq!(program.bootstrap.handler.operations.len(), 259);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12395,19 +12414,14 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replacen("frame-count is 1", "frame-count is 2", 1),
+                SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one or three frames",
+                "only one, two, or three frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
                 "E-SYSTEMS-FRAMES",
                 "initial kernel-mapping probe requires exactly one frame",
-            ),
-            (
-                SOURCE.replace("frame-count is 3", "frame-count is 2"),
-                "E-SYSTEMS-FRAMES",
-                "only one or three frames",
             ),
             (
                 SOURCE.replace("alignment-frames is 1", "alignment-frames is 2"),

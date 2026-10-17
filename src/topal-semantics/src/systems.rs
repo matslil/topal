@@ -2633,6 +2633,7 @@ struct BootstrapAuthorityState {
     resident_user_image_ready: bool,
     anonymous_user_mapping_reserved: bool,
     initial_boot_resource_validated: bool,
+    multipage_user_executable_completed: bool,
     constructed_user_read_completed: bool,
     constructed_user_close_completed: bool,
     constructed_user_dup_completed: bool,
@@ -2782,6 +2783,11 @@ const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest 
     alignment_frames: 1,
 };
 
+const INITIAL_TWO_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 2,
+    alignment_frames: 1,
+};
+
 const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
     frame_count: 3,
     alignment_frames: 1,
@@ -2848,7 +2854,9 @@ impl BootstrapAuthorityState {
                     || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !matches!(
                         *request,
-                        INITIAL_SINGLE_FRAME_REQUEST | INITIAL_MULTI_FRAME_REQUEST
+                        INITIAL_SINGLE_FRAME_REQUEST
+                            | INITIAL_TWO_FRAME_REQUEST
+                            | INITIAL_MULTI_FRAME_REQUEST
                     )
                 {
                     return Err(SystemsModelError::new(
@@ -3804,8 +3812,12 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
-                if self.memory_ownership
-                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                let mapping_request = if generation == 1 {
+                    INITIAL_TWO_FRAME_REQUEST
+                } else {
+                    INITIAL_SINGLE_FRAME_REQUEST
+                };
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames(mapping_request)
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
@@ -3813,8 +3825,7 @@ impl BootstrapAuthorityState {
                         "user mapping publication requires one disjoint source-owned frame and no live critical scope",
                     ));
                 }
-                self.memory_ownership =
-                    BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST);
+                self.memory_ownership = BootstrapMemoryOwnership::UserMapping(mapping_request);
                 self.user_execution = BootstrapUserExecutionState::MappingLive(backing, generation);
             }
             SystemsOperation::StoreUserMappingByte => {
@@ -3849,7 +3860,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3873,7 +3884,11 @@ impl BootstrapAuthorityState {
                     }
                 };
                 if self.memory_ownership
-                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                    != BootstrapMemoryOwnership::UserMapping(if generation == 1 {
+                        INITIAL_TWO_FRAME_REQUEST
+                    } else {
+                        INITIAL_SINGLE_FRAME_REQUEST
+                    })
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3915,7 +3930,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3936,7 +3951,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -4024,6 +4039,24 @@ impl BootstrapAuthorityState {
                 }
                 self.initial_boot_resource_validated = true;
             }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.initial_boot_resource_validated
+                    || self.multipage_user_executable_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "multipage-executable witness requires exact second-page user return with both finalized mappings resident",
+                    ));
+                }
+                self.multipage_user_executable_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_READ_OK" => {
                 if !matches!(
                     self.user_execution,
@@ -4031,6 +4064,7 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.initial_boot_resource_validated
+                    || !self.multipage_user_executable_completed
                     || self.constructed_user_read_completed
                 {
                     return Err(SystemsModelError::new(
@@ -4512,8 +4546,11 @@ impl BootstrapAuthorityState {
                         "immutable data cannot be unmapped before the post-return retained-image witness",
                     ));
                 }
-                self.memory_ownership =
-                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(if generation == 1 {
+                    INITIAL_TWO_FRAME_REQUEST
+                } else {
+                    INITIAL_SINGLE_FRAME_REQUEST
+                });
                 self.user_execution = match generation {
                     1 => BootstrapUserExecutionState::CompletedImageRevoked(backing),
                     2 => BootstrapUserExecutionState::CompletedWithExecutableImage(backing),
@@ -5441,9 +5478,14 @@ fn model_user_execution_transition(
                     "user mapping model requires one prepared address space",
                 ));
             }
+            let mapping_request = if resident_code.is_none() {
+                INITIAL_TWO_FRAME_REQUEST
+            } else {
+                INITIAL_SINGLE_FRAME_REQUEST
+            };
             let fresh_mapping = protocol.map_user_frame(
                 prepared.as_ref().expect("checked prepared user space"),
-                INITIAL_SINGLE_FRAME_REQUEST,
+                mapping_request,
             )?;
             let mapping_identity = fresh_mapping.identity();
             *mapping = Some(fresh_mapping);
@@ -5630,7 +5672,12 @@ fn model_user_execution_transition(
                     mapping,
                 )?
             };
-            if returned != INITIAL_SINGLE_FRAME_REQUEST {
+            let expected_return = if mapping_identity == 1 {
+                INITIAL_TWO_FRAME_REQUEST
+            } else {
+                INITIAL_SINGLE_FRAME_REQUEST
+            };
+            if returned != expected_return {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user unmap returned the wrong physical-frame extent",
@@ -7660,7 +7707,7 @@ mod tests {
                         },
                         SystemsOperation::PrepareUserAddressSpace,
                         SystemsOperation::AllocatePhysicalFrames {
-                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            request: INITIAL_TWO_FRAME_REQUEST,
                             failure_message: "disjoint frame allocation failed".into(),
                         },
                         SystemsOperation::MapUserAddressSpace,
@@ -7710,6 +7757,9 @@ mod tests {
                             request: EntropyUserRandomSmallRequest::LARGE_GETRANDOM,
                         },
                         SystemsOperation::EnterUserContext,
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
+                        },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
                         },
@@ -8069,6 +8119,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                         || text == "TOPAL_KERNEL_USER_READ_OK"
                         || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                         || text == "TOPAL_KERNEL_USER_DUP_OK"
@@ -8437,7 +8488,7 @@ mod tests {
                     address_space_identity: 1,
                 },
                 SystemsTransition::AllocatePhysicalFrames {
-                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    request: INITIAL_TWO_FRAME_REQUEST,
                 },
                 SystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
@@ -8628,6 +8679,9 @@ mod tests {
                 SystemsTransition::ResumeUserKernelContinuation {
                     kernel_continuation_identity: 1,
                     status: 0,
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
@@ -9518,6 +9572,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                 )
             });
@@ -9776,7 +9831,7 @@ mod tests {
         else {
             unreachable!("test inserted the allocation at index two")
         };
-        unsupported_request.frame_count = 2;
+        unsupported_request.frame_count = 4;
         assert_eq!(
             validate_systems_program(&unsupported).unwrap_err().code,
             "E-SYSTEMS-FRAMES"

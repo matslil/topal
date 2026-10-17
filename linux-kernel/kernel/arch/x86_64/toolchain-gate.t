@@ -784,7 +784,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                           layout is initial-probe
                                                                                                         )
                                                                                                           completion-resumed frames allocate (
-                                                                                                            frame-count is 1,
+                                                                                                            frame-count is 2,
                                                                                                             alignment-frames is 1
                                                                                                           )
                                                                                                             Ok scratch-frame then {
@@ -1095,6 +1095,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     complete-request is 1
                                                                                                                   )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK"

@@ -63,10 +63,23 @@ const INITIAL_USER_BACKING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest 
     alignment_frames: 1,
 };
 
-const INITIAL_USER_MAPPING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+const INITIAL_USER_CODE_MAPPING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 2,
+    alignment_frames: 1,
+};
+
+const INITIAL_USER_PAGE_MAPPING_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
     frame_count: 1,
     alignment_frames: 1,
 };
+
+const fn initial_user_mapping_request(mapping_identity: u64) -> Option<PhysicalFrameRequest> {
+    match mapping_identity {
+        1 => Some(INITIAL_USER_CODE_MAPPING_REQUEST),
+        2 => Some(INITIAL_USER_PAGE_MAPPING_REQUEST),
+        _ => None,
+    }
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum UserProbeStage {
@@ -369,7 +382,7 @@ impl SystemsUserExecutionProtocol {
         })
     }
 
-    /// Consume one disjoint frame into the sealed user mapping.
+    /// Consume one disjoint extent into the sealed user mapping.
     ///
     /// # Errors
     ///
@@ -380,11 +393,16 @@ impl SystemsUserExecutionProtocol {
         address_space: &PreparedUserAddressSpace,
         backing: PhysicalFrameRequest,
     ) -> Result<UserMapping, SystemsModelError> {
-        if address_space.provider_identity != self.provider_identity
-            || backing != INITIAL_USER_MAPPING_REQUEST
+        let Some(required_backing) = initial_user_mapping_request(self.next_mapping_identity)
+        else {
+            return Err(user_error(
+                "the initial user profile admits exactly its code and data mappings",
+            ));
+        };
+        if address_space.provider_identity != self.provider_identity || backing != required_backing
         {
             return Err(user_error(
-                "the initial user mapping requires its prepared address space and exact one-frame backing",
+                "the initial user mapping requires its prepared address space and exact role backing",
             ));
         }
         let mapping_identity = self.next_mapping_identity;
@@ -407,7 +425,7 @@ impl SystemsUserExecutionProtocol {
         backing: PhysicalFrameRequest,
     ) -> Result<ReservedAnonymousUserMapping, SystemsModelError> {
         if address_space.provider_identity != self.provider_identity
-            || backing != INITIAL_USER_MAPPING_REQUEST
+            || backing != INITIAL_USER_PAGE_MAPPING_REQUEST
         {
             return Err(user_error(
                 "the bounded anonymous reservation requires its prepared address space and exact one-frame backing",
@@ -440,7 +458,7 @@ impl SystemsUserExecutionProtocol {
             || reservation.provider_identity != self.provider_identity
             || reservation.address_space_identity != completed.address_space.address_space_identity
             || reservation.reservation_identity != 3
-            || reservation.backing != INITIAL_USER_MAPPING_REQUEST
+            || reservation.backing != INITIAL_USER_PAGE_MAPPING_REQUEST
         {
             return Err(user_error(
                 "anonymous reservation release requires the exact completed address space and original frame",
@@ -495,7 +513,7 @@ impl SystemsUserExecutionProtocol {
         mut mapping: UserMapping,
     ) -> Result<UserMapping, SystemsModelError> {
         if mapping.provider_identity != self.provider_identity
-            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || Some(mapping.backing) != initial_user_mapping_request(mapping.mapping_identity)
             || (mapping.stage != UserMappingStage::Stored
                 && mapping.stage != UserMappingStage::EntryInstalled)
         {
@@ -608,7 +626,7 @@ impl SystemsUserExecutionProtocol {
             ));
         }
         if mapping.provider_identity != self.provider_identity
-            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || Some(mapping.backing) != initial_user_mapping_request(mapping.mapping_identity)
         {
             return Err(user_error(
                 "user mapping operation requires the exact preceding affine refinement",
@@ -653,7 +671,7 @@ impl SystemsUserExecutionProtocol {
             ));
         }
         if mapping.provider_identity != self.provider_identity
-            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || Some(mapping.backing) != initial_user_mapping_request(mapping.mapping_identity)
             || mapping.address_space_identity != completed.address_space.address_space_identity
         {
             return Err(user_error(
@@ -669,7 +687,7 @@ impl SystemsUserExecutionProtocol {
         expected: UserMappingStage,
     ) -> Result<(), SystemsModelError> {
         if mapping.provider_identity != self.provider_identity
-            || mapping.backing != INITIAL_USER_MAPPING_REQUEST
+            || Some(mapping.backing) != initial_user_mapping_request(mapping.mapping_identity)
             || mapping.stage != expected
         {
             return Err(user_error(
@@ -1300,7 +1318,7 @@ mod tests {
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
             .unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         let first_identity = mapping.identity();
         let mapping = protocol
@@ -1313,7 +1331,7 @@ mod tests {
         let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         let code_mapping = mapping;
         let data_mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_PAGE_MAPPING_REQUEST)
             .unwrap();
         assert_ne!(data_mapping.identity(), first_identity);
         let data_mapping = protocol.store_user_mapping_byte(data_mapping).unwrap();
@@ -1328,13 +1346,13 @@ mod tests {
             protocol
                 .unmap_user_frame(&address_space, data_mapping)
                 .unwrap(),
-            INITIAL_USER_MAPPING_REQUEST
+            INITIAL_USER_PAGE_MAPPING_REQUEST
         );
         assert_eq!(
             protocol
                 .unmap_user_frame(&address_space, code_mapping)
                 .unwrap(),
-            INITIAL_USER_MAPPING_REQUEST
+            INITIAL_USER_CODE_MAPPING_REQUEST
         );
     }
 
@@ -1354,7 +1372,7 @@ mod tests {
         );
 
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         assert_eq!(
             protocol.load_user_mapping_byte(mapping).unwrap_err().code,
@@ -1366,7 +1384,7 @@ mod tests {
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
             .unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         let mapping = protocol
             .install_user_mapping_entry_trampoline(mapping)
@@ -1381,7 +1399,7 @@ mod tests {
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
             .unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         assert_eq!(
             protocol
@@ -1400,7 +1418,7 @@ mod tests {
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
             .unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         let mapping = protocol
             .install_user_mapping_entry_trampoline(mapping)
@@ -1422,7 +1440,7 @@ mod tests {
             .prepare_address_space(INITIAL_USER_BACKING_REQUEST)
             .unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_CODE_MAPPING_REQUEST)
             .unwrap();
         let mapping = protocol
             .install_user_mapping_entry_trampoline(mapping)
@@ -1434,7 +1452,7 @@ mod tests {
         let mapping = protocol.permit_user_mapping_execute(mapping).unwrap();
         protocol.unmap_user_frame(&address_space, mapping).unwrap();
         let mapping = protocol
-            .map_user_frame(&address_space, INITIAL_USER_MAPPING_REQUEST)
+            .map_user_frame(&address_space, INITIAL_USER_PAGE_MAPPING_REQUEST)
             .unwrap();
         let mapping = protocol.store_user_mapping_byte(mapping).unwrap();
         let mapping = protocol.protect_user_mapping_read_only(mapping).unwrap();

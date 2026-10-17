@@ -133,8 +133,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/107";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/98";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/108";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/99";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -447,11 +447,11 @@ fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> 
     let code_file_size = image_u64(image, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET);
     let code_memory_size = image_u64(image, INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET);
     if code_file_size != code_memory_size
-        || !(264..=4096).contains(&code_file_size)
+        || !(4360..=8192).contains(&code_file_size)
         || code_file_size % 8 != 0
     {
         return Err(CompileError::Tool(
-            "initial user executable extent must be equal file/memory sizes of 264..4096 bytes aligned to 8"
+            "initial user executable extent must be equal file/memory sizes of 4360..8192 bytes aligned to 8"
                 .into(),
         ));
     }
@@ -460,7 +460,7 @@ fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> 
     let code_end = INITIAL_USER_CODE_ADDRESS
         .checked_add(code_file_size)
         .ok_or_else(|| CompileError::Tool("initial user executable extent overflows".into()))?;
-    if entry < INITIAL_USER_CODE_ADDRESS + 256 || entry >= code_end {
+    if entry < INITIAL_USER_CODE_ADDRESS + 4096 + 256 || entry >= code_end {
         return Err(CompileError::Tool(
             "initial user entry must lie inside the executable payload extent".into(),
         ));
@@ -1697,10 +1697,10 @@ impl RootEncoder {
         if !self.frame_allocator_created
             || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
-            || !matches!(frame_count, 1 | 3)
+            || !matches!(frame_count, 1..=3)
             || alignment_frames != 1
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
-                && frame_count != 1)
+                && frame_count != 2)
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
@@ -1720,7 +1720,7 @@ impl RootEncoder {
         if resident_code {
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
             self.bytes
-                .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x10, 0x00, 0x00]); // next frame
+                .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x20, 0x00, 0x00]); // after code extent
         } else {
             match self.translation {
                 RootTranslationState::BootstrapActive => {
@@ -3709,10 +3709,10 @@ impl RootEncoder {
     fn verify_user_address_space_mapping(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.user_execution != RootUserExecutionState::AddressSpacePrepared
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
         {
             return Err(CompileError::Tool(
-                "x86 user mapping verification requires the prepared address space and one disjoint frame".into(),
+                "x86 user mapping verification requires the prepared address space and its two-frame code extent".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -3730,10 +3730,10 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || generation == 0
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(if generation == 1 { 2 } else { 1 })
         {
             return Err(CompileError::Tool(
-                "x86 user map requires the prepared address space and one disjoint frame".into(),
+                "x86 user map requires the prepared address space and exact role extent".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -3945,12 +3945,12 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
-        self.physical_frame_count = Some(1);
         let generation = match self.user_execution {
             RootUserExecutionState::CompletedWithExecutableImage => 1,
             RootUserExecutionState::CompletedWithResidentImageAnonymousReleased => 2,
             _ => unreachable!("finalized mapping checked above"),
         };
+        self.physical_frame_count = Some(if generation == 1 { 2 } else { 1 });
         self.user_execution = match generation {
             1 => RootUserExecutionState::CompletedImageRevoked,
             2 => RootUserExecutionState::CompletedWithExecutableImage,
@@ -5941,7 +5941,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3144);
+        assert_eq!(relocation_targets.len(), 3185);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -6095,7 +6095,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2760
+            2801
         );
         assert_eq!(
             relocation_targets
@@ -6492,7 +6492,7 @@ mod tests {
 
         let mut wrong_entry = supplied.clone();
         wrong_entry[INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8]
-            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 256 - 1).to_le_bytes());
+            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 4096 + 256 - 1).to_le_bytes());
         assert!(validate_x86_64_initial_user_image(&wrong_entry).is_err());
 
         let mut wrong_data_extent = supplied;
@@ -6537,7 +6537,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 319);
+        assert_eq!(decoded.semantic_trace.len(), 320);
         assert!(
             decoded
                 .semantic_trace
@@ -6815,239 +6815,246 @@ mod tests {
             decoded.semantic_trace[201],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[202],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[203],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[204],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[205],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[206],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_READ_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[207],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_CLOSE_OK")
+                sha256(b"TOPAL_KERNEL_USER_READ_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[208],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_DUP_OK")
+                sha256(b"TOPAL_KERNEL_USER_CLOSE_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[209],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_FCNTL_OK")
+                sha256(b"TOPAL_KERNEL_USER_DUP_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[210],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_FSTAT_OK")
+                sha256(b"TOPAL_KERNEL_USER_FCNTL_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[211],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_TCGETS_OK")
+                sha256(b"TOPAL_KERNEL_USER_FSTAT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[212],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_WINSIZE_OK")
+                sha256(b"TOPAL_KERNEL_USER_TCGETS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[213],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_LSEEK_OK")
+                sha256(b"TOPAL_KERNEL_USER_WINSIZE_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[217],
+            decoded.semantic_trace[214],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_LSEEK_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[218],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[219],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[220],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[221],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[222],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[223],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[224],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[225],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[226],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[227],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[228],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[229],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[230],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[231],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[232],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[233],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[234],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[235],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[236],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
         assert!(
-            decoded.semantic_trace[236].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
+            decoded.semantic_trace[237].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
         );
-        assert_eq!(decoded.semantic_trace[237], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[238].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[239], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[240].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[241], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[242].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[238], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[239].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[240], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[241].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[242], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[243].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[245].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[246], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[247].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[244].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[246].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[247], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[248].starts_with(SYSTEMS_CONSOLE_WRITE));
         for (index, request) in
             CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                 .iter()
@@ -7220,9 +7227,9 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK")
             )
         );
-        decoded.semantic_trace[137..248].rotate_left(33);
-        decoded.semantic_trace.drain(212..215);
-        decoded.semantic_trace.drain(170..205);
+        decoded.semantic_trace[137..249].rotate_left(33);
+        decoded.semantic_trace.drain(213..216);
+        decoded.semantic_trace.drain(171..206);
         decoded.semantic_trace.drain(120..136);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
@@ -7442,6 +7449,14 @@ mod tests {
                 .starts_with("topal.systems.disposition.user-syscall.terminate/1")
         );
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert_eq!(
+            decoded.semantic_trace[147],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK")
+            )
+        );
+        decoded.semantic_trace.remove(147);
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[148],
@@ -7457,7 +7472,11 @@ mod tests {
         assert_eq!(decoded.semantic_trace[151], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[152].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[153].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[154].starts_with("topal.systems.context.user.complete/1"));
+        assert!(
+            decoded.semantic_trace[154].starts_with("topal.systems.context.user.complete/1"),
+            "normalized user tail: {:?}",
+            &decoded.semantic_trace[148..=158]
+        );
         assert!(decoded.semantic_trace[188].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
