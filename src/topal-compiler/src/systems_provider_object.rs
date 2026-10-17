@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/94";
+    "topal.provider-object.x86_64-qemu-pc-q35/95";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1675,6 +1675,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[
         0x48, 0xc7, 0x87, 0xe0, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x00,
     ]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xe8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -2483,6 +2484,26 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x25, 0x00, 0x10, 0x60, 0x00]);
     continuation.bytes(&[0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]);
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x03, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFL stdout
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFD clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x02, 0, 0, 0]);
+    continuation.bytes(&[0xba, 0x01, 0, 0, 0, 0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_SETFD
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFD set
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x63, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // unsupported command
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]); // -EINVAL
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xb8, 0x20, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup(full table)
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xe8]); // -EMFILE
@@ -2505,6 +2526,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xb8, 0x20, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup(stdout)
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // duplicate flag clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // source flag retained
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close source slot
     continuation.bytes(&[0x48, 0x85, 0xc0]);
@@ -2512,6 +2541,10 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xb8, 0x21, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup2(0,1)
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // dup2 flag clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xbe, 0x00, 0x10, 0x60, 0x00]);
@@ -2534,6 +2567,10 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close error alias
     continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // closed-slot F_GETFD
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
@@ -3180,6 +3217,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "dup");
     code.bytes(&[0x83, 0xf8, 0x21]);
     code.jump_if(0x84, "dup2");
+    code.bytes(&[0x83, 0xf8, 0x48]);
+    code.jump_if(0x84, "fcntl");
     code.bytes(&[0x83, 0xf8, 0x09]);
     code.jump_if(0x84, "mmap");
     code.bytes(&[0x83, 0xf8, 0x0a]);
@@ -4215,6 +4254,7 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x45, 0x84, 0xc0]);
     code.jump_if(0x84, "close-ebadf");
     code.bytes(&[0x65, 0xc6, 0x87, 0xe0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x87, 0xe8, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0x31, 0xc0]);
     code.jump("return-user");
     code.bind("close-ebadf")?;
@@ -4237,14 +4277,17 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump("return-user");
     code.bind("dup-zero")?;
     code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xe8, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0x31, 0xc0]);
     code.jump("return-user");
     code.bind("dup-one")?;
     code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe1, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xe9, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.jump("return-user");
     code.bind("dup-two")?;
     code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe2, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xea, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x02, 0x00, 0x00, 0x00]);
     code.jump("return-user");
 
@@ -4256,8 +4299,40 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "close-ebadf");
     code.bytes(&[0x48, 0x83, 0xfe, 0x02]);
     code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "dup2-same");
     code.bytes(&[0x65, 0x44, 0x88, 0x86, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x86, 0xe8, 0x00, 0x00, 0x00, 0x00]);
+    code.bind("dup2-same")?;
     code.bytes(&[0x48, 0x89, 0xf0]);
+    code.jump("return-user");
+
+    code.bind("fcntl")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x01]);
+    code.jump_if(0x84, "fcntl-getfd");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x02]);
+    code.jump_if(0x84, "fcntl-setfd");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x03]);
+    code.jump_if(0x84, "fcntl-getfl");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("fcntl-getfd")?;
+    code.bytes(&[0x65, 0x0f, 0xb6, 0x87, 0xe8, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+    code.bind("fcntl-setfd")?;
+    code.bytes(&[0x80, 0xe2, 0x01]);
+    code.bytes(&[0x65, 0x88, 0x97, 0xe8, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("fcntl-getfl")?;
+    code.bytes(&[0x31, 0xc0, 0x41, 0x80, 0xf8, 0x01]);
+    code.jump_if(0x84, "return-user");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
     code.jump("return-user");
 
     code.bind("return-user")?;
@@ -4321,6 +4396,11 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]);
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe0, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe8, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xe8, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe8, 0, 0, 0, 0]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "exit-anonymous-already-revoked");
@@ -7323,6 +7403,56 @@ assert bytes(output) == block[32:]
                     bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]
                 }),
             "duplication must map fixed description identities, preserve access modes and aliases, reject full or invalid requests, and verify complete terminal clearing"
+        );
+        let fcntl_lookup = user_syscall
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("fcntl must look up the mapped description");
+        let fcntl_first_command = user_syscall[fcntl_lookup..]
+            .windows(4)
+            .position(|bytes| bytes == [0x48, 0x83, 0xfe, 0x01])
+            .map(|position| position + fcntl_lookup)
+            .expect("fcntl must decode F_GETFD");
+        assert!(
+            fcntl_lookup < fcntl_first_command
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x48, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 9
+                && user_address_prepare
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xe8, 0, 0, 0, 0, 0, 0, 0])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x48])
+                && [1_u8, 2, 3].into_iter().all(|command| {
+                    user_syscall
+                        .windows(4)
+                        .any(|bytes| bytes == [0x48, 0x83, 0xfe, command])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0x0f, 0xb6, 0x87, 0xe8, 0, 0, 0])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x80, 0xe2, 0x01])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x65, 0x88, 0x97, 0xe8, 0, 0, 0])
+                && [0xe8_u8, 0xe9, 0xea].into_iter().all(|offset| {
+                    user_syscall
+                        .windows(9)
+                        .any(|bytes| bytes == [0x65, 0xc6, 0x04, 0x25, offset, 0, 0, 0, 0])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0xc6, 0x86, 0xe8, 0, 0, 0, 0])
+                && user_syscall.windows(13).any(|bytes| {
+                    bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe8, 0, 0, 0, 0, 0, 0, 0]
+                }),
+            "fcntl must separate slot flags from descriptions, decode only after lookup, clear duplication destinations, and erase terminal state"
         );
         assert!(
             user_syscall

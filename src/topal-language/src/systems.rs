@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 43
+        || fields.len() != 50
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1025,6 +1025,13 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[40], "console-input-description")? != 1
         || field_natural(source, &fields[41], "console-output-description")? != 2
         || field_natural(source, &fields[42], "console-error-description")? != 3
+        || field_natural(source, &fields[43], "invalid-argument-error")? != 22
+        || field_natural(source, &fields[44], "fcntl-getfd-command")? != 1
+        || field_natural(source, &fields[45], "fcntl-setfd-command")? != 2
+        || field_natural(source, &fields[46], "fcntl-getfl-command")? != 3
+        || field_natural(source, &fields[47], "close-on-exec-flag")? != 1
+        || field_natural(source, &fields[48], "read-only-status")? != 0
+        || field_natural(source, &fields[49], "write-only-status")? != 1
     {
         return Err(user_context_diagnostic(
             source,
@@ -1055,6 +1062,13 @@ fn analyze_user_syscall_handler(
         console_input_description: 1,
         console_output_description: 2,
         console_error_description: 3,
+        invalid_argument_error: 22,
+        fcntl_getfd_command: 1,
+        fcntl_setfd_command: 2,
+        fcntl_getfl_command: 3,
+        close_on_exec_flag: 1,
+        read_only_status: 0,
+        write_only_status: 1,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3435,6 +3449,7 @@ fn analyze_kernel_context_decision(
         user_read_marker_statement,
         user_close_marker_statement,
         user_dup_marker_statement,
+        user_fcntl_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3614,6 +3629,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_dup_marker_statement),
             "returned user execution requires its exact descriptor-duplication marker",
+        ));
+    }
+    let user_fcntl_marker = analyze_operation(
+        source,
+        user_fcntl_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_fcntl_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_fcntl_marker_statement),
+            "returned user execution requires its exact descriptor-metadata marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4793,6 +4825,7 @@ fn analyze_kernel_context_decision(
         user_read_marker,
         user_close_marker,
         user_dup_marker,
+        user_fcntl_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -9985,6 +10018,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_DUP_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -10208,7 +10244,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 253);
+        assert_eq!(program.bootstrap.handler.operations.len(), 254);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
