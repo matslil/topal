@@ -10381,7 +10381,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 259);
+        assert_eq!(program.bootstrap.handler.operations.len(), 262);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12416,7 +12416,17 @@ mod tests {
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, or three frames",
+                "only one, two, three, or exactly 503 frames",
+            ),
+            (
+                SOURCE.replace("frame-count is 503", "frame-count is 502"),
+                "E-SYSTEMS-FRAMES",
+                "only one, two, three, or exactly 503 frames",
+            ),
+            (
+                SOURCE.replace("frame-count is 503", "frame-count is 504"),
+                "E-SYSTEMS-FRAMES",
+                "only one, two, three, or exactly 503 frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),

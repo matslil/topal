@@ -2793,6 +2793,11 @@ const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
     alignment_frames: 1,
 };
 
+const STATIC_ELF_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 503,
+    alignment_frames: 1,
+};
+
 #[derive(Default, Eq, PartialEq)]
 enum BootstrapTranslationState {
     #[default]
@@ -2857,6 +2862,7 @@ impl BootstrapAuthorityState {
                         INITIAL_SINGLE_FRAME_REQUEST
                             | INITIAL_TWO_FRAME_REQUEST
                             | INITIAL_MULTI_FRAME_REQUEST
+                            | STATIC_ELF_FRAME_REQUEST
                     )
                 {
                     return Err(SystemsModelError::new(

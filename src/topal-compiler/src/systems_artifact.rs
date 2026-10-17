@@ -133,8 +133,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/108";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/99";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/109";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/100";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -2236,7 +2236,7 @@ impl RootEncoder {
         if !self.frame_allocator_created
             || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
-            || !matches!(frame_count, 1..=3)
+            || !matches!(frame_count, 1..=3 | 503)
             || alignment_frames != 1
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
                 && frame_count != 2)
@@ -6771,6 +6771,13 @@ mod tests {
             .collect::<Vec<_>>();
         assert_root_dependencies(&undefined);
         let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
+        let root_bytes = text.data().unwrap();
+        assert!(
+            root_bytes
+                .windows(5)
+                .any(|bytes| bytes == [0xba, 0xf7, 0x01, 0x00, 0x00]),
+            "checked root must request the exact 503-frame static ELF extent"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -6780,7 +6787,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3185);
+        assert_eq!(relocation_targets.len(), 3226);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -6876,7 +6883,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            7
+            8
         );
         assert_eq!(
             relocation_targets
@@ -6934,7 +6941,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2801
+            2840
         );
         assert_eq!(
             relocation_targets
@@ -7095,7 +7102,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            144
+            145
         );
         assert_eq!(
             relocation_targets
@@ -7376,7 +7383,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 320);
+        assert_eq!(decoded.semantic_trace.len(), 323);
         assert!(
             decoded
                 .semantic_trace
@@ -7404,7 +7411,10 @@ mod tests {
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..30);
+        assert!(decoded.semantic_trace[30].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[31].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[32], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..33);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

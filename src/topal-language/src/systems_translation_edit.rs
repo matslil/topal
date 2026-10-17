@@ -275,6 +275,85 @@ fn analyze_bounded_multi_frame_sequence(
     }
     parse_physical_frame_release(source, release, allocator_context, &extent_name)?;
     let mut checked =
+        analyze_static_elf_frame_sequence(source, rest, allocator_context, storage)?;
+    let mut operations = vec![
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request,
+            failure_message,
+        },
+        marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
+    ];
+    operations.append(&mut checked.operations);
+    Ok(CheckedBootstrapRegionDecision {
+        operations,
+        disposition: checked.disposition,
+    })
+}
+
+fn analyze_static_elf_frame_sequence(
+    source: &SourceText,
+    statements: &[Statement],
+    allocator_context: &str,
+    storage: &CompilerBootstrapStorageDescriptor,
+) -> Result<CheckedBootstrapRegionDecision, Diagnostic> {
+    let (subject, extent_name, success, _problem_name, failure, span) =
+        result_sequence(source, statements, "static ELF frame allocation")?;
+    let request = parse_physical_frame_allocation(source, subject, allocator_context)?;
+    if request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 503,
+            alignment_frames: 1,
+        })
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            subject.span(),
+            "the static ELF frame probe requires exactly 503 frames aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: failure_message,
+    } = action_disposition(source, failure, allocator_context)?
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            failure.span(),
+            "static ELF frame allocation failure must consume the allocator context through `fatal`",
+        ));
+    };
+    let success_statements = translation_block(
+        source,
+        success,
+        span,
+        "static ELF frame allocation success requires its exact marker, whole-extent release, and continuation",
+    )?;
+    let [marker, release, rest @ ..] = success_statements else {
+        return Err(translation_edit_diagnostic(
+            source,
+            success.span(),
+            "static ELF frame allocation success requires its exact marker, whole-extent release, and continuation",
+        ));
+    };
+    let marker = analyze_operation(
+        source,
+        marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(success_statements.first().expect("marker exists")),
+            "static ELF frame allocation must publish its exact marker before release",
+        ));
+    }
+    parse_physical_frame_release(source, release, allocator_context, &extent_name)?;
+    let mut checked =
         analyze_local_interrupt_critical_sequence(source, rest, allocator_context, storage)?;
     let mut operations = vec![
         CompilerSystemsOperation::AllocatePhysicalFrames {

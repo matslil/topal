@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/100";
+    "topal.provider-object.x86_64-qemu-pc-q35/101";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -5561,6 +5561,8 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x83, 0xfa, 0x02]); // frame count == 2
     code.jump_if(0x84, "count-ready");
     code.bytes(&[0x83, 0xfa, 0x03]); // frame count == 3
+    code.jump_if(0x84, "count-ready");
+    code.bytes(&[0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]); // frame count == 503
     code.jump_if(0x85, "fail");
     code.bind("count-ready")?;
     code.bytes(&[0x48, 0xc1, 0xe2, 0x0c]); // byte count = frames * 4096
@@ -6795,6 +6797,12 @@ assert bytes(output) == block[32:]
         );
         assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x01]));
         assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x03]));
+        assert!(
+            selector
+                .windows(6)
+                .any(|bytes| bytes == [0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]),
+            "selector must admit the exact 503-frame static ELF extent"
+        );
         assert!(
             selector
                 .windows(4)
