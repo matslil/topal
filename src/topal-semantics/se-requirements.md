@@ -125,6 +125,15 @@ payload-only ownership when metadata is released, and require final payload
 release before continuation. Wrong nesting, overlap, reversed release,
 combination, splitting, and completion with either resource live shall fail.
 
+The initial-leaf refinement shall consume the exact two-resource state into one
+opaque live construction, retain the 503 ordinal page-to-frame relation and
+semantic RW/NX rights without target entry representation, and make success
+atomic. Revocation shall refine that owner and return only the original
+metadata extent; after its release, payload reclaim shall return only the
+original 503-frame extent. The model shall reject partial construction, wrong
+identity or ordering, early resource release, duplicate revoke/reclaim, active
+attachment, and completion with live construction state.
+
 The kernel-mapping increment shall model consuming frame ownership into one
 opaque provider-qualified kernel mapping; explicit rights, execution, and
 normal-memory policy; bounded retained byte contents; consuming unmap which

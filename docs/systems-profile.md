@@ -229,6 +229,15 @@ owned shapes, extent splitting, dynamic requests, and reclamation remain
 unavailable. Mapping is admitted only through separately qualified opaque
 capabilities below; simultaneous ownership alone grants no mapping authority.
 
+The bounded static-image construction refinement consumes that exact payload
+and metadata pair into one opaque affine owner. A provider prepares all planned
+pages as initially writable and non-executable inside an inactive translation
+object, with page ordinal matched to frame ordinal. Source can observe only
+successful whole-plan publication. It must revoke the object, release the
+returned metadata, reclaim the unchanged payload, and release it before
+continuing. Table levels, entry encodings, addresses, and target ordering or
+invalidation instructions remain provider-private.
+
 ### Opaque kernel mapping
 
 `context kernel map frames (...)` borrows the live allocator context and

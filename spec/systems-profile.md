@@ -394,6 +394,43 @@ disposition while either owner remains live SHALL be invalid. This rule SHALL
 grant no byte access, table-entry construction, mapping publication, target
 address, or runtime image-selection authority.
 
+### TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001 — Initial inactive leaf publication
+
+`static image construction prepare` SHALL consume the exact simultaneous
+503-frame payload extent and one-frame metadata extent specified by
+`TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001`. Success SHALL produce one
+opaque affine `StaticImageConstruction` and SHALL leave neither input directly
+releasable. The operation SHALL publish exactly 503 adjacent mappings in the
+checked page-plan order such that payload frame ordinal `i` backs virtual page
+ordinal `i`, every published mapping has semantic initial rights RW/NX, and all
+unused capacity in the provider's bounded inactive translation object is
+absent. No partial construction SHALL become observable.
+
+The initial x86-64 provider SHALL realize this object using the separately
+owned aligned metadata frame, 512 bounded leaf entries, 503 present/user/
+writable/NX entries, and nine absent entries. It SHALL revalidate the complete
+payload and metadata intervals, zero the complete metadata frame before use,
+verify every constructed and absent entry, and complete target publication
+ordering before returning success. The object SHALL remain unreachable from
+every active address space in this increment.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK` observation while the construction
+is live. `static image construction revoke metadata` SHALL clear and verify the
+complete inactive object, complete target ordering, refine the construction to
+revoked state, and return exactly the original metadata extent. Source SHALL
+release that extent before `static image construction reclaim payload`
+consumes the revoked owner and returns exactly the original indivisible
+503-frame payload extent for whole release.
+
+Wrong input or construction identity, wrong count, order, rights, or absent
+capacity, arithmetic overflow, overlap, partial publication, missing or
+duplicate observation, release before return, reclaim before complete
+revocation and metadata release, duplicate revoke or reclaim, reversed return,
+or disposition with any live construction state SHALL be invalid. This rule
+SHALL grant no payload byte access, active-address-space attachment, final
+permission, executable entry, or runtime image-selection authority.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

@@ -429,6 +429,17 @@ and then release the payload. Other counts, non-unit alignment, dynamic
 requests, extent splitting, other simultaneous source-owned shapes, reversed
 release, and disposition with either extent live shall fail closed.
 
+The bounded static-ELF leaf-publication refinement shall consume the exact live
+payload and metadata extents into one opaque construction owner. It shall
+publish all 503 ordered page-to-frame pairs in initial RW/NX state inside an
+inactive translation object, keep the remaining target-table capacity absent,
+and expose no target representation. Success shall be observed once before
+complete revocation. Revocation shall return metadata only after clearing the
+complete object and completing target ordering; payload reclaim shall follow
+metadata release and return the original indivisible extent. Partial
+publication, wrong order or identity, duplicate transitions, early release,
+and disposition with live construction ownership shall fail closed.
+
 The bounded disjoint-extent refinement shall admit exactly one additional
 static one-frame, unit-aligned source-owned extent while one prepared initial
 user address space owns its three-frame backing. The allocator and provider

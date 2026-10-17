@@ -103,6 +103,18 @@ ownership. Structural and negative tests shall reject overlap, unsupported
 nesting, wrong order, hidden allocation, and incomplete unwind. Neither owner
 shall acquire byte-access or leaf-publication authority in this increment.
 
+The static-ELF initial-leaf increment shall check one consuming preparation of
+the exact live payload and metadata identities into an opaque construction,
+the exact ordered witness, consuming complete revocation, metadata release,
+payload reclaim, and payload release before continuation. The semantic trace
+shall retain distinct prepare, revoke, and reclaim operations. X86-64 lowering
+shall revalidate both intervals, zero one 512-entry metadata page, write and
+verify exactly 503 ordinal-matched present/user/writable/NX leaves with nine
+absent entries, order inactive publication, clear and verify all entries on
+revoke, and return the original extents in the checked order. Structural and
+negative tests shall reject partial or wrong-role entries, active attachment,
+wrong identity/order, duplicate transitions, and incomplete teardown.
+
 The kernel-mapping increment shall accept only the approved static
 read-write, non-executable normal-memory request. It shall consume the one live
 frame extent into an affine mapping, admit statically bounded plain byte
