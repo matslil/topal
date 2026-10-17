@@ -312,6 +312,11 @@ becomes executable, invalidated together after permission changes, and revoked
 together before the original extent is returned. Entry is in the second page,
 and `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` is emitted only after the
 second-page terminal path returns to the exact kernel continuation.
+The compiler additionally validates and derives a bounded static-ELF plan for
+the pinned 503-page BusyBox shape, but deliberately rejects it as runtime-
+selectable until its affine allocation and mapping lifecycle is implemented.
+Consequently this planning refinement adds no marker and leaves all gate
+artifacts and hashes unchanged.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range
