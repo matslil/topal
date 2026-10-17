@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 39
+        || fields.len() != 43
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1021,6 +1021,10 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[36], "sched-yield-result")? != 0
         || field_natural(source, &fields[37], "initial-descriptor-count")? != 3
         || field_natural(source, &fields[38], "bad-descriptor-error")? != 9
+        || field_natural(source, &fields[39], "too-many-open-files-error")? != 24
+        || field_natural(source, &fields[40], "console-input-description")? != 1
+        || field_natural(source, &fields[41], "console-output-description")? != 2
+        || field_natural(source, &fields[42], "console-error-description")? != 3
     {
         return Err(user_context_diagnostic(
             source,
@@ -1047,6 +1051,10 @@ fn analyze_user_syscall_handler(
         read_maximum_bytes: 256,
         initial_descriptor_count: 3,
         bad_descriptor_error: 9,
+        too_many_open_files_error: 24,
+        console_input_description: 1,
+        console_output_description: 2,
+        console_error_description: 3,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3426,6 +3434,7 @@ fn analyze_kernel_context_decision(
         user_getrandom_large_request_marker_statement,
         user_read_marker_statement,
         user_close_marker_statement,
+        user_dup_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3588,6 +3597,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_close_marker_statement),
             "returned user execution requires its exact descriptor-close marker",
+        ));
+    }
+    let user_dup_marker = analyze_operation(
+        source,
+        user_dup_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_dup_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_DUP_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_dup_marker_statement),
+            "returned user execution requires its exact descriptor-duplication marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4766,6 +4792,7 @@ fn analyze_kernel_context_decision(
         user_getrandom_large_request_marker,
         user_read_marker,
         user_close_marker,
+        user_dup_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -9955,6 +9982,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_CLOSE_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_DUP_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -10178,7 +10208,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 252);
+        assert_eq!(program.bootstrap.handler.operations.len(), 253);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
