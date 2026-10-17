@@ -68,6 +68,7 @@ fn run() -> Result<(), String> {
         optimization: arguments.optimization,
         standard_library: arguments.standard_library,
         initial_user_image: arguments.initial_user_image,
+        static_user_image: arguments.static_user_image,
     };
     if selects_systems_publication(&options) {
         publish_systems_source(&source, &options)
@@ -88,6 +89,7 @@ struct Arguments {
     optimization: OptimizationRequest,
     standard_library: Option<PathBuf>,
     initial_user_image: Option<PathBuf>,
+    static_user_image: Option<PathBuf>,
 }
 
 #[allow(clippy::too_many_lines)] // Every mutually exclusive command-line spelling remains visible together.
@@ -107,6 +109,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
     let mut explain_optimizations = None;
     let mut standard_library = None;
     let mut initial_user_image = None;
+    let mut static_user_image = None;
     let mut arguments = arguments.peekable();
     while let Some(argument) = arguments.next() {
         match argument.as_str() {
@@ -230,6 +233,16 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
                     return Err("--initial-user-image may be specified only once".into());
                 }
             }
+            "--static-user-image" => {
+                let value = PathBuf::from(
+                    arguments
+                        .next()
+                        .ok_or("--static-user-image requires a path")?,
+                );
+                if static_user_image.replace(value).is_some() {
+                    return Err("--static-user-image may be specified only once".into());
+                }
+            }
             "--version" => {
                 println!(
                     "topalc {} (LLVM 22; {TARGET_TRIPLE})",
@@ -239,7 +252,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
             }
             "--help" | "-h" => {
                 println!(
-                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] [--std-library PATH] [--initial-user-image PATH] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc std-library [--library-root DIR] [--llvm-tools DIR] -o libtopal-std.so.1\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. Native applications use {TARGET_TRIPLE} with --cpu generic. The qualified x86_64-unknown-none systems target requires --cpu generic and --board topal-qemu-pc-q35-10.2; --emit executable publishes its canonical artifact directory at -o and may select one bounded-profile ELF with --initial-user-image. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Native executables are static PIEs unless a checked shared library is explicitly selected."
+                    "Usage: topalc [-O0|-O1|-O2|-O3|-Os|-Oz] [-g] [--target TRIPLE] [--cpu PROFILE] [--board PROFILE] [--target-model PATH] [--optimization-goal DIMENSION] [--optimization-limit DIMENSION=QUANTITY] [--enable-optimization ID | --disable-optimization ID | --only-optimization ID] [--explain-optimizations[=PATH]] [--emit llvm-ir|object|executable] [--llvm-tools DIR] [--library-root DIR] [--std-library PATH] [--initial-user-image PATH] [--static-user-image PATH] -o OUTPUT SOURCE\n       topalc --list-targets\n       topalc --list-optimizations\n       topalc std-library [--library-root DIR] [--llvm-tools DIR] -o libtopal-std.so.1\n       topalc test [--list | --exact ID] [--profile O0|O2|both] [--llvm-tools DIR]\n\nThe default is the generic host-family target at -O0. Native applications use {TARGET_TRIPLE} with --cpu generic. The qualified x86_64-unknown-none systems target requires --cpu generic and --board topal-qemu-pc-q35-10.2; --emit executable publishes its canonical artifact directory at -o, may select one bounded-profile boot ELF with --initial-user-image, and may publish one approved-shape external static ELF with --static-user-image. --list-targets also reports model-only profiles which cannot yet produce code. O1 isolates private runtime pruning; O2, O3, Os, and Oz select the matching LLVM 22 default pipeline. Native executables are static PIEs unless a checked shared library is explicitly selected."
                 );
                 std::process::exit(0);
             }
@@ -283,6 +296,7 @@ fn parse_arguments(arguments: impl Iterator<Item = String>) -> Result<Arguments,
         },
         standard_library,
         initial_user_image,
+        static_user_image,
     })
 }
 

@@ -138,7 +138,7 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/112";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/113";
 pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/103";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
@@ -152,6 +152,7 @@ pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
+pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
 const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 51] = [
@@ -262,6 +263,7 @@ pub struct PublishedSystemsArtifact {
     pub debug: PathBuf,
     pub map: PathBuf,
     pub initial_user_image: PathBuf,
+    pub static_user_image: Option<PathBuf>,
     pub provenance: PathBuf,
     pub record: SystemsArtifactProvenance,
 }
@@ -303,7 +305,56 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
     initial_user_image: &[u8],
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        initial_user_image,
+        None,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// approved-shape static user image and the generated boot user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the static image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_static_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    static_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        &initial_user_image,
+        Some(static_user_image),
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with independently
+/// supplied boot and static user images.
+///
+/// # Errors
+///
+/// Returns an error before publication when either supplied image is outside
+/// its qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_user_images(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
     validate_x86_64_initial_user_image(initial_user_image)?;
+    if let Some(image) = static_user_image {
+        validate_x86_64_static_user_image(image)?;
+    }
     let generated_provider = generate_x86_64_systems_provider_object(program)?;
     let root_object = generate_root_object(program)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
@@ -322,6 +373,7 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
         &generated_provider.bytes,
         &root_object,
         initial_user_image,
+        static_user_image,
         &stage,
     );
     let record = match result {
@@ -344,6 +396,8 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
         debug: destination.join(SYSTEMS_DEBUG_FILE),
         map: destination.join(SYSTEMS_MAP_FILE),
         initial_user_image: destination.join(SYSTEMS_INITIAL_USER_IMAGE_FILE),
+        static_user_image: static_user_image
+            .map(|_| destination.join(SYSTEMS_STATIC_USER_IMAGE_FILE)),
         provenance: destination.join(SYSTEMS_PROVENANCE_FILE),
         record,
     })
@@ -356,6 +410,7 @@ fn publish_in_stage(
     provider_object: &[u8],
     root_object: &[u8],
     initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -394,6 +449,11 @@ fn publish_in_stage(
         "write initial user image",
         &initial_user_image_path,
     ))?;
+    if let Some(image) = static_user_image {
+        let static_user_image_path = stage.join(SYSTEMS_STATIC_USER_IMAGE_FILE);
+        fs::write(&static_user_image_path, image)
+            .map_err(io_error("write static user image", &static_user_image_path))?;
+    }
     let record = artifact_provenance(
         program,
         tools,
@@ -404,6 +464,7 @@ fn publish_in_stage(
         &linked.debug,
         &linked.map,
         initial_user_image,
+        static_user_image,
         placements,
     )?;
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
@@ -953,6 +1014,143 @@ fn derive_x86_64_static_elf_page_plan(
     })
 }
 
+fn validate_x86_64_static_user_image(image: &[u8]) -> Result<(), CompileError> {
+    const EXPECTED_FILE_BYTES: usize = 2_024_544;
+    const EXPECTED_ENTRY: u64 = 0x004a_6580;
+    let load = derive_x86_64_static_elf_load_plan(image)?;
+    let pages = derive_x86_64_static_elf_page_plan(&load)?;
+    let expected_segments = [
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::Headers,
+            file: StaticElfInterval {
+                start: 0,
+                end: 0x6e0,
+            },
+            memory: StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x0040_06e0,
+            },
+            pages: StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x0040_1000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::Executable,
+            file: StaticElfInterval {
+                start: 0x1000,
+                end: 0x18_c285,
+            },
+            memory: StaticElfInterval {
+                start: 0x0040_1000,
+                end: 0x0058_c285,
+            },
+            pages: StaticElfInterval {
+                start: 0x0040_1000,
+                end: 0x0058_d000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::ImmutableData,
+            file: StaticElfInterval {
+                start: 0x18_d000,
+                end: 0x1e_4040,
+            },
+            memory: StaticElfInterval {
+                start: 0x0058_d000,
+                end: 0x005e_4040,
+            },
+            pages: StaticElfInterval {
+                start: 0x0058_d000,
+                end: 0x005e_5000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::WritableData,
+            file: StaticElfInterval {
+                start: 0x1e_4660,
+                end: 0x1e_dd88,
+            },
+            memory: StaticElfInterval {
+                start: 0x005e_5660,
+                end: 0x005f_61c8,
+            },
+            pages: StaticElfInterval {
+                start: 0x005e_5000,
+                end: 0x005f_7000,
+            },
+            alignment: 0x1000,
+        },
+    ];
+    let expected_tls = Some(StaticElfTlsPlan {
+        file: StaticElfInterval {
+            start: 0x1e_4660,
+            end: 0x1e_46a0,
+        },
+        memory: StaticElfInterval {
+            start: 0x005e_5660,
+            end: 0x005e_56e2,
+        },
+        alignment: 8,
+    });
+    let expected_relro = Some(StaticElfInterval {
+        start: 0x005e_5000,
+        end: 0x005e_d000,
+    });
+    let expected_program_headers = [
+        (1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_b285, 0x18_b285, 0x1000),
+        (1, 4, 0x18_d000, 0x0058_d000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1e_4660, 0x005e_5660, 0x9728, 0x1_0b68, 0x1000),
+        (4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4),
+        (4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8),
+        (0x6474_e553, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (0x6474_e551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_e552, 4, 0x1e_4660, 0x005e_5660, 0x79a0, 0x79a0, 1),
+    ];
+    let exact_program_headers = expected_program_headers.iter().enumerate().all(
+        |(index, &(kind, flags, offset, virtual_address, file_size, memory_size, alignment))| {
+            let header = 64 + index * 56;
+            elf_u32(image, header) == kind
+                && elf_u32(image, header + 4) == flags
+                && image_u64(image, header + 8) == offset
+                && image_u64(image, header + 16) == virtual_address
+                && image_u64(image, header + 24) == virtual_address
+                && image_u64(image, header + 32) == file_size
+                && image_u64(image, header + 40) == memory_size
+                && image_u64(image, header + 48) == alignment
+        },
+    );
+
+    if image.len() != EXPECTED_FILE_BYTES
+        || elf_u16(image, 56) != 11
+        || !exact_program_headers
+        || load.entry != EXPECTED_ENTRY
+        || load.segments.as_slice() != expected_segments
+        || load.pages
+            != (StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x005f_7000,
+            })
+        || load.page_count != 503
+        || load.tls != expected_tls
+        || load.relro_pages != expected_relro
+        || load.stack_executable
+        || pages.frame_count != 503
+        || pages.entry != EXPECTED_ENTRY
+    {
+        return Err(CompileError::Tool(
+            "static user image does not match the approved 503-page x86-64 shape".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
     let reference = initial_user_elf_file()?;
     if image.len() != reference.len() {
@@ -1112,6 +1310,7 @@ fn artifact_provenance(
     debug: &[u8],
     map: &[u8],
     initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
     placements: Vec<SystemsArtifactPlacement>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let mut inputs = vec![
@@ -1143,6 +1342,12 @@ fn artifact_provenance(
             sha256: sha256(initial_user_image),
         },
     ];
+    if let Some(image) = static_user_image {
+        outputs.push(DigestEntry {
+            identity: SYSTEMS_STATIC_USER_IMAGE_FILE.into(),
+            sha256: sha256(image),
+        });
+    }
     outputs.sort_by(|left, right| left.identity.cmp(&right.identity));
     Ok(SystemsArtifactProvenance {
         schema: X86_SYSTEMS_ARTIFACT_REVISION.into(),
@@ -6801,6 +7006,28 @@ mod tests {
     }
 
     #[test]
+    fn static_user_image_validation_requires_the_exact_approved_shape() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let mut image = busybox_shaped_static_elf();
+        image[0x1000] = 0xa5;
+        validate_x86_64_static_user_image(&image).unwrap();
+
+        let rejected = |mutate: fn(&mut Vec<u8>)| {
+            let mut malformed = image.clone();
+            mutate(&mut malformed);
+            assert!(validate_x86_64_static_user_image(&malformed).is_err());
+        };
+        rejected(|candidate| {
+            candidate.pop();
+        });
+        rejected(|candidate| put_u16(candidate, 56, 10));
+        rejected(|candidate| put_u64(candidate, 24, 0x004a_6581));
+        rejected(|candidate| put_u64(candidate, 64 + 2 * 56 + 32, 0x5_703f));
+        rejected(|candidate| put_u64(candidate, 64 + 7 * 56 + 40, 0x81));
+        rejected(|candidate| put_u64(candidate, 64 + 10 * 56 + 40, 0x799f));
+    }
+
+    #[test]
     fn realizes_the_pinned_static_elf_as_ordered_wx_safe_pages() {
         // TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001, TOPAL-COMP-SYSTEMS-ARTIFACT-001.
         let load = derive_x86_64_static_elf_load_plan(&busybox_shaped_static_elf()).unwrap();
@@ -7574,6 +7801,7 @@ mod tests {
         assert!(published.debug.is_file());
         assert!(published.map.is_file());
         assert!(published.initial_user_image.is_file());
+        assert!(published.static_user_image.is_none());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
         let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
@@ -8583,6 +8811,30 @@ mod tests {
         ] {
             assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());
         }
+
+        let static_destination = parent.join("with-static-user");
+        let static_image = busybox_shaped_static_elf();
+        let with_static = publish_x86_64_systems_artifact_with_static_user_image(
+            &program(),
+            &tools,
+            &static_image,
+            &static_destination,
+        )
+        .unwrap();
+        assert_eq!(fs::read_dir(&static_destination).unwrap().count(), 6);
+        let static_path = with_static.static_user_image.unwrap();
+        assert_eq!(fs::read(&static_path).unwrap(), static_image);
+        assert_eq!(with_static.record.outputs.len(), 5);
+        assert_eq!(
+            with_static
+                .record
+                .outputs
+                .iter()
+                .find(|output| output.identity == SYSTEMS_STATIC_USER_IMAGE_FILE)
+                .unwrap()
+                .sha256,
+            sha256(&static_image)
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 }

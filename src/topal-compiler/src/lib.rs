@@ -34,12 +34,14 @@ pub use standard_library::{
 };
 pub use systems_artifact::{
     PublishedSystemsArtifact, SYSTEMS_DEBUG_FILE, SYSTEMS_INITIAL_USER_IMAGE_FILE,
-    SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE, SYSTEMS_PROVENANCE_FILE, SystemsArtifactPlacement,
-    SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEADLINE_ENTRY,
-    X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_KERNEL_THREAD_ENTRY,
-    X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_ROOT_OBJECT_REVISION,
-    X86_SYSTEMS_ROOT_TEXT_SECTION, publish_x86_64_systems_artifact,
-    publish_x86_64_systems_artifact_with_initial_user_image,
+    SYSTEMS_KERNEL_FILE, SYSTEMS_MAP_FILE, SYSTEMS_PROVENANCE_FILE, SYSTEMS_STATIC_USER_IMAGE_FILE,
+    SystemsArtifactPlacement, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
+    X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_KERNEL_THREAD_ENTRY, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
+    X86_SYSTEMS_ROOT_OBJECT_REVISION, X86_SYSTEMS_ROOT_TEXT_SECTION,
+    publish_x86_64_systems_artifact, publish_x86_64_systems_artifact_with_initial_user_image,
+    publish_x86_64_systems_artifact_with_static_user_image,
+    publish_x86_64_systems_artifact_with_user_images,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
@@ -146,6 +148,7 @@ pub struct CompileOptions {
     pub optimization: OptimizationRequest,
     pub standard_library: Option<PathBuf>,
     pub initial_user_image: Option<PathBuf>,
+    pub static_user_image: Option<PathBuf>,
 }
 
 #[derive(Debug)]

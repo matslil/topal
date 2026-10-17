@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import pty
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -158,7 +159,9 @@ def verify_host() -> str:
 
 
 def compile_systems_artifact(
-    linked: Path, initial_user_image: Path | None = None
+    linked: Path,
+    initial_user_image: Path | None = None,
+    static_user_image: Path | None = None,
 ) -> None:
     compiler_command = [
         "cargo",
@@ -180,6 +183,8 @@ def compile_systems_artifact(
     ]
     if initial_user_image is not None:
         compiler_command.extend(["--initial-user-image", str(initial_user_image)])
+    if static_user_image is not None:
+        compiler_command.extend(["--static-user-image", str(static_user_image)])
     compiler_command.extend(
         [
         "-o",
@@ -191,7 +196,62 @@ def compile_systems_artifact(
     subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path]:
+def static_user_fixture() -> bytes:
+    """Create approved ELF metadata with clean-room payload bytes."""
+    image = bytearray(2_024_544)
+    image[:16] = bytes(
+        [0x7F, ord("E"), ord("L"), ord("F"), 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]
+    )
+    struct.pack_into(
+        "<HHIQQQIHHHHHH",
+        image,
+        16,
+        2,
+        62,
+        1,
+        0x004A_6580,
+        64,
+        0,
+        0,
+        64,
+        56,
+        11,
+        0,
+        0,
+        0,
+    )
+    headers = (
+        (1, 4, 0, 0x0040_0000, 0x6E0, 0x6E0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_B285, 0x18_B285, 0x1000),
+        (1, 4, 0x18_D000, 0x0058_D000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1E_4660, 0x005E_5660, 0x9728, 0x1_0B68, 0x1000),
+        (4, 4, 0x2A8, 0x0040_02A8, 0x20, 0x20, 8),
+        (4, 4, 0x2C8, 0x0040_02C8, 0x24, 0x24, 4),
+        (4, 4, 0x1E_4020, 0x005E_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1E_4660, 0x005E_5660, 0x40, 0x82, 8),
+        (0x6474_E553, 4, 0x2A8, 0x0040_02A8, 0x20, 0x20, 8),
+        (0x6474_E551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_E552, 4, 0x1E_4660, 0x005E_5660, 0x79A0, 0x79A0, 1),
+    )
+    for index, (kind, flags, offset, virtual, file_size, memory_size, alignment) in enumerate(headers):
+        struct.pack_into(
+            "<IIQQQQQQ",
+            image,
+            64 + index * 56,
+            kind,
+            flags,
+            offset,
+            virtual,
+            virtual,
+            file_size,
+            memory_size,
+            alignment,
+        )
+    image[0x1000] = 0xA5
+    return bytes(image)
+
+
+def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
     generated = destination / "generated"
     compile_systems_artifact(generated)
     generated_initial_user_image = generated / "initial-user.elf"
@@ -199,14 +259,21 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path]:
     supplied = bytearray(generated_initial_user_image.read_bytes())
     supplied[4097] = 0xA5
     supplied_initial_user_image.write_bytes(supplied)
+    supplied_static_user_image = destination / "supplied-static-user.elf"
+    supplied_static_user_image.write_bytes(static_user_fixture())
 
     linked = destination / "linked"
-    compile_systems_artifact(linked, supplied_initial_user_image)
+    compile_systems_artifact(
+        linked, supplied_initial_user_image, supplied_static_user_image
+    )
     published_initial_user_image = linked / "initial-user.elf"
     if published_initial_user_image.read_bytes() != supplied:
         raise GateError("compiler did not publish the exact supplied initial user image")
     if digest(published_initial_user_image) == digest(generated_initial_user_image):
         raise GateError("supplied initial user image is not distinct from the generated default")
+    published_static_user_image = linked / "static-user.elf"
+    if published_static_user_image.read_bytes() != supplied_static_user_image.read_bytes():
+        raise GateError("compiler did not publish the exact supplied static user image")
 
     boot = destination / "boot"
     packaging_command = [
@@ -228,12 +295,23 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path]:
     for path in (image, boot_resource, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
+    artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
+    static_outputs = [
+        output
+        for output in artifact["outputs"]
+        if output["identity"] == "static-user.elf"
+    ]
+    if len(static_outputs) != 1 or static_outputs[0]["sha256"] != digest(
+        published_static_user_image
+    ):
+        raise GateError("artifact provenance does not bind the static user image")
     return (
         image,
         boot_resource,
         boot_provenance,
         artifact_provenance,
         generated_initial_user_image,
+        published_static_user_image,
     )
 
 
@@ -381,13 +459,14 @@ def evidence_record(
     boot_provenance: Path,
     artifact_provenance: Path,
     generated_initial_user_image: Path,
+    static_user_image: Path,
     serial: bytes,
 ) -> dict[str, Any]:
     data = manifest()
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/114",
+        "schema": "topal-kernel-toolchain-gate-qemu/115",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -407,6 +486,9 @@ def evidence_record(
         "initial_user_image_sha256": boot["initial_user_image_sha256"],
         "generated_initial_user_image_sha256": digest(generated_initial_user_image),
         "initial_user_image_input": "supplied",
+        "static_user_image_bytes": static_user_image.stat().st_size,
+        "static_user_image_sha256": digest(static_user_image),
+        "static_user_image_input": "supplied-clean-room-fixture",
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
@@ -434,6 +516,7 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             boot_provenance,
             artifact_provenance,
             generated_initial_user_image,
+            static_user_image,
         ) = build_image(root / "artifact")
         boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
         if digest(boot_resource) != boot["boot_resource_sha256"]:
@@ -463,6 +546,7 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             boot_provenance,
             artifact_provenance,
             generated_initial_user_image,
+            static_user_image,
             serial,
         )
     if write_evidence:
