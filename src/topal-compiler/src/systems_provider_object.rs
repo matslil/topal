@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/83";
+    "topal.provider-object.x86_64-qemu-pc-q35/84";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -119,10 +119,13 @@ pub const X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL: &str =
     "topal_x86_systems_dma_buffer_load_integer_equals";
 pub const X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL: &str =
     "topal_x86_systems_entropy_capture_dma_sample";
+pub const X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL: &str =
+    "topal_x86_systems_entropy_mix_blake2s_pool_sample";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
 pub const X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL: &str = "topal_x86_systems_raw_entropy_sample";
+pub const X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL: &str = "topal_x86_systems_entropy_pool_state";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -502,6 +505,163 @@ fn entropy_capture_dma_sample() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+const BLAKE2S_IV: [u32; 8] = [
+    0x6a09_e667,
+    0xbb67_ae85,
+    0x3c6e_f372,
+    0xa54f_f53a,
+    0x510e_527f,
+    0x9b05_688c,
+    0x1f83_d9ab,
+    0x5be0_cd19,
+];
+
+const BLAKE2S_SIGMA: [[usize; 16]; 10] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
+    [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
+    [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
+    [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
+    [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
+    [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
+    [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
+    [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
+    [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
+];
+
+fn emit_stack_dword_load(code: &mut X86FunctionEncoder, register: u8, offset: usize) {
+    let displacement = u8::try_from(offset).expect("BLAKE2s stack offset fits disp8");
+    match register {
+        0 => code.bytes(&[0x8b, 0x44, 0x24, displacement]), // eax
+        1 => code.bytes(&[0x8b, 0x4c, 0x24, displacement]), // ecx
+        2 => code.bytes(&[0x8b, 0x54, 0x24, displacement]), // edx
+        8 => code.bytes(&[0x44, 0x8b, 0x44, 0x24, displacement]), // r8d
+        _ => unreachable!(),
+    }
+}
+
+fn emit_stack_dword_store(code: &mut X86FunctionEncoder, register: u8, offset: usize) {
+    let displacement = u8::try_from(offset).expect("BLAKE2s stack offset fits disp8");
+    match register {
+        0 => code.bytes(&[0x89, 0x44, 0x24, displacement]), // eax
+        1 => code.bytes(&[0x89, 0x4c, 0x24, displacement]), // ecx
+        2 => code.bytes(&[0x89, 0x54, 0x24, displacement]), // edx
+        8 => code.bytes(&[0x44, 0x89, 0x44, 0x24, displacement]), // r8d
+        _ => unreachable!(),
+    }
+}
+
+fn emit_blake2s_g(code: &mut X86FunctionEncoder, lanes: [usize; 4], message_words: [usize; 2]) {
+    let [a, b, c, d] = lanes.map(|lane| lane * 4);
+    let [x, y] = message_words.map(|word| 64 + word * 4);
+    emit_stack_dword_load(code, 0, a);
+    emit_stack_dword_load(code, 1, b);
+    emit_stack_dword_load(code, 2, c);
+    emit_stack_dword_load(code, 8, d);
+    code.bytes(&[0x01, 0xc8]); // a += b
+    code.bytes(&[0x03, 0x44, 0x24, u8::try_from(x).unwrap()]); // a += x
+    code.bytes(&[0x41, 0x31, 0xc0, 0x41, 0xc1, 0xc8, 16]); // d = ror(d ^ a, 16)
+    code.bytes(&[0x44, 0x01, 0xc2]); // c += d
+    code.bytes(&[0x31, 0xd1, 0xc1, 0xc9, 12]); // b = ror(b ^ c, 12)
+    code.bytes(&[0x01, 0xc8]); // a += b
+    code.bytes(&[0x03, 0x44, 0x24, u8::try_from(y).unwrap()]); // a += y
+    code.bytes(&[0x41, 0x31, 0xc0, 0x41, 0xc1, 0xc8, 8]); // d = ror(d ^ a, 8)
+    code.bytes(&[0x44, 0x01, 0xc2]); // c += d
+    code.bytes(&[0x31, 0xd1, 0xc1, 0xc9, 7]); // b = ror(b ^ c, 7)
+    emit_stack_dword_store(code, 0, a);
+    emit_stack_dword_store(code, 1, b);
+    emit_stack_dword_store(code, 2, c);
+    emit_stack_dword_store(code, 8, d);
+}
+
+fn entropy_mix_blake2s_pool_sample() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // sample pointer
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // pool pointer
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]); // storage must be distinct
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x89, 0xf3]); // r10=sample, r11=pool
+    code.bytes(&[0x48, 0x81, 0xec, 0x80, 0, 0, 0]); // v[16], m[16]
+
+    for word in 0_u8..8 {
+        code.bytes(&[0x41, 0x8b, 0x42, word * 4]);
+        code.bytes(&[0x89, 0x44, 0x24, 64 + word * 4]);
+    }
+    for word in 8_u8..16 {
+        code.bytes(&[0xc7, 0x44, 0x24, 64 + word * 4, 0, 0, 0, 0]);
+    }
+
+    let mut initial = [0_u32; 16];
+    initial[..8].copy_from_slice(&BLAKE2S_IV);
+    initial[0] ^= 0x0101_0020; // digest length 32, fanout one, depth one
+    initial[6] ^= u32::from_le_bytes(*b"Topa");
+    initial[7] ^= u32::from_le_bytes(*b"lRNG");
+    initial[8..].copy_from_slice(&BLAKE2S_IV);
+    initial[12] ^= 32; // final block contains 32 bytes
+    initial[14] ^= u32::MAX; // final-block flag
+    for (lane, value) in initial.into_iter().enumerate() {
+        code.bytes(&[0xc7, 0x44, 0x24, u8::try_from(lane * 4).unwrap()]);
+        code.bytes(&value.to_le_bytes());
+    }
+
+    for sigma in BLAKE2S_SIGMA {
+        for (lanes, pair) in [
+            ([0, 4, 8, 12], [sigma[0], sigma[1]]),
+            ([1, 5, 9, 13], [sigma[2], sigma[3]]),
+            ([2, 6, 10, 14], [sigma[4], sigma[5]]),
+            ([3, 7, 11, 15], [sigma[6], sigma[7]]),
+            ([0, 5, 10, 15], [sigma[8], sigma[9]]),
+            ([1, 6, 11, 12], [sigma[10], sigma[11]]),
+            ([2, 7, 8, 13], [sigma[12], sigma[13]]),
+            ([3, 4, 9, 14], [sigma[14], sigma[15]]),
+        ] {
+            emit_blake2s_g(&mut code, lanes, pair);
+        }
+    }
+
+    let mut hash = BLAKE2S_IV;
+    hash[0] ^= 0x0101_0020;
+    hash[6] ^= u32::from_le_bytes(*b"Topa");
+    hash[7] ^= u32::from_le_bytes(*b"lRNG");
+    for (word, value) in hash.into_iter().enumerate() {
+        emit_stack_dword_load(&mut code, 0, word * 4);
+        code.bytes(&[0x33, 0x44, 0x24, u8::try_from((word + 8) * 4).unwrap()]);
+        code.bytes(&[0x35]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x41, 0x89, 0x43, u8::try_from(word * 4).unwrap()]);
+    }
+
+    code.bytes(&[0x49, 0x8b, 0x03]);
+    for offset in [8_u8, 16, 24] {
+        code.bytes(&[0x49, 0x0b, 0x43, offset]);
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail_stack");
+
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        code.bytes(&[0x49, 0x89, 0x42, offset]);
+    }
+    for offset in [0_u8, 8, 16, 24] {
+        code.bytes(&[0x49, 0x0b, 0x42, offset]);
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail_stack");
+    code.bytes(&[0x48, 0x81, 0xc4, 0x80, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fail_stack")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        code.bytes(&[0x49, 0x89, 0x43, offset, 0x49, 0x89, 0x42, offset]);
+    }
+    code.bytes(&[0x48, 0x81, 0xc4, 0x80, 0, 0, 0]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -675,6 +835,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
+        &entropy_mix_blake2s_pool_sample()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -784,6 +950,17 @@ pub fn generate_x86_64_systems_provider_object(
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL.as_bytes().to_vec(),
         value: sample_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+    let pool_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL.as_bytes().to_vec(),
+        value: pool_offset,
         size: 32,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
@@ -4709,6 +4886,9 @@ fn append_note_field(note: &mut Vec<u8>, field: &[u8]) {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+    use std::process::Command;
+
     use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
@@ -4734,6 +4914,56 @@ mod tests {
         let start = usize::try_from(symbol.address()).unwrap();
         let end = start + usize::try_from(symbol.size()).unwrap();
         data[start..end].to_vec()
+    }
+
+    #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+    fn check_entropy_mix_against_independent_reference(bytes: &[u8]) {
+        let encoded = bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let script = r#"
+import ctypes
+import hashlib
+import mmap
+import sys
+
+code = bytes.fromhex(sys.argv[1])
+memory = mmap.mmap(
+    -1,
+    len(code),
+    prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC,
+)
+memory.write(code)
+address = ctypes.addressof(ctypes.c_char.from_buffer(memory))
+function = ctypes.CFUNCTYPE(
+    ctypes.c_uint32,
+    ctypes.POINTER(ctypes.c_ubyte),
+    ctypes.POINTER(ctypes.c_ubyte),
+)(address)
+sample = (ctypes.c_ubyte * 32)(*range(32))
+pool = (ctypes.c_ubyte * 32)()
+assert function(sample, pool) == 1
+assert bytes(sample) == bytes(32)
+expected = hashlib.blake2s(
+    bytes(range(32)),
+    digest_size=32,
+    person=b"TopalRNG",
+).digest()
+assert expected.hex() == "dd8ab1645ca92dd40c801f4f9ac8a4852159709249e4cdb4cf7cab58e899e24e"
+assert bytes(pool) == expected
+"#;
+        let output = Command::new("python3")
+            .arg("-c")
+            .arg(script)
+            .arg(encoded)
+            .output()
+            .expect("Python is available for the independent BLAKE2s reference check");
+        assert!(
+            output.status.success(),
+            "generated entropy mix failed its executable reference check: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     #[test]
@@ -4797,7 +5027,7 @@ mod tests {
             .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
             .unwrap();
         assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
-        assert_eq!(entropy_storage.size(), 32);
+        assert_eq!(entropy_storage.size(), 64);
         assert_eq!(entropy_storage.align(), 32);
         let raw_sample = file
             .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
@@ -4805,6 +5035,12 @@ mod tests {
         assert_eq!(raw_sample.size(), 32);
         assert_eq!(raw_sample.address(), 0);
         assert_eq!(raw_sample.section_index(), entropy_storage.index().into());
+        let pool_state = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL)
+            .unwrap();
+        assert_eq!(pool_state.size(), 32);
+        assert_eq!(pool_state.address(), 32);
+        assert_eq!(pool_state.section_index(), entropy_storage.index().into());
         let note = file
             .section_by_name(X86_SYSTEMS_PROVIDER_NOTE_SECTION)
             .unwrap()
@@ -5162,6 +5398,51 @@ mod tests {
                 );
             }
         }
+        let mix = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(mix.address()).unwrap();
+        let end = start + usize::try_from(mix.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(bytes.len() > 5_000, "scalar BLAKE2s lowering is complete");
+        assert!(
+            bytes
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xec, 0x80, 0, 0, 0])
+        );
+        for rotation in [16_u8, 12, 8, 7] {
+            assert_eq!(
+                bytes
+                    .windows(4)
+                    .filter(|window| *window == [0x41, 0xc1, 0xc8, rotation])
+                    .count()
+                    + bytes
+                        .windows(3)
+                        .filter(|window| *window == [0xc1, 0xc9, rotation])
+                        .count(),
+                80,
+                "each BLAKE2s G half-round uses the selected rotation"
+            );
+        }
+        for value in [0x6b08_e647_u32, 0x7ef3_b6ff, 0x1cae_9f75] {
+            assert!(bytes.windows(4).any(|window| window == value.to_le_bytes()));
+        }
+        for offset in [0_u8, 8, 16, 24] {
+            assert!(
+                bytes
+                    .windows(4)
+                    .any(|window| window == [0x49, 0x89, 0x42, offset]),
+                "the consumed sample qword is wiped"
+            );
+            assert!(
+                bytes
+                    .windows(4)
+                    .any(|window| window == [0x49, 0x0b, 0x42, offset]),
+                "the consumed sample qword wipe is verified"
+            );
+        }
+        #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+        check_entropy_mix_against_independent_reference(bytes);
         let publish = file
             .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
             .unwrap();

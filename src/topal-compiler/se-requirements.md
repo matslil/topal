@@ -551,6 +551,16 @@ affine source-owned pool state without emitting provider code or storage; and
 reject malformed, omitted, duplicated, reordered, substituted, or premature
 creation.
 
+The bounded entropy-mixing refinement shall accept exactly one first-generation
+mix after empty-pool creation. It shall validate pool, sample, conditioner, and
+contribution identity one; exact 32-byte input; 256-bit contribution; assessed
+sample and empty-pool pre-states; and exact ordering. The provider shall
+compute BLAKE2s-256 personalized by `TopalRNG`, publish all 32 opaque pool-state
+bytes, wipe all 32 sample bytes, and return success only after both actions.
+The root shall preserve zero pool credit and the separate affine contribution
+token and shall reject malformed, partial, duplicated, reordered, substituted,
+or premature mixing.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

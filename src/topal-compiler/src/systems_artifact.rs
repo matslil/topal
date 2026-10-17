@@ -17,22 +17,23 @@ use topal_language::compiler::{
     CompilerBootstrapStorageRequest, CompilerCriticalDomain, CompilerDmaBufferIntegerLoadRequest,
     CompilerDmaBufferIntegerStoreRequest, CompilerDmaBufferPreparationRequest,
     CompilerDmaBufferReferenceRequest, CompilerDmaBufferRequest, CompilerDmaBufferRole,
-    CompilerDmaDirection, CompilerEntropyPoolRequest, CompilerEntropySampleCaptureRequest,
-    CompilerEntropySampleQualityRequest, CompilerKernelMappingRequest,
-    CompilerPciConfigurationDwordRequest, CompilerPciConfigurationWordUpdateRequest,
-    CompilerPciRegionDmaReferenceRequest, CompilerPciRegionRegisterDirection,
-    CompilerPciRegionRegisterRequest, CompilerSystemsDisposition, CompilerSystemsOperation,
-    CompilerSystemsProgram, CompilerSystemsTransition, CompilerTranslationEditKind,
-    CompilerTranslationMappingRequest, CompilerTranslationUpdateRequest,
-    SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END, SYSTEMS_ATOMIC_LOAD,
-    SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE, SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
-    SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE, SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
-    SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER, SYSTEMS_CRITICAL_RESTORE,
-    SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM, SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT,
-    SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
-    SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
+    CompilerDmaDirection, CompilerEntropyPoolMixRequest, CompilerEntropyPoolRequest,
+    CompilerEntropySampleCaptureRequest, CompilerEntropySampleQualityRequest,
+    CompilerKernelMappingRequest, CompilerPciConfigurationDwordRequest,
+    CompilerPciConfigurationWordUpdateRequest, CompilerPciRegionDmaReferenceRequest,
+    CompilerPciRegionRegisterDirection, CompilerPciRegionRegisterRequest,
+    CompilerSystemsDisposition, CompilerSystemsOperation, CompilerSystemsProgram,
+    CompilerSystemsTransition, CompilerTranslationEditKind, CompilerTranslationMappingRequest,
+    CompilerTranslationUpdateRequest, SYSTEMS_ATOMIC_COMPARE_EXCHANGE, SYSTEMS_ATOMIC_END,
+    SYSTEMS_ATOMIC_LOAD, SYSTEMS_ATOMIC_WORD_CREATE, SYSTEMS_BOOT_MEMORY_DESCRIBE,
+    SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE, SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+    SYSTEMS_BOOTSTRAP_STORAGE_PROVISION, SYSTEMS_CONSOLE_WRITE, SYSTEMS_CRITICAL_ENTER,
+    SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEADLINE_AFTER, SYSTEMS_DEADLINE_ARM,
+    SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK, SYSTEMS_FATAL,
+    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_MAP,
+    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE, SYSTEMS_KERNEL_UNMAP,
+    SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
     SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW, SYSTEMS_RESUME_DEADLINE,
     SYSTEMS_RESUME_DEBUG_BREAK, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -52,16 +53,16 @@ use topal_language::compiler::{
 use topal_language::compiler::{
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
-    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
-    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE,
-    SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
-    SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
-    SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
+    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
+    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
+    SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
+    SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
+    SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END,
@@ -88,7 +89,8 @@ use crate::{
     X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL, X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL,
     X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL, X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL,
     X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL, X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL,
-    X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL, X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+    X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL, X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
+    X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL, X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_COMPLETE_SYMBOL,
     X86_SYSTEMS_LOCAL_NOTIFICATION_SEND_SYMBOL, X86_SYSTEMS_LOCAL_NOTIFICATION_WAIT_SYMBOL,
     X86_SYSTEMS_MONOTONIC_CLOCK_NOW_SYMBOL, X86_SYSTEMS_PCI_CONFIGURATION_READ_DWORD_SYMBOL,
@@ -117,8 +119,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/90";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/88";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/91";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/89";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1114,6 +1116,7 @@ enum ProviderSymbol {
     CompleteDmaBufferForCpu,
     LoadDmaBufferInteger,
     CaptureEntropySample,
+    MixEntropyPoolSample,
     PublishPciRegionDmaReference,
     ReadPciRegionRegister,
     ReadPciRegionRegisterEventually,
@@ -1158,6 +1161,7 @@ enum ProviderSymbol {
     DmaVirtqueueControl,
     DmaEntropyPayload,
     RawEntropySample,
+    EntropyPoolState,
 }
 
 impl ProviderSymbol {
@@ -1190,6 +1194,7 @@ impl ProviderSymbol {
             Self::CompleteDmaBufferForCpu => X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL,
             Self::LoadDmaBufferInteger => X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL,
             Self::CaptureEntropySample => X86_SYSTEMS_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+            Self::MixEntropyPoolSample => X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL,
             Self::PublishPciRegionDmaReference => X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
             Self::ReadPciRegionRegister => X86_SYSTEMS_PCI_REGION_READ_SYMBOL,
             Self::ReadPciRegionRegisterEventually => X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL,
@@ -1248,6 +1253,7 @@ impl ProviderSymbol {
             Self::DmaVirtqueueControl => X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL,
             Self::DmaEntropyPayload => X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL,
             Self::RawEntropySample => X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
+            Self::EntropyPoolState => X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL,
         }
     }
 
@@ -1257,6 +1263,7 @@ impl ProviderSymbol {
             | Self::DmaVirtqueueControl
             | Self::DmaEntropyPayload
             | Self::RawEntropySample => SymbolKind::Data,
+            Self::EntropyPoolState => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
             | Self::BeginTranslation
@@ -1284,6 +1291,7 @@ impl ProviderSymbol {
             | Self::CompleteDmaBufferForCpu
             | Self::LoadDmaBufferInteger
             | Self::CaptureEntropySample
+            | Self::MixEntropyPoolSample
             | Self::PublishPciRegionDmaReference
             | Self::ReadPciRegionRegister
             | Self::ReadPciRegionRegisterEventually
@@ -1398,6 +1406,7 @@ struct RootEncoder {
     entropy_sample_captured: bool,
     entropy_sample_assessed: bool,
     entropy_pool_created: bool,
+    entropy_pool_mixed: bool,
     monotonic_observations: u8,
     deadline: RootDeadlineState,
     kernel_context: RootKernelContextState,
@@ -1553,10 +1562,12 @@ struct ProviderSymbols {
     complete_dma_buffer_for_cpu: SymbolId,
     load_dma_buffer_integer: SymbolId,
     capture_entropy_sample: SymbolId,
+    mix_entropy_pool_sample: SymbolId,
     publish_pci_region_dma_reference: SymbolId,
     dma_virtqueue_control: SymbolId,
     dma_entropy_payload: SymbolId,
     raw_entropy_sample: SymbolId,
+    entropy_pool_state: SymbolId,
     read_pci_region_register: SymbolId,
     read_pci_region_register_eventually: SymbolId,
     write_pci_region_register: SymbolId,
@@ -2084,6 +2095,11 @@ impl RootEncoder {
         if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_pool_created {
             return Err(CompileError::Tool(
                 "x86 root lowering ended without the sealed empty entropy pool".into(),
+            ));
+        }
+        if self.role == RootRole::BootstrapWithLocalNotification && !self.entropy_pool_mixed {
+            return Err(CompileError::Tool(
+                "x86 root lowering ended without the sealed first entropy-pool mix".into(),
             ));
         }
         if self.role == RootRole::BootstrapWithLocalNotification
@@ -2802,6 +2818,29 @@ impl RootEncoder {
             ));
         }
         self.entropy_pool_created = true;
+        Ok(())
+    }
+
+    fn mix_entropy_pool_sample(
+        &mut self,
+        request: CompilerEntropyPoolMixRequest,
+    ) -> Result<(), CompileError> {
+        if !self.entropy_sample_assessed
+            || !self.entropy_pool_created
+            || self.entropy_pool_mixed
+            || !request.is_well_formed()
+            || request != CompilerEntropyPoolMixRequest::INITIAL_Q35
+        {
+            return Err(CompileError::Tool(
+                "x86 entropy-pool mixing requires the exact sealed BLAKE2s first-generation request after assessment and empty-pool creation".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x3d]);
+        self.rip_relative_symbol(ProviderSymbol::RawEntropySample, 0)?;
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x35]);
+        self.rip_relative_symbol(ProviderSymbol::EntropyPoolState, 0)?;
+        self.call_checked_bool(ProviderSymbol::MixEntropyPoolSample)?;
+        self.entropy_pool_mixed = true;
         Ok(())
     }
 
@@ -3912,6 +3951,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::CaptureEntropySample,
         ),
+        mix_entropy_pool_sample: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::MixEntropyPoolSample,
+        ),
         publish_pci_region_dma_reference: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::PublishPciRegionDmaReference,
@@ -3927,6 +3970,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         raw_entropy_sample: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RawEntropySample,
+        ),
+        entropy_pool_state: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::EntropyPoolState,
         ),
         read_pci_region_register: undefined_provider_symbol(
             &mut object,
@@ -4493,6 +4540,9 @@ fn encode_operations(
             CompilerSystemsOperation::CreateEntropyPool { request } => {
                 encoder.create_entropy_pool(*request)?;
             }
+            CompilerSystemsOperation::MixEntropyPoolSample { request } => {
+                encoder.mix_entropy_pool_sample(*request)?;
+            }
             CompilerSystemsOperation::PublishPciRegionDmaReference { request } => {
                 encoder.publish_pci_region_dma_reference(*request)?;
             }
@@ -4677,12 +4727,14 @@ fn append_root(
             ProviderSymbol::CompleteDmaBufferForCpu => provider_symbols.complete_dma_buffer_for_cpu,
             ProviderSymbol::LoadDmaBufferInteger => provider_symbols.load_dma_buffer_integer,
             ProviderSymbol::CaptureEntropySample => provider_symbols.capture_entropy_sample,
+            ProviderSymbol::MixEntropyPoolSample => provider_symbols.mix_entropy_pool_sample,
             ProviderSymbol::PublishPciRegionDmaReference => {
                 provider_symbols.publish_pci_region_dma_reference
             }
             ProviderSymbol::DmaVirtqueueControl => provider_symbols.dma_virtqueue_control,
             ProviderSymbol::DmaEntropyPayload => provider_symbols.dma_entropy_payload,
             ProviderSymbol::RawEntropySample => provider_symbols.raw_entropy_sample,
+            ProviderSymbol::EntropyPoolState => provider_symbols.entropy_pool_state,
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
             ProviderSymbol::ReadPciRegionRegisterEventually => {
                 provider_symbols.read_pci_region_register_eventually
@@ -4928,6 +4980,15 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                     request.pool_identity,
                     request.credit_capacity_bits,
                     request.initial_credited_entropy_bits,
+                ),
+                CompilerSystemsTransition::MixEntropyPoolSample { request } => format!(
+                    "{identity}:pool={}:sample={}:conditioner={}:contribution={}:bytes={}:contribution-entropy-bits={}",
+                    request.pool_identity,
+                    request.sample_identity,
+                    request.conditioner_identity,
+                    request.contribution_identity,
+                    request.byte_count,
+                    request.contribution_entropy_bits,
                 ),
                 CompilerSystemsTransition::PublishPciRegionDmaReference {
                     transaction_identity,
@@ -5385,7 +5446,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 2561);
+        assert_eq!(relocation_targets.len(), 2596);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -5539,7 +5600,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2206
+            2237
         );
         assert_eq!(
             relocation_targets
@@ -5607,6 +5668,13 @@ mod tests {
         assert_eq!(
             relocation_targets
                 .iter()
+                .filter(|target| **target == X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL)
+                .count(),
+            1
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
                 .count(),
             3
@@ -5615,6 +5683,13 @@ mod tests {
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
+                .count(),
+            2
+        );
+        assert_eq!(
+            relocation_targets
+                .iter()
+                .filter(|target| **target == X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL)
                 .count(),
             1
         );
@@ -5665,7 +5740,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            137
+            138
         );
         assert_eq!(
             relocation_targets
@@ -5725,7 +5800,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            55,
+            56,
             "root must derive opaque storage for DMA, atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -5822,10 +5897,12 @@ mod tests {
                 "topal_x86_systems_dma_buffer_complete_cpu",
                 "topal_x86_systems_dma_buffer_load_integer_equals",
                 "topal_x86_systems_entropy_capture_dma_sample",
+                "topal_x86_systems_entropy_mix_blake2s_pool_sample",
                 "topal_x86_systems_pci_region_configuration_gateway_write_dma_reference",
                 "topal_x86_systems_dma_virtqueue_control",
                 "topal_x86_systems_dma_entropy_payload",
                 "topal_x86_systems_raw_entropy_sample",
+                "topal_x86_systems_entropy_pool_state",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",
@@ -5936,7 +6013,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 292);
+        assert_eq!(decoded.semantic_trace.len(), 294);
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
@@ -6448,6 +6525,19 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_ENTROPY_POOL_CREATED")
             )
         );
+        assert_eq!(
+            decoded.semantic_trace[221],
+            format!(
+                "{SYSTEMS_ENTROPY_POOL_MIX_SAMPLE}:pool=1:sample=1:conditioner=1:contribution=1:bytes=32:contribution-entropy-bits=256"
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[222],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_ENTROPY_POOL_MIXED")
+            )
+        );
         decoded.semantic_trace.drain(195..198);
         decoded.semantic_trace.drain(166..194);
         decoded.semantic_trace.drain(120..136);
@@ -6656,7 +6746,7 @@ mod tests {
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[148].starts_with("topal.systems.context.user.complete/1"));
-        assert!(decoded.semantic_trace[172].starts_with(SYSTEMS_FATAL));
+        assert!(decoded.semantic_trace[174].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
             publish_x86_64_systems_artifact(&program(), &tools, &repeated_destination).unwrap();

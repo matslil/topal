@@ -1023,6 +1023,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     initial-credited-entropy-bits is 0
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_POOL_CREATED"
+                                                                                                                  completion-resumed entropy pool mix sample (
+                                                                                                                    pool-identity is 1,
+                                                                                                                    sample-identity is 1,
+                                                                                                                    conditioner-identity is 1,
+                                                                                                                    contribution-identity is 1,
+                                                                                                                    byte-count is 32,
+                                                                                                                    contribution-entropy-bits is 256
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_ENTROPY_POOL_MIXED"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {

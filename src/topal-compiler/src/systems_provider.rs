@@ -10,16 +10,16 @@ use topal_language::compiler::{
     SYSTEMS_CRITICAL_RESTORE, SYSTEMS_DEBUG_BREAK, SYSTEMS_DMA_BUFFER_BIND_REFERENCE,
     SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE, SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
     SYSTEMS_DMA_BUFFER_PREPARE_DEVICE, SYSTEMS_DMA_BUFFER_STORE_INTEGER,
-    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
-    SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE,
-    SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE, SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE,
-    SYSTEMS_KERNEL_COMPLETION_CONSUME, SYSTEMS_KERNEL_COMPLETION_CREATE,
-    SYSTEMS_KERNEL_COMPLETION_SIGNAL, SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION,
-    SYSTEMS_KERNEL_CONTEXT_CREATE, SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT,
-    SYSTEMS_KERNEL_CONTEXT_RECLAIM, SYSTEMS_KERNEL_CONTEXT_RETIRE,
-    SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED, SYSTEMS_KERNEL_CONTEXT_TRANSFER,
-    SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE, SYSTEMS_KERNEL_MAP,
-    SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
+    SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+    SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
+    SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
+    SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
+    SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT, SYSTEMS_KERNEL_CONTEXT_RECLAIM,
+    SYSTEMS_KERNEL_CONTEXT_RETIRE, SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED,
+    SYSTEMS_KERNEL_CONTEXT_TRANSFER, SYSTEMS_KERNEL_CONTEXT_TRANSFER_UNTIL_DEADLINE,
+    SYSTEMS_KERNEL_MAP, SYSTEMS_KERNEL_MAPPING_LOAD_BYTE, SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_CONSUME, SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE, SYSTEMS_LOCAL_NOTIFICATION_SEND,
@@ -48,7 +48,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/83";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/84";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -128,6 +128,7 @@ pub enum X86SystemsLowering {
     CompleteCoherentDmaForCpu,
     LoadCpuOwnedDmaInteger,
     CaptureOpaqueRawEntropySample,
+    MixBlake2sEntropyPoolSample,
     PciConfigurationMechanismOneReadDword,
     PciConfigurationMechanismOneUpdateWord,
     PciConfigurationGatewayRegionRead,
@@ -290,6 +291,9 @@ impl X86SystemsLowering {
             Self::LoadCpuOwnedDmaInteger => "topal.provider.x86_64.dma.load-cpu-owned-integer/1",
             Self::CaptureOpaqueRawEntropySample => {
                 "topal.provider.x86_64.entropy.capture-opaque-raw-sample/1"
+            }
+            Self::MixBlake2sEntropyPoolSample => {
+                "topal.provider.x86_64.entropy.mix-blake2s-pool-sample/1"
             }
             Self::PciConfigurationMechanismOneReadDword => {
                 "topal.provider.x86_64.pci-configuration.mechanism-one-read-dword/1"
@@ -578,6 +582,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_DMA_BUFFER_COMPLETE_CPU => X86SystemsLowering::CompleteCoherentDmaForCpu,
         SYSTEMS_DMA_BUFFER_LOAD_INTEGER => X86SystemsLowering::LoadCpuOwnedDmaInteger,
         SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA => X86SystemsLowering::CaptureOpaqueRawEntropySample,
+        SYSTEMS_ENTROPY_POOL_MIX_SAMPLE => X86SystemsLowering::MixBlake2sEntropyPoolSample,
         SYSTEMS_PCI_CONFIGURATION_READ_DWORD => {
             X86SystemsLowering::PciConfigurationMechanismOneReadDword
         }
@@ -711,6 +716,7 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::CompleteCoherentDmaForCpu => SYSTEMS_DMA_BUFFER_COMPLETE_CPU,
             X86SystemsLowering::LoadCpuOwnedDmaInteger => SYSTEMS_DMA_BUFFER_LOAD_INTEGER,
             X86SystemsLowering::CaptureOpaqueRawEntropySample => SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
+            X86SystemsLowering::MixBlake2sEntropyPoolSample => SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
             X86SystemsLowering::PciConfigurationMechanismOneReadDword => {
                 SYSTEMS_PCI_CONFIGURATION_READ_DWORD
             }
@@ -764,7 +770,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 78);
+        assert_eq!(plan.operations.len(), 79);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -831,6 +837,10 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA
                 && operation.lowering == X86SystemsLowering::CaptureOpaqueRawEntropySample
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+                && operation.lowering == X86SystemsLowering::MixBlake2sEntropyPoolSample
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_PCI_REGION_READ
