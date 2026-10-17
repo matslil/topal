@@ -72,6 +72,8 @@ pub const SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION: &str =
 pub const SYSTEMS_ENTROPY_GENERATOR_INITIALIZE: &str =
     "topal.systems.entropy.generator.initialize/1";
 pub const SYSTEMS_ENTROPY_GENERATOR_EXTRACT: &str = "topal.systems.entropy.generator.extract/1";
+pub const SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM: &str =
+    "topal.systems.entropy.output.deliver-initial-auxv-random/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -699,6 +701,60 @@ impl EntropyGeneratorExtractRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyOutputDeliveryRequest {
+    pub output_identity: u64,
+    pub source_byte_count: u64,
+    pub selected_offset_bytes: u64,
+    pub delivered_byte_count: u64,
+    pub discarded_offset_bytes: u64,
+    pub discarded_byte_count: u64,
+    pub address_space_identity: u64,
+    pub interface_identity: u64,
+    pub auxiliary_tag: u64,
+    pub single_use: bool,
+}
+
+impl EntropyOutputDeliveryRequest {
+    pub const INITIAL_AUXV_RANDOM: Self = Self {
+        output_identity: 1,
+        source_byte_count: 32,
+        selected_offset_bytes: 0,
+        delivered_byte_count: 16,
+        discarded_offset_bytes: 16,
+        discarded_byte_count: 16,
+        address_space_identity: 1,
+        interface_identity: 1,
+        auxiliary_tag: 25,
+        single_use: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.output_identity != 0
+            && self.source_byte_count != 0
+            && self.delivered_byte_count != 0
+            && self.address_space_identity != 0
+            && self.interface_identity != 0
+            && self.auxiliary_tag != 0
+            && self.single_use
+            && match self
+                .selected_offset_bytes
+                .checked_add(self.delivered_byte_count)
+            {
+                Some(end) => end == self.discarded_offset_bytes,
+                None => false,
+            }
+            && match self
+                .discarded_offset_bytes
+                .checked_add(self.discarded_byte_count)
+            {
+                Some(end) => end == self.source_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PciRegionDmaReferenceRequest {
     pub segment: u16,
     pub bus: u8,
@@ -1002,6 +1058,9 @@ pub enum SystemsOperation {
     ExtractEntropyGenerator {
         request: EntropyGeneratorExtractRequest,
     },
+    DeliverInitialAuxvRandom {
+        request: EntropyOutputDeliveryRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -1126,6 +1185,9 @@ impl SystemsOperation {
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
+            Self::DeliverInitialAuxvRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1388,6 +1450,9 @@ pub enum SystemsTransition {
     },
     ExtractEntropyGenerator {
         request: EntropyGeneratorExtractRequest,
+    },
+    DeliverInitialAuxvRandom {
+        request: EntropyOutputDeliveryRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1737,6 +1802,9 @@ impl SystemsTransition {
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
+            Self::DeliverInitialAuxvRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -2310,6 +2378,7 @@ struct BootstrapAuthorityState {
     entropy_pool_credited: bool,
     entropy_generator_ready: bool,
     entropy_generator_extracted: bool,
+    initial_auxv_random_delivered: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2841,6 +2910,23 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.entropy_generator_extracted = true;
+            }
+            SystemsOperation::DeliverInitialAuxvRandom { request } => {
+                if !self.entropy_generator_extracted
+                    || self.initial_auxv_random_delivered
+                    || !request.is_well_formed()
+                    || *request != EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-DELIVER",
+                        "initial AT_RANDOM delivery requires the exact live first output and prepared resident initial process before entry",
+                    ));
+                }
+                self.initial_auxv_random_delivered = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -3956,10 +4042,10 @@ impl BootstrapAuthorityState {
                         "user entry requires the exact prepared probe with both image mappings resident",
                     ));
                 };
-                if !self.critical_stack.is_empty() {
+                if !self.critical_stack.is_empty() || !self.initial_auxv_random_delivered {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user entry requires the exact prepared probe and restored kernel context",
+                        "user entry requires the exact prepared probe, delivered initial AT_RANDOM object, and restored kernel context",
                     ));
                 }
                 self.user_execution =
@@ -4349,6 +4435,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-USER-CONTEXT-LIVE",
                 "bootstrap completion requires one consumed getpid/exit_group user execution",
+            ));
+        }
+        if !self.initial_auxv_random_delivered {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-DELIVER-LIVE",
+                "bootstrap completion requires affine delivery of the first entropy output to initial AT_RANDOM",
             ));
         }
         Ok(())
@@ -6014,6 +6106,9 @@ fn model_bootstrap_operation(
         SystemsOperation::ExtractEntropyGenerator { request } => {
             transitions.push(SystemsTransition::ExtractEntropyGenerator { request: *request });
         }
+        SystemsOperation::DeliverInitialAuxvRandom { request } => {
+            transitions.push(SystemsTransition::DeliverInitialAuxvRandom { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6367,6 +6462,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CreditEntropyPoolContribution { .. }
         | SystemsOperation::InitializeEntropyGenerator { .. }
         | SystemsOperation::ExtractEntropyGenerator { .. }
+        | SystemsOperation::DeliverInitialAuxvRandom { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6516,6 +6612,7 @@ mod tests {
             SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION.into(),
             SYSTEMS_ENTROPY_GENERATOR_INITIALIZE.into(),
             SYSTEMS_ENTROPY_GENERATOR_EXTRACT.into(),
+            SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -7013,6 +7110,9 @@ mod tests {
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
+                        SystemsOperation::DeliverInitialAuxvRandom {
+                            request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
+                        },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
@@ -7288,6 +7388,7 @@ mod tests {
                 | SystemsOperation::UnmapUserAddressSpace
                 | SystemsOperation::ReleaseAnonymousUserMapping
                 | SystemsOperation::PrepareUserProbe { .. }
+                | SystemsOperation::DeliverInitialAuxvRandom { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
                 | SystemsOperation::ReclaimUserAddressSpace
@@ -7713,6 +7814,9 @@ mod tests {
                 SystemsTransition::PrepareUserProbe {
                     process_identity: 1,
                     probe_identity: 1,
+                },
+                SystemsTransition::DeliverInitialAuxvRandom {
+                    request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
                 },
                 SystemsTransition::EnterUserExecution {
                     process_identity: 1,
@@ -8707,6 +8811,7 @@ mod tests {
                         | SystemsOperation::UnmapUserAddressSpace
                         | SystemsOperation::ReleaseAnonymousUserMapping
                         | SystemsOperation::PrepareUserProbe { .. }
+                        | SystemsOperation::DeliverInitialAuxvRandom { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
                         | SystemsOperation::ReclaimUserAddressSpace

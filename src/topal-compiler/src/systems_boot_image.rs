@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/54";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/55";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -499,6 +499,9 @@ fn transition_code(kernel_entry: u64) -> Result<Vec<u8>, CompileError> {
     code.extend_from_slice(&[
         0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0x8e, 0xe0, 0x8e, 0xe8, 0xfc,
     ]);
+    // SeaBIOS leaves the legacy PIC timer live. Mask both PICs before source
+    // later restores IF; admitted interrupts are routed explicitly by APIC.
+    code.extend_from_slice(&[0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]);
     code.extend_from_slice(&[0x48, 0xbc]);
     code.extend_from_slice(&X86_INITIAL_STACK_TOP.to_le_bytes());
     code.extend_from_slice(&[0x48, 0xb8]);
@@ -989,6 +992,12 @@ mod tests {
             1
         );
         let protected = &generated.bytes[SETUP_BYTES..];
+        assert!(
+            protected[..4096]
+                .windows(6)
+                .any(|bytes| bytes == [0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]),
+            "long-mode handoff must mask both legacy PICs before source restores IF"
+        );
         let pml4 =
             usize::try_from(PAGE_TABLE_PML4_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
         assert_eq!(
