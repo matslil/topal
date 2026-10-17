@@ -785,6 +785,32 @@ values, pointer access before accepted request, partial publication, wrong
 errno, or retained pointers. This rule SHALL NOT define `TIOCSWINSZ`, geometry
 import, `SIGWINCH`, job control, ptys, displays, or a general ioctl registry.
 
+### TOPAL-SYSTEMS-USER-LSEEK-001 — Bounded initial console seek classification
+
+Every description and alias of the shared initial console SHALL have stream
+semantics and SHALL own no file-position state. The Linux personality SHALL
+implement `lseek` for the fixed initial descriptor table with descriptor-
+before-mode-before-object precedence.
+
+An invalid or closed descriptor SHALL return `-EBADF` before inspecting the
+seek mode. For a live console description, an unsigned `whence` from
+`SEEK_SET=0` through `SEEK_HOLE=4` SHALL return `-ESPIPE` independently of the
+signed 64-bit offset. A live description with `whence` greater than four SHALL
+return `-EINVAL` before object dispatch. No result path SHALL create, observe,
+or mutate a file position.
+
+The constructed ring-3 image SHALL require `-ESPIPE` for `SEEK_CUR` on input
+and output, `-EINVAL` for an unsupported mode on live output, and `-EBADF` for
+the same unsupported mode on slot zero after its final close. Source SHALL
+emit exactly one `TOPAL_KERNEL_USER_LSEEK_OK` observation before later
+lifecycle witnesses.
+
+The profile SHALL reject zero-position success, offset-dependent results for
+the console, mode validation before descriptor lookup, shared or per-slot
+position state, wrong errno, or state surviving close. This rule SHALL NOT
+define seekable files, shared offsets, positioned I/O, directories, block
+devices, pipes, sockets, or a general VFS seek operation.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user

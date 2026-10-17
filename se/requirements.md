@@ -816,6 +816,16 @@ byte, compare input and output descriptions, and reject a closed slot. Invented
 or host-derived geometry, partial publication, wrong precedence, or retained
 pointers shall fail closed.
 
+The initial descriptor adapter shall classify Linux `lseek` for the shared
+console without creating file-position state. It shall look up a descriptor
+before seek-mode validation, return exact `EBADF` for invalid or closed slots,
+return `ESPIPE` for modes zero through four on a live console independently of
+offset, and return `EINVAL` for a larger unsigned mode on a live console.
+Ring-3 qualification shall cover input and output `SEEK_CUR`, an unsupported
+live mode, and the same unsupported mode on a closed slot. Fabricated success,
+offset-dependent terminal results, wrong precedence, or retained position
+state shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from

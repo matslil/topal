@@ -717,6 +717,16 @@ shall prove input/output equality, every byte, closed-slot `EBADF`, invalid-
 candidate `EFAULT`, retained unknown-request `ENOTTY`, and ordered
 `TOPAL_KERNEL_USER_WINSIZE_OK` behavior.
 
+The bounded initial-console seek refinement shall lower Linux x86-64 `lseek`
+for the fixed descriptor table without allocating file-position state. The
+provider shall map native syscall 8, resolve the slot before mode validation,
+return `EBADF` for invalid or closed slots, return `ESPIPE` for modes zero
+through four on a live console independently of the signed offset, and return
+`EINVAL` for a larger unsigned mode on a live console. Ring-3 and provider-
+object evidence shall prove input/output `SEEK_CUR`, unsupported live mode,
+closed-slot precedence, absence of position mutation, and ordered
+`TOPAL_KERNEL_USER_LSEEK_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
