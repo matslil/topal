@@ -1103,6 +1103,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_CLOSE_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_DUP_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_FCNTL_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -1365,7 +1366,14 @@ bad-descriptor-error is 9,
 too-many-open-files-error is 24,
 console-input-description is 1,
 console-output-description is 2,
-console-error-description is 3
+console-error-description is 3,
+invalid-argument-error is 22,
+fcntl-getfd-command is 1,
+fcntl-setfd-command is 2,
+fcntl-getfl-command is 3,
+close-on-exec-flag is 1,
+read-only-status is 0,
+write-only-status is 1
 )
 
 lang systems artifact (

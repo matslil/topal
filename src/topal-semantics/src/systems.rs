@@ -1497,6 +1497,13 @@ pub enum SystemsDisposition {
         console_input_description: u64,
         console_output_description: u64,
         console_error_description: u64,
+        invalid_argument_error: u64,
+        fcntl_getfd_command: u64,
+        fcntl_setfd_command: u64,
+        fcntl_getfl_command: u64,
+        close_on_exec_flag: u64,
+        read_only_status: u64,
+        write_only_status: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -2496,6 +2503,13 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 console_input_description: 1,
                 console_output_description: 2,
                 console_error_description: 3,
+                invalid_argument_error: 22,
+                fcntl_getfd_command: 1,
+                fcntl_setfd_command: 2,
+                fcntl_getfl_command: 3,
+                close_on_exec_flag: 1,
+                read_only_status: 0,
+                write_only_status: 1,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2592,6 +2606,7 @@ struct BootstrapAuthorityState {
     constructed_user_read_completed: bool,
     constructed_user_close_completed: bool,
     constructed_user_dup_completed: bool,
+    constructed_user_fcntl_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -4023,6 +4038,22 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_dup_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_FCNTL_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_dup_completed
+                    || self.constructed_user_fcntl_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-metadata witness requires the duplication witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_fcntl_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -4034,6 +4065,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_read_completed
                     || !self.constructed_user_close_completed
                     || !self.constructed_user_dup_completed
+                    || !self.constructed_user_fcntl_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -5604,6 +5636,13 @@ fn model_user_execution_transition(
                     console_input_description: _,
                     console_output_description: _,
                     console_error_description: _,
+                    invalid_argument_error: _,
+                    fcntl_getfd_command: _,
+                    fcntl_setfd_command: _,
+                    fcntl_getfl_command: _,
+                    close_on_exec_flag: _,
+                    read_only_status: _,
+                    write_only_status: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -7579,6 +7618,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_DUP_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -7768,6 +7810,13 @@ mod tests {
                         console_input_description: 1,
                         console_output_description: 2,
                         console_error_description: 3,
+                        invalid_argument_error: 22,
+                        fcntl_getfd_command: 1,
+                        fcntl_setfd_command: 2,
+                        fcntl_getfl_command: 3,
+                        close_on_exec_flag: 1,
+                        read_only_status: 0,
+                        write_only_status: 1,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -7879,6 +7928,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_READ_OK"
                         || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                         || text == "TOPAL_KERNEL_USER_DUP_OK"
+                        || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8454,6 +8504,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_DUP_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -9283,6 +9336,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_READ_OK"
                             || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                             || text == "TOPAL_KERNEL_USER_DUP_OK"
+                            || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"

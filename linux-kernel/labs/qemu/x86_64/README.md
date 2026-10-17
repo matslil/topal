@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 80 ordered serial markers. The generated real-mode adapter
+and waits for the 81 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -263,6 +263,13 @@ the error description into zero, and closes that alias. The ordered
 `TOPAL_KERNEL_USER_DUP_OK` witness and terminal identity checks establish
 independent slot lifetime, preserved access mode, replacement ordering, and
 complete mapping teardown.
+The continuation also invokes Linux x86-64 `fcntl` to observe the output open
+description's `O_WRONLY` mode, set and read back per-slot `FD_CLOEXEC`, and
+reject an unsupported command. It proves `dup` leaves the source bit set but
+clears the new slot, `dup2` clears the replaced destination bit, and a closed
+slot returns `-EBADF` before command decoding. `TOPAL_KERNEL_USER_FCNTL_OK`
+and terminal flag erasure establish the separation between descriptor flags
+and shared open-description access modes.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range
