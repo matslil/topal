@@ -648,6 +648,14 @@ leaf-table window. This compiler-owned plan is portable file policy plus a
 target qualification bound, not a source-visible ELF parser, allocator, page
 table, or executable-selection operation.
 
+The bounded page-realization refinement converts only those checked facts into
+one ordered record per declared page. It requires adjacent load-page roles,
+names a future single affine extent with one frame per page, zeroes that whole
+extent before four exact segment copies, and assigns RW/NX construction plus
+final RO/NX, RO/X, or RW/NX permissions. RELRO pages become RO/NX within the
+writable role. This remains an immutable compiler plan, not frame ownership,
+mapping authority, executable selection, or a source-visible page-table API.
+
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
 and before either mapping is unmapped. At that boundary one RO/X code mapping

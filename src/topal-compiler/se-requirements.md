@@ -271,6 +271,16 @@ envelope without committing third-party bytes and shall reject each malformed
 class independently. The existing sealed two-page runtime validator shall
 remain stricter and shall not select a plan-only image.
 
+The bounded static-ELF page-realization increment shall consume that checked
+plan without reparsing ELF bytes. It shall require exact adjacency, derive one
+future span-sized affine request with alignment one, enumerate every virtual
+page and frame ordinal, start every page RW/NX, assign final RO/NX, RO/X, or
+RW/NX including RELRO tightening, and retain one whole-span zero followed by
+the four exact file-copy intervals. Tests shall prove the pinned 503-page role
+counts, complete ordered coverage, zero-before-copy, no W+X state, and rejection
+of gaps or malformed inherited plans. It shall grant no runtime authority or
+make the image selectable.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

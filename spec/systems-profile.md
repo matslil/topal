@@ -553,6 +553,33 @@ publication. This rule SHALL NOT make the image runtime-selectable or admit
 PIE, relocation, dynamic loading, overlapping load pages, executable stacks,
 or more than one leaf-table window.
 
+### TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001 — Bounded page realization
+
+A bounded static-ELF page-realization plan SHALL consume only a successful
+`TOPAL-SYSTEMS-STATIC-ELF-PLAN-001` result and SHALL NOT reparse input bytes.
+The four page intervals SHALL be exactly adjacent and completely cover the
+combined span. Success SHALL name one future affine physical-frame request
+whose frame count equals the span page count and whose alignment is one frame,
+plus exactly one ordered record for each virtual page with a distinct
+zero-based frame ordinal.
+
+Every page SHALL begin with RW/NX construction permission. Header and immutable
+data pages SHALL finalize RO/NX, executable pages SHALL finalize RO/X, and
+writable-data pages SHALL finalize RW/NX except that every RELRO page SHALL
+finalize RO/NX. No initial or final permission SHALL combine W and X. The plan
+SHALL require zeroing the complete frame extent before four ordered copies from
+the exact validated file intervals to their corresponding memory starts.
+
+Success SHALL retain the entry, TLS, RELRO, zero, copy, page-role, and extent
+facts without borrowed input pointers. It SHALL grant no frame, mapping, copy,
+permission-publication, entry, or source-visible address authority. Missing,
+duplicate, unordered, uncovered, or multiply covered pages; nonadjacent roles;
+wrong ordinals or request count; copy outside a declared role; RELRO outside
+the writable role; and any W+X state SHALL reject the complete realization
+before artifact publication. This rule SHALL NOT make the image runtime-
+selectable or require one physically contiguous extent outside the current
+x86-64 qualification profile.
+
 ### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
 
 `user mapping permit writable data` SHALL consume only the generation-two

@@ -523,6 +523,15 @@ Success shall retain only immutable checked interval, permission, entry, TLS,
 RELRO, and stack facts. It shall grant no frame, mapping, copy, or entry
 authority and shall not make the planned image runtime-selectable.
 
+The bounded static-ELF page-realization refinement shall consume only a
+successful immutable load plan. It shall reject nonadjacent load-page roles and
+derive one future affine frame request equal to the complete page count, one
+ordered virtual-page/frame-ordinal record per page, initial RW/NX construction,
+and exact final RO/NX, RO/X, or RW/NX permission. It shall make RELRO pages
+RO/NX inside the writable role, require complete-span zeroing before the four
+exact file copies, prove complete page coverage and no W+X final state, and
+retain no allocation, mapping, copy, permission-publication, or entry authority.
+
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
 ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and
