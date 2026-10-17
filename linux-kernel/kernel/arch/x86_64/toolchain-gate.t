@@ -1106,6 +1106,7 @@ completion-resumed console write "TOPAL_KERNEL_USER_DUP_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_FCNTL_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_FSTAT_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_TCGETS_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_WINSIZE_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -1386,7 +1387,9 @@ terminal-layout-bytes is 36,
 terminal-get-attributes-request is 21505,
 terminal-control-flags is 2239,
 terminal-minimum-input is 1,
-not-a-terminal-error is 25
+not-a-terminal-error is 25,
+window-size-layout-bytes is 8,
+window-size-query-request is 21523
 )
 
 lang systems artifact (

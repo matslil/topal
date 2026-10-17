@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 61
+        || fields.len() != 63
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1043,6 +1043,8 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[58], "terminal-control-flags")? != 2239
         || field_natural(source, &fields[59], "terminal-minimum-input")? != 1
         || field_natural(source, &fields[60], "not-a-terminal-error")? != 25
+        || field_natural(source, &fields[61], "window-size-layout-bytes")? != 8
+        || field_natural(source, &fields[62], "window-size-query-request")? != 21523
     {
         return Err(user_context_diagnostic(
             source,
@@ -1091,6 +1093,8 @@ fn analyze_user_syscall_handler(
         terminal_control_flags: 2239,
         terminal_minimum_input: 1,
         not_a_terminal_error: 25,
+        window_size_layout_bytes: 8,
+        window_size_query_request: 21523,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3474,6 +3478,7 @@ fn analyze_kernel_context_decision(
         user_fcntl_marker_statement,
         user_fstat_marker_statement,
         user_tcgets_marker_statement,
+        user_winsize_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3704,6 +3709,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_tcgets_marker_statement),
             "returned user execution requires its exact terminal-attributes marker",
+        ));
+    }
+    let user_winsize_marker = analyze_operation(
+        source,
+        user_winsize_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_winsize_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_winsize_marker_statement),
+            "returned user execution requires its exact console-geometry marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4886,6 +4908,7 @@ fn analyze_kernel_context_decision(
         user_fcntl_marker,
         user_fstat_marker,
         user_tcgets_marker,
+        user_winsize_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -10086,6 +10109,9 @@ mod tests {
                 CompilerSystemsOperation::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
                 },
+                CompilerSystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
@@ -10310,7 +10336,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 256);
+        assert_eq!(program.bootstrap.handler.operations.len(), 257);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
