@@ -83,14 +83,17 @@ pub use topal_semantics::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -9256,6 +9259,9 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -10375,13 +10381,14 @@ mod tests {
     #[test]
     fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
         // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001,
-        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
         let program = analyze_systems_for_compiler(
             &memory_source(),
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 265);
+        assert_eq!(program.bootstrap.handler.operations.len(), 269);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10457,6 +10464,9 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -12470,8 +12480,6 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
         let metadata_request = "frame-count is 1,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
         let metadata_request_two = "frame-count is 2,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
-        let ordered_release = "unmapped frames release static-elf-leaf-table-frame\n                                                                          unmapped frames release static-elf-frames";
-        let reversed_release = "unmapped frames release static-elf-frames\n                                                                          unmapped frames release static-elf-leaf-table-frame";
         for (source, code, expected) in [
             (
                 SOURCE.replace(metadata_request, metadata_request_two),
@@ -12487,7 +12495,10 @@ mod tests {
                 "exact marker",
             ),
             (
-                SOURCE.replace(ordered_release, reversed_release),
+                SOURCE.replace(
+                    "unmapped frames release returned-static-elf-metadata",
+                    "unmapped frames release other-static-elf-metadata",
+                ),
                 "E-SYSTEMS-FRAMES",
                 "affine extent",
             ),
@@ -12498,6 +12509,46 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_initial_leaf_construction() {
+        // TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "layout is bounded-static-elf-initial-rw-nx",
+                    "layout is other-static-elf-layout",
+                ),
+                "exact payload, metadata, and initial RW/NX layout",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen("resource is metadata", "resource is payload", 1),
+                "exact construction and role",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is static-elf-construction,\n                                                                                resource is payload",
+                    "owner is other-static-elf-construction,\n                                                                                resource is payload",
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }

@@ -83,14 +83,29 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                       )
                                                                         Ok static-elf-leaf-table-frame then {
                                                                           unmapped console write "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK"
-                                                                          unmapped frames release static-elf-leaf-table-frame
-                                                                          unmapped frames release static-elf-frames
-                                                                          unmapped critical enter (
-                                                                            domain is local-maskable-interrupts
+                                                                          unmapped static image construction prepare (
+                                                                            payload is static-elf-frames,
+                                                                            metadata is static-elf-leaf-table-frame,
+                                                                            layout is bounded-static-elf-initial-rw-nx
                                                                           )
-                                                                            Ok critical then {
-                                                                              critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
-                                                                              restored is critical restore
+                                                                            Ok static-elf-construction then {
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK"
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is static-elf-construction,
+                                                                                resource is metadata
+                                                                              )
+                                                                              unmapped frames release returned-static-elf-metadata
+                                                                              returned-static-elf-payload is unmapped static image construction reclaim (
+                                                                                owner is static-elf-construction,
+                                                                                resource is payload
+                                                                              )
+                                                                              unmapped frames release returned-static-elf-payload
+                                                                              unmapped critical enter (
+                                                                                domain is local-maskable-interrupts
+                                                                              )
+                                                                                Ok critical then {
+                                                                                  critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                                  restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
                                                                   restored pci configuration dword read equals (
                                                                     segment is 0,
@@ -1217,8 +1232,12 @@ completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                       restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                            Error failure then {
-                                                                              failure fatal "critical entry failed"
+                                                                                Error failure then {
+                                                                                  failure fatal "critical entry failed"
+                                                                                }
+                                                                            }
+                                                                            Error problem then {
+                                                                              unmapped fatal "static ELF initial leaf construction failed"
                                                                             }
                                                                         }
                                                                         Error problem then {

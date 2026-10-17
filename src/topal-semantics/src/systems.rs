@@ -29,7 +29,9 @@ use crate::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
-    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -1157,6 +1159,11 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     ReleasePhysicalFrames,
+    PrepareStaticImageConstruction {
+        failure_message: String,
+    },
+    RevokeStaticImageConstructionMetadata,
+    ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
         request: KernelMappingRequest,
         failure_message: String,
@@ -1359,6 +1366,15 @@ impl SystemsOperation {
             Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::PrepareStaticImageConstruction { .. } => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
+            }
+            Self::RevokeStaticImageConstructionMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            }
+            Self::ReclaimStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            }
             Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
             Self::KernelMappingStoreByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::KernelMappingLoadByteEquals { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
@@ -1607,6 +1623,9 @@ pub enum SystemsTransition {
         request: PhysicalFrameRequest,
     },
     ReleasePhysicalFrames,
+    PrepareStaticImageConstruction,
+    RevokeStaticImageConstructionMetadata,
+    ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
         request: KernelMappingRequest,
     },
@@ -2026,6 +2045,13 @@ impl SystemsTransition {
             Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+            Self::RevokeStaticImageConstructionMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            }
+            Self::ReclaimStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            }
             Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
             Self::StoreKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::LoadKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
@@ -2297,6 +2323,9 @@ fn validate_entry(
                     | SystemsOperation::CreateFrameAllocator { .. }
                     | SystemsOperation::AllocatePhysicalFrames { .. }
                     | SystemsOperation::ReleasePhysicalFrames
+                    | SystemsOperation::PrepareStaticImageConstruction { .. }
+                    | SystemsOperation::RevokeStaticImageConstructionMetadata
+                    | SystemsOperation::ReclaimStaticImageConstructionPayload
                     | SystemsOperation::MapKernelFrames { .. }
                     | SystemsOperation::KernelMappingStoreByte { .. }
                     | SystemsOperation::KernelMappingLoadByteEquals { .. }
@@ -2777,6 +2806,9 @@ enum BootstrapMemoryOwnership {
     ProvisionalMapping(PhysicalFrameRequest),
     ProvisionalFrames(PhysicalFrameRequest),
     StaticElfMappingResources,
+    StaticElfConstructionLive,
+    StaticElfConstructionMetadataReturned,
+    StaticElfConstructionRevoked,
 }
 
 const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
@@ -2896,6 +2928,9 @@ impl BootstrapAuthorityState {
                     BootstrapMemoryOwnership::StaticElfMappingResources => {
                         BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST)
                     }
+                    BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned => {
+                        BootstrapMemoryOwnership::StaticElfConstructionRevoked
+                    }
                     BootstrapMemoryOwnership::Frames(_) => BootstrapMemoryOwnership::None,
                     _ => {
                         return Err(SystemsModelError::new(
@@ -2904,6 +2939,34 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
+            }
+            SystemsOperation::PrepareStaticImageConstruction { .. } => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfMappingResources {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image construction requires the exact live payload and metadata resources",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionLive;
+            }
+            SystemsOperation::RevokeStaticImageConstructionMetadata => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionLive {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image revocation requires one live initial-leaf construction",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned;
+            }
+            SystemsOperation::ReclaimStaticImageConstructionPayload => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionRevoked {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image payload reclaim requires complete revocation and metadata release",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST);
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
                 let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
@@ -4827,7 +4890,10 @@ impl BootstrapAuthorityState {
         match self.memory_ownership {
             BootstrapMemoryOwnership::None => {}
             BootstrapMemoryOwnership::Frames(_)
-            | BootstrapMemoryOwnership::StaticElfMappingResources => {
+            | BootstrapMemoryOwnership::StaticElfMappingResources
+            | BootstrapMemoryOwnership::StaticElfConstructionLive
+            | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
+            | BootstrapMemoryOwnership::StaticElfConstructionRevoked => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
                     "bootstrap handler consumes its context while a physical-frame extent remains live",
@@ -6621,6 +6687,15 @@ fn model_bootstrap_operation(
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }
+        SystemsOperation::PrepareStaticImageConstruction { .. } => {
+            transitions.push(SystemsTransition::PrepareStaticImageConstruction);
+        }
+        SystemsOperation::RevokeStaticImageConstructionMetadata => {
+            transitions.push(SystemsTransition::RevokeStaticImageConstructionMetadata);
+        }
+        SystemsOperation::ReclaimStaticImageConstructionPayload => {
+            transitions.push(SystemsTransition::ReclaimStaticImageConstructionPayload);
+        }
         SystemsOperation::MapKernelFrames { request, .. } => {
             transitions.push(SystemsTransition::MapKernelFrames { request: *request });
         }
@@ -7063,6 +7138,9 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::CreateFrameAllocator { .. }
         | SystemsOperation::AllocatePhysicalFrames { .. }
         | SystemsOperation::ReleasePhysicalFrames
+        | SystemsOperation::PrepareStaticImageConstruction { .. }
+        | SystemsOperation::RevokeStaticImageConstructionMetadata
+        | SystemsOperation::ReclaimStaticImageConstructionPayload
         | SystemsOperation::MapKernelFrames { .. }
         | SystemsOperation::KernelMappingStoreByte { .. }
         | SystemsOperation::KernelMappingLoadByteEquals { .. }
@@ -9931,6 +10009,58 @@ mod tests {
         assert_eq!(
             validate_systems_program(&incomplete).unwrap_err().code,
             "E-SYSTEMS-FRAMES"
+        );
+    }
+
+    #[test]
+    fn models_static_elf_initial_leaf_construction_and_revocation() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
+        let mut program = program(SystemsDisposition::Resume);
+        program.bootstrap.handler.operations.splice(
+            2..2,
+            [
+                SystemsOperation::AllocatePhysicalFrames {
+                    request: STATIC_ELF_FRAME_REQUEST,
+                    failure_message: "payload allocation failed".into(),
+                },
+                SystemsOperation::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    failure_message: "metadata allocation failed".into(),
+                },
+                SystemsOperation::PrepareStaticImageConstruction {
+                    failure_message: "leaf construction failed".into(),
+                },
+                SystemsOperation::RevokeStaticImageConstructionMetadata,
+                SystemsOperation::ReleasePhysicalFrames,
+                SystemsOperation::ReclaimStaticImageConstructionPayload,
+                SystemsOperation::ReleasePhysicalFrames,
+            ],
+        );
+        refresh_bootstrap_effects(&mut program);
+        let transitions = model_systems_transitions(&program).unwrap();
+        assert!(transitions.contains(&SystemsTransition::PrepareStaticImageConstruction));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageConstructionMetadata));
+        assert!(transitions.contains(&SystemsTransition::ReclaimStaticImageConstructionPayload));
+
+        let mut reclaim_before_metadata_release = program.clone();
+        reclaim_before_metadata_release
+            .bootstrap
+            .handler
+            .operations
+            .swap(6, 7);
+        assert_eq!(
+            validate_systems_program(&reclaim_before_metadata_release)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-STATIC-IMAGE"
+        );
+
+        let mut live = program;
+        live.bootstrap.handler.operations.truncate(5);
+        refresh_bootstrap_effects(&mut live);
+        assert_eq!(
+            validate_systems_program(&live).unwrap_err().code,
+            "E-SYSTEMS-FRAMES-LIVE"
         );
     }
 

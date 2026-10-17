@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/102";
+    "topal.provider-object.x86_64-qemu-pc-q35/103";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -25,6 +25,10 @@ pub const X86_SYSTEMS_ENTROPY_STORAGE_SECTION: &str = ".bss.topal.entropy";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
+pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
+    "topal_x86_systems_static_image_prepare_initial_leaves";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_initial_leaves";
 pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
     "topal_x86_systems_begin_bootstrap_translation";
 pub const X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL: &str =
@@ -1199,6 +1203,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         &physical_frame_selector()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+        &static_image_prepare_initial_leaves()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+        &static_image_revoke_initial_leaves()?,
     );
     append_translation_functions(&mut object, text)?;
     append_critical_functions(&mut object, text);
@@ -5664,6 +5680,109 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn emit_static_image_resource_validation(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x48, 0x85, 0xff]); // payload base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // metadata base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xf7, 0xc6, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]); // exact 503 leaves
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0xf8]); // payload end
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x70, 0x1f, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x89, 0xf1]); // metadata end
+    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x39, 0xf9]); // metadata end <= payload base
+    code.jump_if(0x86, "resources-disjoint");
+    code.bytes(&[0x4c, 0x39, 0xc6]); // metadata base >= payload end
+    code.jump_if(0x82, "fail");
+    code.bind("resources-disjoint")
+}
+
+fn emit_static_image_leaf_verification(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x48, 0x89, 0xf7]); // metadata cursor
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes()); // present/user/write/NX
+    code.bytes(&[0xb9, 0xf7, 0x01, 0x00, 0x00]);
+    code.bind("verify-leaves")?;
+    code.bytes(&[0x4c, 0x89, 0xd0]);
+    code.bytes(&[0x4c, 0x09, 0xc8]);
+    code.bytes(&[0x48, 0x39, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "verify-leaves");
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // nine entries remain absent
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn static_image_prepare_initial_leaves() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x49, 0x89, 0xf3]); // retain metadata base
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // zero all 512 entries
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x89, 0xdf]);
+    code.bytes(&[0xb9, 0xf7, 0x01, 0x00, 0x00]);
+    code.bind("construct-leaves")?;
+    code.bytes(&[0x4c, 0x89, 0xd0]);
+    code.bytes(&[0x4c, 0x09, 0xc8]);
+    code.bytes(&[0x48, 0xab]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "construct-leaves");
+    code.bytes(&[0x0f, 0xae, 0xf0]); // publish inactive leaves
+    code.bytes(&[0x49, 0x81, 0xea, 0x00, 0x70, 0x1f, 0x00]);
+    code.bytes(&[0x4c, 0x89, 0xd7]); // restore payload base
+    code.bytes(&[0x4c, 0x89, 0xde]); // restore metadata base
+    emit_static_image_leaf_verification(&mut code)?;
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_revoke_initial_leaves() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    emit_static_image_leaf_verification(&mut code)?;
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // revoke all 512 entries
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // verify complete revocation
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn translation_backing_selector() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xf6]); // test boot_params, boot_params
@@ -6852,6 +6971,94 @@ assert bytes(output) == block[32:]
         assert_eq!(
             &selector[selector.len() - 7..],
             &[0x31, 0xc0, 0x41, 0x5d, 0x41, 0x5c, 0xc3]
+        );
+
+        let prepare = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(prepare.address()).unwrap();
+        let end = start + usize::try_from(prepare.size()).unwrap();
+        let prepare = &data[start..end];
+        assert!(
+            prepare
+                .windows(10)
+                .any(|bytes| bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
+            "initial leaves must be present, user-readable, writable, and NX"
+        );
+        assert_eq!(
+            prepare
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0xf7, 0x01, 0x00, 0x00])
+                .count(),
+            2,
+            "construction and verification must each cover exactly 503 leaves"
+        );
+        assert!(
+            prepare
+                .windows(5)
+                .any(|bytes| bytes == [0xb9, 0x09, 0x00, 0x00, 0x00])
+        );
+        assert!(
+            prepare
+                .windows(5)
+                .any(|bytes| bytes == [0xb9, 0x00, 0x02, 0x00, 0x00])
+        );
+        assert!(
+            prepare
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xab])
+        );
+        assert!(
+            prepare
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xaf])
+        );
+        assert_eq!(
+            prepare
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
+        );
+
+        let revoke = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(revoke.address()).unwrap();
+        let end = start + usize::try_from(revoke.size()).unwrap();
+        let revoke = &data[start..end];
+        assert!(
+            revoke
+                .windows(10)
+                .any(|bytes| bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
+            "revocation must first verify the exact live leaf policy"
+        );
+        assert_eq!(
+            revoke
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0x00, 0x02, 0x00, 0x00])
+                .count(),
+            2,
+            "revocation must clear and then verify all 512 entries"
+        );
+        assert!(
+            revoke
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xab])
+        );
+        assert_eq!(
+            revoke
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xaf])
+                .count(),
+            2
+        );
+        assert_eq!(
+            revoke
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
         );
 
         let translation_selector = file

@@ -8,6 +8,12 @@ use crate::{BootMemoryClass, BootMemoryProvenance, MemoryDescribedContext};
 pub const SYSTEMS_FRAME_ALLOCATOR_CREATE: &str = "topal.systems.memory.create-frame-allocator/1";
 pub const SYSTEMS_FRAMES_ALLOCATE: &str = "topal.systems.frames.allocate/1";
 pub const SYSTEMS_FRAMES_RELEASE: &str = "topal.systems.frames.release/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE: &str =
+    "topal.systems.static-image.construction.prepare/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA: &str =
+    "topal.systems.static-image.construction.revoke-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD: &str =
+    "topal.systems.static-image.construction.reclaim-payload/1";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PhysicalFrameRequest {
