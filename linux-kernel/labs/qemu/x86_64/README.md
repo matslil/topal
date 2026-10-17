@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 78 ordered serial markers. The generated real-mode adapter
+and waits for the 79 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -247,6 +247,13 @@ contains no expected input value or baked candidate/call-site equality oracle.
 User mode validates the count and all four bytes before restoring its stack.
 `TOPAL_KERNEL_USER_READ_OK` is the first source-owned post-return witness and
 proves that path reached terminal completion.
+The continuation then invokes Linux x86-64 `close(0)`, requires success, and
+proves that the shared private descriptor state rejects a later `read(0, ...)`
+and repeated `close(0)` with `-EBADF`. The rejected read occurs without user-
+memory access or serial-input consumption. `TOPAL_KERNEL_USER_CLOSE_OK` is
+reachable only after exact results return to ring 3; terminal teardown then
+requires descriptors one and two to remain live, clears that bounded state,
+and verifies it is empty before resuming the kernel continuation.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range

@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/92";
+    "topal.provider-object.x86_64-qemu-pc-q35/93";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1672,6 +1672,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xc6, 0x87, 0xc0, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0xc6, 0x87, 0xd0, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0xc7, 0x87, 0xd8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xe0, 0x00, 0x00, 0x00, 7, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -2481,6 +2482,20 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]);
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
     continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close(stdin)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x00, 0x10, 0x60, 0x00]);
+    continuation.bytes(&[0xba, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x31, 0xc0, 0x0f, 0x05]); // read(closed stdin)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // repeated close
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
     continuation.bind("uname-buffer-fail")?;
@@ -3119,6 +3134,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "read");
     code.bytes(&[0x83, 0xf8, 0x01]);
     code.jump_if(0x84, "write");
+    code.bytes(&[0x83, 0xf8, 0x03]);
+    code.jump_if(0x84, "close");
     code.bytes(&[0x83, 0xf8, 0x09]);
     code.jump_if(0x84, "mmap");
     code.bytes(&[0x83, 0xf8, 0x0a]);
@@ -4010,6 +4027,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x83, 0xff, 0x01]);
     code.jump_if(0x85, "write-ebadf");
+    code.bytes(&[0x65, 0xf6, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x02]);
+    code.jump_if(0x84, "write-ebadf");
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x84, "write-einval");
     code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x01, 0x00, 0x00]);
@@ -4078,6 +4097,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "read-ebadf");
+    code.bytes(&[0x65, 0xf6, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x84, "read-ebadf");
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x84, "read-einval");
     code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x01, 0x00, 0x00]);
@@ -4138,6 +4159,33 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
+    code.bind("close")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "close-zero");
+    code.bytes(&[0x48, 0x83, 0xff, 0x01]);
+    code.jump_if(0x84, "close-one");
+    code.bytes(&[0x65, 0xf6, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x04]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x65, 0x80, 0x24, 0x25, 0xe0, 0x00, 0x00, 0x00, 0xfb]);
+    code.jump("close-success");
+    code.bind("close-one")?;
+    code.bytes(&[0x65, 0xf6, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x02]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x65, 0x80, 0x24, 0x25, 0xe0, 0x00, 0x00, 0x00, 0xfd]);
+    code.jump("close-success");
+    code.bind("close-zero")?;
+    code.bytes(&[0x65, 0xf6, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x01]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x65, 0x80, 0x24, 0x25, 0xe0, 0x00, 0x00, 0x00, 0xfe]);
+    code.bind("close-success")?;
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("close-ebadf")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf7, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
     code.bind("return-user")?;
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0x48, 0x00, 0x00, 0x00]);
@@ -4191,6 +4239,11 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xd8, 0, 0, 0, 0, 0, 0, 0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe0, 0, 0, 0, 6]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe0, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "exit-anonymous-already-revoked");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x02]);
@@ -7108,6 +7161,44 @@ assert bytes(output) == block[32:]
                 "bounded write must retain distinct EBADF, EINVAL, and EFAULT results"
             );
         }
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x03, 0, 0, 0, 0x0f, 0x05])
+                .count()
+                == 2
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .filter(|bytes| *bytes == [0x31, 0xc0, 0x0f, 0x05])
+                    .count()
+                    >= 2
+                && user_address_prepare
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xe0, 0, 0, 0, 7, 0, 0, 0])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x03])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0xf6, 0x04, 0x25, 0xe0, 0, 0, 0, 0x01])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0xf6, 0x04, 0x25, 0xe0, 0, 0, 0, 0x02])
+                && [0xfb_u8, 0xfd, 0xfe].into_iter().all(|mask| {
+                    user_syscall
+                        .windows(9)
+                        .any(|bytes| bytes == [0x65, 0x80, 0x24, 0x25, 0xe0, 0, 0, 0, mask])
+                })
+                && user_syscall
+                    .windows(10)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x83, 0x3c, 0x25, 0xe0, 0, 0, 0, 6])
+                && user_syscall.windows(13).any(|bytes| {
+                    bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]
+                }),
+            "close must initialize three live descriptors, share lookup with read/write, reject reuse, and verify complete terminal clearing"
+        );
         assert!(
             user_syscall
                 .windows(7)

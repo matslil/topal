@@ -650,6 +650,18 @@ copy and verify every chunk, wipe every complete output, and increment delivery
 state exactly once. The ring-3 probe shall preserve prior calls, require a
 512-byte return, and read the first and last qwords without constraining them.
 
+The initial standard-descriptor close refinement shall lower descriptor count
+three and `EBADF` value nine through the checked Linux syscall-dispatch policy.
+The x86-64 provider shall initialize one private live/closed state for
+descriptors zero through two, map native syscall 3 to an atomic live-to-closed
+transition, reject negative, out-of-range, and repeated close with `-EBADF`,
+and make the existing bounded read/write arms consult the same state before any
+input, user access, or output. The ring-3 image shall close standard input after
+its final successful read, verify a later read and repeated close both return
+`-EBADF`, and preserve terminal success. Provider-object and physical evidence
+shall prove initialization, lookup, transition, rejection, complete teardown
+clearing, and the ordered `TOPAL_KERNEL_USER_CLOSE_OK` observation.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

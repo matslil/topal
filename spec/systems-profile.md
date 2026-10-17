@@ -570,6 +570,41 @@ address, serial mechanism, arbitrary descriptor, end-of-file, partial-read or
 signal policy, line discipline, terminal interface, or unbounded input buffer
 interface to source.
 
+### TOPAL-SYSTEMS-USER-CLOSE-001 — Initial standard-descriptor close
+
+Before initial user entry, the Linux personality SHALL create exactly three
+live process-private descriptor entries numbered zero through two. The source
+dispatch policy SHALL name descriptor count three and Linux `EBADF` value nine.
+Provider storage and encoding SHALL remain private and SHALL NOT be observable
+as a Topal reference, address, register, bitset, or target object.
+
+Linux-compatible `close` SHALL accept a live descriptor in the closed initial
+set, atomically make that entry unavailable, and return zero. A negative,
+out-of-range, or already closed descriptor SHALL return `-EBADF` without
+changing any entry. The signal-free one-thread profile SHALL NOT fabricate
+`EINTR` or an ambiguous post-close result. The bounded `read` and `write`
+adapters SHALL consult the same state before input consumption, user-memory
+access, staging, or external output and SHALL return `-EBADF` for a closed
+entry without those effects.
+
+The constructed ring-3 image SHALL preserve all prior calls, close descriptor
+zero after its final successful input, require return zero, require `-EBADF`
+from a following one-byte read without consuming input, require `-EBADF` from
+repeated close, and then terminate normally. Process completion SHALL clear
+the complete descriptor state before restoring the registered kernel
+continuation, and source SHALL emit exactly one
+`TOPAL_KERNEL_USER_CLOSE_OK` observation after exact return and before later
+image-lifecycle witnesses.
+
+The profile SHALL reject stateless close success, another initial bound or
+error policy, missing initial entries, state change on failure, later I/O
+through a closed entry, early input or memory access, missing or reordered
+qualification calls, or live descriptor state after process return. This rule
+SHALL NOT define `open`, `openat`, `dup`, `fcntl`, descriptor allocation,
+open-file-description sharing, filesystem objects, sockets, pipes, polling,
+close-on-exec, fork or exec inheritance, concurrent close, signals,
+cancellation, device-specific release, or deferred writeback errors.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user

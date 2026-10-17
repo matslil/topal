@@ -115,6 +115,7 @@ records, not this directory alone, define language meaning.
 - [Full-output process `getrandom`](full-output-process-getrandom.md)
 - [Bounded small-request process `getrandom`](bounded-small-request-getrandom.md)
 - [Bounded large-request process `getrandom`](bounded-large-request-getrandom.md)
+- [Initial standard-descriptor `close`](initial-descriptor-close.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

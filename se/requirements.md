@@ -744,6 +744,19 @@ the constructed-image entry marker. Partial reception, early user publication,
 wrong transfer or result, unbalanced disposal, or witness reordering shall fail
 closed.
 
+The initial-process descriptor adapter shall create descriptors zero, one, and
+two as live process-private entries before user entry. Linux `close` shall
+atomically change one live entry to closed and return zero; a negative, out-of-
+range, or already closed descriptor shall return `-EBADF` without state change.
+The bounded `read` and `write` adapters shall consult the same state before
+input consumption, user-memory access, or output. The ring-3 probe shall close
+standard input only after its final successful read, observe `-EBADF` from a
+later read and repeated close without consuming input, and then exit normally.
+Terminal completion shall clear every entry before restoring the kernel
+continuation. Stateless success, I/O through a closed entry, retained state,
+provider-selected policy, or a general VFS/descriptor-allocation model shall
+fail closed or remain unavailable as applicable.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from

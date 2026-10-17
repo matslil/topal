@@ -476,6 +476,13 @@ signal-free process profile. Its
 records per-output key replacement and erasure, one-call accounting,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The following systems-only userspace refinement introduces
+[bounded close state for the three initial descriptors](design/initial-descriptor-close.md).
+Its [implementation and qualification report](step-4-initial-descriptor-close.md)
+records successful `close(0)`, shared `read`/`write` availability checks,
+repeated-close and post-close `EBADF`, terminal state clearing, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -642,6 +649,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 full-output process `getrandom`](step-4-full-output-process-getrandom.md)
 - [Step 4 bounded small-request `getrandom`](step-4-bounded-small-request-getrandom.md)
 - [Step 4 bounded large-request `getrandom`](step-4-bounded-large-request-getrandom.md)
+- [Step 4 initial standard-descriptor close](step-4-initial-descriptor-close.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
