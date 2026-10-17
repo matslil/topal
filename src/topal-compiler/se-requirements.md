@@ -696,6 +696,17 @@ ttyS0 device, character-mode, ownership, link, size, block, timestamp, padding,
 alias-equality, `EBADF`, `EFAULT`, and ordered
 `TOPAL_KERNEL_USER_FSTAT_OK` behavior.
 
+The bounded initial-console terminal refinement shall lower `TCGETS=0x5401`,
+`ENOTTY=25`, the native 36-byte x86-64 `termios` layout, raw zero-valued input,
+output, and local flags, control flags `0x8bf`, line discipline zero, and only
+`VMIN=1` through checked dispatch policy. The provider shall map native syscall
+16, enforce descriptor-before-request-before-pointer precedence, privately
+stage every byte, validate one complete writable extent, publish under
+generated fault recovery, and retain no user pointer. Ring-3 and provider-
+object evidence shall prove input/output equality, every exact byte, unknown-
+request `ENOTTY`, closed-slot `EBADF`, invalid-candidate `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_TCGETS_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
