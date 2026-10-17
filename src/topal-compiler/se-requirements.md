@@ -602,6 +602,17 @@ only after every action. The root shall permit entry only from the randomized
 entry-ready state and reject malformed, partial, duplicated, reordered,
 substituted, reused, or premature delivery.
 
+The bounded initial-`getrandom` refinement shall accept one fresh extraction
+from generator generation two to generation three and reserve opaque output
+identity two for process, Linux interface, and user-random service identity one
+before entry. It shall validate source extent 32, maximum request extent 16,
+selected offset zero, discard partition, current Linux supported flag mask 7,
+incompatible mask 6, and single-use policy. The x86-64 provider shall privately
+map the service to syscall 318, preserve the reservation on zero, argument, and
+range failures, copy and verify one successful 1–16-byte prefix, wipe and verify
+all output storage, clear private reservation state, and reject partial,
+duplicated, reordered, substituted, reused, or premature delivery.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

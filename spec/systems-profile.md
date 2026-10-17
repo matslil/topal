@@ -1877,6 +1877,27 @@ NOT observe an output byte, user or backing address, stack representation,
 temporary value, or target instruction. Delivery SHALL NOT modify the ready
 generator or imply another extraction.
 
+### TOPAL-SYSTEMS-ENTROPY-RESERVE-001 — Opaque affine output reservation
+
+`topal.systems.entropy.output.reserve-initial-user-random/1` SHALL consume one
+affine opaque output object into one single-use user-random capability before
+the named process first enters user context. The request SHALL name nonzero
+output, process, interface, and service identities; exact source, selected,
+maximum-delivery, and discarded extents that form one complete nonoverlapping
+partition; supported and incompatible interface-flag masks; and single-use
+policy. The selected extent SHALL begin at source offset zero and the maximum
+delivery SHALL NOT exceed it.
+
+The provider SHALL retain the output only in private storage governed by the
+capability. It SHALL validate the complete writable user extent before a
+nonempty delivery, preserve the capability on argument and range failure, and
+on success copy and verify exactly the requested prefix, discard every
+undelivered byte, wipe and verify the complete output storage, clear its private
+reference, and consume the capability. Source SHALL NOT observe an output byte,
+address, native interface number, register convention, copy mechanism,
+temporary value, or target instruction. Reservation SHALL NOT modify the ready
+generator, perform another extraction, or authorize output reuse.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2131,10 +2152,10 @@ recovery.
 ### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-EXTRACT-001 — Bounded first CRNG extraction
 
 After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-GENERATOR-001`, the initial profile
-SHALL perform exactly one `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001` operation. It
-SHALL name generator and ChaCha20 algorithm identity one, prior generation one,
-resulting generation two, output identity one, block extent 64, output offset
-32, output extent 32, counter zero, and nonce identity zero.
+SHALL perform exactly one first-output `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`
+operation. It SHALL name generator and ChaCha20 algorithm identity one, prior
+generation one, resulting generation two, output identity one, block extent
+64, output offset 32, output extent 32, counter zero, and nonce identity zero.
 
 The provider SHALL construct the standard 20-round ChaCha20 state using the
 eight 32-bit little-endian key words, zero 32-bit counter, and zero 96-bit
@@ -2176,6 +2197,41 @@ reuse, or user entry before delivery. This refinement SHALL NOT implement
 `getrandom` or `/dev/random`, return a remainder object, compute another block,
 reseed, recycle or renotify the queue, configure asynchronous interrupt
 delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-001 — Bounded initial `getrandom`
+
+After `TOPAL-SYSTEMS-USER-AUXV-RANDOM-001` and before initial user-context
+entry, the initial profile SHALL freshly perform
+`TOPAL-SYSTEMS-ENTROPY-EXTRACT-001` from ready generator generation two to
+generation three with output identity two, followed exactly once by
+`TOPAL-SYSTEMS-ENTROPY-RESERVE-001`. The reservation SHALL name process,
+Linux-interface, and user-random service identity one; source extent 32;
+selected offset zero and maximum-delivery extent 16; discarded offset 16 and
+extent 16; supported flag mask 7; incompatible flag mask 6; and single-use
+policy.
+
+The x86-64 provider SHALL map the service privately to native syscall 318. It
+SHALL return zero for a zero-length request without consumption; `-EINVAL` for
+an unknown flag bit, any combination containing mask 6, or a length greater
+than 16 without consumption; and `-EFAULT` when the complete requested writable
+user extent is invalid without consumption. Current valid flags SHALL NOT alter
+the result after CRNG readiness. The first valid nonempty request of 1 through
+16 bytes SHALL copy and verify the requested prefix, discard its selected
+suffix and source bytes 16 through 31, wipe and verify all 32 provider-output
+bytes, clear the private reservation reference, return the exact requested
+length, and consume the reservation.
+
+The constructed ring-3 image SHALL exercise, in order, zero length, an unknown
+flag bit, the incompatible `GRND_RANDOM | GRND_INSECURE` combination, a
+complete-range fault, and one successful 16-byte request, and SHALL read both
+returned qwords without comparing them with a constant. The profile SHALL
+reject another identity, generation, extent, flag policy, process, service,
+pre-state, omission, duplication, reordering, partial copy, incomplete wipe,
+reuse, or a live reservation at process teardown. This refinement SHALL NOT
+provide another successful nonempty call, a request larger than 16 bytes,
+pre-readiness blocking, signal interruption, `/dev/random`, `/dev/urandom`,
+vDSO delivery, multi-block generation, reseeding, per-processor generators,
+queue recycling, asynchronous interrupt delivery, reset, or recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
