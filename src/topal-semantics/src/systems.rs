@@ -1515,6 +1515,8 @@ pub enum SystemsDisposition {
         terminal_control_flags: u64,
         terminal_minimum_input: u64,
         not_a_terminal_error: u64,
+        window_size_layout_bytes: u64,
+        window_size_query_request: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -2532,6 +2534,8 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 terminal_control_flags: 2239,
                 terminal_minimum_input: 1,
                 not_a_terminal_error: 25,
+                window_size_layout_bytes: 8,
+                window_size_query_request: 21523,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2631,6 +2635,7 @@ struct BootstrapAuthorityState {
     constructed_user_fcntl_completed: bool,
     constructed_user_fstat_completed: bool,
     constructed_user_tcgets_completed: bool,
+    constructed_user_winsize_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -4110,6 +4115,22 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_tcgets_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_WINSIZE_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_tcgets_completed
+                    || self.constructed_user_winsize_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "console-geometry witness requires the TCGETS witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_winsize_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -4124,6 +4145,7 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_fcntl_completed
                     || !self.constructed_user_fstat_completed
                     || !self.constructed_user_tcgets_completed
+                    || !self.constructed_user_winsize_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -5712,6 +5734,8 @@ fn model_user_execution_transition(
                     terminal_control_flags: _,
                     terminal_minimum_input: _,
                     not_a_terminal_error: _,
+                    window_size_layout_bytes: _,
+                    window_size_query_request: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -7696,6 +7720,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -7903,6 +7930,8 @@ mod tests {
                         terminal_control_flags: 2239,
                         terminal_minimum_input: 1,
                         not_a_terminal_error: 25,
+                        window_size_layout_bytes: 8,
+                        window_size_query_request: 21523,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -8017,6 +8046,7 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                         || text == "TOPAL_KERNEL_USER_FSTAT_OK"
                         || text == "TOPAL_KERNEL_USER_TCGETS_OK"
+                        || text == "TOPAL_KERNEL_USER_WINSIZE_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8601,6 +8631,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -9433,6 +9466,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                             || text == "TOPAL_KERNEL_USER_FSTAT_OK"
                             || text == "TOPAL_KERNEL_USER_TCGETS_OK"
+                            || text == "TOPAL_KERNEL_USER_WINSIZE_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
