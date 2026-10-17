@@ -483,6 +483,14 @@ records successful `close(0)`, shared `read`/`write` availability checks,
 repeated-close and post-close `EBADF`, terminal state clearing, structural
 inspection, and two deterministic pinned-QEMU runs.
 
+The next systems-only userspace refinement adds
+[bounded duplication within the three initial descriptor slots](design/initial-descriptor-duplication.md).
+Its [implementation and qualification report](step-4-initial-descriptor-duplication.md)
+records fixed open-description identities and modes, lowest-free `dup`, atomic
+`dup2` replacement, independent alias close, exact `EBADF`/`EMFILE`, terminal
+mapping clearing, structural inspection, and two deterministic pinned-QEMU
+runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -650,6 +658,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded small-request `getrandom`](step-4-bounded-small-request-getrandom.md)
 - [Step 4 bounded large-request `getrandom`](step-4-bounded-large-request-getrandom.md)
 - [Step 4 initial standard-descriptor close](step-4-initial-descriptor-close.md)
+- [Step 4 initial standard-descriptor duplication](step-4-initial-descriptor-duplication.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)
