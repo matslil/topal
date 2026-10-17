@@ -675,6 +675,17 @@ and terminal clearing. Provider-object and physical evidence shall prove the
 private mapping encoding, exact branches and returns, no premature state
 change, and ordered `TOPAL_KERNEL_USER_DUP_OK` observation.
 
+The bounded initial-descriptor metadata refinement shall lower `F_GETFD=1`,
+`F_SETFD=2`, `F_GETFL=3`, `FD_CLOEXEC=1`, `O_RDONLY=0`, `O_WRONLY=1`, and
+`EINVAL=22` through checked dispatch policy. The x86-64 provider shall map
+native syscall 72, retain three private per-slot flags separately from
+description identities, enforce lookup-before-command precedence, mask set
+arguments, clear destination flags on duplication, and clear close/terminal
+state. The ring-3 image and provider-object evidence shall prove access-mode
+lookup, set/get, unsupported command, alias flag independence, `dup2` clearing,
+closed-slot rejection, exact results, and ordered
+`TOPAL_KERNEL_USER_FCNTL_OK` observation.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

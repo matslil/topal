@@ -648,6 +648,40 @@ paths, general reference counts, pipes, sockets, polling, fork or exec
 inheritance, concurrent lookup/close, signals, cancellation, or final device
 release.
 
+### TOPAL-SYSTEMS-USER-FCNTL-001 — Bounded initial descriptor metadata
+
+Each initial descriptor slot SHALL retain one private close-on-exec bit,
+initially clear, separately from its optional open-description mapping.
+Closing a slot SHALL clear both states. `dup` and non-identity `dup2` SHALL
+clear the destination bit while preserving the source bit. Identity
+`dup2(old, old)` SHALL preserve the bit because it changes no mapping.
+
+Linux-compatible `fcntl` command `F_GETFD` SHALL return either zero or
+`FD_CLOEXEC` for a live slot. `F_SETFD` SHALL set that bit from the argument
+masked by `FD_CLOEXEC`, ignore every other argument bit, and return zero.
+`F_GETFL` SHALL return `O_RDONLY` for the input open description and
+`O_WRONLY` for the output and error descriptions, independent of the slot
+number. A negative, out-of-range, or closed descriptor SHALL return `-EBADF`
+before command decoding; an unsupported command on a live descriptor SHALL
+return `-EINVAL` without changing state.
+
+The constructed ring-3 image SHALL observe `O_WRONLY`, observe clear flags,
+set and observe `FD_CLOEXEC`, and reject an unsupported command on output. Its
+existing duplication sequence SHALL additionally prove the duplicate flag is
+clear while the source remains set and that `dup2` clears the replaced
+destination flag. A query after the final close of zero SHALL return `-EBADF`.
+Source SHALL emit exactly one `TOPAL_KERNEL_USER_FCNTL_OK` observation after
+exact returns and before later image-lifecycle witnesses. Terminal completion
+SHALL require clear flags on the remaining live slots and clear all flag state.
+
+The profile SHALL reject open-description-owned close-on-exec, slot-derived
+access mode, copied flags on duplication, command-first error precedence,
+unsupported-command mutation, or retained flag state. This rule SHALL NOT
+define `F_DUPFD`, `F_DUPFD_CLOEXEC`, `F_SETFL`, status flags beyond access mode,
+locks, leases, ownership, asynchronous notification, seals, pipe sizing, exec-
+time close, fork inheritance, dynamically opened descriptions, or concurrent
+`fcntl`.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user

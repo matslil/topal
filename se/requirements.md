@@ -772,6 +772,17 @@ and terminal mapping clearing. Live-bit-only copying, altered access mode,
 non-lowest selection, premature replacement, or retained mappings shall fail
 closed.
 
+The initial descriptor adapter shall retain a separate `FD_CLOEXEC` bit per
+slot, initially clear. Linux `fcntl` shall implement `F_GETFD`, masked
+`F_SETFD`, and `F_GETFL`; it shall return shared open-description access modes,
+look up the descriptor before command decoding, and return exact `EBADF` or
+`EINVAL`. Close shall clear the slot bit, while `dup` and non-identity `dup2`
+shall clear only the new destination bit. Ring-3 qualification shall cover
+mode observation, set/get, unknown command, duplicate/source flag separation,
+replacement clearing, closed-slot rejection, and terminal clearing. Flags on
+open descriptions, slot-derived modes, copied duplication flags, wrong error
+precedence, or retained state shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from
