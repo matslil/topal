@@ -130,6 +130,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF leaf publication](bounded-static-elf-leaf-publication.md)
 - [Bounded static ELF payload zeroing](bounded-static-elf-payload-zeroing.md)
 - [Supplied static ELF artifact](supplied-static-elf-artifact.md)
+- [Static ELF boot-resource transport](static-elf-boot-resource.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
