@@ -756,6 +756,35 @@ rule SHALL NOT define `TCSETS*`, `termios2`, window size, sessions, process
 groups, job control, canonical input, echo, signal generation, ptys, polling,
 dynamically opened ttys, or a general ioctl registry.
 
+### TOPAL-SYSTEMS-USER-WINSIZE-001 — Bounded initial console geometry
+
+The console object shared by the three fixed initial open descriptions SHALL
+own one immutable window-size value shared by every description and alias.
+Because the qualified serial transport provides no geometry source, rows,
+columns, horizontal pixels, and vertical pixels SHALL each be zero, meaning
+unspecified rather than a fabricated display size.
+
+The x86-64 personality SHALL implement Linux `ioctl` request
+`TIOCGWINSZ=0x5413` with the complete native eight-byte `struct winsize`: four
+little-endian unsigned 16-bit zero values. Dispatch SHALL retain descriptor-
+before-request-before-pointer precedence. Invalid or closed descriptors SHALL
+return `-EBADF`; unsupported live-console requests SHALL retain `-ENOTTY`;
+accepted requests with invalid, read-only, wrapping, cross-hole, or incomplete
+eight-byte candidates SHALL return `-EFAULT` without partial publication.
+
+A valid query SHALL construct the complete value in private staging, validate
+one overflow-free complete writable extent, publish it under fault recovery,
+return zero only after complete visibility, and retain no pointer. The ring-3
+image SHALL query input and output into disjoint extents, validate every byte,
+prove both values identical, and reject a query on slot zero after its final
+close with `-EBADF`. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_WINSIZE_OK` observation before later lifecycle witnesses.
+
+The profile SHALL reject invented or host-derived geometry, slot-derived
+values, pointer access before accepted request, partial publication, wrong
+errno, or retained pointers. This rule SHALL NOT define `TIOCSWINSZ`, geometry
+import, `SIGWINCH`, job control, ptys, displays, or a general ioctl registry.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user

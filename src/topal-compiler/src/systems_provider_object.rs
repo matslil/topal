@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/97";
+    "topal.provider-object.x86_64-qemu-pc-q35/98";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2489,18 +2489,24 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(stdout)
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
-    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
-    continuation.rip_lea(&[0x48, 0x8d, 0x3d], "fstat-expected");
-    continuation.bytes(&[0xb9, 0x12, 0x00, 0x00, 0x00, 0xf3, 0x48, 0xa7]);
-    continuation.jump_if(0x85, "fail");
-    continuation.jump("fstat-expected-complete");
-    continuation.bind("fstat-expected")?;
-    for value in [
-        0_u64, 1, 1, 0x2180, 0, 0x4400, 0, 4096, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    continuation.bytes(&[0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x31, 0xc0, 0xb9, 0x12, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0x89, 0xe7, 0xf3, 0x48, 0xab]);
+    for (offset, value) in [
+        (8_u8, 1_u32),
+        (16, 1),
+        (24, 0x2180),
+        (40, 0x4400),
+        (56, 4096),
     ] {
+        continuation.bytes(&[0x48, 0xc7, 0x44, 0x24, offset]);
         continuation.bytes(&value.to_le_bytes());
     }
-    continuation.bind("fstat-expected-complete")?;
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0x48, 0x89, 0xe7, 0xb9, 0x12, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xf3, 0x48, 0xa7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0xba, 0x20, 0x51, 0x60, 0x00]);
@@ -2528,6 +2534,17 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xbf, 0x50, 0x51, 0x60, 0x00]);
     continuation.bytes(&[0xb9, 0x24, 0x00, 0x00, 0x00, 0xf3, 0xa6]);
     continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xdb]);
+    continuation.bytes(&[0xbe, 0x13, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0xba, 0x80, 0x51, 0x60, 0x00]);
+    continuation.bind("winsize-query-loop")?;
+    continuation.bytes(&[0x89, 0xdf, 0x6a, 0x10, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0x3a, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x83, 0xc2, 0x08, 0xff, 0xc3, 0x83, 0xfb, 0x02]);
+    continuation.jump_if(0x85, "winsize-query-loop");
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xbe, 0xff, 0xff, 0x00, 0x00]);
     continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
@@ -2633,9 +2650,13 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF before pointer access
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
-    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x83, 0xc6, 0x12]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
@@ -4481,7 +4502,12 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x45, 0x84, 0xc0]);
     code.jump_if(0x84, "close-ebadf");
     code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0x00, 0x00]);
-    code.jump_if(0x85, "ioctl-enotty");
+    code.jump_if(0x84, "ioctl-tcgets");
+    code.bytes(&[0x81, 0xfe, 0x13, 0x54, 0x00, 0x00]);
+    code.jump_if(0x84, "ioctl-winsize");
+    code.jump("ioctl-enotty");
+
+    code.bind("ioctl-tcgets")?;
     code.bytes(&[0x49, 0x89, 0xd1]);
     code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 0x24]);
     code.jump_if(0x82, "ioctl-efault");
@@ -4527,6 +4553,46 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bind("ioctl-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
+
+    code.bind("ioctl-winsize")?;
+    code.bytes(&[0x49, 0x89, 0xd1]);
+    code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 0x08]);
+    code.jump_if(0x82, "ioctl-winsize-efault");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-winsize-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "ioctl-winsize-candidate-ok");
+    code.bind("ioctl-winsize-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-winsize-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "ioctl-winsize-efault");
+    code.bind("ioctl-winsize-candidate-ok")?;
+    code.bytes(&[0x48, 0x83, 0xec, 0x08, 0x31, 0xc0]);
+    code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-winsize-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-winsize-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("ioctl-winsize-copy-loop")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14]);
+    code.bind("ioctl-winsize-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x08]);
+    code.jump_if(0x85, "ioctl-winsize-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x08, 0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("ioctl-winsize-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x08]);
+    code.bind("ioctl-winsize-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
     code.bind("ioctl-enotty")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
     code.jump("return-user");
@@ -7719,7 +7785,7 @@ assert bytes(output) == block[32:]
                     .windows(7)
                     .filter(|bytes| *bytes == [0xb8, 0x10, 0, 0, 0, 0x0f, 0x05])
                     .count()
-                    == 4
+                    == 3
                 && user_syscall
                     .windows(3)
                     .any(|bytes| bytes == [0x83, 0xf8, 0x10])
@@ -7736,6 +7802,46 @@ assert bytes(output) == block[32:]
                     .windows(7)
                     .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]),
             "TCGETS must enforce descriptor/request/pointer precedence, stage the exact raw termios, copy 36 bytes under recovery, and return ENOTTY for unknown live-console requests"
+        );
+        let winsize_request = user_syscall[ioctl_request..]
+            .windows(6)
+            .position(|bytes| bytes == [0x81, 0xfe, 0x13, 0x54, 0, 0])
+            .map(|position| position + ioctl_request)
+            .expect("ioctl must decode TIOCGWINSZ");
+        let winsize_candidate = user_syscall[winsize_request..]
+            .windows(7)
+            .position(|bytes| bytes == [0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00])
+            .map(|position| position + winsize_request)
+            .expect("TIOCGWINSZ must bound the writable candidate");
+        assert!(
+            ioctl_lookup < ioctl_request
+                && ioctl_request < winsize_request
+                && winsize_request < winsize_candidate
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0xbe, 0x13, 0x54, 0, 0])
+                    .count()
+                    == 1
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xec, 0x08, 0x31, 0xc0, 0x48, 0x89, 0x04])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x08])
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .any(|bytes| bytes == [0xba, 0x80, 0x51, 0x60, 0])
+                && entry_payload
+                    .bytes
+                    .windows(8)
+                    .any(|bytes| bytes == [0x83, 0xc2, 0x08, 0xff, 0xc3, 0x83, 0xfb, 0x02])
+                && entry_payload
+                    .bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xc6, 0x12]),
+            "TIOCGWINSZ must follow live-descriptor and request decoding, publish the exact zero geometry under recovery, and prove input/output equality plus closed-slot precedence"
         );
         assert!(
             user_syscall

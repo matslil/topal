@@ -120,6 +120,7 @@ records, not this directory alone, define language meaning.
 - [Initial descriptor `fcntl` metadata](initial-descriptor-fcntl.md)
 - [Initial descriptor `fstat`](initial-descriptor-fstat.md)
 - [Initial console `TCGETS`](initial-console-tcgets.md)
+- [Initial console `TIOCGWINSZ`](initial-console-winsize.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
