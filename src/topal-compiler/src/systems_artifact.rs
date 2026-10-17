@@ -133,8 +133,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/109";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/100";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/110";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/101";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1969,6 +1969,7 @@ struct RootEncoder {
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
     physical_frame_count: Option<u64>,
+    retained_static_elf_payload: bool,
     kernel_mapping_live: bool,
     translation: RootTranslationState,
     critical: RootCriticalState,
@@ -2233,8 +2234,11 @@ impl RootEncoder {
         frame_count: u64,
         alignment_frames: u64,
     ) -> Result<(), CompileError> {
+        let nested_static_elf_metadata = self.physical_frame_count == Some(503)
+            && frame_count == 1
+            && !self.retained_static_elf_payload;
         if !self.frame_allocator_created
-            || self.physical_frame_count.is_some()
+            || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
             || !matches!(frame_count, 1..=3 | 503)
             || alignment_frames != 1
@@ -2246,15 +2250,23 @@ impl RootEncoder {
             ));
         }
         let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
-        if matches!(
+        if nested_static_elf_metadata {
+            self.bytes.extend_from_slice(&[0x48, 0x89, 0xd9]); // payload base in rcx
+            self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x83]); // payload end in r8
+            self.bytes.extend_from_slice(&0x001f_7000_u32.to_le_bytes());
+            self.bytes.extend_from_slice(&[0x49, 0x89, 0xde]); // retain payload in r14
+        } else if matches!(
             self.user_execution,
             RootUserExecutionState::AddressSpacePrepared
                 | RootUserExecutionState::UserMappingExecutable(1)
         ) {
             self.load_bootstrap_storage_address(176)?;
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x4f, 0x68]); // excluded backing base in rcx
+            self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x81]); // excluded backing end in r8
+            self.bytes.extend_from_slice(&0x0000_3000_u32.to_le_bytes());
         } else {
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
+            self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]); // no excluded end
         }
         if resident_code {
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
@@ -2287,6 +2299,9 @@ impl RootEncoder {
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
         self.physical_frame_count = Some(u64::from(frame_count));
+        if nested_static_elf_metadata {
+            self.retained_static_elf_payload = true;
+        }
         Ok(())
     }
 
@@ -2364,10 +2379,24 @@ impl RootEncoder {
     }
 
     fn release_physical_frames(&mut self) -> Result<(), CompileError> {
-        if self.physical_frame_count.is_none() {
+        let Some(frame_count) = self.physical_frame_count else {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
+        };
+        if self.retained_static_elf_payload {
+            if frame_count != 1 {
+                return Err(CompileError::Tool(
+                    "x86 root lowering requires metadata release before its retained static ELF payload".into(),
+                ));
+            }
+            self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear metadata base
+            self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf3]); // restore payload base
+            self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]); // clear retained payload register
+            self.bytes.extend_from_slice(&[0x31, 0xd2]); // clear transient frame count
+            self.physical_frame_count = Some(503);
+            self.retained_static_elf_payload = false;
+            return Ok(());
         }
         self.physical_frame_count = None;
         self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
@@ -6778,6 +6807,21 @@ mod tests {
                 .any(|bytes| bytes == [0xba, 0xf7, 0x01, 0x00, 0x00]),
             "checked root must request the exact 503-frame static ELF extent"
         );
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes == [0x4c, 0x8d, 0x83, 0x00, 0x70, 0x1f, 0x00]),
+            "checked root must pass the complete 503-frame payload exclusion"
+        );
+        assert!(
+            root_bytes
+                .windows(3)
+                .any(|bytes| bytes == [0x49, 0x89, 0xde])
+                && root_bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x4c, 0x89, 0xf3]),
+            "checked root must retain and restore the exact payload owner"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -6787,7 +6831,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3226);
+        assert_eq!(relocation_targets.len(), 3272);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -6883,7 +6927,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            8
+            9
         );
         assert_eq!(
             relocation_targets
@@ -6941,7 +6985,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2840
+            2884
         );
         assert_eq!(
             relocation_targets
@@ -7102,7 +7146,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            145
+            146
         );
         assert_eq!(
             relocation_targets
@@ -7383,7 +7427,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 323);
+        assert_eq!(decoded.semantic_trace.len(), 326);
         assert!(
             decoded
                 .semantic_trace
@@ -7413,8 +7457,11 @@ mod tests {
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[30].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[31].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[32], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..33);
+        assert!(decoded.semantic_trace[32].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[33].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[34], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(decoded.semantic_trace[35], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..36);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

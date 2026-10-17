@@ -2776,6 +2776,7 @@ enum BootstrapMemoryOwnership {
     Mapping(PhysicalFrameRequest),
     ProvisionalMapping(PhysicalFrameRequest),
     ProvisionalFrames(PhysicalFrameRequest),
+    StaticElfMappingResources,
 }
 
 const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
@@ -2855,22 +2856,31 @@ impl BootstrapAuthorityState {
                 self.allocator_created = true;
             }
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
-                if !self.allocator_created
-                    || self.memory_ownership != BootstrapMemoryOwnership::None
-                    || !matches!(
-                        *request,
-                        INITIAL_SINGLE_FRAME_REQUEST
-                            | INITIAL_TWO_FRAME_REQUEST
-                            | INITIAL_MULTI_FRAME_REQUEST
-                            | STATIC_ELF_FRAME_REQUEST
-                    )
-                {
+                if !self.allocator_created {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
-                        "physical-frame allocation requires one allocator, an admitted static extent shape, and no live extent",
+                        "physical-frame allocation requires one allocator and an admitted static ownership state",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames(*request);
+                self.memory_ownership = match (self.memory_ownership, *request) {
+                    (
+                        BootstrapMemoryOwnership::None,
+                        request @ (INITIAL_SINGLE_FRAME_REQUEST
+                        | INITIAL_TWO_FRAME_REQUEST
+                        | INITIAL_MULTI_FRAME_REQUEST
+                        | STATIC_ELF_FRAME_REQUEST),
+                    ) => BootstrapMemoryOwnership::Frames(request),
+                    (
+                        BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST),
+                        INITIAL_SINGLE_FRAME_REQUEST,
+                    ) => BootstrapMemoryOwnership::StaticElfMappingResources,
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-FRAMES",
+                            "physical-frame allocation requires an admitted static extent shape and exact nested ownership",
+                        ));
+                    }
+                };
             }
             SystemsOperation::ReleasePhysicalFrames => {
                 if matches!(
@@ -2882,13 +2892,18 @@ impl BootstrapAuthorityState {
                         "physical-frame release is invalid while a user mapping owns the extent",
                     ));
                 }
-                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Frames(_)) {
-                    return Err(SystemsModelError::new(
-                        "E-SYSTEMS-FRAMES",
-                        "physical-frame release requires one live extent",
-                    ));
-                }
-                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.memory_ownership = match self.memory_ownership {
+                    BootstrapMemoryOwnership::StaticElfMappingResources => {
+                        BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST)
+                    }
+                    BootstrapMemoryOwnership::Frames(_) => BootstrapMemoryOwnership::None,
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-FRAMES",
+                            "physical-frame release requires the next exact live extent",
+                        ));
+                    }
+                };
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
                 let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
@@ -4811,7 +4826,8 @@ impl BootstrapAuthorityState {
         }
         match self.memory_ownership {
             BootstrapMemoryOwnership::None => {}
-            BootstrapMemoryOwnership::Frames(_) => {
+            BootstrapMemoryOwnership::Frames(_)
+            | BootstrapMemoryOwnership::StaticElfMappingResources => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
                     "bootstrap handler consumes its context while a physical-frame extent remains live",
@@ -9870,6 +9886,51 @@ mod tests {
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
             "E-SYSTEMS-FRAMES-LIVE"
+        );
+    }
+
+    #[test]
+    fn models_exact_static_elf_mapping_resource_ownership() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
+        let mut program = program(SystemsDisposition::Resume);
+        let operations = [
+            SystemsOperation::AllocatePhysicalFrames {
+                request: STATIC_ELF_FRAME_REQUEST,
+                failure_message: "payload allocation failed".into(),
+            },
+            SystemsOperation::AllocatePhysicalFrames {
+                request: INITIAL_SINGLE_FRAME_REQUEST,
+                failure_message: "metadata allocation failed".into(),
+            },
+            SystemsOperation::ReleasePhysicalFrames,
+            SystemsOperation::ReleasePhysicalFrames,
+        ];
+        program
+            .bootstrap
+            .handler
+            .operations
+            .splice(2..2, operations.clone());
+        refresh_bootstrap_effects(&mut program);
+        assert!(validate_systems_program(&program).is_ok());
+
+        let mut wrong_metadata = program.clone();
+        let SystemsOperation::AllocatePhysicalFrames { request, .. } =
+            &mut wrong_metadata.bootstrap.handler.operations[3]
+        else {
+            unreachable!("test inserted metadata allocation at index three")
+        };
+        *request = INITIAL_TWO_FRAME_REQUEST;
+        assert_eq!(
+            validate_systems_program(&wrong_metadata).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+
+        let mut incomplete = program;
+        incomplete.bootstrap.handler.operations.remove(5);
+        refresh_bootstrap_effects(&mut incomplete);
+        assert_eq!(
+            validate_systems_program(&incomplete).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
         );
     }
 

@@ -10375,13 +10375,13 @@ mod tests {
     #[test]
     fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
         // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001,
-        // TOPAL-SYSTEMS-FRAMES-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
         let program = analyze_systems_for_compiler(
             &memory_source(),
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 262);
+        assert_eq!(program.bootstrap.handler.operations.len(), 265);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12453,6 +12453,43 @@ mod tests {
                 ),
                 "E-SYSTEMS-DISPOSITION",
                 "not a disposition",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_mapping_resource_ownership() {
+        // TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
+        let metadata_request = "frame-count is 1,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
+        let metadata_request_two = "frame-count is 2,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
+        let ordered_release = "unmapped frames release static-elf-leaf-table-frame\n                                                                          unmapped frames release static-elf-frames";
+        let reversed_release = "unmapped frames release static-elf-frames\n                                                                          unmapped frames release static-elf-leaf-table-frame";
+        for (source, code, expected) in [
+            (
+                SOURCE.replace(metadata_request, metadata_request_two),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exactly one frame",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_BAD",
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(ordered_release, reversed_release),
+                "E-SYSTEMS-FRAMES",
+                "affine extent",
             ),
         ] {
             let error = analyze_systems_for_compiler(

@@ -326,13 +326,13 @@ fn analyze_static_elf_frame_sequence(
         source,
         success,
         span,
-        "static ELF frame allocation success requires its exact marker, whole-extent release, and continuation",
+        "static ELF frame allocation success requires its exact marker and nested metadata allocation",
     )?;
-    let [marker, release, rest @ ..] = success_statements else {
+    let [marker, nested @ ..] = success_statements else {
         return Err(translation_edit_diagnostic(
             source,
             success.span(),
-            "static ELF frame allocation success requires its exact marker, whole-extent release, and continuation",
+            "static ELF frame allocation success requires its exact marker and nested metadata allocation",
         ));
     };
     let marker = analyze_operation(
@@ -352,7 +352,71 @@ fn analyze_static_elf_frame_sequence(
             "static ELF frame allocation must publish its exact marker before release",
         ));
     }
-    parse_physical_frame_release(source, release, allocator_context, &extent_name)?;
+
+    let (metadata_subject, metadata_name, metadata_success, _problem_name, metadata_failure, metadata_span) =
+        result_sequence(source, nested, "static ELF mapping metadata allocation")?;
+    let metadata_request =
+        parse_physical_frame_allocation(source, metadata_subject, allocator_context)?;
+    if metadata_request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            metadata_subject.span(),
+            "static ELF mapping metadata requires exactly one frame aligned to one frame",
+        ));
+    }
+    let CompilerSystemsDisposition::Fatal {
+        message: metadata_failure_message,
+    } = action_disposition(source, metadata_failure, allocator_context)?
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            metadata_failure.span(),
+            "static ELF metadata allocation failure must consume the allocator context through `fatal`",
+        ));
+    };
+    let metadata_statements = translation_block(
+        source,
+        metadata_success,
+        metadata_span,
+        "static ELF mapping resources require their exact marker and metadata-then-payload release",
+    )?;
+    let [resources_marker, metadata_release, payload_release, rest @ ..] = metadata_statements
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            metadata_success.span(),
+            "static ELF mapping resources require their exact marker and metadata-then-payload release",
+        ));
+    };
+    let resources_marker = analyze_operation(
+        source,
+        resources_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &resources_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(metadata_statements.first().expect("marker exists")),
+            "static ELF mapping resources must publish their exact marker before release",
+        ));
+    }
+    parse_physical_frame_release(
+        source,
+        metadata_release,
+        allocator_context,
+        &metadata_name,
+    )?;
+    parse_physical_frame_release(source, payload_release, allocator_context, &extent_name)?;
     let mut checked =
         analyze_local_interrupt_critical_sequence(source, rest, allocator_context, storage)?;
     let mut operations = vec![
@@ -361,6 +425,12 @@ fn analyze_static_elf_frame_sequence(
             failure_message,
         },
         marker,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: metadata_request,
+            failure_message: metadata_failure_message,
+        },
+        resources_marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::ReleasePhysicalFrames,
     ];
     operations.append(&mut checked.operations);

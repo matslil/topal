@@ -77,13 +77,20 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                   )
                                                                     Ok static-elf-frames then {
                                                                       unmapped console write "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK"
-                                                                      unmapped frames release static-elf-frames
-                                                                      unmapped critical enter (
-                                                                        domain is local-maskable-interrupts
+                                                                      unmapped frames allocate (
+                                                                        frame-count is 1,
+                                                                        alignment-frames is 1
                                                                       )
-                                                                        Ok critical then {
-                                                                          critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
-                                                                          restored is critical restore
+                                                                        Ok static-elf-leaf-table-frame then {
+                                                                          unmapped console write "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK"
+                                                                          unmapped frames release static-elf-leaf-table-frame
+                                                                          unmapped frames release static-elf-frames
+                                                                          unmapped critical enter (
+                                                                            domain is local-maskable-interrupts
+                                                                          )
+                                                                            Ok critical then {
+                                                                              critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                              restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
                                                                   restored pci configuration dword read equals (
                                                                     segment is 0,
@@ -1210,8 +1217,12 @@ completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                       restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                        Error failure then {
-                                                                          failure fatal "critical entry failed"
+                                                                            Error failure then {
+                                                                              failure fatal "critical entry failed"
+                                                                            }
+                                                                        }
+                                                                        Error problem then {
+                                                                          unmapped fatal "static ELF metadata frame allocation failed"
                                                                         }
                                                                     }
                                                                     Error problem then {
