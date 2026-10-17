@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/98";
+    "topal.provider-object.x86_64-qemu-pc-q35/99";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2499,7 +2499,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         (40, 0x4400),
         (56, 4096),
     ] {
-        continuation.bytes(&[0x48, 0xc7, 0x44, 0x24, offset]);
+        continuation.bytes(&[0xc7, 0x44, 0x24, offset]);
         continuation.bytes(&value.to_le_bytes());
     }
     continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
@@ -2510,7 +2510,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0xba, 0x20, 0x51, 0x60, 0x00]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
@@ -2527,7 +2527,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0xba, 0x50, 0x51, 0x60, 0x00]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
@@ -2545,10 +2545,20 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x83, 0xc2, 0x08, 0xff, 0xc3, 0x83, 0xfb, 0x02]);
     continuation.jump_if(0x85, "winsize-query-loop");
+    continuation.bytes(&[0x31, 0xdb, 0x6a, 0x01, 0x5a]);
+    continuation.bind("lseek-query-loop")?;
+    continuation.bytes(&[0x89, 0xdf, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xe3]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xff, 0xc3, 0x83, 0xfb, 0x02]);
+    continuation.jump_if(0x85, "lseek-query-loop");
+    continuation.bytes(&[0xb2, 0x05, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xbe, 0xff, 0xff, 0x00, 0x00]);
     continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xe7]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x03, 0, 0, 0, 0x31, 0xd2]);
@@ -2658,6 +2668,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x83, 0xc6, 0x12]);
     continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x6a, 0x05, 0x5a, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xf7]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // closed-slot F_GETFD
@@ -3306,6 +3319,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "close");
     code.bytes(&[0x83, 0xf8, 0x05]);
     code.jump_if(0x84, "fstat");
+    code.bytes(&[0x83, 0xf8, 0x08]);
+    code.jump_if(0x84, "lseek");
     code.bytes(&[0x83, 0xf8, 0x10]);
     code.jump_if(0x84, "ioctl");
     code.bytes(&[0x83, 0xf8, 0x20]);
@@ -4493,6 +4508,20 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00]);
     code.bind("fstat-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("lseek")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x48, 0x83, 0xfa, 0x04]);
+    code.jump_if(0x87, "lseek-einval");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe3, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("lseek-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("ioctl")?;
@@ -7763,6 +7792,38 @@ assert bytes(output) == block[32:]
                     .any(|bytes| bytes == [0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0, 0]),
             "fstat must resolve a live description before pointer access, stage the complete native layout, and fault-contain one full writable-range copy"
         );
+        let lseek_whence = user_syscall
+            .windows(4)
+            .rposition(|bytes| bytes == [0x48, 0x83, 0xfa, 0x04])
+            .expect("lseek must validate the maximum seek mode");
+        let lseek_lookup = user_syscall[..lseek_whence]
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("lseek must look up the mapped description");
+        assert!(
+            lseek_lookup < lseek_whence
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x08])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe3, 0xff, 0xff, 0xff])
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0x6a, 0x08, 0x58, 0x0f, 0x05])
+                    .count()
+                    == 3
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .any(|bytes| bytes == [0xff, 0xc3, 0x83, 0xfb, 0x02])
+                && entry_payload
+                    .bytes
+                    .windows(2)
+                    .any(|bytes| bytes == [0xb2, 0x05]),
+            "lseek must resolve descriptors before modes, return ESPIPE for both live console directions, reject unsupported live modes, and retain closed-slot EBADF precedence"
+        );
         let ioctl_lookup = user_syscall
             .windows(8)
             .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
@@ -7782,8 +7843,8 @@ assert bytes(output) == block[32:]
                 && ioctl_request < ioctl_candidate
                 && entry_payload
                     .bytes
-                    .windows(7)
-                    .filter(|bytes| *bytes == [0xb8, 0x10, 0, 0, 0, 0x0f, 0x05])
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0xbe, 0x01, 0x54, 0, 0])
                     .count()
                     == 3
                 && user_syscall

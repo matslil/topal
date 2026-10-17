@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 63
+        || fields.len() != 65
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1045,6 +1045,8 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[60], "not-a-terminal-error")? != 25
         || field_natural(source, &fields[61], "window-size-layout-bytes")? != 8
         || field_natural(source, &fields[62], "window-size-query-request")? != 21523
+        || field_natural(source, &fields[63], "seek-maximum-whence")? != 4
+        || field_natural(source, &fields[64], "illegal-seek-error")? != 29
     {
         return Err(user_context_diagnostic(
             source,
@@ -1095,6 +1097,8 @@ fn analyze_user_syscall_handler(
         not_a_terminal_error: 25,
         window_size_layout_bytes: 8,
         window_size_query_request: 21523,
+        seek_maximum_whence: 4,
+        illegal_seek_error: 29,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3479,6 +3483,7 @@ fn analyze_kernel_context_decision(
         user_fstat_marker_statement,
         user_tcgets_marker_statement,
         user_winsize_marker_statement,
+        user_lseek_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3726,6 +3731,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_winsize_marker_statement),
             "returned user execution requires its exact console-geometry marker",
+        ));
+    }
+    let user_lseek_marker = analyze_operation(
+        source,
+        user_lseek_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_lseek_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_lseek_marker_statement),
+            "returned user execution requires its exact console-seek marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4909,6 +4931,7 @@ fn analyze_kernel_context_decision(
         user_fstat_marker,
         user_tcgets_marker,
         user_winsize_marker,
+        user_lseek_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -10112,6 +10135,9 @@ mod tests {
                 CompilerSystemsOperation::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
                 },
+                CompilerSystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
+                },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
@@ -10336,7 +10362,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 257);
+        assert_eq!(program.bootstrap.handler.operations.len(), 258);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
