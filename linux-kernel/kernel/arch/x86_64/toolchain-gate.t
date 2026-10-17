@@ -1033,7 +1033,34 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     single-use is 1
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK"
+                                                                                                                  completion-resumed entropy generator extract (
+                                                                                                                    generator-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    prior-generation is 2,
+                                                                                                                    resulting-generation is 3,
+                                                                                                                    output-identity is 2,
+                                                                                                                    block-byte-count is 64,
+                                                                                                                    output-offset-bytes is 32,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    counter is 0,
+                                                                                                                    nonce-identity is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed entropy output reserve initial user random (
+                                                                                                                    output-identity is 2,
+                                                                                                                    source-byte-count is 32,
+                                                                                                                    selected-offset-bytes is 0,
+                                                                                                                    maximum-delivery-byte-count is 16,
+                                                                                                                    discarded-offset-bytes is 16,
+                                                                                                                    discarded-byte-count is 16,
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    supported-flag-mask is 7,
+                                                                                                                    incompatible-flag-mask is 6,
+                                                                                                                    single-use is 1
+                                                                                                                  )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"

@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/87";
+    "topal.provider-object.x86_64-qemu-pc-q35/88";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -127,6 +127,8 @@ pub const X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL: &str =
     "topal_x86_systems_entropy_extract_chacha20_generator";
 pub const X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL: &str =
     "topal_x86_systems_entropy_deliver_initial_auxv_random";
+pub const X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_entropy_reserve_initial_user_random";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -903,6 +905,27 @@ fn entropy_deliver_initial_auxv_random() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_reserve_initial_user_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // affine 32-byte output
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x01]); // prepared probe, not entered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]); // AT_RANDOM delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]); // no live pointer
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0xb7, 0xd8, 0, 0, 0]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -1096,6 +1119,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
         &entropy_deliver_initial_auxv_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+        &entropy_reserve_initial_user_random()?,
     );
     append_encoded_function(
         &mut object,
@@ -1574,6 +1603,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
 
     code.bytes(&[0xc6, 0x87, 0xc0, 0x00, 0x00, 0x00, 0x00]);
     code.bytes(&[0xc6, 0x87, 0xd0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xd8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -2328,6 +2358,33 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
     continuation.jump_if(0x85, "fs-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // bounded getrandom result
+    continuation.bytes(&[0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // zero length
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0xba, 0x08, 0, 0, 0]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // unknown flag
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0xba, 0x06, 0, 0, 0]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // incompatible flags
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0xbf, 0xf8, 0x1f, 0x60, 0x00]); // crosses stack guard
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf2]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -2350,6 +2407,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.jump("fail");
     continuation.bind("fs-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.jump("fail");
+    continuation.bind("getrandom-buffer-fail")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
@@ -2922,6 +2982,8 @@ fn user_enter_initial_context() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fail");
     code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]);
+    code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x89, 0x67, 0x08]); // continuation RSP
     code.bytes(&[0xc6, 0x07, 0x02]);
     code.bytes(&[0x6a, 0x23]); // user SS
@@ -2998,6 +3060,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "getrlimit");
     code.bytes(&[0x3d, 0x2e, 0x01, 0x00, 0x00]);
     code.jump_if(0x84, "prlimit64");
+    code.bytes(&[0x3d, 0x3e, 0x01, 0x00, 0x00]);
+    code.jump_if(0x84, "getrandom");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -3009,6 +3073,63 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
 
     code.bind("sched-yield")?;
     code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("getrandom")?;
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x58, 0, 0, 0]); // flags
+    code.bytes(&[0x4d, 0x89, 0xc1, 0x49, 0x83, 0xe1, 0xf8]); // unknown bits
+    code.jump_if(0x85, "getrandom-einval");
+    code.bytes(&[0x49, 0x83, 0xe0, 0x06, 0x49, 0x83, 0xf8, 0x06]);
+    code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x10]);
+    code.jump_if(0x87, "getrandom-einval");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "getrandom-zero");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]); // private output
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x01, 0xf2]); // checked end
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x87, "getrandom-efault");
+    code.bytes(&[0x45, 0x31, 0xc0]);
+    code.bind("getrandom-copy-loop")?;
+    code.bytes(&[0x4c, 0x39, 0xc6]);
+    code.jump_if(0x84, "getrandom-copy-complete");
+    code.bytes(&[0x43, 0x8a, 0x04, 0x01, 0x42, 0x88, 0x04, 0x07]);
+    code.bytes(&[0x42, 0x3a, 0x04, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0xff, 0xc0]);
+    code.jump("getrandom-copy-loop");
+    code.bind("getrandom-copy-complete")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x89, 0x01]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x41, offset]);
+        }
+    }
+    code.bytes(&[0x4d, 0x8b, 0x01]);
+    for offset in [8_u8, 16, 24] {
+        code.bytes(&[0x4d, 0x0b, 0x41, offset]);
+    }
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xd8, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 2]);
+    code.bytes(&[0x48, 0x89, 0xf0]);
+    code.jump("return-user");
+    code.bind("getrandom-zero")?;
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("getrandom-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("getrandom-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("getpid")?;
@@ -3914,6 +4035,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xd0, 0, 0, 0, 2]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "exit-anonymous-already-revoked");
@@ -6251,6 +6374,55 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
             "initial user entry must reject an address space without AT_RANDOM delivery"
+        );
+        assert!(
+            user_enter
+                .windows(8)
+                .any(|bytes| bytes == [0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]),
+            "initial user entry must reject an address space without a live getrandom reservation"
+        );
+        let getrandom_reservation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+        );
+        assert!(
+            getrandom_reservation
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0xb7, 0xd8, 0, 0, 0])
+                && getrandom_reservation
+                    .windows(7)
+                    .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
+            "initial getrandom reservation must retain only a private affine output reference"
+        );
+        let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
+        assert!(
+            user_syscall
+                .windows(5)
+                .any(|bytes| bytes == [0x3d, 0x3e, 0x01, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 2]),
+            "native syscall 318 must validate and consume the reserved output exactly once"
+        );
+        let entry_payload = initial_user_entry_payload().unwrap();
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
+                .count(),
+            5,
+            "ring-3 must exercise four non-consuming cases and one successful getrandom call"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(9)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 8]),
+            "ring-3 must read both returned qwords without comparing them with constants"
         );
         assert!(
             initial_stack
