@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/89";
+    "topal.provider-object.x86_64-qemu-pc-q35/90";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2426,7 +2426,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
     continuation.jump_if(0x85, "fs-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
-    continuation.bytes(&[0x48, 0x83, 0xec, 0x10]); // bounded getrandom result
+    continuation.bytes(&[0x48, 0x83, 0xec, 0x20]); // bounded getrandom result
     continuation.bytes(&[0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // zero length
     continuation.bytes(&[0x48, 0x85, 0xc0]);
@@ -2458,7 +2458,14 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
     continuation.jump_if(0x85, "getrandom-buffer-fail");
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
-    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x20, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x20]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]);
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -2484,7 +2491,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
     continuation.jump("fail");
     continuation.bind("getrandom-buffer-fail")?;
-    continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.bytes(&[0x48, 0x83, 0xc4, 0x20]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
     bytes.extend(continuation.finish()?);
@@ -3155,7 +3162,7 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "getrandom-einval");
     code.bytes(&[0x49, 0x83, 0xe0, 0x06, 0x49, 0x83, 0xf8, 0x06]);
     code.jump_if(0x84, "getrandom-einval");
-    code.bytes(&[0x48, 0x83, 0xfe, 0x10]);
+    code.bytes(&[0x48, 0x83, 0xfe, 0x20]);
     code.jump_if(0x87, "getrandom-einval");
     code.bytes(&[0x48, 0x85, 0xf6]);
     code.jump_if(0x84, "getrandom-zero");
@@ -6564,8 +6571,8 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
                 .count(),
-            6,
-            "ring-3 must exercise four non-consuming cases and two successful getrandom calls"
+            7,
+            "ring-3 must exercise four non-consuming cases, two bounded successes, and one full-output getrandom call"
         );
         assert!(
             entry_payload
@@ -6573,6 +6580,13 @@ assert bytes(output) == block[32:]
                 .windows(9)
                 .any(|bytes| bytes == [0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 8]),
             "ring-3 must read both returned qwords without comparing them with constants"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(10)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]),
+            "ring-3 must read the complete four-qword provider output without constraining it"
         );
         assert!(
             initial_stack

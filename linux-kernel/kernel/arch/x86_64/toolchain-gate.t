@@ -1049,9 +1049,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     output-identity is 2,
                                                                                                                     source-byte-count is 32,
                                                                                                                     selected-offset-bytes is 0,
-                                                                                                                    maximum-delivery-byte-count is 16,
-                                                                                                                    discarded-offset-bytes is 16,
-                                                                                                                    discarded-byte-count is 16,
+                                                                                                                    maximum-delivery-byte-count is 32,
+                                                                                                                    discarded-offset-bytes is 32,
+                                                                                                                    discarded-byte-count is 0,
                                                                                                                     process-identity is 1,
                                                                                                                     interface-identity is 1,
                                                                                                                     service-identity is 1,
@@ -1065,7 +1065,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     initial-output-identity is 2,
                                                                                                                     block-byte-count is 64,
                                                                                                                     output-byte-count is 32,
-                                                                                                                    maximum-delivery-byte-count is 16,
+                                                                                                                    maximum-delivery-byte-count is 32,
                                                                                                                     process-identity is 1,
                                                                                                                     interface-identity is 1,
                                                                                                                     service-identity is 1,
@@ -1077,6 +1077,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   user-completed is completion-resumed user context enter user-probe
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
