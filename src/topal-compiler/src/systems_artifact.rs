@@ -473,6 +473,49 @@ struct StaticElfLoadPlan {
     stack_executable: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfPagePermission {
+    ReadWriteNoExecute,
+    ReadOnlyNoExecute,
+    ReadOnlyExecute,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfPageRecord {
+    virtual_address: u64,
+    frame_ordinal: u64,
+    source_role: StaticElfLoadRole,
+    initial_permission: StaticElfPagePermission,
+    final_permission: StaticElfPagePermission,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfCopyOperation {
+    file: StaticElfInterval,
+    destination: StaticElfInterval,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfConstructionOperation {
+    Zero(StaticElfInterval),
+    Copy(StaticElfCopyOperation),
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct StaticElfPagePlan {
+    frame_count: u64,
+    alignment_frames: u64,
+    construction: Vec<StaticElfConstructionOperation>,
+    pages: Vec<StaticElfPageRecord>,
+    entry: u64,
+    tls: Option<StaticElfTlsPlan>,
+    relro_pages: Option<StaticElfInterval>,
+}
+
 fn elf_u16(image: &[u8], offset: usize) -> u16 {
     u16::from_le_bytes(
         image[offset..offset + 2]
@@ -767,13 +810,149 @@ fn derive_x86_64_static_elf_load_plan(image: &[u8]) -> Result<StaticElfLoadPlan,
     })
 }
 
+#[allow(clippy::too_many_lines)] // Keeps one inherited-plan validation transaction auditable.
+fn derive_x86_64_static_elf_page_plan(
+    load: &StaticElfLoadPlan,
+) -> Result<StaticElfPagePlan, CompileError> {
+    if load.segments.len() != 4
+        || load.page_count == 0
+        || load.page_count > 512
+        || !load.pages.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+        || !load.pages.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+        || load.pages.end <= load.pages.start
+        || (load.pages.end - load.pages.start) / STATIC_ELF_PAGE_SIZE != load.page_count
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has an inconsistent inherited span".into(),
+        ));
+    }
+
+    let expected_roles = [
+        StaticElfLoadRole::Headers,
+        StaticElfLoadRole::Executable,
+        StaticElfLoadRole::ImmutableData,
+        StaticElfLoadRole::WritableData,
+    ];
+    let mut next_page = load.pages.start;
+    for (segment, expected_role) in load.segments.iter().zip(expected_roles) {
+        if segment.role != expected_role
+            || segment.pages.start != next_page
+            || !segment.pages.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || !segment.pages.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || segment.pages.end <= segment.pages.start
+            || segment.memory.start < segment.pages.start
+            || segment.memory.end > segment.pages.end
+            || segment.file.end < segment.file.start
+            || segment.memory.end < segment.memory.start
+            || segment.file.end - segment.file.start > segment.memory.end - segment.memory.start
+        {
+            return Err(CompileError::Tool(
+                "bounded static ELF page realization requires four exact adjacent inherited roles"
+                    .into(),
+            ));
+        }
+        next_page = segment.pages.end;
+    }
+    if next_page != load.pages.end {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization does not cover the complete inherited span".into(),
+        ));
+    }
+
+    let writable = load.segments[3];
+    if let Some(relro) = load.relro_pages
+        && (!relro.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || !relro.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || relro.start >= relro.end
+            || relro.start < writable.pages.start
+            || relro.end > writable.pages.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has invalid inherited RELRO pages".into(),
+        ));
+    }
+
+    let mut pages = Vec::with_capacity(usize::try_from(load.page_count).map_err(|_| {
+        CompileError::Tool("bounded static ELF page count exceeds host limits".into())
+    })?);
+    for segment in &load.segments {
+        let mut virtual_address = segment.pages.start;
+        while virtual_address < segment.pages.end {
+            let relro = load.relro_pages.is_some_and(|interval| {
+                virtual_address >= interval.start && virtual_address < interval.end
+            });
+            let final_permission = match segment.role {
+                StaticElfLoadRole::Executable => StaticElfPagePermission::ReadOnlyExecute,
+                StaticElfLoadRole::WritableData if !relro => {
+                    StaticElfPagePermission::ReadWriteNoExecute
+                }
+                StaticElfLoadRole::Headers
+                | StaticElfLoadRole::ImmutableData
+                | StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadOnlyNoExecute,
+            };
+            pages.push(StaticElfPageRecord {
+                virtual_address,
+                frame_ordinal: (virtual_address - load.pages.start) / STATIC_ELF_PAGE_SIZE,
+                source_role: segment.role,
+                initial_permission: StaticElfPagePermission::ReadWriteNoExecute,
+                final_permission,
+            });
+            virtual_address += STATIC_ELF_PAGE_SIZE;
+        }
+    }
+    let derived_page_count = u64::try_from(pages.len()).map_err(|_| {
+        CompileError::Tool("bounded static ELF realized page count exceeds u64".into())
+    })?;
+    if derived_page_count != load.page_count
+        || pages.iter().enumerate().any(|(index, page)| {
+            let ordinal = u64::try_from(index).expect("bounded to 512 page records");
+            page.frame_ordinal != ordinal
+                || page.virtual_address != load.pages.start + ordinal * STATIC_ELF_PAGE_SIZE
+        })
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has incomplete page ordinals".into(),
+        ));
+    }
+
+    let mut construction = Vec::with_capacity(5);
+    construction.push(StaticElfConstructionOperation::Zero(load.pages));
+    for segment in &load.segments {
+        let copy_size = segment.file.end - segment.file.start;
+        let destination =
+            checked_elf_interval(segment.memory.start, copy_size, "copy destination")?;
+        if destination.end > segment.memory.end {
+            return Err(CompileError::Tool(
+                "bounded static ELF copy exceeds its inherited memory role".into(),
+            ));
+        }
+        construction.push(StaticElfConstructionOperation::Copy(
+            StaticElfCopyOperation {
+                file: segment.file,
+                destination,
+            },
+        ));
+    }
+
+    Ok(StaticElfPagePlan {
+        frame_count: load.page_count,
+        alignment_frames: 1,
+        construction,
+        pages,
+        entry: load.entry,
+        tls: load.tls,
+        relro_pages: load.relro_pages,
+    })
+}
+
 fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
     let reference = initial_user_elf_file()?;
     if image.len() != reference.len() {
-        if let Ok(plan) = derive_x86_64_static_elf_load_plan(image) {
+        if let Ok(load_plan) = derive_x86_64_static_elf_load_plan(image) {
+            let page_plan = derive_x86_64_static_elf_page_plan(&load_plan)?;
             return Err(CompileError::Tool(format!(
-                "bounded static ELF load plan covers {} pages at entry {:#x}, but this image is not runtime-selectable until its mapping lifecycle is implemented",
-                plan.page_count, plan.entry
+                "bounded static ELF page plan covers one {}-frame affine extent at entry {:#x}, but this image is not runtime-selectable until its mapping lifecycle is implemented",
+                page_plan.frame_count, page_plan.entry
             )));
         }
         return Err(CompileError::Tool(format!(
@@ -6447,8 +6626,102 @@ mod tests {
         );
         assert!(!plan.stack_executable);
         let error = validate_x86_64_initial_user_image(&image).unwrap_err();
-        assert!(error.to_string().contains("503 pages"));
+        assert!(error.to_string().contains("503-frame affine extent"));
         assert!(error.to_string().contains("not runtime-selectable"));
+    }
+
+    #[test]
+    fn realizes_the_pinned_static_elf_as_ordered_wx_safe_pages() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001, TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let load = derive_x86_64_static_elf_load_plan(&busybox_shaped_static_elf()).unwrap();
+        let plan = derive_x86_64_static_elf_page_plan(&load).unwrap();
+        assert_eq!(plan.frame_count, 503);
+        assert_eq!(plan.alignment_frames, 1);
+        assert_eq!(plan.pages.len(), 503);
+        assert_eq!(plan.pages.first().unwrap().virtual_address, 0x0040_0000);
+        assert_eq!(plan.pages.last().unwrap().virtual_address, 0x005f_6000);
+        assert!(plan.pages.iter().enumerate().all(|(index, page)| {
+            page.frame_ordinal == u64::try_from(index).unwrap()
+                && page.initial_permission == StaticElfPagePermission::ReadWriteNoExecute
+        }));
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadOnlyExecute
+                })
+                .count(),
+            396
+        );
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadOnlyNoExecute
+                })
+                .count(),
+            97
+        );
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadWriteNoExecute
+                })
+                .count(),
+            10
+        );
+        assert_eq!(
+            plan.construction.first(),
+            Some(&StaticElfConstructionOperation::Zero(StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x005f_7000,
+            }))
+        );
+        assert_eq!(plan.construction.len(), 5);
+        assert!(
+            plan.construction[1..]
+                .iter()
+                .all(|operation| matches!(operation, StaticElfConstructionOperation::Copy(_)))
+        );
+        assert_eq!(
+            plan.construction.last(),
+            Some(&StaticElfConstructionOperation::Copy(
+                StaticElfCopyOperation {
+                    file: StaticElfInterval {
+                        start: 0x1e_4660,
+                        end: 0x1e_dd88,
+                    },
+                    destination: StaticElfInterval {
+                        start: 0x005e_5660,
+                        end: 0x005e_ed88,
+                    },
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_inconsistent_inherited_static_elf_page_facts() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let valid = derive_x86_64_static_elf_load_plan(&busybox_shaped_static_elf()).unwrap();
+        let rejected = |mutate: fn(&mut StaticElfLoadPlan)| {
+            let mut load = valid.clone();
+            mutate(&mut load);
+            assert!(derive_x86_64_static_elf_page_plan(&load).is_err());
+        };
+
+        rejected(|load| load.page_count = 502);
+        rejected(|load| load.pages.end += STATIC_ELF_PAGE_SIZE);
+        rejected(|load| load.segments[1].pages.start += STATIC_ELF_PAGE_SIZE);
+        rejected(|load| load.segments[2].role = StaticElfLoadRole::WritableData);
+        rejected(|load| load.segments[3].file.end = load.segments[3].memory.end + 1);
+        rejected(|load| {
+            load.relro_pages = Some(StaticElfInterval {
+                start: load.segments[2].pages.start,
+                end: load.segments[2].pages.end,
+            });
+        });
     }
 
     #[test]
