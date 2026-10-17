@@ -114,6 +114,7 @@ records, not this directory alone, define language meaning.
 - [Reusable process `getrandom` service](reusable-process-getrandom.md)
 - [Full-output process `getrandom`](full-output-process-getrandom.md)
 - [Bounded small-request process `getrandom`](bounded-small-request-getrandom.md)
+- [Bounded large-request process `getrandom`](bounded-large-request-getrandom.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

@@ -468,6 +468,14 @@ records the existing two 16-byte successes followed by a fresh 32-byte call,
 complete four-qword observation, non-consuming failures, full-output erasure,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The latest large-request refinement raises the explicit reusable-service bound
+to [512 bytes and 16 outputs](design/bounded-large-request-getrandom.md) while
+retaining whole-range validation and exact completion in the current
+signal-free process profile. Its
+[implementation and qualification report](step-4-bounded-large-request-getrandom.md)
+records per-output key replacement and erasure, one-call accounting,
+structural inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -633,6 +641,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 reusable process `getrandom` service](step-4-reusable-process-getrandom.md)
 - [Step 4 full-output process `getrandom`](step-4-full-output-process-getrandom.md)
 - [Step 4 bounded small-request `getrandom`](step-4-bounded-small-request-getrandom.md)
+- [Step 4 bounded large-request `getrandom`](step-4-bounded-large-request-getrandom.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

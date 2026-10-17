@@ -1084,11 +1084,22 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     maximum-delivery-byte-count is 256,
                                                                                                                     complete-request is 1
                                                                                                                   )
+                                                                                                                  completion-resumed entropy user random expand large requests (
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    maximum-output-count is 16,
+                                                                                                                    maximum-delivery-byte-count is 512,
+                                                                                                                    complete-request is 1
+                                                                                                                  )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"

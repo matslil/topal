@@ -1456,6 +1456,14 @@ selected chunk in order, wipes every complete output, and reports one completed
 interface delivery only after the full request. Source observes neither the
 chunk loop nor cryptographic, syscall, register, address, or fault mechanics.
 
+A checked large-request refinement may raise those explicit bounds while the
+qualified process remains single-threaded and signal-free. It preserves
+whole-range validation before extraction, ordered fixed-size output chunks,
+per-output key replacement and complete erasure, exact completion in the
+absence of interruption, and one interface delivery for the syscall. The
+larger bound does not imply unbounded allocation, partial-progress policy, or
+an architecture page-size dependency.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

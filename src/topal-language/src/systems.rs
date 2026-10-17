@@ -66,8 +66,9 @@ pub use topal_semantics::{
     SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM, SYSTEMS_ENTROPY_POOL_CREATE,
     SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
     SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
-    SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE, SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS,
-    SYSTEMS_FATAL, SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
+    SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE, SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS,
+    SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS, SYSTEMS_FATAL,
+    SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
     SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
     SYSTEMS_KERNEL_COMPLETION_CREATE, SYSTEMS_KERNEL_COMPLETION_SIGNAL,
     SYSTEMS_KERNEL_CONTEXT_AWAIT_DEADLINE_PREEMPTION, SYSTEMS_KERNEL_CONTEXT_CREATE,
@@ -3412,11 +3413,13 @@ fn analyze_kernel_context_decision(
         entropy_getrandom_reservation_statement,
         entropy_getrandom_binding_statement,
         entropy_getrandom_small_request_statement,
+        entropy_getrandom_large_request_statement,
         enter_user,
         user_getrandom_marker_statement,
         user_getrandom_repeated_marker_statement,
         user_getrandom_full_output_marker_statement,
         user_getrandom_small_request_marker_statement,
+        user_getrandom_large_request_marker_statement,
         user_read_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
@@ -3529,6 +3532,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_getrandom_small_request_marker_statement),
             "returned user execution requires its exact small-request getrandom marker",
+        ));
+    }
+    let user_getrandom_large_request_marker = analyze_operation(
+        source,
+        user_getrandom_large_request_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_getrandom_large_request_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_getrandom_large_request_marker_statement),
+            "returned user execution requires its exact large-request getrandom marker",
         ));
     }
     let user_read_marker = analyze_operation(
@@ -4587,6 +4607,23 @@ fn analyze_kernel_context_decision(
             "the reusable getrandom service must receive its exact bounded small-request refinement before user entry",
         ));
     }
+    let entropy_getrandom_large_request = analyze_operation(
+        source,
+        entropy_getrandom_large_request_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_getrandom_large_request
+        != (CompilerSystemsOperation::ExpandLargeUserRandomRequests {
+            request: CompilerEntropyUserRandomSmallRequest::LARGE_GETRANDOM,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_getrandom_large_request_statement),
+            "the small-request getrandom service must receive its exact bounded large-request refinement before user entry",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4697,12 +4734,14 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_getrandom_reservation);
     operations.push(entropy_getrandom_binding);
     operations.push(entropy_getrandom_small_request);
+    operations.push(entropy_getrandom_large_request);
     operations.extend([
         CompilerSystemsOperation::EnterUserContext,
         user_getrandom_marker,
         user_getrandom_repeated_marker,
         user_getrandom_full_output_marker,
         user_getrandom_small_request_marker,
+        user_getrandom_large_request_marker,
         user_read_marker,
         user_copy_to_marker,
         user_copy_from_marker,
@@ -7237,6 +7276,28 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            user,
+            random,
+            expand,
+            large,
+            requests,
+            Expression::Product { fields, span },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, user, "user")
+        && identifier_is(source, random, "random")
+        && identifier_is(source, expand, "expand")
+        && identifier_is(source, large, "large")
+        && identifier_is(source, requests, "requests")
+    {
+        let request = parse_entropy_user_random_large_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::ExpandLargeUserRandomRequests { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -8277,6 +8338,46 @@ fn parse_entropy_user_random_small_request(
     Ok(request)
 }
 
+fn parse_entropy_user_random_large_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropyUserRandomSmallRequest, Diagnostic> {
+    if fields.len() != 8 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-USER-LARGE-REQUEST",
+            span,
+            "large-request getrandom refinement requires process, interface, service, algorithm, output, count, delivery, and completion fields",
+        ));
+    }
+    let request = CompilerEntropyUserRandomSmallRequest {
+        process_identity: field_natural(source, &fields[0], "process-identity")?,
+        interface_identity: field_natural(source, &fields[1], "interface-identity")?,
+        service_identity: field_natural(source, &fields[2], "service-identity")?,
+        algorithm_identity: field_natural(source, &fields[3], "algorithm-identity")?,
+        output_byte_count: field_natural(source, &fields[4], "output-byte-count")?,
+        maximum_output_count: field_natural(source, &fields[5], "maximum-output-count")?,
+        maximum_delivery_byte_count: field_natural(
+            source,
+            &fields[6],
+            "maximum-delivery-byte-count",
+        )?,
+        complete_request: field_natural(source, &fields[7], "complete-request")? == 1,
+    };
+    if !request.is_well_formed()
+        || request != CompilerEntropyUserRandomSmallRequest::LARGE_GETRANDOM
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-USER-LARGE-REQUEST",
+            span,
+            "the initial profile admits only its sealed 16-output 512-byte complete getrandom service",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_entropy_output_delivery_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -8767,6 +8868,7 @@ mod tests {
                 | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                 | CompilerSystemsOperation::BindReusableUserRandom { .. }
                 | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
         )
     }
 
@@ -8785,6 +8887,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         program.bootstrap.handler.effects.retain(|effect| {
@@ -8799,6 +8902,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
     }
 
@@ -8919,6 +9023,7 @@ mod tests {
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS,
                 SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -10047,7 +10152,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 249);
+        assert_eq!(program.bootstrap.handler.operations.len(), 251);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10098,6 +10203,7 @@ mod tests {
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
                 SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS,
                 SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS,
                 SYSTEMS_FRAMES_ALLOCATE,
                 SYSTEMS_FRAMES_RELEASE,
@@ -11214,6 +11320,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11227,6 +11334,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11316,6 +11424,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11328,6 +11437,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11419,6 +11529,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11430,6 +11541,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11516,6 +11628,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11526,6 +11639,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11609,6 +11723,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11618,6 +11733,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11698,6 +11814,7 @@ mod tests {
                     | CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11706,6 +11823,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -11802,6 +11920,7 @@ mod tests {
                 CompilerSystemsOperation::ReserveInitialUserRandom { .. }
                     | CompilerSystemsOperation::BindReusableUserRandom { .. }
                     | CompilerSystemsOperation::ExpandSmallUserRandomRequests { .. }
+                    | CompilerSystemsOperation::ExpandLargeUserRandomRequests { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
@@ -11809,6 +11928,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE
                 && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+                && *effect != SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,

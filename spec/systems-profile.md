@@ -1961,6 +1961,33 @@ interface number, register convention, copy or fault mechanism, temporary
 value, or target instruction. This rule does not admit signals, concurrent
 callers, partial progress, implicit reseeding, or an unbounded request.
 
+### TOPAL-SYSTEMS-ENTROPY-USER-LARGE-REQUEST-001 — Bounded large-request service
+
+`topal.systems.entropy.user-random.expand-large-requests/1` SHALL consume one
+live affine small-request user-random service into one refined service before
+its process enters user context. The request SHALL name matching nonzero
+process, interface, service, and generator-algorithm identities; nonzero output
+extent, maximum output count, and maximum delivery extent; and signal-free
+complete-request policy. Maximum delivery SHALL equal output extent multiplied
+by maximum output count and SHALL exceed the preceding small-request maximum.
+The transition SHALL NOT extract output or change generator state.
+
+Every successful nonempty call SHALL preserve the full-range validation,
+ordered chunk partition, qualified fresh extraction, persistent-key
+replacement, exact-offset copy and verification, complete-output wipe and
+verification, no-remainder, and successor-generator obligations of
+`TOPAL-SYSTEMS-ENTROPY-USER-SMALL-REQUEST-001`. It SHALL consume no more than
+the raised maximum output count, return the exact complete request length, and
+increment interface delivery state once only after all chunks succeed.
+
+Zero and rejected calls SHALL NOT change the service. Internal extraction,
+copy, wipe, or accounting failure SHALL fail closed rather than fabricate a
+partial result. Source SHALL NOT observe a loop, key, output byte, address,
+chunk representation, architecture page size, native interface number,
+register convention, copy or fault mechanism, temporary value, or target
+instruction. This rule does not admit signals, concurrent callers, partial
+progress, implicit reseeding, or an unbounded request.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2398,6 +2425,38 @@ signal interruption, concurrent callers, fork or exec inheritance,
 `/dev/random`, `/dev/urandom`, vDSO delivery, reseeding, per-processor
 generators, batching, queue recycling, asynchronous interrupt delivery, reset,
 or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-LARGE-001 — Bounded large process `getrandom`
+
+After `TOPAL-SYSTEMS-USER-GETRANDOM-SMALL-001` refines the reusable service and
+before initial user entry, the current profile SHALL perform exactly one
+`TOPAL-SYSTEMS-ENTROPY-USER-LARGE-REQUEST-001` refinement. It SHALL preserve
+process, Linux-interface, user-random service, and ChaCha20 algorithm identities
+one; name output extent 32, maximum output count 16, maximum delivery extent
+512, and signal-free complete-request policy; and perform no extraction
+during refinement.
+
+The x86-64 provider SHALL continue to map the service to native syscall 318. It
+SHALL return `-EINVAL` for lengths above 512 without state change. For each
+valid 1-through-512-byte request in this signal-free profile, it SHALL
+validate the complete writable range before the first extraction, use at most
+16 ordered 32-byte outputs, replace the persistent key before each fresh
+output is published, copy and verify every selected chunk, wipe and verify
+every complete output, retain no suffix, return the exact requested length, and
+increment the delivery count exactly once.
+
+The constructed ring-3 image SHALL preserve all preceding probes and successes,
+then complete one 512-byte request using 16 fresh outputs. It SHALL read the
+first and last returned qwords without constraining their values. The profile
+SHALL reject another identity, extent, count, maximum, policy, pre-state,
+omitted or duplicate refinement, extraction before full-range validation, more
+than 16 outputs, partial copy, incomplete wipe, retained output, short success,
+per-output delivery counting, architecture-page-size coupling, or changed
+teardown. This refinement SHALL NOT provide larger requests, partial progress,
+pre-readiness blocking, signal interruption, concurrent callers, fork or exec
+inheritance, `/dev/random`, `/dev/urandom`, vDSO delivery, reseeding,
+per-processor generators, batching, queue recycling, asynchronous interrupt
+delivery, reset, or recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
