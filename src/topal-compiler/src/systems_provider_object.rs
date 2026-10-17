@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/105";
+    "topal.provider-object.x86_64-qemu-pc-q35/106";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -31,6 +31,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
     "topal_x86_systems_static_image_prepare_initial_leaves";
 pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_zero_payload";
+pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
+    "topal_x86_systems_static_image_copy_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_initial_leaves";
 pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
@@ -1219,6 +1221,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
         &static_image_zero_payload()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
+        &static_image_copy_payload()?,
     );
     append_encoded_function(
         &mut object,
@@ -5806,6 +5814,87 @@ fn static_image_zero_payload() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
+    const LOADS: [(u32, u32, u32); 4] = [
+        (0, 0, 0x6e0),
+        (0x1000, 0x1000, 0x18_b285),
+        (0x18_d000, 0x18_d000, 0x5_7040),
+        (0x1e_4660, 0x1e_5660, 0x9728),
+    ];
+    const ZERO_GAPS: [(u32, u32); 4] = [
+        (0x6e0, 0x920),
+        (0x18_c285, 0xd7b),
+        (0x1e_4040, 0x1620),
+        (0x1e_ed88, 0x8278),
+    ];
+
+    fn emit_interval_cursors(code: &mut X86FunctionEncoder, source: u32, destination: u32) {
+        code.bytes(&[0x4c, 0x89, 0xde]); // static ELF base -> source cursor
+        code.bytes(&[0x48, 0x81, 0xc6]);
+        code.bytes(&source.to_le_bytes());
+        code.bytes(&[0x4c, 0x89, 0xd7]); // payload base -> destination cursor
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&destination.to_le_bytes());
+    }
+
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let static_metadata_offsets = (0..7)
+        .chain(16..40)
+        .chain(52..58)
+        .chain(64..64 + 11 * 56);
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56]); // retain payload and metadata identities
+    code.bytes(&[0x49, 0x89, 0xcb]); // retain boot_params
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-before-copy")?;
+    code.bytes(&[0x4c, 0x89, 0xde]); // boot_params
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    for offset in static_metadata_offsets {
+        let displacement = u32::try_from(X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + offset)
+            .map_err(|_| CompileError::Tool("static ELF metadata offset exceeds u32".into()))?;
+        code.bytes(&[0x41, 0x80, 0xb8]); // cmp byte ptr [r8+disp32], imm8
+        code.bytes(&displacement.to_le_bytes());
+        code.bytes(&[static_user_image[offset]]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4d, 0x89, 0xc3]); // static ELF base
+    code.bytes(&[0x49, 0x81, 0xc3]);
+    code.bytes(&X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // payload base
+    for (source, destination, length) in LOADS {
+        emit_interval_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa4]); // exact bounded copy
+    }
+    code.bytes(&[0x0f, 0xae, 0xf0]); // publish populated payload
+    for (source, destination, length) in LOADS {
+        emit_interval_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa6]); // verify copied interval
+        code.jump_if(0x85, "fail");
+    }
+    for (start, length) in ZERO_GAPS {
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&start.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xae]); // verify zero-filled gap or BSS
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-after-copy")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0x31, 0xc0, 0xc3]);
     code.finish()
 }
 

@@ -30,7 +30,8 @@ use crate::{
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -1164,6 +1165,7 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     ZeroStaticImageConstructionPayload,
+    CopyStaticImageConstructionPayload,
     RevokeStaticImageConstructionMetadata,
     ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
@@ -1373,6 +1375,9 @@ impl SystemsOperation {
             }
             Self::ZeroStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+            }
+            Self::CopyStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
             }
             Self::RevokeStaticImageConstructionMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
@@ -1630,6 +1635,7 @@ pub enum SystemsTransition {
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
+    CopyStaticImageConstructionPayload,
     RevokeStaticImageConstructionMetadata,
     ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
@@ -2055,6 +2061,9 @@ impl SystemsTransition {
             Self::ZeroStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
             }
+            Self::CopyStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
+            }
             Self::RevokeStaticImageConstructionMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
             }
@@ -2334,6 +2343,7 @@ fn validate_entry(
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
                     | SystemsOperation::ZeroStaticImageConstructionPayload
+                    | SystemsOperation::CopyStaticImageConstructionPayload
                     | SystemsOperation::RevokeStaticImageConstructionMetadata
                     | SystemsOperation::ReclaimStaticImageConstructionPayload
                     | SystemsOperation::MapKernelFrames { .. }
@@ -2818,6 +2828,7 @@ enum BootstrapMemoryOwnership {
     StaticElfMappingResources,
     StaticElfConstructionLive,
     StaticElfConstructionZeroed,
+    StaticElfConstructionPopulated,
     StaticElfConstructionMetadataReturned,
     StaticElfConstructionRevoked,
 }
@@ -2969,11 +2980,21 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionZeroed;
             }
-            SystemsOperation::RevokeStaticImageConstructionMetadata => {
+            SystemsOperation::CopyStaticImageConstructionPayload => {
                 if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionZeroed {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
-                        "static-image revocation requires one completely zeroed initial-leaf construction",
+                        "static-image payload copy requires one completely zeroed construction",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionPopulated;
+            }
+            SystemsOperation::RevokeStaticImageConstructionMetadata => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionPopulated
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image revocation requires one populated initial-leaf construction",
                     ));
                 }
                 self.memory_ownership =
@@ -4913,6 +4934,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfMappingResources
             | BootstrapMemoryOwnership::StaticElfConstructionLive
             | BootstrapMemoryOwnership::StaticElfConstructionZeroed
+            | BootstrapMemoryOwnership::StaticElfConstructionPopulated
             | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
             | BootstrapMemoryOwnership::StaticElfConstructionRevoked => {
                 return Err(SystemsModelError::new(
@@ -6714,6 +6736,9 @@ fn model_bootstrap_operation(
         SystemsOperation::ZeroStaticImageConstructionPayload => {
             transitions.push(SystemsTransition::ZeroStaticImageConstructionPayload);
         }
+        SystemsOperation::CopyStaticImageConstructionPayload => {
+            transitions.push(SystemsTransition::CopyStaticImageConstructionPayload);
+        }
         SystemsOperation::RevokeStaticImageConstructionMetadata => {
             transitions.push(SystemsTransition::RevokeStaticImageConstructionMetadata);
         }
@@ -7164,6 +7189,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ReleasePhysicalFrames
         | SystemsOperation::PrepareStaticImageConstruction { .. }
         | SystemsOperation::ZeroStaticImageConstructionPayload
+        | SystemsOperation::CopyStaticImageConstructionPayload
         | SystemsOperation::RevokeStaticImageConstructionMetadata
         | SystemsOperation::ReclaimStaticImageConstructionPayload
         | SystemsOperation::MapKernelFrames { .. }
@@ -10040,7 +10066,7 @@ mod tests {
     #[test]
     fn models_static_elf_initial_leaf_construction_and_revocation() {
         // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-ZERO-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-ZERO-001, TOPAL-SYSTEMS-STATIC-ELF-COPY-001.
         let mut program = program(SystemsDisposition::Resume);
         program.bootstrap.handler.operations.splice(
             2..2,
@@ -10057,6 +10083,7 @@ mod tests {
                     failure_message: "leaf construction failed".into(),
                 },
                 SystemsOperation::ZeroStaticImageConstructionPayload,
+                SystemsOperation::CopyStaticImageConstructionPayload,
                 SystemsOperation::RevokeStaticImageConstructionMetadata,
                 SystemsOperation::ReleasePhysicalFrames,
                 SystemsOperation::ReclaimStaticImageConstructionPayload,
@@ -10067,6 +10094,7 @@ mod tests {
         let transitions = model_systems_transitions(&program).unwrap();
         assert!(transitions.contains(&SystemsTransition::PrepareStaticImageConstruction));
         assert!(transitions.contains(&SystemsTransition::ZeroStaticImageConstructionPayload));
+        assert!(transitions.contains(&SystemsTransition::CopyStaticImageConstructionPayload));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageConstructionMetadata));
         assert!(transitions.contains(&SystemsTransition::ReclaimStaticImageConstructionPayload));
 
@@ -10075,7 +10103,7 @@ mod tests {
             .bootstrap
             .handler
             .operations
-            .swap(7, 8);
+            .swap(8, 9);
         assert_eq!(
             validate_systems_program(&reclaim_before_metadata_release)
                 .unwrap_err()

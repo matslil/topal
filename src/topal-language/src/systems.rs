@@ -83,8 +83,8 @@ pub use topal_semantics::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -9260,6 +9260,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -10390,7 +10391,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 271);
+        assert_eq!(program.bootstrap.handler.operations.len(), 273);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10466,6 +10467,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -12540,7 +12542,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is zeroed-static-elf-construction,\n                                                                                resource is payload",
+                    "owner is populated-static-elf-construction,\n                                                                                resource is payload",
                     "owner is other-static-elf-construction,\n                                                                                resource is payload",
                 ),
                 "exact construction and role",
@@ -12584,7 +12586,7 @@ mod tests {
                     "owner is static-elf-construction",
                     1,
                 ),
-                "exact construction and role",
+                "exact zeroed construction",
             ),
         ] {
             let error = analyze_systems_for_compiler(
