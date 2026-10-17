@@ -1104,6 +1104,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
 completion-resumed console write "TOPAL_KERNEL_USER_CLOSE_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_DUP_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_FCNTL_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_FSTAT_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -1373,7 +1374,13 @@ fcntl-setfd-command is 2,
 fcntl-getfl-command is 3,
 close-on-exec-flag is 1,
 read-only-status is 0,
-write-only-status is 1
+write-only-status is 1,
+stat-layout-bytes is 144,
+console-device is 0,
+console-inode is 1,
+console-mode is 8576,
+console-special-device is 17408,
+console-block-size is 4096
 )
 
 lang systems artifact (
