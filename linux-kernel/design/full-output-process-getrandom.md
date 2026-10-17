@@ -8,12 +8,14 @@ copy, fault-recovery, and cryptographic realization.
 
 ## Decision
 
-The `topal.systems.entropy.user-random.bind-reusable/1` request shall admit a
-maximum delivery equal to its complete 32-byte provider-output extent. A
-successful call may request 1 through 32 bytes. It consumes exactly one output
-object: the reserved output for the first success or one freshly extracted
-output for each later success. The service shall not retain an unselected
-suffix between calls.
+The initial output reservation and the
+`topal.systems.entropy.user-random.bind-reusable/1` request shall admit a
+maximum delivery equal to their complete 32-byte provider-output extent. The
+reservation therefore selects bytes 0 through 31 and has an empty discard
+partition. A successful call may request 1 through 32 bytes. It consumes
+exactly one output object: the reserved output for the first success or one
+freshly extracted output for each later success. The service shall not retain
+an unselected suffix between calls.
 
 Unknown flags, the incompatible `GRND_RANDOM | GRND_INSECURE` combination, and
 requests larger than 32 bytes return `-EINVAL` without changing the service.
