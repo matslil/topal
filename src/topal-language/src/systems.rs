@@ -11338,6 +11338,82 @@ mod tests {
     }
 
     #[test]
+    fn requires_affine_initial_auxv_random_delivery_before_user_entry() {
+        // TOPAL-SYSTEMS-ENTROPY-DELIVER-001,
+        // TOPAL-SYSTEMS-USER-AUXV-RANDOM-001.
+        let mut malformed = CompilerEntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM;
+        malformed.delivered_byte_count = 15;
+        assert!(!malformed.is_well_formed());
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let delivery = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::DeliverInitialAuxvRandom { .. }
+                )
+            })
+            .unwrap();
+        let entry = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| matches!(operation, CompilerSystemsOperation::EnterUserContext))
+            .unwrap();
+        assert!(delivery < entry);
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(delivery);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            delivery,
+            duplicated.bootstrap.handler.operations[delivery].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-DELIVER"
+        );
+
+        let mut reordered = program.clone();
+        reordered.bootstrap.handler.operations.swap(delivery, entry);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-USER-CONTEXT"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::DeliverInitialAuxvRandom { request } =
+            &mut substituted.bootstrap.handler.operations[delivery]
+        {
+            request.auxiliary_tag = 24;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-DELIVER"
+        );
+    }
+
+    #[test]
     fn rejects_unbounded_or_non_affine_bootstrap_region_forms() {
         // TOPAL-SYSTEMS-AUTHORITY-001, TOPAL-SYSTEMS-STORAGE-001.
         for (source, code, expected) in [
