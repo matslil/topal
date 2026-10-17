@@ -783,6 +783,18 @@ replacement clearing, closed-slot rejection, and terminal clearing. Flags on
 open descriptions, slot-derived modes, copied duplication flags, wrong error
 precedence, or retained state shall fail closed.
 
+The initial descriptor adapter shall publish one immutable console object
+through Linux `fstat`. Every initial description and alias shall share
+character-device identity, root ownership, mode `0600`, link count one,
+preferred I/O size 4096, zero size/blocks/timestamps, and ttyS0 special-device
+identity. The x86-64 adapter shall stage and fault-contain the complete native
+144-byte layout, including zero padding. It shall look up the descriptor before
+candidate access and return exact `EBADF` or `EFAULT` without partial output.
+Ring-3 qualification shall compare output and duplicate-alias metadata, inspect
+every field and padding byte, and reject a closed slot. Slot-derived identity,
+regular-file kind, access-mode permissions, partial publication, host time, or
+retained pointers shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from

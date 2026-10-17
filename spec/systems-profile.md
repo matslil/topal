@@ -682,6 +682,43 @@ locks, leases, ownership, asynchronous notification, seals, pipe sizing, exec-
 time close, fork inheritance, dynamically opened descriptions, or concurrent
 `fcntl`.
 
+### TOPAL-SYSTEMS-USER-FSTAT-001 — Bounded initial console metadata
+
+The three fixed initial open descriptions SHALL reference one immutable console
+device object with stable identity one, character-device kind, owner UID/GID
+zero, permissions `0600`, link count one, zero size and allocated blocks,
+preferred I/O size 4096, and zero access/modification/change timestamps. Every
+alias SHALL publish the same object and special-device identity. Open access
+mode SHALL remain separate and SHALL NOT alter permission bits.
+
+The x86-64 personality SHALL encode that value as the complete native 144-byte
+`struct stat`: `st_dev=0`, `st_ino=1`, `st_nlink=1`,
+`st_mode=S_IFCHR|0600`, root UID/GID, zero padding, `st_rdev=0x4400` for Linux
+ttyS0 major 4 minor 64, zero size, `st_blksize=4096`, zero blocks and timestamp
+components, and three zero unused words.
+
+Linux-compatible `fstat` SHALL look up a live descriptor before user access,
+construct the complete native value in private staging, validate one overflow-
+free writable 144-byte extent, and publish it completely under fault recovery.
+Success SHALL return zero and retain no user pointer. Invalid or closed
+descriptors SHALL return `-EBADF` without candidate access. Invalid, read-only,
+wrapping, or cross-hole candidates SHALL return `-EFAULT` without partial
+publication.
+
+The constructed ring-3 image SHALL validate every defined field and padding
+byte for output, duplicate that description into slot zero, and prove the
+alias returns identical object/device/mode metadata. After closing the final
+temporary alias, `fstat(0, …)` SHALL return `-EBADF`. Source SHALL emit exactly
+one `TOPAL_KERNEL_USER_FSTAT_OK` observation after exact returns and before
+later image-lifecycle witnesses.
+
+The profile SHALL reject slot-derived object identity, regular-file kind,
+access-mode-derived permissions, partial publication, lookup after memory
+access, nonzero padding, host-derived timestamps, or retained user pointers.
+This rule SHALL NOT define path lookup, `stat`, `lstat`, `newfstatat`, `statx`,
+mounts, mutable inode metadata, terminal ioctls, dynamic device registration,
+or general VFS state.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user
