@@ -117,6 +117,7 @@ records, not this directory alone, define language meaning.
 - [Bounded large-request process `getrandom`](bounded-large-request-getrandom.md)
 - [Initial standard-descriptor `close`](initial-descriptor-close.md)
 - [Initial standard-descriptor duplication](initial-descriptor-duplication.md)
+- [Initial descriptor `fcntl` metadata](initial-descriptor-fcntl.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
