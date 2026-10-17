@@ -3413,6 +3413,7 @@ fn analyze_kernel_context_decision(
         enter_user,
         user_getrandom_marker_statement,
         user_getrandom_repeated_marker_statement,
+        user_getrandom_full_output_marker_statement,
         user_read_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
@@ -3491,6 +3492,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_getrandom_repeated_marker_statement),
             "returned user execution requires its exact repeated getrandom marker",
+        ));
+    }
+    let user_getrandom_full_output_marker = analyze_operation(
+        source,
+        user_getrandom_full_output_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_getrandom_full_output_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_getrandom_full_output_marker_statement),
+            "returned user execution requires its exact full-output getrandom marker",
         ));
     }
     let user_read_marker = analyze_operation(
@@ -4645,6 +4663,7 @@ fn analyze_kernel_context_decision(
         CompilerSystemsOperation::EnterUserContext,
         user_getrandom_marker,
         user_getrandom_repeated_marker,
+        user_getrandom_full_output_marker,
         user_read_marker,
         user_copy_to_marker,
         user_copy_from_marker,
@@ -9923,7 +9942,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 246);
+        assert_eq!(program.bootstrap.handler.operations.len(), 247);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

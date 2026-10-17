@@ -738,9 +738,9 @@ impl EntropyOutputReservationRequest {
         output_identity: 2,
         source_byte_count: 32,
         selected_offset_bytes: 0,
-        maximum_delivery_byte_count: 16,
-        discarded_offset_bytes: 16,
-        discarded_byte_count: 16,
+        maximum_delivery_byte_count: 32,
+        discarded_offset_bytes: 32,
+        discarded_byte_count: 0,
         process_identity: 1,
         interface_identity: 1,
         service_identity: 1,
@@ -802,7 +802,7 @@ impl EntropyUserRandomServiceRequest {
         initial_output_identity: 2,
         block_byte_count: 64,
         output_byte_count: 32,
-        maximum_delivery_byte_count: 16,
+        maximum_delivery_byte_count: 32,
         process_identity: 1,
         interface_identity: 1,
         service_identity: 1,
@@ -7362,6 +7362,9 @@ mod tests {
                             text: "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -8206,6 +8209,9 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_READ_OK".into(),

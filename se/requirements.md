@@ -1118,6 +1118,16 @@ output, generator key, and private service state. The refinement shall expose
 no secret byte, address, generation representation, syscall number, register,
 or target mechanism to source.
 
+The full-output process-`getrandom` refinement shall raise both the initial
+reservation and reusable service maximum request to the complete 32-byte
+qualified provider output, with an empty reservation discard partition. It
+shall preserve validation before state advance, use exactly one reserved or
+freshly extracted output per success, copy and verify 1–32 requested bytes,
+wipe and verify the complete output, retain no remainder, and leave the service
+unchanged for zero and rejected calls. Qualification shall execute the existing
+two 16-byte successes followed by one 32-byte success and observe every
+returned qword without constraining secret-derived values.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

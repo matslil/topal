@@ -624,6 +624,14 @@ only the successor generator, and leave state unchanged for zero and rejected
 calls. It shall execute two successful calls in ring 3 and wipe the unused
 output, generator key, and private service state before process return.
 
+The full-output process-`getrandom` refinement shall accept maximum delivery
+extent 32 for both the initial reservation and reusable binding, with selected
+offset zero and an empty discard partition. The x86-64 provider shall reject
+larger requests before extraction, copy and verify all 32 bytes for the added
+full-output call, wipe and verify the complete output, increment delivery state
+only after success, and retain no output remainder. The ring-3 probe shall
+preserve the preceding calls and read four qwords from the added request.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
