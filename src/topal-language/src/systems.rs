@@ -981,7 +981,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 50
+        || fields.len() != 56
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1032,6 +1032,12 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[47], "close-on-exec-flag")? != 1
         || field_natural(source, &fields[48], "read-only-status")? != 0
         || field_natural(source, &fields[49], "write-only-status")? != 1
+        || field_natural(source, &fields[50], "stat-layout-bytes")? != 144
+        || field_natural(source, &fields[51], "console-device")? != 0
+        || field_natural(source, &fields[52], "console-inode")? != 1
+        || field_natural(source, &fields[53], "console-mode")? != 8576
+        || field_natural(source, &fields[54], "console-special-device")? != 17408
+        || field_natural(source, &fields[55], "console-block-size")? != 4096
     {
         return Err(user_context_diagnostic(
             source,
@@ -1069,6 +1075,12 @@ fn analyze_user_syscall_handler(
         close_on_exec_flag: 1,
         read_only_status: 0,
         write_only_status: 1,
+        stat_layout_bytes: 144,
+        console_device: 0,
+        console_inode: 1,
+        console_mode: 8576,
+        console_special_device: 17408,
+        console_block_size: 4096,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3450,6 +3462,7 @@ fn analyze_kernel_context_decision(
         user_close_marker_statement,
         user_dup_marker_statement,
         user_fcntl_marker_statement,
+        user_fstat_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3646,6 +3659,23 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_fcntl_marker_statement),
             "returned user execution requires its exact descriptor-metadata marker",
+        ));
+    }
+    let user_fstat_marker = analyze_operation(
+        source,
+        user_fstat_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_fstat_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_fstat_marker_statement),
+            "returned user execution requires its exact descriptor-stat marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4826,6 +4856,7 @@ fn analyze_kernel_context_decision(
         user_close_marker,
         user_dup_marker,
         user_fcntl_marker,
+        user_fstat_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -10021,6 +10052,9 @@ mod tests {
                     text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
+                },
+                CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
@@ -10244,7 +10278,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 254);
+        assert_eq!(program.bootstrap.handler.operations.len(), 255);
         assert_eq!(
             program.bootstrap.handler.effects,
             [

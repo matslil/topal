@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/95";
+    "topal.provider-object.x86_64-qemu-pc-q35/96";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -2484,6 +2484,52 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x4c, 0x8b, 0x14, 0x25, 0x00, 0x10, 0x60, 0x00]);
     continuation.bytes(&[0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]);
     continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]); // stdout
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]); // writable stat destination
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(stdout)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbb, 0x00, 0x50, 0x60, 0x00]);
+    for (offset, expected) in [
+        (0_u8, 0_u32),
+        (8, 1),
+        (16, 1),
+        (24, 0x2180),
+        (32, 0),
+        (40, 0x4400),
+        (48, 0),
+        (56, 4096),
+        (64, 0),
+        (72, 0),
+        (80, 0),
+        (88, 0),
+        (96, 0),
+        (104, 0),
+        (112, 0),
+        (120, 0),
+        (128, 0),
+        (136, 0),
+    ] {
+        if expected <= 0x7f {
+            if offset == 0 {
+                continuation.bytes(&[0x48, 0x83, 0x3b, expected as u8]);
+            } else if offset <= 0x7f {
+                continuation.bytes(&[0x48, 0x83, 0x7b, offset, expected as u8]);
+            } else {
+                continuation.bytes(&[0x48, 0x83, 0xbb]);
+                continuation.bytes(&u32::from(offset).to_le_bytes());
+                continuation.bytes(&[expected as u8]);
+            }
+        } else if offset <= 0x7f {
+            continuation.bytes(&[0x48, 0x81, 0x7b, offset]);
+            continuation.bytes(&expected.to_le_bytes());
+        } else {
+            continuation.bytes(&[0x48, 0x81, 0xbb]);
+            continuation.bytes(&u32::from(offset).to_le_bytes());
+            continuation.bytes(&expected.to_le_bytes());
+        }
+        continuation.jump_if(0x85, "fail");
+    }
     continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x03, 0, 0, 0, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFL stdout
     continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
@@ -2526,6 +2572,20 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xb8, 0x20, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup(stdout)
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]); // duplicated stdout alias in slot zero
+    continuation.bytes(&[0xbe, 0x90, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(alias)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xbf, 0x90, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb9, 0x12, 0x00, 0x00, 0x00]); // all eighteen qwords
+    continuation.bind("fstat-alias-compare")?;
+    continuation.bytes(&[0x48, 0x8b, 0x06, 0x48, 0x3b, 0x07]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0xc6, 0x08, 0x48, 0x83, 0xc7, 0x08]);
+    continuation.bytes(&[0xff, 0xc9]);
+    continuation.jump_if(0x85, "fstat-alias-compare");
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // duplicate flag clear
     continuation.bytes(&[0x48, 0x85, 0xc0]);
@@ -2567,6 +2627,11 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close error alias
     continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(closed slot)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF before pointer access
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // closed-slot F_GETFD
@@ -3213,6 +3278,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "write");
     code.bytes(&[0x83, 0xf8, 0x03]);
     code.jump_if(0x84, "close");
+    code.bytes(&[0x83, 0xf8, 0x05]);
+    code.jump_if(0x84, "fstat");
     code.bytes(&[0x83, 0xf8, 0x20]);
     code.jump_if(0x84, "dup");
     code.bytes(&[0x83, 0xf8, 0x21]);
@@ -4333,6 +4400,71 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x31, 0xc0, 0x41, 0x80, 0xf8, 0x01]);
     code.jump_if(0x84, "return-user");
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("fstat")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x49, 0x89, 0xf1]); // destination candidate
+    code.bytes(&[0x49, 0x89, 0xf0, 0x49, 0x81, 0xc0, 0x90, 0x00, 0x00, 0x00]);
+    code.jump_if(0x82, "fstat-efault");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "fstat-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "fstat-candidate-ok");
+    code.bind("fstat-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "fstat-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "fstat-efault");
+    code.bind("fstat-candidate-ok")?;
+    code.bytes(&[0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00]); // private stat staging
+    code.bytes(&[0x31, 0xc0]);
+    for offset in (0_u32..144).step_by(8) {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else if offset <= 0x7f {
+            code.bytes(&[0x48, 0x89, 0x44, 0x24, offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x84, 0x24]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    for (offset, value) in [
+        (8_u8, 1_u32),
+        (16, 1),
+        (24, 0x2180),
+        (40, 0x4400),
+        (56, 4096),
+    ] {
+        code.bytes(&[0x48, 0xc7, 0x44, 0x24, offset]);
+        code.bytes(&value.to_le_bytes());
+    }
+    code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix
+    code.rip_lea(&[0x48, 0x8d, 0x05], "fstat-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "fstat-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("fstat-copy-loop")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14]);
+    code.bind("fstat-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x81, 0xfa, 0x90, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fstat-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00, 0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("fstat-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00]);
+    code.bind("fstat-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("return-user")?;
@@ -7404,15 +7536,14 @@ assert bytes(output) == block[32:]
                 }),
             "duplication must map fixed description identities, preserve access modes and aliases, reject full or invalid requests, and verify complete terminal clearing"
         );
-        let fcntl_lookup = user_syscall
+        let fcntl_first_command = user_syscall
+            .windows(4)
+            .rposition(|bytes| bytes == [0x48, 0x83, 0xfe, 0x01])
+            .expect("fcntl must decode F_GETFD");
+        let fcntl_lookup = user_syscall[..fcntl_first_command]
             .windows(8)
             .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
             .expect("fcntl must look up the mapped description");
-        let fcntl_first_command = user_syscall[fcntl_lookup..]
-            .windows(4)
-            .position(|bytes| bytes == [0x48, 0x83, 0xfe, 0x01])
-            .map(|position| position + fcntl_lookup)
-            .expect("fcntl must decode F_GETFD");
         assert!(
             fcntl_lookup < fcntl_first_command
                 && entry_payload
@@ -7453,6 +7584,55 @@ assert bytes(output) == block[32:]
                     bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe8, 0, 0, 0, 0, 0, 0, 0]
                 }),
             "fcntl must separate slot flags from descriptions, decode only after lookup, clear duplication destinations, and erase terminal state"
+        );
+        let fstat_lookup = user_syscall
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("fstat must look up the mapped description");
+        let fstat_first_candidate_bound = user_syscall[fstat_lookup..]
+            .windows(7)
+            .position(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x10, 0x60, 0x00])
+            .map(|position| position + fstat_lookup)
+            .expect("fstat must bound the writable stack range");
+        assert!(
+            fstat_lookup < fstat_first_candidate_bound
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x05, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 3
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x05])
+                && user_syscall
+                    .windows(10)
+                    .any(|bytes| bytes == [0x49, 0x89, 0xf0, 0x49, 0x81, 0xc0, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x50, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xec, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x44, 0x24, 0x18, 0x80, 0x21, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xfa, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x43, 0x88, 0x04, 0x11])
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0, 0]),
+            "fstat must resolve a live description before pointer access, stage the complete native layout, and fault-contain one full writable-range copy"
         );
         assert!(
             user_syscall
