@@ -413,9 +413,369 @@ fn publish_in_stage(
     Ok(record)
 }
 
+const STATIC_ELF_PAGE_SIZE: u64 = 4096;
+const STATIC_ELF_LEAF_WINDOW_SIZE: u64 = 2 * 1024 * 1024;
+const STATIC_ELF_MAX_PROGRAM_HEADERS: u16 = 16;
+const STATIC_ELF_MAX_USER_ADDRESS: u64 = 0x0000_8000_0000_0000;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfLoadRole {
+    Headers,
+    Executable,
+    ImmutableData,
+    WritableData,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfIdentity {
+    class: u8,
+    data_encoding: u8,
+    version: u8,
+    file_type: u16,
+    machine: u16,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfInterval {
+    start: u64,
+    end: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfLoadSegment {
+    role: StaticElfLoadRole,
+    file: StaticElfInterval,
+    memory: StaticElfInterval,
+    pages: StaticElfInterval,
+    alignment: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfTlsPlan {
+    file: StaticElfInterval,
+    memory: StaticElfInterval,
+    alignment: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct StaticElfLoadPlan {
+    identity: StaticElfIdentity,
+    entry: u64,
+    segments: Vec<StaticElfLoadSegment>,
+    pages: StaticElfInterval,
+    page_count: u64,
+    tls: Option<StaticElfTlsPlan>,
+    relro_pages: Option<StaticElfInterval>,
+    stack_executable: bool,
+}
+
+fn elf_u16(image: &[u8], offset: usize) -> u16 {
+    u16::from_le_bytes(
+        image[offset..offset + 2]
+            .try_into()
+            .expect("validated ELF header extent"),
+    )
+}
+
+fn elf_u32(image: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes(
+        image[offset..offset + 4]
+            .try_into()
+            .expect("validated ELF header extent"),
+    )
+}
+
+fn checked_elf_interval(
+    start: u64,
+    size: u64,
+    description: &str,
+) -> Result<StaticElfInterval, CompileError> {
+    let end = start.checked_add(size).ok_or_else(|| {
+        CompileError::Tool(format!(
+            "bounded static ELF {description} interval overflows"
+        ))
+    })?;
+    Ok(StaticElfInterval { start, end })
+}
+
+fn page_floor(value: u64) -> u64 {
+    value & !(STATIC_ELF_PAGE_SIZE - 1)
+}
+
+fn page_ceil(value: u64, description: &str) -> Result<u64, CompileError> {
+    value
+        .checked_add(STATIC_ELF_PAGE_SIZE - 1)
+        .map(page_floor)
+        .ok_or_else(|| {
+            CompileError::Tool(format!(
+                "bounded static ELF {description} page interval overflows"
+            ))
+        })
+}
+
+#[allow(clippy::too_many_lines)] // Keeps one fail-closed validation transaction auditable.
+fn derive_x86_64_static_elf_load_plan(image: &[u8]) -> Result<StaticElfLoadPlan, CompileError> {
+    if image.len() < 64 {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires a complete 64-byte ELF header".into(),
+        ));
+    }
+    if image[0..4] != [0x7f, b'E', b'L', b'F']
+        || image[4] != 2
+        || image[5] != 1
+        || image[6] != 1
+        || elf_u16(image, 16) != 2
+        || elf_u16(image, 18) != 62
+        || elf_u32(image, 20) != 1
+        || elf_u16(image, 52) != 64
+        || elf_u16(image, 54) != 56
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires current little-endian ELF64 ET_EXEC/EM_X86_64 identity and canonical header sizes"
+                .into(),
+        ));
+    }
+
+    let entry = image_u64(image, 24);
+    let program_header_offset = image_u64(image, 32);
+    let program_header_count = elf_u16(image, 56);
+    if program_header_count == 0 || program_header_count > STATIC_ELF_MAX_PROGRAM_HEADERS {
+        return Err(CompileError::Tool(format!(
+            "bounded static ELF program-header count must be 1..={STATIC_ELF_MAX_PROGRAM_HEADERS}"
+        )));
+    }
+    let table_bytes = u64::from(program_header_count)
+        .checked_mul(56)
+        .ok_or_else(|| CompileError::Tool("bounded static ELF table size overflows".into()))?;
+    let table = checked_elf_interval(program_header_offset, table_bytes, "program-header table")?;
+    if table.start < 64 || table.end > image.len() as u64 {
+        return Err(CompileError::Tool(
+            "bounded static ELF program-header table lies outside the complete input".into(),
+        ));
+    }
+
+    let roles = [
+        StaticElfLoadRole::Headers,
+        StaticElfLoadRole::Executable,
+        StaticElfLoadRole::ImmutableData,
+        StaticElfLoadRole::WritableData,
+    ];
+    let expected_flags = [4_u32, 5, 4, 6];
+    let mut segments = Vec::new();
+    let mut tls = None;
+    let mut relro_pages = None;
+    let mut stack_executable = None;
+
+    for index in 0..usize::from(program_header_count) {
+        let offset = usize::try_from(program_header_offset).map_err(|_| {
+            CompileError::Tool("bounded static ELF table offset exceeds host limits".into())
+        })? + index * 56;
+        let kind = elf_u32(image, offset);
+        let flags = elf_u32(image, offset + 4);
+        let file_offset = image_u64(image, offset + 8);
+        let virtual_address = image_u64(image, offset + 16);
+        let file_size = image_u64(image, offset + 32);
+        let memory_size = image_u64(image, offset + 40);
+        let alignment = image_u64(image, offset + 48);
+
+        match kind {
+            1 => {
+                let segment_index = segments.len();
+                if segment_index >= roles.len() || flags != expected_flags[segment_index] {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF requires exactly ordered R, R/X, R, and R/W load roles without W+X"
+                            .into(),
+                    ));
+                }
+                if memory_size == 0 || file_size > memory_size {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load sizes require 0 < p_memsz and p_filesz <= p_memsz"
+                            .into(),
+                    ));
+                }
+                if alignment < STATIC_ELF_PAGE_SIZE || !alignment.is_power_of_two() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load alignment must be a power of two at least 4096"
+                            .into(),
+                    ));
+                }
+                if file_offset % STATIC_ELF_PAGE_SIZE != virtual_address % STATIC_ELF_PAGE_SIZE {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load file and virtual page offsets are incongruent"
+                            .into(),
+                    ));
+                }
+                let file = checked_elf_interval(file_offset, file_size, "load file")?;
+                let memory = checked_elf_interval(virtual_address, memory_size, "load memory")?;
+                if file.end > image.len() as u64
+                    || memory.start < STATIC_ELF_PAGE_SIZE
+                    || memory.end > STATIC_ELF_MAX_USER_ADDRESS
+                {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load interval lies outside its file or user envelope"
+                            .into(),
+                    ));
+                }
+                let pages = StaticElfInterval {
+                    start: page_floor(memory.start),
+                    end: page_ceil(memory.end, "load memory")?,
+                };
+                if segments
+                    .last()
+                    .is_some_and(|prior: &StaticElfLoadSegment| prior.pages.end > pages.start)
+                {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load page intervals overlap or are unordered".into(),
+                    ));
+                }
+                segments.push(StaticElfLoadSegment {
+                    role: roles[segment_index],
+                    file,
+                    memory,
+                    pages,
+                    alignment,
+                });
+            }
+            2 | 3 => {
+                return Err(CompileError::Tool(
+                    "bounded static ELF does not admit PT_DYNAMIC or PT_INTERP".into(),
+                ));
+            }
+            7 => {
+                if tls.is_some() || memory_size == 0 || file_size > memory_size {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF admits at most one nonempty valid PT_TLS".into(),
+                    ));
+                }
+                if alignment == 0 || !alignment.is_power_of_two() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF TLS alignment must be a nonzero power of two".into(),
+                    ));
+                }
+                let file = checked_elf_interval(file_offset, file_size, "TLS file")?;
+                let memory = checked_elf_interval(virtual_address, memory_size, "TLS memory")?;
+                if file.end > image.len() as u64 {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF TLS file interval exceeds the complete input".into(),
+                    ));
+                }
+                tls = Some(StaticElfTlsPlan {
+                    file,
+                    memory,
+                    alignment,
+                });
+            }
+            0x6474_e551 => {
+                if stack_executable.replace(flags & 1 != 0).is_some() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF requires exactly one PT_GNU_STACK".into(),
+                    ));
+                }
+            }
+            0x6474_e552 => {
+                if relro_pages.is_some() || memory_size == 0 {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF admits at most one nonempty PT_GNU_RELRO".into(),
+                    ));
+                }
+                let memory = checked_elf_interval(virtual_address, memory_size, "RELRO memory")?;
+                relro_pages = Some(StaticElfInterval {
+                    start: page_floor(memory.start),
+                    end: page_ceil(memory.end, "RELRO memory")?,
+                });
+            }
+            _ => {}
+        }
+    }
+
+    if segments.len() != roles.len() {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires exactly four PT_LOAD entries".into(),
+        ));
+    }
+    let executable = segments[1];
+    if entry < executable.memory.start || entry >= executable.memory.end {
+        return Err(CompileError::Tool(
+            "bounded static ELF entry lies outside the R/X load interval".into(),
+        ));
+    }
+    let writable = segments[3];
+    if let Some(tls_plan) = tls
+        && (tls_plan.file.start < writable.file.start
+            || tls_plan.file.end > writable.file.end
+            || tls_plan.memory.start < writable.memory.start
+            || tls_plan.memory.end > writable.memory.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF TLS intervals lie outside the R/W load role".into(),
+        ));
+    }
+    if let Some(relro) = relro_pages
+        && (relro.start < writable.pages.start
+            || relro.end > writable.pages.end
+            || relro.start == relro.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF RELRO pages lie outside the R/W load role".into(),
+        ));
+    }
+    let Some(stack_executable) = stack_executable else {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires exactly one PT_GNU_STACK".into(),
+        ));
+    };
+    if stack_executable {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires a non-executable stack".into(),
+        ));
+    }
+
+    let pages = StaticElfInterval {
+        start: segments[0].pages.start,
+        end: segments[3].pages.end,
+    };
+    let page_count = (pages.end - pages.start) / STATIC_ELF_PAGE_SIZE;
+    if page_count == 0
+        || page_count > 512
+        || page_floor(pages.start) / STATIC_ELF_LEAF_WINDOW_SIZE
+            != (pages.end - 1) / STATIC_ELF_LEAF_WINDOW_SIZE
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF load span exceeds one 512-leaf 2 MiB window".into(),
+        ));
+    }
+
+    Ok(StaticElfLoadPlan {
+        identity: StaticElfIdentity {
+            class: image[4],
+            data_encoding: image[5],
+            version: image[6],
+            file_type: elf_u16(image, 16),
+            machine: elf_u16(image, 18),
+        },
+        entry,
+        segments,
+        pages,
+        page_count,
+        tls,
+        relro_pages,
+        stack_executable,
+    })
+}
+
 fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
     let reference = initial_user_elf_file()?;
     if image.len() != reference.len() {
+        if let Ok(plan) = derive_x86_64_static_elf_load_plan(image) {
+            return Err(CompileError::Tool(format!(
+                "bounded static ELF load plan covers {} pages at entry {:#x}, but this image is not runtime-selectable until its mapping lifecycle is implemented",
+                plan.page_count, plan.entry
+            )));
+        }
         return Err(CompileError::Tool(format!(
             "initial user image has {} bytes; the qualified x86-64 profile requires {}",
             image.len(),
@@ -5917,6 +6277,212 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap()
+    }
+
+    fn put_u16(image: &mut [u8], offset: usize, value: u16) {
+        image[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn put_u32(image: &mut [u8], offset: usize, value: u32) {
+        image[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn put_u64(image: &mut [u8], offset: usize, value: u64) {
+        image[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[allow(clippy::too_many_arguments)] // Mirrors one ELF64 program-header row.
+    fn put_program_header(
+        image: &mut [u8],
+        index: usize,
+        kind: u32,
+        flags: u32,
+        file_offset: u64,
+        virtual_address: u64,
+        file_size: u64,
+        memory_size: u64,
+        alignment: u64,
+    ) {
+        let offset = 64 + index * 56;
+        put_u32(image, offset, kind);
+        put_u32(image, offset + 4, flags);
+        put_u64(image, offset + 8, file_offset);
+        put_u64(image, offset + 16, virtual_address);
+        put_u64(image, offset + 24, virtual_address);
+        put_u64(image, offset + 32, file_size);
+        put_u64(image, offset + 40, memory_size);
+        put_u64(image, offset + 48, alignment);
+    }
+
+    fn busybox_shaped_static_elf() -> Vec<u8> {
+        let mut image = vec![0_u8; 2_024_544];
+        image[0..16].copy_from_slice(&[0x7f, b'E', b'L', b'F', 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]);
+        put_u16(&mut image, 16, 2);
+        put_u16(&mut image, 18, 62);
+        put_u32(&mut image, 20, 1);
+        put_u64(&mut image, 24, 0x004a_6580);
+        put_u64(&mut image, 32, 64);
+        put_u16(&mut image, 52, 64);
+        put_u16(&mut image, 54, 56);
+        put_u16(&mut image, 56, 11);
+
+        put_program_header(&mut image, 0, 1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000);
+        put_program_header(
+            &mut image,
+            1,
+            1,
+            5,
+            0x1000,
+            0x0040_1000,
+            0x18_b285,
+            0x18_b285,
+            0x1000,
+        );
+        put_program_header(
+            &mut image,
+            2,
+            1,
+            4,
+            0x18_d000,
+            0x0058_d000,
+            0x5_7040,
+            0x5_7040,
+            0x1000,
+        );
+        put_program_header(
+            &mut image,
+            3,
+            1,
+            6,
+            0x1e_4660,
+            0x005e_5660,
+            0x9728,
+            0x1_0b68,
+            0x1000,
+        );
+        put_program_header(&mut image, 4, 4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8);
+        put_program_header(&mut image, 5, 4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4);
+        put_program_header(&mut image, 6, 4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4);
+        put_program_header(&mut image, 7, 7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8);
+        put_program_header(
+            &mut image,
+            8,
+            0x6474_e553,
+            4,
+            0x2a8,
+            0x0040_02a8,
+            0x20,
+            0x20,
+            8,
+        );
+        put_program_header(&mut image, 9, 0x6474_e551, 6, 0, 0, 0, 0, 0x10);
+        put_program_header(
+            &mut image,
+            10,
+            0x6474_e552,
+            4,
+            0x1e_4660,
+            0x005e_5660,
+            0x79a0,
+            0x79a0,
+            1,
+        );
+        image
+    }
+
+    #[test]
+    fn derives_the_pinned_busybox_shaped_static_elf_plan() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PLAN-001, TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let image = busybox_shaped_static_elf();
+        let plan = derive_x86_64_static_elf_load_plan(&image).unwrap();
+        assert_eq!(
+            plan.identity,
+            StaticElfIdentity {
+                class: 2,
+                data_encoding: 1,
+                version: 1,
+                file_type: 2,
+                machine: 62,
+            }
+        );
+        assert_eq!(plan.entry, 0x004a_6580);
+        assert_eq!(plan.page_count, 503);
+        assert_eq!(plan.pages.start, 0x0040_0000);
+        assert_eq!(plan.pages.end, 0x005f_7000);
+        assert_eq!(
+            plan.segments
+                .iter()
+                .map(|segment| segment.role)
+                .collect::<Vec<_>>(),
+            vec![
+                StaticElfLoadRole::Headers,
+                StaticElfLoadRole::Executable,
+                StaticElfLoadRole::ImmutableData,
+                StaticElfLoadRole::WritableData,
+            ]
+        );
+        assert_eq!(plan.segments[1].pages.start, 0x0040_1000);
+        assert_eq!(plan.segments[1].pages.end, 0x0058_d000);
+        assert_eq!(plan.segments[3].memory.end, 0x005f_61c8);
+        assert_eq!(
+            plan.tls,
+            Some(StaticElfTlsPlan {
+                file: StaticElfInterval {
+                    start: 0x1e_4660,
+                    end: 0x1e_46a0,
+                },
+                memory: StaticElfInterval {
+                    start: 0x005e_5660,
+                    end: 0x005e_56e2,
+                },
+                alignment: 8,
+            })
+        );
+        assert_eq!(
+            plan.relro_pages,
+            Some(StaticElfInterval {
+                start: 0x005e_5000,
+                end: 0x005e_d000,
+            })
+        );
+        assert!(!plan.stack_executable);
+        let error = validate_x86_64_initial_user_image(&image).unwrap_err();
+        assert!(error.to_string().contains("503 pages"));
+        assert!(error.to_string().contains("not runtime-selectable"));
+    }
+
+    #[test]
+    fn rejects_malformed_bounded_static_elf_plans_before_publication() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PLAN-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let valid = busybox_shaped_static_elf();
+        let rejected = |mutate: fn(&mut [u8])| {
+            let mut image = valid.clone();
+            mutate(&mut image);
+            assert!(derive_x86_64_static_elf_load_plan(&image).is_err());
+        };
+
+        rejected(|image| image[4] = 1);
+        rejected(|image| put_u16(image, 56, 17));
+        rejected(|image| put_u32(image, 64 + 4 * 56, 3));
+        rejected(|image| put_u32(image, 64 + 4 * 56, 2));
+        rejected(|image| put_u32(image, 64 + 56 + 4, 7));
+        rejected(|image| put_u64(image, 64 + 3 * 56 + 32, 0x2_0000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 48, 0x3000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 8, 0x18_d001));
+        rejected(|image| put_u64(image, 64 + 8, 0x1e_e000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 16, 0x0058_c000));
+        rejected(|image| put_u64(image, 24, 0x0040_0000));
+        rejected(|image| put_u32(image, 64 + 9 * 56 + 4, 7));
+        rejected(|image| put_u32(image, 64 + 6 * 56, 7));
+        rejected(|image| put_u64(image, 64 + 7 * 56 + 16, 0x0040_0000));
+        rejected(|image| {
+            put_u32(image, 64 + 6 * 56, 0x6474_e552);
+            put_u64(image, 64 + 6 * 56 + 16, 0x005e_5000);
+            put_u64(image, 64 + 6 * 56 + 40, 0x1000);
+        });
+        rejected(|image| put_u64(image, 64 + 10 * 56 + 16, 0x0040_0000));
+        rejected(|image| put_u64(image, 64 + 3 * 56 + 40, 0x1_a9a1));
+        rejected(|image| put_u32(image, 64 + 9 * 56, 4));
     }
 
     #[test]
