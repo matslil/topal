@@ -52,14 +52,22 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("-drive", command)
         self.assertNotIn("-netdev", command)
 
+    def test_static_user_fixture_has_the_approved_clean_room_shape(self) -> None:
+        fixture = GATE.static_user_fixture()
+        self.assertEqual(len(fixture), 2_024_544)
+        self.assertEqual(fixture[:4], b"\x7fELF")
+        self.assertEqual(int.from_bytes(fixture[24:32], "little"), 0x004A_6580)
+        self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
+        self.assertEqual(fixture[0x1000], 0xA5)
+
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/114")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/115")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/104")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/112",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/113",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -73,6 +81,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(evidence["boot_resource_bytes"], 12_528)
         self.assertEqual(evidence["initial_user_image_bytes"], 12_288)
         self.assertEqual(evidence["initial_user_image_input"], "supplied")
+        self.assertEqual(evidence["static_user_image_bytes"], 2_024_544)
+        self.assertEqual(
+            evidence["static_user_image_input"], "supplied-clean-room-fixture"
+        )
         self.assertEqual(evidence["serial_input_utf8"], "read")
         self.assertEqual(
             evidence["serial_input_sha256"], hashlib.sha256(b"read").hexdigest()
@@ -99,6 +111,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             "initial_user_image_sha256",
             "generated_initial_user_image_sha256",
             "boot_provenance_sha256",
+            "static_user_image_sha256",
         ):
             self.assertRegex(evidence[field], r"^[0-9a-f]{64}$")
 

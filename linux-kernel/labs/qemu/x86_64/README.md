@@ -413,3 +413,11 @@ halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
 manifest, firmware, generated artifacts, external boot resource, provider,
 QEMU identity, and observed serial bytes by digest.
+
+The publication gate also creates a deterministic clean-room 2,024,544-byte
+static ELF with the approved eleven program headers and 503-page plan, passes
+it through `--static-user-image`, verifies exact-byte `static-user.elf`
+publication, and verifies its canonical provenance digest. This file is not
+BusyBox and is not placed in the initramfs: the current 12 KiB
+`initial-user.elf` remains the sole `init` member until the approved static
+copy lifecycle is implemented.

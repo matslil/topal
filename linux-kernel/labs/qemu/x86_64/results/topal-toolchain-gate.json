@@ -1,6 +1,6 @@
 {
-  "artifact_provenance_sha256": "8a75adbf6104e38b5f8b2f0b167eae7bd81c3a31dcb4d8e1e12df1d4c7428b5f",
-  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/112",
+  "artifact_provenance_sha256": "061f79391cab6d1715257567c3d1f16a19b45a80b2378b85258911ed0169c951",
+  "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/113",
   "boot_image_sha256": "fb1ce61426d5a8fc8decf7d5dd269a0e891408cabd226353d3d77f5d78a25899",
   "boot_provenance_sha256": "dcae21e3c8c09019845c7ced65d0ec669008f10a5ff822df0b168f74ea162fb6",
   "boot_resource_bytes": 12528,
@@ -119,8 +119,11 @@
   "provider": "topal.provider.x86_64-qemu-pc-q35/104",
   "publication": "topalc-target-interface/1",
   "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-  "schema": "topal-kernel-toolchain-gate-qemu/114",
+  "schema": "topal-kernel-toolchain-gate-qemu/115",
   "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
   "serial_input_utf8": "read",
-  "source_sha256": "33b36d5aee7b7f61523001f4859c3fdc805ddebe0699cdf0cdb115fbd66bf9b1"
+  "source_sha256": "33b36d5aee7b7f61523001f4859c3fdc805ddebe0699cdf0cdb115fbd66bf9b1",
+  "static_user_image_bytes": 2024544,
+  "static_user_image_input": "supplied-clean-room-fixture",
+  "static_user_image_sha256": "0ca6467b2394c0c93327b27efcf40428add871819e12e06b76a276a693006ea9"
 }
