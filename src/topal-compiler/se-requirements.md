@@ -613,6 +613,17 @@ range failures, copy and verify one successful 1–16-byte prefix, wipe and veri
 all output storage, clear private reservation state, and reject partial,
 duplicated, reordered, substituted, reused, or premature delivery.
 
+The reusable process-`getrandom` refinement shall accept one checked binding
+of generator identity one at generation three and the live initial reservation
+into a process-lifetime service. It shall preserve output identity two for the
+first success and lower later successes to the same qualified ChaCha20
+extraction with key replacement before output publication. The x86-64 provider
+shall validate complete arguments and user ranges before later extraction,
+return and verify 1–16 bytes, wipe the full output after every success, retain
+only the successor generator, and leave state unchanged for zero and rejected
+calls. It shall execute two successful calls in ring 3 and wipe the unused
+output, generator key, and private service state before process return.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

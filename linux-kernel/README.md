@@ -452,6 +452,14 @@ records source-owned queue-zero selection and notify-offset arithmetic, reuse
 of generic PCI-region access, an exact event write with no synthetic readback,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The current systems-only entropy refinement binds the generation-three
+generator and reserved first output into a
+[reusable process `getrandom` service](design/reusable-process-getrandom.md).
+Its [implementation and qualification report](step-4-reusable-process-getrandom.md)
+records two consecutive successful calls, fresh generation after the reserved
+output, non-consuming failures, complete key/output/service erasure, structural
+inspection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -614,6 +622,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded CRNG extraction](step-4-bounded-crng-extraction.md)
 - [Step 4 bounded initial `AT_RANDOM` delivery](step-4-bounded-initial-auxv-random.md)
 - [Step 4 bounded initial `getrandom` delivery](step-4-bounded-initial-getrandom.md)
+- [Step 4 reusable process `getrandom` service](step-4-reusable-process-getrandom.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

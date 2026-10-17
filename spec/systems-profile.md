@@ -1898,6 +1898,38 @@ address, native interface number, register convention, copy mechanism,
 temporary value, or target instruction. Reservation SHALL NOT modify the ready
 generator, perform another extraction, or authorize output reuse.
 
+The live reservation MAY instead be consumed before entry by
+`topal.systems.entropy.user-random.bind-reusable/1` as specified by
+`TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001`. After that consumption, direct
+single-use delivery through the reservation is unavailable.
+
+### TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001 — Reusable user-random service
+
+`topal.systems.entropy.user-random.bind-reusable/1` SHALL consume one ready
+affine generator and one compatible live user-random reservation into one
+affine process-lifetime service before the named process first enters user
+context. The request SHALL name matching nonzero generator, initial-output,
+process, interface, and service identities; the exact ready generation, block
+and per-call extents, flag policy, first-output policy, and reusable policy.
+
+The service SHALL exclusively own the generator and reserved first output.
+Zero and rejected calls SHALL NOT change either. Each successful nonempty call
+SHALL validate its complete writable user extent before changing generator or
+output state. The first success SHALL consume the reserved output. Before every
+later success, the provider SHALL perform the qualified generator-extraction
+transition with persistent-key replacement before output publication. Every
+success SHALL copy and verify only the requested prefix, discard the complete
+remainder, wipe and verify the complete output, and retain only the successor
+generator in the service.
+
+Process exit SHALL consume the service only after the provider wipes and
+verifies any unused initial output, the live generator key, and private service
+state. Source SHALL NOT observe a key, output byte, address, generation
+representation, native interface number, register convention, copy or fault
+mechanism, temporary value, or target instruction. This rule does not admit
+concurrent callers, implicit reseeding, a device read, or a retained output
+remainder.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2221,17 +2253,55 @@ suffix and source bytes 16 through 31, wipe and verify all 32 provider-output
 bytes, clear the private reservation reference, return the exact requested
 length, and consume the reservation.
 
-The constructed ring-3 image SHALL exercise, in order, zero length, an unknown
+The constructed ring-3 image SHALL initially exercise, in order, zero length, an unknown
 flag bit, the incompatible `GRND_RANDOM | GRND_INSECURE` combination, a
 complete-range fault, and one successful 16-byte request, and SHALL read both
 returned qwords without comparing them with a constant. The profile SHALL
 reject another identity, generation, extent, flag policy, process, service,
 pre-state, omission, duplication, reordering, partial copy, incomplete wipe,
-reuse, or a live reservation at process teardown. This refinement SHALL NOT
-provide another successful nonempty call, a request larger than 16 bytes,
+reuse, or a live reservation at process teardown. This rule does not by itself
+require another successful nonempty call, a request larger than 16 bytes,
 pre-readiness blocking, signal interruption, `/dev/random`, `/dev/urandom`,
 vDSO delivery, multi-block generation, reseeding, per-processor generators,
 queue recycling, asynchronous interrupt delivery, reset, or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-REPEATED-001 — Repeated process `getrandom`
+
+After `TOPAL-SYSTEMS-USER-GETRANDOM-001` reserves output identity two and
+before initial user-context entry, the initial profile SHALL perform exactly
+one `TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001` binding. The binding SHALL consume
+ready generator identity one at generation three and the live reservation for
+process, Linux-interface, and user-random service identity one. It SHALL name
+initial output identity two, ChaCha20 block extent 64, provider output extent
+32, maximum per-call delivery extent 16, supported flag mask 7, incompatible
+flag mask 6, reserved-first-output policy, and reusable policy.
+
+The x86-64 provider SHALL continue to map the service privately to native
+syscall 318. The first valid nonempty call SHALL use reserved output two. Every
+later valid nonempty call SHALL first replace the live generator key and create
+one fresh 32-byte output using the extraction contract of
+`TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`. Complete argument and writable-range
+validation SHALL precede the later extraction. Each successful call SHALL
+return 1 through 16 copied and verified bytes, discard all unselected bytes,
+wipe and verify the complete output, and retain the successor generator. Zero,
+`-EINVAL`, and `-EFAULT` results SHALL NOT advance the generator or change an
+available output.
+
+The constructed ring-3 image SHALL retain the existing four non-consuming
+probes and then complete two consecutive 16-byte requests. It SHALL read all
+four returned qwords without constraining their values. Process exit SHALL
+wipe and verify an unused first output when present, the current 32-byte
+generator key, the 32-byte output storage, and private service state before it
+clears the process binding and returns to the kernel continuation. The profile
+SHALL reject a mismatched generator, reservation, process, interface, service,
+generation, extent, flag policy, pre-state, omitted or duplicate binding,
+extraction before validation, partial key replacement, incomplete copy or
+wipe, retained output remainder, service reuse after teardown, or live secret
+state at process return. This refinement SHALL NOT provide requests larger
+than 16 bytes, pre-readiness blocking, signal interruption, concurrent
+callers, fork or exec inheritance, `/dev/random`, `/dev/urandom`, vDSO
+delivery, reseeding, per-processor generators, batching, queue recycling,
+asynchronous interrupt delivery, reset, or recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 
