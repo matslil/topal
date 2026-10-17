@@ -561,6 +561,16 @@ The root shall preserve zero pool credit and the separate affine contribution
 token and shall reject malformed, partial, duplicated, reordered, substituted,
 or premature mixing.
 
+The bounded entropy-credit refinement shall accept exactly one provider-free
+transfer after successful first-generation mixing. It shall validate pool,
+contribution, and conditioner-origin identity one; prior credit zero;
+transferred credit, capacity, and result 256; the mixed-but-uncredited pool and
+live contribution pre-states; exact checked addition; and exact ordering. It
+shall preserve opaque pool storage, consume the contribution, record the same
+pool as credited, emit no provider operation, and reject malformed, omitted,
+duplicated, reordered, substituted, overflowing, reused, or premature
+transfer.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

@@ -29,6 +29,7 @@ pub use topal_semantics::{
     DmaBufferReferenceRequest as CompilerDmaBufferReferenceRequest,
     DmaBufferRequest as CompilerDmaBufferRequest, DmaBufferRole as CompilerDmaBufferRole,
     DmaDirection as CompilerDmaDirection, DmaVisibilityPolicy as CompilerDmaVisibilityPolicy,
+    EntropyPoolCreditRequest as CompilerEntropyPoolCreditRequest,
     EntropyPoolMixRequest as CompilerEntropyPoolMixRequest,
     EntropyPoolRequest as CompilerEntropyPoolRequest,
     EntropySampleCaptureRequest as CompilerEntropySampleCaptureRequest,
@@ -54,7 +55,8 @@ pub use topal_semantics::{
     SYSTEMS_DEADLINE_COMPLETE, SYSTEMS_DEADLINE_WAIT, SYSTEMS_DEBUG_BREAK,
     SYSTEMS_DMA_BUFFER_BIND_REFERENCE, SYSTEMS_DMA_BUFFER_COMPLETE_CPU, SYSTEMS_DMA_BUFFER_CREATE,
     SYSTEMS_DMA_BUFFER_LOAD_INTEGER, SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
-    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_POOL_CREATE, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+    SYSTEMS_DMA_BUFFER_STORE_INTEGER, SYSTEMS_ENTROPY_POOL_CREATE,
+    SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION, SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
     SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY, SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA, SYSTEMS_FATAL,
     SYSTEMS_FRAME_ALLOCATOR_CREATE, SYSTEMS_FRAMES_ALLOCATE, SYSTEMS_FRAMES_RELEASE,
     SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE, SYSTEMS_KERNEL_COMPLETION_CONSUME,
@@ -3425,6 +3427,8 @@ fn analyze_kernel_context_decision(
         entropy_pool_marker_statement,
         entropy_mix_statement,
         entropy_mix_marker_statement,
+        entropy_credit_statement,
+        entropy_credit_marker_statement,
         disposition,
     ] = user_continuation
     else {
@@ -4288,6 +4292,40 @@ fn analyze_kernel_context_decision(
             "entropy-pool mixing requires its exact marker",
         ));
     }
+    let entropy_credit = analyze_operation(
+        source,
+        entropy_credit_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_credit
+        != (CompilerSystemsOperation::CreditEntropyPoolContribution {
+            request: CompilerEntropyPoolCreditRequest::INITIAL_Q35,
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_credit_statement),
+            "the first sample mix must be followed by its exact contribution-credit transfer",
+        ));
+    }
+    let entropy_credit_marker = analyze_operation(
+        source,
+        entropy_credit_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if entropy_credit_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_ENTROPY_POOL_CREDITED".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(entropy_credit_marker_statement),
+            "entropy-credit transfer requires its exact marker",
+        ));
+    }
     let disposition = analyze_disposition(
         source,
         disposition,
@@ -4422,6 +4460,8 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_pool_marker);
     operations.push(entropy_mix);
     operations.push(entropy_mix_marker);
+    operations.push(entropy_credit);
+    operations.push(entropy_credit_marker);
     Ok(CheckedBootstrapRegionDecision {
         operations,
         disposition,
@@ -6784,6 +6824,24 @@ fn analyze_operation(
     if context == CompilerSystemsContextKind::Bootstrap
         && let [
             receiver,
+            entropy,
+            pool,
+            credit,
+            contribution,
+            Expression::Product { fields, span },
+        ] = items.as_slice()
+        && identifier_is(source, receiver, context_name)
+        && identifier_is(source, entropy, "entropy")
+        && identifier_is(source, pool, "pool")
+        && identifier_is(source, credit, "credit")
+        && identifier_is(source, contribution, "contribution")
+    {
+        let request = parse_entropy_pool_credit_request(source, fields, *span)?;
+        return Ok(CompilerSystemsOperation::CreditEntropyPoolContribution { request });
+    }
+    if context == CompilerSystemsContextKind::Bootstrap
+        && let [
+            receiver,
             pci,
             region,
             write,
@@ -7574,6 +7632,51 @@ fn parse_entropy_pool_mix_request(
     Ok(request)
 }
 
+fn parse_entropy_pool_credit_request(
+    source: &SourceText,
+    fields: &[ProductField],
+    span: Span,
+) -> Result<CompilerEntropyPoolCreditRequest, Diagnostic> {
+    if fields.len() != 7 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-CREDIT",
+            span,
+            "entropy-credit transfer requires pool, contribution, origin, prior, transfer, capacity, and result fields",
+        ));
+    }
+    let request = CompilerEntropyPoolCreditRequest {
+        pool_identity: field_natural(source, &fields[0], "pool-identity")?,
+        contribution_identity: field_natural(source, &fields[1], "contribution-identity")?,
+        conditioner_origin_identity: field_natural(
+            source,
+            &fields[2],
+            "conditioner-origin-identity",
+        )?,
+        prior_credited_entropy_bits: field_natural(
+            source,
+            &fields[3],
+            "prior-credited-entropy-bits",
+        )?,
+        contribution_entropy_bits: field_natural(source, &fields[4], "contribution-entropy-bits")?,
+        credit_capacity_bits: field_natural(source, &fields[5], "credit-capacity-bits")?,
+        resulting_credited_entropy_bits: field_natural(
+            source,
+            &fields[6],
+            "resulting-credited-entropy-bits",
+        )?,
+    };
+    if !request.is_well_formed() || request != CompilerEntropyPoolCreditRequest::INITIAL_Q35 {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-ENTROPY-CREDIT",
+            span,
+            "the initial Q35 profile admits only the sealed zero-to-256 contribution transfer",
+        ));
+    }
+    Ok(request)
+}
+
 fn parse_pci_region_register_request(
     source: &SourceText,
     fields: &[ProductField],
@@ -8019,6 +8122,7 @@ mod tests {
                 | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
                 | CompilerSystemsOperation::CreateEntropyPool { .. }
                 | CompilerSystemsOperation::MixEntropyPoolSample { .. }
+                | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
         )
     }
 
@@ -8030,6 +8134,7 @@ mod tests {
                     | CompilerSystemsOperation::AssessEntropySampleQuality { .. }
                     | CompilerSystemsOperation::CreateEntropyPool { .. }
                     | CompilerSystemsOperation::MixEntropyPoolSample { .. }
+                    | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
             )
         });
         program.bootstrap.handler.effects.retain(|effect| {
@@ -8037,6 +8142,7 @@ mod tests {
                 && *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY
                 && *effect != SYSTEMS_ENTROPY_POOL_CREATE
                 && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+                && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
         });
     }
 
@@ -8100,6 +8206,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_ENTROPY_POOL_CREATE,
+                SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
@@ -9196,6 +9303,12 @@ mod tests {
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_ENTROPY_POOL_MIXED".into(),
                 },
+                CompilerSystemsTransition::CreditEntropyPoolContribution {
+                    request: CompilerEntropyPoolCreditRequest::INITIAL_Q35,
+                },
+                CompilerSystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_ENTROPY_POOL_CREDITED".into(),
+                },
                 CompilerSystemsTransition::Fatal {
                     message: "toolchain gate complete".into(),
                 },
@@ -9212,7 +9325,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 233);
+        assert_eq!(program.bootstrap.handler.operations.len(), 235);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -9254,6 +9367,7 @@ mod tests {
                 SYSTEMS_DMA_BUFFER_PREPARE_DEVICE,
                 SYSTEMS_DMA_BUFFER_STORE_INTEGER,
                 SYSTEMS_ENTROPY_POOL_CREATE,
+                SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
                 SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
                 SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
                 SYSTEMS_ENTROPY_SAMPLE_CAPTURE_DMA,
@@ -10365,12 +10479,14 @@ mod tests {
                 operation,
                 CompilerSystemsOperation::CreateEntropyPool { .. }
                     | CompilerSystemsOperation::MixEntropyPoolSample { .. }
+                    | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
             *effect != SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY
                 && *effect != SYSTEMS_ENTROPY_POOL_CREATE
                 && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+                && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -10453,10 +10569,13 @@ mod tests {
             !matches!(
                 operation,
                 CompilerSystemsOperation::MixEntropyPoolSample { .. }
+                    | CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
             )
         });
         missing.bootstrap.handler.effects.retain(|effect| {
-            *effect != SYSTEMS_ENTROPY_POOL_CREATE && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+            *effect != SYSTEMS_ENTROPY_POOL_CREATE
+                && *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+                && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
         });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
@@ -10538,11 +10657,16 @@ mod tests {
 
         let mut missing = program.clone();
         missing.bootstrap.handler.operations.remove(index);
-        missing
-            .bootstrap
-            .handler
-            .effects
-            .retain(|effect| *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE);
+        missing.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+            )
+        });
+        missing.bootstrap.handler.effects.retain(|effect| {
+            *effect != SYSTEMS_ENTROPY_POOL_MIX_SAMPLE
+                && *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION
+        });
         assert_eq!(
             validate_systems_program(&missing).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-MIX-LIVE"
@@ -10588,6 +10712,87 @@ mod tests {
         assert_eq!(
             validate_systems_program(&substituted).unwrap_err().code,
             "E-SYSTEMS-ENTROPY-MIX"
+        );
+    }
+
+    #[test]
+    fn requires_the_exact_first_entropy_credit_transfer() {
+        // TOPAL-SYSTEMS-ENTROPY-CREDIT-001,
+        // TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-CREDIT-001.
+        let mut malformed = CompilerEntropyPoolCreditRequest::INITIAL_Q35;
+        malformed.resulting_credited_entropy_bits = 255;
+        assert!(!malformed.is_well_formed());
+
+        let program = analyze_systems_for_compiler(
+            &memory_source(),
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let index = program
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::CreditEntropyPoolContribution { .. }
+                )
+            })
+            .unwrap();
+
+        let mut missing = program.clone();
+        missing.bootstrap.handler.operations.remove(index);
+        missing
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| *effect != SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION);
+        assert_eq!(
+            validate_systems_program(&missing).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-CREDIT-LIVE"
+        );
+
+        let mut duplicated = program.clone();
+        duplicated.bootstrap.handler.operations.insert(
+            index,
+            duplicated.bootstrap.handler.operations[index].clone(),
+        );
+        assert_eq!(
+            validate_systems_program(&duplicated).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-CREDIT"
+        );
+
+        let mut reordered = program.clone();
+        let mixing = reordered
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|operation| {
+                matches!(
+                    operation,
+                    CompilerSystemsOperation::MixEntropyPoolSample { .. }
+                )
+            })
+            .unwrap();
+        reordered.bootstrap.handler.operations.swap(mixing, index);
+        assert_eq!(
+            validate_systems_program(&reordered).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-CREDIT"
+        );
+
+        let mut substituted = program;
+        if let CompilerSystemsOperation::CreditEntropyPoolContribution { request } =
+            &mut substituted.bootstrap.handler.operations[index]
+        {
+            request.conditioner_origin_identity = 2;
+        } else {
+            unreachable!();
+        }
+        assert_eq!(
+            validate_systems_program(&substituted).unwrap_err().code,
+            "E-SYSTEMS-ENTROPY-CREDIT"
         );
     }
 

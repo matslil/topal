@@ -1056,6 +1056,15 @@ wipe the 32-byte sample, and produce affine contribution identity one carrying
 duplicated, reordered, substituted, premature, partially written, or
 incompletely wiped mixing and shall create no random output.
 
+The bounded entropy-credit refinement shall consume the mixed-but-uncredited
+pool and its affine contribution token after successful mixing. It shall
+require pool identity one, contribution identity one, conditioner origin one,
+capacity 256, prior credit zero, transferred credit 256, and resulting credit
+256; preserve the provider-owned opaque pool bytes; consume the contribution;
+create no provider call; reject malformed, omitted, duplicated, reordered,
+substituted, overflowing, or premature transfer; and imply neither readiness
+nor random output.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

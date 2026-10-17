@@ -67,6 +67,8 @@ pub const SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY: &str =
     "topal.systems.entropy.sample.assess-quality/1";
 pub const SYSTEMS_ENTROPY_POOL_CREATE: &str = "topal.systems.entropy.pool.create/1";
 pub const SYSTEMS_ENTROPY_POOL_MIX_SAMPLE: &str = "topal.systems.entropy.pool.mix-sample/1";
+pub const SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION: &str =
+    "topal.systems.entropy.pool.credit-contribution/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -570,6 +572,48 @@ impl EntropyPoolMixRequest {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyPoolCreditRequest {
+    pub pool_identity: u64,
+    pub contribution_identity: u64,
+    pub conditioner_origin_identity: u64,
+    pub prior_credited_entropy_bits: u64,
+    pub contribution_entropy_bits: u64,
+    pub credit_capacity_bits: u64,
+    pub resulting_credited_entropy_bits: u64,
+}
+
+impl EntropyPoolCreditRequest {
+    pub const INITIAL_Q35: Self = Self {
+        pool_identity: 1,
+        contribution_identity: 1,
+        conditioner_origin_identity: 1,
+        prior_credited_entropy_bits: 0,
+        contribution_entropy_bits: 256,
+        credit_capacity_bits: 256,
+        resulting_credited_entropy_bits: 256,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.pool_identity != 0
+            && self.contribution_identity != 0
+            && self.conditioner_origin_identity != 0
+            && self.contribution_entropy_bits != 0
+            && self.credit_capacity_bits != 0
+            && match self
+                .prior_credited_entropy_bits
+                .checked_add(self.contribution_entropy_bits)
+            {
+                Some(result) => {
+                    result == self.resulting_credited_entropy_bits
+                        && result <= self.credit_capacity_bits
+                }
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PciRegionDmaReferenceRequest {
     pub segment: u16,
     pub bus: u8,
@@ -864,6 +908,9 @@ pub enum SystemsOperation {
     MixEntropyPoolSample {
         request: EntropyPoolMixRequest,
     },
+    CreditEntropyPoolContribution {
+        request: EntropyPoolCreditRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -985,6 +1032,7 @@ impl SystemsOperation {
             Self::AssessEntropySampleQuality { .. } => SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
             Self::CreateEntropyPool { .. } => SYSTEMS_ENTROPY_POOL_CREATE,
             Self::MixEntropyPoolSample { .. } => SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+            Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1238,6 +1286,9 @@ pub enum SystemsTransition {
     },
     MixEntropyPoolSample {
         request: EntropyPoolMixRequest,
+    },
+    CreditEntropyPoolContribution {
+        request: EntropyPoolCreditRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1584,6 +1635,7 @@ impl SystemsTransition {
             Self::AssessEntropySampleQuality { .. } => SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY,
             Self::CreateEntropyPool { .. } => SYSTEMS_ENTROPY_POOL_CREATE,
             Self::MixEntropyPoolSample { .. } => SYSTEMS_ENTROPY_POOL_MIX_SAMPLE,
+            Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -2154,6 +2206,7 @@ struct BootstrapAuthorityState {
     entropy_sample_assessed: bool,
     entropy_pool_created: bool,
     entropy_pool_mixed: bool,
+    entropy_pool_credited: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2646,6 +2699,19 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.entropy_pool_mixed = true;
+            }
+            SystemsOperation::CreditEntropyPoolContribution { request } => {
+                if !self.entropy_pool_mixed
+                    || self.entropy_pool_credited
+                    || !request.is_well_formed()
+                    || *request != EntropyPoolCreditRequest::INITIAL_Q35
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-CREDIT",
+                        "entropy-pool credit transfer requires the exact sealed mixed pool and live first contribution",
+                    ));
+                }
+                self.entropy_pool_credited = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -4112,6 +4178,12 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-ENTROPY-MIX-LIVE",
                 "bootstrap completion requires the sealed first entropy-pool mix",
+            ));
+        }
+        if !self.entropy_pool_credited {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-CREDIT-LIVE",
+                "bootstrap completion requires transfer of the sealed entropy contribution",
             ));
         }
         if self.deadline != BootstrapDeadlineState::Completed {
@@ -5791,6 +5863,10 @@ fn model_bootstrap_operation(
         SystemsOperation::MixEntropyPoolSample { request } => {
             transitions.push(SystemsTransition::MixEntropyPoolSample { request: *request });
         }
+        SystemsOperation::CreditEntropyPoolContribution { request } => {
+            transitions
+                .push(SystemsTransition::CreditEntropyPoolContribution { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6141,6 +6217,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AssessEntropySampleQuality { .. }
         | SystemsOperation::CreateEntropyPool { .. }
         | SystemsOperation::MixEntropyPoolSample { .. }
+        | SystemsOperation::CreditEntropyPoolContribution { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6287,6 +6364,7 @@ mod tests {
             SYSTEMS_ENTROPY_SAMPLE_ASSESS_QUALITY.into(),
             SYSTEMS_ENTROPY_POOL_CREATE.into(),
             SYSTEMS_ENTROPY_POOL_MIX_SAMPLE.into(),
+            SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -6669,6 +6747,9 @@ mod tests {
                         },
                         SystemsOperation::MixEntropyPoolSample {
                             request: EntropyPoolMixRequest::INITIAL_Q35,
+                        },
+                        SystemsOperation::CreditEntropyPoolContribution {
+                            request: EntropyPoolCreditRequest::INITIAL_Q35,
                         },
                         SystemsOperation::DebugBreak,
                         SystemsOperation::SendLocalNotification,
@@ -7193,6 +7274,9 @@ mod tests {
                 },
                 SystemsTransition::MixEntropyPoolSample {
                     request: EntropyPoolMixRequest::INITIAL_Q35,
+                },
+                SystemsTransition::CreditEntropyPoolContribution {
+                    request: EntropyPoolCreditRequest::INITIAL_Q35,
                 },
                 SystemsTransition::ObserveDebugBreak,
                 SystemsTransition::EnterDebugBreak,

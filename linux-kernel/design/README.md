@@ -106,6 +106,7 @@ records, not this directory alone, define language meaning.
 - [Bounded entropy-sample quality attribution](bounded-entropy-sample-quality.md)
 - [Bounded entropy-pool creation](bounded-entropy-pool-creation.md)
 - [Bounded entropy-pool mixing](bounded-entropy-pool-mixing.md)
+- [Bounded entropy-credit transfer](bounded-entropy-credit-transfer.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
