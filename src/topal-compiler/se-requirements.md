@@ -80,6 +80,17 @@ require same-allocator consuming release before any disposition, and reject
 context reuse, extent escape, cross-allocator release, double release, and
 unsupported dynamic or multi-extent forms before lowering.
 
+The exact static-ELF frame-extent increment shall additionally admit only the
+literal 503-frame, unit-aligned shape after the earlier three-frame extent is
+returned. The checked root and x86-64 provider shall preserve one indivisible
+owner, use checked frame-to-byte arithmetic, select the whole interval inside
+one normalized E820 RAM run below 1 GiB, exclude the boot resource and retained
+reservations, emit the exact ordered witness while ownership is live, and
+consume whole release before continuing. Structural and negative tests shall
+reject intermediate or larger counts, non-unit alignment, partial selection,
+overlap, duplicate witness, and continuation with live ownership. No mapping
+or byte-access authority shall be introduced.
+
 The kernel-mapping increment shall accept only the approved static
 read-write, non-executable normal-memory request. It shall consume the one live
 frame extent into an affine mapping, admit statically bounded plain byte

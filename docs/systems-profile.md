@@ -218,11 +218,14 @@ library policy so long as these observations are preserved.
 X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
-sizes. The executable x86-64 slice admits statically proved extents of one or
-three frames aligned to one frame. Each request still returns one indivisible
-affine extent. Multiple live extents, extent splitting, dynamic requests, and
-reclamation remain unavailable. Mapping is admitted only through the
-separately qualified opaque capability below.
+sizes. The executable x86-64 slice admits statically proved extents of one,
+two, three, or exactly 503 frames aligned to one frame. The 503-frame shape is
+derived from the pinned static-ELF page plan and is qualified by sequential
+whole-extent allocation and release without mapping authority. Each request
+still returns one indivisible affine extent. Other counts, multiple live
+extents except the separately sealed disjoint probe, extent splitting, dynamic
+requests, and reclamation remain unavailable. Mapping is admitted only through
+the separately qualified opaque capability below.
 
 ### Opaque kernel mapping
 

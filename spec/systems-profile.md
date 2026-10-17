@@ -346,11 +346,30 @@ non-overlap, ownership, and provenance observations remain equivalent.
 
 The initial x86-64 executable profile SHALL admit only the static allocation
 shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
-alignment-frames: 1)`, and `(frame-count: 3, alignment-frames: 1)`. Every
-successful request SHALL produce one indivisible
+alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`, and
+`(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL produce one indivisible
 extent and SHALL require release of that complete extent. The profile SHALL
 reject every other count or alignment, a dynamic request, extent splitting,
 and more than one simultaneously live extent before artifact publication.
+
+### TOPAL-SYSTEMS-STATIC-ELF-FRAMES-001 — Exact static-image frame extent
+
+The initial x86-64 root SHALL request the exact `(503, 1)` frame extent only
+after releasing the preceding three-frame qualification extent. Success SHALL
+return one opaque indivisible `PhysicalFrameExtent`. The provider SHALL derive
+the complete byte extent with checked arithmetic and select it wholly inside
+one normalized E820 RAM range, disjoint from the boot resource and retained
+reservations, page aligned, and below the qualified first-GiB bootstrap mapping
+ceiling.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK`
+observation while the exact extent remains live and SHALL then release it whole
+before any later bootstrap transition. The observation SHALL grant no access,
+mapping, split, address, or reuse authority. A partial interval, wrong count or
+alignment, overlap, arithmetic overflow, missing or duplicate observation,
+release before observation, continuation before release, or recoverable
+disposition with the extent live SHALL be invalid. This rule SHALL NOT map,
+read, write, execute, or make the planned static image runtime-selectable.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`

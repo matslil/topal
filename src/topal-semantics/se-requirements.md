@@ -110,6 +110,13 @@ rejection of escape, cross-allocator release, double release, or completion
 with live extents. Model frame indices shall not grant machine-address or
 mapping authority.
 
+The exact static-ELF frame refinement shall model the additional literal
+503-frame unit-aligned request as one affine extent, require its complete
+release, and retain the same normalized-range, reservation, non-overlap, and
+no-address-authority invariants. The executable bootstrap model shall require
+the request after the three-frame extent is returned, one witness while the
+extent is live, and whole release before later operations.
+
 The kernel-mapping increment shall model consuming frame ownership into one
 opaque provider-qualified kernel mapping; explicit rights, execution, and
 normal-memory policy; bounded retained byte contents; consuming unmap which
