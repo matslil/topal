@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/113";
+    "topal.provider-object.x86_64-qemu-pc-q35/114";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -33,6 +33,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_zero_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL: &str =
     "topal_x86_systems_static_image_zero_stack_backing";
+pub const X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL: &str =
+    "topal_x86_systems_static_image_publish_stack_leaf";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_stack_leaf";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_copy_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL: &str =
@@ -1247,6 +1251,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
         &static_image_zero_stack_backing()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+        &static_image_publish_stack_leaf()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
+        &static_image_revoke_stack_leaf()?,
     );
     append_encoded_function(
         &mut object,
@@ -5959,6 +5975,202 @@ fn static_image_zero_stack_backing() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn emit_static_image_published_stack_leaf_verification(
+    code: &mut X86FunctionEncoder,
+    labels: [&'static str; 4],
+) -> Result<(), CompileError> {
+    fn emit_role(
+        code: &mut X86FunctionEncoder,
+        label: &'static str,
+        count: u32,
+        flags: u64,
+    ) -> Result<(), CompileError> {
+        code.bytes(&[0x49, 0xb9]);
+        code.bytes(&flags.to_le_bytes());
+        code.bytes(&[0xb9]);
+        code.bytes(&count.to_le_bytes());
+        code.bind(label)?;
+        code.bytes(&[0x4c, 0x89, 0xd0]);
+        code.bytes(&[0x4c, 0x09, 0xc8]);
+        code.bytes(&[0x48, 0x39, 0x07]);
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+        code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+        code.bytes(&[0xff, 0xc9]);
+        code.jump_if(0x85, label);
+        Ok(())
+    }
+
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x48, 0x89, 0xf7]); // metadata cursor
+    emit_role(code, labels[0], 1, 0x8000_0000_0000_0005)?;
+    emit_role(code, labels[1], 396, 0x0000_0000_0000_0005)?;
+    emit_role(code, labels[2], 96, 0x8000_0000_0000_0005)?;
+    emit_role(code, labels[3], 10, 0x8000_0000_0000_0007)?;
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x08, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // seven spare entries plus guard absent
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0xb8]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x89, 0xd8, 0x4c, 0x09, 0xc0]); // backing plus RW/NX user flags
+    code.bytes(&[0x48, 0x39, 0x07]);
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn emit_static_image_stack_leaf_root_verification(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x4c, 0x8b, 0x44, 0x24, 0x18]); // qualified bootstrap root
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24, 0x4d, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn emit_static_image_stack_leaf_entry_verification(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x10]); // payload base
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x004a_6580_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x18]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x42, 0x18]);
+    code.bytes(&[0x48, 0x2d, 0x00, 0x00, 0x40, 0x00]);
+    code.bytes(&[0x48, 0x3d, 0x80, 0x65, 0x0a, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x05, 0x00, 0x60, 0x0a, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc8, 0x05]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn emit_static_image_stack_backing_zero_verification(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]); // backing base
+    code.bytes(&[0x4d, 0x85, 0xdb]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0xf7, 0xc3, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xfb, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn static_image_stack_leaf(publish: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    if publish {
+        emit_static_image_sealed_leaf_verification(
+            &mut code,
+            [
+                "stack-publish-before-header",
+                "stack-publish-before-executable",
+                "stack-publish-before-relro",
+                "stack-publish-before-writable",
+            ],
+        )?;
+    } else {
+        code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+        emit_static_image_published_stack_leaf_verification(
+            &mut code,
+            [
+                "stack-revoke-before-header",
+                "stack-revoke-before-executable",
+                "stack-revoke-before-relro",
+                "stack-revoke-before-writable",
+            ],
+        )?;
+    }
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        "verify-stack-leaf-hierarchy-before-low-pd",
+        "verify-stack-leaf-hierarchy-before-low-pd-expected",
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_stack_backing_zero_verification(&mut code)?;
+
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]); // leaf metadata
+    if publish {
+        code.bytes(&[0x4c, 0x89, 0xd8]);
+        code.bytes(&[0x49, 0xb8]);
+        code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+        code.bytes(&[0x4c, 0x09, 0xc0]);
+        code.bytes(&[0x48, 0x89, 0x86, 0xf8, 0x0f, 0x00, 0x00]);
+    } else {
+        code.bytes(&[
+            0x48, 0xc7, 0x86, 0xf8, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ]);
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]); // sfence before complete readback
+
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    if publish {
+        code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+        emit_static_image_published_stack_leaf_verification(
+            &mut code,
+            [
+                "stack-publish-after-header",
+                "stack-publish-after-executable",
+                "stack-publish-after-relro",
+                "stack-publish-after-writable",
+            ],
+        )?;
+    } else {
+        emit_static_image_sealed_leaf_verification(
+            &mut code,
+            [
+                "stack-revoke-after-header",
+                "stack-revoke-after-executable",
+                "stack-revoke-after-relro",
+                "stack-revoke-after-writable",
+            ],
+        )?;
+    }
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        "verify-stack-leaf-hierarchy-after-low-pd",
+        "verify-stack-leaf-hierarchy-after-low-pd-expected",
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_stack_backing_zero_verification(&mut code)?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_publish_stack_leaf() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_leaf(true)
+}
+
+fn static_image_revoke_stack_leaf() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_leaf(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -6182,6 +6394,20 @@ fn emit_static_image_address_space_hierarchy_verification(
     code: &mut X86FunctionEncoder,
     expect_inactive_root: bool,
 ) -> Result<(), CompileError> {
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        code,
+        expect_inactive_root,
+        "verify-static-address-space-low-pd",
+        "verify-static-address-space-low-pd-expected",
+    )
+}
+
+fn emit_static_image_address_space_hierarchy_verification_labeled(
+    code: &mut X86FunctionEncoder,
+    expect_inactive_root: bool,
+    low_pd_label: &'static str,
+    low_pd_expected_label: &'static str,
+) -> Result<(), CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x1c, 0x24]); // hierarchy base
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // leaf metadata base
 
@@ -6212,17 +6438,17 @@ fn emit_static_image_address_space_hierarchy_verification(
     code.jump_if(0x85, "fail");
 
     code.bytes(&[0x31, 0xc9]);
-    code.bind("verify-static-address-space-low-pd")?;
+    code.bind(low_pd_label)?;
     code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0xc1, 0xe0, 0x15]);
     code.bytes(&[0x48, 0x0d, 0xe3, 0x00, 0x00, 0x00]);
     code.bytes(&[0x83, 0xf9, 0x02]);
-    code.jump_if(0x85, "verify-static-address-space-low-pd-expected");
+    code.jump_if(0x85, low_pd_expected_label);
     code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x83, 0xc8, 0x27]);
-    code.bind("verify-static-address-space-low-pd-expected")?;
+    code.bind(low_pd_expected_label)?;
     code.bytes(&[0x49, 0x39, 0x84, 0xcb, 0x00, 0x20, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
-    code.jump_if(0x85, "verify-static-address-space-low-pd");
+    code.jump_if(0x85, low_pd_label);
 
     code.bytes(&[0x49, 0x8d, 0xbb, 0x00, 0x30, 0x00, 0x00, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0xf6, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
@@ -7864,6 +8090,80 @@ assert bytes(output) == block[32:]
                 .count(),
             1,
             "stack-backing zeroing must order the complete clear before readback"
+        );
+
+        let publish_stack_leaf =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL);
+        let revoke_stack_leaf =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL);
+        assert!(
+            publish_stack_leaf
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x86, 0xf8, 0x0f, 0x00, 0x00]),
+            "stack-leaf publication must write only leaf ordinal 511"
+        );
+        assert!(
+            revoke_stack_leaf.windows(11).any(|bytes| {
+                bytes
+                    == [
+                        0x48, 0xc7, 0x86, 0xf8, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                    ]
+            }),
+            "stack-leaf revocation must erase only leaf ordinal 511"
+        );
+        for bytes in [publish_stack_leaf.as_slice(), revoke_stack_leaf.as_slice()] {
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each inactive leaf transition must fence before readback"
+            );
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                2,
+                "each transition must completely verify zero backing before and after publication"
+            );
+            assert_eq!(
+                bytes
+                    .windows(8)
+                    .filter(|window| {
+                        *window == [0xb9, 0x08, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                3,
+                "both hierarchy readbacks and the seven-spare-plus-guard readback must be complete"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive stack-leaf transitions must not issue active-address invalidation"
+            );
+        }
+        assert_eq!(
+            publish_stack_leaf
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x49, 0xb8, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
+                })
+                .count(),
+            2,
+            "publication must construct and read back the exact RW/NX user leaf"
+        );
+        assert_eq!(
+            revoke_stack_leaf
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x49, 0xb8, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
+                })
+                .count(),
+            1,
+            "revocation must validate the exact RW/NX user leaf before erasing it"
         );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);

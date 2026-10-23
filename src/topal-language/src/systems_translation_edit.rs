@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -747,6 +747,57 @@ fn analyze_static_elf_frame_sequence(
             "static ELF stack-backing zeroing must publish its exact marker before whole release",
         ));
     }
+    let published_stack_leaf_construction_name = parse_static_image_stack_leaf_publication(
+        source,
+        publish_stack_leaf,
+        allocator_context,
+        &zeroed_stack_backing_construction_name,
+        &stack_backing_name,
+    )?;
+    let stack_leaf_published_marker_span = statement_span(stack_leaf_published_marker);
+    let stack_leaf_published_marker = analyze_operation(
+        source,
+        stack_leaf_published_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_leaf_published_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_leaf_published_marker_span,
+            "static ELF stack-leaf publication must publish its exact marker before revocation",
+        ));
+    }
+    let zeroed_stack_backing_restored_construction_name =
+        parse_static_image_stack_leaf_revocation(
+            source,
+            revoke_stack_leaf,
+            allocator_context,
+            &published_stack_leaf_construction_name,
+            &stack_backing_name,
+        )?;
+    let stack_leaf_revoked_marker_span = statement_span(stack_leaf_revoked_marker);
+    let stack_leaf_revoked_marker = analyze_operation(
+        source,
+        stack_leaf_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_leaf_revoked_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_leaf_revoked_marker_span,
+            "static ELF stack-leaf revocation must publish its exact marker before backing release",
+        ));
+    }
     parse_physical_frame_release(
         source,
         stack_backing_release,
@@ -757,7 +808,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         revoke_stack_slot,
         allocator_context,
-        &zeroed_stack_backing_construction_name,
+        &zeroed_stack_backing_restored_construction_name,
         "revoke",
         "bounded-stack-slot-qualification-rollback",
     )?;
@@ -943,6 +994,10 @@ fn analyze_static_elf_frame_sequence(
         stack_backing_marker,
         CompilerSystemsOperation::ZeroStaticImageStackBacking,
         stack_backing_zeroed_marker,
+        CompilerSystemsOperation::PublishStaticImageStackLeaf,
+        stack_leaf_published_marker,
+        CompilerSystemsOperation::RevokeStaticImageStackLeaf,
+        stack_leaf_revoked_marker,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::RevokeStaticImageStackSlot,
         stack_slot_revoked_marker,
@@ -1715,6 +1770,203 @@ fn parse_static_image_stack_backing_zero(
             source,
             span,
             "static-image stack-backing zeroing requires the exact owner, backing, and complete extent",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_leaf_publication(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-leaf publication cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-leaf publication must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, publish, stack, leaf, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf publication requires its exact owner, backing, access, and complete extent",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, publish, "publish")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, leaf, "leaf")
+        || fields.len() != 4
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf publication requires its exact owner, backing, access, and complete extent",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut access = None;
+    let mut extent = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-leaf publication parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "backing" => backing = Some(source.slice(*value)),
+            "access" => access = Some(source.slice(*value)),
+            "extent" => extent = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-leaf publication parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || access != Some("writable-non-executable")
+        || extent != Some("complete")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf publication requires the exact owner, backing, RW/NX access, and complete extent",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_leaf_revocation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-leaf revocation cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-leaf revocation must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, revoke, stack, leaf, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf revocation requires its exact owner, backing, and rollback policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, revoke, "revoke")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, leaf, "leaf")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf revocation requires its exact owner, backing, and rollback policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-leaf revocation parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "backing" => backing = Some(source.slice(*value)),
+            "policy" => policy = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-leaf revocation parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || policy != Some("bounded-stack-leaf-qualification-rollback")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-leaf revocation requires the exact owner, backing, and rollback policy",
         ));
     }
     Ok(source.slice(name).to_owned())

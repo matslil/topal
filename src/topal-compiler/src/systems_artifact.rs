@@ -78,11 +78,14 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -134,8 +137,10 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -159,8 +164,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/123";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/112";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/124";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/113";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -176,7 +181,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 62] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 64] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -189,6 +194,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 62] = [
     X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
@@ -1956,6 +1963,8 @@ enum ProviderSymbol {
     PrepareStaticImage,
     ZeroStaticImagePayload,
     ZeroStaticImageStackBacking,
+    PublishStaticImageStackLeaf,
+    RevokeStaticImageStackLeaf,
     CopyStaticImagePayload,
     SealStaticImagePermissions,
     AttachStaticImageAddressSpace,
@@ -2056,6 +2065,8 @@ impl ProviderSymbol {
             Self::PrepareStaticImage => X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
             Self::ZeroStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
             Self::ZeroStaticImageStackBacking => X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+            Self::PublishStaticImageStackLeaf => X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+            Self::RevokeStaticImageStackLeaf => X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
             Self::CopyStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
             Self::SealStaticImagePermissions => X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
             Self::AttachStaticImageAddressSpace => {
@@ -2192,6 +2203,8 @@ impl ProviderSymbol {
             | Self::PrepareStaticImage
             | Self::ZeroStaticImagePayload
             | Self::ZeroStaticImageStackBacking
+            | Self::PublishStaticImageStackLeaf
+            | Self::RevokeStaticImageStackLeaf
             | Self::CopyStaticImagePayload
             | Self::SealStaticImagePermissions
             | Self::AttachStaticImageAddressSpace
@@ -2418,6 +2431,7 @@ enum RootStaticImageState {
     EntryAuthorized,
     StackSlotAuthorized,
     StackBackingZeroed,
+    StackLeafPublished,
     EntryRestored,
     Detached,
     HierarchyReturned,
@@ -2517,6 +2531,8 @@ struct ProviderSymbols {
     prepare_static_image: SymbolId,
     zero_static_image_payload: SymbolId,
     zero_static_image_stack_backing: SymbolId,
+    publish_static_image_stack_leaf: SymbolId,
+    revoke_static_image_stack_leaf: SymbolId,
     copy_static_image_payload: SymbolId,
     seal_static_image_permissions: SymbolId,
     attach_static_image_address_space: SymbolId,
@@ -3124,6 +3140,54 @@ impl RootEncoder {
         }
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // opaque backing base
         self.call_checked_bool(ProviderSymbol::ZeroStaticImageStackBacking)?;
+        self.static_image = RootStaticImageState::StackBackingZeroed;
+        Ok(())
+    }
+
+    fn publish_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::StackBackingZeroed
+            || self.physical_frame_count != Some(1)
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image stack-leaf publication requires one zeroed backing under the inactive qualified hierarchy"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]); // leaf metadata
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]);
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xe9]); // hierarchy
+        self.bytes.extend_from_slice(&[0x4d, 0x89, 0xf8]); // bootstrap root
+        self.bytes.extend_from_slice(&[0x49, 0x89, 0xd9]); // backing
+        self.call_checked_bool(ProviderSymbol::PublishStaticImageStackLeaf)?;
+        self.static_image = RootStaticImageState::StackLeafPublished;
+        Ok(())
+    }
+
+    fn revoke_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::StackLeafPublished
+            || self.physical_frame_count != Some(1)
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image stack-leaf revocation requires one published leaf under the inactive qualified hierarchy"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]);
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]);
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]);
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xe9]);
+        self.bytes.extend_from_slice(&[0x4d, 0x89, 0xf8]);
+        self.bytes.extend_from_slice(&[0x49, 0x89, 0xd9]);
+        self.call_checked_bool(ProviderSymbol::RevokeStaticImageStackLeaf)?;
         self.static_image = RootStaticImageState::StackBackingZeroed;
         Ok(())
     }
@@ -5521,6 +5585,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ZeroStaticImageStackBacking,
         ),
+        publish_static_image_stack_leaf: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PublishStaticImageStackLeaf,
+        ),
+        revoke_static_image_stack_leaf: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RevokeStaticImageStackLeaf,
+        ),
         copy_static_image_payload: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::CopyStaticImagePayload,
@@ -6190,6 +6262,12 @@ fn encode_operations(
             CompilerSystemsOperation::ZeroStaticImageStackBacking => {
                 encoder.zero_static_image_stack_backing()?;
             }
+            CompilerSystemsOperation::PublishStaticImageStackLeaf => {
+                encoder.publish_static_image_stack_leaf()?;
+            }
+            CompilerSystemsOperation::RevokeStaticImageStackLeaf => {
+                encoder.revoke_static_image_stack_leaf()?;
+            }
             CompilerSystemsOperation::CopyStaticImageConstructionPayload => {
                 encoder.copy_static_image_payload()?;
             }
@@ -6524,6 +6602,12 @@ fn append_root(
             ProviderSymbol::ZeroStaticImagePayload => provider_symbols.zero_static_image_payload,
             ProviderSymbol::ZeroStaticImageStackBacking => {
                 provider_symbols.zero_static_image_stack_backing
+            }
+            ProviderSymbol::PublishStaticImageStackLeaf => {
+                provider_symbols.publish_static_image_stack_leaf
+            }
+            ProviderSymbol::RevokeStaticImageStackLeaf => {
+                provider_symbols.revoke_static_image_stack_leaf
             }
             ProviderSymbol::CopyStaticImagePayload => provider_symbols.copy_static_image_payload,
             ProviderSymbol::SealStaticImagePermissions => {
@@ -7306,6 +7390,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::PrepareStaticImageConstruction
                 | CompilerSystemsTransition::ZeroStaticImageConstructionPayload
                 | CompilerSystemsTransition::ZeroStaticImageStackBacking
+                | CompilerSystemsTransition::PublishStaticImageStackLeaf
+                | CompilerSystemsTransition::RevokeStaticImageStackLeaf
                 | CompilerSystemsTransition::CopyStaticImageConstructionPayload
                 | CompilerSystemsTransition::SealStaticImageConstructionPermissions
                 | CompilerSystemsTransition::AttachStaticImageAddressSpace
@@ -7707,6 +7793,14 @@ mod tests {
                 }),
             "checked root must allocate stack backing after the hierarchy, clear it, and restore the hierarchy owner"
         );
+        assert!(
+            root_bytes
+                .windows(3)
+                .filter(|bytes| *bytes == [0x49, 0x89, 0xd9])
+                .count()
+                >= 2,
+            "checked root must pass the opaque backing identity to both stack-leaf transitions"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -7716,7 +7810,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3981);
+        assert_eq!(relocation_targets.len(), 4077);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -7818,6 +7912,8 @@ mod tests {
             X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+            X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
@@ -7894,7 +7990,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            3561
+            3653
         );
         assert_eq!(
             relocation_targets
@@ -8055,7 +8151,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            162
+            164
         );
         assert_eq!(
             relocation_targets
@@ -8190,6 +8286,8 @@ mod tests {
                 "topal_x86_systems_static_image_prepare_initial_leaves",
                 "topal_x86_systems_static_image_zero_payload",
                 "topal_x86_systems_static_image_zero_stack_backing",
+                "topal_x86_systems_static_image_publish_stack_leaf",
+                "topal_x86_systems_static_image_revoke_stack_leaf",
                 "topal_x86_systems_static_image_copy_payload",
                 "topal_x86_systems_static_image_seal_permissions",
                 "topal_x86_systems_static_image_attach_address_space",
@@ -8351,7 +8449,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 361);
+        assert_eq!(decoded.semantic_trace.len(), 365);
         assert!(
             decoded
                 .semantic_trace
@@ -8400,6 +8498,12 @@ mod tests {
         );
         assert!(decoded.semantic_trace.iter().any(|entry| {
             entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF)
         }));
         assert!(
             decoded
@@ -8506,38 +8610,48 @@ mod tests {
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING
         );
         assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[58], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[59],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            decoded.semantic_trace[58],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[61],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+            decoded.semantic_trace[60],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[61].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[62], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[63],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
         );
         assert!(decoded.semantic_trace[64].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[65],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
-        assert_eq!(decoded.semantic_trace[66], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[66].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[67],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert_eq!(decoded.semantic_trace[68], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[68].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[69],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
         assert_eq!(decoded.semantic_trace[70], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..71);
+        assert_eq!(
+            decoded.semantic_trace[71],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+        );
+        assert_eq!(decoded.semantic_trace[72], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[73],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[74], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..75);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

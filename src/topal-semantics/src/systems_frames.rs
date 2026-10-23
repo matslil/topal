@@ -14,6 +14,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD: &str =
     "topal.systems.static-image.construction.zero-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING: &str =
     "topal.systems.static-image.construction.zero-stack-backing/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.publish-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.revoke-stack-leaf/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
