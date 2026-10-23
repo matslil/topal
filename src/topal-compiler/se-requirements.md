@@ -389,6 +389,19 @@ count, order, marker, split, early release, or early revocation and shall prove
 that allocation grants no byte, mapping, attachment, activation, or entry
 authority.
 
+The bounded static-ELF address-space increment shall accept exact typed attach,
+detach, and hierarchy-reclaim transitions over the sealed construction and
+four-frame hierarchy extent. X86-64 lowering shall revalidate all extents and
+final leaves, prove the root inactive, zero and verify the hierarchy, construct
+and read back the exact supervisor bootstrap/MMIO hierarchy linked to the
+existing user leaf table, and preserve every payload byte and leaf role.
+Detach shall revalidate the same inactive shape, zero and verify the complete
+hierarchy, return it through one affine reclaim and whole release, then admit
+the existing metadata/payload revocation under the detached owner. Tests shall
+reject wrong owner, layout, entry, leaf, root state, order, witness, partial
+return, or live disposition and shall prove two deterministic pinned-QEMU
+executions without activation, stack, entry, or execution authority.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

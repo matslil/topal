@@ -584,6 +584,62 @@ rule SHALL NOT initialize a page-table level, link the existing leaf table,
 attach or activate an address space, initialize TLS or a stack, publish an
 entry, retain the hierarchy extent, or execute the static image.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ADDRESS-SPACE-001 — Verified inactive attachment and detach
+
+`static image construction attach address space` SHALL consume the exact live
+`SealedStaticImageConstruction` from
+`TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` and the exact live four-frame
+hierarchy extent from `TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001`. It
+SHALL accept only layout `bounded-static-elf-inactive-address-space`. Success
+SHALL produce one affine `AttachedStaticImageConstruction` owning the same
+payload, leaf metadata, and hierarchy extents.
+
+Before construction, the initial x86-64 provider SHALL revalidate all three
+extents, their exact qualified adjacency and disjointness, all 503 final leaves
+and nine absent entries, and that the hierarchy root differs from the active
+translation root. It SHALL zero and read back all 16,384 hierarchy bytes. It
+SHALL then construct one complete inactive hierarchy comprising PML4, PDPT,
+low-memory directory, and qualified-MMIO directory frames in that order.
+
+PML4 entry zero and PDPT entry zero SHALL provide present/write/user traversal
+to the next level. PDPT entry three SHALL provide supervisor present/write
+traversal to the MMIO directory. The low-memory directory SHALL contain the
+qualified 512 supervisor 2 MiB bootstrap identity mappings except entry two,
+which SHALL reference the existing final static leaf table through
+present/write/user traversal. The MMIO directory SHALL contain only the
+qualified HPET and local-APIC 2 MiB mappings at entries 502 and 503. Every
+other PML4, PDPT, and MMIO-directory entry SHALL remain absent.
+
+The provider SHALL publish the complete inactive hierarchy atomically, read
+back every present entry and every required absent interval, revalidate the
+unchanged final leaf table, and again prove the root inactive before success.
+Target levels, entries, flags, addresses, loops, root-register observation,
+publication barriers, cache maintenance, and fences SHALL remain
+provider-private. Attachment SHALL change no payload byte, frame identity,
+leaf role, or absent leaf.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK`
+observation while the attached owner is live. It SHALL then invoke
+`static image construction detach address space` with that exact owner.
+Detach SHALL revalidate the complete hierarchy, final leaves, and inactive
+root, clear and publish all four hierarchy frames, verify all 16,384 bytes
+zero, and produce one affine `DetachedStaticImageConstruction`. Source SHALL
+then emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK` observation.
+
+`static image construction reclaim` with resource `hierarchy` SHALL consume
+that resource from the detached owner exactly once and return the complete
+four-frame extent. Source SHALL release it whole before invoking the existing
+metadata then payload revocation and release sequence with the same detached
+owner. A wrong owner, layout, extent, adjacency, hierarchy entry, leaf, role,
+active root, byte, operation order, witness, return order, partial release,
+duplicate transition, or disposition with any construction authority live
+SHALL be invalid.
+
+This rule SHALL NOT activate the hierarchy, expose or publish a root or entry
+token, initialize TLS or a process stack, enter user mode, retain the address
+space after its witness, or execute the static image.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
