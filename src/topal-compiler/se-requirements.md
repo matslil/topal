@@ -495,6 +495,26 @@ ordered witnesses, and no stack pointer, process-entry initialization, TLS,
 user-mode, syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001` and `TK-DEC-142`.
 
+The bounded static-ELF stack-entry increment shall accept one exact typed
+initialization from the published-stack-leaf construction and one exact typed
+complete clearing back to it. X86-64 lowering shall validate the inactive
+hierarchy, current bootstrap root, all final image leaves, exact RW/NX stack
+leaf, absent guard, and complete zero backing; construct a 16-byte-aligned
+Linux entry block with `argc` two, in-leaf `busybox` and `true` strings,
+terminated `argv`, empty terminated environment, and `AT_NULL`; execute one
+store fence; and completely read back all content, pointer relations, and
+otherwise-zero bytes. Clearing shall zero all 512 qwords, execute one store
+fence, and completely revalidate zero backing plus unchanged leaf, hierarchy,
+and root. The checker and semantic model shall preserve affine initialized-
+stack ownership and reject another owner/backing/profile/extent/policy,
+duplicate initialization, early leaf revocation or release, activation,
+teardown, or disposition while initialized. Structural and duplicate pinned-
+QEMU tests shall prove exact ABI content, complete readback and clearing,
+preserved guard/image/hierarchy/root/leaf, ordered witnesses, and no exposed
+stack pointer, further auxiliary-vector entries, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001` and `TK-DEC-143`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -87,8 +87,10 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -9278,8 +9280,10 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -10418,7 +10422,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 304);
+        assert_eq!(program.bootstrap.handler.operations.len(), 308);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10498,8 +10502,10 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -13154,7 +13160,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-leaf-qualification-rollback",
+                    "owner is published-stack-leaf-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-leaf-qualification-rollback",
                     "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-leaf-qualification-rollback",
                 ),
                 "exact owner, backing, and rollback policy",
@@ -13170,6 +13176,62 @@ mod tests {
                 SOURCE.replace(
                     "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
                     "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_BAD",
+                ),
+                "exact marker",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_entry_initialization_and_clearing() {
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
+                ),
+                "exact owner, backing, sealed profile, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "profile is bounded-static-elf-busybox-true,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
+                    "profile is unbounded-static-elf,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
+                ),
+                "exact owner, backing, sealed profile, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is initialized-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-entry-qualification-rollback",
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-entry-qualification-rollback",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-stack-entry-qualification-rollback",
+                    "policy is retained-stack-entry",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_BAD",
                 ),
                 "exact marker",
             ),

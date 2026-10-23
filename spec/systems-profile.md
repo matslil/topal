@@ -884,6 +884,64 @@ This rule SHALL NOT retain the mapping after its revocation witness, publish a
 stack pointer, initialize process-entry contents or TLS, construct a user
 context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001 — Bounded stack-entry construction
+
+`static image construction initialize stack entry` SHALL require the exact
+live `PublishedStackLeafStaticImageConstruction` and nested one-frame extent
+from `TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001`. It SHALL accept only that
+owner, that backing identity, profile `bounded-static-elf-busybox-true`, and
+`extent` equal to `complete`, borrow the live extent, and produce one affine
+`InitializedStackEntryStaticImageConstruction` retaining the unchanged entry,
+slot, published-leaf, and backing authorities.
+
+The semantic entry block SHALL contain argument count two; immutable arguments
+`busybox` and `true` in that order; an argument-vector terminator; an empty,
+terminated environment; exactly one `AT_NULL` auxiliary-vector pair; and both
+null-terminated strings within the same bounded stack backing. The entry
+position and all pointer-bearing fields SHALL be valid for the target Linux
+process-entry ABI and SHALL designate only the exact in-stack objects.
+
+Before success, the provider SHALL revalidate the complete inactive address
+space and final image leaves, exact RW/NX stack leaf, absent guard, qualified
+bootstrap root as current, static hierarchy as inactive, and every backing
+byte as zero. It SHALL construct the complete target-aligned entry block,
+perform every target-required visibility operation, and read back every word,
+string byte, terminator, pointer relation, and otherwise-zero byte. Numeric
+addresses, stack pointers, word encodings, offsets, alignment values, byte
+order, barriers, cache operations, and verification loops SHALL remain
+provider-private.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK` observation and then
+invoke `static image construction clear stack entry` with the exact initialized
+owner, backing identity, and policy
+`bounded-stack-entry-qualification-rollback`. Clearing SHALL zero the complete
+frame, perform every target-required visibility operation, completely read it
+back as zero, preserve the hierarchy and exact published leaf, and reproduce
+the exact `PublishedStackLeafStaticImageConstruction`. Source SHALL emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK` observation before
+leaf revocation.
+
+Initialization from a wrong owner or backing, another profile or extent,
+duplicate initialization, malformed content or pointers, partial or
+misaligned construction, active-hierarchy mutation, wrong witness order,
+leaf revocation, backing release, teardown, or recoverable disposition while
+the entry block is live SHALL be invalid. Only exact complete clearing SHALL
+restore the state admitted by leaf revocation.
+
+For qualified x86-64 realization, the provider SHALL use eight-byte little-
+endian words, a downward-growing stack, and a 16-byte-aligned entry pointer.
+The entry words SHALL be `2`, pointers to the in-leaf `busybox` and `true`
+strings, zero `argv` terminator, zero `envp` terminator, `AT_NULL`, and zero.
+Initialization and clearing SHALL each execute one store fence before complete
+readback. No active-address-space invalidation is permitted because the
+qualified hierarchy remains inactive.
+
+This rule SHALL NOT retain initialized contents after its clearing witness,
+add a nonterminating auxiliary-vector entry, initialize TLS, expose a stack
+pointer or representation, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

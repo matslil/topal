@@ -34,8 +34,10 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -1181,6 +1183,8 @@ pub enum SystemsOperation {
     ZeroStaticImageConstructionPayload,
     ZeroStaticImageStackBacking,
     PublishStaticImageStackLeaf,
+    InitializeStaticImageStackEntry,
+    ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
@@ -1409,6 +1413,10 @@ impl SystemsOperation {
             Self::PublishStaticImageStackLeaf => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
             }
+            Self::InitializeStaticImageStackEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
+            }
+            Self::ClearStaticImageStackEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
             Self::RevokeStaticImageStackLeaf => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
             Self::CopyStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
@@ -1695,6 +1703,8 @@ pub enum SystemsTransition {
     ZeroStaticImageConstructionPayload,
     ZeroStaticImageStackBacking,
     PublishStaticImageStackLeaf,
+    InitializeStaticImageStackEntry,
+    ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
@@ -2138,6 +2148,10 @@ impl SystemsTransition {
             Self::PublishStaticImageStackLeaf => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
             }
+            Self::InitializeStaticImageStackEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
+            }
+            Self::ClearStaticImageStackEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
             Self::RevokeStaticImageStackLeaf => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
             Self::CopyStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
@@ -2447,6 +2461,8 @@ fn validate_entry(
                     | SystemsOperation::ZeroStaticImageConstructionPayload
                     | SystemsOperation::ZeroStaticImageStackBacking
                     | SystemsOperation::PublishStaticImageStackLeaf
+                    | SystemsOperation::InitializeStaticImageStackEntry
+                    | SystemsOperation::ClearStaticImageStackEntry
                     | SystemsOperation::RevokeStaticImageStackLeaf
                     | SystemsOperation::CopyStaticImageConstructionPayload
                     | SystemsOperation::SealStaticImageConstructionPermissions
@@ -2954,6 +2970,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackSlotAuthorizedWithBacking,
     StaticElfConstructionStackBackingZeroed,
     StaticElfConstructionStackLeafPublished,
+    StaticElfConstructionStackEntryInitialized,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3235,6 +3252,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack-leaf publication requires one zeroed stack backing",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackLeafPublished;
+            }
+            SystemsOperation::InitializeStaticImageStackEntry => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackLeafPublished
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack-entry initialization requires one published stack leaf",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackEntryInitialized;
+            }
+            SystemsOperation::ClearStaticImageStackEntry => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackEntryInitialized
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack-entry clearing requires one initialized stack entry",
                     ));
                 }
                 self.memory_ownership =
@@ -5241,6 +5282,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
             | BootstrapMemoryOwnership::StaticElfConstructionStackBackingZeroed
             | BootstrapMemoryOwnership::StaticElfConstructionStackLeafPublished
+            | BootstrapMemoryOwnership::StaticElfConstructionStackEntryInitialized
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7051,6 +7093,12 @@ fn model_bootstrap_operation(
         SystemsOperation::PublishStaticImageStackLeaf => {
             transitions.push(SystemsTransition::PublishStaticImageStackLeaf);
         }
+        SystemsOperation::InitializeStaticImageStackEntry => {
+            transitions.push(SystemsTransition::InitializeStaticImageStackEntry);
+        }
+        SystemsOperation::ClearStaticImageStackEntry => {
+            transitions.push(SystemsTransition::ClearStaticImageStackEntry);
+        }
         SystemsOperation::RevokeStaticImageStackLeaf => {
             transitions.push(SystemsTransition::RevokeStaticImageStackLeaf);
         }
@@ -7539,6 +7587,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ZeroStaticImageConstructionPayload
         | SystemsOperation::ZeroStaticImageStackBacking
         | SystemsOperation::PublishStaticImageStackLeaf
+        | SystemsOperation::InitializeStaticImageStackEntry
+        | SystemsOperation::ClearStaticImageStackEntry
         | SystemsOperation::RevokeStaticImageStackLeaf
         | SystemsOperation::CopyStaticImageConstructionPayload
         | SystemsOperation::SealStaticImageConstructionPermissions
@@ -10514,8 +10564,9 @@ mod tests {
     }
 
     #[test]
-    fn models_static_elf_stack_leaf_publication_and_revocation() {
-        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001.
+    fn models_static_elf_stack_entry_lifecycle() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001.
         let mut program = program(SystemsDisposition::Resume);
         program.bootstrap.handler.operations.splice(
             2..2,
@@ -10549,6 +10600,8 @@ mod tests {
                 },
                 SystemsOperation::ZeroStaticImageStackBacking,
                 SystemsOperation::PublishStaticImageStackLeaf,
+                SystemsOperation::InitializeStaticImageStackEntry,
+                SystemsOperation::ClearStaticImageStackEntry,
                 SystemsOperation::RevokeStaticImageStackLeaf,
                 SystemsOperation::ReleasePhysicalFrames,
                 SystemsOperation::RevokeStaticImageStackSlot,
@@ -10565,17 +10618,24 @@ mod tests {
         refresh_bootstrap_effects(&mut program);
         let transitions = model_systems_transitions(&program).unwrap();
         assert!(transitions.contains(&SystemsTransition::PublishStaticImageStackLeaf));
+        assert!(transitions.contains(&SystemsTransition::InitializeStaticImageStackEntry));
+        assert!(transitions.contains(&SystemsTransition::ClearStaticImageStackEntry));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
-        let mut release_while_published = program.clone();
-        release_while_published
+        let mut release_while_initialized = program.clone();
+        release_while_initialized
             .bootstrap
             .handler
             .operations
-            .remove(17);
-        refresh_bootstrap_effects(&mut release_while_published);
+            .remove(18);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(18);
+        refresh_bootstrap_effects(&mut release_while_initialized);
         assert_eq!(
-            validate_systems_program(&release_while_published)
+            validate_systems_program(&release_while_initialized)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-FRAMES"
@@ -10595,14 +10655,28 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut revoke_before_publish = program;
-        revoke_before_publish
+        let mut duplicate_initialization = program.clone();
+        duplicate_initialization
             .bootstrap
             .handler
             .operations
-            .swap(16, 17);
+            .insert(18, SystemsOperation::InitializeStaticImageStackEntry);
+        refresh_bootstrap_effects(&mut duplicate_initialization);
         assert_eq!(
-            validate_systems_program(&revoke_before_publish)
+            validate_systems_program(&duplicate_initialization)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-STATIC-IMAGE"
+        );
+
+        let mut clear_before_initialization = program;
+        clear_before_initialization
+            .bootstrap
+            .handler
+            .operations
+            .swap(17, 18);
+        assert_eq!(
+            validate_systems_program(&clear_before_initialization)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"
