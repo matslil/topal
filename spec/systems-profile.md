@@ -1149,6 +1149,57 @@ expose its pointer or representation, add another auxiliary-vector fact,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001 — Process credential facts
+
+`static image construction add stack credentials` SHALL require the exact live
+`ExecutableNameStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `initial-process-credentials`, and
+policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`CredentialStackEntryStaticImageConstruction` retaining every prior fact while
+adding one coherent real/effective user/group identity group after `AT_EXECFN`
+and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the executable-name-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that all four credential facts agree with the provider-sealed
+initial PID-one process profile, clear the complete backing, reconstruct the
+complete target-aligned block, perform every target-required visibility
+operation, and read back every word, pointer relation, string byte, terminator,
+credential relation, and otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK` observation.
+
+Source SHALL invoke `static image construction remove stack credentials` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-credentials-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact executable-name-qualified block, preserve
+every prior obligation, and reproduce the exact
+`ExecutableNameStackEntryStaticImageConstruction`. Source SHALL emit exactly
+one `TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK` observation before
+executable-name removal.
+
+A wrong owner, backing, value, policy, credential identity or agreement;
+duplicate addition; partial mutation or readback; wrong ordering; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+credential removal SHALL restore the state admitted by executable-name
+removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_UID=(11,0)`, `AT_EUID=(12,0)`, `AT_GID=(13,0)`, and `AT_EGID=(14,0)` in
+that order after `AT_EXECFN=(31,0x5fffe0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact executable-name alias and inactive hierarchy and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the credential group after its removal witness,
+expose numeric credentials or representation, add another auxiliary-vector
+fact, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
