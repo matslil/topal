@@ -150,9 +150,22 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 extent is complete
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK"
+                                                                              published-stack-leaf-construction is unmapped static image construction publish stack leaf (
+                                                                                owner is zeroed-stack-backing-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                access is writable-non-executable,
+                                                                                extent is complete
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK"
+                                                                              zeroed-stack-backing-restored-construction is unmapped static image construction revoke stack leaf (
+                                                                                owner is published-stack-leaf-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-leaf-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK"
                                                                               unmapped frames release static-elf-stack-backing
                                                                               stack-slot-restored-static-elf-construction is unmapped static image construction revoke stack slot (
-                                                                                owner is zeroed-stack-backing-construction,
+                                                                                owner is zeroed-stack-backing-restored-construction,
                                                                                 policy is bounded-stack-slot-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK"

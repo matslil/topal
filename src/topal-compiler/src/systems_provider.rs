@@ -38,11 +38,14 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -68,7 +71,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/113";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/114";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -82,6 +85,8 @@ pub enum X86SystemsLowering {
     ConstructInitialStaticImageLeaves,
     ZeroStaticImagePayload,
     ZeroStaticImageStackBacking,
+    PublishStaticImageStackLeaf,
+    RevokeStaticImageStackLeaf,
     CopyStaticImagePayload,
     SealStaticImagePermissions,
     AttachStaticImageAddressSpace,
@@ -200,6 +205,12 @@ impl X86SystemsLowering {
             Self::ZeroStaticImagePayload => "topal.provider.x86_64.static-image.zero-payload/1",
             Self::ZeroStaticImageStackBacking => {
                 "topal.provider.x86_64.static-image.zero-stack-backing/1"
+            }
+            Self::PublishStaticImageStackLeaf => {
+                "topal.provider.x86_64.static-image.publish-stack-leaf/1"
+            }
+            Self::RevokeStaticImageStackLeaf => {
+                "topal.provider.x86_64.static-image.revoke-stack-leaf/1"
             }
             Self::CopyStaticImagePayload => "topal.provider.x86_64.static-image.copy-payload/1",
             Self::SealStaticImagePermissions => {
@@ -604,6 +615,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING => {
             X86SystemsLowering::ZeroStaticImageStackBacking
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF => {
+            X86SystemsLowering::PublishStaticImageStackLeaf
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF => {
+            X86SystemsLowering::RevokeStaticImageStackLeaf
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD => {
             X86SystemsLowering::CopyStaticImagePayload
         }
@@ -780,6 +797,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::ZeroStaticImageStackBacking => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING
+            }
+            X86SystemsLowering::PublishStaticImageStackLeaf => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
+            }
+            X86SystemsLowering::RevokeStaticImageStackLeaf => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
             }
             X86SystemsLowering::CopyStaticImagePayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
@@ -990,7 +1013,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 100);
+        assert_eq!(plan.operations.len(), 102);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -1036,6 +1059,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING
                 && operation.lowering == X86SystemsLowering::ZeroStaticImageStackBacking
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
+                && operation.lowering == X86SystemsLowering::PublishStaticImageStackLeaf
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
+                && operation.lowering == X86SystemsLowering::RevokeStaticImageStackLeaf
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD

@@ -89,11 +89,14 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -9278,11 +9281,13 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -10413,7 +10418,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 300);
+        assert_eq!(program.bootstrap.handler.operations.len(), 304);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10496,11 +10501,13 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -12986,7 +12993,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is zeroed-stack-backing-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                    "owner is zeroed-stack-backing-restored-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                     "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                 ),
                 "exact owner and policy",
@@ -13098,10 +13105,73 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is zeroed-stack-backing-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                    "owner is zeroed-stack-backing-restored-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                     "owner is stack-slot-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                 ),
                 "exact owner and policy",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_leaf_publication_and_revocation() {
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                access is writable-non-executable,",
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                access is writable-non-executable,",
+                ),
+                "exact owner, backing, RW/NX access, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "backing is static-elf-stack-backing,\n                                                                                access is writable-non-executable,",
+                    "backing is static-elf-hierarchy-frames,\n                                                                                access is writable-non-executable,",
+                ),
+                "exact owner, backing, RW/NX access, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "access is writable-non-executable,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK\"",
+                    "access is writable-executable,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK\"",
+                ),
+                "exact owner, backing, RW/NX access, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-leaf-qualification-rollback",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-leaf-qualification-rollback",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-stack-leaf-qualification-rollback",
+                    "policy is retained-stack-leaf",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_BAD",
+                ),
+                "exact marker",
             ),
         ] {
             let error = analyze_systems_for_compiler(
