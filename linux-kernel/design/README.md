@@ -136,6 +136,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF hierarchy extent](bounded-static-elf-hierarchy-extent.md)
 - [Bounded static ELF address-space attachment](bounded-static-elf-address-space-attachment.md)
 - [Bounded static ELF address-space activation and restoration](bounded-static-elf-address-space-activation.md)
+- [Bounded static ELF entry authority](bounded-static-elf-entry-authority.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
