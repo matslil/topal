@@ -10393,7 +10393,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 275);
+        assert_eq!(program.bootstrap.handler.operations.len(), 278);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12432,19 +12432,19 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
+                SOURCE.replacen("frame-count is 1", "frame-count is 5", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 502"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 504"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),

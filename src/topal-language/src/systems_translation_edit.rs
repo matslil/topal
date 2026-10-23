@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -545,6 +545,36 @@ fn analyze_static_elf_frame_sequence(
             "static ELF permission sealing must publish its exact marker before revocation",
         ));
     }
+    let hierarchy_name = parse_static_image_hierarchy_reservation(
+        source,
+        hierarchy_reserve,
+        allocator_context,
+        &sealed_construction_name,
+    )?;
+    let hierarchy_marker_span = statement_span(hierarchy_marker);
+    let hierarchy_marker = analyze_operation(
+        source,
+        hierarchy_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &hierarchy_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            hierarchy_marker_span,
+            "static ELF hierarchy allocation must publish its exact marker before release",
+        ));
+    }
+    parse_physical_frame_release(
+        source,
+        hierarchy_release,
+        allocator_context,
+        &hierarchy_name,
+    )?;
     let (returned_metadata, after_revoke) = parse_static_image_resource_return(
         source,
         revoke,
@@ -610,6 +640,15 @@ fn analyze_static_elf_frame_sequence(
         copy_marker,
         CompilerSystemsOperation::SealStaticImageConstructionPermissions,
         seal_marker,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: CompilerPhysicalFrameRequest {
+                frame_count: 4,
+                alignment_frames: 1,
+            },
+            failure_message: "static ELF hierarchy frame reservation failed".into(),
+        },
+        hierarchy_marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::RevokeStaticImageConstructionMetadata,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::ReclaimStaticImageConstructionPayload,
@@ -620,6 +659,109 @@ fn analyze_static_elf_frame_sequence(
         operations,
         disposition: checked.disposition,
     })
+}
+
+fn parse_static_image_hierarchy_reservation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image hierarchy reservation cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image hierarchy reservation must bind one affine extent",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, reserve, hierarchy, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image hierarchy reservation requires its exact owner and four-frame shape",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, reserve, "reserve")
+        || !identifier_is(source, hierarchy, "hierarchy")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image hierarchy reservation requires its exact owner and four-frame shape",
+        ));
+    }
+    let mut owner = None;
+    let mut frame_count = None;
+    let mut alignment_frames = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image hierarchy-reservation parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => {
+                let Expression::Identifier(value) = field.value else {
+                    return Err(translation_edit_diagnostic(
+                        source,
+                        field.value.span(),
+                        "static-image hierarchy owner must be the live sealed identity",
+                    ));
+                };
+                owner = Some(source.slice(value));
+            }
+            "frame-count" => frame_count = Some(parse_storage_natural(source, &field.value)?),
+            "alignment-frames" => {
+                alignment_frames = Some(parse_storage_natural(source, &field.value)?);
+            }
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image hierarchy-reservation parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || frame_count != Some(4) || alignment_frames != Some(1) {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image hierarchy reservation requires the exact sealed construction and four unit-aligned frames",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
 }
 
 fn parse_static_image_permission_seal(

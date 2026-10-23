@@ -106,6 +106,13 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 plan is bounded-static-elf-wx-relro
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK"
+                                                                              static-elf-hierarchy-frames is unmapped static image construction reserve hierarchy (
+                                                                                owner is sealed-static-elf-construction,
+                                                                                frame-count is 4,
+                                                                                alignment-frames is 1
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK"
+                                                                              unmapped frames release static-elf-hierarchy-frames
                                                                               returned-static-elf-metadata is unmapped static image construction revoke (
                                                                                 owner is sealed-static-elf-construction,
                                                                                 resource is metadata
