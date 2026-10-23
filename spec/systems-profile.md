@@ -1353,6 +1353,59 @@ its string, pointer, or representation, add another auxiliary-vector fact,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001 — Native hardware capabilities
+
+`static image construction add stack hardware capabilities` SHALL require the
+exact live `PlatformStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to
+`native-userspace-hardware-capabilities`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`HardwareCapabilitiesStackEntryStaticImageConstruction` retaining every prior
+fact while atomically adding provider-consistent `AT_HWCAP` and `AT_HWCAP2`
+facts after `AT_PLATFORM` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the platform-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument strings, and
+platform string. It SHALL prove that both masks describe only capabilities
+enabled for the selected native userspace on the pinned guest profile; clear
+the complete backing; reconstruct the complete target-aligned block; perform
+every target-required visibility operation; and read back every word, pointer
+relation, string byte, capability mask, terminator, identity relation, and
+otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK` observation.
+
+Source SHALL invoke
+`static image construction remove stack hardware capabilities` with the exact
+extended owner, backing identity, and policy
+`bounded-stack-hardware-capabilities-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact platform-qualified block,
+preserve every prior obligation, and reproduce the exact
+`PlatformStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK` observation before platform
+removal.
+
+A wrong owner, backing, value, policy, mask, tag, capability set, or ordering;
+duplicate or partial addition; partial mutation or readback; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+capability-group removal SHALL restore the state admitted by platform removal.
+
+For qualified x86-64 realization on the pinned `qemu64-v1` profile, the
+provider SHALL encode `AT_HWCAP=(16,0x178bfbfd)` and `AT_HWCAP2=(26,0)` after
+`AT_PLATFORM` and before `AT_NULL`. Addition and removal SHALL each clear all
+512 qwords before reconstruction, execute one store fence, and completely read
+back the result. They SHALL preserve the exact prior facts and inactive
+hierarchy, retain the complete bounded platform and executable-name strings and
+their identity relations, and issue no active-address invalidation.
+
+This rule SHALL NOT retain the capability facts after their removal witness,
+expose masks, CPUID leaves, feature bits, or representation, add random data or
+a vDSO, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

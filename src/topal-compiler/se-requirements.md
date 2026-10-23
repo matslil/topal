@@ -679,6 +679,25 @@ state, ordered witnesses, and no exposed platform representation, further
 auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001` and `TK-DEC-151`.
 
+The bounded static-ELF native hardware-capability increment shall accept one
+exact typed addition from the platform-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument and
+platform strings, and prior facts; clear the full frame; reconstruct a 16-byte-
+aligned block with native `AT_HWCAP=(16,0x178bfbfd)` and `AT_HWCAP2=(26,0)`,
+all prior facts, strings, and terminating `AT_NULL`; fence; and completely read
+back all content and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact platform-qualified block,
+fence, and completely read it back. The checker and semantic model shall
+preserve affine capability-group ownership and reject another owner, backing,
+value, policy, duplicate addition, early prior-fact removal, ordinary clearing
+or leaf revocation, activation, release, teardown, or disposition. Structural
+and duplicate pinned-QEMU tests shall prove exact tags and masks, complete
+reconstruction and rollback, preserved strings and translation state, ordered
+witnesses, and no exposed mask, CPUID, feature-bit, random, TLS, user-mode,
+syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001` and `TK-DEC-152`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
