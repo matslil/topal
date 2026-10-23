@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -847,12 +847,65 @@ fn analyze_static_elf_frame_sequence(
             "static ELF AT_ENTRY addition must publish its exact marker before removal",
         ));
     }
+    let program_header_stack_construction_name =
+        parse_static_image_stack_program_headers_addition(
+            source,
+            add_stack_program_headers,
+            allocator_context,
+            &entry_fact_stack_construction_name,
+            &stack_backing_name,
+        )?;
+    let stack_program_headers_marker_span = statement_span(stack_program_headers_marker);
+    let stack_program_headers_marker = analyze_operation(
+        source,
+        stack_program_headers_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_program_headers_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_program_headers_marker_span,
+            "static ELF program-header addition must publish its exact marker before removal",
+        ));
+    }
+    let entry_fact_stack_restored_construction_name =
+        parse_static_image_stack_program_headers_removal(
+            source,
+            remove_stack_program_headers,
+            allocator_context,
+            &program_header_stack_construction_name,
+            &stack_backing_name,
+        )?;
+    let stack_program_headers_revoked_marker_span =
+        statement_span(stack_program_headers_revoked_marker);
+    let stack_program_headers_revoked_marker = analyze_operation(
+        source,
+        stack_program_headers_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_program_headers_revoked_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_program_headers_revoked_marker_span,
+            "static ELF program-header removal must publish its exact marker before AT_ENTRY removal",
+        ));
+    }
     let pagesz_stack_entry_restored_construction_name =
         parse_static_image_stack_entry_fact_removal(
             source,
             remove_stack_entry_fact,
             allocator_context,
-            &entry_fact_stack_construction_name,
+            &entry_fact_stack_restored_construction_name,
             &stack_backing_name,
         )?;
     let stack_entry_fact_revoked_marker_span = statement_span(stack_entry_fact_revoked_marker);
@@ -1154,6 +1207,10 @@ fn analyze_static_elf_frame_sequence(
         stack_pagesz_marker,
         CompilerSystemsOperation::AddStaticImageStackEntryFact,
         stack_entry_fact_marker,
+        CompilerSystemsOperation::AddStaticImageStackProgramHeaders,
+        stack_program_headers_marker,
+        CompilerSystemsOperation::RemoveStaticImageStackProgramHeaders,
+        stack_program_headers_revoked_marker,
         CompilerSystemsOperation::RemoveStaticImageStackEntryFact,
         stack_entry_fact_revoked_marker,
         CompilerSystemsOperation::RemoveStaticImageStackPageSize,
@@ -2414,6 +2471,139 @@ fn parse_static_image_stack_entry_fact_addition(
             source,
             span,
             "static-image AT_ENTRY addition requires the exact owner, backing, authorized entry value, and policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_program_headers_addition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    parse_static_image_stack_program_headers_transition(
+        source,
+        statement,
+        context_name,
+        construction_name,
+        backing_name,
+        true,
+    )
+}
+
+fn parse_static_image_stack_program_headers_removal(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    parse_static_image_stack_program_headers_transition(
+        source,
+        statement,
+        context_name,
+        construction_name,
+        backing_name,
+        false,
+    )
+}
+
+fn parse_static_image_stack_program_headers_transition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+    add: bool,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image program-header transition must refine one exact stack entry",
+            ));
+        }
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image program-header transition requires named parameters",
+        ));
+    };
+    let verb = if add { "add" } else { "remove" };
+    if items.len() != 9
+        || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static")
+        || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction")
+        || !identifier_is(source, &items[4], verb)
+        || !identifier_is(source, &items[5], "stack")
+        || !identifier_is(source, &items[6], "program")
+        || !identifier_is(source, &items[7], "headers")
+        || fields.len() != if add { 4 } else { 3 }
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image program-header transition requires its exact owner, backing, value, and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut value = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(identity)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image program-header parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "backing" => backing = Some(source.slice(*identity)),
+            "value" => value = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image program-header parameter",
+                ));
+            }
+        }
+    }
+    let expected_value = add.then_some("resident-static-elf-program-headers");
+    let expected_policy = if add {
+        "bounded-linux-auxv-before-null"
+    } else {
+        "bounded-stack-program-headers-qualification-rollback"
+    };
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || value != expected_value
+        || policy != Some(expected_policy)
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image program-header transition requires the exact owner, backing, resident metadata value, and policy",
         ));
     }
     Ok(source.slice(name).to_owned())
