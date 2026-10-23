@@ -722,6 +722,51 @@ allocate or initialize a stack, initialize TLS, enter user mode, fetch or
 execute a static-image instruction, handle a user fault or syscall, or retain
 entry authority after its bounded witness.
 
+### TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001 — Guarded opaque stack slot
+
+`static image construction authorize stack slot` SHALL consume only the exact
+`EntryAuthorizedStaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001`. It SHALL accept only policy
+`bounded-linux-initial-stack-slot` and SHALL produce one affine
+`StackSlotAuthorizedStaticImageConstruction` owning the unchanged payload,
+leaf metadata, hierarchy, entry authority, and one opaque absent stack-slot
+authority.
+
+Before authorization, the provider SHALL prove the static root inactive and
+the qualified bootstrap root active; revalidate the complete hierarchy, all
+503 final image leaves, and the executable entry authority; and prove one
+page-aligned absent stack slot disjoint from every image mapping with at least
+one absent guard page in the target stack-growth direction. Numeric virtual or
+physical addresses, page-table indices and encodings, stack direction, stack
+pointer, pointer width, and target alignment SHALL remain provider-private.
+
+For qualified x86-64 realization, all nine non-image leaves 503 through 511
+SHALL remain absent. Leaf ordinal 511 SHALL denote the one-page slot, ordinal
+510 SHALL remain its immediate guard, and the provider-private initial top
+SHALL be `0x00600000`, aligned to both 4096 bytes and the 16-byte process-entry
+convention. Authorization and revocation SHALL modify no hierarchy, leaf,
+payload, or root-register byte.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK` observation while the slot
+owner is live, then invoke `static image construction revoke stack slot` with
+that exact owner and policy `bounded-stack-slot-qualification-rollback`.
+Revocation SHALL revalidate the same inactive slot, consume only the slot
+authority, reproduce the entry-authorized construction, and be followed by
+exactly one `TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK`
+observation before entry revocation.
+
+A wrong owner, policy, root state, hierarchy entry, image leaf, entry
+authority, slot, guard, alignment, operation order, witness, duplicate
+authority, entry revocation or teardown while slot-authorized, partial
+authority, or recoverable disposition with slot authority live SHALL be
+invalid.
+
+This rule SHALL NOT publish a numeric stack address, allocate or map stack
+backing, install a leaf, initialize stack contents or TLS, construct a user
+context, enter user mode, fetch or execute a static-image instruction, handle
+a user fault or syscall, or retain slot authority after its bounded witness.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

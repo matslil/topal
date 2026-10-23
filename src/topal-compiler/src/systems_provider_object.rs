@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/111";
+    "topal.provider-object.x86_64-qemu-pc-q35/112";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -43,6 +43,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL: &str =
     "topal_x86_systems_static_image_restore_address_space";
 pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL: &str =
     "topal_x86_systems_static_image_authorize_entry";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_stack_slot";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_stack_slot";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entry";
 pub const X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL: &str =
@@ -1271,6 +1275,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
         &static_image_entry_authority()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
+        &static_image_stack_slot_authority()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL,
+        &static_image_stack_slot_authority()?,
     );
     append_encoded_function(
         &mut object,
@@ -6348,6 +6364,16 @@ fn static_image_restore_address_space() -> Result<Vec<u8>, CompileError> {
 }
 
 fn static_image_entry_authority() -> Result<Vec<u8>, CompileError> {
+    static_image_entry_and_stack_slot_authority(false)
+}
+
+fn static_image_stack_slot_authority() -> Result<Vec<u8>, CompileError> {
+    static_image_entry_and_stack_slot_authority(true)
+}
+
+fn static_image_entry_and_stack_slot_authority(
+    verify_stack_slot: bool,
+) -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x41, 0x50, 0x57, 0x56, 0x51]); // bootstrap, payload, metadata, static root
     emit_static_image_address_space_resource_validation(&mut code, true)?;
@@ -6391,6 +6417,20 @@ fn static_image_entry_authority() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x83, 0xc8, 0x05]); // user read/execute, never writable
     code.bytes(&[0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00]); // leaf ordinal 166
     code.jump_if(0x85, "fail");
+
+    if verify_stack_slot {
+        code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x08]); // final leaf table
+        code.bytes(&[0x49, 0x83, 0xbb, 0xf0, 0x0f, 0x00, 0x00, 0x00]); // guard 510
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x49, 0x83, 0xbb, 0xf8, 0x0f, 0x00, 0x00, 0x00]); // slot 511
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&0x0060_0000_u64.to_le_bytes()); // provider-private initial top
+        code.bytes(&[0xa9, 0xff, 0x0f, 0x00, 0x00]);
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0xa9, 0x0f, 0x00, 0x00, 0x00]);
+        code.jump_if(0x85, "fail");
+    }
 
     code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -7916,6 +7956,10 @@ assert bytes(output) == block[32:]
         );
         let restore = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL);
         let authorize_entry = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL);
+        let authorize_stack_slot =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL);
+        let revoke_stack_slot =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL);
         let revoke_entry = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL);
         let detach = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL);
         assert_eq!(&attach[..3], &[0x57, 0x56, 0x51]);
@@ -8118,6 +8162,49 @@ assert bytes(output) == block[32:]
                 .windows(9)
                 .any(|bytes| { bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab] }),
             "entry authority must not mutate the attached hierarchy"
+        );
+        assert_eq!(authorize_stack_slot, revoke_stack_slot);
+        assert_eq!(&authorize_stack_slot[..5], &[0x41, 0x50, 0x57, 0x56, 0x51]);
+        assert!(
+            authorize_stack_slot
+                .windows(8)
+                .any(|bytes| bytes == 0x004a_6580_u64.to_le_bytes())
+                && authorize_stack_slot
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00]),
+            "stack-slot authority must retain exact entry validation"
+        );
+        assert!(
+            authorize_stack_slot
+                .windows(8)
+                .any(|bytes| bytes == [0x49, 0x83, 0xbb, 0xf0, 0x0f, 0x00, 0x00, 0x00])
+                && authorize_stack_slot
+                    .windows(8)
+                    .any(|bytes| bytes == [0x49, 0x83, 0xbb, 0xf8, 0x0f, 0x00, 0x00, 0x00]),
+            "stack-slot authority must prove guard ordinal 510 and slot ordinal 511 absent"
+        );
+        assert!(
+            authorize_stack_slot
+                .windows(8)
+                .any(|bytes| bytes == 0x0060_0000_u64.to_le_bytes()),
+            "stack-slot authority must retain the provider-private aligned initial top"
+        );
+        assert_eq!(
+            authorize_stack_slot
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0x20, 0xd8])
+                .count(),
+            3,
+            "stack-slot authority must prove both root states and the active bootstrap root"
+        );
+        assert!(
+            !authorize_stack_slot
+                .windows(3)
+                .any(|bytes| bytes[..2] == [0x0f, 0x22])
+                && !authorize_stack_slot.windows(9).any(|bytes| {
+                    bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]
+                }),
+            "stack-slot authority must not modify a root or hierarchy byte"
         );
 
         let revoke = file

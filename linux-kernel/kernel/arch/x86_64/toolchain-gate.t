@@ -133,8 +133,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is validated-static-elf-entry
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK"
-                                                                              entry-restored-static-elf-construction is unmapped static image construction revoke entry (
+                                                                              stack-slot-authorized-static-elf-construction is unmapped static image construction authorize stack slot (
                                                                                 owner is entry-authorized-static-elf-construction,
+                                                                                policy is bounded-linux-initial-stack-slot
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK"
+                                                                              stack-slot-restored-static-elf-construction is unmapped static image construction revoke stack slot (
+                                                                                owner is stack-slot-authorized-static-elf-construction,
+                                                                                policy is bounded-stack-slot-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK"
+                                                                              entry-restored-static-elf-construction is unmapped static image construction revoke entry (
+                                                                                owner is stack-slot-restored-static-elf-construction,
                                                                                 policy is bounded-entry-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK"

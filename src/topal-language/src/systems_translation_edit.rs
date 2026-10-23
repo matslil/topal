@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -672,11 +672,63 @@ fn analyze_static_elf_frame_sequence(
             "static ELF entry authorization must publish its exact marker before revocation",
         ));
     }
+    let stack_slot_authorized_construction_name = parse_static_image_stack_slot_transition(
+        source,
+        authorize_stack_slot,
+        allocator_context,
+        &entry_authorized_construction_name,
+        "authorize",
+        "bounded-linux-initial-stack-slot",
+    )?;
+    let stack_slot_marker_span = statement_span(stack_slot_marker);
+    let stack_slot_marker = analyze_operation(
+        source,
+        stack_slot_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_slot_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_slot_marker_span,
+            "static ELF stack-slot authorization must publish its exact marker before revocation",
+        ));
+    }
+    let stack_slot_restored_construction_name = parse_static_image_stack_slot_transition(
+        source,
+        revoke_stack_slot,
+        allocator_context,
+        &stack_slot_authorized_construction_name,
+        "revoke",
+        "bounded-stack-slot-qualification-rollback",
+    )?;
+    let stack_slot_revoked_marker_span = statement_span(stack_slot_revoked_marker);
+    let stack_slot_revoked_marker = analyze_operation(
+        source,
+        stack_slot_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_slot_revoked_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_slot_revoked_marker_span,
+            "static ELF stack-slot revocation must publish its exact marker before entry revocation",
+        ));
+    }
     let entry_restored_construction_name = parse_static_image_entry_transition(
         source,
         revoke_entry,
         allocator_context,
-        &entry_authorized_construction_name,
+        &stack_slot_restored_construction_name,
         "revoke",
         "bounded-entry-qualification-rollback",
     )?;
@@ -824,6 +876,10 @@ fn analyze_static_elf_frame_sequence(
         restored_marker,
         CompilerSystemsOperation::AuthorizeStaticImageEntry,
         entry_marker,
+        CompilerSystemsOperation::AuthorizeStaticImageStackSlot,
+        stack_slot_marker,
+        CompilerSystemsOperation::RevokeStaticImageStackSlot,
+        stack_slot_revoked_marker,
         CompilerSystemsOperation::RevokeStaticImageEntry,
         entry_revoked_marker,
         CompilerSystemsOperation::DetachStaticImageAddressSpace,
@@ -1299,6 +1355,99 @@ fn parse_static_image_entry_transition(
             source,
             span,
             "static-image entry transition requires the exact owner and policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_slot_transition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    operation_name: &str,
+    policy_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-slot transition cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-slot transition must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, operation, stack, slot, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-slot transition requires its exact owner and policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, operation, operation_name)
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, slot, "slot")
+        || fields.len() != 2
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-slot transition requires its exact owner and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-slot transition parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "policy" => policy = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-slot transition parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || policy != Some(policy_name) {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-slot transition requires the exact owner and policy",
         ));
     }
     Ok(source.slice(name).to_owned())
