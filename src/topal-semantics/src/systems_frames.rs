@@ -46,6 +46,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE: &str =
     "topal.systems.static-image.construction.add-stack-secure-mode/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE: &str =
     "topal.systems.static-image.construction.remove-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.add-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.remove-stack-clock-tick-rate/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
