@@ -577,6 +577,27 @@ or representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
 BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-AUXV-PHDR-001` and `TK-DEC-146`.
 
+The bounded static-ELF executable-name auxiliary-vector increment shall accept
+one exact typed addition from the program-header-qualified stack construction
+and one exact typed removal back to it. X86-64 lowering shall validate that
+block, inactive translation obligations, exact stack leaf, and complete
+`busybox\0` and `true\0` objects; prove the executable-name identity equals
+the existing `argv[0]` object; clear the full frame; reconstruct a 16-byte-
+aligned block with `AT_EXECFN=(31,0x5fffe0)`, all prior facts, arguments,
+strings, and terminating `AT_NULL`; fence; and completely read back all
+content, aliases, and otherwise-zero bytes. Removal shall validate the
+extended block, clear the full frame, reconstruct the exact program-header-
+qualified block, fence, and completely read it back. The checker and semantic
+model shall preserve affine executable-name-fact ownership and reject another
+owner/backing/value/policy, duplicate addition, early prior-fact removal,
+ordinary clearing or leaf revocation, activation, release, teardown, or
+disposition. Structural and duplicate pinned-QEMU tests shall prove exact tag,
+pointer, order, same-object aliasing, complete reconstruction and rollback,
+preserved translation state, ordered witnesses, and no exposed pointer or
+representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001` and `TK-DEC-147`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
