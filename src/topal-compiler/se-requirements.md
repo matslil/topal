@@ -416,6 +416,21 @@ transitions, unchanged hierarchy/leaves/payload, restoration before teardown,
 and no static entry, stack, TLS, user-mode, syscall, or BusyBox authority. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-ACTIVATION-001` and `TK-DEC-137`.
 
+The bounded static-ELF entry-authority increment shall accept exact typed
+authorize and revoke transitions over the restored attached construction.
+X86-64 lowering shall revalidate the inactive hierarchy, final leaves, copied
+ELF entry `0x004a6580`, entry-page ordinal 166, offset `0x580`, and immutable
+user read/execute non-writable role without publishing any numeric address.
+The checker and semantic model shall admit only policies
+`validated-static-elf-entry` and `bounded-entry-qualification-rollback`, keep
+the authority affine, reject activation, detach, return, duplication, wrong
+witness order, or disposition while authorized, and reproduce the restored
+owner only after exact revocation. Structural and duplicate pinned-QEMU tests
+shall prove complete readback, unchanged payload/leaves/hierarchy/root state,
+ordered authorization and revocation witnesses, and no stack, TLS, user-mode,
+instruction-fetch, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001` and `TK-DEC-138`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
