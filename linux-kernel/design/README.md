@@ -132,6 +132,8 @@ records, not this directory alone, define language meaning.
 - [Supplied static ELF artifact](supplied-static-elf-artifact.md)
 - [Static ELF boot-resource transport](static-elf-boot-resource.md)
 - [Bounded static ELF payload copy](bounded-static-elf-payload-copy.md)
+- [Bounded static ELF final permissions](bounded-static-elf-final-permissions.md)
+- [Bounded static ELF hierarchy extent](bounded-static-elf-hierarchy-extent.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
