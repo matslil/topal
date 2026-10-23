@@ -86,6 +86,7 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
@@ -9264,6 +9265,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -10391,7 +10393,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 273);
+        assert_eq!(program.bootstrap.handler.operations.len(), 275);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10471,6 +10473,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
@@ -12542,7 +12545,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is populated-static-elf-construction,\n                                                                                resource is payload",
+                    "owner is sealed-static-elf-construction,\n                                                                                resource is payload",
                     "owner is other-static-elf-construction,\n                                                                                resource is payload",
                 ),
                 "exact construction and role",
@@ -12634,8 +12637,50 @@ mod tests {
             ),
             (
                 SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                resource is metadata",
+                    "owner is populated-static-elf-construction,\n                                                                                resource is metadata",
+                    1,
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_final_permissions() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001.
+        for (source, expected) in [
+            (
+                SOURCE.replacen(
                     "owner is populated-static-elf-construction",
                     "owner is zeroed-static-elf-construction",
+                    1,
+                ),
+                "exact populated construction",
+            ),
+            (
+                SOURCE.replace("plan is bounded-static-elf-wx-relro", "plan is other-plan"),
+                "W^X/RELRO plan",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                resource is metadata",
+                    "owner is populated-static-elf-construction,\n                                                                                resource is metadata",
                     1,
                 ),
                 "exact construction and role",

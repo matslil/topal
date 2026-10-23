@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -521,11 +521,35 @@ fn analyze_static_elf_frame_sequence(
             "static ELF payload copy must publish its exact marker before revocation",
         ));
     }
+    let sealed_construction_name = parse_static_image_permission_seal(
+        source,
+        seal,
+        allocator_context,
+        &populated_construction_name,
+    )?;
+    let seal_marker_span = statement_span(seal_marker);
+    let seal_marker = analyze_operation(
+        source,
+        seal_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &seal_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            seal_marker_span,
+            "static ELF permission sealing must publish its exact marker before revocation",
+        ));
+    }
     let (returned_metadata, after_revoke) = parse_static_image_resource_return(
         source,
         revoke,
         allocator_context,
-        &populated_construction_name,
+        &sealed_construction_name,
         "revoke",
         "metadata",
     )?;
@@ -546,7 +570,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         reclaim,
         allocator_context,
-        &populated_construction_name,
+        &sealed_construction_name,
         "reclaim",
         "payload",
     )?;
@@ -584,6 +608,8 @@ fn analyze_static_elf_frame_sequence(
         zero_marker,
         CompilerSystemsOperation::CopyStaticImageConstructionPayload,
         copy_marker,
+        CompilerSystemsOperation::SealStaticImageConstructionPermissions,
+        seal_marker,
         CompilerSystemsOperation::RevokeStaticImageConstructionMetadata,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::ReclaimStaticImageConstructionPayload,
@@ -594,6 +620,96 @@ fn analyze_static_elf_frame_sequence(
         operations,
         disposition: checked.disposition,
     })
+}
+
+fn parse_static_image_permission_seal(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image permission sealing cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image permission sealing must refine the live populated construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, seal, permissions, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image permission sealing requires its exact owner and plan",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, seal, "seal")
+        || !identifier_is(source, permissions, "permissions")
+        || fields.len() != 2
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image permission sealing requires its exact owner and plan",
+        ));
+    }
+    let mut owner = None;
+    let mut plan = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image permission-seal parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "plan" => plan = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image permission-seal parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || plan != Some("bounded-static-elf-wx-relro") {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image permission sealing requires the exact populated construction and W^X/RELRO plan",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
 }
 
 fn parse_static_image_payload_copy(

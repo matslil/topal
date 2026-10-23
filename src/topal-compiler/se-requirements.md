@@ -359,6 +359,22 @@ construction at disposition. Structural and pinned-QEMU tests shall reject
 wrong owner, selector, plan, order, or early revocation and shall prove no
 source-visible offset, address, byte, loop, or final permission authority.
 
+The bounded static-ELF final-permission increment shall accept exactly one
+typed consuming transition from the populated construction to a sealed
+construction and only plan `bounded-static-elf-wx-relro`. X86-64 lowering
+shall revalidate the complete populated payload, both resource extents, all
+503 initial RW/NX leaves, and nine absent entries before replacing inactive
+leaves with exactly 97 RO/NX, 396 RO/X, and 10 RW/NX roles. It shall preserve
+every payload-frame identity and ordinal, keep all nine remaining entries
+absent, reject every W+X result, publish the complete update, and read back the
+entire final table before success. The checker and model shall require
+population-before-sealing, one exact permission witness, sealed-owner
+revocation, complete metadata-then-payload return, and no live construction at
+disposition. Structural and pinned-QEMU tests shall reject wrong owner, plan,
+role, count, order, duplicate sealing, or early revocation and shall prove no
+source-visible page ordinal, permission bit, address, loop, page-table entry,
+or activation authority.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -101,13 +101,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 plan is bounded-static-elf-four-loads
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK"
-                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                              sealed-static-elf-construction is unmapped static image construction seal permissions (
                                                                                 owner is populated-static-elf-construction,
+                                                                                plan is bounded-static-elf-wx-relro
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK"
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is sealed-static-elf-construction,
                                                                                 resource is metadata
                                                                               )
                                                                               unmapped frames release returned-static-elf-metadata
                                                                               returned-static-elf-payload is unmapped static image construction reclaim (
-                                                                                owner is populated-static-elf-construction,
+                                                                                owner is sealed-static-elf-construction,
                                                                                 resource is payload
                                                                               )
                                                                               unmapped frames release returned-static-elf-payload
