@@ -431,6 +431,23 @@ ordered authorization and revocation witnesses, and no stack, TLS, user-mode,
 instruction-fetch, syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001` and `TK-DEC-138`.
 
+The bounded static-ELF stack-slot increment shall accept exact typed authorize
+and revoke transitions over the entry-authorized construction. X86-64 lowering
+shall revalidate the inactive hierarchy, all 503 final image leaves, copied ELF
+entry authority, all nine absent leaves, absent slot ordinal 511, immediate
+absent guard ordinal 510, and provider-private aligned top `0x00600000` without
+publishing an address, page-table index, or stack pointer. The checker and
+semantic model shall admit only policies `bounded-linux-initial-stack-slot` and
+`bounded-stack-slot-qualification-rollback`, keep both entry and slot authority
+affine, reject entry revocation, activation, detach, return, duplication, wrong
+witness order, or disposition while slot-authorized, and reproduce the
+entry-authorized owner only after exact slot revocation. Structural and
+duplicate pinned-QEMU tests shall prove complete readback, absent slot and
+guard, unchanged payload/leaves/hierarchy/root state, ordered authorization and
+revocation witnesses, and no stack backing, initialization, TLS, user-mode,
+instruction-fetch, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001` and `TK-DEC-139`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
