@@ -12655,6 +12655,48 @@ mod tests {
     }
 
     #[test]
+    fn requires_exact_static_elf_final_permissions() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001.
+        for (source, expected) in [
+            (
+                SOURCE.replacen(
+                    "owner is populated-static-elf-construction",
+                    "owner is zeroed-static-elf-construction",
+                    1,
+                ),
+                "exact populated construction",
+            ),
+            (
+                SOURCE.replace("plan is bounded-static-elf-wx-relro", "plan is other-plan"),
+                "W^X/RELRO plan",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                resource is metadata",
+                    "owner is populated-static-elf-construction,\n                                                                                resource is metadata",
+                    1,
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
     fn rejects_wrong_handler_signatures_and_open_entry_sets() {
         // TOPAL-SYSTEMS-ENTRY-001, TOPAL-SYSTEMS-VOCABULARY-001.
         let wrong_signature =
