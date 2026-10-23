@@ -138,6 +138,13 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-initial-stack-slot
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK"
+                                                                              static-elf-stack-backing is unmapped static image construction reserve stack backing (
+                                                                                owner is stack-slot-authorized-static-elf-construction,
+                                                                                frame-count is 1,
+                                                                                alignment-frames is 1
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK"
+                                                                              unmapped frames release static-elf-stack-backing
                                                                               stack-slot-restored-static-elf-construction is unmapped static image construction revoke stack slot (
                                                                                 owner is stack-slot-authorized-static-elf-construction,
                                                                                 policy is bounded-stack-slot-qualification-rollback

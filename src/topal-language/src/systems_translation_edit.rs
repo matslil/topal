@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -698,6 +698,36 @@ fn analyze_static_elf_frame_sequence(
             "static ELF stack-slot authorization must publish its exact marker before revocation",
         ));
     }
+    let stack_backing_name = parse_static_image_stack_backing_reservation(
+        source,
+        stack_backing_reserve,
+        allocator_context,
+        &stack_slot_authorized_construction_name,
+    )?;
+    let stack_backing_marker_span = statement_span(stack_backing_marker);
+    let stack_backing_marker = analyze_operation(
+        source,
+        stack_backing_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_backing_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_backing_marker_span,
+            "static ELF stack backing must publish its exact marker before whole release",
+        ));
+    }
+    parse_physical_frame_release(
+        source,
+        stack_backing_release,
+        allocator_context,
+        &stack_backing_name,
+    )?;
     let stack_slot_restored_construction_name = parse_static_image_stack_slot_transition(
         source,
         revoke_stack_slot,
@@ -878,6 +908,15 @@ fn analyze_static_elf_frame_sequence(
         entry_marker,
         CompilerSystemsOperation::AuthorizeStaticImageStackSlot,
         stack_slot_marker,
+        CompilerSystemsOperation::AllocatePhysicalFrames {
+            request: CompilerPhysicalFrameRequest {
+                frame_count: 1,
+                alignment_frames: 1,
+            },
+            failure_message: "static ELF stack-backing frame reservation failed".into(),
+        },
+        stack_backing_marker,
+        CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::RevokeStaticImageStackSlot,
         stack_slot_revoked_marker,
         CompilerSystemsOperation::RevokeStaticImageEntry,
@@ -1448,6 +1487,110 @@ fn parse_static_image_stack_slot_transition(
             source,
             span,
             "static-image stack-slot transition requires the exact owner and policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_backing_reservation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-backing reservation cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-backing reservation must bind one affine extent",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, reserve, stack, backing, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing reservation requires its exact owner and one-frame shape",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, reserve, "reserve")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, backing, "backing")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing reservation requires its exact owner and one-frame shape",
+        ));
+    }
+    let mut owner = None;
+    let mut frame_count = None;
+    let mut alignment_frames = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-backing reservation parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => {
+                let Expression::Identifier(value) = field.value else {
+                    return Err(translation_edit_diagnostic(
+                        source,
+                        field.value.span(),
+                        "static-image stack-backing owner must be the live slot identity",
+                    ));
+                };
+                owner = Some(source.slice(value));
+            }
+            "frame-count" => frame_count = Some(parse_storage_natural(source, &field.value)?),
+            "alignment-frames" => {
+                alignment_frames = Some(parse_storage_natural(source, &field.value)?);
+            }
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-backing reservation parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || frame_count != Some(1) || alignment_frames != Some(1) {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing reservation requires the exact slot-authorized construction and one unit-aligned frame",
         ));
     }
     Ok(source.slice(name).to_owned())

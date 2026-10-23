@@ -10411,7 +10411,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 295);
+        assert_eq!(program.bootstrap.handler.operations.len(), 298);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -13008,6 +13008,48 @@ mod tests {
                     "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
                 ),
                 "exact owner and policy",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_backing_reservation_and_release() {
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
+                ),
+                "exact slot-authorized construction",
+            ),
+            (
+                SOURCE.replace(
+                    "static-elf-stack-backing is unmapped static image construction reserve stack backing (\n                                                                                owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
+                    "static-elf-stack-backing is unmapped static image construction reserve stack backing (\n                                                                                owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 2,",
+                ),
+                "one unit-aligned frame",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "unmapped frames release static-elf-stack-backing",
+                    "unmapped frames release static-elf-hierarchy-frames",
+                ),
+                "live allocator and affine extent",
             ),
         ] {
             let error = analyze_systems_for_compiler(

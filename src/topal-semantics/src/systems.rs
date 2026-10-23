@@ -2924,6 +2924,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionRestored,
     StaticElfConstructionEntryAuthorized,
     StaticElfConstructionStackSlotAuthorized,
+    StaticElfConstructionStackSlotAuthorizedWithBacking,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3035,6 +3036,12 @@ impl BootstrapAuthorityState {
                         BootstrapMemoryOwnership::StaticElfConstructionSealed,
                         STATIC_ELF_HIERARCHY_FRAME_REQUEST,
                     ) => BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy,
+                    (
+                        BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized,
+                        INITIAL_SINGLE_FRAME_REQUEST,
+                    ) => {
+                        BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
+                    }
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-FRAMES",
@@ -3062,6 +3069,9 @@ impl BootstrapAuthorityState {
                     }
                     BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy => {
                         BootstrapMemoryOwnership::StaticElfConstructionSealed
+                    }
+                    BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking => {
+                        BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized
                     }
                     BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned => {
                         BootstrapMemoryOwnership::StaticElfConstructionSealed
@@ -5163,6 +5173,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionRestored
             | BootstrapMemoryOwnership::StaticElfConstructionEntryAuthorized
             | BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized
+            | BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
