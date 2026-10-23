@@ -12697,6 +12697,64 @@ mod tests {
     }
 
     #[test]
+    fn requires_exact_static_elf_hierarchy_extent() {
+        // TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001.
+        for (source, code, expected) in [
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4",
+                    "owner is populated-static-elf-construction,\n                                                                                frame-count is 4",
+                    1,
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact sealed construction",
+            ),
+            (
+                SOURCE.replacen("frame-count is 4", "frame-count is 3", 1),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "four unit-aligned frames",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 1",
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 2",
+                    1,
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "four unit-aligned frames",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_BAD",
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"\n                                                                              unmapped frames release static-elf-hierarchy-frames",
+                    "unmapped frames release static-elf-hierarchy-frames\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"",
+                ),
+                "E-SYSTEMS-OPERATION",
+                "not admitted",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                error.code, code,
+                "{expected}: {}",
+                error.message
+            );
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
     fn rejects_wrong_handler_signatures_and_open_entry_sets() {
         // TOPAL-SYSTEMS-ENTRY-001, TOPAL-SYSTEMS-VOCABULARY-001.
         let wrong_signature =
