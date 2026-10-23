@@ -213,8 +213,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK"
-                                                                              secure-mode-stack-restored-construction is unmapped static image construction remove stack clock tick rate (
+                                                                              platform-stack-construction is unmapped static image construction add stack platform (
                                                                                 owner is clock-tick-rate-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is native-userspace-platform,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK"
+                                                                              clock-tick-rate-stack-restored-construction is unmapped static image construction remove stack platform (
+                                                                                owner is platform-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-platform-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK"
+                                                                              secure-mode-stack-restored-construction is unmapped static image construction remove stack clock tick rate (
+                                                                                owner is clock-tick-rate-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-clock-tick-rate-qualification-rollback
                                                                               )
