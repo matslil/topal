@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -569,17 +569,81 @@ fn analyze_static_elf_frame_sequence(
             "static ELF hierarchy allocation must publish its exact marker before release",
         ));
     }
+    let attached_construction_name = parse_static_image_address_space_attach(
+        source,
+        attach,
+        allocator_context,
+        &sealed_construction_name,
+        &hierarchy_name,
+    )?;
+    let attach_marker_span = statement_span(attach_marker);
+    let attach_marker = analyze_operation(
+        source,
+        attach_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &attach_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            attach_marker_span,
+            "static ELF address-space attachment must publish its exact marker before detachment",
+        ));
+    }
+    let detached_construction_name = parse_static_image_address_space_detach(
+        source,
+        detach,
+        allocator_context,
+        &attached_construction_name,
+    )?;
+    let detach_marker_span = statement_span(detach_marker);
+    let detach_marker = analyze_operation(
+        source,
+        detach_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &detach_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            detach_marker_span,
+            "static ELF address-space detachment must publish its exact marker before hierarchy reclaim",
+        ));
+    }
+    let (returned_hierarchy, after_hierarchy_reclaim) = parse_static_image_resource_return(
+        source,
+        hierarchy_reclaim,
+        allocator_context,
+        &detached_construction_name,
+        "reclaim",
+        "hierarchy",
+    )?;
+    if !after_hierarchy_reclaim.is_empty() {
+        return Err(translation_edit_diagnostic(
+            source,
+            statement_span(hierarchy_reclaim),
+            "static ELF hierarchy reclamation must return exactly one affine resource",
+        ));
+    }
     parse_physical_frame_release(
         source,
         hierarchy_release,
         allocator_context,
-        &hierarchy_name,
+        &returned_hierarchy,
     )?;
     let (returned_metadata, after_revoke) = parse_static_image_resource_return(
         source,
         revoke,
         allocator_context,
-        &sealed_construction_name,
+        &detached_construction_name,
         "revoke",
         "metadata",
     )?;
@@ -600,7 +664,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         reclaim,
         allocator_context,
-        &sealed_construction_name,
+        &detached_construction_name,
         "reclaim",
         "payload",
     )?;
@@ -648,6 +712,11 @@ fn analyze_static_elf_frame_sequence(
             failure_message: "static ELF hierarchy frame reservation failed".into(),
         },
         hierarchy_marker,
+        CompilerSystemsOperation::AttachStaticImageAddressSpace,
+        attach_marker,
+        CompilerSystemsOperation::DetachStaticImageAddressSpace,
+        detach_marker,
+        CompilerSystemsOperation::ReclaimStaticImageConstructionHierarchy,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::RevokeStaticImageConstructionMetadata,
         CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -759,6 +828,180 @@ fn parse_static_image_hierarchy_reservation(
             source,
             span,
             "static-image hierarchy reservation requires the exact sealed construction and four unit-aligned frames",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_address_space_attach(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    hierarchy_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image address-space attachment cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image address-space attachment must refine one sealed construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, attach, address, space, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space attachment requires its exact owner, hierarchy, and layout",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, attach, "attach")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space attachment requires its exact owner, hierarchy, and layout",
+        ));
+    }
+    let mut owner = None;
+    let mut hierarchy = None;
+    let mut layout = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image address-space parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "hierarchy" => hierarchy = Some(source.slice(*value)),
+            "layout" => layout = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image address-space attachment parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || hierarchy != Some(hierarchy_name)
+        || layout != Some("bounded-static-elf-inactive-address-space")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space attachment requires the exact sealed construction, hierarchy extent, and inactive layout",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_address_space_detach(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image address-space detachment cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image address-space detachment must refine one attached construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, detach, address, space, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space detachment requires its exact owner",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, detach, "detach")
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || fields.len() != 1
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space detachment requires its exact owner",
+        ));
+    }
+    let field = &fields[0];
+    let (Some(label), Expression::Identifier(owner)) = (field.label, &field.value) else {
+        return Err(translation_edit_diagnostic(
+            source,
+            field.value.span(),
+            "static-image address-space detachment owner must be a named identity",
+        ));
+    };
+    if source.slice(label) != "owner" || source.slice(*owner) != construction_name {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space detachment requires the exact attached construction",
         ));
     }
     Ok(source.slice(name).to_owned())

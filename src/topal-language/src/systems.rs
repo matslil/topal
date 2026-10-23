@@ -83,8 +83,11 @@ pub use topal_semantics::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -9261,8 +9264,11 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
@@ -10393,7 +10399,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 278);
+        assert_eq!(program.bootstrap.handler.operations.len(), 283);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10469,8 +10475,11 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
@@ -12545,7 +12554,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is sealed-static-elf-construction,\n                                                                                resource is payload",
+                    "owner is detached-static-elf-construction,\n                                                                                resource is payload",
                     "owner is other-static-elf-construction,\n                                                                                resource is payload",
                 ),
                 "exact construction and role",
@@ -12637,7 +12646,7 @@ mod tests {
             ),
             (
                 SOURCE.replacen(
-                    "owner is sealed-static-elf-construction,\n                                                                                resource is metadata",
+                    "owner is detached-static-elf-construction,\n                                                                                resource is metadata",
                     "owner is populated-static-elf-construction,\n                                                                                resource is metadata",
                     1,
                 ),
@@ -12679,7 +12688,7 @@ mod tests {
             ),
             (
                 SOURCE.replacen(
-                    "owner is sealed-static-elf-construction,\n                                                                                resource is metadata",
+                    "owner is detached-static-elf-construction,\n                                                                                resource is metadata",
                     "owner is populated-static-elf-construction,\n                                                                                resource is metadata",
                     1,
                 ),
@@ -12733,8 +12742,8 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"\n                                                                              unmapped frames release static-elf-hierarchy-frames",
-                    "unmapped frames release static-elf-hierarchy-frames\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"",
+                    "unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"\n                                                                              attached-static-elf-construction is unmapped static image construction attach address space",
+                    "unmapped frames release static-elf-hierarchy-frames\n                                                                              attached-static-elf-construction is unmapped static image construction attach address space",
                 ),
                 "E-SYSTEMS-OPERATION",
                 "not admitted",
@@ -12750,6 +12759,69 @@ mod tests {
                 "{expected}: {}",
                 error.message
             );
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_address_space_attachment() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ADDRESS-SPACE-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "layout is bounded-static-elf-inactive-address-space",
+                    "layout is other-static-elf-address-space",
+                ),
+                "inactive layout",
+            ),
+            (
+                SOURCE.replace(
+                    "hierarchy is static-elf-hierarchy-frames",
+                    "hierarchy is other-static-elf-hierarchy",
+                ),
+                "hierarchy extent",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is attached-static-elf-construction",
+                    "owner is sealed-static-elf-construction",
+                ),
+                "exact attached construction",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is detached-static-elf-construction,\n                                                                                resource is hierarchy",
+                    "owner is attached-static-elf-construction,\n                                                                                resource is hierarchy",
+                ),
+                "exact construction and role",
+            ),
+            (
+                SOURCE.replace(
+                    "unmapped frames release returned-static-elf-hierarchy",
+                    "unmapped frames release static-elf-hierarchy-frames",
+                ),
+                "affine extent",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }

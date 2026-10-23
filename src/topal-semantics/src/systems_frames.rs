@@ -16,6 +16,12 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
     "topal.systems.static-image.construction.seal-permissions/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.attach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.detach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY: &str =
+    "topal.systems.static-image.construction.reclaim-hierarchy/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA: &str =
     "topal.systems.static-image.construction.revoke-metadata/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD: &str =

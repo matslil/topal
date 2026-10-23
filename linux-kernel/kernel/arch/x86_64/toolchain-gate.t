@@ -112,14 +112,28 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 alignment-frames is 1
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK"
-                                                                              unmapped frames release static-elf-hierarchy-frames
-                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                              attached-static-elf-construction is unmapped static image construction attach address space (
                                                                                 owner is sealed-static-elf-construction,
+                                                                                hierarchy is static-elf-hierarchy-frames,
+                                                                                layout is bounded-static-elf-inactive-address-space
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK"
+                                                                              detached-static-elf-construction is unmapped static image construction detach address space (
+                                                                                owner is attached-static-elf-construction
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK"
+                                                                              returned-static-elf-hierarchy is unmapped static image construction reclaim (
+                                                                                owner is detached-static-elf-construction,
+                                                                                resource is hierarchy
+                                                                              )
+                                                                              unmapped frames release returned-static-elf-hierarchy
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is detached-static-elf-construction,
                                                                                 resource is metadata
                                                                               )
                                                                               unmapped frames release returned-static-elf-metadata
                                                                               returned-static-elf-payload is unmapped static image construction reclaim (
-                                                                                owner is sealed-static-elf-construction,
+                                                                                owner is detached-static-elf-construction,
                                                                                 resource is payload
                                                                               )
                                                                               unmapped frames release returned-static-elf-payload
