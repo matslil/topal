@@ -29,7 +29,10 @@ use crate::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_DEQUEUE, SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
-    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -1157,6 +1160,12 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     ReleasePhysicalFrames,
+    PrepareStaticImageConstruction {
+        failure_message: String,
+    },
+    ZeroStaticImageConstructionPayload,
+    RevokeStaticImageConstructionMetadata,
+    ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
         request: KernelMappingRequest,
         failure_message: String,
@@ -1359,6 +1368,18 @@ impl SystemsOperation {
             Self::CreateFrameAllocator { .. } => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::PrepareStaticImageConstruction { .. } => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
+            }
+            Self::ZeroStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+            }
+            Self::RevokeStaticImageConstructionMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            }
+            Self::ReclaimStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            }
             Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
             Self::KernelMappingStoreByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::KernelMappingLoadByteEquals { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
@@ -1515,6 +1536,10 @@ pub enum SystemsDisposition {
         terminal_control_flags: u64,
         terminal_minimum_input: u64,
         not_a_terminal_error: u64,
+        window_size_layout_bytes: u64,
+        window_size_query_request: u64,
+        seek_maximum_whence: u64,
+        illegal_seek_error: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -1603,6 +1628,10 @@ pub enum SystemsTransition {
         request: PhysicalFrameRequest,
     },
     ReleasePhysicalFrames,
+    PrepareStaticImageConstruction,
+    ZeroStaticImageConstructionPayload,
+    RevokeStaticImageConstructionMetadata,
+    ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
         request: KernelMappingRequest,
     },
@@ -2022,6 +2051,16 @@ impl SystemsTransition {
             Self::CreateFrameAllocator => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             Self::AllocatePhysicalFrames { .. } => SYSTEMS_FRAMES_ALLOCATE,
             Self::ReleasePhysicalFrames => SYSTEMS_FRAMES_RELEASE,
+            Self::PrepareStaticImageConstruction => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+            Self::ZeroStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+            }
+            Self::RevokeStaticImageConstructionMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            }
+            Self::ReclaimStaticImageConstructionPayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            }
             Self::MapKernelFrames { .. } => SYSTEMS_KERNEL_MAP,
             Self::StoreKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             Self::LoadKernelMappingByte { .. } => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
@@ -2293,6 +2332,10 @@ fn validate_entry(
                     | SystemsOperation::CreateFrameAllocator { .. }
                     | SystemsOperation::AllocatePhysicalFrames { .. }
                     | SystemsOperation::ReleasePhysicalFrames
+                    | SystemsOperation::PrepareStaticImageConstruction { .. }
+                    | SystemsOperation::ZeroStaticImageConstructionPayload
+                    | SystemsOperation::RevokeStaticImageConstructionMetadata
+                    | SystemsOperation::ReclaimStaticImageConstructionPayload
                     | SystemsOperation::MapKernelFrames { .. }
                     | SystemsOperation::KernelMappingStoreByte { .. }
                     | SystemsOperation::KernelMappingLoadByteEquals { .. }
@@ -2532,6 +2575,10 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 terminal_control_flags: 2239,
                 terminal_minimum_input: 1,
                 not_a_terminal_error: 25,
+                window_size_layout_bytes: 8,
+                window_size_query_request: 21523,
+                seek_maximum_whence: 4,
+                illegal_seek_error: 29,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2625,12 +2672,15 @@ struct BootstrapAuthorityState {
     resident_user_image_ready: bool,
     anonymous_user_mapping_reserved: bool,
     initial_boot_resource_validated: bool,
+    multipage_user_executable_completed: bool,
     constructed_user_read_completed: bool,
     constructed_user_close_completed: bool,
     constructed_user_dup_completed: bool,
     constructed_user_fcntl_completed: bool,
     constructed_user_fstat_completed: bool,
     constructed_user_tcgets_completed: bool,
+    constructed_user_winsize_completed: bool,
+    constructed_user_lseek_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -2765,6 +2815,11 @@ enum BootstrapMemoryOwnership {
     Mapping(PhysicalFrameRequest),
     ProvisionalMapping(PhysicalFrameRequest),
     ProvisionalFrames(PhysicalFrameRequest),
+    StaticElfMappingResources,
+    StaticElfConstructionLive,
+    StaticElfConstructionZeroed,
+    StaticElfConstructionMetadataReturned,
+    StaticElfConstructionRevoked,
 }
 
 const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
@@ -2772,8 +2827,18 @@ const INITIAL_SINGLE_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest 
     alignment_frames: 1,
 };
 
+const INITIAL_TWO_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 2,
+    alignment_frames: 1,
+};
+
 const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
     frame_count: 3,
+    alignment_frames: 1,
+};
+
+const STATIC_ELF_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 503,
     alignment_frames: 1,
 };
 
@@ -2834,19 +2899,31 @@ impl BootstrapAuthorityState {
                 self.allocator_created = true;
             }
             SystemsOperation::AllocatePhysicalFrames { request, .. } => {
-                if !self.allocator_created
-                    || self.memory_ownership != BootstrapMemoryOwnership::None
-                    || !matches!(
-                        *request,
-                        INITIAL_SINGLE_FRAME_REQUEST | INITIAL_MULTI_FRAME_REQUEST
-                    )
-                {
+                if !self.allocator_created {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-FRAMES",
-                        "physical-frame allocation requires one allocator, an admitted static extent shape, and no live extent",
+                        "physical-frame allocation requires one allocator and an admitted static ownership state",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::Frames(*request);
+                self.memory_ownership = match (self.memory_ownership, *request) {
+                    (
+                        BootstrapMemoryOwnership::None,
+                        request @ (INITIAL_SINGLE_FRAME_REQUEST
+                        | INITIAL_TWO_FRAME_REQUEST
+                        | INITIAL_MULTI_FRAME_REQUEST
+                        | STATIC_ELF_FRAME_REQUEST),
+                    ) => BootstrapMemoryOwnership::Frames(request),
+                    (
+                        BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST),
+                        INITIAL_SINGLE_FRAME_REQUEST,
+                    ) => BootstrapMemoryOwnership::StaticElfMappingResources,
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-FRAMES",
+                            "physical-frame allocation requires an admitted static extent shape and exact nested ownership",
+                        ));
+                    }
+                };
             }
             SystemsOperation::ReleasePhysicalFrames => {
                 if matches!(
@@ -2858,13 +2935,58 @@ impl BootstrapAuthorityState {
                         "physical-frame release is invalid while a user mapping owns the extent",
                     ));
                 }
-                if !matches!(self.memory_ownership, BootstrapMemoryOwnership::Frames(_)) {
+                self.memory_ownership = match self.memory_ownership {
+                    BootstrapMemoryOwnership::StaticElfMappingResources => {
+                        BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST)
+                    }
+                    BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned => {
+                        BootstrapMemoryOwnership::StaticElfConstructionRevoked
+                    }
+                    BootstrapMemoryOwnership::Frames(_) => BootstrapMemoryOwnership::None,
+                    _ => {
+                        return Err(SystemsModelError::new(
+                            "E-SYSTEMS-FRAMES",
+                            "physical-frame release requires the next exact live extent",
+                        ));
+                    }
+                };
+            }
+            SystemsOperation::PrepareStaticImageConstruction { .. } => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfMappingResources {
                     return Err(SystemsModelError::new(
-                        "E-SYSTEMS-FRAMES",
-                        "physical-frame release requires one live extent",
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image construction requires the exact live payload and metadata resources",
                     ));
                 }
-                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionLive;
+            }
+            SystemsOperation::ZeroStaticImageConstructionPayload => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionLive {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image payload zeroing requires one live uninitialized construction",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionZeroed;
+            }
+            SystemsOperation::RevokeStaticImageConstructionMetadata => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionZeroed {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image revocation requires one completely zeroed initial-leaf construction",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned;
+            }
+            SystemsOperation::ReclaimStaticImageConstructionPayload => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionRevoked {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image payload reclaim requires complete revocation and metadata release",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST);
             }
             SystemsOperation::MapKernelFrames { request, .. } => {
                 let BootstrapMemoryOwnership::Frames(frame_request) = self.memory_ownership else {
@@ -3794,8 +3916,12 @@ impl BootstrapAuthorityState {
                         ));
                     }
                 };
-                if self.memory_ownership
-                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                let mapping_request = if generation == 1 {
+                    INITIAL_TWO_FRAME_REQUEST
+                } else {
+                    INITIAL_SINGLE_FRAME_REQUEST
+                };
+                if self.memory_ownership != BootstrapMemoryOwnership::Frames(mapping_request)
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
@@ -3803,8 +3929,7 @@ impl BootstrapAuthorityState {
                         "user mapping publication requires one disjoint source-owned frame and no live critical scope",
                     ));
                 }
-                self.memory_ownership =
-                    BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST);
+                self.memory_ownership = BootstrapMemoryOwnership::UserMapping(mapping_request);
                 self.user_execution = BootstrapUserExecutionState::MappingLive(backing, generation);
             }
             SystemsOperation::StoreUserMappingByte => {
@@ -3839,7 +3964,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3863,7 +3988,11 @@ impl BootstrapAuthorityState {
                     }
                 };
                 if self.memory_ownership
-                    != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                    != BootstrapMemoryOwnership::UserMapping(if generation == 1 {
+                        INITIAL_TWO_FRAME_REQUEST
+                    } else {
+                        INITIAL_SINGLE_FRAME_REQUEST
+                    })
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3905,7 +4034,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -3926,7 +4055,7 @@ impl BootstrapAuthorityState {
                 };
                 if generation != 1
                     || self.memory_ownership
-                        != BootstrapMemoryOwnership::UserMapping(INITIAL_SINGLE_FRAME_REQUEST)
+                        != BootstrapMemoryOwnership::UserMapping(INITIAL_TWO_FRAME_REQUEST)
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
@@ -4014,6 +4143,24 @@ impl BootstrapAuthorityState {
                 }
                 self.initial_boot_resource_validated = true;
             }
+            SystemsOperation::ConsoleWrite { text }
+                if text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK" =>
+            {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.initial_boot_resource_validated
+                    || self.multipage_user_executable_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "multipage-executable witness requires exact second-page user return with both finalized mappings resident",
+                    ));
+                }
+                self.multipage_user_executable_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_READ_OK" => {
                 if !matches!(
                     self.user_execution,
@@ -4021,6 +4168,7 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.initial_boot_resource_validated
+                    || !self.multipage_user_executable_completed
                     || self.constructed_user_read_completed
                 {
                     return Err(SystemsModelError::new(
@@ -4110,6 +4258,38 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_tcgets_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_WINSIZE_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_tcgets_completed
+                    || self.constructed_user_winsize_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "console-geometry witness requires the TCGETS witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_winsize_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_LSEEK_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_winsize_completed
+                    || self.constructed_user_lseek_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "console-seek witness requires the window-size witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_lseek_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -4124,6 +4304,8 @@ impl BootstrapAuthorityState {
                     || !self.constructed_user_fcntl_completed
                     || !self.constructed_user_fstat_completed
                     || !self.constructed_user_tcgets_completed
+                    || !self.constructed_user_winsize_completed
+                    || !self.constructed_user_lseek_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -4468,8 +4650,11 @@ impl BootstrapAuthorityState {
                         "immutable data cannot be unmapped before the post-return retained-image witness",
                     ));
                 }
-                self.memory_ownership =
-                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+                self.memory_ownership = BootstrapMemoryOwnership::Frames(if generation == 1 {
+                    INITIAL_TWO_FRAME_REQUEST
+                } else {
+                    INITIAL_SINGLE_FRAME_REQUEST
+                });
                 self.user_execution = match generation {
                     1 => BootstrapUserExecutionState::CompletedImageRevoked(backing),
                     2 => BootstrapUserExecutionState::CompletedWithExecutableImage(backing),
@@ -4724,7 +4909,12 @@ impl BootstrapAuthorityState {
         }
         match self.memory_ownership {
             BootstrapMemoryOwnership::None => {}
-            BootstrapMemoryOwnership::Frames(_) => {
+            BootstrapMemoryOwnership::Frames(_)
+            | BootstrapMemoryOwnership::StaticElfMappingResources
+            | BootstrapMemoryOwnership::StaticElfConstructionLive
+            | BootstrapMemoryOwnership::StaticElfConstructionZeroed
+            | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
+            | BootstrapMemoryOwnership::StaticElfConstructionRevoked => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
                     "bootstrap handler consumes its context while a physical-frame extent remains live",
@@ -5397,9 +5587,14 @@ fn model_user_execution_transition(
                     "user mapping model requires one prepared address space",
                 ));
             }
+            let mapping_request = if resident_code.is_none() {
+                INITIAL_TWO_FRAME_REQUEST
+            } else {
+                INITIAL_SINGLE_FRAME_REQUEST
+            };
             let fresh_mapping = protocol.map_user_frame(
                 prepared.as_ref().expect("checked prepared user space"),
-                INITIAL_SINGLE_FRAME_REQUEST,
+                mapping_request,
             )?;
             let mapping_identity = fresh_mapping.identity();
             *mapping = Some(fresh_mapping);
@@ -5586,7 +5781,12 @@ fn model_user_execution_transition(
                     mapping,
                 )?
             };
-            if returned != INITIAL_SINGLE_FRAME_REQUEST {
+            let expected_return = if mapping_identity == 1 {
+                INITIAL_TWO_FRAME_REQUEST
+            } else {
+                INITIAL_SINGLE_FRAME_REQUEST
+            };
+            if returned != expected_return {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-USER-CONTEXT",
                     "user unmap returned the wrong physical-frame extent",
@@ -5712,6 +5912,10 @@ fn model_user_execution_transition(
                     terminal_control_flags: _,
                     terminal_minimum_input: _,
                     not_a_terminal_error: _,
+                    window_size_layout_bytes: _,
+                    window_size_query_request: _,
+                    seek_maximum_whence: _,
+                    illegal_seek_error: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -6504,6 +6708,18 @@ fn model_bootstrap_operation(
         SystemsOperation::ReleasePhysicalFrames => {
             transitions.push(SystemsTransition::ReleasePhysicalFrames);
         }
+        SystemsOperation::PrepareStaticImageConstruction { .. } => {
+            transitions.push(SystemsTransition::PrepareStaticImageConstruction);
+        }
+        SystemsOperation::ZeroStaticImageConstructionPayload => {
+            transitions.push(SystemsTransition::ZeroStaticImageConstructionPayload);
+        }
+        SystemsOperation::RevokeStaticImageConstructionMetadata => {
+            transitions.push(SystemsTransition::RevokeStaticImageConstructionMetadata);
+        }
+        SystemsOperation::ReclaimStaticImageConstructionPayload => {
+            transitions.push(SystemsTransition::ReclaimStaticImageConstructionPayload);
+        }
         SystemsOperation::MapKernelFrames { request, .. } => {
             transitions.push(SystemsTransition::MapKernelFrames { request: *request });
         }
@@ -6946,6 +7162,10 @@ fn model_bootstrap_storage_operation(
         SystemsOperation::CreateFrameAllocator { .. }
         | SystemsOperation::AllocatePhysicalFrames { .. }
         | SystemsOperation::ReleasePhysicalFrames
+        | SystemsOperation::PrepareStaticImageConstruction { .. }
+        | SystemsOperation::ZeroStaticImageConstructionPayload
+        | SystemsOperation::RevokeStaticImageConstructionMetadata
+        | SystemsOperation::ReclaimStaticImageConstructionPayload
         | SystemsOperation::MapKernelFrames { .. }
         | SystemsOperation::KernelMappingStoreByte { .. }
         | SystemsOperation::KernelMappingLoadByteEquals { .. }
@@ -7612,7 +7832,7 @@ mod tests {
                         },
                         SystemsOperation::PrepareUserAddressSpace,
                         SystemsOperation::AllocatePhysicalFrames {
-                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            request: INITIAL_TWO_FRAME_REQUEST,
                             failure_message: "disjoint frame allocation failed".into(),
                         },
                         SystemsOperation::MapUserAddressSpace,
@@ -7663,6 +7883,9 @@ mod tests {
                         },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
@@ -7694,6 +7917,12 @@ mod tests {
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -7903,6 +8132,10 @@ mod tests {
                         terminal_control_flags: 2239,
                         terminal_minimum_input: 1,
                         not_a_terminal_error: 25,
+                        window_size_layout_bytes: 8,
+                        window_size_query_request: 21523,
+                        seek_maximum_whence: 4,
+                        illegal_seek_error: 29,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -8011,12 +8244,15 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_MAPPING_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
+                        || text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                         || text == "TOPAL_KERNEL_USER_READ_OK"
                         || text == "TOPAL_KERNEL_USER_CLOSE_OK"
                         || text == "TOPAL_KERNEL_USER_DUP_OK"
                         || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                         || text == "TOPAL_KERNEL_USER_FSTAT_OK"
                         || text == "TOPAL_KERNEL_USER_TCGETS_OK"
+                        || text == "TOPAL_KERNEL_USER_WINSIZE_OK"
+                        || text == "TOPAL_KERNEL_USER_LSEEK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8377,7 +8613,7 @@ mod tests {
                     address_space_identity: 1,
                 },
                 SystemsTransition::AllocatePhysicalFrames {
-                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    request: INITIAL_TWO_FRAME_REQUEST,
                 },
                 SystemsTransition::MapUserAddressSpace {
                     address_space_identity: 1,
@@ -8570,6 +8806,9 @@ mod tests {
                     status: 0,
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
@@ -8601,6 +8840,12 @@ mod tests {
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -9433,6 +9678,8 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_FCNTL_OK"
                             || text == "TOPAL_KERNEL_USER_FSTAT_OK"
                             || text == "TOPAL_KERNEL_USER_TCGETS_OK"
+                            || text == "TOPAL_KERNEL_USER_WINSIZE_OK"
+                            || text == "TOPAL_KERNEL_USER_LSEEK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -9450,6 +9697,7 @@ mod tests {
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
+                            || text == "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_RETAINED"
                 )
             });
@@ -9708,7 +9956,7 @@ mod tests {
         else {
             unreachable!("test inserted the allocation at index two")
         };
-        unsupported_request.frame_count = 2;
+        unsupported_request.frame_count = 4;
         assert_eq!(
             validate_systems_program(&unsupported).unwrap_err().code,
             "E-SYSTEMS-FRAMES"
@@ -9740,6 +9988,116 @@ mod tests {
         refresh_bootstrap_effects(&mut program);
         assert_eq!(
             validate_systems_program(&program).unwrap_err().code,
+            "E-SYSTEMS-FRAMES-LIVE"
+        );
+    }
+
+    #[test]
+    fn models_exact_static_elf_mapping_resource_ownership() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
+        let mut program = program(SystemsDisposition::Resume);
+        let operations = [
+            SystemsOperation::AllocatePhysicalFrames {
+                request: STATIC_ELF_FRAME_REQUEST,
+                failure_message: "payload allocation failed".into(),
+            },
+            SystemsOperation::AllocatePhysicalFrames {
+                request: INITIAL_SINGLE_FRAME_REQUEST,
+                failure_message: "metadata allocation failed".into(),
+            },
+            SystemsOperation::ReleasePhysicalFrames,
+            SystemsOperation::ReleasePhysicalFrames,
+        ];
+        program
+            .bootstrap
+            .handler
+            .operations
+            .splice(2..2, operations.clone());
+        refresh_bootstrap_effects(&mut program);
+        assert!(validate_systems_program(&program).is_ok());
+
+        let mut wrong_metadata = program.clone();
+        let SystemsOperation::AllocatePhysicalFrames { request, .. } =
+            &mut wrong_metadata.bootstrap.handler.operations[3]
+        else {
+            unreachable!("test inserted metadata allocation at index three")
+        };
+        *request = INITIAL_TWO_FRAME_REQUEST;
+        assert_eq!(
+            validate_systems_program(&wrong_metadata).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+
+        let mut incomplete = program;
+        incomplete.bootstrap.handler.operations.remove(5);
+        refresh_bootstrap_effects(&mut incomplete);
+        assert_eq!(
+            validate_systems_program(&incomplete).unwrap_err().code,
+            "E-SYSTEMS-FRAMES"
+        );
+    }
+
+    #[test]
+    fn models_static_elf_initial_leaf_construction_and_revocation() {
+        // TOPAL-SEM-SYSTEMS-001, TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-ZERO-001.
+        let mut program = program(SystemsDisposition::Resume);
+        program.bootstrap.handler.operations.splice(
+            2..2,
+            [
+                SystemsOperation::AllocatePhysicalFrames {
+                    request: STATIC_ELF_FRAME_REQUEST,
+                    failure_message: "payload allocation failed".into(),
+                },
+                SystemsOperation::AllocatePhysicalFrames {
+                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    failure_message: "metadata allocation failed".into(),
+                },
+                SystemsOperation::PrepareStaticImageConstruction {
+                    failure_message: "leaf construction failed".into(),
+                },
+                SystemsOperation::ZeroStaticImageConstructionPayload,
+                SystemsOperation::RevokeStaticImageConstructionMetadata,
+                SystemsOperation::ReleasePhysicalFrames,
+                SystemsOperation::ReclaimStaticImageConstructionPayload,
+                SystemsOperation::ReleasePhysicalFrames,
+            ],
+        );
+        refresh_bootstrap_effects(&mut program);
+        let transitions = model_systems_transitions(&program).unwrap();
+        assert!(transitions.contains(&SystemsTransition::PrepareStaticImageConstruction));
+        assert!(transitions.contains(&SystemsTransition::ZeroStaticImageConstructionPayload));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageConstructionMetadata));
+        assert!(transitions.contains(&SystemsTransition::ReclaimStaticImageConstructionPayload));
+
+        let mut reclaim_before_metadata_release = program.clone();
+        reclaim_before_metadata_release
+            .bootstrap
+            .handler
+            .operations
+            .swap(7, 8);
+        assert_eq!(
+            validate_systems_program(&reclaim_before_metadata_release)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-STATIC-IMAGE"
+        );
+
+        let mut revoke_before_zero = program.clone();
+        revoke_before_zero.bootstrap.handler.operations.remove(5);
+        refresh_bootstrap_effects(&mut revoke_before_zero);
+        assert_eq!(
+            validate_systems_program(&revoke_before_zero)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-STATIC-IMAGE"
+        );
+
+        let mut live = program;
+        live.bootstrap.handler.operations.truncate(5);
+        refresh_bootstrap_effects(&mut live);
+        assert_eq!(
+            validate_systems_program(&live).unwrap_err().code,
             "E-SYSTEMS-FRAMES-LIVE"
         );
     }

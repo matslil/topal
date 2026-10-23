@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 83 ordered serial markers. The generated real-mode adapter
+and waits for the 90 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -151,7 +151,22 @@ provider's initial one-frame selector succeeds, and the root establishes and
 releases its affine extent. The later `TOPAL_KERNEL_FRAME_EXTENT_OK` marker is
 reachable only after the same provider proves that a complete static
 three-frame extent lies in one E820 RAM run and the root releases it as a
-whole. The final context markers prove that the deadline interrupts
+whole. `TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK` next proves that the exact
+503-frame application extent also fits one qualified E820 RAM run and remains
+one affine owner. `TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK` then proves
+that a separately owned metadata frame was selected outside that complete
+payload interval while both owners remained live.
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK` proves that the provider consumed
+that exact pair into one opaque inactive construction, cleared all 512 entries,
+published and verified 503 adjacent present/user/writable/NX leaves backed by
+the payload in ordinal order, and left the final nine entries absent. Source
+then revokes all 512 entries, releases the returned metadata frame, reclaims
+the payload, and releases that complete extent before continuing. Before that
+revocation, `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK` proves that the provider
+revalidated the live leaves, wrote zero to all 2,060,288 payload bytes, read
+back the complete extent, and verified the leaf table again. The construction
+is not attached to an active address space and no ELF file bytes are copied in
+this increment. The final context markers prove that the deadline interrupts
 the worker in its sealed region, the handler returns to the exact dispatcher,
 source runs the terminal and completion workers in the checked order, and
 redispatch resumes then retires both suspended workers. The final user marker
@@ -290,6 +305,36 @@ all bytes privately, admits only a complete writable extent, copies under
 fault recovery, and retains no user pointer. The ordered
 `TOPAL_KERNEL_USER_TCGETS_OK` witness establishes terminal discovery without
 claiming unimplemented canonical, echo, signal, or output-conversion behavior.
+The continuation next invokes Linux x86-64 `ioctl(TIOCGWINSZ)` for input and
+output into disjoint writable extents, validates both complete native
+eight-byte layouts as zero-valued unspecified geometry, and thereby proves the
+shared console value is identical. A later request on closed slot zero returns
+`-EBADF` before request or pointer handling. The provider stages all four
+unsigned 16-bit fields privately, admits only a complete writable extent,
+copies under fault recovery, and retains no user pointer. The ordered
+`TOPAL_KERNEL_USER_WINSIZE_OK` witness establishes truthful serial-console
+geometry discovery without inventing host- or harness-dependent dimensions.
+The continuation then invokes Linux x86-64 `lseek` on input and output with
+`SEEK_CUR` and a nonzero offset, requiring exact `-ESPIPE` because the shared
+console is a stream and owns no file position. Mode five on live output returns
+`-EINVAL`; the same mode on closed slot zero later returns `-EBADF`, proving
+descriptor lookup precedes mode classification. The ordered
+`TOPAL_KERNEL_USER_LSEEK_OK` witness establishes non-seekability without
+fabricating zero-position success or hidden per-description offset state.
+The executable image now occupies one affine contiguous two-frame extent. Both
+x86-64 leaves are copied and verified while RW/NX, made read-only before either
+becomes executable, invalidated together after permission changes, and revoked
+together before the original extent is returned. Entry is in the second page,
+and `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` is emitted only after the
+second-page terminal path returns to the exact kernel continuation.
+The compiler additionally validates and derives a bounded static-ELF plan for
+the pinned 503-page BusyBox shape, but deliberately rejects it as runtime-
+selectable until its affine allocation and mapping lifecycle is implemented.
+It now also derives all 503 ordered virtual-page/frame facts, whole-span zero
+before four exact copies, and final W^X-safe permissions including RELRO, while
+granting no physical authority.
+Consequently this planning refinement adds no marker and leaves all gate
+artifacts and hashes unchanged.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range
@@ -368,3 +413,12 @@ halt before terminating it. The committed
 [toolchain-gate evidence](results/topal-toolchain-gate.json) binds the source,
 manifest, firmware, generated artifacts, external boot resource, provider,
 QEMU identity, and observed serial bytes by digest.
+
+The publication gate also creates a deterministic clean-room 2,024,544-byte
+static ELF with the approved eleven program headers and 503-page plan, passes
+it through `--static-user-image`, and verifies exact-byte `static-user.elf`
+artifact and boot provenance. The deterministic initramfs contains `init`
+followed by `static-user.elf`; the provider validates both archive records and
+the static ELF metadata while excluding the complete resource from allocation.
+This file is not BusyBox, remains provider-private, and is not selected or
+copied into the inactive construction yet.

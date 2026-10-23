@@ -32,14 +32,18 @@ use topal_language::compiler::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -53,7 +57,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/97";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/105";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -64,6 +68,10 @@ pub enum X86SystemsLowering {
     RetainedE820FrameAuthority,
     E820StaticFrameExtentSelect,
     ConsumePhysicalFrameExtent,
+    ConstructInitialStaticImageLeaves,
+    ZeroStaticImagePayload,
+    RevokeInitialStaticImageLeaves,
+    ReturnStaticImagePayload,
     AdoptBootstrapIdentityMapping,
     PlainKernelMappingStoreByte,
     PlainKernelMappingLoadByte,
@@ -163,6 +171,14 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.frames.select-static-e820-extent/1"
             }
             Self::ConsumePhysicalFrameExtent => "topal.provider.x86_64.frames.consume-extent/1",
+            Self::ConstructInitialStaticImageLeaves => {
+                "topal.provider.x86_64.static-image.construct-initial-leaves/1"
+            }
+            Self::ZeroStaticImagePayload => "topal.provider.x86_64.static-image.zero-payload/1",
+            Self::RevokeInitialStaticImageLeaves => {
+                "topal.provider.x86_64.static-image.revoke-initial-leaves/1"
+            }
+            Self::ReturnStaticImagePayload => "topal.provider.x86_64.static-image.return-payload/1",
             Self::AdoptBootstrapIdentityMapping => {
                 "topal.provider.x86_64.mapping.adopt-bootstrap-identity/1"
             }
@@ -524,6 +540,18 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_FRAME_ALLOCATOR_CREATE => X86SystemsLowering::RetainedE820FrameAuthority,
         SYSTEMS_FRAMES_ALLOCATE => X86SystemsLowering::E820StaticFrameExtentSelect,
         SYSTEMS_FRAMES_RELEASE => X86SystemsLowering::ConsumePhysicalFrameExtent,
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE => {
+            X86SystemsLowering::ConstructInitialStaticImageLeaves
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD => {
+            X86SystemsLowering::ZeroStaticImagePayload
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA => {
+            X86SystemsLowering::RevokeInitialStaticImageLeaves
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD => {
+            X86SystemsLowering::ReturnStaticImagePayload
+        }
         SYSTEMS_KERNEL_MAP => X86SystemsLowering::AdoptBootstrapIdentityMapping,
         SYSTEMS_KERNEL_MAPPING_STORE_BYTE => X86SystemsLowering::PlainKernelMappingStoreByte,
         SYSTEMS_KERNEL_MAPPING_LOAD_BYTE => X86SystemsLowering::PlainKernelMappingLoadByte,
@@ -653,6 +681,18 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::RetainedE820FrameAuthority => SYSTEMS_FRAME_ALLOCATOR_CREATE,
             X86SystemsLowering::E820StaticFrameExtentSelect => SYSTEMS_FRAMES_ALLOCATE,
             X86SystemsLowering::ConsumePhysicalFrameExtent => SYSTEMS_FRAMES_RELEASE,
+            X86SystemsLowering::ConstructInitialStaticImageLeaves => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
+            }
+            X86SystemsLowering::ZeroStaticImagePayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+            }
+            X86SystemsLowering::RevokeInitialStaticImageLeaves => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            }
+            X86SystemsLowering::ReturnStaticImagePayload => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            }
             X86SystemsLowering::AdoptBootstrapIdentityMapping => SYSTEMS_KERNEL_MAP,
             X86SystemsLowering::PlainKernelMappingStoreByte => SYSTEMS_KERNEL_MAPPING_STORE_BYTE,
             X86SystemsLowering::PlainKernelMappingLoadByte => SYSTEMS_KERNEL_MAPPING_LOAD_BYTE,
@@ -823,7 +863,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 84);
+        assert_eq!(plan.operations.len(), 88);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -861,6 +901,22 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_FRAMES_ALLOCATE
                 && operation.lowering == X86SystemsLowering::E820StaticFrameExtentSelect
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
+                && operation.lowering == X86SystemsLowering::ConstructInitialStaticImageLeaves
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+                && operation.lowering == X86SystemsLowering::ZeroStaticImagePayload
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+                && operation.lowering == X86SystemsLowering::RevokeInitialStaticImageLeaves
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+                && operation.lowering == X86SystemsLowering::ReturnStaticImagePayload
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_PCI_CONFIGURATION_READ_DWORD

@@ -52,27 +52,40 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("-drive", command)
         self.assertNotIn("-netdev", command)
 
+    def test_static_user_fixture_has_the_approved_clean_room_shape(self) -> None:
+        fixture = GATE.static_user_fixture()
+        self.assertEqual(len(fixture), 2_024_544)
+        self.assertEqual(fixture[:4], b"\x7fELF")
+        self.assertEqual(int.from_bytes(fixture[24:32], "little"), 0x004A_6580)
+        self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
+        self.assertEqual(fixture[0x1000], 0xA5)
+
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/107")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/116")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/97")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/105")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/105",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/114",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/65",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/69",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
-            "topal.boot-resource.x86_64-initial-newc/1",
+            "topal.boot-resource.x86_64-initial-newc/2",
         )
         self.assertEqual(evidence["boot_resource_member"], "init")
-        self.assertGreater(evidence["boot_resource_bytes"], 0)
-        self.assertGreater(evidence["initial_user_image_bytes"], 0)
+        self.assertEqual(evidence["static_boot_resource_member"], "static-user.elf")
+        self.assertEqual(evidence["boot_resource_bytes"], 2_037_200)
+        self.assertEqual(evidence["initial_user_image_bytes"], 12_288)
         self.assertEqual(evidence["initial_user_image_input"], "supplied")
+        self.assertEqual(evidence["static_user_image_bytes"], 2_024_544)
+        self.assertEqual(
+            evidence["static_user_image_input"], "supplied-clean-room-fixture"
+        )
         self.assertEqual(evidence["serial_input_utf8"], "read")
         self.assertEqual(
             evidence["serial_input_sha256"], hashlib.sha256(b"read").hexdigest()
@@ -99,6 +112,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             "initial_user_image_sha256",
             "generated_initial_user_image_sha256",
             "boot_provenance_sha256",
+            "static_user_image_sha256",
         ):
             self.assertRegex(evidence[field], r"^[0-9a-f]{64}$")
 
@@ -111,6 +125,10 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_TRANSLATION_ACTIVE",
                 "TOPAL_KERNEL_TRANSLATION_EDITED",
                 "TOPAL_KERNEL_FRAME_EXTENT_OK",
+                "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK",
+                "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
                 "TOPAL_KERNEL_INTERRUPTS_MASKED",
                 "TOPAL_KERNEL_MEMORY_DESCRIBED",
                 "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
@@ -153,6 +171,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
                 "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
                 "TOPAL_KERNEL_USER_WRITE_OK",
+                "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
                 "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
@@ -164,6 +183,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_USER_FCNTL_OK",
                 "TOPAL_KERNEL_USER_FSTAT_OK",
                 "TOPAL_KERNEL_USER_TCGETS_OK",
+                "TOPAL_KERNEL_USER_WINSIZE_OK",
+                "TOPAL_KERNEL_USER_LSEEK_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_FROM_OK",
                 "TOPAL_KERNEL_USER_SYSCALL_OK",

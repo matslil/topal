@@ -12,17 +12,19 @@ use serde::{Deserialize, Serialize};
 use crate::artifact::sha256;
 use crate::systems_boot_resource::{
     X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
-    X86_INITIAL_BOOT_RESOURCE_REVISION, generate_initial_boot_resource,
+    X86_INITIAL_BOOT_RESOURCE_REVISION, X86_STATIC_BOOT_RESOURCE_MEMBER,
+    generate_initial_boot_resource,
 };
 use crate::{
-    CompileError, SYSTEMS_INITIAL_USER_IMAGE_FILE, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance,
-    X86_SYSTEMS_ARTIFACT_REVISION, X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY,
-    X86_SYSTEMS_KERNEL_ENTRY, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
+    CompileError, SYSTEMS_INITIAL_USER_IMAGE_FILE, SYSTEMS_KERNEL_FILE,
+    SYSTEMS_STATIC_USER_IMAGE_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
+    X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
+    X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/65";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/69";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -76,10 +78,13 @@ pub struct X86LinuxBootImageProvenance {
     pub boot_image_sha256: String,
     pub boot_resource_schema: String,
     pub boot_resource_member: String,
+    pub static_boot_resource_member: String,
     pub boot_resource_bytes: u64,
     pub boot_resource_sha256: String,
     pub initial_user_image_bytes: u64,
     pub initial_user_image_sha256: String,
+    pub static_user_image_bytes: u64,
+    pub static_user_image_sha256: String,
     pub protected_payload_bytes: u64,
     pub kernel_entry: u64,
     pub debug_break_entry: u64,
@@ -122,8 +127,9 @@ pub fn generate_x86_64_linux_boot_image(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
     initial_user_image: &[u8],
+    static_user_image: &[u8],
 ) -> Result<GeneratedX86LinuxBootImage, CompileError> {
-    validate_artifact_input(kernel, initial_user_image, artifact)?;
+    validate_artifact_input(kernel, initial_user_image, static_user_image, artifact)?;
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked kernel ELF: {error}")))?;
     if file.format() != BinaryFormat::Elf
@@ -170,7 +176,7 @@ pub fn generate_x86_64_linux_boot_image(
     bytes.extend_from_slice(&protected);
     let linked_kernel_sha256 = sha256(kernel);
     let boot_image_sha256 = sha256(&bytes);
-    let boot_resource = generate_initial_boot_resource(initial_user_image)?;
+    let boot_resource = generate_initial_boot_resource(initial_user_image, static_user_image)?;
     Ok(GeneratedX86LinuxBootImage {
         bytes,
         boot_resource: boot_resource.clone(),
@@ -191,6 +197,7 @@ pub fn generate_x86_64_linux_boot_image(
             boot_image_sha256,
             boot_resource_schema: X86_INITIAL_BOOT_RESOURCE_REVISION.into(),
             boot_resource_member: X86_INITIAL_BOOT_RESOURCE_MEMBER.into(),
+            static_boot_resource_member: X86_STATIC_BOOT_RESOURCE_MEMBER.into(),
             boot_resource_bytes: u64::try_from(boot_resource.len()).map_err(|_| {
                 CompileError::Tool("initial boot resource size exceeds provenance limits".into())
             })?,
@@ -199,6 +206,10 @@ pub fn generate_x86_64_linux_boot_image(
                 CompileError::Tool("initial user image size exceeds provenance limits".into())
             })?,
             initial_user_image_sha256: sha256(initial_user_image),
+            static_user_image_bytes: u64::try_from(static_user_image.len()).map_err(|_| {
+                CompileError::Tool("static user image size exceeds provenance limits".into())
+            })?,
+            static_user_image_sha256: sha256(static_user_image),
             protected_payload_bytes: u64::from(protected_size),
             kernel_entry,
             debug_break_entry,
@@ -219,9 +230,11 @@ pub fn publish_x86_64_linux_boot_image(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
     initial_user_image: &[u8],
+    static_user_image: &[u8],
     destination: &Path,
 ) -> Result<PublishedX86LinuxBootImage, CompileError> {
-    let generated = generate_x86_64_linux_boot_image(kernel, artifact, initial_user_image)?;
+    let generated =
+        generate_x86_64_linux_boot_image(kernel, artifact, initial_user_image, static_user_image)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent).map_err(io_error("create boot-image parent", parent))?;
     if destination.exists() {
@@ -269,6 +282,7 @@ pub fn publish_x86_64_linux_boot_image(
 fn validate_artifact_input(
     kernel: &[u8],
     initial_user_image: &[u8],
+    static_user_image: &[u8],
     artifact: &SystemsArtifactProvenance,
 ) -> Result<(), CompileError> {
     if artifact.schema != X86_SYSTEMS_ARTIFACT_REVISION
@@ -303,6 +317,18 @@ fn validate_artifact_input(
     if expected.sha256 != sha256(initial_user_image) {
         return Err(CompileError::Tool(
             "initial user-image bytes do not match artifact provenance".into(),
+        ));
+    }
+    let expected = artifact
+        .outputs
+        .iter()
+        .find(|output| output.identity == SYSTEMS_STATIC_USER_IMAGE_FILE)
+        .ok_or_else(|| {
+            CompileError::Tool("artifact provenance omits the static user-image digest".into())
+        })?;
+    if expected.sha256 != sha256(static_user_image) {
+        return Err(CompileError::Tool(
+            "static user-image bytes do not match artifact provenance".into(),
         ));
     }
     Ok(())
@@ -920,22 +946,31 @@ mod tests {
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
     use super::*;
-    use crate::{LlvmTools, publish_x86_64_systems_artifact};
+    use crate::{
+        LlvmTools, publish_x86_64_systems_artifact_with_static_user_image,
+        qualified_x86_64_static_user_image_fixture,
+    };
 
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
-    fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
+    fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
         let program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
         let tools = LlvmTools::discover(None).unwrap();
-        let linked =
-            publish_x86_64_systems_artifact(&program, &tools, &parent.join("linked")).unwrap();
+        let linked = publish_x86_64_systems_artifact_with_static_user_image(
+            &program,
+            &tools,
+            &qualified_x86_64_static_user_image_fixture(),
+            &parent.join("linked"),
+        )
+        .unwrap();
         (
             fs::read(linked.kernel).unwrap(),
             fs::read(linked.initial_user_image).unwrap(),
+            fs::read(linked.static_user_image.unwrap()).unwrap(),
             linked.record,
         )
     }
@@ -954,9 +989,14 @@ mod tests {
     fn generates_the_approved_linux_boot_header_and_transition_layout() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, LK-X64-BOOT-001.
         let parent = temporary_parent();
-        let (kernel, initial_user_image, artifact) = linked_kernel(&parent);
-        let generated =
-            generate_x86_64_linux_boot_image(&kernel, &artifact, &initial_user_image).unwrap();
+        let (kernel, initial_user_image, static_user_image, artifact) = linked_kernel(&parent);
+        let generated = generate_x86_64_linux_boot_image(
+            &kernel,
+            &artifact,
+            &initial_user_image,
+            &static_user_image,
+        )
+        .unwrap();
         assert_eq!(generated.bytes[0x1f1], X86_LINUX_SETUP_SECTORS);
         assert_eq!(&generated.bytes[0x1fe..0x200], &[0x55, 0xaa]);
         assert_eq!(&generated.bytes[0x202..0x206], b"HdrS");
@@ -1099,6 +1139,14 @@ mod tests {
             generated.provenance.boot_resource_member,
             X86_INITIAL_BOOT_RESOURCE_MEMBER
         );
+        assert_eq!(
+            generated.provenance.static_boot_resource_member,
+            X86_STATIC_BOOT_RESOURCE_MEMBER
+        );
+        assert_eq!(
+            generated.provenance.static_user_image_sha256,
+            sha256(&static_user_image)
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 
@@ -1106,11 +1154,12 @@ mod tests {
     fn atomically_publishes_a_deterministic_image_resource_and_provenance() {
         // TOPAL-SYSTEMS-ARTIFACT-001, TOPAL-SYSTEMS-QUALIFY-001.
         let parent = temporary_parent();
-        let (kernel, initial_user_image, artifact) = linked_kernel(&parent);
+        let (kernel, initial_user_image, static_user_image, artifact) = linked_kernel(&parent);
         let first = publish_x86_64_linux_boot_image(
             &kernel,
             &artifact,
             &initial_user_image,
+            &static_user_image,
             &parent.join("first"),
         )
         .unwrap();
@@ -1118,6 +1167,7 @@ mod tests {
             &kernel,
             &artifact,
             &initial_user_image,
+            &static_user_image,
             &parent.join("second"),
         )
         .unwrap();

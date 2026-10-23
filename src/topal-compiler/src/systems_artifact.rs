@@ -71,7 +71,10 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
     SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
     SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
-    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
     SYSTEMS_USER_TRANSFER_END,
 };
@@ -113,11 +116,13 @@ use crate::{
     X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL, X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
@@ -133,8 +138,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/105";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/98";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/114";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/103";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -147,9 +152,10 @@ pub const SYSTEMS_KERNEL_FILE: &str = "kernel.elf";
 pub const SYSTEMS_DEBUG_FILE: &str = "kernel.debug";
 pub const SYSTEMS_MAP_FILE: &str = "kernel.map";
 pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
+pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 48] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 51] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -159,6 +165,9 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 48] = [
     X86_SYSTEMS_TERMINAL_THREAD_ENTRY,
     X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
     X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -254,6 +263,7 @@ pub struct PublishedSystemsArtifact {
     pub debug: PathBuf,
     pub map: PathBuf,
     pub initial_user_image: PathBuf,
+    pub static_user_image: Option<PathBuf>,
     pub provenance: PathBuf,
     pub record: SystemsArtifactProvenance,
 }
@@ -295,7 +305,56 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
     initial_user_image: &[u8],
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        initial_user_image,
+        None,
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with a supplied
+/// approved-shape static user image and the generated boot user image.
+///
+/// # Errors
+///
+/// Returns an error before publication when the static image is outside the
+/// qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_static_user_image(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    static_user_image: &[u8],
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let initial_user_image = initial_user_elf_file()?;
+    publish_x86_64_systems_artifact_with_user_images(
+        program,
+        tools,
+        &initial_user_image,
+        Some(static_user_image),
+        destination,
+    )
+}
+
+/// Link, inspect, and atomically publish a systems ELF set with independently
+/// supplied boot and static user images.
+///
+/// # Errors
+///
+/// Returns an error before publication when either supplied image is outside
+/// its qualified x86-64 envelope or when normal artifact production fails.
+pub fn publish_x86_64_systems_artifact_with_user_images(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
     validate_x86_64_initial_user_image(initial_user_image)?;
+    if let Some(image) = static_user_image {
+        validate_x86_64_static_user_image(image)?;
+    }
     let generated_provider = generate_x86_64_systems_provider_object(program)?;
     let root_object = generate_root_object(program)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
@@ -314,6 +373,7 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
         &generated_provider.bytes,
         &root_object,
         initial_user_image,
+        static_user_image,
         &stage,
     );
     let record = match result {
@@ -336,6 +396,8 @@ pub fn publish_x86_64_systems_artifact_with_initial_user_image(
         debug: destination.join(SYSTEMS_DEBUG_FILE),
         map: destination.join(SYSTEMS_MAP_FILE),
         initial_user_image: destination.join(SYSTEMS_INITIAL_USER_IMAGE_FILE),
+        static_user_image: static_user_image
+            .map(|_| destination.join(SYSTEMS_STATIC_USER_IMAGE_FILE)),
         provenance: destination.join(SYSTEMS_PROVENANCE_FILE),
         record,
     })
@@ -348,6 +410,7 @@ fn publish_in_stage(
     provider_object: &[u8],
     root_object: &[u8],
     initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -386,6 +449,11 @@ fn publish_in_stage(
         "write initial user image",
         &initial_user_image_path,
     ))?;
+    if let Some(image) = static_user_image {
+        let static_user_image_path = stage.join(SYSTEMS_STATIC_USER_IMAGE_FILE);
+        fs::write(&static_user_image_path, image)
+            .map_err(io_error("write static user image", &static_user_image_path))?;
+    }
     let record = artifact_provenance(
         program,
         tools,
@@ -396,6 +464,7 @@ fn publish_in_stage(
         &linked.debug,
         &linked.map,
         initial_user_image,
+        static_user_image,
         placements,
     )?;
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
@@ -413,9 +482,747 @@ fn publish_in_stage(
     Ok(record)
 }
 
+const STATIC_ELF_PAGE_SIZE: u64 = 4096;
+const STATIC_ELF_LEAF_WINDOW_SIZE: u64 = 2 * 1024 * 1024;
+const STATIC_ELF_MAX_PROGRAM_HEADERS: u16 = 16;
+const STATIC_ELF_MAX_USER_ADDRESS: u64 = 0x0000_8000_0000_0000;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfLoadRole {
+    Headers,
+    Executable,
+    ImmutableData,
+    WritableData,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfIdentity {
+    class: u8,
+    data_encoding: u8,
+    version: u8,
+    file_type: u16,
+    machine: u16,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfInterval {
+    start: u64,
+    end: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfLoadSegment {
+    role: StaticElfLoadRole,
+    file: StaticElfInterval,
+    memory: StaticElfInterval,
+    pages: StaticElfInterval,
+    alignment: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfTlsPlan {
+    file: StaticElfInterval,
+    memory: StaticElfInterval,
+    alignment: u64,
+}
+
+#[allow(dead_code)] // The complete checked plan is retained for the following mapping increment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct StaticElfLoadPlan {
+    identity: StaticElfIdentity,
+    entry: u64,
+    segments: Vec<StaticElfLoadSegment>,
+    pages: StaticElfInterval,
+    page_count: u64,
+    tls: Option<StaticElfTlsPlan>,
+    relro_pages: Option<StaticElfInterval>,
+    stack_executable: bool,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfPagePermission {
+    ReadWriteNoExecute,
+    ReadOnlyNoExecute,
+    ReadOnlyExecute,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfPageRecord {
+    virtual_address: u64,
+    frame_ordinal: u64,
+    source_role: StaticElfLoadRole,
+    initial_permission: StaticElfPagePermission,
+    final_permission: StaticElfPagePermission,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct StaticElfCopyOperation {
+    file: StaticElfInterval,
+    destination: StaticElfInterval,
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StaticElfConstructionOperation {
+    Zero(StaticElfInterval),
+    Copy(StaticElfCopyOperation),
+}
+
+#[allow(dead_code)] // Retained for the following affine mapping increment.
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct StaticElfPagePlan {
+    frame_count: u64,
+    alignment_frames: u64,
+    construction: Vec<StaticElfConstructionOperation>,
+    pages: Vec<StaticElfPageRecord>,
+    entry: u64,
+    tls: Option<StaticElfTlsPlan>,
+    relro_pages: Option<StaticElfInterval>,
+}
+
+/// Construct deterministic clean-room bytes with the qualified static-ELF metadata shape.
+///
+/// The payload is not an application and exists only for structural qualification.
+#[must_use]
+pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
+    fn put_u16(image: &mut [u8], offset: usize, value: u16) {
+        image[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_u32(image: &mut [u8], offset: usize, value: u32) {
+        image[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_u64(image: &mut [u8], offset: usize, value: u64) {
+        image[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+    fn put_program_header(
+        image: &mut [u8],
+        index: usize,
+        row: (u32, u32, u64, u64, u64, u64, u64),
+    ) {
+        let (kind, flags, file_offset, virtual_address, file_size, memory_size, alignment) = row;
+        let offset = 64 + index * 56;
+        put_u32(image, offset, kind);
+        put_u32(image, offset + 4, flags);
+        put_u64(image, offset + 8, file_offset);
+        put_u64(image, offset + 16, virtual_address);
+        put_u64(image, offset + 24, virtual_address);
+        put_u64(image, offset + 32, file_size);
+        put_u64(image, offset + 40, memory_size);
+        put_u64(image, offset + 48, alignment);
+    }
+
+    let mut image = vec![0_u8; 2_024_544];
+    image[0..16].copy_from_slice(&[0x7f, b'E', b'L', b'F', 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]);
+    put_u16(&mut image, 16, 2);
+    put_u16(&mut image, 18, 62);
+    put_u32(&mut image, 20, 1);
+    put_u64(&mut image, 24, 0x004a_6580);
+    put_u64(&mut image, 32, 64);
+    put_u16(&mut image, 52, 64);
+    put_u16(&mut image, 54, 56);
+    put_u16(&mut image, 56, 11);
+    for (index, row) in [
+        (1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_b285, 0x18_b285, 0x1000),
+        (1, 4, 0x18_d000, 0x0058_d000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1e_4660, 0x005e_5660, 0x9728, 0x1_0b68, 0x1000),
+        (4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4),
+        (4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8),
+        (0x6474_e553, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (0x6474_e551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_e552, 4, 0x1e_4660, 0x005e_5660, 0x79a0, 0x79a0, 1),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        put_program_header(&mut image, index, row);
+    }
+    image
+}
+
+fn elf_u16(image: &[u8], offset: usize) -> u16 {
+    u16::from_le_bytes(
+        image[offset..offset + 2]
+            .try_into()
+            .expect("validated ELF header extent"),
+    )
+}
+
+fn elf_u32(image: &[u8], offset: usize) -> u32 {
+    u32::from_le_bytes(
+        image[offset..offset + 4]
+            .try_into()
+            .expect("validated ELF header extent"),
+    )
+}
+
+fn checked_elf_interval(
+    start: u64,
+    size: u64,
+    description: &str,
+) -> Result<StaticElfInterval, CompileError> {
+    let end = start.checked_add(size).ok_or_else(|| {
+        CompileError::Tool(format!(
+            "bounded static ELF {description} interval overflows"
+        ))
+    })?;
+    Ok(StaticElfInterval { start, end })
+}
+
+fn page_floor(value: u64) -> u64 {
+    value & !(STATIC_ELF_PAGE_SIZE - 1)
+}
+
+fn page_ceil(value: u64, description: &str) -> Result<u64, CompileError> {
+    value
+        .checked_add(STATIC_ELF_PAGE_SIZE - 1)
+        .map(page_floor)
+        .ok_or_else(|| {
+            CompileError::Tool(format!(
+                "bounded static ELF {description} page interval overflows"
+            ))
+        })
+}
+
+#[allow(clippy::too_many_lines)] // Keeps one fail-closed validation transaction auditable.
+fn derive_x86_64_static_elf_load_plan(image: &[u8]) -> Result<StaticElfLoadPlan, CompileError> {
+    if image.len() < 64 {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires a complete 64-byte ELF header".into(),
+        ));
+    }
+    if image[0..4] != [0x7f, b'E', b'L', b'F']
+        || image[4] != 2
+        || image[5] != 1
+        || image[6] != 1
+        || elf_u16(image, 16) != 2
+        || elf_u16(image, 18) != 62
+        || elf_u32(image, 20) != 1
+        || elf_u16(image, 52) != 64
+        || elf_u16(image, 54) != 56
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires current little-endian ELF64 ET_EXEC/EM_X86_64 identity and canonical header sizes"
+                .into(),
+        ));
+    }
+
+    let entry = image_u64(image, 24);
+    let program_header_offset = image_u64(image, 32);
+    let program_header_count = elf_u16(image, 56);
+    if program_header_count == 0 || program_header_count > STATIC_ELF_MAX_PROGRAM_HEADERS {
+        return Err(CompileError::Tool(format!(
+            "bounded static ELF program-header count must be 1..={STATIC_ELF_MAX_PROGRAM_HEADERS}"
+        )));
+    }
+    let table_bytes = u64::from(program_header_count)
+        .checked_mul(56)
+        .ok_or_else(|| CompileError::Tool("bounded static ELF table size overflows".into()))?;
+    let table = checked_elf_interval(program_header_offset, table_bytes, "program-header table")?;
+    if table.start < 64 || table.end > image.len() as u64 {
+        return Err(CompileError::Tool(
+            "bounded static ELF program-header table lies outside the complete input".into(),
+        ));
+    }
+
+    let roles = [
+        StaticElfLoadRole::Headers,
+        StaticElfLoadRole::Executable,
+        StaticElfLoadRole::ImmutableData,
+        StaticElfLoadRole::WritableData,
+    ];
+    let expected_flags = [4_u32, 5, 4, 6];
+    let mut segments = Vec::new();
+    let mut tls = None;
+    let mut relro_pages = None;
+    let mut stack_executable = None;
+
+    for index in 0..usize::from(program_header_count) {
+        let offset = usize::try_from(program_header_offset).map_err(|_| {
+            CompileError::Tool("bounded static ELF table offset exceeds host limits".into())
+        })? + index * 56;
+        let kind = elf_u32(image, offset);
+        let flags = elf_u32(image, offset + 4);
+        let file_offset = image_u64(image, offset + 8);
+        let virtual_address = image_u64(image, offset + 16);
+        let file_size = image_u64(image, offset + 32);
+        let memory_size = image_u64(image, offset + 40);
+        let alignment = image_u64(image, offset + 48);
+
+        match kind {
+            1 => {
+                let segment_index = segments.len();
+                if segment_index >= roles.len() || flags != expected_flags[segment_index] {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF requires exactly ordered R, R/X, R, and R/W load roles without W+X"
+                            .into(),
+                    ));
+                }
+                if memory_size == 0 || file_size > memory_size {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load sizes require 0 < p_memsz and p_filesz <= p_memsz"
+                            .into(),
+                    ));
+                }
+                if alignment < STATIC_ELF_PAGE_SIZE || !alignment.is_power_of_two() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load alignment must be a power of two at least 4096"
+                            .into(),
+                    ));
+                }
+                if file_offset % STATIC_ELF_PAGE_SIZE != virtual_address % STATIC_ELF_PAGE_SIZE {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load file and virtual page offsets are incongruent"
+                            .into(),
+                    ));
+                }
+                let file = checked_elf_interval(file_offset, file_size, "load file")?;
+                let memory = checked_elf_interval(virtual_address, memory_size, "load memory")?;
+                if file.end > image.len() as u64
+                    || memory.start < STATIC_ELF_PAGE_SIZE
+                    || memory.end > STATIC_ELF_MAX_USER_ADDRESS
+                {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load interval lies outside its file or user envelope"
+                            .into(),
+                    ));
+                }
+                let pages = StaticElfInterval {
+                    start: page_floor(memory.start),
+                    end: page_ceil(memory.end, "load memory")?,
+                };
+                if segments
+                    .last()
+                    .is_some_and(|prior: &StaticElfLoadSegment| prior.pages.end > pages.start)
+                {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF load page intervals overlap or are unordered".into(),
+                    ));
+                }
+                segments.push(StaticElfLoadSegment {
+                    role: roles[segment_index],
+                    file,
+                    memory,
+                    pages,
+                    alignment,
+                });
+            }
+            2 | 3 => {
+                return Err(CompileError::Tool(
+                    "bounded static ELF does not admit PT_DYNAMIC or PT_INTERP".into(),
+                ));
+            }
+            7 => {
+                if tls.is_some() || memory_size == 0 || file_size > memory_size {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF admits at most one nonempty valid PT_TLS".into(),
+                    ));
+                }
+                if alignment == 0 || !alignment.is_power_of_two() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF TLS alignment must be a nonzero power of two".into(),
+                    ));
+                }
+                let file = checked_elf_interval(file_offset, file_size, "TLS file")?;
+                let memory = checked_elf_interval(virtual_address, memory_size, "TLS memory")?;
+                if file.end > image.len() as u64 {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF TLS file interval exceeds the complete input".into(),
+                    ));
+                }
+                tls = Some(StaticElfTlsPlan {
+                    file,
+                    memory,
+                    alignment,
+                });
+            }
+            0x6474_e551 => {
+                if stack_executable.replace(flags & 1 != 0).is_some() {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF requires exactly one PT_GNU_STACK".into(),
+                    ));
+                }
+            }
+            0x6474_e552 => {
+                if relro_pages.is_some() || memory_size == 0 {
+                    return Err(CompileError::Tool(
+                        "bounded static ELF admits at most one nonempty PT_GNU_RELRO".into(),
+                    ));
+                }
+                let memory = checked_elf_interval(virtual_address, memory_size, "RELRO memory")?;
+                relro_pages = Some(StaticElfInterval {
+                    start: page_floor(memory.start),
+                    end: page_ceil(memory.end, "RELRO memory")?,
+                });
+            }
+            _ => {}
+        }
+    }
+
+    if segments.len() != roles.len() {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires exactly four PT_LOAD entries".into(),
+        ));
+    }
+    let executable = segments[1];
+    if entry < executable.memory.start || entry >= executable.memory.end {
+        return Err(CompileError::Tool(
+            "bounded static ELF entry lies outside the R/X load interval".into(),
+        ));
+    }
+    let writable = segments[3];
+    if let Some(tls_plan) = tls
+        && (tls_plan.file.start < writable.file.start
+            || tls_plan.file.end > writable.file.end
+            || tls_plan.memory.start < writable.memory.start
+            || tls_plan.memory.end > writable.memory.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF TLS intervals lie outside the R/W load role".into(),
+        ));
+    }
+    if let Some(relro) = relro_pages
+        && (relro.start < writable.pages.start
+            || relro.end > writable.pages.end
+            || relro.start == relro.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF RELRO pages lie outside the R/W load role".into(),
+        ));
+    }
+    let Some(stack_executable) = stack_executable else {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires exactly one PT_GNU_STACK".into(),
+        ));
+    };
+    if stack_executable {
+        return Err(CompileError::Tool(
+            "bounded static ELF requires a non-executable stack".into(),
+        ));
+    }
+
+    let pages = StaticElfInterval {
+        start: segments[0].pages.start,
+        end: segments[3].pages.end,
+    };
+    let page_count = (pages.end - pages.start) / STATIC_ELF_PAGE_SIZE;
+    if page_count == 0
+        || page_count > 512
+        || page_floor(pages.start) / STATIC_ELF_LEAF_WINDOW_SIZE
+            != (pages.end - 1) / STATIC_ELF_LEAF_WINDOW_SIZE
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF load span exceeds one 512-leaf 2 MiB window".into(),
+        ));
+    }
+
+    Ok(StaticElfLoadPlan {
+        identity: StaticElfIdentity {
+            class: image[4],
+            data_encoding: image[5],
+            version: image[6],
+            file_type: elf_u16(image, 16),
+            machine: elf_u16(image, 18),
+        },
+        entry,
+        segments,
+        pages,
+        page_count,
+        tls,
+        relro_pages,
+        stack_executable,
+    })
+}
+
+#[allow(clippy::too_many_lines)] // Keeps one inherited-plan validation transaction auditable.
+fn derive_x86_64_static_elf_page_plan(
+    load: &StaticElfLoadPlan,
+) -> Result<StaticElfPagePlan, CompileError> {
+    if load.segments.len() != 4
+        || load.page_count == 0
+        || load.page_count > 512
+        || !load.pages.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+        || !load.pages.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+        || load.pages.end <= load.pages.start
+        || (load.pages.end - load.pages.start) / STATIC_ELF_PAGE_SIZE != load.page_count
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has an inconsistent inherited span".into(),
+        ));
+    }
+
+    let expected_roles = [
+        StaticElfLoadRole::Headers,
+        StaticElfLoadRole::Executable,
+        StaticElfLoadRole::ImmutableData,
+        StaticElfLoadRole::WritableData,
+    ];
+    let mut next_page = load.pages.start;
+    for (segment, expected_role) in load.segments.iter().zip(expected_roles) {
+        if segment.role != expected_role
+            || segment.pages.start != next_page
+            || !segment.pages.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || !segment.pages.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || segment.pages.end <= segment.pages.start
+            || segment.memory.start < segment.pages.start
+            || segment.memory.end > segment.pages.end
+            || segment.file.end < segment.file.start
+            || segment.memory.end < segment.memory.start
+            || segment.file.end - segment.file.start > segment.memory.end - segment.memory.start
+        {
+            return Err(CompileError::Tool(
+                "bounded static ELF page realization requires four exact adjacent inherited roles"
+                    .into(),
+            ));
+        }
+        next_page = segment.pages.end;
+    }
+    if next_page != load.pages.end {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization does not cover the complete inherited span".into(),
+        ));
+    }
+
+    let writable = load.segments[3];
+    if let Some(relro) = load.relro_pages
+        && (!relro.start.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || !relro.end.is_multiple_of(STATIC_ELF_PAGE_SIZE)
+            || relro.start >= relro.end
+            || relro.start < writable.pages.start
+            || relro.end > writable.pages.end)
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has invalid inherited RELRO pages".into(),
+        ));
+    }
+
+    let mut pages = Vec::with_capacity(usize::try_from(load.page_count).map_err(|_| {
+        CompileError::Tool("bounded static ELF page count exceeds host limits".into())
+    })?);
+    for segment in &load.segments {
+        let mut virtual_address = segment.pages.start;
+        while virtual_address < segment.pages.end {
+            let relro = load.relro_pages.is_some_and(|interval| {
+                virtual_address >= interval.start && virtual_address < interval.end
+            });
+            let final_permission = match segment.role {
+                StaticElfLoadRole::Executable => StaticElfPagePermission::ReadOnlyExecute,
+                StaticElfLoadRole::WritableData if !relro => {
+                    StaticElfPagePermission::ReadWriteNoExecute
+                }
+                StaticElfLoadRole::Headers
+                | StaticElfLoadRole::ImmutableData
+                | StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadOnlyNoExecute,
+            };
+            pages.push(StaticElfPageRecord {
+                virtual_address,
+                frame_ordinal: (virtual_address - load.pages.start) / STATIC_ELF_PAGE_SIZE,
+                source_role: segment.role,
+                initial_permission: StaticElfPagePermission::ReadWriteNoExecute,
+                final_permission,
+            });
+            virtual_address += STATIC_ELF_PAGE_SIZE;
+        }
+    }
+    let derived_page_count = u64::try_from(pages.len()).map_err(|_| {
+        CompileError::Tool("bounded static ELF realized page count exceeds u64".into())
+    })?;
+    if derived_page_count != load.page_count
+        || pages.iter().enumerate().any(|(index, page)| {
+            let ordinal = u64::try_from(index).expect("bounded to 512 page records");
+            page.frame_ordinal != ordinal
+                || page.virtual_address != load.pages.start + ordinal * STATIC_ELF_PAGE_SIZE
+        })
+    {
+        return Err(CompileError::Tool(
+            "bounded static ELF page realization has incomplete page ordinals".into(),
+        ));
+    }
+
+    let mut construction = Vec::with_capacity(5);
+    construction.push(StaticElfConstructionOperation::Zero(load.pages));
+    for segment in &load.segments {
+        let copy_size = segment.file.end - segment.file.start;
+        let destination =
+            checked_elf_interval(segment.memory.start, copy_size, "copy destination")?;
+        if destination.end > segment.memory.end {
+            return Err(CompileError::Tool(
+                "bounded static ELF copy exceeds its inherited memory role".into(),
+            ));
+        }
+        construction.push(StaticElfConstructionOperation::Copy(
+            StaticElfCopyOperation {
+                file: segment.file,
+                destination,
+            },
+        ));
+    }
+
+    Ok(StaticElfPagePlan {
+        frame_count: load.page_count,
+        alignment_frames: 1,
+        construction,
+        pages,
+        entry: load.entry,
+        tls: load.tls,
+        relro_pages: load.relro_pages,
+    })
+}
+
+fn validate_x86_64_static_user_image(image: &[u8]) -> Result<(), CompileError> {
+    const EXPECTED_FILE_BYTES: usize = 2_024_544;
+    const EXPECTED_ENTRY: u64 = 0x004a_6580;
+    let load = derive_x86_64_static_elf_load_plan(image)?;
+    let pages = derive_x86_64_static_elf_page_plan(&load)?;
+    let expected_segments = [
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::Headers,
+            file: StaticElfInterval {
+                start: 0,
+                end: 0x6e0,
+            },
+            memory: StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x0040_06e0,
+            },
+            pages: StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x0040_1000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::Executable,
+            file: StaticElfInterval {
+                start: 0x1000,
+                end: 0x18_c285,
+            },
+            memory: StaticElfInterval {
+                start: 0x0040_1000,
+                end: 0x0058_c285,
+            },
+            pages: StaticElfInterval {
+                start: 0x0040_1000,
+                end: 0x0058_d000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::ImmutableData,
+            file: StaticElfInterval {
+                start: 0x18_d000,
+                end: 0x1e_4040,
+            },
+            memory: StaticElfInterval {
+                start: 0x0058_d000,
+                end: 0x005e_4040,
+            },
+            pages: StaticElfInterval {
+                start: 0x0058_d000,
+                end: 0x005e_5000,
+            },
+            alignment: 0x1000,
+        },
+        StaticElfLoadSegment {
+            role: StaticElfLoadRole::WritableData,
+            file: StaticElfInterval {
+                start: 0x1e_4660,
+                end: 0x1e_dd88,
+            },
+            memory: StaticElfInterval {
+                start: 0x005e_5660,
+                end: 0x005f_61c8,
+            },
+            pages: StaticElfInterval {
+                start: 0x005e_5000,
+                end: 0x005f_7000,
+            },
+            alignment: 0x1000,
+        },
+    ];
+    let expected_tls = Some(StaticElfTlsPlan {
+        file: StaticElfInterval {
+            start: 0x1e_4660,
+            end: 0x1e_46a0,
+        },
+        memory: StaticElfInterval {
+            start: 0x005e_5660,
+            end: 0x005e_56e2,
+        },
+        alignment: 8,
+    });
+    let expected_relro = Some(StaticElfInterval {
+        start: 0x005e_5000,
+        end: 0x005e_d000,
+    });
+    let expected_program_headers = [
+        (1, 4, 0, 0x0040_0000, 0x6e0, 0x6e0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_b285, 0x18_b285, 0x1000),
+        (1, 4, 0x18_d000, 0x0058_d000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1e_4660, 0x005e_5660, 0x9728, 0x1_0b68, 0x1000),
+        (4, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (4, 4, 0x2c8, 0x0040_02c8, 0x24, 0x24, 4),
+        (4, 4, 0x1e_4020, 0x005e_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1e_4660, 0x005e_5660, 0x40, 0x82, 8),
+        (0x6474_e553, 4, 0x2a8, 0x0040_02a8, 0x20, 0x20, 8),
+        (0x6474_e551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_e552, 4, 0x1e_4660, 0x005e_5660, 0x79a0, 0x79a0, 1),
+    ];
+    let exact_program_headers = expected_program_headers.iter().enumerate().all(
+        |(index, &(kind, flags, offset, virtual_address, file_size, memory_size, alignment))| {
+            let header = 64 + index * 56;
+            elf_u32(image, header) == kind
+                && elf_u32(image, header + 4) == flags
+                && image_u64(image, header + 8) == offset
+                && image_u64(image, header + 16) == virtual_address
+                && image_u64(image, header + 24) == virtual_address
+                && image_u64(image, header + 32) == file_size
+                && image_u64(image, header + 40) == memory_size
+                && image_u64(image, header + 48) == alignment
+        },
+    );
+
+    if image.len() != EXPECTED_FILE_BYTES
+        || elf_u16(image, 56) != 11
+        || !exact_program_headers
+        || load.entry != EXPECTED_ENTRY
+        || load.segments.as_slice() != expected_segments
+        || load.pages
+            != (StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x005f_7000,
+            })
+        || load.page_count != 503
+        || load.tls != expected_tls
+        || load.relro_pages != expected_relro
+        || load.stack_executable
+        || pages.frame_count != 503
+        || pages.entry != EXPECTED_ENTRY
+    {
+        return Err(CompileError::Tool(
+            "static user image does not match the approved 503-page x86-64 shape".into(),
+        ));
+    }
+    Ok(())
+}
+
 fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> {
     let reference = initial_user_elf_file()?;
     if image.len() != reference.len() {
+        if let Ok(load_plan) = derive_x86_64_static_elf_load_plan(image) {
+            let page_plan = derive_x86_64_static_elf_page_plan(&load_plan)?;
+            return Err(CompileError::Tool(format!(
+                "bounded static ELF page plan covers one {}-frame affine extent at entry {:#x}, but this image is not runtime-selectable until its mapping lifecycle is implemented",
+                page_plan.frame_count, page_plan.entry
+            )));
+        }
         return Err(CompileError::Tool(format!(
             "initial user image has {} bytes; the qualified x86-64 profile requires {}",
             image.len(),
@@ -447,11 +1254,11 @@ fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> 
     let code_file_size = image_u64(image, INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET);
     let code_memory_size = image_u64(image, INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET);
     if code_file_size != code_memory_size
-        || !(264..=4096).contains(&code_file_size)
+        || !(4360..=8192).contains(&code_file_size)
         || code_file_size % 8 != 0
     {
         return Err(CompileError::Tool(
-            "initial user executable extent must be equal file/memory sizes of 264..4096 bytes aligned to 8"
+            "initial user executable extent must be equal file/memory sizes of 4360..8192 bytes aligned to 8"
                 .into(),
         ));
     }
@@ -460,7 +1267,7 @@ fn validate_x86_64_initial_user_image(image: &[u8]) -> Result<(), CompileError> 
     let code_end = INITIAL_USER_CODE_ADDRESS
         .checked_add(code_file_size)
         .ok_or_else(|| CompileError::Tool("initial user executable extent overflows".into()))?;
-    if entry < INITIAL_USER_CODE_ADDRESS + 256 || entry >= code_end {
+    if entry < INITIAL_USER_CODE_ADDRESS + 4096 + 256 || entry >= code_end {
         return Err(CompileError::Tool(
             "initial user entry must lie inside the executable payload extent".into(),
         ));
@@ -565,6 +1372,7 @@ fn artifact_provenance(
     debug: &[u8],
     map: &[u8],
     initial_user_image: &[u8],
+    static_user_image: Option<&[u8]>,
     placements: Vec<SystemsArtifactPlacement>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let mut inputs = vec![
@@ -596,6 +1404,12 @@ fn artifact_provenance(
             sha256: sha256(initial_user_image),
         },
     ];
+    if let Some(image) = static_user_image {
+        outputs.push(DigestEntry {
+            identity: SYSTEMS_STATIC_USER_IMAGE_FILE.into(),
+            sha256: sha256(image),
+        });
+    }
     outputs.sort_by(|left, right| left.identity.cmp(&right.identity));
     Ok(SystemsArtifactProvenance {
         schema: X86_SYSTEMS_ARTIFACT_REVISION.into(),
@@ -1106,6 +1920,9 @@ fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, Com
 enum ProviderSymbol {
     DescribeBootMemory,
     AllocatePhysicalFrames,
+    PrepareStaticImage,
+    ZeroStaticImagePayload,
+    RevokeStaticImage,
     BeginTranslation,
     CommitTranslation,
     ActivateTranslation,
@@ -1192,6 +2009,9 @@ impl ProviderSymbol {
         match self {
             Self::DescribeBootMemory => X86_SYSTEMS_BOOT_MEMORY_SYMBOL,
             Self::AllocatePhysicalFrames => X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
+            Self::PrepareStaticImage => X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+            Self::ZeroStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+            Self::RevokeStaticImage => X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
             Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
             Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
             Self::ActivateTranslation => X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -1304,6 +2124,9 @@ impl ProviderSymbol {
             | Self::EntropyUserRandomService => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
+            | Self::PrepareStaticImage
+            | Self::ZeroStaticImagePayload
+            | Self::RevokeStaticImage
             | Self::BeginTranslation
             | Self::CommitTranslation
             | Self::ActivateTranslation
@@ -1430,6 +2253,8 @@ struct RootEncoder {
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
     physical_frame_count: Option<u64>,
+    retained_static_elf_payload: bool,
+    static_image: RootStaticImageState,
     kernel_mapping_live: bool,
     translation: RootTranslationState,
     critical: RootCriticalState,
@@ -1501,6 +2326,16 @@ enum RootCriticalState {
     #[default]
     Restored,
     Live,
+}
+
+#[derive(Default, Eq, PartialEq)]
+enum RootStaticImageState {
+    #[default]
+    Fresh,
+    Live,
+    Zeroed,
+    MetadataReturned,
+    PayloadReturned,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -1592,6 +2427,9 @@ enum RootUserExecutionState {
 struct ProviderSymbols {
     describe_boot_memory: SymbolId,
     allocate_physical_frames: SymbolId,
+    prepare_static_image: SymbolId,
+    zero_static_image_payload: SymbolId,
+    revoke_static_image: SymbolId,
     begin_translation: SymbolId,
     commit_translation: SymbolId,
     activate_translation: SymbolId,
@@ -1694,33 +2532,44 @@ impl RootEncoder {
         frame_count: u64,
         alignment_frames: u64,
     ) -> Result<(), CompileError> {
+        let nested_static_elf_metadata = self.physical_frame_count == Some(503)
+            && frame_count == 1
+            && !self.retained_static_elf_payload;
         if !self.frame_allocator_created
-            || self.physical_frame_count.is_some()
+            || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
-            || !matches!(frame_count, 1 | 3)
+            || !matches!(frame_count, 1..=3 | 503)
             || alignment_frames != 1
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
-                && frame_count != 1)
+                && frame_count != 2)
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires one live allocator and an admitted static frame-extent request".into(),
             ));
         }
         let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
-        if matches!(
+        if nested_static_elf_metadata {
+            self.bytes.extend_from_slice(&[0x48, 0x89, 0xd9]); // payload base in rcx
+            self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x83]); // payload end in r8
+            self.bytes.extend_from_slice(&0x001f_7000_u32.to_le_bytes());
+            self.bytes.extend_from_slice(&[0x49, 0x89, 0xde]); // retain payload in r14
+        } else if matches!(
             self.user_execution,
             RootUserExecutionState::AddressSpacePrepared
                 | RootUserExecutionState::UserMappingExecutable(1)
         ) {
             self.load_bootstrap_storage_address(176)?;
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x4f, 0x68]); // excluded backing base in rcx
+            self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x81]); // excluded backing end in r8
+            self.bytes.extend_from_slice(&0x0000_3000_u32.to_le_bytes());
         } else {
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
+            self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]); // no excluded end
         }
         if resident_code {
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
             self.bytes
-                .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x10, 0x00, 0x00]); // next frame
+                .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x20, 0x00, 0x00]); // after code extent
         } else {
             match self.translation {
                 RootTranslationState::BootstrapActive => {
@@ -1748,6 +2597,9 @@ impl RootEncoder {
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
         self.physical_frame_count = Some(u64::from(frame_count));
+        if nested_static_elf_metadata {
+            self.retained_static_elf_payload = true;
+        }
         Ok(())
     }
 
@@ -1825,14 +2677,106 @@ impl RootEncoder {
     }
 
     fn release_physical_frames(&mut self) -> Result<(), CompileError> {
-        if self.physical_frame_count.is_none() {
+        let Some(frame_count) = self.physical_frame_count else {
             return Err(CompileError::Tool(
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
+        };
+        if self.retained_static_elf_payload {
+            if frame_count != 1 {
+                return Err(CompileError::Tool(
+                    "x86 root lowering requires metadata release before its retained static ELF payload".into(),
+                ));
+            }
+            self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear metadata base
+            self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf3]); // restore payload base
+            self.bytes.extend_from_slice(&[0x4d, 0x31, 0xf6]); // clear retained payload register
+            self.bytes.extend_from_slice(&[0x31, 0xd2]); // clear transient frame count
+            self.physical_frame_count = Some(503);
+            self.retained_static_elf_payload = false;
+            return Ok(());
         }
         self.physical_frame_count = None;
         self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear retained physical base
         self.bytes.extend_from_slice(&[0x31, 0xd2]); // clear transient frame count
+        Ok(())
+    }
+
+    fn prepare_static_image_construction(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.translation != RootTranslationState::RemovedActive
+            || self.static_image != RootStaticImageState::Fresh
+            || self.physical_frame_count != Some(1)
+            || !self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image preparation requires the exact live payload and metadata extents"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload base
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // metadata base
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
+        self.call_checked_bool(ProviderSymbol::PrepareStaticImage)?;
+        self.physical_frame_count = None;
+        self.retained_static_elf_payload = false;
+        self.static_image = RootStaticImageState::Live;
+        Ok(())
+    }
+
+    fn revoke_static_image_construction(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::Zeroed
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image revocation requires one live inactive construction".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload base
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // metadata base
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
+        self.call_checked_bool(ProviderSymbol::RevokeStaticImage)?;
+        self.physical_frame_count = Some(1);
+        self.retained_static_elf_payload = true;
+        self.static_image = RootStaticImageState::MetadataReturned;
+        Ok(())
+    }
+
+    fn zero_static_image_payload(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::Live
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image payload zeroing requires one live uninitialized construction"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload base
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // metadata base
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
+        self.call_checked_bool(ProviderSymbol::ZeroStaticImagePayload)?;
+        self.static_image = RootStaticImageState::Zeroed;
+        Ok(())
+    }
+
+    fn reclaim_static_image_payload(&mut self) -> Result<(), CompileError> {
+        if self.static_image != RootStaticImageState::MetadataReturned
+            || self.physical_frame_count != Some(503)
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image payload reclaim requires revoked leaves and released metadata"
+                    .into(),
+            ));
+        }
+        self.static_image = RootStaticImageState::PayloadReturned;
         Ok(())
     }
 
@@ -2009,6 +2953,7 @@ impl RootEncoder {
             || self.physical_frame_count.is_some()
             || self.kernel_mapping_live
             || self.translation != RootTranslationState::RemovedActive
+            || self.static_image != RootStaticImageState::PayloadReturned
         {
             return Err(CompileError::Tool(
                 "x86 root lowering requires the restored active context and one non-nested local-interrupt critical scope".into(),
@@ -3709,10 +4654,10 @@ impl RootEncoder {
     fn verify_user_address_space_mapping(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.user_execution != RootUserExecutionState::AddressSpacePrepared
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
         {
             return Err(CompileError::Tool(
-                "x86 user mapping verification requires the prepared address space and one disjoint frame".into(),
+                "x86 user mapping verification requires the prepared address space and its two-frame code extent".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -3730,10 +4675,10 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || generation == 0
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(if generation == 1 { 2 } else { 1 })
         {
             return Err(CompileError::Tool(
-                "x86 user map requires the prepared address space and one disjoint frame".into(),
+                "x86 user map requires the prepared address space and exact role extent".into(),
             ));
         }
         self.load_bootstrap_storage_address(176)?;
@@ -3945,12 +4890,12 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
-        self.physical_frame_count = Some(1);
         let generation = match self.user_execution {
             RootUserExecutionState::CompletedWithExecutableImage => 1,
             RootUserExecutionState::CompletedWithResidentImageAnonymousReleased => 2,
             _ => unreachable!("finalized mapping checked above"),
         };
+        self.physical_frame_count = Some(if generation == 1 { 2 } else { 1 });
         self.user_execution = match generation {
             1 => RootUserExecutionState::CompletedImageRevoked,
             2 => RootUserExecutionState::CompletedWithExecutableImage,
@@ -4164,6 +5109,18 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         allocate_physical_frames: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::AllocatePhysicalFrames,
+        ),
+        prepare_static_image: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::PrepareStaticImage,
+        ),
+        zero_static_image_payload: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::ZeroStaticImagePayload,
+        ),
+        revoke_static_image: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RevokeStaticImage,
         ),
         begin_translation: undefined_provider_symbol(&mut object, ProviderSymbol::BeginTranslation),
         commit_translation: undefined_provider_symbol(
@@ -4585,6 +5542,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
                 terminal_control_flags: 2239,
                 terminal_minimum_input: 1,
                 not_a_terminal_error: 25,
+                window_size_layout_bytes: 8,
+                window_size_query_request: 21523,
+                seek_maximum_whence: 4,
+                illegal_seek_error: 29,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -4776,6 +5737,18 @@ fn encode_operations(
             }
             CompilerSystemsOperation::ReleasePhysicalFrames => {
                 encoder.release_physical_frames()?;
+            }
+            CompilerSystemsOperation::PrepareStaticImageConstruction { .. } => {
+                encoder.prepare_static_image_construction()?;
+            }
+            CompilerSystemsOperation::ZeroStaticImageConstructionPayload => {
+                encoder.zero_static_image_payload()?;
+            }
+            CompilerSystemsOperation::RevokeStaticImageConstructionMetadata => {
+                encoder.revoke_static_image_construction()?;
+            }
+            CompilerSystemsOperation::ReclaimStaticImageConstructionPayload => {
+                encoder.reclaim_static_image_payload()?;
             }
             CompilerSystemsOperation::MapKernelFrames { request, .. } => {
                 encoder.map_kernel_frames(*request)?;
@@ -5068,6 +6041,9 @@ fn append_root(
         let symbol = match relocation.target {
             ProviderSymbol::DescribeBootMemory => provider_symbols.describe_boot_memory,
             ProviderSymbol::AllocatePhysicalFrames => provider_symbols.allocate_physical_frames,
+            ProviderSymbol::PrepareStaticImage => provider_symbols.prepare_static_image,
+            ProviderSymbol::ZeroStaticImagePayload => provider_symbols.zero_static_image_payload,
+            ProviderSymbol::RevokeStaticImage => provider_symbols.revoke_static_image,
             ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
             ProviderSymbol::CommitTranslation => provider_symbols.commit_translation,
             ProviderSymbol::ActivateTranslation => provider_symbols.activate_translation,
@@ -5819,6 +6795,10 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::DescribeBootMemory
                 | CompilerSystemsTransition::CreateFrameAllocator
                 | CompilerSystemsTransition::ReleasePhysicalFrames
+                | CompilerSystemsTransition::PrepareStaticImageConstruction
+                | CompilerSystemsTransition::ZeroStaticImageConstructionPayload
+                | CompilerSystemsTransition::RevokeStaticImageConstructionMetadata
+                | CompilerSystemsTransition::ReclaimStaticImageConstructionPayload
                 | CompilerSystemsTransition::UnmapKernelFrames
                 | CompilerSystemsTransition::CommitTranslationUpdate
                 | CompilerSystemsTransition::ActivateTranslationSpace
@@ -5915,6 +6895,233 @@ mod tests {
         .unwrap()
     }
 
+    fn put_u16(image: &mut [u8], offset: usize, value: u16) {
+        image[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn put_u32(image: &mut [u8], offset: usize, value: u32) {
+        image[offset..offset + 4].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn put_u64(image: &mut [u8], offset: usize, value: u64) {
+        image[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+
+    fn busybox_shaped_static_elf() -> Vec<u8> {
+        qualified_x86_64_static_user_image_fixture()
+    }
+
+    #[test]
+    fn derives_the_pinned_busybox_shaped_static_elf_plan() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PLAN-001, TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let image = busybox_shaped_static_elf();
+        let plan = derive_x86_64_static_elf_load_plan(&image).unwrap();
+        assert_eq!(
+            plan.identity,
+            StaticElfIdentity {
+                class: 2,
+                data_encoding: 1,
+                version: 1,
+                file_type: 2,
+                machine: 62,
+            }
+        );
+        assert_eq!(plan.entry, 0x004a_6580);
+        assert_eq!(plan.page_count, 503);
+        assert_eq!(plan.pages.start, 0x0040_0000);
+        assert_eq!(plan.pages.end, 0x005f_7000);
+        assert_eq!(
+            plan.segments
+                .iter()
+                .map(|segment| segment.role)
+                .collect::<Vec<_>>(),
+            vec![
+                StaticElfLoadRole::Headers,
+                StaticElfLoadRole::Executable,
+                StaticElfLoadRole::ImmutableData,
+                StaticElfLoadRole::WritableData,
+            ]
+        );
+        assert_eq!(plan.segments[1].pages.start, 0x0040_1000);
+        assert_eq!(plan.segments[1].pages.end, 0x0058_d000);
+        assert_eq!(plan.segments[3].memory.end, 0x005f_61c8);
+        assert_eq!(
+            plan.tls,
+            Some(StaticElfTlsPlan {
+                file: StaticElfInterval {
+                    start: 0x1e_4660,
+                    end: 0x1e_46a0,
+                },
+                memory: StaticElfInterval {
+                    start: 0x005e_5660,
+                    end: 0x005e_56e2,
+                },
+                alignment: 8,
+            })
+        );
+        assert_eq!(
+            plan.relro_pages,
+            Some(StaticElfInterval {
+                start: 0x005e_5000,
+                end: 0x005e_d000,
+            })
+        );
+        assert!(!plan.stack_executable);
+        let error = validate_x86_64_initial_user_image(&image).unwrap_err();
+        assert!(error.to_string().contains("503-frame affine extent"));
+        assert!(error.to_string().contains("not runtime-selectable"));
+    }
+
+    #[test]
+    fn static_user_image_validation_requires_the_exact_approved_shape() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let mut image = busybox_shaped_static_elf();
+        image[0x1000] = 0xa5;
+        validate_x86_64_static_user_image(&image).unwrap();
+
+        let rejected = |mutate: fn(&mut Vec<u8>)| {
+            let mut malformed = image.clone();
+            mutate(&mut malformed);
+            assert!(validate_x86_64_static_user_image(&malformed).is_err());
+        };
+        rejected(|candidate| {
+            candidate.pop();
+        });
+        rejected(|candidate| put_u16(candidate, 56, 10));
+        rejected(|candidate| put_u64(candidate, 24, 0x004a_6581));
+        rejected(|candidate| put_u64(candidate, 64 + 2 * 56 + 32, 0x5_703f));
+        rejected(|candidate| put_u64(candidate, 64 + 7 * 56 + 40, 0x81));
+        rejected(|candidate| put_u64(candidate, 64 + 10 * 56 + 40, 0x799f));
+    }
+
+    #[test]
+    fn realizes_the_pinned_static_elf_as_ordered_wx_safe_pages() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001, TOPAL-COMP-SYSTEMS-ARTIFACT-001.
+        let load = derive_x86_64_static_elf_load_plan(&busybox_shaped_static_elf()).unwrap();
+        let plan = derive_x86_64_static_elf_page_plan(&load).unwrap();
+        assert_eq!(plan.frame_count, 503);
+        assert_eq!(plan.alignment_frames, 1);
+        assert_eq!(plan.pages.len(), 503);
+        assert_eq!(plan.pages.first().unwrap().virtual_address, 0x0040_0000);
+        assert_eq!(plan.pages.last().unwrap().virtual_address, 0x005f_6000);
+        assert!(plan.pages.iter().enumerate().all(|(index, page)| {
+            page.frame_ordinal == u64::try_from(index).unwrap()
+                && page.initial_permission == StaticElfPagePermission::ReadWriteNoExecute
+        }));
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadOnlyExecute
+                })
+                .count(),
+            396
+        );
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadOnlyNoExecute
+                })
+                .count(),
+            97
+        );
+        assert_eq!(
+            plan.pages
+                .iter()
+                .filter(|page| {
+                    page.final_permission == StaticElfPagePermission::ReadWriteNoExecute
+                })
+                .count(),
+            10
+        );
+        assert_eq!(
+            plan.construction.first(),
+            Some(&StaticElfConstructionOperation::Zero(StaticElfInterval {
+                start: 0x0040_0000,
+                end: 0x005f_7000,
+            }))
+        );
+        assert_eq!(plan.construction.len(), 5);
+        assert!(
+            plan.construction[1..]
+                .iter()
+                .all(|operation| matches!(operation, StaticElfConstructionOperation::Copy(_)))
+        );
+        assert_eq!(
+            plan.construction.last(),
+            Some(&StaticElfConstructionOperation::Copy(
+                StaticElfCopyOperation {
+                    file: StaticElfInterval {
+                        start: 0x1e_4660,
+                        end: 0x1e_dd88,
+                    },
+                    destination: StaticElfInterval {
+                        start: 0x005e_5660,
+                        end: 0x005e_ed88,
+                    },
+                }
+            ))
+        );
+    }
+
+    #[test]
+    fn rejects_inconsistent_inherited_static_elf_page_facts() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let valid = derive_x86_64_static_elf_load_plan(&busybox_shaped_static_elf()).unwrap();
+        let rejected = |mutate: fn(&mut StaticElfLoadPlan)| {
+            let mut load = valid.clone();
+            mutate(&mut load);
+            assert!(derive_x86_64_static_elf_page_plan(&load).is_err());
+        };
+
+        rejected(|load| load.page_count = 502);
+        rejected(|load| load.pages.end += STATIC_ELF_PAGE_SIZE);
+        rejected(|load| load.segments[1].pages.start += STATIC_ELF_PAGE_SIZE);
+        rejected(|load| load.segments[2].role = StaticElfLoadRole::WritableData);
+        rejected(|load| load.segments[3].file.end = load.segments[3].memory.end + 1);
+        rejected(|load| {
+            load.relro_pages = Some(StaticElfInterval {
+                start: load.segments[2].pages.start,
+                end: load.segments[2].pages.end,
+            });
+        });
+    }
+
+    #[test]
+    fn rejects_malformed_bounded_static_elf_plans_before_publication() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PLAN-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        let valid = busybox_shaped_static_elf();
+        let rejected = |mutate: fn(&mut [u8])| {
+            let mut image = valid.clone();
+            mutate(&mut image);
+            assert!(derive_x86_64_static_elf_load_plan(&image).is_err());
+        };
+
+        rejected(|image| image[4] = 1);
+        rejected(|image| put_u16(image, 56, 17));
+        rejected(|image| put_u32(image, 64 + 4 * 56, 3));
+        rejected(|image| put_u32(image, 64 + 4 * 56, 2));
+        rejected(|image| put_u32(image, 64 + 56 + 4, 7));
+        rejected(|image| put_u64(image, 64 + 3 * 56 + 32, 0x2_0000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 48, 0x3000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 8, 0x18_d001));
+        rejected(|image| put_u64(image, 64 + 8, 0x1e_e000));
+        rejected(|image| put_u64(image, 64 + 2 * 56 + 16, 0x0058_c000));
+        rejected(|image| put_u64(image, 24, 0x0040_0000));
+        rejected(|image| put_u32(image, 64 + 9 * 56 + 4, 7));
+        rejected(|image| put_u32(image, 64 + 6 * 56, 7));
+        rejected(|image| put_u64(image, 64 + 7 * 56 + 16, 0x0040_0000));
+        rejected(|image| {
+            put_u32(image, 64 + 6 * 56, 0x6474_e552);
+            put_u64(image, 64 + 6 * 56 + 16, 0x005e_5000);
+            put_u64(image, 64 + 6 * 56 + 40, 0x1000);
+        });
+        rejected(|image| put_u64(image, 64 + 10 * 56 + 16, 0x0040_0000));
+        rejected(|image| put_u64(image, 64 + 3 * 56 + 40, 0x1_a9a1));
+        rejected(|image| put_u32(image, 64 + 9 * 56, 4));
+    }
+
     #[test]
     #[allow(clippy::too_many_lines)] // Root dependencies, relocations, and access bytes form one structural audit.
     fn generated_root_has_only_typed_provider_dependencies() {
@@ -5928,6 +7135,28 @@ mod tests {
             .collect::<Vec<_>>();
         assert_root_dependencies(&undefined);
         let text = file.section_by_name(X86_SYSTEMS_ROOT_TEXT_SECTION).unwrap();
+        let root_bytes = text.data().unwrap();
+        assert!(
+            root_bytes
+                .windows(5)
+                .any(|bytes| bytes == [0xba, 0xf7, 0x01, 0x00, 0x00]),
+            "checked root must request the exact 503-frame static ELF extent"
+        );
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes == [0x4c, 0x8d, 0x83, 0x00, 0x70, 0x1f, 0x00]),
+            "checked root must pass the complete 503-frame payload exclusion"
+        );
+        assert!(
+            root_bytes
+                .windows(3)
+                .any(|bytes| bytes == [0x49, 0x89, 0xde])
+                && root_bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x4c, 0x89, 0xf3]),
+            "checked root must retain and restore the exact payload owner"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -5937,7 +7166,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3090);
+        assert_eq!(relocation_targets.len(), 3360);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -6033,8 +7262,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            7
+            9
         );
+        for target in [
+            X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+            X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+        ] {
+            assert_eq!(
+                relocation_targets
+                    .iter()
+                    .filter(|actual| **actual == target)
+                    .count(),
+                1
+            );
+        }
         assert_eq!(
             relocation_targets
                 .iter()
@@ -6091,7 +7333,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2706
+            2966
         );
         assert_eq!(
             relocation_targets
@@ -6252,7 +7494,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            144
+            149
         );
         assert_eq!(
             relocation_targets
@@ -6384,6 +7626,9 @@ mod tests {
             [
                 "topal_x86_systems_describe_boot_memory",
                 "topal_x86_systems_allocate_physical_frames",
+                "topal_x86_systems_static_image_prepare_initial_leaves",
+                "topal_x86_systems_static_image_zero_payload",
+                "topal_x86_systems_static_image_revoke_initial_leaves",
                 "topal_x86_systems_begin_bootstrap_translation",
                 "topal_x86_systems_commit_bootstrap_translation",
                 "topal_x86_systems_activate_bootstrap_translation",
@@ -6488,7 +7733,7 @@ mod tests {
 
         let mut wrong_entry = supplied.clone();
         wrong_entry[INITIAL_USER_ENTRY_ELF_OFFSET..INITIAL_USER_ENTRY_ELF_OFFSET + 8]
-            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 256 - 1).to_le_bytes());
+            .copy_from_slice(&(INITIAL_USER_CODE_ADDRESS + 4096 + 256 - 1).to_le_bytes());
         assert!(validate_x86_64_initial_user_image(&wrong_entry).is_err());
 
         let mut wrong_data_extent = supplied;
@@ -6523,6 +7768,7 @@ mod tests {
         assert!(published.debug.is_file());
         assert!(published.map.is_file());
         assert!(published.initial_user_image.is_file());
+        assert!(published.static_user_image.is_none());
         assert!(published.provenance.is_file());
         let encoded = fs::read(&published.provenance).unwrap();
         let mut decoded: SystemsArtifactProvenance = serde_json::from_slice(&encoded).unwrap();
@@ -6533,7 +7779,29 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 317);
+        assert_eq!(decoded.semantic_trace.len(), 332);
+        assert!(
+            decoded
+                .semantic_trace
+                .iter()
+                .any(|entry| { entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE) })
+        );
+        assert!(
+            decoded.semantic_trace.iter().any(|entry| {
+                entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA)
+            })
+        );
+        assert!(
+            decoded
+                .semantic_trace
+                .iter()
+                .any(|entry| { entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD) })
+        );
+        assert!(
+            decoded.semantic_trace.iter().any(|entry| {
+                entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD)
+            })
+        );
         assert!(
             decoded
                 .semantic_trace
@@ -6561,7 +7829,31 @@ mod tests {
         assert!(decoded.semantic_trace[27].starts_with(SYSTEMS_FRAMES_ALLOCATE));
         assert!(decoded.semantic_trace[28].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(decoded.semantic_trace[29], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..30);
+        assert!(decoded.semantic_trace[30].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[31].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[32].starts_with(SYSTEMS_FRAMES_ALLOCATE));
+        assert!(decoded.semantic_trace[33].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[34],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE
+        );
+        assert!(decoded.semantic_trace[35].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[36],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+        );
+        assert!(decoded.semantic_trace[37].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[38],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+        );
+        assert_eq!(decoded.semantic_trace[39], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[40],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[41], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..42);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
@@ -6811,225 +8103,246 @@ mod tests {
             decoded.semantic_trace[201],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[202],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[203],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[204],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[205],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[206],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_READ_OK")
+                sha256(b"TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[207],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_CLOSE_OK")
+                sha256(b"TOPAL_KERNEL_USER_READ_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[208],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_DUP_OK")
+                sha256(b"TOPAL_KERNEL_USER_CLOSE_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[209],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_FCNTL_OK")
+                sha256(b"TOPAL_KERNEL_USER_DUP_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[210],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_FSTAT_OK")
+                sha256(b"TOPAL_KERNEL_USER_FCNTL_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[211],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_FSTAT_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[212],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_TCGETS_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[215],
+            decoded.semantic_trace[213],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_WINSIZE_OK")
             )
         );
         assert_eq!(
-            decoded.semantic_trace[216],
+            decoded.semantic_trace[214],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
-            )
-        );
-        assert_eq!(
-            decoded.semantic_trace[217],
-            format!(
-                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
+                sha256(b"TOPAL_KERNEL_USER_LSEEK_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[218],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[219],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_STACK_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[220],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[221],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[222],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[223],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[224],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_ELF_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[225],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[226],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[227],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[228],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[229],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[230],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_BSS_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[231],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[232],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
-                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK")
             )
         );
         assert_eq!(
             decoded.semantic_trace[233],
             format!(
                 "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[234],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[235],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK")
+            )
+        );
+        assert_eq!(
+            decoded.semantic_trace[236],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_RETAINED")
             )
         );
         assert!(
-            decoded.semantic_trace[234].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
+            decoded.semantic_trace[237].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS)
         );
-        assert_eq!(decoded.semantic_trace[235], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[236].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[237], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[238].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
-        assert_eq!(decoded.semantic_trace[239], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[240].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[241].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[243].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
-        assert_eq!(decoded.semantic_trace[244], SYSTEMS_FRAMES_RELEASE);
-        assert!(decoded.semantic_trace[245].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[238], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[239].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[240], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[241].starts_with(SYSTEMS_USER_ADDRESS_SPACE_UNMAP));
+        assert_eq!(decoded.semantic_trace[242], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[243].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[244].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[246].starts_with(SYSTEMS_USER_ADDRESS_SPACE_RECLAIM));
+        assert_eq!(decoded.semantic_trace[247], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[248].starts_with(SYSTEMS_CONSOLE_WRITE));
         for (index, request) in
             CompilerPciRegionRegisterRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ACTIVATION
                 .iter()
@@ -7202,9 +8515,9 @@ mod tests {
                 sha256(b"TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK")
             )
         );
-        decoded.semantic_trace[137..246].rotate_left(33);
-        decoded.semantic_trace.drain(210..213);
-        decoded.semantic_trace.drain(170..203);
+        decoded.semantic_trace[137..249].rotate_left(33);
+        decoded.semantic_trace.drain(213..216);
+        decoded.semantic_trace.drain(171..206);
         decoded.semantic_trace.drain(120..136);
         decoded.semantic_trace.drain(118..120);
         assert!(decoded.semantic_trace[0].starts_with(SYSTEMS_BOOTSTRAP_STORAGE_PROVISION));
@@ -7424,6 +8737,14 @@ mod tests {
                 .starts_with("topal.systems.disposition.user-syscall.terminate/1")
         );
         assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_USER_CONTEXT_ENTER));
+        assert_eq!(
+            decoded.semantic_trace[147],
+            format!(
+                "{SYSTEMS_CONSOLE_WRITE}:sha256:{}",
+                sha256(b"TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK")
+            )
+        );
+        decoded.semantic_trace.remove(147);
         assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[148],
@@ -7439,7 +8760,11 @@ mod tests {
         assert_eq!(decoded.semantic_trace[151], SYSTEMS_FRAMES_RELEASE);
         assert!(decoded.semantic_trace[152].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[153].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert!(decoded.semantic_trace[154].starts_with("topal.systems.context.user.complete/1"));
+        assert!(
+            decoded.semantic_trace[154].starts_with("topal.systems.context.user.complete/1"),
+            "normalized user tail: {:?}",
+            &decoded.semantic_trace[148..=158]
+        );
         assert!(decoded.semantic_trace[188].starts_with(SYSTEMS_FATAL));
         let repeated_destination = parent.join("repeated");
         let repeated =
@@ -7453,6 +8778,30 @@ mod tests {
         ] {
             assert_eq!(fs::read(first).unwrap(), fs::read(second).unwrap());
         }
+
+        let static_destination = parent.join("with-static-user");
+        let static_image = busybox_shaped_static_elf();
+        let with_static = publish_x86_64_systems_artifact_with_static_user_image(
+            &program(),
+            &tools,
+            &static_image,
+            &static_destination,
+        )
+        .unwrap();
+        assert_eq!(fs::read_dir(&static_destination).unwrap().count(), 6);
+        let static_path = with_static.static_user_image.unwrap();
+        assert_eq!(fs::read(&static_path).unwrap(), static_image);
+        assert_eq!(with_static.record.outputs.len(), 5);
+        assert_eq!(
+            with_static
+                .record
+                .outputs
+                .iter()
+                .find(|output| output.identity == SYSTEMS_STATIC_USER_IMAGE_FILE)
+                .unwrap()
+                .sha256,
+            sha256(&static_image)
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 }

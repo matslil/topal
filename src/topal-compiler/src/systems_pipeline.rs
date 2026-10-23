@@ -8,6 +8,8 @@ use topal_language::compiler::{
 use crate::{
     CompileError, CompileOptions, Emit, LlvmTools, OptimizationRequest, PublishedSystemsArtifact,
     publish_x86_64_systems_artifact, publish_x86_64_systems_artifact_with_initial_user_image,
+    publish_x86_64_systems_artifact_with_static_user_image,
+    publish_x86_64_systems_artifact_with_user_images,
 };
 
 pub(crate) fn selected(options: &CompileOptions) -> bool {
@@ -25,21 +27,51 @@ pub(crate) fn publish(
     )
     .map_err(CompileError::Diagnostic)?;
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
-    if let Some(path) = &options.initial_user_image {
-        let initial_user_image = std::fs::read(path).map_err(|error| {
-            CompileError::Io(format!(
-                "cannot read initial user image {}: {error}",
-                path.display()
-            ))
-        })?;
-        publish_x86_64_systems_artifact_with_initial_user_image(
+    let initial_user_image = options
+        .initial_user_image
+        .as_ref()
+        .map(|path| {
+            std::fs::read(path).map_err(|error| {
+                CompileError::Io(format!(
+                    "cannot read initial user image {}: {error}",
+                    path.display()
+                ))
+            })
+        })
+        .transpose()?;
+    let static_user_image = options
+        .static_user_image
+        .as_ref()
+        .map(|path| {
+            std::fs::read(path).map_err(|error| {
+                CompileError::Io(format!(
+                    "cannot read static user image {}: {error}",
+                    path.display()
+                ))
+            })
+        })
+        .transpose()?;
+    match (initial_user_image.as_deref(), static_user_image.as_deref()) {
+        (Some(initial), Some(static_image)) => publish_x86_64_systems_artifact_with_user_images(
             &program,
             &tools,
-            &initial_user_image,
+            initial,
+            Some(static_image),
             &options.output,
-        )
-    } else {
-        publish_x86_64_systems_artifact(&program, &tools, &options.output)
+        ),
+        (Some(initial), None) => publish_x86_64_systems_artifact_with_initial_user_image(
+            &program,
+            &tools,
+            initial,
+            &options.output,
+        ),
+        (None, Some(static_image)) => publish_x86_64_systems_artifact_with_static_user_image(
+            &program,
+            &tools,
+            static_image,
+            &options.output,
+        ),
+        (None, None) => publish_x86_64_systems_artifact(&program, &tools, &options.output),
     }
 }
 

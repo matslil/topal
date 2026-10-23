@@ -80,6 +80,41 @@ require same-allocator consuming release before any disposition, and reject
 context reuse, extent escape, cross-allocator release, double release, and
 unsupported dynamic or multi-extent forms before lowering.
 
+The exact static-ELF frame-extent increment shall additionally admit only the
+literal 503-frame, unit-aligned shape after the earlier three-frame extent is
+returned. The checked root and x86-64 provider shall preserve one indivisible
+owner, use checked frame-to-byte arithmetic, select the whole interval inside
+one normalized E820 RAM run below 1 GiB, exclude the boot resource and retained
+reservations, emit the exact ordered witness while ownership is live, and
+consume whole release before continuing. Structural and negative tests shall
+reject intermediate or larger counts, non-unit alignment, partial selection,
+overlap, duplicate witness, and continuation with live ownership. No mapping
+or byte-access authority shall be introduced.
+
+The static-ELF mapping-resource increment shall admit only a nested literal
+one-frame, unit-aligned metadata request while the exact 503-frame payload
+extent remains live. The checker shall require the payload witness first, one
+pair witness while both owners are live, metadata release before payload
+release, fatal-only failures, and no later transition with either owner. The
+x86-64 root shall pass the complete retained payload interval as opaque
+provider exclusion evidence; provider lowering shall validate the exclusion,
+select a complete disjoint E820 interval below 1 GiB, and publish no partial
+ownership. Structural and negative tests shall reject overlap, unsupported
+nesting, wrong order, hidden allocation, and incomplete unwind. Neither owner
+shall acquire byte-access or leaf-publication authority in this increment.
+
+The static-ELF initial-leaf increment shall check one consuming preparation of
+the exact live payload and metadata identities into an opaque construction,
+the exact ordered witness, consuming complete revocation, metadata release,
+payload reclaim, and payload release before continuation. The semantic trace
+shall retain distinct prepare, revoke, and reclaim operations. X86-64 lowering
+shall revalidate both intervals, zero one 512-entry metadata page, write and
+verify exactly 503 ordinal-matched present/user/writable/NX leaves with nine
+absent entries, order inactive publication, clear and verify all entries on
+revoke, and return the original extents in the checked order. Structural and
+negative tests shall reject partial or wrong-role entries, active attachment,
+wrong identity/order, duplicate transitions, and incomplete teardown.
+
 The kernel-mapping increment shall accept only the approved static
 read-write, non-executable normal-memory request. It shall consume the one live
 frame extent into an affine mapping, admit statically bounded plain byte
@@ -247,6 +282,68 @@ one BSS byte before terminal success. The root shall emit the exact ordered
 `TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker only after successful user
 return. Structural tests shall reject code-role use, preverification use,
 identity substitution, stale unmap, missing invalidation, or W+X permission.
+
+The bounded multipage-executable increment shall accept a two-frame
+`probe-code` extent and keep the one-frame `probe-data` extent distinct. The
+x86-64 provider shall publish adjacent leaves for both code frames, copy and
+compare the complete runtime-sized segment across their boundary, remove write
+authority from both leaves before setting execute on either, invalidate both
+virtual pages after permission or presence changes, and unmap and return the
+original extent as one unit. The generated ELF entry and successful terminal
+path shall execute from the second page. Structural and pinned-QEMU evidence
+shall prove complete two-leaf lifecycle, no W+X phase, second-page execution,
+exact return, and the ordered
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker.
+
+The bounded static-ELF plan increment shall derive one immutable checked plan
+before any supplied executable metadata can influence artifact construction.
+The parser shall validate the complete ELF64 header and bounded program-header
+table, exact four R/RX/R/RW load roles, file/memory/page interval arithmetic,
+page congruence and disjointness, entry containment, non-executable stack,
+optional TLS and RELRO containment, no interpreter or W+X, and the x86-64
+512-page one-leaf-table bound. Tests shall reproduce the pinned BusyBox-shaped
+envelope without committing third-party bytes and shall reject each malformed
+class independently. The existing sealed two-page runtime validator shall
+remain stricter and shall not select a plan-only image.
+
+The bounded static-ELF page-realization increment shall consume that checked
+plan without reparsing ELF bytes. It shall require exact adjacency, derive one
+future span-sized affine request with alignment one, enumerate every virtual
+page and frame ordinal, start every page RW/NX, assign final RO/NX, RO/X, or
+RW/NX including RELRO tightening, and retain one whole-span zero followed by
+the four exact file-copy intervals. Tests shall prove the pinned 503-page role
+counts, complete ordered coverage, zero-before-copy, no W+X state, and rejection
+of gaps or malformed inherited plans. It shall grant no runtime authority or
+make the image selectable.
+
+The supplied static-ELF artifact increment shall accept one
+`--static-user-image PATH` only for qualified systems publication, read and
+validate the complete input before creating publication state, and require the
+exact approved 2,024,544-byte, eleven-program-header, 503-page x86-64 shape.
+On success it shall publish those exact bytes as canonical `static-user.elf`
+and bind that canonical name and SHA-256 digest in artifact provenance without
+recording the host path. The option shall remain distinct from
+`--initial-user-image`; omitting it shall preserve the existing output set and
+selecting it shall add exactly one provenance-bound output. Unreadable,
+duplicate, nonsystems, malformed, noncanonical-shape, partially written, or
+unbound input shall fail before atomic publication. Tests shall use a
+deterministic clean-room fixture with approved metadata and independent
+payload bytes, cover rejected shape classes and exact-byte publication, and
+prove that the current boot resource does not consume the new artifact.
+
+The static-ELF boot-transport increment shall require the canonical
+`static-user.elf` output and verify its artifact-provenance digest before boot
+publication. It shall generate exactly one deterministic uncompressed newc
+archive with ordered `init`, `static-user.elf`, and terminal records, copy both
+payloads exactly, and bind the archive plus both member names, sizes, and
+SHA-256 digests in boot provenance. The x86-64 provider shall validate the
+extended handoff bounds, exact archive length, both headers and padding, the
+terminal record, and the complete approved static ELF header/program-header
+metadata while leaving caller-owned payload bytes unembedded. Frame allocation
+shall exclude the whole enlarged resource. Tests shall reject missing,
+unbound, changed, or reordered static input, prove exact two-member layout and
+digest binding, and retain deterministic pinned-QEMU execution without making
+the static member source-visible or runnable.
 
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
@@ -706,6 +803,26 @@ generated fault recovery, and retain no user pointer. Ring-3 and provider-
 object evidence shall prove input/output equality, every exact byte, unknown-
 request `ENOTTY`, closed-slot `EBADF`, invalid-candidate `EFAULT`, and ordered
 `TOPAL_KERNEL_USER_TCGETS_OK` behavior.
+
+The bounded initial-console geometry refinement shall lower
+`TIOCGWINSZ=0x5413` and the native eight-byte x86-64 `winsize` layout through
+checked dispatch policy. The provider shall retain descriptor-before-request-
+before-pointer precedence, privately stage four zero unsigned 16-bit geometry
+components, validate one complete writable extent, publish under generated
+fault recovery, and retain no pointer. Ring-3 and provider-object evidence
+shall prove input/output equality, every byte, closed-slot `EBADF`, invalid-
+candidate `EFAULT`, retained unknown-request `ENOTTY`, and ordered
+`TOPAL_KERNEL_USER_WINSIZE_OK` behavior.
+
+The bounded initial-console seek refinement shall lower Linux x86-64 `lseek`
+for the fixed descriptor table without allocating file-position state. The
+provider shall map native syscall 8, resolve the slot before mode validation,
+return `EBADF` for invalid or closed slots, return `ESPIPE` for modes zero
+through four on a live console independently of the signed offset, and return
+`EINVAL` for a larger unsigned mode on a live console. Ring-3 and provider-
+object evidence shall prove input/output `SEEK_CUR`, unsupported live mode,
+closed-slot precedence, absence of position mutation, and ordered
+`TOPAL_KERNEL_USER_LSEEK_OK` behavior.
 
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 

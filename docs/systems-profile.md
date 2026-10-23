@@ -218,11 +218,25 @@ library policy so long as these observations are preserved.
 X86-64 base pages, AArch64 translation granules, and RISC-V page/Sv modes are
 provider facts. Portable source counts the profile-selected complete frames;
 it does not name page-table formats, numeric byte addresses, or target page
-sizes. The executable x86-64 slice admits statically proved extents of one or
-three frames aligned to one frame. Each request still returns one indivisible
-affine extent. Multiple live extents, extent splitting, dynamic requests, and
-reclamation remain unavailable. Mapping is admitted only through the
-separately qualified opaque capability below.
+sizes. The executable x86-64 slice admits statically proved extents of one,
+two, three, or exactly 503 frames aligned to one frame. The 503-frame shape is
+derived from the pinned static-ELF page plan. Its mapping-resource refinement
+keeps that payload extent live while allocating one separate metadata frame,
+then releases metadata before payload. The provider proves the two complete
+extents disjoint without exposing either base. Each request still returns one
+indivisible affine extent. Other counts, other simultaneously live source-
+owned shapes, extent splitting, dynamic requests, and reclamation remain
+unavailable. Mapping is admitted only through separately qualified opaque
+capabilities below; simultaneous ownership alone grants no mapping authority.
+
+The bounded static-image construction refinement consumes that exact payload
+and metadata pair into one opaque affine owner. A provider prepares all planned
+pages as initially writable and non-executable inside an inactive translation
+object, with page ordinal matched to frame ordinal. Source can observe only
+successful whole-plan publication. It must revoke the object, release the
+returned metadata, reclaim the unchanged payload, and release it before
+continuing. Table levels, entry encodings, addresses, and target ordering or
+invalidation instructions remain provider-private.
 
 ### Opaque kernel mapping
 
@@ -550,8 +564,10 @@ backing while either address-space or user-execution state owns it. Target
 page-table roles, virtual placement, publication, invalidation, and entry
 mechanics remain provider-private.
 
-The bounded allocator may return one additional opaque one-frame extent while
-the initial prepared address space owns its three-frame backing. The allocator
+The bounded allocator may return one additional opaque unit-aligned extent
+while the initial prepared address space owns its three-frame backing. The
+sealed image profile admits a two-frame code extent or a one-frame data extent.
+The allocator
 must prove the complete extents disjoint. Source must release the additional
 extent before transferring the prepared space into user execution. This closed
 qualification does not expose either base, permit a third live extent, split
@@ -618,11 +634,41 @@ the writable-data refinement exactly as it does other final role owners.
 
 The bounded residency refinement replaces sequential backing reuse with two
 separately allocated disjoint extents and sealed `probe-code` and `probe-data`
-placements. Executable code remains mapped while immutable or writable data is
-built, so both role-specific affine refinements coexist. Source then unmaps and
-releases data before unmapping and releasing code. User preparation requires both
-mappings revoked and both returned extents released. This is exactly a two-
-mapping construction proof, not a general mapping collection or image loader.
+placements. The current code role consumes one indivisible two-frame extent;
+the data role consumes one frame. Executable code remains mapped while
+immutable or writable data is built, so both role-specific affine refinements
+coexist. Source then unmaps and releases data before unmapping and releasing
+the complete code extent. User preparation requires both mappings revoked and
+both returned extents released. This is exactly a two-mapping construction
+proof, not a general mapping collection or image loader.
+
+The bounded multipage-executable refinement publishes both frames of the code
+extent as adjacent virtual base pages. Copy, read-only protection, complete
+content verification, executable promotion, translation and instruction
+observation, invalidation, unmap, and affine return apply to the whole extent.
+The initial x86-64 image places its entry and successful terminal path in the
+second page and emits `TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` only after
+exact return. This refines the sealed image role; it exposes no page-table
+entry, physical address, target instruction, general segment size, or W+X
+state.
+
+The bounded static-ELF planning refinement validates a complete supplied
+ELF64 file before deriving immutable load facts. It separates four ordered
+read-only, executable, read-only-data, and writable-data/BSS load roles;
+contains entry, TLS, RELRO, and stack policy within those checked roles; and
+computes page-rounded intervals without granting mapping authority. The
+initial x86-64 bound admits at most 512 pages inside one aligned 2 MiB
+leaf-table window. This compiler-owned plan is portable file policy plus a
+target qualification bound, not a source-visible ELF parser, allocator, page
+table, or executable-selection operation.
+
+The bounded page-realization refinement converts only those checked facts into
+one ordered record per declared page. It requires adjacent load-page roles,
+names a future single affine extent with one frame per page, zeroes that whole
+extent before four exact segment copies, and assigns RW/NX construction plus
+final RO/NX, RO/X, or RW/NX permissions. RELRO pages become RO/NX within the
+writable role. This remains an immutable compiler plan, not frame ownership,
+mapping authority, executable selection, or a source-visible page-table API.
 
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized

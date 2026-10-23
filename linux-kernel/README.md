@@ -515,6 +515,59 @@ descriptor/request/pointer error precedence, complete writable-range staging
 and fault recovery, exact `EBADF`/`ENOTTY`/`EFAULT`, structural inspection, and
 two deterministic pinned-QEMU runs.
 
+The next systems-only userspace refinement adds
+[bounded `TIOCGWINSZ` console geometry](design/initial-console-winsize.md).
+Its [implementation and qualification report](step-4-initial-console-winsize.md)
+records the exact native eight-byte `struct winsize`, truthful zero-valued
+unspecified geometry, shared input/output identity, descriptor/request/pointer
+error precedence, complete writable-range staging and fault recovery, exact
+`EBADF`/`ENOTTY`/`EFAULT`, structural inspection, and two deterministic
+pinned-QEMU runs.
+
+The following systems-only userspace refinement adds
+[bounded inherited-console `lseek` classification](design/initial-console-lseek.md).
+Its [implementation and qualification report](step-4-initial-console-lseek.md)
+records stream non-seekability without position state, descriptor-before-mode
+precedence, exact `EBADF`/`EINVAL`/`ESPIPE`, input/output and closed-slot
+probes, structural inspection, and two deterministic pinned-QEMU runs.
+
+The next systems-only image refinement adds a
+[bounded multipage initial executable](design/bounded-multipage-initial-executable.md).
+Its [implementation and qualification report](step-4-bounded-multipage-initial-executable.md)
+records one affine two-frame code extent, adjacent x86-64 leaves, complete
+two-page copy and verification, extent-wide W^X transitions, a second-page
+entry and terminal path, atomic whole-extent return, structural inspection,
+and two deterministic pinned-QEMU runs.
+
+The following systems-only compiler refinement adds a
+[bounded static ELF load plan](design/bounded-static-elf-load-plan.md). Its
+[implementation and qualification report](step-4-bounded-static-elf-load-plan.md)
+records complete fail-closed ELF64 and program-header validation, immutable
+R/RX/R/RW interval planning for the pinned 503-page BusyBox shape, malformed-
+input coverage, deliberate runtime nonselection, and two unchanged pinned-QEMU
+regression runs.
+
+The next systems-only compiler refinement adds a
+[bounded static ELF page realization](design/bounded-static-elf-page-realization.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-page-realization.md)
+records one future affine 503-frame request, exact ordered page/frame facts,
+whole-span zeroing before four copies, W^X-safe final roles including RELRO,
+malformed inherited-plan rejection, and two unchanged pinned-QEMU runs.
+
+The following systems-only physical refinement adds the
+[bounded static ELF frame extent](design/bounded-static-elf-frame-extent.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-frame-extent.md)
+records exact 503-frame admission, one opaque indivisible extent, checked E820
+whole-range and reservation validation, whole release, structural inspection,
+and two deterministic pinned-QEMU runs.
+
+The next systems-only physical refinement adds
+[bounded static ELF mapping resources](design/bounded-static-elf-mapping-resources.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-mapping-resources.md)
+records simultaneous disjoint 503-frame payload and one-frame metadata
+ownership, explicit whole-payload provider exclusion, metadata-then-payload
+rollback, structural rejection, and two deterministic pinned-QEMU runs.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -686,6 +739,17 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 initial descriptor `fcntl` metadata](step-4-initial-descriptor-fcntl.md)
 - [Step 4 initial descriptor `fstat` metadata](step-4-initial-descriptor-fstat.md)
 - [Step 4 initial console `TCGETS`](step-4-initial-console-tcgets.md)
+- [Step 4 initial console `TIOCGWINSZ`](step-4-initial-console-winsize.md)
+- [Step 4 initial console `lseek`](step-4-initial-console-lseek.md)
+- [Step 4 bounded multipage initial executable](step-4-bounded-multipage-initial-executable.md)
+- [Step 4 bounded static ELF load plan](step-4-bounded-static-elf-load-plan.md)
+- [Step 4 bounded static ELF page realization](step-4-bounded-static-elf-page-realization.md)
+- [Step 4 bounded static ELF frame extent](step-4-bounded-static-elf-frame-extent.md)
+- [Step 4 bounded static ELF mapping resources](step-4-bounded-static-elf-mapping-resources.md)
+- [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
+- [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
+- [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
+- [Step 4 static ELF boot-resource transport](step-4-static-elf-boot-resource.md)
 - [Step 4 bounded ELF identity and program-header facts](step-4-bounded-elf-identity.md)
 - [Step 4 provider-neutral initial boot resource](step-4-initial-boot-resource.md)
 - [Step 4 bounded external ELF load](step-4-bounded-external-elf-load.md)

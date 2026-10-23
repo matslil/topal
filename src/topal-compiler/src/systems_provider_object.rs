@@ -8,8 +8,10 @@ use object::{
 };
 use topal_language::compiler::CompilerSystemsProgram;
 
+use crate::systems_artifact::qualified_x86_64_static_user_image_fixture;
 use crate::systems_boot_resource::{
-    X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET, generate_initial_boot_resource,
+    X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET, X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET,
+    generate_initial_boot_resource,
 };
 use crate::{
     CompileError, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsProviderPlan,
@@ -17,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/97";
+    "topal.provider-object.x86_64-qemu-pc-q35/105";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -25,6 +27,12 @@ pub const X86_SYSTEMS_ENTROPY_STORAGE_SECTION: &str = ".bss.topal.entropy";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
+pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
+    "topal_x86_systems_static_image_prepare_initial_leaves";
+pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
+    "topal_x86_systems_static_image_zero_payload";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_initial_leaves";
 pub const X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL: &str =
     "topal_x86_systems_begin_bootstrap_translation";
 pub const X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL: &str =
@@ -150,11 +158,12 @@ pub const X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL: &str =
 pub const X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_write_dma_reference";
 pub const X86_SYSTEMS_ALLOCATABLE_FLOOR: u64 = 16 * 1024 * 1024;
-pub(crate) const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_4000;
+pub(crate) const INITIAL_USER_CODE_ADDRESS: u64 = 0x0060_3000;
 const INITIAL_USER_PROGRAM_HEADER_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 64;
-const INITIAL_USER_ENTRY_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 256;
+const INITIAL_USER_ENTRY_ADDRESS: u64 = INITIAL_USER_CODE_ADDRESS + 4096 + 256;
 const INITIAL_USER_DATA_ADDRESS: u64 = 0x0060_5000;
-pub(crate) const INITIAL_USER_DATA_FILE_OFFSET: usize = 4096;
+const INITIAL_USER_CODE_CAPACITY: usize = 8192;
+pub(crate) const INITIAL_USER_DATA_FILE_OFFSET: usize = INITIAL_USER_CODE_CAPACITY;
 pub(crate) const INITIAL_USER_ENTRY_ELF_OFFSET: usize = 24;
 pub(crate) const INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET: usize = 96;
 pub(crate) const INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET: usize = 104;
@@ -1199,6 +1208,24 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
         &physical_frame_selector()?,
     );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+        &static_image_prepare_initial_leaves()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+        &static_image_zero_payload()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
+        &static_image_revoke_initial_leaves()?,
+    );
     append_translation_functions(&mut object, text)?;
     append_critical_functions(&mut object, text);
     append_atomic_functions(&mut object, text);
@@ -1488,7 +1515,9 @@ fn append_user_functions(
 
 fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     let mut probe = initial_user_probe()?;
-    let expected_boot_resource = generate_initial_boot_resource(&initial_user_elf_file()?)?;
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let expected_boot_resource =
+        generate_initial_boot_resource(&initial_user_elf_file()?, &static_user_image)?;
     probe.resize(probe.len().next_multiple_of(8), 0x90);
     if probe.len() > 4096 {
         return Err(CompileError::Tool(
@@ -1530,12 +1559,17 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "fail");
     let image_end =
         X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + initial_user_elf_file()?.len();
+    let static_payload_offset = X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize;
+    let static_metadata_end = static_payload_offset + 64 + 11 * 56;
+    let static_image_end = static_payload_offset + static_user_image.len();
     let metadata_offsets = (0..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize)
         .chain(
             X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 ..X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + 256,
         )
-        .chain(image_end..expected_boot_resource.len())
+        .chain(image_end..static_payload_offset)
+        .chain(static_payload_offset..static_metadata_end)
+        .chain(static_image_end..expected_boot_resource.len())
         .filter(|offset| {
             let code_size_fields = X86_INITIAL_BOOT_RESOURCE_PAYLOAD_OFFSET as usize
                 + INITIAL_USER_CODE_FILE_SIZE_ELF_OFFSET
@@ -1581,9 +1615,9 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x3b, 0x80]); // p_filesz == p_memsz
     code.bytes(&code_memory_size_offset.to_le_bytes());
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x3d, 0x08, 0x01, 0x00, 0x00]); // includes entry qword
+    code.bytes(&[0x48, 0x3d, 0x08, 0x11, 0x00, 0x00]); // includes second-page entry qword
     code.jump_if(0x82, "fail");
-    code.bytes(&[0x48, 0x3d, 0x00, 0x10, 0x00, 0x00]); // one base page
+    code.bytes(&[0x48, 0x3d, 0x00, 0x20, 0x00, 0x00]); // two base pages
     code.jump_if(0x87, "fail");
     code.bytes(&[0xa8, 0x07]); // qword complete
     code.jump_if(0x85, "fail");
@@ -1594,7 +1628,7 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4d, 0x8b, 0x98]); // ELF e_entry
     code.bytes(&entry_offset.to_le_bytes());
     code.bytes(&[0x49, 0x81, 0xfb]);
-    code.bytes(&(INITIAL_USER_CODE_ADDRESS as u32 + 256).to_le_bytes());
+    code.bytes(&(INITIAL_USER_CODE_ADDRESS as u32 + 4096 + 256).to_le_bytes());
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x05]);
     code.bytes(&(INITIAL_USER_CODE_ADDRESS as u32).to_le_bytes());
@@ -1699,7 +1733,13 @@ fn user_verify_initial_mapping() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x49, 0x89, 0xd0]);
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x84, "code-extent-end");
     code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x10, 0x00, 0x00]);
+    code.jump("extent-end-ready");
+    code.bind("code-extent-end")?;
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x20, 0x00, 0x00]);
+    code.bind("extent-end-ready")?;
     code.jump_if(0x82, "fail");
     code.bytes(&[0x49, 0x89, 0xc9]);
     code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]);
@@ -1787,14 +1827,24 @@ fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
     code.bytes(&[0x3c, 0x04]);
     code.jump_if(0x84, "pte-slot-selected");
-    code.bytes(&[0x48, 0x83, 0xc1, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xc1, 0x10]);
     code.bind("pte-slot-selected")?;
+    code.bytes(&[0x48, 0x83, 0x79, 0x18, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x85, "leaf-slots-clear");
     code.bytes(&[0x48, 0x83, 0x79, 0x20, 0x00]);
     code.jump_if(0x85, "fail");
+    code.bind("leaf-slots-clear")?;
     code.bytes(&[0x49, 0x89, 0xd0]);
     code.bytes(&[0x49, 0xb9]);
     code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
-    code.bytes(&[0x4d, 0x09, 0xc8, 0x4c, 0x89, 0x41, 0x20]);
+    code.bytes(&[0x4d, 0x09, 0xc8, 0x4c, 0x89, 0x41, 0x18]);
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x85, "leaves-published");
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x89, 0x41, 0x20]);
+    code.bind("leaves-published")?;
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x3c, 0x04]);
     code.jump_if(0x84, "publish-generation-one");
@@ -1804,10 +1854,15 @@ fn user_map_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.jump("publish-mapping");
     code.bind("publish-generation-one")?;
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
     code.bytes(&[0x48, 0x89, 0x57, 0x78]);
     code.bind("publish-mapping")?;
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x3c, 0x04]);
+    code.jump_if(0x85, "mapping-invalidated");
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bind("mapping-invalidated")?;
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
 
@@ -1956,14 +2011,15 @@ fn initial_user_elf_prefix(image_size: u64) -> [u8; 256] {
 
 pub(crate) fn initial_user_code_image() -> Result<Vec<u8>, CompileError> {
     let payload = initial_user_entry_payload()?;
-    let image_size = 256_u64
+    let image_size = (4096_u64 + 256)
         .checked_add(u64::try_from(payload.bytes.len()).unwrap_or(u64::MAX))
         .ok_or_else(|| CompileError::Tool("constructed ELF image size overflow".into()))?;
     let mut bytes = initial_user_elf_prefix(image_size).to_vec();
+    bytes.resize(4096 + 256, 0x90);
     bytes.extend(payload.bytes);
-    if bytes.len() > 4096 {
+    if bytes.len() > INITIAL_USER_CODE_CAPACITY {
         return Err(CompileError::Tool(
-            "constructed ELF image exceeds its sealed executable page".into(),
+            "constructed ELF image exceeds its sealed two-page executable extent".into(),
         ));
     }
     Ok(bytes)
@@ -2489,22 +2545,28 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(stdout)
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
-    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
-    continuation.rip_lea(&[0x48, 0x8d, 0x3d], "fstat-expected");
-    continuation.bytes(&[0xb9, 0x12, 0x00, 0x00, 0x00, 0xf3, 0x48, 0xa7]);
-    continuation.jump_if(0x85, "fail");
-    continuation.jump("fstat-expected-complete");
-    continuation.bind("fstat-expected")?;
-    for value in [
-        0_u64, 1, 1, 0x2180, 0, 0x4400, 0, 4096, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    continuation.bytes(&[0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x31, 0xc0, 0xb9, 0x12, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0x89, 0xe7, 0xf3, 0x48, 0xab]);
+    for (offset, value) in [
+        (8_u8, 1_u32),
+        (16, 1),
+        (24, 0x2180),
+        (40, 0x4400),
+        (56, 4096),
     ] {
+        continuation.bytes(&[0xc7, 0x44, 0x24, offset]);
         continuation.bytes(&value.to_le_bytes());
     }
-    continuation.bind("fstat-expected-complete")?;
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0x48, 0x89, 0xe7, 0xb9, 0x12, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xf3, 0x48, 0xa7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0xba, 0x20, 0x51, 0x60, 0x00]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
@@ -2521,17 +2583,38 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0xba, 0x50, 0x51, 0x60, 0x00]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x85, 0xc0]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
     continuation.bytes(&[0xbf, 0x50, 0x51, 0x60, 0x00]);
     continuation.bytes(&[0xb9, 0x24, 0x00, 0x00, 0x00, 0xf3, 0xa6]);
     continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xdb]);
+    continuation.bytes(&[0xbe, 0x13, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0xba, 0x80, 0x51, 0x60, 0x00]);
+    continuation.bind("winsize-query-loop")?;
+    continuation.bytes(&[0x89, 0xdf, 0x6a, 0x10, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0x83, 0x3a, 0x00]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x83, 0xc2, 0x08, 0xff, 0xc3, 0x83, 0xfb, 0x02]);
+    continuation.jump_if(0x85, "winsize-query-loop");
+    continuation.bytes(&[0x31, 0xdb, 0x6a, 0x01, 0x5a]);
+    continuation.bind("lseek-query-loop")?;
+    continuation.bytes(&[0x89, 0xdf, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xe3]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xff, 0xc3, 0x83, 0xfb, 0x02]);
+    continuation.jump_if(0x85, "lseek-query-loop");
+    continuation.bytes(&[0xb2, 0x05, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
     continuation.bytes(&[0xbe, 0xff, 0xff, 0x00, 0x00]);
     continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xe7]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x03, 0, 0, 0, 0x31, 0xd2]);
@@ -2633,10 +2716,17 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF before pointer access
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
-    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
     continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
-    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
     continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x83, 0xc6, 0x12]);
+    continuation.bytes(&[0x6a, 0x10, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x6a, 0x05, 0x5a, 0x6a, 0x08, 0x58, 0x0f, 0x05]);
+    continuation.bytes(&[0x83, 0xf8, 0xf7]);
     continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
     continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // closed-slot F_GETFD
@@ -2748,16 +2838,30 @@ fn user_protect_initial_mapping_read_only() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xc1, 0x00, 0x20, 0x00, 0x00]);
     code.bytes(&[0x3c, 0x0c]);
     code.jump_if(0x84, "pte-selected");
-    code.bytes(&[0x48, 0x83, 0xc1, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xc1, 0x10]);
     code.bind("pte-selected")?;
-    code.bytes(&[0x4c, 0x8b, 0x41, 0x20]);
+    code.bytes(&[0x4c, 0x8b, 0x41, 0x18]);
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x4d, 0x89, 0xc1, 0x41, 0x83, 0xe1, 0x07]);
     code.bytes(&[0x41, 0x80, 0xf9, 0x07]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x85, "leaf-validation-complete");
+    code.bytes(&[0x4c, 0x8b, 0x51, 0x20]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x89, 0xd3, 0x41, 0x83, 0xe3, 0x07]);
+    code.bytes(&[0x41, 0x80, 0xfb, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bind("leaf-validation-complete")?;
     code.bytes(&[0x49, 0x83, 0xe0, 0xfd]);
-    code.bytes(&[0x4c, 0x89, 0x41, 0x20]);
+    code.bytes(&[0x4c, 0x89, 0x41, 0x18]);
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x85, "leaf-protection-complete");
+    code.bytes(&[0x49, 0x83, 0xe2, 0xfd]);
+    code.bytes(&[0x4c, 0x89, 0x51, 0x20]);
+    code.bind("leaf-protection-complete")?;
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x3c, 0x0c]);
     code.jump_if(0x84, "invalidate-generation-one");
@@ -2766,9 +2870,14 @@ fn user_protect_initial_mapping_read_only() -> Result<Vec<u8>, CompileError> {
     code.jump("invalidate-mapping");
     code.bind("invalidate-generation-one")?;
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
     code.bind("invalidate-mapping")?;
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x3c, 0x0c]);
+    code.jump_if(0x85, "invalidation-complete");
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bind("invalidation-complete")?;
     code.bytes(&[0x88, 0x87, 0x70, 0x00, 0x00, 0x00]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -2891,19 +3000,30 @@ fn user_permit_initial_mapping_execute() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xc1, 0x10, 0x20, 0x00, 0x00]);
-    code.bytes(&[0x4c, 0x8b, 0x41, 0x10]);
+    code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x4c, 0x8b, 0x01]);
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
     code.bytes(&[0x41, 0xf6, 0xc0, 0x02]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x0f, 0xba, 0xe0, 0x3f]);
     code.jump_if(0x83, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x51, 0x08]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf6, 0xc2, 0x02]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fail");
     code.bytes(&[0x49, 0x0f, 0xba, 0xf0, 0x3f]);
-    code.bytes(&[0x4c, 0x89, 0x41, 0x10]);
+    code.bytes(&[0x49, 0x0f, 0xba, 0xf2, 0x3f]);
+    code.bytes(&[0x4c, 0x89, 0x01]);
+    code.bytes(&[0x4c, 0x89, 0x51, 0x08]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x0e]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
@@ -3053,7 +3173,7 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc1, 0x28, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
     code.bytes(&0x0060_5000_u64.to_le_bytes());
     code.jump("mapping-selected");
@@ -3063,15 +3183,28 @@ fn user_unmap_initial_frame() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x81, 0xc1, 0x10, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc1, 0x18, 0x20, 0x00, 0x00]);
     code.bytes(&[0x49, 0xba]);
-    code.bytes(&0x0060_4000_u64.to_le_bytes());
+    code.bytes(&0x0060_3000_u64.to_le_bytes());
     code.bind("mapping-selected")?;
     code.bytes(&[0x4d, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0x83, 0x39, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0xc7, 0x01, 0, 0, 0, 0]);
+    code.bytes(&[0x3c, 0x0b]);
+    code.jump_if(0x85, "leaves-revoked");
+    code.bytes(&[0x48, 0x83, 0x79, 0x08, 0x00]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0xc7, 0x41, 0x08, 0, 0, 0, 0]);
+    code.bind("leaves-revoked")?;
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bytes(&[0x3c, 0x0b]);
+    code.jump_if(0x85, "translations-revoked");
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x41, 0x0f, 0x01, 0x3a]);
+    code.bind("translations-revoked")?;
     code.bytes(&[0x3c, 0x0e]);
     code.jump_if(0x84, "clear-data-frame");
     code.bytes(&[0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0]);
@@ -3285,6 +3418,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "close");
     code.bytes(&[0x83, 0xf8, 0x05]);
     code.jump_if(0x84, "fstat");
+    code.bytes(&[0x83, 0xf8, 0x08]);
+    code.jump_if(0x84, "lseek");
     code.bytes(&[0x83, 0xf8, 0x10]);
     code.jump_if(0x84, "ioctl");
     code.bytes(&[0x83, 0xf8, 0x20]);
@@ -4474,6 +4609,20 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
+    code.bind("lseek")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x48, 0x83, 0xfa, 0x04]);
+    code.jump_if(0x87, "lseek-einval");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe3, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("lseek-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
     code.bind("ioctl")?;
     code.bytes(&[0x48, 0x83, 0xff, 0x02]);
     code.jump_if(0x87, "close-ebadf");
@@ -4481,7 +4630,12 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x45, 0x84, 0xc0]);
     code.jump_if(0x84, "close-ebadf");
     code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0x00, 0x00]);
-    code.jump_if(0x85, "ioctl-enotty");
+    code.jump_if(0x84, "ioctl-tcgets");
+    code.bytes(&[0x81, 0xfe, 0x13, 0x54, 0x00, 0x00]);
+    code.jump_if(0x84, "ioctl-winsize");
+    code.jump("ioctl-enotty");
+
+    code.bind("ioctl-tcgets")?;
     code.bytes(&[0x49, 0x89, 0xd1]);
     code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 0x24]);
     code.jump_if(0x82, "ioctl-efault");
@@ -4527,6 +4681,46 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bind("ioctl-efault")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
     code.jump("return-user");
+
+    code.bind("ioctl-winsize")?;
+    code.bytes(&[0x49, 0x89, 0xd1]);
+    code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 0x08]);
+    code.jump_if(0x82, "ioctl-winsize-efault");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-winsize-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "ioctl-winsize-candidate-ok");
+    code.bind("ioctl-winsize-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-winsize-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "ioctl-winsize-efault");
+    code.bind("ioctl-winsize-candidate-ok")?;
+    code.bytes(&[0x48, 0x83, 0xec, 0x08, 0x31, 0xc0]);
+    code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-winsize-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-winsize-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("ioctl-winsize-copy-loop")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14]);
+    code.bind("ioctl-winsize-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x08]);
+    code.jump_if(0x85, "ioctl-winsize-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x08, 0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("ioctl-winsize-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x08]);
+    code.bind("ioctl-winsize-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
     code.bind("ioctl-enotty")?;
     code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
     code.jump("return-user");
@@ -5301,7 +5495,10 @@ fn append_encoded_function(
 fn emit_initial_boot_resource_handoff_validation(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
-    let expected = generate_initial_boot_resource(&initial_user_elf_file()?)?;
+    let expected = generate_initial_boot_resource(
+        &initial_user_elf_file()?,
+        &qualified_x86_64_static_user_image_fixture(),
+    )?;
     let expected_size = u32::try_from(expected.len())
         .map_err(|_| CompileError::Tool("initial boot resource exceeds u32".into()))?;
     code.bytes(&[0x83, 0xbe, 0xc0, 0x00, 0x00, 0x00, 0x00]); // ext_ramdisk_image
@@ -5387,15 +5584,35 @@ fn boot_memory_validator() -> Result<Vec<u8>, CompileError> {
 fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x41, 0x54]); // preserve r12
+    code.bytes(&[0x41, 0x55]); // preserve r13
     code.bytes(&[0x49, 0x89, 0xcc]); // retain optional excluded base
+    code.bytes(&[0x4d, 0x89, 0xc5]); // retain optional excluded end
     code.bytes(&[0x4d, 0x85, 0xe4]);
+    code.jump_if(0x85, "exclusion-present");
+    code.bytes(&[0x4d, 0x85, 0xed]); // absent base requires absent end
+    code.jump_if(0x85, "fail");
+    code.jump("count-admitted");
+    code.bind("exclusion-present")?;
+    code.bytes(&[0x4d, 0x85, 0xed]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x39, 0xec]); // excluded end > excluded base
+    code.jump_if(0x83, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc4, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc5, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x83, 0xfa, 0x01]); // exclusion admits one or two frames
     code.jump_if(0x84, "count-admitted");
-    code.bytes(&[0x83, 0xfa, 0x01]); // exclusion admits only one frame
+    code.bytes(&[0x83, 0xfa, 0x02]);
     code.jump_if(0x85, "fail");
     code.bind("count-admitted")?;
     code.bytes(&[0x83, 0xfa, 0x01]); // frame count == 1
     code.jump_if(0x84, "count-ready");
+    code.bytes(&[0x83, 0xfa, 0x02]); // frame count == 2
+    code.jump_if(0x84, "count-ready");
     code.bytes(&[0x83, 0xfa, 0x03]); // frame count == 3
+    code.jump_if(0x84, "count-ready");
+    code.bytes(&[0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]); // frame count == 503
     code.jump_if(0x85, "fail");
     code.bind("count-ready")?;
     code.bytes(&[0x48, 0xc1, 0xe2, 0x0c]); // byte count = frames * 4096
@@ -5445,14 +5662,11 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x82, "fail");
     code.bytes(&[0x4d, 0x85, 0xe4]); // optional live user backing exclusion
     code.jump_if(0x84, "extent-ready");
-    code.bytes(&[0x4d, 0x89, 0xe1]); // excluded end = excluded base
-    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]);
-    code.jump_if(0x82, "fail");
     code.bytes(&[0x4d, 0x39, 0xe2]); // extent end <= excluded base
     code.jump_if(0x86, "extent-ready");
-    code.bytes(&[0x4c, 0x39, 0xc8]); // candidate >= excluded end
+    code.bytes(&[0x4c, 0x39, 0xe8]); // candidate >= excluded end
     code.jump_if(0x83, "extent-ready");
-    code.bytes(&[0x4c, 0x89, 0xc8]); // advance candidate past exclusion
+    code.bytes(&[0x4c, 0x89, 0xe8]); // advance candidate past exclusion
     code.bytes(&[0x49, 0x89, 0xc2]);
     code.bytes(&[0x4d, 0x01, 0xc2]);
     code.jump_if(0x82, "fail");
@@ -5470,7 +5684,7 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x87, "next");
     code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x00, 0x00, 0x40]); // end <= 1 GiB
     code.jump_if(0x87, "next");
-    code.bytes(&[0x41, 0x5c, 0xc3]); // restore r12 and return physical base
+    code.bytes(&[0x41, 0x5d, 0x41, 0x5c, 0xc3]); // restore r13/r12 and return physical base
 
     code.bind("zero-length")?;
     code.bytes(&[0x41, 0x83, 0xfa, 0x01]);
@@ -5482,7 +5696,136 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "loop");
 
     code.bind("fail")?;
-    code.bytes(&[0x31, 0xc0, 0x41, 0x5c, 0xc3]);
+    code.bytes(&[0x31, 0xc0, 0x41, 0x5d, 0x41, 0x5c, 0xc3]);
+    code.finish()
+}
+
+fn emit_static_image_resource_validation(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x48, 0x85, 0xff]); // payload base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // metadata base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xf7, 0xc6, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]); // exact 503 leaves
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0xf8]); // payload end
+    code.bytes(&[0x49, 0x81, 0xc0, 0x00, 0x70, 0x1f, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x89, 0xf1]); // metadata end
+    code.bytes(&[0x49, 0x81, 0xc1, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x49, 0x81, 0xf9, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x39, 0xf9]); // metadata end <= payload base
+    code.jump_if(0x86, "resources-disjoint");
+    code.bytes(&[0x4c, 0x39, 0xc6]); // metadata base >= payload end
+    code.jump_if(0x82, "fail");
+    code.bind("resources-disjoint")
+}
+
+fn emit_static_image_leaf_verification(
+    code: &mut X86FunctionEncoder,
+    loop_label: &'static str,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x48, 0x89, 0xf7]); // metadata cursor
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes()); // present/user/write/NX
+    code.bytes(&[0xb9, 0xf7, 0x01, 0x00, 0x00]);
+    code.bind(loop_label)?;
+    code.bytes(&[0x4c, 0x89, 0xd0]);
+    code.bytes(&[0x4c, 0x09, 0xc8]);
+    code.bytes(&[0x48, 0x39, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, loop_label);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // nine entries remain absent
+    code.jump_if(0x85, "fail");
+    Ok(())
+}
+
+fn static_image_prepare_initial_leaves() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x49, 0x89, 0xfa]); // payload cursor
+    code.bytes(&[0x49, 0x89, 0xf3]); // retain metadata base
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // zero all 512 entries
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x89, 0xdf]);
+    code.bytes(&[0xb9, 0xf7, 0x01, 0x00, 0x00]);
+    code.bind("construct-leaves")?;
+    code.bytes(&[0x4c, 0x89, 0xd0]);
+    code.bytes(&[0x4c, 0x09, 0xc8]);
+    code.bytes(&[0x48, 0xab]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[0xff, 0xc9]);
+    code.jump_if(0x85, "construct-leaves");
+    code.bytes(&[0x0f, 0xae, 0xf0]); // publish inactive leaves
+    code.bytes(&[0x49, 0x81, 0xea, 0x00, 0x70, 0x1f, 0x00]);
+    code.bytes(&[0x4c, 0x89, 0xd7]); // restore payload base
+    code.bytes(&[0x4c, 0x89, 0xde]); // restore metadata base
+    emit_static_image_leaf_verification(&mut code, "verify-leaves")?;
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_zero_payload() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-before-zero")?;
+    code.bytes(&[0x49, 0x81, 0xea, 0x00, 0x70, 0x1f, 0x00]); // payload base
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0xee, 0x03, 0x00]); // 503 * 4096 / 8 qwords
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // zero complete payload
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0xee, 0x03, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // verify complete payload
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd7]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-after-zero")?;
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_revoke_initial_leaves() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    emit_static_image_leaf_verification(&mut code, "verify-leaves")?;
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // revoke all 512 entries
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // verify complete revocation
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()
 }
 
@@ -6632,6 +6975,12 @@ assert bytes(output) == block[32:]
         assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x03]));
         assert!(
             selector
+                .windows(6)
+                .any(|bytes| bytes == [0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]),
+            "selector must admit the exact 503-frame static ELF extent"
+        );
+        assert!(
+            selector
                 .windows(4)
                 .any(|bytes| bytes == [0x48, 0xc1, 0xe2, 0x0c]),
             "selector must convert the admitted frame count to a byte extent"
@@ -6640,18 +6989,18 @@ assert bytes(output) == block[32:]
             selector.windows(3).any(|bytes| bytes == [0x4d, 0x39, 0xda]),
             "selector must require the complete extent to fit its E820 RAM run"
         );
-        assert_eq!(&selector[..5], &[0x41, 0x54, 0x49, 0x89, 0xcc]);
+        assert_eq!(&selector[..7], &[0x41, 0x54, 0x41, 0x55, 0x49, 0x89, 0xcc]);
         assert!(
             selector
                 .windows(7)
-                .any(|bytes| bytes == [0x49, 0x81, 0xc1, 0x00, 0x30, 0x00, 0x00]),
-            "selector must derive the end of the exact three-frame exclusion"
+                .any(|bytes| bytes == [0x41, 0xf7, 0xc5, 0xff, 0x0f, 0x00, 0x00]),
+            "selector must validate the supplied complete exclusion end"
         );
         assert!(
             selector.windows(3).any(|bytes| bytes == [0x4d, 0x39, 0xe2])
-                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x39, 0xc8])
-                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x89, 0xc8]),
-            "selector must detect overlap and advance beyond the live user backing"
+                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x39, 0xe8])
+                && selector.windows(3).any(|bytes| bytes == [0x4c, 0x89, 0xe8]),
+            "selector must detect overlap and advance beyond the complete live exclusion"
         );
         assert!(
             selector.windows(3).any(|bytes| bytes == [0x48, 0x39, 0xf8]),
@@ -6659,15 +7008,149 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             selector
-                .windows(3)
-                .filter(|bytes| *bytes == [0x41, 0x5c, 0xc3])
+                .windows(5)
+                .filter(|bytes| *bytes == [0x41, 0x5d, 0x41, 0x5c, 0xc3])
                 .count(),
             2,
-            "success and failure must both restore r12"
+            "success and failure must both restore r13 and r12"
         );
         assert_eq!(
-            &selector[selector.len() - 5..],
-            &[0x31, 0xc0, 0x41, 0x5c, 0xc3]
+            &selector[selector.len() - 7..],
+            &[0x31, 0xc0, 0x41, 0x5d, 0x41, 0x5c, 0xc3]
+        );
+
+        let prepare = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(prepare.address()).unwrap();
+        let end = start + usize::try_from(prepare.size()).unwrap();
+        let prepare = &data[start..end];
+        assert!(
+            prepare
+                .windows(10)
+                .any(|bytes| bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
+            "initial leaves must be present, user-readable, writable, and NX"
+        );
+        assert_eq!(
+            prepare
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0xf7, 0x01, 0x00, 0x00])
+                .count(),
+            2,
+            "construction and verification must each cover exactly 503 leaves"
+        );
+        assert!(
+            prepare
+                .windows(5)
+                .any(|bytes| bytes == [0xb9, 0x09, 0x00, 0x00, 0x00])
+        );
+        assert!(
+            prepare
+                .windows(5)
+                .any(|bytes| bytes == [0xb9, 0x00, 0x02, 0x00, 0x00])
+        );
+        assert!(
+            prepare
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xab])
+        );
+        assert!(
+            prepare
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xaf])
+        );
+        assert_eq!(
+            prepare
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
+        );
+
+        let zero_payload = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(zero_payload.address()).unwrap();
+        let end = start + usize::try_from(zero_payload.size()).unwrap();
+        let zero_payload = &data[start..end];
+        assert_eq!(
+            zero_payload
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0x00, 0xee, 0x03, 0x00])
+                .count(),
+            2,
+            "payload zeroing and readback must each cover 503 complete pages"
+        );
+        assert_eq!(
+            zero_payload
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]
+                })
+                .count(),
+            2,
+            "the exact live leaves must be verified before and after zeroing"
+        );
+        assert_eq!(
+            zero_payload
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xab])
+                .count(),
+            1
+        );
+        assert_eq!(
+            zero_payload
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xaf])
+                .count(),
+            3
+        );
+        assert_eq!(
+            zero_payload
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
+        );
+
+        let revoke = file
+            .symbol_by_name(X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(revoke.address()).unwrap();
+        let end = start + usize::try_from(revoke.size()).unwrap();
+        let revoke = &data[start..end];
+        assert!(
+            revoke
+                .windows(10)
+                .any(|bytes| bytes == [0x49, 0xb9, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80]),
+            "revocation must first verify the exact live leaf policy"
+        );
+        assert_eq!(
+            revoke
+                .windows(5)
+                .filter(|bytes| *bytes == [0xb9, 0x00, 0x02, 0x00, 0x00])
+                .count(),
+            2,
+            "revocation must clear and then verify all 512 entries"
+        );
+        assert!(
+            revoke
+                .windows(4)
+                .any(|bytes| bytes == [0xfc, 0xf3, 0x48, 0xab])
+        );
+        assert_eq!(
+            revoke
+                .windows(4)
+                .filter(|bytes| *bytes == [0xfc, 0xf3, 0x48, 0xaf])
+                .count(),
+            2
+        );
+        assert_eq!(
+            revoke
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
+                .count(),
+            1
         );
 
         let translation_selector = file
@@ -6787,10 +7270,10 @@ assert bytes(output) == block[32:]
                     && bytes[3..7] == code_memory_size_offset.to_le_bytes()
             }) && user_address_prepare
                 .windows(6)
-                .any(|bytes| bytes == [0x48, 0x3d, 0x08, 0x01, 0, 0])
+                .any(|bytes| bytes == [0x48, 0x3d, 0x08, 0x11, 0, 0])
                 && user_address_prepare
                     .windows(6)
-                    .any(|bytes| bytes == [0x48, 0x3d, 0, 0x10, 0, 0])
+                    .any(|bytes| bytes == [0x48, 0x3d, 0, 0x20, 0, 0])
                 && user_address_prepare
                     .windows(2)
                     .any(|bytes| bytes == [0xa8, 0x07]),
@@ -7114,7 +7597,12 @@ assert bytes(output) == block[32:]
                     .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
                 && user_map
                     .windows(8)
-                    .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0060_3000_u64.to_le_bytes())
+                && user_map
+                    .windows(4)
+                    .filter(|bytes| *bytes == [0x41, 0x0f, 0x01, 0x3a])
+                    .count()
+                    >= 2
                 && !user_map
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes())
@@ -7165,7 +7653,7 @@ assert bytes(output) == block[32:]
         let entry_payload = initial_user_entry_payload().unwrap();
         let code_image = initial_user_code_image().unwrap();
         let elf_file = initial_user_elf_file().unwrap();
-        assert_eq!(code_image.len(), 256 + entry_payload.bytes.len());
+        assert_eq!(code_image.len(), 4096 + 256 + entry_payload.bytes.len());
         assert!(
             entry_payload
                 .bytes
@@ -7296,7 +7784,8 @@ assert bytes(output) == block[32:]
                 .iter()
                 .all(|byte| *byte == 0)
         );
-        assert_eq!(&code_image[256..], entry_payload.bytes.as_slice());
+        assert!(code_image[256..4096 + 256].iter().all(|byte| *byte == 0x90));
+        assert_eq!(&code_image[4096 + 256..], entry_payload.bytes.as_slice());
         assert!(
             user_install
                 .windows(8)
@@ -7386,7 +7875,7 @@ assert bytes(output) == block[32:]
                     .bytes
                     .windows(12)
                     .any(|bytes| bytes
-                        == [0x48, 0x81, 0xbc, 0x24, 0x98, 0, 0, 0, 0x40, 0x40, 0x60, 0])
+                        == [0x48, 0x81, 0xbc, 0x24, 0x98, 0, 0, 0, 0x40, 0x30, 0x60, 0])
                 && entry_payload
                     .bytes
                     .windows(9)
@@ -7697,6 +8186,38 @@ assert bytes(output) == block[32:]
                     .any(|bytes| bytes == [0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0, 0]),
             "fstat must resolve a live description before pointer access, stage the complete native layout, and fault-contain one full writable-range copy"
         );
+        let lseek_whence = user_syscall
+            .windows(4)
+            .rposition(|bytes| bytes == [0x48, 0x83, 0xfa, 0x04])
+            .expect("lseek must validate the maximum seek mode");
+        let lseek_lookup = user_syscall[..lseek_whence]
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("lseek must look up the mapped description");
+        assert!(
+            lseek_lookup < lseek_whence
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x08])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe3, 0xff, 0xff, 0xff])
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0x6a, 0x08, 0x58, 0x0f, 0x05])
+                    .count()
+                    == 3
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .any(|bytes| bytes == [0xff, 0xc3, 0x83, 0xfb, 0x02])
+                && entry_payload
+                    .bytes
+                    .windows(2)
+                    .any(|bytes| bytes == [0xb2, 0x05]),
+            "lseek must resolve descriptors before modes, return ESPIPE for both live console directions, reject unsupported live modes, and retain closed-slot EBADF precedence"
+        );
         let ioctl_lookup = user_syscall
             .windows(8)
             .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
@@ -7716,10 +8237,10 @@ assert bytes(output) == block[32:]
                 && ioctl_request < ioctl_candidate
                 && entry_payload
                     .bytes
-                    .windows(7)
-                    .filter(|bytes| *bytes == [0xb8, 0x10, 0, 0, 0, 0x0f, 0x05])
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0xbe, 0x01, 0x54, 0, 0])
                     .count()
-                    == 4
+                    == 3
                 && user_syscall
                     .windows(3)
                     .any(|bytes| bytes == [0x83, 0xf8, 0x10])
@@ -7736,6 +8257,46 @@ assert bytes(output) == block[32:]
                     .windows(7)
                     .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]),
             "TCGETS must enforce descriptor/request/pointer precedence, stage the exact raw termios, copy 36 bytes under recovery, and return ENOTTY for unknown live-console requests"
+        );
+        let winsize_request = user_syscall[ioctl_request..]
+            .windows(6)
+            .position(|bytes| bytes == [0x81, 0xfe, 0x13, 0x54, 0, 0])
+            .map(|position| position + ioctl_request)
+            .expect("ioctl must decode TIOCGWINSZ");
+        let winsize_candidate = user_syscall[winsize_request..]
+            .windows(7)
+            .position(|bytes| bytes == [0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00])
+            .map(|position| position + winsize_request)
+            .expect("TIOCGWINSZ must bound the writable candidate");
+        assert!(
+            ioctl_lookup < ioctl_request
+                && ioctl_request < winsize_request
+                && winsize_request < winsize_candidate
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .filter(|bytes| *bytes == [0xbe, 0x13, 0x54, 0, 0])
+                    .count()
+                    == 1
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xec, 0x08, 0x31, 0xc0, 0x48, 0x89, 0x04])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x08])
+                && entry_payload
+                    .bytes
+                    .windows(5)
+                    .any(|bytes| bytes == [0xba, 0x80, 0x51, 0x60, 0])
+                && entry_payload
+                    .bytes
+                    .windows(8)
+                    .any(|bytes| bytes == [0x83, 0xc2, 0x08, 0xff, 0xc3, 0x83, 0xfb, 0x02])
+                && entry_payload
+                    .bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xc6, 0x12]),
+            "TIOCGWINSZ must follow live-descriptor and request decoding, publish the exact zero geometry under recovery, and prove input/output equality plus closed-slot precedence"
         );
         assert!(
             user_syscall
@@ -8210,10 +8771,12 @@ assert bytes(output) == block[32:]
         assert!(
             user_unmap
                 .windows(8)
-                .any(|bytes| bytes == [0x48, 0xc7, 0x41, 0x10, 0, 0, 0, 0])
+                .any(|bytes| bytes == [0x48, 0xc7, 0x41, 0x08, 0, 0, 0, 0])
                 && user_unmap
                     .windows(4)
-                    .any(|bytes| bytes == [0x41, 0x0f, 0x01, 0x3a])
+                    .filter(|bytes| *bytes == [0x41, 0x0f, 0x01, 0x3a])
+                    .count()
+                    >= 2
                 && user_unmap
                     .windows(8)
                     .any(|bytes| bytes == [0x48, 0xc7, 0x47, 0x78, 0, 0, 0, 0])
@@ -8247,7 +8810,7 @@ assert bytes(output) == block[32:]
                     .any(|bytes| bytes == 0x0060_5000_u64.to_le_bytes())
                 && user_unmap
                     .windows(8)
-                    .any(|bytes| bytes == 0x0060_4000_u64.to_le_bytes())
+                    .any(|bytes| bytes == 0x0060_3000_u64.to_le_bytes())
                 && !user_unmap
                     .windows(8)
                     .any(|bytes| bytes == 0x0060_2000_u64.to_le_bytes()),

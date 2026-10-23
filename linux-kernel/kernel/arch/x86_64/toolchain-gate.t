@@ -71,12 +71,46 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                 Ok frame-extent then {
                                                                   unmapped console write "TOPAL_KERNEL_FRAME_EXTENT_OK"
                                                                   unmapped frames release frame-extent
-                                                                  unmapped critical enter (
-                                                                    domain is local-maskable-interrupts
+                                                                  unmapped frames allocate (
+                                                                    frame-count is 503,
+                                                                    alignment-frames is 1
                                                                   )
-                                                                    Ok critical then {
-                                                                      critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
-                                                                      restored is critical restore
+                                                                    Ok static-elf-frames then {
+                                                                      unmapped console write "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK"
+                                                                      unmapped frames allocate (
+                                                                        frame-count is 1,
+                                                                        alignment-frames is 1
+                                                                      )
+                                                                        Ok static-elf-leaf-table-frame then {
+                                                                          unmapped console write "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK"
+                                                                          unmapped static image construction prepare (
+                                                                            payload is static-elf-frames,
+                                                                            metadata is static-elf-leaf-table-frame,
+                                                                            layout is bounded-static-elf-initial-rw-nx
+                                                                          )
+                                                                            Ok static-elf-construction then {
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK"
+                                                                              zeroed-static-elf-construction is unmapped static image construction zero payload (
+                                                                                owner is static-elf-construction,
+                                                                                extent is complete
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK"
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is zeroed-static-elf-construction,
+                                                                                resource is metadata
+                                                                              )
+                                                                              unmapped frames release returned-static-elf-metadata
+                                                                              returned-static-elf-payload is unmapped static image construction reclaim (
+                                                                                owner is zeroed-static-elf-construction,
+                                                                                resource is payload
+                                                                              )
+                                                                              unmapped frames release returned-static-elf-payload
+                                                                              unmapped critical enter (
+                                                                                domain is local-maskable-interrupts
+                                                                              )
+                                                                                Ok critical then {
+                                                                                  critical console write "TOPAL_KERNEL_INTERRUPTS_MASKED"
+                                                                                  restored is critical restore
                                                                   restored console write "TOPAL_KERNEL_MEMORY_DESCRIBED"
                                                                   restored pci configuration dword read equals (
                                                                     segment is 0,
@@ -784,7 +818,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                           layout is initial-probe
                                                                                                         )
                                                                                                           completion-resumed frames allocate (
-                                                                                                            frame-count is 1,
+                                                                                                            frame-count is 2,
                                                                                                             alignment-frames is 1
                                                                                                           )
                                                                                                             Ok scratch-frame then {
@@ -1095,6 +1129,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     complete-request is 1
                                                                                                                   )
                                                                                                                   user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK"
@@ -1106,6 +1141,8 @@ completion-resumed console write "TOPAL_KERNEL_USER_DUP_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_FCNTL_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_FSTAT_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_TCGETS_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_WINSIZE_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_LSEEK_OK"
 completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
@@ -1200,8 +1237,20 @@ completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
                                                                       restored fatal "toolchain gate allocation failed"
                                                                     }
                                                                 }
-                                                                    Error failure then {
-                                                                      failure fatal "critical entry failed"
+                                                                                Error failure then {
+                                                                                  failure fatal "critical entry failed"
+                                                                                }
+                                                                            }
+                                                                            Error problem then {
+                                                                              unmapped fatal "static ELF initial leaf construction failed"
+                                                                            }
+                                                                        }
+                                                                        Error problem then {
+                                                                          unmapped fatal "static ELF metadata frame allocation failed"
+                                                                        }
+                                                                    }
+                                                                    Error problem then {
+                                                                      unmapped fatal "static ELF frame allocation failed"
                                                                     }
                                                                 }
                                                                 Error problem then {
@@ -1386,7 +1435,11 @@ terminal-layout-bytes is 36,
 terminal-get-attributes-request is 21505,
 terminal-control-flags is 2239,
 terminal-minimum-input is 1,
-not-a-terminal-error is 25
+not-a-terminal-error is 25,
+window-size-layout-bytes is 8,
+window-size-query-request is 21523,
+seek-maximum-whence is 4,
+illegal-seek-error is 29
 )
 
 lang systems artifact (

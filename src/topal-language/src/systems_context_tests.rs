@@ -279,7 +279,7 @@ fn requires_exact_affine_user_syscall_round_trip() {
         ),
         (
             replace_last(SOURCE, "frame-count is 1", "frame-count is 2"),
-            "E-SYSTEMS-FRAMES",
+            "E-SYSTEMS-USER-CONTEXT",
         ),
         (
             SOURCE.replace("backing is scratch-frame", "backing is other-scratch"),

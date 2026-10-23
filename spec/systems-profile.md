@@ -345,11 +345,123 @@ Allocation choice and coalescing MAY vary only when success, failure, alignment,
 non-overlap, ownership, and provenance observations remain equivalent.
 
 The initial x86-64 executable profile SHALL admit only the static allocation
-shapes `(frame-count: 1, alignment-frames: 1)` and `(frame-count: 3,
-alignment-frames: 1)`. Either successful request SHALL produce one indivisible
-extent and SHALL require release of that complete extent. The profile SHALL
-reject every other count or alignment, a dynamic request, extent splitting,
-and more than one simultaneously live extent before artifact publication.
+shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
+alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`, and
+`(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL
+produce one indivisible extent and SHALL require release of that complete
+extent. The profile SHALL reject every other count or alignment, a dynamic
+request, extent splitting, and simultaneously live source-owned extents except
+the exact refinements specified below before artifact publication.
+
+### TOPAL-SYSTEMS-STATIC-ELF-FRAMES-001 — Exact static-image frame extent
+
+The initial x86-64 root SHALL request the exact `(503, 1)` frame extent only
+after releasing the preceding three-frame qualification extent. Success SHALL
+return one opaque indivisible `PhysicalFrameExtent`. The provider SHALL derive
+the complete byte extent with checked arithmetic and select it wholly inside
+one normalized E820 RAM range, disjoint from the boot resource and retained
+reservations, page aligned, and below the qualified first-GiB bootstrap mapping
+ceiling.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK`
+observation while the exact extent remains live and SHALL then release it whole
+before any later bootstrap transition. The observation SHALL grant no access,
+mapping, split, address, or reuse authority. A partial interval, wrong count or
+alignment, overlap, arithmetic overflow, missing or duplicate observation,
+release before observation, continuation before release, or recoverable
+disposition with the extent live SHALL be invalid. This rule SHALL NOT map,
+read, write, execute, or make the planned static image runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001 — Disjoint mapping resources
+
+After the exact 503-frame static-ELF payload allocation and its required
+payload observation, the initial x86-64 root SHALL keep that complete extent
+live and MAY request exactly one `(1, 1)` translation-metadata extent. The
+provider SHALL receive the complete opaque payload interval as exclusion
+evidence and SHALL prove that the metadata interval is aligned and disjoint
+from the payload, every retained reservation, the boot resource, and every
+non-allocatable range before returning success. Both complete intervals SHALL
+remain within the qualified first-GiB bootstrap mapping ceiling.
+
+Success SHALL create two distinct affine owners and SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK` observation while both remain
+live. Source SHALL then release the complete metadata extent followed by the
+complete payload extent before any later bootstrap transition. Either failure
+SHALL select the fatal action. A hidden allocation, overlap, partial interval,
+arithmetic overflow, wrong request order or shape, missing or duplicate
+observation, reversed or partial release, extent combination or splitting, or
+disposition while either owner remains live SHALL be invalid. This rule SHALL
+grant no byte access, table-entry construction, mapping publication, target
+address, or runtime image-selection authority.
+
+### TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001 — Initial inactive leaf publication
+
+`static image construction prepare` SHALL consume the exact simultaneous
+503-frame payload extent and one-frame metadata extent specified by
+`TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001`. Success SHALL produce one
+opaque affine `StaticImageConstruction` and SHALL leave neither input directly
+releasable. The operation SHALL publish exactly 503 adjacent mappings in the
+checked page-plan order such that payload frame ordinal `i` backs virtual page
+ordinal `i`, every published mapping has semantic initial rights RW/NX, and all
+unused capacity in the provider's bounded inactive translation object is
+absent. No partial construction SHALL become observable.
+
+The initial x86-64 provider SHALL realize this object using the separately
+owned aligned metadata frame, 512 bounded leaf entries, 503 present/user/
+writable/NX entries, and nine absent entries. It SHALL revalidate the complete
+payload and metadata intervals, zero the complete metadata frame before use,
+verify every constructed and absent entry, and complete target publication
+ordering before returning success. The object SHALL remain unreachable from
+every active address space in this increment.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK` observation while the construction
+is live. `static image construction revoke metadata` SHALL clear and verify the
+complete inactive object, complete target ordering, refine the construction to
+revoked state, and return exactly the original metadata extent. Source SHALL
+release that extent before `static image construction reclaim payload`
+consumes the revoked owner and returns exactly the original indivisible
+503-frame payload extent for whole release.
+
+Wrong input or construction identity, wrong count, order, rights, or absent
+capacity, arithmetic overflow, overlap, partial publication, missing or
+duplicate observation, release before return, reclaim before complete
+revocation and metadata release, duplicate revoke or reclaim, reversed return,
+or disposition with any live construction state SHALL be invalid. This rule
+SHALL grant no payload byte access, active-address-space attachment, final
+permission, executable entry, or runtime image-selection authority.
+
+### TOPAL-SYSTEMS-STATIC-ELF-ZERO-001 — Complete inactive payload initialization
+
+`static image construction zero payload` SHALL consume the exact live
+`StaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001`. Success SHALL produce one affine
+`ZeroedStaticImageConstruction` owning the same 503-frame payload and
+one-frame metadata extents. The operation SHALL write zero to every byte of
+the complete `503 * 4096` byte payload and SHALL independently verify that
+complete result before success. It SHALL preserve all 503 initial RW/NX leaves
+in their original order and all nine absent entries. The construction SHALL
+remain unreachable from every active address space.
+
+The initial x86-64 provider SHALL revalidate the complete input intervals and
+exact live leaf table before modifying payload contents. It SHALL perform the
+complete zeroing and readback through provider-private target access, SHALL
+reject any mismatch, and SHALL NOT expose an address, byte, mapping, loop, or
+target coherence operation to source. No partial initialization SHALL become
+observable and failure SHALL select the fatal action.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK`
+observation while the zeroed construction is live. In this profile, `static
+image construction revoke metadata` SHALL accept only that zeroed refinement;
+the metadata-release, payload-reclaim, and whole-release obligations of
+`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+
+Wrong owner or extent, duplicate zeroing, revocation before complete zeroing,
+missing or duplicate observation, any nonzero verified byte, leaf-table
+change, release before return, or disposition with either uninitialized or
+zeroed construction state live SHALL be invalid. This rule SHALL NOT copy file
+bytes, grant ordinary payload access, apply final permissions, attach an active
+address space, publish an entry, or make an image runtime-selectable.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
@@ -442,8 +554,9 @@ cross-role substitution, unclassified unmap, unauthorized write-authority
 restoration, and W+X authority SHALL be invalid. The refinement SHALL expose no role encoding,
 permission representation, or target validation mechanism.
 
-The bounded resident-image refinement SHALL consume two separately allocated
-one-frame extents into distinct sealed `probe-code` and `probe-data` mappings.
+The bounded resident-image refinement SHALL consume a separately allocated
+two-frame extent and one-frame extent into distinct sealed `probe-code` and
+`probe-data` mappings.
 `ExecutableCodeMapping` SHALL remain live while the data mapping advances to
 `ImmutableDataMapping` or `WritableDataMapping`; the provider SHALL prove the address-space backing and
 both mapping extents are pairwise disjoint. The two finalized mappings SHALL
@@ -457,6 +570,32 @@ released. A third mapping, backing reuse, swapped placement or role, cross-role
 unmap, code-first teardown, release while mapped, or recoverable exit with live
 construction authority SHALL be invalid. This refinement SHALL NOT constitute
 a general mapping collection, layout API, application image, or loader.
+
+### TOPAL-SYSTEMS-MULTIPAGE-EXECUTABLE-001 — Bounded multipage executable role
+
+The sealed `probe-code` mapping SHALL consume the exact `(2, 1)` physical-frame
+extent as one affine object and SHALL publish two virtually adjacent base-page
+leaves. Both leaves SHALL begin writable and non-executable for construction.
+Complete external-segment copy SHALL precede removal of write authority from
+both leaves; complete content verification SHALL precede executable promotion
+of either leaf. Translation and instruction-observation completion for both
+leaves SHALL precede observable promotion success. No leaf SHALL possess write
+and execute authority concurrently.
+
+The initial x86-64 executable segment SHALL have equal file and memory sizes,
+eight-byte alignment, a size greater than 4096 and no greater than 8192 bytes,
+and an entry contained in its second page. Its successful terminal
+`exit_group` path SHALL execute from that page. After exact kernel-continuation
+restoration, source SHALL emit exactly one
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` observation before image teardown.
+
+Unmap SHALL revoke both leaves, complete target observation for both virtual
+pages, and return the exact original two-frame extent. Partial publication,
+protection, verification, promotion, invalidation, revocation, or return;
+nonadjacent placement; split backing ownership; out-of-extent entry; missing or
+early observation; and W+X authority SHALL be invalid. This rule SHALL NOT
+admit arbitrary segment counts or sizes, sparse mappings, demand paging,
+relocations, or dynamic loading.
 
 The resident-image readiness qualification SHALL emit exactly one
 `TOPAL_KERNEL_USER_IMAGE_READY` console observation after
@@ -494,6 +633,142 @@ during execution, missing or early retained-image observation, completion with
 either mapping live, and recoverable exit with live construction authority
 SHALL be invalid. This refinement SHALL NOT authorize execution of constructed
 contents or define a loader or general process-image interface.
+
+### TOPAL-SYSTEMS-STATIC-ELF-PLAN-001 — Bounded static ELF load plan
+
+Before artifact construction consumes any supplied static-executable fact, the
+x86-64 compiler SHALL validate a complete ELF64, little-endian, current-version
+`ET_EXEC`/`EM_X86_64` header and its complete 56-byte program-header table.
+The table SHALL contain at most 16 entries, exactly four ordered `PT_LOAD`
+entries with final roles R, R/X, R, and R/W, no `PT_INTERP`, exactly one
+non-executable `PT_GNU_STACK`, at most one `PT_TLS`, and at most one
+`PT_GNU_RELRO`.
+
+Every load entry SHALL have `p_filesz <= p_memsz`, an overflow-free file range
+inside the complete input, an overflow-free user virtual range, power-of-two
+alignment of at least 4096, congruent file and virtual offsets modulo 4096,
+and a nonempty, disjoint page-rounded interval. No load role SHALL combine W
+and X. Entry SHALL lie inside the R/X memory interval. A present TLS file and
+memory interval SHALL lie inside the R/W load memory interval. A present RELRO
+page interval SHALL be nonempty and lie inside the page-rounded R/W interval.
+The combined x86-64 load span SHALL contain at most 512 pages and SHALL lie
+inside one aligned 2 MiB leaf-table window.
+
+Success SHALL produce an immutable plan containing only the validated header
+identity, entry, four file/memory/page intervals and permission roles, total
+page span, optional TLS extents, optional RELRO pages, and non-executable stack
+fact. The plan SHALL contain no borrowed input pointer and SHALL grant no
+allocation, mapping, copy, permission, entry, or source-visible address
+authority. Any failed condition SHALL reject the complete plan before artifact
+publication. This rule SHALL NOT make the image runtime-selectable or admit
+PIE, relocation, dynamic loading, overlapping load pages, executable stacks,
+or more than one leaf-table window.
+
+### TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001 — Bounded page realization
+
+A bounded static-ELF page-realization plan SHALL consume only a successful
+`TOPAL-SYSTEMS-STATIC-ELF-PLAN-001` result and SHALL NOT reparse input bytes.
+The four page intervals SHALL be exactly adjacent and completely cover the
+combined span. Success SHALL name one future affine physical-frame request
+whose frame count equals the span page count and whose alignment is one frame,
+plus exactly one ordered record for each virtual page with a distinct
+zero-based frame ordinal.
+
+Every page SHALL begin with RW/NX construction permission. Header and immutable
+data pages SHALL finalize RO/NX, executable pages SHALL finalize RO/X, and
+writable-data pages SHALL finalize RW/NX except that every RELRO page SHALL
+finalize RO/NX. No initial or final permission SHALL combine W and X. The plan
+SHALL require zeroing the complete frame extent before four ordered copies from
+the exact validated file intervals to their corresponding memory starts.
+
+Success SHALL retain the entry, TLS, RELRO, zero, copy, page-role, and extent
+facts without borrowed input pointers. It SHALL grant no frame, mapping, copy,
+permission-publication, entry, or source-visible address authority. Missing,
+duplicate, unordered, uncovered, or multiply covered pages; nonadjacent roles;
+wrong ordinals or request count; copy outside a declared role; RELRO outside
+the writable role; and any W+X state SHALL reject the complete realization
+before artifact publication. This rule SHALL NOT make the image runtime-
+selectable or require one physically contiguous extent outside the current
+x86-64 qualification profile.
+
+### TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001 — Caller-owned static image publication
+
+Qualified x86-64 systems publication MAY accept exactly one caller-selected
+static executable through `--static-user-image PATH`. The compiler SHALL read
+the complete file and derive successful
+`TOPAL-SYSTEMS-STATIC-ELF-PLAN-001` and
+`TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001` results before creating publication
+state. The admitted qualification shape SHALL additionally require exactly
+2,024,544 file bytes, eleven program headers, entry `0x4a6580`, four exact
+load tuples `(offset, virtual, file-size, memory-size, alignment)` of
+`(0, 0x400000, 0x6e0, 0x6e0, 0x1000)`,
+`(0x1000, 0x401000, 0x18b285, 0x18b285, 0x1000)`,
+`(0x18d000, 0x58d000, 0x57040, 0x57040, 0x1000)`, and
+`(0x1e4660, 0x5e5660, 0x9728, 0x10b68, 0x1000)`. Those loads SHALL produce
+503 adjacent pages from `0x400000` through `0x5f7000`, and each load physical
+address field SHALL equal its virtual address field. TLS SHALL have file
+tuple `(0x1e4660, 0x40)`, memory tuple `(0x5e5660, 0x82)`, and alignment
+eight. The remaining rows SHALL be the three exact `PT_NOTE` tuples
+`(0x2a8, 0x4002a8, 0x20, 0x20, 8)`,
+`(0x2c8, 0x4002c8, 0x24, 0x24, 4)`, and
+`(0x1e4020, 0x5e4020, 0x20, 0x20, 4)`; one `PT_GNU_PROPERTY` row equal to
+the first note tuple; one non-executable `PT_GNU_STACK` row with alignment
+`0x10`; and one `PT_GNU_RELRO` tuple
+`(0x1e4660, 0x5e5660, 0x79a0, 0x79a0, 1)`. Address-bearing rows SHALL have
+equal virtual and physical address fields. Page-rounded GNU RELRO SHALL be
+`[0x5e5000, 0x5ed000)`.
+
+Success SHALL atomically publish the complete input bytes as the sole
+`static-user.elf` output and SHALL bind that canonical filename and SHA-256
+digest in artifact provenance. No host input path SHALL enter an artifact or
+its provenance. Omitting the option SHALL preserve the existing canonical
+output set; selecting it SHALL add exactly one output. The distinct
+`--initial-user-image` input and `initial-user.elf` output SHALL retain their
+existing boot-resource meaning and MAY coexist with the static image without
+substitution.
+
+Unreadable input, duplicate selection, use outside qualified systems
+publication, failed plan derivation, any noncanonical shape fact, write or
+digest failure, destination collision, or an output not bound by provenance
+SHALL fail before the destination directory becomes visible. This rule SHALL
+NOT require repository possession or redistribution of the external binary,
+package the static image for boot, expose its bytes to source, copy it into a
+construction, publish final permissions or entry authority, or make it
+runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-BOOT-001 — Immutable static-image boot transport
+
+The qualified x86-64 boot adapter SHALL require both canonical
+`initial-user.elf` and `static-user.elf` outputs and SHALL verify each SHA-256
+digest against artifact provenance before creating boot publication state. It
+SHALL construct exactly one deterministic uncompressed `newc` resource using
+schema `topal.boot-resource.x86_64-initial-newc/2`: regular executable member
+`init`, regular executable member `static-user.elf`, then `TRAILER!!!`, with
+canonical zero ownership, timestamp, device, checksum, and padding fields.
+
+The `init` payload interval SHALL remain `[116, 12404)`. The static member
+header SHALL begin at byte 12404, its exact 2,024,544-byte payload SHALL occupy
+`[12532, 2037076)`, and the terminal record SHALL produce a total archive size
+of 2,037,200 bytes. The adapter SHALL copy both canonical inputs exactly and
+SHALL bind the complete resource digest plus both member names, byte counts,
+and payload digests in boot provenance. Missing, duplicate, changed, unbound,
+renamed, reordered, truncated, or overflowing input SHALL fail before the boot
+directory becomes visible.
+
+The initial x86-64 provider SHALL validate the complete Linux initrd handoff,
+the exact total size, both archive headers and padding, terminal record, and
+the complete approved ELF header and eleven program-header rows at static
+payload offset 12532. It SHALL retain the whole immutable resource extent as
+reserved and frame allocation SHALL exclude that complete extent. Provider
+code SHALL NOT embed or compare caller-owned static payload bytes beyond the
+approved metadata. Existing `TOPAL_KERNEL_BOOT_RESOURCE_OK` success SHALL
+require this extended validation.
+
+The static member SHALL remain provider-private and inactive. This rule SHALL
+NOT expose an archive member, byte, address, or file lookup to source, copy
+static payload bytes into a construction, apply final permissions, attach an
+address space, publish an entry, replace `init`, or make the static image
+runtime-selectable.
 
 ### TOPAL-SYSTEMS-WRITABLE-DATA-001 — Verified writable user-data role
 
@@ -755,6 +1030,61 @@ request, partial publication, wrong errno, or retained user pointers. This
 rule SHALL NOT define `TCSETS*`, `termios2`, window size, sessions, process
 groups, job control, canonical input, echo, signal generation, ptys, polling,
 dynamically opened ttys, or a general ioctl registry.
+
+### TOPAL-SYSTEMS-USER-WINSIZE-001 — Bounded initial console geometry
+
+The console object shared by the three fixed initial open descriptions SHALL
+own one immutable window-size value shared by every description and alias.
+Because the qualified serial transport provides no geometry source, rows,
+columns, horizontal pixels, and vertical pixels SHALL each be zero, meaning
+unspecified rather than a fabricated display size.
+
+The x86-64 personality SHALL implement Linux `ioctl` request
+`TIOCGWINSZ=0x5413` with the complete native eight-byte `struct winsize`: four
+little-endian unsigned 16-bit zero values. Dispatch SHALL retain descriptor-
+before-request-before-pointer precedence. Invalid or closed descriptors SHALL
+return `-EBADF`; unsupported live-console requests SHALL retain `-ENOTTY`;
+accepted requests with invalid, read-only, wrapping, cross-hole, or incomplete
+eight-byte candidates SHALL return `-EFAULT` without partial publication.
+
+A valid query SHALL construct the complete value in private staging, validate
+one overflow-free complete writable extent, publish it under fault recovery,
+return zero only after complete visibility, and retain no pointer. The ring-3
+image SHALL query input and output into disjoint extents, validate every byte,
+prove both values identical, and reject a query on slot zero after its final
+close with `-EBADF`. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_WINSIZE_OK` observation before later lifecycle witnesses.
+
+The profile SHALL reject invented or host-derived geometry, slot-derived
+values, pointer access before accepted request, partial publication, wrong
+errno, or retained pointers. This rule SHALL NOT define `TIOCSWINSZ`, geometry
+import, `SIGWINCH`, job control, ptys, displays, or a general ioctl registry.
+
+### TOPAL-SYSTEMS-USER-LSEEK-001 — Bounded initial console seek classification
+
+Every description and alias of the shared initial console SHALL have stream
+semantics and SHALL own no file-position state. The Linux personality SHALL
+implement `lseek` for the fixed initial descriptor table with descriptor-
+before-mode-before-object precedence.
+
+An invalid or closed descriptor SHALL return `-EBADF` before inspecting the
+seek mode. For a live console description, an unsigned `whence` from
+`SEEK_SET=0` through `SEEK_HOLE=4` SHALL return `-ESPIPE` independently of the
+signed 64-bit offset. A live description with `whence` greater than four SHALL
+return `-EINVAL` before object dispatch. No result path SHALL create, observe,
+or mutate a file position.
+
+The constructed ring-3 image SHALL require `-ESPIPE` for `SEEK_CUR` on input
+and output, `-EINVAL` for an unsupported mode on live output, and `-EBADF` for
+the same unsupported mode on slot zero after its final close. Source SHALL
+emit exactly one `TOPAL_KERNEL_USER_LSEEK_OK` observation before later
+lifecycle witnesses.
+
+The profile SHALL reject zero-position success, offset-dependent results for
+the console, mode validation before descriptor lookup, shared or per-slot
+position state, wrong errno, or state surviving close. This rule SHALL NOT
+define seekable files, shared offsets, positioned I/O, directories, block
+devices, pipes, sockets, or a general VFS seek operation.
 
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 

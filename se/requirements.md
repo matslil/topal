@@ -418,11 +418,27 @@ extent behavior shall fail closed.
 
 The bounded multi-frame qualification shall remain exclusive to the systems
 feature and shall add no address or pointer conversion. The initial x86-64
-profile shall admit only static requests for one or three contiguous base
-frames with unit alignment, return either request as one indivisible affine
-extent, and require whole-extent release before any later bootstrap transition
-or disposition. Other counts, non-unit alignment, dynamic requests, extent
-splitting, and multiple simultaneously live extents shall fail closed.
+profile shall admit only static requests for one, two, three, or exactly 503
+contiguous base frames with unit alignment and return every request as one
+indivisible affine extent. The exact 503-frame payload request shall occur only
+after the earlier extent is returned and shall be selected wholly within one
+normalized E820 RAM run while excluding reservations. Its mapping-resource
+refinement shall admit exactly one nested unit metadata frame, prove the two
+complete intervals disjoint, observe the pair once, release metadata first,
+and then release the payload. Other counts, non-unit alignment, dynamic
+requests, extent splitting, other simultaneous source-owned shapes, reversed
+release, and disposition with either extent live shall fail closed.
+
+The bounded static-ELF leaf-publication refinement shall consume the exact live
+payload and metadata extents into one opaque construction owner. It shall
+publish all 503 ordered page-to-frame pairs in initial RW/NX state inside an
+inactive translation object, keep the remaining target-table capacity absent,
+and expose no target representation. Success shall be observed once before
+complete revocation. Revocation shall return metadata only after clearing the
+complete object and completing target ordering; payload reclaim shall follow
+metadata release and return the original indivisible extent. Partial
+publication, wrong order or identity, duplicate transitions, early release,
+and disposition with live construction ownership shall fail closed.
 
 The bounded disjoint-extent refinement shall admit exactly one additional
 static one-frame, unit-aligned source-owned extent while one prepared initial
@@ -490,15 +506,47 @@ absent; and complete target translation observation before success. Use on the
 code generation, use before verification, identity substitution, W+X,
 source-visible permissions, or unmap through stale authority shall fail closed.
 
-The bounded resident-image refinement shall allocate distinct one-frame code
-and data extents, retain finalized executable-code ownership while constructing
-immutable data, and prove both mappings coexist with pairwise-disjoint backing
-and sealed placements. Data unmap and release shall precede code unmap and
-release; user preparation shall require both mappings absent. A third mapping,
+The bounded resident-image refinement shall allocate a distinct two-frame code
+extent and one-frame data extent, retain finalized executable-code ownership
+while constructing immutable data, and prove both mappings coexist with
+pairwise-disjoint backing and sealed placements. Data unmap and release shall
+precede whole-code-extent unmap and release; user preparation shall require
+both mappings absent. A third mapping,
 backing reuse, swapped placement or role, cross-role unmap, code-first teardown,
 release while mapped, or recoverable disposition with either mapping live shall
 fail closed. Provider-private placement and revocation mechanics shall remain
 unobservable.
+
+The bounded multipage-executable refinement shall map both frames of the code
+extent at adjacent virtual base pages, copy and verify the complete external
+segment, remove write authority from both leaves before granting either execute
+authority, and revoke and return the extent only as a whole. The initial x86-64
+entry and successful terminal path shall execute from the second page. Exact
+return shall precede one
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker. Partial publication,
+single-leaf permission change or invalidation, W+X authority, entry outside the
+two-page extent, partial unmap, or split return shall fail closed.
+
+The bounded static-ELF planning refinement shall parse the complete ELF64 and
+program-header table before exposing any load fact to artifact construction.
+It shall reject wrong class, data encoding, version, type, machine, header
+sizes, table bounds, program-header count, interpreter presence, interval or
+arithmetic overflow, file-out-of-bounds data, incongruent or invalid
+alignment, overlapping rounded load pages, W+X, wrong four-role ordering,
+entry outside R/X, executable stack, TLS outside R/W, RELRO outside R/W, and
+an x86-64 span exceeding 512 pages or one aligned 2 MiB leaf-table window.
+Success shall retain only immutable checked interval, permission, entry, TLS,
+RELRO, and stack facts. It shall grant no frame, mapping, copy, or entry
+authority and shall not make the planned image runtime-selectable.
+
+The bounded static-ELF page-realization refinement shall consume only a
+successful immutable load plan. It shall reject nonadjacent load-page roles and
+derive one future affine frame request equal to the complete page count, one
+ordered virtual-page/frame-ordinal record per page, initial RW/NX construction,
+and exact final RO/NX, RO/X, or RW/NX permission. It shall make RELRO pages
+RO/NX inside the writable role, require complete-span zeroing before the four
+exact file copies, prove complete page coverage and no W+X final state, and
+retain no allocation, mapping, copy, permission-publication, or entry authority.
 
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
@@ -805,6 +853,26 @@ return exact `EBADF`, `ENOTTY`, or `EFAULT`. Ring-3 qualification shall inspect
 every byte, compare input and output descriptions, reject an unknown live-
 console request, and reject a closed slot. Fabricated cooked behavior, partial
 publication, wrong precedence, or retained pointers shall fail closed.
+
+The initial descriptor adapter shall expose the shared console's immutable
+unspecified geometry through Linux `ioctl(TIOCGWINSZ)`. The x86-64 adapter
+shall publish the complete native eight-byte `winsize` with zero rows, columns,
+and pixel dimensions; retain descriptor-before-request-before-pointer
+precedence; privately stage and fault-contain the complete value; and preserve
+exact `EBADF`, `ENOTTY`, and `EFAULT`. Ring-3 qualification shall inspect every
+byte, compare input and output descriptions, and reject a closed slot. Invented
+or host-derived geometry, partial publication, wrong precedence, or retained
+pointers shall fail closed.
+
+The initial descriptor adapter shall classify Linux `lseek` for the shared
+console without creating file-position state. It shall look up a descriptor
+before seek-mode validation, return exact `EBADF` for invalid or closed slots,
+return `ESPIPE` for modes zero through four on a live console independently of
+offset, and return `EINVAL` for a larger unsigned mode on a live console.
+Ring-3 qualification shall cover input and output `SEEK_CUR`, an unsupported
+live mode, and the same unsupported mode on a closed slot. Fabricated success,
+offset-dependent terminal results, wrong precedence, or retained position
+state shall fail closed.
 
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned

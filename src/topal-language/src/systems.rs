@@ -83,14 +83,18 @@ pub use topal_semantics::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_TRANSLATION_ACTIVATE, SYSTEMS_TRANSLATION_BEGIN,
-    SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN, SYSTEMS_TRANSLATION_EDIT_COMMIT,
-    SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_MAP,
-    SYSTEMS_USER_ADDRESS_SPACE_PREPARE, SYSTEMS_USER_ADDRESS_SPACE_RECLAIM,
-    SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS,
-    SYSTEMS_USER_ADDRESS_SPACE_UNMAP, SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING,
-    SYSTEMS_USER_CONTEXT_COMPLETE, SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE,
-    SYSTEMS_USER_COPY_FROM, SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
+    SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
+    SYSTEMS_USER_ADDRESS_SPACE_RECLAIM, SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS,
+    SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS, SYSTEMS_USER_ADDRESS_SPACE_UNMAP,
+    SYSTEMS_USER_ADDRESS_SPACE_VERIFY_MAPPING, SYSTEMS_USER_CONTEXT_COMPLETE,
+    SYSTEMS_USER_CONTEXT_ENTER, SYSTEMS_USER_CONTEXT_PREPARE, SYSTEMS_USER_COPY_FROM,
+    SYSTEMS_USER_COPY_TO, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_LOAD_BYTE, SYSTEMS_USER_MAPPING_PERMIT_EXECUTE,
     SYSTEMS_USER_MAPPING_PERMIT_WRITABLE_DATA, SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
     SYSTEMS_USER_MAPPING_SEAL_IMMUTABLE_DATA, SYSTEMS_USER_MAPPING_STORE_BYTE,
@@ -981,7 +985,7 @@ fn analyze_user_syscall_handler(
         || !identifier_is(source, linux, "linux")
         || !identifier_is(source, syscall, "syscall")
         || !identifier_is(source, dispatch, "dispatch")
-        || fields.len() != 61
+        || fields.len() != 65
         || field_natural(source, &fields[0], "getpid-result")? != 1
         || field_static_string(source, &fields[1], "uname-sysname")? != "Linux"
         || field_static_string(source, &fields[2], "uname-nodename")? != "topal"
@@ -1043,6 +1047,10 @@ fn analyze_user_syscall_handler(
         || field_natural(source, &fields[58], "terminal-control-flags")? != 2239
         || field_natural(source, &fields[59], "terminal-minimum-input")? != 1
         || field_natural(source, &fields[60], "not-a-terminal-error")? != 25
+        || field_natural(source, &fields[61], "window-size-layout-bytes")? != 8
+        || field_natural(source, &fields[62], "window-size-query-request")? != 21523
+        || field_natural(source, &fields[63], "seek-maximum-whence")? != 4
+        || field_natural(source, &fields[64], "illegal-seek-error")? != 29
     {
         return Err(user_context_diagnostic(
             source,
@@ -1091,6 +1099,10 @@ fn analyze_user_syscall_handler(
         terminal_control_flags: 2239,
         terminal_minimum_input: 1,
         not_a_terminal_error: 25,
+        window_size_layout_bytes: 8,
+        window_size_query_request: 21523,
+        seek_maximum_whence: 4,
+        illegal_seek_error: 29,
         brk_data_page_bytes: 4096,
         getppid_result: 0,
         gettid_result: 1,
@@ -3053,14 +3065,14 @@ fn analyze_kernel_context_decision(
         parse_physical_frame_allocation(source, scratch_subject, &completion_resumed)?;
     if scratch_request
         != (CompilerPhysicalFrameRequest {
-            frame_count: 1,
+            frame_count: 2,
             alignment_frames: 1,
         })
     {
         return Err(user_context_diagnostic(
             source,
             scratch_subject.span(),
-            "the disjoint live-extent probe requires exactly one frame aligned to one frame",
+            "the disjoint executable extent requires exactly two frames aligned to one frame",
         ));
     }
     let CompilerSystemsDisposition::Fatal {
@@ -3463,6 +3475,7 @@ fn analyze_kernel_context_decision(
         entropy_getrandom_small_request_statement,
         entropy_getrandom_large_request_statement,
         enter_user,
+        multipage_executable_marker_statement,
         user_getrandom_marker_statement,
         user_getrandom_repeated_marker_statement,
         user_getrandom_full_output_marker_statement,
@@ -3474,6 +3487,8 @@ fn analyze_kernel_context_decision(
         user_fcntl_marker_statement,
         user_fstat_marker_statement,
         user_tcgets_marker_statement,
+        user_winsize_marker_statement,
+        user_lseek_marker_statement,
         user_copy_to_marker_statement,
         user_copy_from_marker_statement,
         user_marker_statement,
@@ -3519,6 +3534,23 @@ fn analyze_kernel_context_decision(
     };
     let user_completed =
         parse_user_context_enter(source, enter_user, &completion_resumed, &user_probe)?;
+    let multipage_executable_marker = analyze_operation(
+        source,
+        multipage_executable_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if multipage_executable_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(multipage_executable_marker_statement),
+            "returned user execution requires its exact multipage-executable marker",
+        ));
+    }
     let user_getrandom_marker = analyze_operation(
         source,
         user_getrandom_marker_statement,
@@ -3704,6 +3736,40 @@ fn analyze_kernel_context_decision(
             source,
             statement_span(user_tcgets_marker_statement),
             "returned user execution requires its exact terminal-attributes marker",
+        ));
+    }
+    let user_winsize_marker = analyze_operation(
+        source,
+        user_winsize_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_winsize_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_winsize_marker_statement),
+            "returned user execution requires its exact console-geometry marker",
+        ));
+    }
+    let user_lseek_marker = analyze_operation(
+        source,
+        user_lseek_marker_statement,
+        CompilerSystemsContextKind::Bootstrap,
+        &completion_resumed,
+    )?;
+    if user_lseek_marker
+        != (CompilerSystemsOperation::ConsoleWrite {
+            text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
+        })
+    {
+        return Err(user_context_diagnostic(
+            source,
+            statement_span(user_lseek_marker_statement),
+            "returned user execution requires its exact console-seek marker",
         ));
     }
     let user_copy_to_marker = analyze_operation(
@@ -4875,6 +4941,7 @@ fn analyze_kernel_context_decision(
     operations.push(entropy_getrandom_large_request);
     operations.extend([
         CompilerSystemsOperation::EnterUserContext,
+        multipage_executable_marker,
         user_getrandom_marker,
         user_getrandom_repeated_marker,
         user_getrandom_full_output_marker,
@@ -4886,6 +4953,8 @@ fn analyze_kernel_context_decision(
         user_fcntl_marker,
         user_fstat_marker,
         user_tcgets_marker,
+        user_winsize_marker,
+        user_lseek_marker,
         user_copy_to_marker,
         user_copy_from_marker,
         user_marker,
@@ -9191,6 +9260,10 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -9886,7 +9959,7 @@ mod tests {
                 },
                 CompilerSystemsTransition::AllocatePhysicalFrames {
                     request: CompilerPhysicalFrameRequest {
-                        frame_count: 1,
+                        frame_count: 2,
                         alignment_frames: 1,
                     },
                 },
@@ -10085,6 +10158,12 @@ mod tests {
                 },
                 CompilerSystemsOperation::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
+                },
+                CompilerSystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_WINSIZE_OK".into(),
+                },
+                CompilerSystemsOperation::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_LSEEK_OK".into(),
                 },
                 CompilerSystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_COPY_TO_OK".into(),
@@ -10304,13 +10383,14 @@ mod tests {
     #[test]
     fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
         // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001,
-        // TOPAL-SYSTEMS-FRAMES-001.
+        // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
         let program = analyze_systems_for_compiler(
             &memory_source(),
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 256);
+        assert_eq!(program.bootstrap.handler.operations.len(), 271);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10386,6 +10466,10 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -12343,19 +12427,24 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replacen("frame-count is 1", "frame-count is 2", 1),
+                SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one or three frames",
+                "only one, two, three, or exactly 503 frames",
+            ),
+            (
+                SOURCE.replace("frame-count is 503", "frame-count is 502"),
+                "E-SYSTEMS-FRAMES",
+                "only one, two, three, or exactly 503 frames",
+            ),
+            (
+                SOURCE.replace("frame-count is 503", "frame-count is 504"),
+                "E-SYSTEMS-FRAMES",
+                "only one, two, three, or exactly 503 frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
                 "E-SYSTEMS-FRAMES",
                 "initial kernel-mapping probe requires exactly one frame",
-            ),
-            (
-                SOURCE.replace("frame-count is 3", "frame-count is 2"),
-                "E-SYSTEMS-FRAMES",
-                "only one or three frames",
             ),
             (
                 SOURCE.replace("alignment-frames is 1", "alignment-frames is 2"),
@@ -12385,6 +12474,125 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_mapping_resource_ownership() {
+        // TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001.
+        let metadata_request = "frame-count is 1,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
+        let metadata_request_two = "frame-count is 2,\n                                                                        alignment-frames is 1\n                                                                      )\n                                                                        Ok static-elf-leaf-table-frame";
+        for (source, code, expected) in [
+            (
+                SOURCE.replace(metadata_request, metadata_request_two),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exactly one frame",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_BAD",
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "unmapped frames release returned-static-elf-metadata",
+                    "unmapped frames release other-static-elf-metadata",
+                ),
+                "E-SYSTEMS-FRAMES",
+                "affine extent",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, code);
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_initial_leaf_construction() {
+        // TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "layout is bounded-static-elf-initial-rw-nx",
+                    "layout is other-static-elf-layout",
+                ),
+                "exact payload, metadata, and initial RW/NX layout",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen("resource is metadata", "resource is payload", 1),
+                "exact construction and role",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is zeroed-static-elf-construction,\n                                                                                resource is payload",
+                    "owner is other-static-elf-construction,\n                                                                                resource is payload",
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_complete_static_elf_payload_zeroing() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ZERO-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is static-elf-construction,\n                                                                                extent is complete",
+                    "owner is other-static-elf-construction,\n                                                                                extent is complete",
+                ),
+                "exact live construction and complete extent",
+            ),
+            (
+                SOURCE.replace("extent is complete", "extent is partial"),
+                "exact live construction and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is zeroed-static-elf-construction",
+                    "owner is static-elf-construction",
+                    1,
+                ),
+                "exact construction and role",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }
