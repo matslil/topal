@@ -462,6 +462,21 @@ whole release before slot revocation, and no zeroing, leaf publication, stack
 pointer, initialization, TLS, user-mode, syscall, or BusyBox authority. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001` and `TK-DEC-140`.
 
+The bounded static-ELF stack-zeroing increment shall accept one exact typed
+zero transition over the slot-authorized construction and its live one-frame
+backing. X86-64 lowering shall validate a nonzero page-aligned bounded frame,
+clear exactly 512 forward qwords, execute one store fence, and compare exactly
+512 forward qwords with zero before success. The checker and semantic model
+shall accept only the exact owner, backing identity, and complete extent;
+retain affine zeroed-backing ownership until whole release; and reject early
+release, duplicate zeroing, slot or entry revocation, teardown, or disposition
+while backing is live. Structural and duplicate pinned-QEMU tests shall prove
+complete clear/readback, target ordering, unchanged hierarchy/leaves/payload,
+one ordered witness, whole release before slot revocation, and no leaf
+publication, stack pointer, process-entry initialization, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001` and `TK-DEC-141`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
