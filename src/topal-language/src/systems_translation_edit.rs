@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -594,11 +594,63 @@ fn analyze_static_elf_frame_sequence(
             "static ELF address-space attachment must publish its exact marker before detachment",
         ));
     }
+    let active_construction_name = parse_static_image_address_space_transition(
+        source,
+        activate,
+        allocator_context,
+        &attached_construction_name,
+        "activate",
+        "bounded-static-elf-kernel-continuation",
+    )?;
+    let active_marker_span = statement_span(active_marker);
+    let active_marker = analyze_operation(
+        source,
+        active_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &active_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            active_marker_span,
+            "static ELF address-space activation must publish its exact marker before restoration",
+        ));
+    }
+    let restored_construction_name = parse_static_image_address_space_transition(
+        source,
+        restore,
+        allocator_context,
+        &active_construction_name,
+        "restore",
+        "bounded-bootstrap-kernel-continuation",
+    )?;
+    let restored_marker_span = statement_span(restored_marker);
+    let restored_marker = analyze_operation(
+        source,
+        restored_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &restored_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            restored_marker_span,
+            "static ELF address-space restoration must publish its exact marker before detachment",
+        ));
+    }
     let detached_construction_name = parse_static_image_address_space_detach(
         source,
         detach,
         allocator_context,
-        &attached_construction_name,
+        &restored_construction_name,
     )?;
     let detach_marker_span = statement_span(detach_marker);
     let detach_marker = analyze_operation(
@@ -714,6 +766,10 @@ fn analyze_static_elf_frame_sequence(
         hierarchy_marker,
         CompilerSystemsOperation::AttachStaticImageAddressSpace,
         attach_marker,
+        CompilerSystemsOperation::ActivateStaticImageAddressSpace,
+        active_marker,
+        CompilerSystemsOperation::RestoreStaticImageAddressSpace,
+        restored_marker,
         CompilerSystemsOperation::DetachStaticImageAddressSpace,
         detach_marker,
         CompilerSystemsOperation::ReclaimStaticImageConstructionHierarchy,
@@ -1001,7 +1057,100 @@ fn parse_static_image_address_space_detach(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image address-space detachment requires the exact attached construction",
+            "static-image address-space detachment requires the exact restored construction",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_address_space_transition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    operation_name: &str,
+    policy_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image address-space transition cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image address-space transition must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, operation, address, space, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space transition requires its exact owner and policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, operation, operation_name)
+        || !identifier_is(source, address, "address")
+        || !identifier_is(source, space, "space")
+        || fields.len() != 2
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space transition requires its exact owner and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image address-space transition parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "policy" => policy = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image address-space transition parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || policy != Some(policy_name) {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image address-space transition requires the exact owner and continuation policy",
         ));
     }
     Ok(source.slice(name).to_owned())
