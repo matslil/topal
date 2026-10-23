@@ -640,6 +640,51 @@ This rule SHALL NOT activate the hierarchy, expose or publish a root or entry
 token, initialize TLS or a process stack, enter user mode, retain the address
 space after its witness, or execute the static image.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ACTIVATION-001 — Bounded active root and restoration
+
+`static image construction activate address space` SHALL consume the exact
+live `AttachedStaticImageConstruction` from
+`TOPAL-SYSTEMS-STATIC-ELF-ADDRESS-SPACE-001`. It SHALL accept only policy
+`bounded-static-elf-kernel-continuation` and SHALL produce one affine
+`ActiveStaticImageConstruction` owning the unchanged payload, leaf metadata,
+hierarchy, and restoration authority.
+
+Before switching roots, the provider SHALL revalidate the complete attached
+hierarchy, all 503 final leaves and nine absent entries, the qualified
+bootstrap and static root identities, and that the bootstrap root is active
+while the static root is inactive. It SHALL select the static root atomically
+with every target-required translation barrier, invalidation, and instruction
+synchronization, then read back that exact root as active before success.
+
+Source SHALL perform no operation while the active owner is live except the
+bounded supervisor kernel continuation needed to emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK` observation and invoke
+`static image construction restore address space`. Restore SHALL consume that
+exact active owner, accept only policy
+`bounded-bootstrap-kernel-continuation`, revalidate that the static root is
+active and the bootstrap root is distinct, atomically restore the bootstrap
+root with every target-required synchronization, and read back the exact
+bootstrap root as active and the static root as inactive.
+
+Successful restoration SHALL reproduce one affine
+`AttachedStaticImageConstruction` owning byte-for-byte unchanged payload,
+leaf, and hierarchy resources. Source SHALL then emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK` observation and invoke the
+existing detach, hierarchy reclaim, and metadata/payload return sequence from
+`TOPAL-SYSTEMS-STATIC-ELF-ADDRESS-SPACE-001` with that restored owner.
+
+A wrong owner, policy, root identity, active-root precondition or readback,
+hierarchy entry, leaf, operation order, witness, nested activation, detach or
+return while active, duplicate transition, partial authority, or recoverable
+disposition with activation authority live SHALL be invalid. Root registers,
+numeric root identities, barriers, invalidations, and target synchronization
+SHALL remain provider-private.
+
+This rule SHALL NOT derive or publish the static entry point, branch to a
+static-image byte, create a persistent process address space, initialize TLS
+or a stack, enter user mode, handle a user fault or syscall, retain the static
+root after its witness, or run BusyBox.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

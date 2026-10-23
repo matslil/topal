@@ -402,6 +402,20 @@ reject wrong owner, layout, entry, leaf, root state, order, witness, partial
 return, or live disposition and shall prove two deterministic pinned-QEMU
 executions without activation, stack, entry, or execution authority.
 
+The bounded static-ELF activation increment shall accept exact typed activate
+and restore transitions over the attached construction. X86-64 lowering shall
+revalidate the hierarchy, final leaves, retained bootstrap root, and exact
+active/inactive root preconditions; switch to the static root with architectural
+synchronization and readback; permit only the bounded supervisor witness
+continuation; restore and read back the bootstrap root; and reproduce the
+unchanged attached owner before detach. The checker and semantic model shall
+reject wrong owner, policy, order, nested activation, detach or resource return
+while active, wrong witness order, or live activation authority at disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact root-register
+transitions, unchanged hierarchy/leaves/payload, restoration before teardown,
+and no static entry, stack, TLS, user-mode, syscall, or BusyBox authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ACTIVATION-001` and `TK-DEC-137`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
