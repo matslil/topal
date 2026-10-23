@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/112";
+    "topal.provider-object.x86_64-qemu-pc-q35/113";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -31,6 +31,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
     "topal_x86_systems_static_image_prepare_initial_leaves";
 pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_zero_payload";
+pub const X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL: &str =
+    "topal_x86_systems_static_image_zero_stack_backing";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_copy_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL: &str =
@@ -1239,6 +1241,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
         &static_image_zero_payload()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+        &static_image_zero_stack_backing()?,
     );
     append_encoded_function(
         &mut object,
@@ -5929,6 +5937,28 @@ fn static_image_zero_payload() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn static_image_zero_stack_backing() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // nonzero backing base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00]); // page aligned
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0xb0, 0xff, 0x3f]); // complete frame bounded
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x49, 0x89, 0xf8]); // retain backing base
+    code.bytes(&[
+        0xfc, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xf3, 0x48, 0xab,
+    ]);
+    code.bytes(&[0x0f, 0xae, 0xf8]); // sfence
+    code.bytes(&[0x4c, 0x89, 0xc7]);
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -7791,6 +7821,49 @@ assert bytes(output) == block[32:]
                 .filter(|bytes| *bytes == [0x0f, 0xae, 0xf0])
                 .count(),
             1
+        );
+
+        let zero_stack_backing =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL);
+        assert!(
+            zero_stack_backing
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0xf7, 0xc7, 0xff, 0x0f, 0x00, 0x00])
+                && zero_stack_backing
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xff, 0x00, 0xb0, 0xff, 0x3f]),
+            "stack-backing zeroing must validate page alignment and the complete bounded frame"
+        );
+        assert_eq!(
+            zero_stack_backing
+                .windows(11)
+                .filter(|bytes| {
+                    *bytes
+                        == [
+                            0xfc, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xf3, 0x48, 0xab,
+                        ]
+                })
+                .count(),
+            1,
+            "stack-backing zeroing must clear exactly 512 forward qwords"
+        );
+        assert_eq!(
+            zero_stack_backing
+                .windows(10)
+                .filter(|bytes| {
+                    *bytes == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xf3, 0x48, 0xaf]
+                })
+                .count(),
+            1,
+            "stack-backing zeroing must read back exactly 512 forward qwords"
+        );
+        assert_eq!(
+            zero_stack_backing
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0xae, 0xf8])
+                .count(),
+            1,
+            "stack-backing zeroing must order the complete clear before readback"
         );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
