@@ -31,6 +31,7 @@ use crate::{
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
@@ -43,6 +44,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
@@ -1187,6 +1189,8 @@ pub enum SystemsOperation {
     PublishStaticImageStackLeaf,
     InitializeStaticImageStackEntry,
     AddStaticImageStackPageSize,
+    AddStaticImageStackEntryFact,
+    RemoveStaticImageStackEntryFact,
     RemoveStaticImageStackPageSize,
     ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
@@ -1421,6 +1425,12 @@ impl SystemsOperation {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
             }
             Self::AddStaticImageStackPageSize => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+            Self::AddStaticImageStackEntryFact => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT
+            }
+            Self::RemoveStaticImageStackEntryFact => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            }
             Self::RemoveStaticImageStackPageSize => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
             }
@@ -1713,6 +1723,8 @@ pub enum SystemsTransition {
     PublishStaticImageStackLeaf,
     InitializeStaticImageStackEntry,
     AddStaticImageStackPageSize,
+    AddStaticImageStackEntryFact,
+    RemoveStaticImageStackEntryFact,
     RemoveStaticImageStackPageSize,
     ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
@@ -2162,6 +2174,12 @@ impl SystemsTransition {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
             }
             Self::AddStaticImageStackPageSize => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+            Self::AddStaticImageStackEntryFact => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT
+            }
+            Self::RemoveStaticImageStackEntryFact => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            }
             Self::RemoveStaticImageStackPageSize => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
             }
@@ -2477,6 +2495,8 @@ fn validate_entry(
                     | SystemsOperation::PublishStaticImageStackLeaf
                     | SystemsOperation::InitializeStaticImageStackEntry
                     | SystemsOperation::AddStaticImageStackPageSize
+                    | SystemsOperation::AddStaticImageStackEntryFact
+                    | SystemsOperation::RemoveStaticImageStackEntryFact
                     | SystemsOperation::RemoveStaticImageStackPageSize
                     | SystemsOperation::ClearStaticImageStackEntry
                     | SystemsOperation::RevokeStaticImageStackLeaf
@@ -2988,6 +3008,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackLeafPublished,
     StaticElfConstructionStackEntryInitialized,
     StaticElfConstructionStackPageSizeAdded,
+    StaticElfConstructionStackEntryFactAdded,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3293,6 +3314,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack page-size addition requires one initialized stack entry",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackPageSizeAdded;
+            }
+            SystemsOperation::AddStaticImageStackEntryFact => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackPageSizeAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack entry-fact addition requires one live page-size fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackEntryFactAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackEntryFact => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackEntryFactAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack entry-fact removal requires one live entry fact",
                     ));
                 }
                 self.memory_ownership =
@@ -5325,6 +5370,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackLeafPublished
             | BootstrapMemoryOwnership::StaticElfConstructionStackEntryInitialized
             | BootstrapMemoryOwnership::StaticElfConstructionStackPageSizeAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackEntryFactAdded
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7141,6 +7187,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackPageSize => {
             transitions.push(SystemsTransition::AddStaticImageStackPageSize);
         }
+        SystemsOperation::AddStaticImageStackEntryFact => {
+            transitions.push(SystemsTransition::AddStaticImageStackEntryFact);
+        }
+        SystemsOperation::RemoveStaticImageStackEntryFact => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackEntryFact);
+        }
         SystemsOperation::RemoveStaticImageStackPageSize => {
             transitions.push(SystemsTransition::RemoveStaticImageStackPageSize);
         }
@@ -7637,6 +7689,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::PublishStaticImageStackLeaf
         | SystemsOperation::InitializeStaticImageStackEntry
         | SystemsOperation::AddStaticImageStackPageSize
+        | SystemsOperation::AddStaticImageStackEntryFact
+        | SystemsOperation::RemoveStaticImageStackEntryFact
         | SystemsOperation::RemoveStaticImageStackPageSize
         | SystemsOperation::ClearStaticImageStackEntry
         | SystemsOperation::RevokeStaticImageStackLeaf
@@ -10652,6 +10706,8 @@ mod tests {
                 SystemsOperation::PublishStaticImageStackLeaf,
                 SystemsOperation::InitializeStaticImageStackEntry,
                 SystemsOperation::AddStaticImageStackPageSize,
+                SystemsOperation::AddStaticImageStackEntryFact,
+                SystemsOperation::RemoveStaticImageStackEntryFact,
                 SystemsOperation::RemoveStaticImageStackPageSize,
                 SystemsOperation::ClearStaticImageStackEntry,
                 SystemsOperation::RevokeStaticImageStackLeaf,
@@ -10672,11 +10728,23 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::PublishStaticImageStackLeaf));
         assert!(transitions.contains(&SystemsTransition::InitializeStaticImageStackEntry));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackPageSize));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackEntryFact));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackEntryFact));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackPageSize));
         assert!(transitions.contains(&SystemsTransition::ClearStaticImageStackEntry));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
@@ -10728,14 +10796,14 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut remove_before_addition = program;
-        remove_before_addition
+        let mut remove_entry_fact_before_addition = program;
+        remove_entry_fact_before_addition
             .bootstrap
             .handler
             .operations
-            .swap(18, 19);
+            .swap(19, 20);
         assert_eq!(
-            validate_systems_program(&remove_before_addition)
+            validate_systems_program(&remove_entry_fact_before_addition)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"

@@ -84,6 +84,7 @@ pub use topal_semantics::{
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
@@ -96,6 +97,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
@@ -9279,6 +9281,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
@@ -9291,6 +9294,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
@@ -10426,7 +10430,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 312);
+        assert_eq!(program.bootstrap.handler.operations.len(), 316);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10503,6 +10507,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
@@ -10515,6 +10520,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
@@ -13275,7 +13281,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is pagesz-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-pagesz-qualification-rollback",
+                    "owner is pagesz-stack-entry-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-pagesz-qualification-rollback",
                     "owner is initialized-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-pagesz-qualification-rollback",
                 ),
                 "exact owner, backing, and rollback policy",
@@ -13291,6 +13297,62 @@ mod tests {
                 SOURCE.replace(
                     "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK",
                     "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_BAD",
+                ),
+                "exact marker",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_entry_fact_addition_and_removal() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-ENTRY-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is pagesz-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is authorized-static-elf-entry,",
+                    "owner is initialized-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is authorized-static-elf-entry,",
+                ),
+                "exact owner, backing, authorized entry value, and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "value is authorized-static-elf-entry",
+                    "value is source-entry-address",
+                ),
+                "exact owner, backing, authorized entry value, and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is entry-auxv-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-entry-fact-qualification-rollback",
+                    "owner is pagesz-stack-entry-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-entry-fact-qualification-rollback",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-stack-entry-fact-qualification-rollback",
+                    "policy is retained-stack-entry-fact",
+                ),
+                "exact owner, backing, and rollback policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_BAD",
                 ),
                 "exact marker",
             ),

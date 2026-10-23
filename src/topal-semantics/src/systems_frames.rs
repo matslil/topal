@@ -26,6 +26,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ: &str =
     "topal.systems.static-image.construction.add-stack-pagesz/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ: &str =
     "topal.systems.static-image.construction.remove-stack-pagesz/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.add-stack-entry-fact/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.remove-stack-entry-fact/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =

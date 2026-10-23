@@ -143,6 +143,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF stack-leaf publication](bounded-static-elf-stack-leaf-publication.md)
 - [Bounded static ELF stack-entry block](bounded-static-elf-stack-entry-block.md)
 - [Bounded static ELF `AT_PAGESZ` fact](bounded-static-elf-auxv-pagesz.md)
+- [Bounded static ELF `AT_ENTRY` fact](bounded-static-elf-auxv-entry.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
