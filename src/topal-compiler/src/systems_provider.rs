@@ -36,8 +36,10 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -71,7 +73,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/114";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/115";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -86,6 +88,8 @@ pub enum X86SystemsLowering {
     ZeroStaticImagePayload,
     ZeroStaticImageStackBacking,
     PublishStaticImageStackLeaf,
+    InitializeStaticImageStackEntry,
+    ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
     CopyStaticImagePayload,
     SealStaticImagePermissions,
@@ -208,6 +212,12 @@ impl X86SystemsLowering {
             }
             Self::PublishStaticImageStackLeaf => {
                 "topal.provider.x86_64.static-image.publish-stack-leaf/1"
+            }
+            Self::InitializeStaticImageStackEntry => {
+                "topal.provider.x86_64.static-image.initialize-stack-entry/1"
+            }
+            Self::ClearStaticImageStackEntry => {
+                "topal.provider.x86_64.static-image.clear-stack-entry/1"
             }
             Self::RevokeStaticImageStackLeaf => {
                 "topal.provider.x86_64.static-image.revoke-stack-leaf/1"
@@ -618,6 +628,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF => {
             X86SystemsLowering::PublishStaticImageStackLeaf
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY => {
+            X86SystemsLowering::InitializeStaticImageStackEntry
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY => {
+            X86SystemsLowering::ClearStaticImageStackEntry
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF => {
             X86SystemsLowering::RevokeStaticImageStackLeaf
         }
@@ -800,6 +816,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::PublishStaticImageStackLeaf => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
+            }
+            X86SystemsLowering::InitializeStaticImageStackEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
+            }
+            X86SystemsLowering::ClearStaticImageStackEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
             }
             X86SystemsLowering::RevokeStaticImageStackLeaf => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
@@ -1013,7 +1035,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 102);
+        assert_eq!(plan.operations.len(), 104);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -1063,6 +1085,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF
                 && operation.lowering == X86SystemsLowering::PublishStaticImageStackLeaf
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
+                && operation.lowering == X86SystemsLowering::InitializeStaticImageStackEntry
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
+                && operation.lowering == X86SystemsLowering::ClearStaticImageStackEntry
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF

@@ -157,8 +157,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 extent is complete
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK"
-                                                                              zeroed-stack-backing-restored-construction is unmapped static image construction revoke stack leaf (
+                                                                              initialized-stack-entry-construction is unmapped static image construction initialize stack entry (
                                                                                 owner is published-stack-leaf-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                profile is bounded-static-elf-busybox-true,
+                                                                                extent is complete
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK"
+                                                                              published-stack-leaf-restored-construction is unmapped static image construction clear stack entry (
+                                                                                owner is initialized-stack-entry-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-entry-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK"
+                                                                              zeroed-stack-backing-restored-construction is unmapped static image construction revoke stack leaf (
+                                                                                owner is published-stack-leaf-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-leaf-qualification-rollback
                                                                               )

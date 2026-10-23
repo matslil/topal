@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -772,12 +772,62 @@ fn analyze_static_elf_frame_sequence(
             "static ELF stack-leaf publication must publish its exact marker before revocation",
         ));
     }
+    let initialized_stack_entry_construction_name = parse_static_image_stack_entry_initialization(
+        source,
+        initialize_stack_entry,
+        allocator_context,
+        &published_stack_leaf_construction_name,
+        &stack_backing_name,
+    )?;
+    let stack_entry_initialized_marker_span = statement_span(stack_entry_initialized_marker);
+    let stack_entry_initialized_marker = analyze_operation(
+        source,
+        stack_entry_initialized_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_entry_initialized_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_entry_initialized_marker_span,
+            "static ELF stack-entry initialization must publish its exact marker before clearing",
+        ));
+    }
+    let published_stack_leaf_restored_construction_name = parse_static_image_stack_entry_clearing(
+        source,
+        clear_stack_entry,
+        allocator_context,
+        &initialized_stack_entry_construction_name,
+        &stack_backing_name,
+    )?;
+    let stack_entry_cleared_marker_span = statement_span(stack_entry_cleared_marker);
+    let stack_entry_cleared_marker = analyze_operation(
+        source,
+        stack_entry_cleared_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_entry_cleared_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_entry_cleared_marker_span,
+            "static ELF stack-entry clearing must publish its exact marker before leaf revocation",
+        ));
+    }
     let zeroed_stack_backing_restored_construction_name =
         parse_static_image_stack_leaf_revocation(
             source,
             revoke_stack_leaf,
             allocator_context,
-            &published_stack_leaf_construction_name,
+            &published_stack_leaf_restored_construction_name,
             &stack_backing_name,
         )?;
     let stack_leaf_revoked_marker_span = statement_span(stack_leaf_revoked_marker);
@@ -996,6 +1046,10 @@ fn analyze_static_elf_frame_sequence(
         stack_backing_zeroed_marker,
         CompilerSystemsOperation::PublishStaticImageStackLeaf,
         stack_leaf_published_marker,
+        CompilerSystemsOperation::InitializeStaticImageStackEntry,
+        stack_entry_initialized_marker,
+        CompilerSystemsOperation::ClearStaticImageStackEntry,
+        stack_entry_cleared_marker,
         CompilerSystemsOperation::RevokeStaticImageStackLeaf,
         stack_leaf_revoked_marker,
         CompilerSystemsOperation::ReleasePhysicalFrames,
@@ -1967,6 +2021,203 @@ fn parse_static_image_stack_leaf_revocation(
             source,
             span,
             "static-image stack-leaf revocation requires the exact owner, backing, and rollback policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_entry_initialization(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-entry initialization cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-entry initialization must refine one published stack leaf",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, initialize, stack, entry, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry initialization requires its exact owner, backing, profile, and complete extent",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, initialize, "initialize")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, entry, "entry")
+        || fields.len() != 4
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry initialization requires its exact owner, backing, profile, and complete extent",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut profile = None;
+    let mut extent = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-entry initialization parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "backing" => backing = Some(source.slice(*value)),
+            "profile" => profile = Some(source.slice(*value)),
+            "extent" => extent = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-entry initialization parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || profile != Some("bounded-static-elf-busybox-true")
+        || extent != Some("complete")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry initialization requires the exact owner, backing, sealed profile, and complete extent",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_entry_clearing(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-entry clearing cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-entry clearing must refine one initialized stack entry",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, clear, stack, entry, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry clearing requires its exact owner, backing, and rollback policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, clear, "clear")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, entry, "entry")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry clearing requires its exact owner, backing, and rollback policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-entry clearing parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "backing" => backing = Some(source.slice(*value)),
+            "policy" => policy = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-entry clearing parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || policy != Some("bounded-stack-entry-qualification-rollback")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-entry clearing requires the exact owner, backing, and rollback policy",
         ));
     }
     Ok(source.slice(name).to_owned())

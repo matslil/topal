@@ -18,6 +18,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF: &str =
     "topal.systems.static-image.construction.publish-stack-leaf/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF: &str =
     "topal.systems.static-image.construction.revoke-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.initialize-stack-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.clear-stack-entry/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
