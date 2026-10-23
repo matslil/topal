@@ -47,6 +47,8 @@ MARKERS = (
     b"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
     b"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
@@ -483,7 +485,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/126",
+        "schema": "topal-kernel-toolchain-gate-qemu/127",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
