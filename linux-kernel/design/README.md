@@ -141,6 +141,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF stack-backing extent](bounded-static-elf-stack-backing-extent.md)
 - [Bounded static ELF stack-backing zeroing](bounded-static-elf-stack-backing-zeroing.md)
 - [Bounded static ELF stack-leaf publication](bounded-static-elf-stack-leaf-publication.md)
+- [Bounded static ELF stack-entry block](bounded-static-elf-stack-entry-block.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
