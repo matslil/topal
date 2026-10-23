@@ -448,6 +448,20 @@ revocation witnesses, and no stack backing, initialization, TLS, user-mode,
 instruction-fetch, syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001` and `TK-DEC-139`.
 
+The bounded static-ELF stack-backing increment shall admit one exact nested
+`(1, 1)` physical-frame request while stack-slot authority is live. X86-64
+lowering shall retain the static hierarchy identity, request at or above the
+first frame after its exact four-frame extent, reuse complete E820 and boot-
+reservation validation, keep the resulting backing identity opaque, and clear
+it while restoring the hierarchy identity on exact whole release. The checker
+and semantic model shall reject another shape, duplicate extent, partial or
+misordered release, slot or entry revocation, teardown, or disposition while
+backing is live. Structural and duplicate pinned-QEMU tests shall prove the
+nested allocator floor, disjoint resource identities, one ordered witness,
+whole release before slot revocation, and no zeroing, leaf publication, stack
+pointer, initialization, TLS, user-mode, syscall, or BusyBox authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001` and `TK-DEC-140`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
