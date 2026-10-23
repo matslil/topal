@@ -31,6 +31,7 @@ use crate::{
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
@@ -46,6 +47,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
@@ -1196,6 +1198,8 @@ pub enum SystemsOperation {
     AddStaticImageStackEntryFact,
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
+    AddStaticImageStackCredentials,
+    RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
@@ -1441,6 +1445,12 @@ impl SystemsOperation {
             }
             Self::AddStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME
+            }
+            Self::AddStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            Self::RemoveStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
             }
             Self::RemoveStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
@@ -1746,6 +1756,8 @@ pub enum SystemsTransition {
     AddStaticImageStackEntryFact,
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
+    AddStaticImageStackCredentials,
+    RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
@@ -2207,6 +2219,12 @@ impl SystemsTransition {
             Self::AddStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME
             }
+            Self::AddStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            Self::RemoveStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
+            }
             Self::RemoveStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
             }
@@ -2534,6 +2552,8 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackEntryFact
                     | SystemsOperation::AddStaticImageStackProgramHeaders
                     | SystemsOperation::AddStaticImageStackExecutableName
+                    | SystemsOperation::AddStaticImageStackCredentials
+                    | SystemsOperation::RemoveStaticImageStackCredentials
                     | SystemsOperation::RemoveStaticImageStackExecutableName
                     | SystemsOperation::RemoveStaticImageStackProgramHeaders
                     | SystemsOperation::RemoveStaticImageStackEntryFact
@@ -3051,6 +3071,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackEntryFactAdded,
     StaticElfConstructionStackProgramHeadersAdded,
     StaticElfConstructionStackExecutableNameAdded,
+    StaticElfConstructionStackCredentialsAdded,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3392,6 +3413,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack executable-name addition requires one live program-header group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded;
+            }
+            SystemsOperation::AddStaticImageStackCredentials => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack credential addition requires one live executable-name fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackCredentials => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack credential removal requires one live credential group",
                     ));
                 }
                 self.memory_ownership =
@@ -5463,6 +5508,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackEntryFactAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackProgramHeadersAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7288,6 +7334,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackExecutableName => {
             transitions.push(SystemsTransition::AddStaticImageStackExecutableName);
         }
+        SystemsOperation::AddStaticImageStackCredentials => {
+            transitions.push(SystemsTransition::AddStaticImageStackCredentials);
+        }
+        SystemsOperation::RemoveStaticImageStackCredentials => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackCredentials);
+        }
         SystemsOperation::RemoveStaticImageStackExecutableName => {
             transitions.push(SystemsTransition::RemoveStaticImageStackExecutableName);
         }
@@ -7796,6 +7848,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackEntryFact
         | SystemsOperation::AddStaticImageStackProgramHeaders
         | SystemsOperation::AddStaticImageStackExecutableName
+        | SystemsOperation::AddStaticImageStackCredentials
+        | SystemsOperation::RemoveStaticImageStackCredentials
         | SystemsOperation::RemoveStaticImageStackExecutableName
         | SystemsOperation::RemoveStaticImageStackProgramHeaders
         | SystemsOperation::RemoveStaticImageStackEntryFact
@@ -10817,6 +10871,8 @@ mod tests {
                 SystemsOperation::AddStaticImageStackEntryFact,
                 SystemsOperation::AddStaticImageStackProgramHeaders,
                 SystemsOperation::AddStaticImageStackExecutableName,
+                SystemsOperation::AddStaticImageStackCredentials,
+                SystemsOperation::RemoveStaticImageStackCredentials,
                 SystemsOperation::RemoveStaticImageStackExecutableName,
                 SystemsOperation::RemoveStaticImageStackProgramHeaders,
                 SystemsOperation::RemoveStaticImageStackEntryFact,
@@ -10843,6 +10899,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackEntryFact));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackProgramHeaders));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackExecutableName));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackCredentials));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackCredentials));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackExecutableName));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackProgramHeaders));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackEntryFact));
@@ -10851,6 +10909,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
@@ -10932,14 +11000,14 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut remove_executable_name_before_addition = program;
-        remove_executable_name_before_addition
+        let mut remove_credentials_before_addition = program;
+        remove_credentials_before_addition
             .bootstrap
             .handler
             .operations
-            .swap(21, 22);
+            .swap(22, 23);
         assert_eq!(
-            validate_systems_program(&remove_executable_name_before_addition)
+            validate_systems_program(&remove_credentials_before_addition)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"
