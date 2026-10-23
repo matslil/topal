@@ -1838,6 +1838,27 @@ intermediate value, or target instruction.
 Initialization SHALL NOT extract output, advance generation, perform fast key
 erasure, reseed, or authorize interface delivery.
 
+### TOPAL-SYSTEMS-ENTROPY-EXTRACT-001 — Opaque affine generator extraction
+
+`topal.systems.entropy.generator.extract/1` SHALL consume one affine generator
+in the `Ready` state and produce exactly one successor `Ready` generation plus
+one fresh affine opaque output object. The request SHALL name nonzero generator,
+algorithm, prior-generation, resulting-generation, and output identities; exact
+block, output-offset, and output extents; and the qualified counter and nonce
+identities. The resulting generation SHALL be the checked successor of the
+prior generation.
+
+The qualified algorithm SHALL define architecture-independent state,
+arithmetic, byte encoding, split, and cleanup semantics. The provider SHALL
+replace the complete persistent key before publishing any output byte, verify
+the complete key and output publications, wipe and verify all temporary cipher
+state, and fail closed rather than return partial state or output. Source SHALL
+NOT observe a key, output byte, address, intermediate value, representation, or
+target instruction. The prior generator generation SHALL NOT remain live.
+
+Extraction SHALL NOT deliver the output object to a kernel or userspace
+interface, perform another block, reseed, or authorize output reuse.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2088,6 +2109,30 @@ construct a ChaCha20 block, produce output, perform fast key erasure, reseed,
 populate `AT_RANDOM`, implement `getrandom`, recycle or renotify the queue,
 configure asynchronous interrupt delivery, reset the device, or define failure
 recovery.
+
+### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-EXTRACT-001 — Bounded first CRNG extraction
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-GENERATOR-001`, the initial profile
+SHALL perform exactly one `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001` operation. It
+SHALL name generator and ChaCha20 algorithm identity one, prior generation one,
+resulting generation two, output identity one, block extent 64, output offset
+32, output extent 32, counter zero, and nonce identity zero.
+
+The provider SHALL construct the standard 20-round ChaCha20 state using the
+eight 32-bit little-endian key words, zero 32-bit counter, and zero 96-bit
+nonce. It SHALL replace the persistent key with block bytes 0 through 31 before
+publishing block bytes 32 through 63 as opaque output identity one, verify both
+complete publications, and wipe and verify the complete temporary input and
+output state before success. Success SHALL consume generation one and publish
+only ready generator generation two plus the affine opaque output.
+
+The profile SHALL reject another identity, algorithm, generation, output,
+extent, split, counter, nonce, pre-state, omission, duplication, reordering,
+partial publication, retained temporary byte, or extraction before readiness.
+This refinement SHALL NOT populate `AT_RANDOM`, implement `getrandom` or
+`/dev/random`, deliver to a kernel consumer, compute another block, reseed,
+recycle or renotify the queue, configure asynchronous interrupt delivery,
+reset the device, or define failure recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

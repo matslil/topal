@@ -580,6 +580,17 @@ wipe and verify all 32 consumed pool bytes, and return success only after both
 actions. The root shall publish one ready affine generator and reject malformed,
 partial, duplicated, reordered, substituted, or premature initialization.
 
+The bounded CRNG-extraction refinement shall accept exactly one extraction
+after generator initialization. It shall validate generator and algorithm
+identity one; generations one and two; output identity one; a 64-byte block
+split at offset 32 into 32 output bytes; zero counter and nonce; the ready
+generation-one pre-state; and exact ordering. The provider shall compute the
+standard 20-round ChaCha20 block, replace and verify the persistent key before
+publishing and verifying opaque output, wipe and verify all temporary state,
+and return success only after every action. The root shall publish ready
+generation two and one affine output object and reject malformed, partial,
+duplicated, reordered, substituted, or premature extraction.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

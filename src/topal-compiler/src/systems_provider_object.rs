@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/85";
+    "topal.provider-object.x86_64-qemu-pc-q35/86";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -123,6 +123,8 @@ pub const X86_SYSTEMS_ENTROPY_POOL_MIX_SYMBOL: &str =
     "topal_x86_systems_entropy_mix_blake2s_pool_sample";
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL: &str =
     "topal_x86_systems_entropy_initialize_chacha20_generator";
+pub const X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL: &str =
+    "topal_x86_systems_entropy_extract_chacha20_generator";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -130,6 +132,7 @@ pub const X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL: &str = "topal_x86_systems_raw_e
 pub const X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL: &str = "topal_x86_systems_entropy_pool_state";
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL: &str =
     "topal_x86_systems_entropy_generator_key";
+pub const X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL: &str = "topal_x86_systems_entropy_output";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -716,6 +719,124 @@ fn entropy_initialize_chacha20_generator() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn emit_chacha20_quarter_round(code: &mut X86FunctionEncoder, lanes: [usize; 4]) {
+    let [a, b, c, d] = lanes.map(|lane| 64 + lane * 4);
+    emit_stack_dword_load(code, 0, a);
+    emit_stack_dword_load(code, 1, b);
+    emit_stack_dword_load(code, 2, c);
+    emit_stack_dword_load(code, 8, d);
+    code.bytes(&[0x01, 0xc8]); // a += b
+    code.bytes(&[0x41, 0x31, 0xc0, 0x41, 0xc1, 0xc0, 16]); // d = rol(d ^ a, 16)
+    code.bytes(&[0x44, 0x01, 0xc2]); // c += d
+    code.bytes(&[0x31, 0xd1, 0xc1, 0xc1, 12]); // b = rol(b ^ c, 12)
+    code.bytes(&[0x01, 0xc8]); // a += b
+    code.bytes(&[0x41, 0x31, 0xc0, 0x41, 0xc1, 0xc0, 8]); // d = rol(d ^ a, 8)
+    code.bytes(&[0x44, 0x01, 0xc2]); // c += d
+    code.bytes(&[0x31, 0xd1, 0xc1, 0xc1, 7]); // b = rol(b ^ c, 7)
+    emit_stack_dword_store(code, 0, a);
+    emit_stack_dword_store(code, 1, b);
+    emit_stack_dword_store(code, 2, c);
+    emit_stack_dword_store(code, 8, d);
+}
+
+fn entropy_extract_chacha20_generator() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // key pointer
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // output pointer
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]); // storage must be distinct
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x89, 0xf3]); // r10=key, r11=output
+    code.bytes(&[0x48, 0x81, 0xec, 0x80, 0, 0, 0]); // input[16], working[16]
+
+    for (word, value) in [0x6170_7865_u32, 0x3320_646e, 0x7962_2d32, 0x6b20_6574]
+        .into_iter()
+        .enumerate()
+    {
+        code.bytes(&[0xc7, 0x44, 0x24, u8::try_from(word * 4).unwrap()]);
+        code.bytes(&value.to_le_bytes());
+    }
+    for word in 0_u8..8 {
+        code.bytes(&[0x41, 0x8b, 0x42, word * 4]);
+        code.bytes(&[0x89, 0x44, 0x24, 16 + word * 4]);
+    }
+    for word in 12_u8..16 {
+        code.bytes(&[0xc7, 0x44, 0x24, word * 4, 0, 0, 0, 0]);
+    }
+    for word in 0..16 {
+        emit_stack_dword_load(&mut code, 0, word * 4);
+        emit_stack_dword_store(&mut code, 0, 64 + word * 4);
+    }
+
+    for _ in 0..10 {
+        for lanes in [
+            [0, 4, 8, 12],
+            [1, 5, 9, 13],
+            [2, 6, 10, 14],
+            [3, 7, 11, 15],
+            [0, 5, 10, 15],
+            [1, 6, 11, 12],
+            [2, 7, 8, 13],
+            [3, 4, 9, 14],
+        ] {
+            emit_chacha20_quarter_round(&mut code, lanes);
+        }
+    }
+    for word in 0..16 {
+        emit_stack_dword_load(&mut code, 0, 64 + word * 4);
+        code.bytes(&[0x03, 0x44, 0x24, u8::try_from(word * 4).unwrap()]);
+        emit_stack_dword_store(&mut code, 0, 64 + word * 4);
+    }
+
+    // Replace and verify the persistent key before publishing any output.
+    for word in 0_u8..8 {
+        emit_stack_dword_load(&mut code, 0, 64 + usize::from(word) * 4);
+        code.bytes(&[0x41, 0x89, 0x42, word * 4]);
+        code.bytes(&[0x41, 0x3b, 0x42, word * 4]);
+        code.jump_if(0x85, "fail_stack");
+    }
+    for word in 0_u8..8 {
+        emit_stack_dword_load(&mut code, 0, 96 + usize::from(word) * 4);
+        code.bytes(&[0x41, 0x89, 0x43, word * 4]);
+        code.bytes(&[0x41, 0x3b, 0x43, word * 4]);
+        code.jump_if(0x85, "fail_stack");
+    }
+
+    code.bytes(&[0x31, 0xc0]);
+    for offset in (0_u8..128).step_by(8) {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x44, 0x24, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24]);
+    for offset in (8_u8..128).step_by(8) {
+        code.bytes(&[0x48, 0x0b, 0x44, 0x24, offset]);
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail_stack");
+    code.bytes(&[0x48, 0x81, 0xc4, 0x80, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fail_stack")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        code.bytes(&[0x49, 0x89, 0x42, offset, 0x49, 0x89, 0x43, offset]);
+    }
+    for offset in (0_u8..128).step_by(8) {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x44, 0x24, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x81, 0xc4, 0x80, 0, 0, 0]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -901,6 +1022,12 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL,
+        &entropy_extract_chacha20_generator()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -1031,6 +1158,17 @@ pub fn generate_x86_64_systems_provider_object(
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL.as_bytes().to_vec(),
         value: generator_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+    let output_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL.as_bytes().to_vec(),
+        value: output_offset,
         size: 32,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
@@ -5036,6 +5174,55 @@ assert bytes(pool) == expected
         );
     }
 
+    #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+    fn check_entropy_extract_against_independent_reference(bytes: &[u8]) {
+        let encoded = bytes
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let script = r#"
+import ctypes
+import mmap
+import sys
+
+code = bytes.fromhex(sys.argv[1])
+memory = mmap.mmap(
+    -1,
+    len(code),
+    prot=mmap.PROT_READ | mmap.PROT_WRITE | mmap.PROT_EXEC,
+)
+memory.write(code)
+address = ctypes.addressof(ctypes.c_char.from_buffer(memory))
+function = ctypes.CFUNCTYPE(
+    ctypes.c_uint32,
+    ctypes.POINTER(ctypes.c_ubyte),
+    ctypes.POINTER(ctypes.c_ubyte),
+)(address)
+key = (ctypes.c_ubyte * 32)()
+output = (ctypes.c_ubyte * 32)()
+assert function(key, output) == 1
+block = bytes.fromhex(
+    "76b8e0ada0f13d90405d6ae55386bd28"
+    "bdd219b8a08ded1aa836efcc8b770dc7"
+    "da41597c5157488d7724e03fb8d84a37"
+    "6a43b8f41518a11cc387b669b2ee6586"
+)
+assert bytes(key) == block[:32]
+assert bytes(output) == block[32:]
+"#;
+        let output = Command::new("python3")
+            .arg("-c")
+            .arg(script)
+            .arg(encoded)
+            .output()
+            .expect("Python is available for the independent ChaCha20 reference check");
+        assert!(
+            output.status.success(),
+            "generated entropy extraction failed its executable reference check: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
     #[test]
     fn emits_a_closed_relocatable_elf64_provider_object() {
         // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001.
@@ -5097,7 +5284,7 @@ assert bytes(pool) == expected
             .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
             .unwrap();
         assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
-        assert_eq!(entropy_storage.size(), 96);
+        assert_eq!(entropy_storage.size(), 128);
         assert_eq!(entropy_storage.align(), 32);
         let raw_sample = file
             .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
@@ -5118,6 +5305,15 @@ assert bytes(pool) == expected
         assert_eq!(generator_key.address(), 64);
         assert_eq!(
             generator_key.section_index(),
+            entropy_storage.index().into()
+        );
+        let entropy_output = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL)
+            .unwrap();
+        assert_eq!(entropy_output.size(), 32);
+        assert_eq!(entropy_output.address(), 96);
+        assert_eq!(
+            entropy_output.section_index(),
             entropy_storage.index().into()
         );
         let note = file
@@ -5552,6 +5748,50 @@ assert bytes(pool) == expected
                 );
             }
         }
+        let extract = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(extract.address()).unwrap();
+        let end = start + usize::try_from(extract.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(bytes.len() > 4_000, "scalar ChaCha20 lowering is complete");
+        for value in [0x6170_7865_u32, 0x3320_646e, 0x7962_2d32, 0x6b20_6574] {
+            assert!(bytes.windows(4).any(|window| window == value.to_le_bytes()));
+        }
+        for rotation in [16_u8, 8] {
+            assert_eq!(
+                bytes
+                    .windows(4)
+                    .filter(|window| *window == [0x41, 0xc1, 0xc0, rotation])
+                    .count(),
+                80
+            );
+        }
+        for rotation in [12_u8, 7] {
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0xc1, 0xc1, rotation])
+                    .count(),
+                80
+            );
+        }
+        for offset in [0_u8, 4, 8, 12, 16, 20, 24, 28] {
+            assert!(
+                bytes
+                    .windows(4)
+                    .any(|window| window == [0x41, 0x89, 0x42, offset]),
+                "the successor key word is published"
+            );
+            assert!(
+                bytes
+                    .windows(4)
+                    .any(|window| window == [0x41, 0x89, 0x43, offset]),
+                "the opaque output word is published"
+            );
+        }
+        #[cfg(all(target_arch = "x86_64", target_family = "unix"))]
+        check_entropy_extract_against_independent_reference(bytes);
         let publish = file
             .symbol_by_name(X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
             .unwrap();

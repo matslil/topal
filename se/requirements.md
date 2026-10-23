@@ -1074,6 +1074,16 @@ a ready affine generator. It shall reject malformed, omitted, duplicated,
 reordered, substituted, premature, partially copied, or incompletely wiped
 initialization and shall produce no random output.
 
+The bounded CRNG-extraction refinement shall consume ready generator identity
+one at generation one and publish only ready generation two plus fresh opaque
+output identity one. It shall compute one standard 20-round ChaCha20 block from
+the 32-byte key, zero counter, and zero nonce; replace and verify the persistent
+key from the first 32 bytes before publishing and verifying the second 32
+bytes; and wipe and verify all temporary cipher state. It shall reject
+malformed, omitted, duplicated, reordered, substituted, premature, partially
+published, or incompletely wiped extraction and shall perform no interface
+delivery.
+
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
 A systems artifact shall use a distinct qualified target profile, generated

@@ -1401,6 +1401,16 @@ explicit ready generator but produces no random output. Extraction, fast key
 erasure, generation advancement, reseeding, and interface delivery require
 later distinct operations.
 
+A checked generator-extraction operation may consume one ready affine
+generator generation and return exactly one successor generation together with
+one opaque output object. The qualified profile fixes the cipher construction,
+counter and nonce, maximum output extent, key-erasure split, and generation
+advance. The provider must replace the persistent key before publishing any
+output, wipe all temporary cipher state, and fail closed on partial key or
+output publication. Source observes neither key nor output bytes; a separate
+checked delivery operation must consume the output object into a selected
+kernel or userspace interface.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
