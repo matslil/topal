@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/110";
+    "topal.provider-object.x86_64-qemu-pc-q35/111";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -41,6 +41,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL: &str =
     "topal_x86_systems_static_image_activate_address_space";
 pub const X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL: &str =
     "topal_x86_systems_static_image_restore_address_space";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_entry";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entry";
 pub const X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL: &str =
     "topal_x86_systems_static_image_detach_address_space";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL: &str =
@@ -1261,6 +1265,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
         &static_image_restore_address_space()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
+        &static_image_entry_authority()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
+        &static_image_entry_authority()?,
     );
     append_encoded_function(
         &mut object,
@@ -6331,6 +6347,57 @@ fn static_image_restore_address_space() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn static_image_entry_authority() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x50, 0x57, 0x56, 0x51]); // bootstrap, payload, metadata, static root
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification(
+        &mut code,
+        [
+            "entry-header",
+            "entry-executable",
+            "entry-relro",
+            "entry-writable",
+        ],
+    )?;
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+
+    code.bytes(&[0x4c, 0x8b, 0x44, 0x24, 0x18]); // qualified bootstrap root
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24, 0x4d, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x10]); // payload base
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x004a_6580_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x18]); // copied ELF e_entry
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x42, 0x18]);
+    code.bytes(&[0x48, 0x2d, 0x00, 0x00, 0x40, 0x00]);
+    code.bytes(&[0x48, 0x3d, 0x80, 0x65, 0x0a, 0x00]); // exact entry offset 0xa6580
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x08]); // final leaf table
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x05, 0x00, 0x60, 0x0a, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc8, 0x05]); // user read/execute, never writable
+    code.bytes(&[0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00]); // leaf ordinal 166
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn static_image_detach_address_space() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x57, 0x56, 0x51]);
@@ -7848,6 +7915,8 @@ assert bytes(output) == block[32:]
             X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL,
         );
         let restore = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL);
+        let authorize_entry = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL);
+        let revoke_entry = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL);
         let detach = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL);
         assert_eq!(&attach[..3], &[0x57, 0x56, 0x51]);
         assert_eq!(&detach[..3], &[0x57, 0x56, 0x51]);
@@ -8006,6 +8075,49 @@ assert bytes(output) == block[32:]
         assert!(
             restore_switch < restore_leaf_validation,
             "restoration must restore identity translation before dereferencing construction resources"
+        );
+        assert_eq!(authorize_entry, revoke_entry);
+        assert_eq!(&authorize_entry[..5], &[0x41, 0x50, 0x57, 0x56, 0x51]);
+        assert_eq!(
+            authorize_entry
+                .windows(3)
+                .filter(|bytes| *bytes == [0x0f, 0x20, 0xd8])
+                .count(),
+            3,
+            "entry authority must prove both root states and the exact active bootstrap root"
+        );
+        assert!(
+            !authorize_entry
+                .windows(3)
+                .any(|bytes| bytes[..2] == [0x0f, 0x22]),
+            "entry authority must not modify a translation root"
+        );
+        assert!(
+            authorize_entry
+                .windows(8)
+                .any(|bytes| bytes == 0x004a_6580_u64.to_le_bytes())
+                && authorize_entry
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x2d, 0x00, 0x00, 0x40, 0x00, 0x48])
+                && authorize_entry
+                    .windows(6)
+                    .any(|bytes| bytes == [0x3d, 0x80, 0x65, 0x0a, 0x00, 0x0f]),
+            "entry authority must retain the exact ELF entry and executable-span offset"
+        );
+        assert!(
+            authorize_entry
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00])
+                && authorize_entry
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x05, 0x00, 0x60, 0x0a, 0x00, 0x48]),
+            "entry authority must bind leaf ordinal 166 to payload page offset 0xa6000"
+        );
+        assert!(
+            !authorize_entry
+                .windows(9)
+                .any(|bytes| { bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab] }),
+            "entry authority must not mutate the attached hierarchy"
         );
 
         let revoke = file

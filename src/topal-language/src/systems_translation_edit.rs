@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -646,11 +646,63 @@ fn analyze_static_elf_frame_sequence(
             "static ELF address-space restoration must publish its exact marker before detachment",
         ));
     }
+    let entry_authorized_construction_name = parse_static_image_entry_transition(
+        source,
+        authorize_entry,
+        allocator_context,
+        &restored_construction_name,
+        "authorize",
+        "validated-static-elf-entry",
+    )?;
+    let entry_marker_span = statement_span(entry_marker);
+    let entry_marker = analyze_operation(
+        source,
+        entry_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &entry_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            entry_marker_span,
+            "static ELF entry authorization must publish its exact marker before revocation",
+        ));
+    }
+    let entry_restored_construction_name = parse_static_image_entry_transition(
+        source,
+        revoke_entry,
+        allocator_context,
+        &entry_authorized_construction_name,
+        "revoke",
+        "bounded-entry-qualification-rollback",
+    )?;
+    let entry_revoked_marker_span = statement_span(entry_revoked_marker);
+    let entry_revoked_marker = analyze_operation(
+        source,
+        entry_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &entry_revoked_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            entry_revoked_marker_span,
+            "static ELF entry revocation must publish its exact marker before detachment",
+        ));
+    }
     let detached_construction_name = parse_static_image_address_space_detach(
         source,
         detach,
         allocator_context,
-        &restored_construction_name,
+        &entry_restored_construction_name,
     )?;
     let detach_marker_span = statement_span(detach_marker);
     let detach_marker = analyze_operation(
@@ -770,6 +822,10 @@ fn analyze_static_elf_frame_sequence(
         active_marker,
         CompilerSystemsOperation::RestoreStaticImageAddressSpace,
         restored_marker,
+        CompilerSystemsOperation::AuthorizeStaticImageEntry,
+        entry_marker,
+        CompilerSystemsOperation::RevokeStaticImageEntry,
+        entry_revoked_marker,
         CompilerSystemsOperation::DetachStaticImageAddressSpace,
         detach_marker,
         CompilerSystemsOperation::ReclaimStaticImageConstructionHierarchy,
@@ -1151,6 +1207,98 @@ fn parse_static_image_address_space_transition(
             source,
             span,
             "static-image address-space transition requires the exact owner and continuation policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entry_transition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    operation_name: &str,
+    policy_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image entry transition cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image entry transition must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, operation, entry, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image entry transition requires its exact owner and policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, operation, operation_name)
+        || !identifier_is(source, entry, "entry")
+        || fields.len() != 2
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image entry transition requires its exact owner and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image entry transition parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "policy" => policy = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image entry transition parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name) || policy != Some(policy_name) {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image entry transition requires the exact owner and policy",
         ));
     }
     Ok(source.slice(name).to_owned())

@@ -685,6 +685,43 @@ static-image byte, create a persistent process address space, initialize TLS
 or a stack, enter user mode, handle a user fault or syscall, retain the static
 root after its witness, or run BusyBox.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001 — Opaque executable entry authority
+
+`static image construction authorize entry` SHALL consume only the exact
+restored `AttachedStaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ACTIVATION-001`. It SHALL accept only policy
+`validated-static-elf-entry` and SHALL produce one affine
+`EntryAuthorizedStaticImageConstruction` owning the unchanged payload, leaf
+metadata, hierarchy, and one opaque entry authority.
+
+Before authorization, the provider SHALL prove the static root inactive and
+the qualified bootstrap root active; revalidate the complete hierarchy, all
+503 final leaves and nine absent entries; revalidate the copied ELF entry
+identity; and prove that entry contained in an immutable executable load
+interval and its final user read/execute, non-writable leaf. Numeric virtual or
+physical addresses, page-table encodings, and entry registers SHALL remain
+provider-private.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK`
+observation while the authorized owner is live, then invoke
+`static image construction revoke entry` with that exact owner and policy
+`bounded-entry-qualification-rollback`. Revocation SHALL revalidate the same
+inactive entry mapping, consume the entry authority, reproduce the restored
+attached construction with byte-for-byte unchanged resources, and be followed
+by exactly one `TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK` observation
+before the existing detach and return sequence.
+
+A wrong owner, policy, root state, hierarchy entry, final or absent leaf, ELF
+entry, executable containment, operation order, witness, duplicate authority,
+detach or resource return while authorized, partial authority, or recoverable
+disposition with entry authority live SHALL be invalid. Authorization and
+revocation SHALL modify no hierarchy, leaf, payload, or root-register byte.
+
+This rule SHALL NOT publish a numeric entry, create a thread or process,
+allocate or initialize a stack, initialize TLS, enter user mode, fetch or
+execute a static-image instruction, handle a user fault or syscall, or retain
+entry authority after its bounded witness.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

@@ -22,6 +22,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE: &str =
     "topal.systems.static-image.construction.activate-address-space/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE: &str =
     "topal.systems.static-image.construction.restore-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY: &str =
+    "topal.systems.static-image.construction.authorize-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY: &str =
+    "topal.systems.static-image.construction.revoke-entry/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE: &str =
     "topal.systems.static-image.construction.detach-address-space/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY: &str =
