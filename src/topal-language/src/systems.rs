@@ -86,6 +86,7 @@ pub use topal_semantics::{
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -93,6 +94,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -9271,6 +9273,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -9279,6 +9282,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -10407,7 +10411,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 291);
+        assert_eq!(program.bootstrap.handler.operations.len(), 295);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10486,6 +10490,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -10494,6 +10499,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
@@ -12914,7 +12920,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
+                    "owner is stack-slot-restored-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
                     "owner is restored-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
                 ),
                 "exact owner and policy",
@@ -12939,6 +12945,69 @@ mod tests {
                     "owner is restored-static-elf-construction\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK\"",
                 ),
                 "exact restored construction",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_slot_authorization_and_revocation() {
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-linux-initial-stack-slot",
+                    "owner is restored-static-elf-construction,\n                                                                                policy is bounded-linux-initial-stack-slot",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-linux-initial-stack-slot",
+                    "policy is unguarded-linux-initial-stack-slot",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-stack-slot-qualification-rollback",
+                    "policy is unbounded-stack-slot-qualification-rollback",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is stack-slot-restored-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
+                ),
+                "exact owner and policy",
             ),
         ] {
             let error = analyze_systems_for_compiler(
