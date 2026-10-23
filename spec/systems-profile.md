@@ -1250,6 +1250,57 @@ its numeric value or representation, add another auxiliary-vector fact,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001 — Userspace accounting tick rate
+
+`static image construction add stack clock tick rate` SHALL require the exact
+live `SecureModeStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `linux-user-hz`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`ClockTickRateStackEntryStaticImageConstruction` retaining every prior fact
+while adding one userspace accounting-rate fact after `AT_SECURE` and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the secure-mode-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that the accounting-rate fact denotes Linux's baseline `USER_HZ`
+contract and is distinct from every hardware-clock and scheduler-frequency
+fact, clear the complete backing, reconstruct the complete target-aligned
+block, perform every target-required visibility operation, and read back every
+word, pointer relation, string byte, terminator, clock identity, and otherwise-
+zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK` observation.
+
+Source SHALL invoke `static image construction remove stack clock tick rate`
+with the exact extended owner, backing identity, and policy
+`bounded-stack-clock-tick-rate-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact secure-mode-qualified block,
+preserve every prior obligation, and reproduce the exact
+`SecureModeStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK` observation before secure-mode
+removal.
+
+A wrong owner, backing, value, policy, accounting-rate identity, or clock
+separation; duplicate addition; partial mutation or readback; wrong ordering;
+prior-fact removal, ordinary clearing, or leaf revocation while extended;
+backing release; activation; teardown; or recoverable disposition SHALL be
+invalid. Only exact accounting-rate removal SHALL restore the state admitted
+by secure-mode removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_CLKTCK=(17,100)` after `AT_SECURE=(23,0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact security and credential facts, executable-name alias, and inactive
+hierarchy and issue no active-address invalidation.
+
+This rule SHALL NOT retain the accounting-rate fact after its removal witness,
+expose its numeric value or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

@@ -206,8 +206,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK"
-                                                                              credential-stack-restored-construction is unmapped static image construction remove stack secure mode (
+                                                                              clock-tick-rate-stack-construction is unmapped static image construction add stack clock tick rate (
                                                                                 owner is secure-mode-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is linux-user-hz,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK"
+                                                                              secure-mode-stack-restored-construction is unmapped static image construction remove stack clock tick rate (
+                                                                                owner is clock-tick-rate-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK"
+                                                                              credential-stack-restored-construction is unmapped static image construction remove stack secure mode (
+                                                                                owner is secure-mode-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-secure-mode-qualification-rollback
                                                                               )

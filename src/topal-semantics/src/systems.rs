@@ -31,6 +31,7 @@ use crate::{
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
@@ -48,6 +49,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
@@ -1202,6 +1204,8 @@ pub enum SystemsOperation {
     AddStaticImageStackExecutableName,
     AddStaticImageStackCredentials,
     AddStaticImageStackSecureMode,
+    AddStaticImageStackClockTickRate,
+    RemoveStaticImageStackClockTickRate,
     RemoveStaticImageStackSecureMode,
     RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
@@ -1455,6 +1459,12 @@ impl SystemsOperation {
             }
             Self::AddStaticImageStackSecureMode => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
+            }
+            Self::AddStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            Self::RemoveStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
             }
             Self::RemoveStaticImageStackSecureMode => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
@@ -1768,6 +1778,8 @@ pub enum SystemsTransition {
     AddStaticImageStackExecutableName,
     AddStaticImageStackCredentials,
     AddStaticImageStackSecureMode,
+    AddStaticImageStackClockTickRate,
+    RemoveStaticImageStackClockTickRate,
     RemoveStaticImageStackSecureMode,
     RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
@@ -2237,6 +2249,12 @@ impl SystemsTransition {
             Self::AddStaticImageStackSecureMode => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
             }
+            Self::AddStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            Self::RemoveStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            }
             Self::RemoveStaticImageStackSecureMode => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
             }
@@ -2572,6 +2590,8 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackExecutableName
                     | SystemsOperation::AddStaticImageStackCredentials
                     | SystemsOperation::AddStaticImageStackSecureMode
+                    | SystemsOperation::AddStaticImageStackClockTickRate
+                    | SystemsOperation::RemoveStaticImageStackClockTickRate
                     | SystemsOperation::RemoveStaticImageStackSecureMode
                     | SystemsOperation::RemoveStaticImageStackCredentials
                     | SystemsOperation::RemoveStaticImageStackExecutableName
@@ -3093,6 +3113,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackExecutableNameAdded,
     StaticElfConstructionStackCredentialsAdded,
     StaticElfConstructionStackSecureModeAdded,
+    StaticElfConstructionStackClockTickRateAdded,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3458,6 +3479,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack secure-mode addition requires one live credential group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded;
+            }
+            SystemsOperation::AddStaticImageStackClockTickRate => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack clock-tick-rate addition requires one live security fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackClockTickRate => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack clock-tick-rate removal requires one live accounting-rate fact",
                     ));
                 }
                 self.memory_ownership =
@@ -5555,6 +5600,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7386,6 +7432,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackSecureMode => {
             transitions.push(SystemsTransition::AddStaticImageStackSecureMode);
         }
+        SystemsOperation::AddStaticImageStackClockTickRate => {
+            transitions.push(SystemsTransition::AddStaticImageStackClockTickRate);
+        }
+        SystemsOperation::RemoveStaticImageStackClockTickRate => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackClockTickRate);
+        }
         SystemsOperation::RemoveStaticImageStackSecureMode => {
             transitions.push(SystemsTransition::RemoveStaticImageStackSecureMode);
         }
@@ -7902,6 +7954,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackExecutableName
         | SystemsOperation::AddStaticImageStackCredentials
         | SystemsOperation::AddStaticImageStackSecureMode
+        | SystemsOperation::AddStaticImageStackClockTickRate
+        | SystemsOperation::RemoveStaticImageStackClockTickRate
         | SystemsOperation::RemoveStaticImageStackSecureMode
         | SystemsOperation::RemoveStaticImageStackCredentials
         | SystemsOperation::RemoveStaticImageStackExecutableName
@@ -10927,6 +10981,8 @@ mod tests {
                 SystemsOperation::AddStaticImageStackExecutableName,
                 SystemsOperation::AddStaticImageStackCredentials,
                 SystemsOperation::AddStaticImageStackSecureMode,
+                SystemsOperation::AddStaticImageStackClockTickRate,
+                SystemsOperation::RemoveStaticImageStackClockTickRate,
                 SystemsOperation::RemoveStaticImageStackSecureMode,
                 SystemsOperation::RemoveStaticImageStackCredentials,
                 SystemsOperation::RemoveStaticImageStackExecutableName,
@@ -10957,6 +11013,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackExecutableName));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackCredentials));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackSecureMode));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackClockTickRate));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackClockTickRate));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackSecureMode));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackCredentials));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackExecutableName));
@@ -10967,6 +11025,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
@@ -11068,14 +11136,14 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut remove_secure_mode_before_addition = program;
-        remove_secure_mode_before_addition
+        let mut remove_clock_tick_rate_before_addition = program;
+        remove_clock_tick_rate_before_addition
             .bootstrap
             .handler
             .operations
-            .swap(23, 24);
+            .swap(24, 25);
         assert_eq!(
-            validate_systems_program(&remove_secure_mode_before_addition)
+            validate_systems_program(&remove_clock_tick_rate_before_addition)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"
