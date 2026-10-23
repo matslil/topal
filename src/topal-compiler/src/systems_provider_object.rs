@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/115";
+    "topal.provider-object.x86_64-qemu-pc-q35/116";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -41,6 +41,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL: &str =
     "topal_x86_systems_static_image_initialize_stack_entry";
 pub const X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL: &str =
     "topal_x86_systems_static_image_clear_stack_entry";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_pagesz";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_pagesz";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
     "topal_x86_systems_static_image_copy_payload";
 pub const X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL: &str =
@@ -1279,6 +1283,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
         &static_image_clear_stack_entry()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
+        &static_image_add_stack_pagesz()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
+        &static_image_remove_stack_pagesz()?,
     );
     append_encoded_function(
         &mut object,
@@ -6371,6 +6387,187 @@ fn static_image_clear_stack_entry() -> Result<Vec<u8>, CompileError> {
     static_image_stack_entry(false)
 }
 
+fn emit_static_image_pagesz_stack_entry_verification(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    const ENTRY_OFFSET: u32 = 0x0f90;
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+    code.bytes(&498_u32.to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    for (offset, expected) in [
+        (ENTRY_OFFSET, 2_u64),
+        (ENTRY_OFFSET + 8, 0x005f_ffe0),
+        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 40, 6),
+        (ENTRY_OFFSET + 48, 4096),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+    ] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&expected.to_le_bytes());
+        code.bytes(&[0x49, 0x39, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail");
+    }
+    for offset in [
+        ENTRY_OFFSET + 24,
+        ENTRY_OFFSET + 32,
+        ENTRY_OFFSET + 56,
+        ENTRY_OFFSET + 64,
+        ENTRY_OFFSET + 72,
+        0x0ff0,
+        0x0ff8,
+    ] {
+        code.bytes(&[0x49, 0x83, 0xbb]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0x00]);
+        code.jump_if(0x85, "fail");
+    }
+    Ok(())
+}
+
+fn emit_static_image_stack_entry_words(code: &mut X86FunctionEncoder, pagesz: bool) {
+    let entry_offset = if pagesz { 0x0f90_u32 } else { 0x0fa0_u32 };
+    for (offset, value) in [
+        (entry_offset, 2_u64),
+        (entry_offset + 8, 0x005f_ffe0),
+        (entry_offset + 16, 0x005f_ffe8),
+    ] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+    }
+    if pagesz {
+        for (offset, value) in [(entry_offset + 40, 6_u64), (entry_offset + 48, 4096)] {
+            code.bytes(&[0x48, 0xb8]);
+            code.bytes(&value.to_le_bytes());
+            code.bytes(&[0x49, 0x89, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    for (offset, value) in [
+        (0x0fe0_u32, 0x0078_6f62_7973_7562_u64),
+        (0x0fe8, 0x0000_0000_6575_7274),
+    ] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+    }
+}
+
+fn static_image_stack_pagesz(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "stack-pagesz-add-before-header",
+                "stack-pagesz-add-before-executable",
+                "stack-pagesz-add-before-relro",
+                "stack-pagesz-add-before-writable",
+            ]
+        } else {
+            [
+                "stack-pagesz-remove-before-header",
+                "stack-pagesz-remove-before-executable",
+                "stack-pagesz-remove-before-relro",
+                "stack-pagesz-remove-before-writable",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "verify-stack-pagesz-add-before-low-pd"
+        } else {
+            "verify-stack-pagesz-remove-before-low-pd"
+        },
+        if add {
+            "verify-stack-pagesz-add-before-low-pd-expected"
+        } else {
+            "verify-stack-pagesz-remove-before-low-pd-expected"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    if add {
+        emit_static_image_initialized_stack_entry_verification(&mut code)?;
+    } else {
+        emit_static_image_pagesz_stack_entry_verification(&mut code)?;
+    }
+
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
+    emit_static_image_stack_entry_words(&mut code, add);
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "stack-pagesz-add-after-header",
+                "stack-pagesz-add-after-executable",
+                "stack-pagesz-add-after-relro",
+                "stack-pagesz-add-after-writable",
+            ]
+        } else {
+            [
+                "stack-pagesz-remove-after-header",
+                "stack-pagesz-remove-after-executable",
+                "stack-pagesz-remove-after-relro",
+                "stack-pagesz-remove-after-writable",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "verify-stack-pagesz-add-after-low-pd"
+        } else {
+            "verify-stack-pagesz-remove-after-low-pd"
+        },
+        if add {
+            "verify-stack-pagesz-add-after-low-pd-expected"
+        } else {
+            "verify-stack-pagesz-remove-after-low-pd-expected"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    if add {
+        emit_static_image_pagesz_stack_entry_verification(&mut code)?;
+    } else {
+        emit_static_image_initialized_stack_entry_verification(&mut code)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_pagesz() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_pagesz(true)
+}
+
+fn static_image_remove_stack_pagesz() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_pagesz(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -8424,6 +8621,55 @@ assert bytes(output) == block[32:]
                 "inactive stack-entry transitions must not issue active-address invalidation"
             );
         }
+
+        let add_stack_pagesz =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL);
+        let remove_stack_pagesz =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL);
+        for bytes in [add_stack_pagesz.as_slice(), remove_stack_pagesz.as_slice()] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each AT_PAGESZ transition must clear the complete frame before reconstruction"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each AT_PAGESZ transition must fence before complete readback"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive AT_PAGESZ transitions must not issue active-address invalidation"
+            );
+        }
+        for expected in [6_u64, 4096] {
+            assert!(
+                add_stack_pagesz
+                    .windows(8)
+                    .any(|bytes| bytes == expected.to_le_bytes()),
+                "AT_PAGESZ addition must encode the exact native tag and page value"
+            );
+        }
+        assert!(
+            add_stack_pagesz
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x90, 0x0f, 0x00, 0x00]),
+            "AT_PAGESZ addition must reconstruct the aligned extended entry position"
+        );
+        assert!(
+            remove_stack_pagesz
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xa0, 0x0f, 0x00, 0x00]),
+            "AT_PAGESZ removal must restore the aligned minimal entry position"
+        );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
         assert!(copy_payload.len() > 8_000);

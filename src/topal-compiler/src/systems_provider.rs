@@ -33,6 +33,7 @@ use topal_language::compiler::{
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
@@ -44,6 +45,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -73,7 +75,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/115";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/116";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -89,6 +91,8 @@ pub enum X86SystemsLowering {
     ZeroStaticImageStackBacking,
     PublishStaticImageStackLeaf,
     InitializeStaticImageStackEntry,
+    AddStaticImageStackPageSize,
+    RemoveStaticImageStackPageSize,
     ClearStaticImageStackEntry,
     RevokeStaticImageStackLeaf,
     CopyStaticImagePayload,
@@ -215,6 +219,12 @@ impl X86SystemsLowering {
             }
             Self::InitializeStaticImageStackEntry => {
                 "topal.provider.x86_64.static-image.initialize-stack-entry/1"
+            }
+            Self::AddStaticImageStackPageSize => {
+                "topal.provider.x86_64.static-image.add-stack-pagesz/1"
+            }
+            Self::RemoveStaticImageStackPageSize => {
+                "topal.provider.x86_64.static-image.remove-stack-pagesz/1"
             }
             Self::ClearStaticImageStackEntry => {
                 "topal.provider.x86_64.static-image.clear-stack-entry/1"
@@ -631,6 +641,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY => {
             X86SystemsLowering::InitializeStaticImageStackEntry
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ => {
+            X86SystemsLowering::AddStaticImageStackPageSize
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ => {
+            X86SystemsLowering::RemoveStaticImageStackPageSize
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY => {
             X86SystemsLowering::ClearStaticImageStackEntry
         }
@@ -819,6 +835,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::InitializeStaticImageStackEntry => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
+            }
+            X86SystemsLowering::AddStaticImageStackPageSize => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ
+            }
+            X86SystemsLowering::RemoveStaticImageStackPageSize => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
             }
             X86SystemsLowering::ClearStaticImageStackEntry => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
@@ -1035,7 +1057,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 104);
+        assert_eq!(plan.operations.len(), 106);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -1089,6 +1111,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY
                 && operation.lowering == X86SystemsLowering::InitializeStaticImageStackEntry
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ
+                && operation.lowering == X86SystemsLowering::AddStaticImageStackPageSize
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
+                && operation.lowering == X86SystemsLowering::RemoveStaticImageStackPageSize
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
