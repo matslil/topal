@@ -942,6 +942,54 @@ add a nonterminating auxiliary-vector entry, initialize TLS, expose a stack
 pointer or representation, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-PAGESZ-001 — Provider base-page fact
+
+`static image construction add stack pagesz` SHALL require the exact live
+`InitializedStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `provider-base-page`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`PageSizeStackEntryStaticImageConstruction` retaining every prior entry-block
+and translation fact while adding one provider-consistent `AT_PAGESZ` fact
+immediately before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the minimal entry
+block, exact RW/NX leaf, absent guard, final image leaves, inactive hierarchy,
+and current bootstrap root. It SHALL clear the complete backing, reconstruct
+the complete target-aligned block with the page-size fact, perform every
+target-required visibility operation, and read back every word, pointer
+relation, string byte, terminator, and otherwise-zero byte. Source SHALL emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK` observation.
+
+Source SHALL invoke `static image construction remove stack pagesz` with the
+exact extended owner, backing identity, and policy
+`bounded-stack-pagesz-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact minimal block, preserve every translation
+obligation, and reproduce the exact
+`InitializedStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK` observation before ordinary
+stack-entry clearing.
+
+A wrong owner, backing, value or policy, duplicate addition, partial mutation
+or readback, wrong entry ordering, clearing or leaf revocation while extended,
+backing release, activation, teardown, or recoverable disposition SHALL be
+invalid. Only exact page-size removal SHALL restore the state admitted by
+ordinary stack-entry clearing.
+
+For qualified x86-64 realization, the provider SHALL encode native tag 6 with
+value 4096 after the empty environment terminator and before `AT_NULL`, retain
+the exact `busybox` and `true` string relations, and retain 16-byte entry
+alignment. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact inactive hierarchy and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the page-size fact after its removal witness, expose
+its numeric representation, add another auxiliary-vector fact, initialize
+TLS, construct a user context, enter user mode, execute BusyBox, or add a
+syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

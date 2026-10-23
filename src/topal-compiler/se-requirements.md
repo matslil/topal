@@ -515,6 +515,24 @@ stack pointer, further auxiliary-vector entries, TLS, user-mode, syscall, or
 BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001` and `TK-DEC-143`.
 
+The bounded static-ELF page-size auxiliary-vector increment shall accept one
+exact typed addition from the minimal initialized stack-entry construction and
+one exact typed removal back to it. X86-64 lowering shall completely validate
+the minimal block and inactive translation obligations; clear the full frame;
+reconstruct a 16-byte-aligned block with native `AT_PAGESZ` tag 6, value 4096,
+and the exact prior arguments, empty environment, strings, and terminating
+`AT_NULL`; fence; and completely read back all content and otherwise-zero
+bytes. Removal shall validate the extended block, clear the full frame,
+reconstruct the exact minimal block, fence, and completely read it back. The
+checker and semantic model shall preserve affine page-size-fact ownership and
+reject another owner/backing/value/policy, duplicate addition, early ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact tag/value/order,
+complete reconstruction and rollback, preserved translation state, ordered
+witnesses, and no exposed representation, further auxiliary-vector fact, TLS,
+user-mode, syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PAGESZ-001` and `TK-DEC-144`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
