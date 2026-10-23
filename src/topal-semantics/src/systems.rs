@@ -2840,6 +2840,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionZeroed,
     StaticElfConstructionPopulated,
     StaticElfConstructionSealed,
+    StaticElfConstructionSealedWithHierarchy,
     StaticElfConstructionMetadataReturned,
     StaticElfConstructionRevoked,
 }
@@ -2856,6 +2857,11 @@ const INITIAL_TWO_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
 
 const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
     frame_count: 3,
+    alignment_frames: 1,
+};
+
+const STATIC_ELF_HIERARCHY_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 4,
     alignment_frames: 1,
 };
 
@@ -2939,6 +2945,10 @@ impl BootstrapAuthorityState {
                         BootstrapMemoryOwnership::Frames(STATIC_ELF_FRAME_REQUEST),
                         INITIAL_SINGLE_FRAME_REQUEST,
                     ) => BootstrapMemoryOwnership::StaticElfMappingResources,
+                    (
+                        BootstrapMemoryOwnership::StaticElfConstructionSealed,
+                        STATIC_ELF_HIERARCHY_FRAME_REQUEST,
+                    ) => BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy,
                     _ => {
                         return Err(SystemsModelError::new(
                             "E-SYSTEMS-FRAMES",
@@ -2963,6 +2973,9 @@ impl BootstrapAuthorityState {
                     }
                     BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned => {
                         BootstrapMemoryOwnership::StaticElfConstructionRevoked
+                    }
+                    BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy => {
+                        BootstrapMemoryOwnership::StaticElfConstructionSealed
                     }
                     BootstrapMemoryOwnership::Frames(_) => BootstrapMemoryOwnership::None,
                     _ => {
@@ -4956,6 +4969,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionZeroed
             | BootstrapMemoryOwnership::StaticElfConstructionPopulated
             | BootstrapMemoryOwnership::StaticElfConstructionSealed
+            | BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy
             | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
             | BootstrapMemoryOwnership::StaticElfConstructionRevoked => {
                 return Err(SystemsModelError::new(

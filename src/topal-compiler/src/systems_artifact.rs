@@ -140,8 +140,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/116";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/105";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/117";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/106";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -2550,11 +2550,17 @@ impl RootEncoder {
         let nested_static_elf_metadata = self.physical_frame_count == Some(503)
             && frame_count == 1
             && !self.retained_static_elf_payload;
+        let nested_static_elf_hierarchy = self.static_image == RootStaticImageState::Sealed
+            && self.physical_frame_count.is_none()
+            && frame_count == 4
+            && !self.retained_static_elf_payload;
         if !self.frame_allocator_created
             || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
-            || !matches!(frame_count, 1..=3 | 503)
+            || !matches!(frame_count, 1..=4 | 503)
             || alignment_frames != 1
+            || (frame_count == 4 && !nested_static_elf_hierarchy)
+            || (self.static_image == RootStaticImageState::Sealed && !nested_static_elf_hierarchy)
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
                 && frame_count != 2)
         {
@@ -2563,7 +2569,13 @@ impl RootEncoder {
             ));
         }
         let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
-        if nested_static_elf_metadata {
+        if nested_static_elf_hierarchy {
+            self.bytes.extend_from_slice(&[0x49, 0x89, 0xdc]); // retain leaf metadata in r12
+            self.bytes
+                .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x10, 0x00, 0x00]); // floor after leaf table
+            self.bytes.extend_from_slice(&[0x31, 0xc9]); // no separate exclusion
+            self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]);
+        } else if nested_static_elf_metadata {
             self.bytes.extend_from_slice(&[0x48, 0x89, 0xd9]); // payload base in rcx
             self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x83]); // payload end in r8
             self.bytes.extend_from_slice(&0x001f_7000_u32.to_le_bytes());
@@ -2697,6 +2709,13 @@ impl RootEncoder {
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
         };
+        if self.static_image == RootStaticImageState::Sealed && frame_count == 4 {
+            self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe3]); // restore leaf metadata
+            self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // clear hierarchy identity
+            self.bytes.extend_from_slice(&[0x31, 0xd2]);
+            self.physical_frame_count = None;
+            return Ok(());
+        }
         if self.retained_static_elf_payload {
             if frame_count != 1 {
                 return Err(CompileError::Tool(
@@ -7219,6 +7238,12 @@ mod tests {
         );
         assert!(
             root_bytes
+                .windows(5)
+                .any(|bytes| bytes == [0xba, 0x04, 0x00, 0x00, 0x00]),
+            "checked root must request the exact four-frame static ELF hierarchy extent"
+        );
+        assert!(
+            root_bytes
                 .windows(7)
                 .any(|bytes| bytes == [0x4c, 0x8d, 0x83, 0x00, 0x70, 0x1f, 0x00]),
             "checked root must pass the complete 503-frame payload exclusion"
@@ -7232,6 +7257,18 @@ mod tests {
                     .any(|bytes| bytes == [0x4c, 0x89, 0xf3]),
             "checked root must retain and restore the exact payload owner"
         );
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x8d, 0xbb, 0x00, 0x10, 0x00, 0x00])
+                && root_bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x49, 0x89, 0xdc])
+                && root_bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x4c, 0x89, 0xe3]),
+            "checked root must place the hierarchy after the leaf table and preserve its owner"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -7241,7 +7278,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3443);
+        assert_eq!(relocation_targets.len(), 3488);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -7337,7 +7374,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            9
+            10
         );
         for target in [
             X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
@@ -7409,7 +7446,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            3045
+            3088
         );
         assert_eq!(
             relocation_targets
@@ -7570,7 +7607,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            151
+            152
         );
         assert_eq!(
             relocation_targets
@@ -7857,7 +7894,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 336);
+        assert_eq!(decoded.semantic_trace.len(), 339);
         assert!(
             decoded
                 .semantic_trace
@@ -7942,15 +7979,21 @@ mod tests {
         assert!(decoded.semantic_trace[41].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[42],
+            "topal.systems.frames.allocate/1:frames=4:alignment=1"
+        );
+        assert!(decoded.semantic_trace[43].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[44], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[45],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
         );
-        assert_eq!(decoded.semantic_trace[43], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(decoded.semantic_trace[46], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[44],
+            decoded.semantic_trace[47],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
         );
-        assert_eq!(decoded.semantic_trace[45], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..46);
+        assert_eq!(decoded.semantic_trace[48], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..49);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

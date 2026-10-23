@@ -346,7 +346,8 @@ non-overlap, ownership, and provenance observations remain equivalent.
 
 The initial x86-64 executable profile SHALL admit only the static allocation
 shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
-alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`, and
+alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`,
+`(frame-count: 4, alignment-frames: 1)`, and
 `(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL
 produce one indivisible extent and SHALL require release of that complete
 extent. The profile SHALL reject every other count or alignment, a dynamic
@@ -544,6 +545,44 @@ disposition with an uninitialized, zeroed, populated, or sealed construction
 live SHALL be invalid. This rule SHALL NOT attach an active address space,
 construct upper translation levels, publish an entry, initialize TLS or stack
 state, or make the image runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001 — Affine upper translation metadata
+
+While the exact `SealedStaticImageConstruction` from
+`TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` remains live, the initial x86-64
+profile SHALL admit exactly one typed
+`static image construction reserve hierarchy` operation with request
+`(frame-count: 4, alignment-frames: 1)`. Success SHALL produce one indivisible
+opaque `PhysicalFrameExtent` reserved for the future static-image upper
+translation hierarchy. The allocation SHALL preserve the sealed construction
+and every authority, frame identity, byte, and final leaf role that it owns.
+
+The provider SHALL derive the complete 16,384-byte candidate with checked
+arithmetic and select it wholly inside one normalized E820 RAM interval,
+page-aligned, below the first-GiB bootstrap ceiling, and disjoint from the
+503-frame payload, one-frame leaf table, retained boot resource, active
+translation metadata, and every other live allocation. The qualified x86-64
+selection SHALL place it after the leaf-table extent. It SHALL grant no byte
+access, mapping, hierarchy-construction, attachment, activation, entry, or
+execution authority.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK` observation while the hierarchy
+extent and sealed construction are simultaneously live. It SHALL then release
+the complete four-frame extent to its originating allocator before revoking
+the sealed construction. Whole release SHALL restore the exact sealed-only
+ownership state, after which the existing metadata-then-payload revocation
+and release obligations apply unchanged.
+
+A wrong count or alignment, allocation before permission sealing, overlap,
+overflow, split, partial or substituted release, release before observation,
+revocation while the hierarchy is live, missing or duplicate observation, or
+recoverable disposition with either authority live SHALL be invalid. This
+operation's provider failure SHALL enter the fatal disposition without
+publishing an extent or witness. This
+rule SHALL NOT initialize a page-table level, link the existing leaf table,
+attach or activate an address space, initialize TLS or a stack, publish an
+entry, retain the hierarchy extent, or execute the static image.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`

@@ -10393,7 +10393,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 275);
+        assert_eq!(program.bootstrap.handler.operations.len(), 278);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12432,19 +12432,19 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
+                SOURCE.replacen("frame-count is 1", "frame-count is 5", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 502"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 504"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, or exactly 503 frames",
+                "only one, two, three, four, or exactly 503 frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
@@ -12692,6 +12692,64 @@ mod tests {
             )
             .unwrap_err();
             assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_hierarchy_extent() {
+        // TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001.
+        for (source, code, expected) in [
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4",
+                    "owner is populated-static-elf-construction,\n                                                                                frame-count is 4",
+                    1,
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact sealed construction",
+            ),
+            (
+                SOURCE.replacen("frame-count is 4", "frame-count is 3", 1),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "four unit-aligned frames",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 1",
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 2",
+                    1,
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "four unit-aligned frames",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_BAD",
+                ),
+                "E-SYSTEMS-TRANSLATION-EDIT",
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"\n                                                                              unmapped frames release static-elf-hierarchy-frames",
+                    "unmapped frames release static-elf-hierarchy-frames\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK\"",
+                ),
+                "E-SYSTEMS-OPERATION",
+                "not admitted",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                error.code, code,
+                "{expected}: {}",
+                error.message
+            );
             assert!(error.message.contains(expected), "{}", error.message);
         }
     }
