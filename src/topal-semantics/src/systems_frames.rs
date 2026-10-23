@@ -42,6 +42,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS: &str =
     "topal.systems.static-image.construction.add-stack-credentials/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS: &str =
     "topal.systems.static-image.construction.remove-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.add-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.remove-stack-secure-mode/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =

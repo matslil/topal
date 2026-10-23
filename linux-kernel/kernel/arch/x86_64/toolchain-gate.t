@@ -199,8 +199,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK"
-                                                                              executable-name-stack-restored-construction is unmapped static image construction remove stack credentials (
+                                                                              secure-mode-stack-construction is unmapped static image construction add stack secure mode (
                                                                                 owner is credential-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-execution-security,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK"
+                                                                              credential-stack-restored-construction is unmapped static image construction remove stack secure mode (
+                                                                                owner is secure-mode-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-secure-mode-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK"
+                                                                              executable-name-stack-restored-construction is unmapped static image construction remove stack credentials (
+                                                                                owner is credential-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-credentials-qualification-rollback
                                                                               )

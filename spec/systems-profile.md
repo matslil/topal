@@ -1200,6 +1200,56 @@ expose numeric credentials or representation, add another auxiliary-vector
 fact, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001 — Non-secure execution fact
+
+`static image construction add stack secure mode` SHALL require the exact live
+`CredentialStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001`. It SHALL accept only that
+owner, that backing identity, `value` equal to `initial-execution-security`,
+and policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`SecureModeStackEntryStaticImageConstruction` retaining every prior fact while
+adding one non-secure execution fact after the credential group and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the credential-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that the security fact agrees with equal real/effective credentials
+and the sealed absence of a privilege-changing executable transition, clear
+the complete backing, reconstruct the complete target-aligned block, perform
+every target-required visibility operation, and read back every word, pointer
+relation, string byte, terminator, security relation, and otherwise-zero byte.
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK`
+observation.
+
+Source SHALL invoke `static image construction remove stack secure mode` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-secure-mode-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact credential-qualified block, preserve every
+prior obligation, and reproduce the exact
+`CredentialStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK` observation before credential
+removal.
+
+A wrong owner, backing, value, policy, security result or credential agreement;
+duplicate addition; partial mutation or readback; wrong ordering; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+security-fact removal SHALL restore the state admitted by credential removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_SECURE=(23,0)` after `AT_EGID=(14,0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact credential group, executable-name alias, and inactive hierarchy and
+issue no active-address invalidation.
+
+This rule SHALL NOT retain the security fact after its removal witness, expose
+its numeric value or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

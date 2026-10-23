@@ -147,6 +147,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF program-header facts](bounded-static-elf-auxv-program-headers.md)
 - [Bounded static ELF `AT_EXECFN` fact](bounded-static-elf-auxv-execfn.md)
 - [Bounded static ELF credential facts](bounded-static-elf-auxv-credentials.md)
+- [Bounded static ELF `AT_SECURE` fact](bounded-static-elf-auxv-secure.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
