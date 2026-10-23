@@ -75,6 +75,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
@@ -88,6 +89,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -140,6 +142,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_ACTIVATE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
@@ -150,6 +153,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
@@ -176,8 +180,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/127";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/116";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/128";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/117";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -193,7 +197,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 70] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 72] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -210,6 +214,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 70] = [
     X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
@@ -1985,6 +1991,8 @@ enum ProviderSymbol {
     InitializeStaticImageStackEntry,
     AddStaticImageStackPageSize,
     AddStaticImageStackEntryFact,
+    AddStaticImageStackProgramHeaders,
+    RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
     RemoveStaticImageStackPageSize,
     ClearStaticImageStackEntry,
@@ -2096,6 +2104,12 @@ impl ProviderSymbol {
             Self::AddStaticImageStackPageSize => X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
             Self::AddStaticImageStackEntryFact => {
                 X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_ENTRY_FACT_SYMBOL
+            }
+            Self::AddStaticImageStackProgramHeaders => {
+                X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL
+            }
+            Self::RemoveStaticImageStackProgramHeaders => {
+                X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL
             }
             Self::RemoveStaticImageStackEntryFact => {
                 X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL
@@ -2245,6 +2259,8 @@ impl ProviderSymbol {
             | Self::InitializeStaticImageStackEntry
             | Self::AddStaticImageStackPageSize
             | Self::AddStaticImageStackEntryFact
+            | Self::AddStaticImageStackProgramHeaders
+            | Self::RemoveStaticImageStackProgramHeaders
             | Self::RemoveStaticImageStackEntryFact
             | Self::RemoveStaticImageStackPageSize
             | Self::ClearStaticImageStackEntry
@@ -2479,6 +2495,7 @@ enum RootStaticImageState {
     StackEntryInitialized,
     StackPageSizeAdded,
     StackEntryFactAdded,
+    StackProgramHeadersAdded,
     EntryRestored,
     Detached,
     HierarchyReturned,
@@ -2582,6 +2599,8 @@ struct ProviderSymbols {
     initialize_static_image_stack_entry: SymbolId,
     add_static_image_stack_pagesz: SymbolId,
     add_static_image_stack_entry_fact: SymbolId,
+    add_static_image_stack_program_headers: SymbolId,
+    remove_static_image_stack_program_headers: SymbolId,
     remove_static_image_stack_entry_fact: SymbolId,
     remove_static_image_stack_pagesz: SymbolId,
     clear_static_image_stack_entry: SymbolId,
@@ -3315,6 +3334,54 @@ impl RootEncoder {
         self.call_checked_bool(ProviderSymbol::AddStaticImageStackEntryFact)?;
         self.static_image = RootStaticImageState::StackEntryFactAdded;
         Ok(())
+    }
+
+    fn transition_static_image_stack_program_headers(
+        &mut self,
+        add: bool,
+    ) -> Result<(), CompileError> {
+        let required = if add {
+            RootStaticImageState::StackEntryFactAdded
+        } else {
+            RootStaticImageState::StackProgramHeadersAdded
+        };
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != required
+            || self.physical_frame_count != Some(1)
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image program-header transition requires its exact qualified stack owner under the inactive hierarchy"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]);
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]);
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]);
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xe9]);
+        self.bytes.extend_from_slice(&[0x4d, 0x89, 0xf8]);
+        self.bytes.extend_from_slice(&[0x49, 0x89, 0xd9]);
+        self.call_checked_bool(if add {
+            ProviderSymbol::AddStaticImageStackProgramHeaders
+        } else {
+            ProviderSymbol::RemoveStaticImageStackProgramHeaders
+        })?;
+        self.static_image = if add {
+            RootStaticImageState::StackProgramHeadersAdded
+        } else {
+            RootStaticImageState::StackEntryFactAdded
+        };
+        Ok(())
+    }
+
+    fn add_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_program_headers(true)
+    }
+
+    fn remove_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_program_headers(false)
     }
 
     fn remove_static_image_stack_entry_fact(&mut self) -> Result<(), CompileError> {
@@ -5798,6 +5865,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::AddStaticImageStackEntryFact,
         ),
+        add_static_image_stack_program_headers: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AddStaticImageStackProgramHeaders,
+        ),
+        remove_static_image_stack_program_headers: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RemoveStaticImageStackProgramHeaders,
+        ),
         remove_static_image_stack_entry_fact: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RemoveStaticImageStackEntryFact,
@@ -6495,6 +6570,12 @@ fn encode_operations(
             CompilerSystemsOperation::AddStaticImageStackEntryFact => {
                 encoder.add_static_image_stack_entry_fact()?;
             }
+            CompilerSystemsOperation::AddStaticImageStackProgramHeaders => {
+                encoder.add_static_image_stack_program_headers()?;
+            }
+            CompilerSystemsOperation::RemoveStaticImageStackProgramHeaders => {
+                encoder.remove_static_image_stack_program_headers()?;
+            }
             CompilerSystemsOperation::RemoveStaticImageStackEntryFact => {
                 encoder.remove_static_image_stack_entry_fact()?;
             }
@@ -6853,6 +6934,12 @@ fn append_root(
             }
             ProviderSymbol::AddStaticImageStackEntryFact => {
                 provider_symbols.add_static_image_stack_entry_fact
+            }
+            ProviderSymbol::AddStaticImageStackProgramHeaders => {
+                provider_symbols.add_static_image_stack_program_headers
+            }
+            ProviderSymbol::RemoveStaticImageStackProgramHeaders => {
+                provider_symbols.remove_static_image_stack_program_headers
             }
             ProviderSymbol::RemoveStaticImageStackEntryFact => {
                 provider_symbols.remove_static_image_stack_entry_fact
@@ -7651,6 +7738,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::InitializeStaticImageStackEntry
                 | CompilerSystemsTransition::AddStaticImageStackPageSize
                 | CompilerSystemsTransition::AddStaticImageStackEntryFact
+                | CompilerSystemsTransition::AddStaticImageStackProgramHeaders
+                | CompilerSystemsTransition::RemoveStaticImageStackProgramHeaders
                 | CompilerSystemsTransition::RemoveStaticImageStackEntryFact
                 | CompilerSystemsTransition::RemoveStaticImageStackPageSize
                 | CompilerSystemsTransition::ClearStaticImageStackEntry
@@ -8073,7 +8162,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 4351);
+        assert_eq!(relocation_targets.len(), 4457);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -8259,7 +8348,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            3915
+            4017
         );
         assert_eq!(
             relocation_targets
@@ -8420,7 +8509,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            170
+            172
         );
         assert_eq!(
             relocation_targets
@@ -8559,6 +8648,8 @@ mod tests {
                 "topal_x86_systems_static_image_initialize_stack_entry",
                 "topal_x86_systems_static_image_add_stack_pagesz",
                 "topal_x86_systems_static_image_add_stack_entry_fact",
+                "topal_x86_systems_static_image_add_stack_program_headers",
+                "topal_x86_systems_static_image_remove_stack_program_headers",
                 "topal_x86_systems_static_image_remove_stack_entry_fact",
                 "topal_x86_systems_static_image_remove_stack_pagesz",
                 "topal_x86_systems_static_image_clear_stack_entry",
@@ -8724,7 +8815,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 377);
+        assert_eq!(decoded.semantic_trace.len(), 381);
         assert!(
             decoded
                 .semantic_trace
@@ -8925,56 +9016,66 @@ mod tests {
         assert!(decoded.semantic_trace[65].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[66],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS
         );
         assert!(decoded.semantic_trace[67].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[68],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
         );
         assert!(decoded.semantic_trace[69].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[70],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
         );
         assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[72],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
         );
         assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[74], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[75],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            decoded.semantic_trace[74],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
         );
-        assert!(decoded.semantic_trace[76].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[77],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+            decoded.semantic_trace[76],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[78].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[78], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[79],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
         );
         assert!(decoded.semantic_trace[80].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[81],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
-        assert_eq!(decoded.semantic_trace[82], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[82].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[83],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert_eq!(decoded.semantic_trace[84], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[84].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[85],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
         assert_eq!(decoded.semantic_trace[86], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..87);
+        assert_eq!(
+            decoded.semantic_trace[87],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+        );
+        assert_eq!(decoded.semantic_trace[88], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[89],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[90], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..91);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
