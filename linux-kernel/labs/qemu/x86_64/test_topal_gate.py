@@ -62,12 +62,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/123")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/124")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/112")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/121",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/122",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -137,6 +137,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
                 "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+                "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
                 "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
