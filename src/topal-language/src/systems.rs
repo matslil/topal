@@ -83,8 +83,8 @@ pub use topal_semantics::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
@@ -9260,6 +9260,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -10390,7 +10391,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 271);
+        assert_eq!(program.bootstrap.handler.operations.len(), 273);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10466,6 +10467,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -12540,7 +12542,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is zeroed-static-elf-construction,\n                                                                                resource is payload",
+                    "owner is populated-static-elf-construction,\n                                                                                resource is payload",
                     "owner is other-static-elf-construction,\n                                                                                resource is payload",
                 ),
                 "exact construction and role",
@@ -12582,6 +12584,58 @@ mod tests {
                 SOURCE.replacen(
                     "owner is zeroed-static-elf-construction",
                     "owner is static-elf-construction",
+                    1,
+                ),
+                "exact zeroed construction",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, "E-SYSTEMS-TRANSLATION-EDIT");
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_payload_copy() {
+        // TOPAL-SYSTEMS-STATIC-ELF-COPY-001.
+        for (source, expected) in [
+            (
+                SOURCE.replacen(
+                    "owner is zeroed-static-elf-construction",
+                    "owner is static-elf-construction",
+                    1,
+                ),
+                "exact zeroed construction",
+            ),
+            (
+                SOURCE.replace(
+                    "source is retained-static-user-elf",
+                    "source is other-resource",
+                ),
+                "retained static ELF",
+            ),
+            (
+                SOURCE.replace(
+                    "plan is bounded-static-elf-four-loads",
+                    "plan is other-plan",
+                ),
+                "four-load plan",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replacen(
+                    "owner is populated-static-elf-construction",
+                    "owner is zeroed-static-elf-construction",
                     1,
                 ),
                 "exact construction and role",

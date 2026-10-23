@@ -345,6 +345,20 @@ unbound, changed, or reordered static input, prove exact two-member layout and
 digest binding, and retain deterministic pinned-QEMU execution without making
 the static member source-visible or runnable.
 
+The bounded static-ELF payload-copy increment shall accept exactly one typed
+consuming transition from the zeroed construction to a populated construction,
+sealed source `retained-static-user-elf`, and sealed plan
+`bounded-static-elf-four-loads`. X86-64 lowering shall revalidate the retained
+boot handoff and static ELF metadata, copy the exact four approved intervals
+to offsets `0`, `0x1000`, `0x18d000`, and `0x1e5660`, compare every copied
+byte, verify every other byte through the complete `0x1f7000` payload remains
+zero, and verify all 503 RW/NX leaves plus nine absent entries unchanged. The
+checker and model shall require zero-before-copy, one exact copied witness,
+populated-owner revocation, complete metadata-then-payload return, and no live
+construction at disposition. Structural and pinned-QEMU tests shall reject
+wrong owner, selector, plan, order, or early revocation and shall prove no
+source-visible offset, address, byte, loop, or final permission authority.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

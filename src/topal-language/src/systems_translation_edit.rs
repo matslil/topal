@@ -471,12 +471,13 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] = after_zero
+    let [zero_marker, copy, copy_marker, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+        after_zero
     else {
         return Err(translation_edit_diagnostic(
             source,
             statement_span(zero),
-            "static ELF payload zeroing requires its exact witness and revocation",
+            "static ELF payload zeroing requires its exact witness and population",
         ));
     };
     let zero_marker = analyze_operation(
@@ -496,11 +497,35 @@ fn analyze_static_elf_frame_sequence(
             "static ELF payload zeroing must publish its exact marker before revocation",
         ));
     }
+    let populated_construction_name = parse_static_image_payload_copy(
+        source,
+        copy,
+        allocator_context,
+        &zeroed_construction_name,
+    )?;
+    let copy_marker_span = statement_span(copy_marker);
+    let copy_marker = analyze_operation(
+        source,
+        copy_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &copy_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            copy_marker_span,
+            "static ELF payload copy must publish its exact marker before revocation",
+        ));
+    }
     let (returned_metadata, after_revoke) = parse_static_image_resource_return(
         source,
         revoke,
         allocator_context,
-        &zeroed_construction_name,
+        &populated_construction_name,
         "revoke",
         "metadata",
     )?;
@@ -521,7 +546,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         reclaim,
         allocator_context,
-        &zeroed_construction_name,
+        &populated_construction_name,
         "reclaim",
         "payload",
     )?;
@@ -557,6 +582,8 @@ fn analyze_static_elf_frame_sequence(
         leaves_marker,
         CompilerSystemsOperation::ZeroStaticImageConstructionPayload,
         zero_marker,
+        CompilerSystemsOperation::CopyStaticImageConstructionPayload,
+        copy_marker,
         CompilerSystemsOperation::RevokeStaticImageConstructionMetadata,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::ReclaimStaticImageConstructionPayload,
@@ -567,6 +594,101 @@ fn analyze_static_elf_frame_sequence(
         operations,
         disposition: checked.disposition,
     })
+}
+
+fn parse_static_image_payload_copy(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image payload copy cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image payload copy must refine the live zeroed construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, copy, payload, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload copy requires its exact owner, source, and plan",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, copy, "copy")
+        || !identifier_is(source, payload, "payload")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload copy requires its exact owner, source, and plan",
+        ));
+    }
+    let mut owner = None;
+    let mut resource = None;
+    let mut plan = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image payload-copy parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "source" => resource = Some(source.slice(*value)),
+            "plan" => plan = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image payload-copy parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || resource != Some("retained-static-user-elf")
+        || plan != Some("bounded-static-elf-four-loads")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image payload copy requires the exact zeroed construction, retained static ELF, and four-load plan",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
 }
 
 fn parse_static_image_payload_zero<'a>(

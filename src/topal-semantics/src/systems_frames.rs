@@ -12,6 +12,8 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE: &str =
     "topal.systems.static-image.construction.prepare/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD: &str =
     "topal.systems.static-image.construction.zero-payload/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
+    "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA: &str =
     "topal.systems.static-image.construction.revoke-metadata/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD: &str =

@@ -95,13 +95,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 extent is complete
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK"
-                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                              populated-static-elf-construction is unmapped static image construction copy payload (
                                                                                 owner is zeroed-static-elf-construction,
+                                                                                source is retained-static-user-elf,
+                                                                                plan is bounded-static-elf-four-loads
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK"
+                                                                              returned-static-elf-metadata is unmapped static image construction revoke (
+                                                                                owner is populated-static-elf-construction,
                                                                                 resource is metadata
                                                                               )
                                                                               unmapped frames release returned-static-elf-metadata
                                                                               returned-static-elf-payload is unmapped static image construction reclaim (
-                                                                                owner is zeroed-static-elf-construction,
+                                                                                owner is populated-static-elf-construction,
                                                                                 resource is payload
                                                                               )
                                                                               unmapped frames release returned-static-elf-payload

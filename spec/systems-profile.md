@@ -451,10 +451,9 @@ target coherence operation to source. No partial initialization SHALL become
 observable and failure SHALL select the fatal action.
 
 Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK`
-observation while the zeroed construction is live. In this profile, `static
-image construction revoke metadata` SHALL accept only that zeroed refinement;
-the metadata-release, payload-reclaim, and whole-release obligations of
-`TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+observation while the zeroed construction is live. A later construction rule
+MAY consume that refinement. When `TOPAL-SYSTEMS-STATIC-ELF-COPY-001` is
+selected, revocation SHALL NOT accept the zeroed owner before copy succeeds.
 
 Wrong owner or extent, duplicate zeroing, revocation before complete zeroing,
 missing or duplicate observation, any nonzero verified byte, leaf-table
@@ -462,6 +461,46 @@ change, release before return, or disposition with either uninitialized or
 zeroed construction state live SHALL be invalid. This rule SHALL NOT copy file
 bytes, grant ordinary payload access, apply final permissions, attach an active
 address space, publish an entry, or make an image runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-COPY-001 — Verified inactive payload population
+
+`static image construction copy payload` SHALL consume the exact live
+`ZeroedStaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ZERO-001`. It SHALL accept only source
+`retained-static-user-elf` and plan `bounded-static-elf-four-loads`. Success
+SHALL produce one affine `PopulatedStaticImageConstruction` owning the same
+503-frame payload and one-frame metadata extents.
+
+The initial x86-64 provider SHALL revalidate both construction extents, all
+503 ordered initial RW/NX leaves, nine absent entries, the complete retained
+boot-resource handoff, and the approved static ELF metadata before reading the
+member payload. It SHALL copy exactly these
+`(source-offset, destination-offset, byte-count)` triples:
+`(0, 0, 0x6e0)`, `(0x1000, 0x1000, 0x18b285)`,
+`(0x18d000, 0x18d000, 0x57040)`, and
+`(0x1e4660, 0x1e5660, 0x9728)`. Destination offsets SHALL be relative to the
+503-frame payload corresponding to virtual base `0x400000`.
+
+Before success, the provider SHALL compare every destination byte in all four
+intervals with its immutable source byte, verify that every other byte in
+`[0, 0x1f7000)` remains zero, and verify the unchanged 503 live leaves and nine
+absent entries. The construction SHALL remain unreachable from every active
+address space. The operation SHALL expose no member name, offset, address,
+byte, loop, archive representation, or target coherence mechanism to source.
+
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK`
+observation while the populated construction is live. In this profile,
+`static image construction revoke metadata` SHALL accept only the populated
+refinement; the complete metadata-release, payload-reclaim, and whole-release
+obligations of `TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001` then apply unchanged.
+
+Wrong owner, source, plan, resource, interval, order, copied byte, preserved-
+zero byte, or leaf state; duplicate copy; copy before complete zeroing;
+revocation before copy; missing or duplicate observation; or disposition with
+an uninitialized, zeroed, or populated construction live SHALL be invalid.
+This rule SHALL NOT apply final permissions, attach an active address space,
+publish an entry, initialize TLS or stack state, or make the image runtime-
+selectable.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`

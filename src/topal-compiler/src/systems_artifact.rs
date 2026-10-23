@@ -71,8 +71,8 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
     SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
     SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
-    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
     SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE, SYSTEMS_USER_TRANSFER_BEGIN,
@@ -116,13 +116,13 @@ use crate::{
     X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
-    X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
-    X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL, X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
@@ -138,8 +138,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/114";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/103";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/115";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/104";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -155,7 +155,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 51] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 52] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -167,6 +167,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 51] = [
     X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
     X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -1190,6 +1191,7 @@ fn validate_x86_64_static_user_image(image: &[u8]) -> Result<(), CompileError> {
     );
 
     if image.len() != EXPECTED_FILE_BYTES
+        || image_u64(image, 32) != 64
         || elf_u16(image, 56) != 11
         || !exact_program_headers
         || load.entry != EXPECTED_ENTRY
@@ -1922,6 +1924,7 @@ enum ProviderSymbol {
     AllocatePhysicalFrames,
     PrepareStaticImage,
     ZeroStaticImagePayload,
+    CopyStaticImagePayload,
     RevokeStaticImage,
     BeginTranslation,
     CommitTranslation,
@@ -2011,6 +2014,7 @@ impl ProviderSymbol {
             Self::AllocatePhysicalFrames => X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL,
             Self::PrepareStaticImage => X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
             Self::ZeroStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+            Self::CopyStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
             Self::RevokeStaticImage => X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
             Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
             Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -2126,6 +2130,7 @@ impl ProviderSymbol {
             | Self::AllocatePhysicalFrames
             | Self::PrepareStaticImage
             | Self::ZeroStaticImagePayload
+            | Self::CopyStaticImagePayload
             | Self::RevokeStaticImage
             | Self::BeginTranslation
             | Self::CommitTranslation
@@ -2334,6 +2339,7 @@ enum RootStaticImageState {
     Fresh,
     Live,
     Zeroed,
+    Populated,
     MetadataReturned,
     PayloadReturned,
 }
@@ -2429,6 +2435,7 @@ struct ProviderSymbols {
     allocate_physical_frames: SymbolId,
     prepare_static_image: SymbolId,
     zero_static_image_payload: SymbolId,
+    copy_static_image_payload: SymbolId,
     revoke_static_image: SymbolId,
     begin_translation: SymbolId,
     commit_translation: SymbolId,
@@ -2727,7 +2734,7 @@ impl RootEncoder {
 
     fn revoke_static_image_construction(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
-            || self.static_image != RootStaticImageState::Zeroed
+            || self.static_image != RootStaticImageState::Populated
             || self.physical_frame_count.is_some()
             || self.retained_static_elf_payload
         {
@@ -2763,6 +2770,26 @@ impl RootEncoder {
             .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
         self.call_checked_bool(ProviderSymbol::ZeroStaticImagePayload)?;
         self.static_image = RootStaticImageState::Zeroed;
+        Ok(())
+    }
+
+    fn copy_static_image_payload(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::Zeroed
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image payload copy requires one completely zeroed construction".into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload base
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xde]); // metadata base
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe9]); // boot params
+        self.call_checked_bool(ProviderSymbol::CopyStaticImagePayload)?;
+        self.static_image = RootStaticImageState::Populated;
         Ok(())
     }
 
@@ -5118,6 +5145,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::ZeroStaticImagePayload,
         ),
+        copy_static_image_payload: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::CopyStaticImagePayload,
+        ),
         revoke_static_image: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RevokeStaticImage,
@@ -5744,6 +5775,9 @@ fn encode_operations(
             CompilerSystemsOperation::ZeroStaticImageConstructionPayload => {
                 encoder.zero_static_image_payload()?;
             }
+            CompilerSystemsOperation::CopyStaticImageConstructionPayload => {
+                encoder.copy_static_image_payload()?;
+            }
             CompilerSystemsOperation::RevokeStaticImageConstructionMetadata => {
                 encoder.revoke_static_image_construction()?;
             }
@@ -6043,6 +6077,7 @@ fn append_root(
             ProviderSymbol::AllocatePhysicalFrames => provider_symbols.allocate_physical_frames,
             ProviderSymbol::PrepareStaticImage => provider_symbols.prepare_static_image,
             ProviderSymbol::ZeroStaticImagePayload => provider_symbols.zero_static_image_payload,
+            ProviderSymbol::CopyStaticImagePayload => provider_symbols.copy_static_image_payload,
             ProviderSymbol::RevokeStaticImage => provider_symbols.revoke_static_image,
             ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
             ProviderSymbol::CommitTranslation => provider_symbols.commit_translation,
@@ -6797,6 +6832,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ReleasePhysicalFrames
                 | CompilerSystemsTransition::PrepareStaticImageConstruction
                 | CompilerSystemsTransition::ZeroStaticImageConstructionPayload
+                | CompilerSystemsTransition::CopyStaticImageConstructionPayload
                 | CompilerSystemsTransition::RevokeStaticImageConstructionMetadata
                 | CompilerSystemsTransition::ReclaimStaticImageConstructionPayload
                 | CompilerSystemsTransition::UnmapKernelFrames
@@ -7166,7 +7202,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3360);
+        assert_eq!(relocation_targets.len(), 3403);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -7267,6 +7303,7 @@ mod tests {
         for target in [
             X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
+            X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
         ] {
             assert_eq!(
@@ -7333,7 +7370,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            2966
+            3007
         );
         assert_eq!(
             relocation_targets
@@ -7494,7 +7531,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            149
+            150
         );
         assert_eq!(
             relocation_targets
@@ -7628,6 +7665,7 @@ mod tests {
                 "topal_x86_systems_allocate_physical_frames",
                 "topal_x86_systems_static_image_prepare_initial_leaves",
                 "topal_x86_systems_static_image_zero_payload",
+                "topal_x86_systems_static_image_copy_payload",
                 "topal_x86_systems_static_image_revoke_initial_leaves",
                 "topal_x86_systems_begin_bootstrap_translation",
                 "topal_x86_systems_commit_bootstrap_translation",
@@ -7779,7 +7817,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 332);
+        assert_eq!(decoded.semantic_trace.len(), 334);
         assert!(
             decoded
                 .semantic_trace
@@ -7796,6 +7834,12 @@ mod tests {
                 .semantic_trace
                 .iter()
                 .any(|entry| { entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD) })
+        );
+        assert!(
+            decoded
+                .semantic_trace
+                .iter()
+                .any(|entry| { entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD) })
         );
         assert!(
             decoded.semantic_trace.iter().any(|entry| {
@@ -7845,15 +7889,20 @@ mod tests {
         assert!(decoded.semantic_trace[37].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[38],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
         );
-        assert_eq!(decoded.semantic_trace[39], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[39].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[40],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
         );
         assert_eq!(decoded.semantic_trace[41], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..42);
+        assert_eq!(
+            decoded.semantic_trace[42],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[43], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..44);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
