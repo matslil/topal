@@ -43,7 +43,8 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -1175,6 +1176,7 @@ pub enum SystemsOperation {
         failure_message: String,
     },
     ZeroStaticImageConstructionPayload,
+    ZeroStaticImageStackBacking,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
     AttachStaticImageAddressSpace,
@@ -1395,6 +1397,9 @@ impl SystemsOperation {
             }
             Self::ZeroStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
+            }
+            Self::ZeroStaticImageStackBacking => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING
             }
             Self::CopyStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
@@ -1679,6 +1684,7 @@ pub enum SystemsTransition {
     ReleasePhysicalFrames,
     PrepareStaticImageConstruction,
     ZeroStaticImageConstructionPayload,
+    ZeroStaticImageStackBacking,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
     AttachStaticImageAddressSpace,
@@ -2115,6 +2121,9 @@ impl SystemsTransition {
             Self::ZeroStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD
             }
+            Self::ZeroStaticImageStackBacking => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING
+            }
             Self::CopyStaticImageConstructionPayload => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD
             }
@@ -2421,6 +2430,7 @@ fn validate_entry(
                     | SystemsOperation::ReleasePhysicalFrames
                     | SystemsOperation::PrepareStaticImageConstruction { .. }
                     | SystemsOperation::ZeroStaticImageConstructionPayload
+                    | SystemsOperation::ZeroStaticImageStackBacking
                     | SystemsOperation::CopyStaticImageConstructionPayload
                     | SystemsOperation::SealStaticImageConstructionPermissions
                     | SystemsOperation::AttachStaticImageAddressSpace
@@ -2925,6 +2935,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionEntryAuthorized,
     StaticElfConstructionStackSlotAuthorized,
     StaticElfConstructionStackSlotAuthorizedWithBacking,
+    StaticElfConstructionStackBackingZeroed,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3070,7 +3081,7 @@ impl BootstrapAuthorityState {
                     BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy => {
                         BootstrapMemoryOwnership::StaticElfConstructionSealed
                     }
-                    BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking => {
+                    BootstrapMemoryOwnership::StaticElfConstructionStackBackingZeroed => {
                         BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized
                     }
                     BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned => {
@@ -3186,6 +3197,18 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership =
                     BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized;
+            }
+            SystemsOperation::ZeroStaticImageStackBacking => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack-backing zeroing requires one slot-authorized construction with live backing",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackBackingZeroed;
             }
             SystemsOperation::RevokeStaticImageStackSlot => {
                 if self.memory_ownership
@@ -5174,6 +5197,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionEntryAuthorized
             | BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized
             | BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
+            | BootstrapMemoryOwnership::StaticElfConstructionStackBackingZeroed
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -6978,6 +7002,9 @@ fn model_bootstrap_operation(
         SystemsOperation::ZeroStaticImageConstructionPayload => {
             transitions.push(SystemsTransition::ZeroStaticImageConstructionPayload);
         }
+        SystemsOperation::ZeroStaticImageStackBacking => {
+            transitions.push(SystemsTransition::ZeroStaticImageStackBacking);
+        }
         SystemsOperation::CopyStaticImageConstructionPayload => {
             transitions.push(SystemsTransition::CopyStaticImageConstructionPayload);
         }
@@ -7461,6 +7488,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ReleasePhysicalFrames
         | SystemsOperation::PrepareStaticImageConstruction { .. }
         | SystemsOperation::ZeroStaticImageConstructionPayload
+        | SystemsOperation::ZeroStaticImageStackBacking
         | SystemsOperation::CopyStaticImageConstructionPayload
         | SystemsOperation::SealStaticImageConstructionPermissions
         | SystemsOperation::AttachStaticImageAddressSpace

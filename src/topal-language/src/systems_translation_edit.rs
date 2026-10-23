@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -722,6 +722,31 @@ fn analyze_static_elf_frame_sequence(
             "static ELF stack backing must publish its exact marker before whole release",
         ));
     }
+    let zeroed_stack_backing_construction_name = parse_static_image_stack_backing_zero(
+        source,
+        zero_stack_backing,
+        allocator_context,
+        &stack_slot_authorized_construction_name,
+        &stack_backing_name,
+    )?;
+    let stack_backing_zeroed_marker_span = statement_span(stack_backing_zeroed_marker);
+    let stack_backing_zeroed_marker = analyze_operation(
+        source,
+        stack_backing_zeroed_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_backing_zeroed_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_backing_zeroed_marker_span,
+            "static ELF stack-backing zeroing must publish its exact marker before whole release",
+        ));
+    }
     parse_physical_frame_release(
         source,
         stack_backing_release,
@@ -732,7 +757,7 @@ fn analyze_static_elf_frame_sequence(
         source,
         revoke_stack_slot,
         allocator_context,
-        &stack_slot_authorized_construction_name,
+        &zeroed_stack_backing_construction_name,
         "revoke",
         "bounded-stack-slot-qualification-rollback",
     )?;
@@ -916,6 +941,8 @@ fn analyze_static_elf_frame_sequence(
             failure_message: "static ELF stack-backing frame reservation failed".into(),
         },
         stack_backing_marker,
+        CompilerSystemsOperation::ZeroStaticImageStackBacking,
+        stack_backing_zeroed_marker,
         CompilerSystemsOperation::ReleasePhysicalFrames,
         CompilerSystemsOperation::RevokeStaticImageStackSlot,
         stack_slot_revoked_marker,
@@ -1591,6 +1618,103 @@ fn parse_static_image_stack_backing_reservation(
             source,
             span,
             "static-image stack-backing reservation requires the exact slot-authorized construction and one unit-aligned frame",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_backing_zero(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } => {
+            if !declarations.is_empty() {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    statement_span(statement),
+                    "static-image stack-backing zeroing cannot contain nested operations",
+                ));
+            }
+            (*name, items, *span)
+        }
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image stack-backing zeroing must refine one live construction",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, zero, stack, backing, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing zeroing requires its exact owner, backing, and complete extent",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, zero, "zero")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, backing, "backing")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing zeroing requires its exact owner, backing, and complete extent",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut extent = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(value)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image stack-backing zeroing parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*value)),
+            "backing" => backing = Some(source.slice(*value)),
+            "extent" => extent = Some(source.slice(*value)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image stack-backing zeroing parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || extent != Some("complete")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image stack-backing zeroing requires the exact owner, backing, and complete extent",
         ));
     }
     Ok(source.slice(name).to_owned())

@@ -803,6 +803,38 @@ install a stack leaf, publish a stack pointer, initialize process-entry state
 or TLS, construct a user context, enter user mode, execute BusyBox, or add a
 syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001 — Complete stack-backing zeroing
+
+`static image construction zero stack backing` SHALL require the exact live
+`StackSlotAuthorizedStaticImageConstruction` and nested one-frame extent from
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001`. It SHALL accept only that owner,
+that backing identity, and `extent` equal to `complete`, borrow the live extent,
+and produce one affine `ZeroedStackBackingStaticImageConstruction` retaining
+the unchanged entry and slot authorities plus a complete-zero invariant.
+
+Before success, the provider SHALL revalidate a nonzero, page-aligned, bounded
+frame identity, clear every byte of the 4096-byte extent, perform every
+target-required visibility operation, and read back every byte as zero. Frame
+addresses, access mechanics, barriers, cache operations, tags, and verification
+loops SHALL remain provider-private.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK` observation, release the exact
+whole backing extent, and only then revoke stack-slot authority using the
+zeroed construction owner. Whole release SHALL clear the backing identity and
+restore the slot-authorized construction. Release before zeroing, partial
+clear or readback, sampled verification, a wrong owner/backing/extent/witness,
+duplicate zeroing, slot or entry revocation while backing is live, or
+recoverable disposition with zeroed backing live SHALL be invalid.
+
+For qualified x86-64 realization, the provider SHALL clear and verify exactly
+512 forward qwords, use one store fence between clear and readback, and alter
+no hierarchy, leaf, payload, root-register, or boot-resource byte.
+
+This rule SHALL NOT retain or map the frame after its witness, install a stack
+leaf, publish a stack pointer, initialize process-entry contents or TLS,
+construct a user context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

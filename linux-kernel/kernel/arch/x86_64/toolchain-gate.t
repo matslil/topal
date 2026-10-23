@@ -144,9 +144,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 alignment-frames is 1
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK"
+                                                                              zeroed-stack-backing-construction is unmapped static image construction zero stack backing (
+                                                                                owner is stack-slot-authorized-static-elf-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                extent is complete
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK"
                                                                               unmapped frames release static-elf-stack-backing
                                                                               stack-slot-restored-static-elf-construction is unmapped static image construction revoke stack slot (
-                                                                                owner is stack-slot-authorized-static-elf-construction,
+                                                                                owner is zeroed-stack-backing-construction,
                                                                                 policy is bounded-stack-slot-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK"

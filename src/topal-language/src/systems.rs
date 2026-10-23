@@ -96,7 +96,8 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -9285,6 +9286,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -10411,7 +10413,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 298);
+        assert_eq!(program.bootstrap.handler.operations.len(), 300);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10502,6 +10504,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -12983,7 +12986,7 @@ mod tests {
             ),
             (
                 SOURCE.replace(
-                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                     "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
                 ),
                 "exact owner and policy",
@@ -13050,6 +13053,55 @@ mod tests {
                     "unmapped frames release static-elf-hierarchy-frames",
                 ),
                 "live allocator and affine extent",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_backing_zeroing() {
+        // TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001.
+        for (source, expected) in [
+            (
+                SOURCE.replace(
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                backing is static-elf-stack-backing,",
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                backing is static-elf-stack-backing,",
+                ),
+                "exact owner, backing, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "backing is static-elf-stack-backing,\n                                                                                extent is complete",
+                    "backing is static-elf-hierarchy-frames,\n                                                                                extent is complete",
+                ),
+                "exact owner, backing, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK\"",
+                    "extent is partial\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK\"",
+                ),
+                "exact owner, backing, and complete extent",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is zeroed-stack-backing-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                policy is bounded-stack-slot-qualification-rollback",
+                ),
+                "exact owner and policy",
             ),
         ] {
             let error = analyze_systems_for_compiler(
