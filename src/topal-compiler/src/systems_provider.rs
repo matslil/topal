@@ -38,6 +38,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
@@ -54,6 +55,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -83,7 +85,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/120";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/121";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -104,6 +106,8 @@ pub enum X86SystemsLowering {
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
     AddStaticImageStackCredentials,
+    AddStaticImageStackSecureMode,
+    RemoveStaticImageStackSecureMode,
     RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
@@ -250,6 +254,12 @@ impl X86SystemsLowering {
             }
             Self::AddStaticImageStackCredentials => {
                 "topal.provider.x86_64.static-image.add-stack-credentials/1"
+            }
+            Self::AddStaticImageStackSecureMode => {
+                "topal.provider.x86_64.static-image.add-stack-secure-mode/1"
+            }
+            Self::RemoveStaticImageStackSecureMode => {
+                "topal.provider.x86_64.static-image.remove-stack-secure-mode/1"
             }
             Self::RemoveStaticImageStackCredentials => {
                 "topal.provider.x86_64.static-image.remove-stack-credentials/1"
@@ -696,6 +706,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS => {
             X86SystemsLowering::AddStaticImageStackCredentials
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE => {
+            X86SystemsLowering::AddStaticImageStackSecureMode
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE => {
+            X86SystemsLowering::RemoveStaticImageStackSecureMode
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS => {
             X86SystemsLowering::RemoveStaticImageStackCredentials
         }
@@ -914,6 +930,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::AddStaticImageStackCredentials => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            X86SystemsLowering::AddStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
+            }
+            X86SystemsLowering::RemoveStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
             }
             X86SystemsLowering::RemoveStaticImageStackCredentials => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
@@ -1145,7 +1167,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 114);
+        assert_eq!(plan.operations.len(), 116);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

@@ -78,6 +78,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
@@ -94,6 +95,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -149,6 +151,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PAGESZ_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
@@ -162,6 +165,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
@@ -188,8 +192,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/130";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/119";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/131";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/120";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -205,7 +209,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 76] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 78] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -225,6 +229,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 76] = [
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PROGRAM_HEADERS_SYMBOL,
@@ -2006,6 +2012,8 @@ enum ProviderSymbol {
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
     AddStaticImageStackCredentials,
+    AddStaticImageStackSecureMode,
+    RemoveStaticImageStackSecureMode,
     RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
@@ -2129,6 +2137,12 @@ impl ProviderSymbol {
             }
             Self::AddStaticImageStackCredentials => {
                 X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL
+            }
+            Self::AddStaticImageStackSecureMode => {
+                X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL
+            }
+            Self::RemoveStaticImageStackSecureMode => {
+                X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL
             }
             Self::RemoveStaticImageStackCredentials => {
                 X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL
@@ -2290,6 +2304,8 @@ impl ProviderSymbol {
             | Self::AddStaticImageStackProgramHeaders
             | Self::AddStaticImageStackExecutableName
             | Self::AddStaticImageStackCredentials
+            | Self::AddStaticImageStackSecureMode
+            | Self::RemoveStaticImageStackSecureMode
             | Self::RemoveStaticImageStackCredentials
             | Self::RemoveStaticImageStackExecutableName
             | Self::RemoveStaticImageStackProgramHeaders
@@ -2530,6 +2546,7 @@ enum RootStaticImageState {
     StackProgramHeadersAdded,
     StackExecutableNameAdded,
     StackCredentialsAdded,
+    StackSecureModeAdded,
     EntryRestored,
     Detached,
     HierarchyReturned,
@@ -2636,6 +2653,8 @@ struct ProviderSymbols {
     add_static_image_stack_program_headers: SymbolId,
     add_static_image_stack_executable_name: SymbolId,
     add_static_image_stack_credentials: SymbolId,
+    add_static_image_stack_secure_mode: SymbolId,
+    remove_static_image_stack_secure_mode: SymbolId,
     remove_static_image_stack_credentials: SymbolId,
     remove_static_image_stack_executable_name: SymbolId,
     remove_static_image_stack_program_headers: SymbolId,
@@ -3496,6 +3515,45 @@ impl RootEncoder {
 
     fn remove_static_image_stack_credentials(&mut self) -> Result<(), CompileError> {
         self.transition_static_image_stack_credentials(false)
+    }
+
+    fn transition_static_image_stack_secure_mode(&mut self, add: bool) -> Result<(), CompileError> {
+        let required = if add {
+            RootStaticImageState::StackCredentialsAdded
+        } else {
+            RootStaticImageState::StackSecureModeAdded
+        };
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != required
+            || self.physical_frame_count != Some(1)
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool("x86 static-image secure-mode transition requires its exact qualified stack owner under the inactive hierarchy".into()));
+        }
+        self.bytes.extend_from_slice(&[
+            0x4c, 0x89, 0xf7, 0x4c, 0x89, 0xe6, 0xba, 0xf7, 0x01, 0, 0, 0x48, 0x89, 0xe9, 0x4d,
+            0x89, 0xf8, 0x49, 0x89, 0xd9,
+        ]);
+        self.call_checked_bool(if add {
+            ProviderSymbol::AddStaticImageStackSecureMode
+        } else {
+            ProviderSymbol::RemoveStaticImageStackSecureMode
+        })?;
+        self.static_image = if add {
+            RootStaticImageState::StackSecureModeAdded
+        } else {
+            RootStaticImageState::StackCredentialsAdded
+        };
+        Ok(())
+    }
+
+    fn add_static_image_stack_secure_mode(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_secure_mode(true)
+    }
+
+    fn remove_static_image_stack_secure_mode(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_secure_mode(false)
     }
 
     fn remove_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
@@ -5995,6 +6053,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::AddStaticImageStackCredentials,
         ),
+        add_static_image_stack_secure_mode: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AddStaticImageStackSecureMode,
+        ),
+        remove_static_image_stack_secure_mode: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RemoveStaticImageStackSecureMode,
+        ),
         remove_static_image_stack_credentials: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RemoveStaticImageStackCredentials,
@@ -6713,6 +6779,12 @@ fn encode_operations(
             CompilerSystemsOperation::AddStaticImageStackCredentials => {
                 encoder.add_static_image_stack_credentials()?;
             }
+            CompilerSystemsOperation::AddStaticImageStackSecureMode => {
+                encoder.add_static_image_stack_secure_mode()?;
+            }
+            CompilerSystemsOperation::RemoveStaticImageStackSecureMode => {
+                encoder.remove_static_image_stack_secure_mode()?;
+            }
             CompilerSystemsOperation::RemoveStaticImageStackCredentials => {
                 encoder.remove_static_image_stack_credentials()?;
             }
@@ -7089,6 +7161,12 @@ fn append_root(
             }
             ProviderSymbol::AddStaticImageStackCredentials => {
                 provider_symbols.add_static_image_stack_credentials
+            }
+            ProviderSymbol::AddStaticImageStackSecureMode => {
+                provider_symbols.add_static_image_stack_secure_mode
+            }
+            ProviderSymbol::RemoveStaticImageStackSecureMode => {
+                provider_symbols.remove_static_image_stack_secure_mode
             }
             ProviderSymbol::RemoveStaticImageStackCredentials => {
                 provider_symbols.remove_static_image_stack_credentials
@@ -7899,6 +7977,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::AddStaticImageStackProgramHeaders
                 | CompilerSystemsTransition::AddStaticImageStackExecutableName
                 | CompilerSystemsTransition::AddStaticImageStackCredentials
+                | CompilerSystemsTransition::AddStaticImageStackSecureMode
+                | CompilerSystemsTransition::RemoveStaticImageStackSecureMode
                 | CompilerSystemsTransition::RemoveStaticImageStackCredentials
                 | CompilerSystemsTransition::RemoveStaticImageStackExecutableName
                 | CompilerSystemsTransition::RemoveStaticImageStackProgramHeaders
@@ -8324,7 +8404,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 4643);
+        assert_eq!(relocation_targets.len(), 4731);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -8510,7 +8590,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            4195
+            4279
         );
         assert_eq!(
             relocation_targets
@@ -8671,7 +8751,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            176
+            178
         );
         assert_eq!(
             relocation_targets
@@ -8813,6 +8893,8 @@ mod tests {
                 "topal_x86_systems_static_image_add_stack_program_headers",
                 "topal_x86_systems_static_image_add_stack_executable_name",
                 "topal_x86_systems_static_image_add_stack_credentials",
+                "topal_x86_systems_static_image_add_stack_secure_mode",
+                "topal_x86_systems_static_image_remove_stack_secure_mode",
                 "topal_x86_systems_static_image_remove_stack_credentials",
                 "topal_x86_systems_static_image_remove_stack_executable_name",
                 "topal_x86_systems_static_image_remove_stack_program_headers",
@@ -8981,7 +9063,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 389);
+        assert_eq!(decoded.semantic_trace.len(), 393);
         assert!(
             decoded
                 .semantic_trace
@@ -9048,6 +9130,12 @@ mod tests {
         }));
         assert!(decoded.semantic_trace.iter().any(|entry| {
             entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE)
         }));
         assert!(decoded.semantic_trace.iter().any(|entry| {
             entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS)
@@ -9209,71 +9297,81 @@ mod tests {
         assert!(decoded.semantic_trace[71].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[72],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
         );
         assert!(decoded.semantic_trace[73].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[74],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
         );
         assert!(decoded.semantic_trace[75].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[76],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
         );
         assert!(decoded.semantic_trace[77].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[78],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
         );
         assert!(decoded.semantic_trace[79].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[80],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
         );
         assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[82],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
         );
         assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[84],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
         );
         assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[86], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[87],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            decoded.semantic_trace[86],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
         );
-        assert!(decoded.semantic_trace[88].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[89],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+            decoded.semantic_trace[88],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[90].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[90], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[91],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
         );
         assert!(decoded.semantic_trace[92].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[93],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
-        assert_eq!(decoded.semantic_trace[94], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[94].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[95],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert_eq!(decoded.semantic_trace[96], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[96].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[97],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
         assert_eq!(decoded.semantic_trace[98], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..99);
+        assert_eq!(
+            decoded.semantic_trace[99],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+        );
+        assert_eq!(decoded.semantic_trace[100], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[101],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[102], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..103);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
