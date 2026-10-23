@@ -827,51 +827,6 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     process-identity is 1,
                                                                                                                     address-space is user-space
                                                                                                                   )
-                                                                                                                  user-completed is completion-resumed user context enter user-probe
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
-                                                                                                                  returned-anonymous is completion-resumed user address space release anonymous (
-                                                                                                                    address-space is user-space,
-                                                                                                                    reservation is anonymous-page
-                                                                                                                  )
-                                                                                                                  completion-resumed frames release returned-anonymous
-                                                                                                                  returned-data is completion-resumed user address space unmap (
-                                                                                                                    address-space is user-space,
-                                                                                                                    mapping is writable-data
-                                                                                                                  )
-                                                                                                                  completion-resumed frames release returned-data
-                                                                                                                  returned-code is completion-resumed user address space unmap (
-                                                                                                                    address-space is user-space,
-                                                                                                                    mapping is executable-scratch
-                                                                                                                  )
-                                                                                                                  completion-resumed frames release returned-code
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
-                                                                                                                  revoked-space is completion-resumed user execution complete user-completed
-                                                                                                                  returned-frames is completion-resumed user address space reclaim revoked-space
-                                                                                                                  completion-resumed frames release returned-frames
-                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
                                                                                                                   completion-resumed pci region register write (
                                                                                                                     segment is 0,
                                                                                                                     bus is 0,
@@ -1065,6 +1020,135 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                     nonce-identity is 0
                                                                                                                   )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_ENTROPY_OUTPUT_READY"
+                                                                                                                  completion-resumed entropy output deliver initial auxv random (
+                                                                                                                    output-identity is 1,
+                                                                                                                    source-byte-count is 32,
+                                                                                                                    selected-offset-bytes is 0,
+                                                                                                                    delivered-byte-count is 16,
+                                                                                                                    discarded-offset-bytes is 16,
+                                                                                                                    discarded-byte-count is 16,
+                                                                                                                    address-space-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    auxiliary-tag is 25,
+                                                                                                                    single-use is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK"
+                                                                                                                  completion-resumed entropy generator extract (
+                                                                                                                    generator-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    prior-generation is 2,
+                                                                                                                    resulting-generation is 3,
+                                                                                                                    output-identity is 2,
+                                                                                                                    block-byte-count is 64,
+                                                                                                                    output-offset-bytes is 32,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    counter is 0,
+                                                                                                                    nonce-identity is 0
+                                                                                                                  )
+                                                                                                                  completion-resumed entropy output reserve initial user random (
+                                                                                                                    output-identity is 2,
+                                                                                                                    source-byte-count is 32,
+                                                                                                                    selected-offset-bytes is 0,
+                                                                                                                    maximum-delivery-byte-count is 32,
+                                                                                                                    discarded-offset-bytes is 32,
+                                                                                                                    discarded-byte-count is 0,
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    supported-flag-mask is 7,
+                                                                                                                    incompatible-flag-mask is 6,
+                                                                                                                    single-use is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed entropy user random bind reusable (
+                                                                                                                    generator-identity is 1,
+                                                                                                                    generation is 3,
+                                                                                                                    initial-output-identity is 2,
+                                                                                                                    block-byte-count is 64,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    maximum-delivery-byte-count is 32,
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    supported-flag-mask is 7,
+                                                                                                                    incompatible-flag-mask is 6,
+                                                                                                                    reserved-first-output is 1,
+                                                                                                                    reusable is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed entropy user random expand small requests (
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    maximum-output-count is 8,
+                                                                                                                    maximum-delivery-byte-count is 256,
+                                                                                                                    complete-request is 1
+                                                                                                                  )
+                                                                                                                  completion-resumed entropy user random expand large requests (
+                                                                                                                    process-identity is 1,
+                                                                                                                    interface-identity is 1,
+                                                                                                                    service-identity is 1,
+                                                                                                                    algorithm-identity is 1,
+                                                                                                                    output-byte-count is 32,
+                                                                                                                    maximum-output-count is 16,
+                                                                                                                    maximum-delivery-byte-count is 512,
+                                                                                                                    complete-request is 1
+                                                                                                                  )
+                                                                                                                  user-completed is completion-resumed user context enter user-probe
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_READ_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_CLOSE_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_DUP_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_FCNTL_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_FSTAT_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_TCGETS_OK"
+completion-resumed console write "TOPAL_KERNEL_USER_COPY_TO_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_COPY_FROM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_SYSCALL_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_ELF_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_BSS_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_DATA_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_RETAINED"
+                                                                                                                  returned-anonymous is completion-resumed user address space release anonymous (
+                                                                                                                    address-space is user-space,
+                                                                                                                    reservation is anonymous-page
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-anonymous
+                                                                                                                  returned-data is completion-resumed user address space unmap (
+                                                                                                                    address-space is user-space,
+                                                                                                                    mapping is writable-data
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-data
+                                                                                                                  returned-code is completion-resumed user address space unmap (
+                                                                                                                    address-space is user-space,
+                                                                                                                    mapping is executable-scratch
+                                                                                                                  )
+                                                                                                                  completion-resumed frames release returned-code
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_MAPPING_OK"
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_FRAME_DISJOINT_OK"
+                                                                                                                  revoked-space is completion-resumed user execution complete user-completed
+                                                                                                                  returned-frames is completion-resumed user address space reclaim revoked-space
+                                                                                                                  completion-resumed frames release returned-frames
+                                                                                                                  completion-resumed console write "TOPAL_KERNEL_USER_BACKING_OK"
                                                                                                                   completion-resumed fatal "toolchain gate complete"
                                                                                                                     }
                                                                                                                     Error problem then {
@@ -1278,8 +1362,32 @@ user-syscall-handler is fn (
     munmap-result is 0,
     exit-group-status is 0,
     unsupported-syscall-error is 38,
-    sched-yield-result is 0
-  )
+    sched-yield-result is 0,
+initial-descriptor-count is 3,
+bad-descriptor-error is 9,
+too-many-open-files-error is 24,
+console-input-description is 1,
+console-output-description is 2,
+console-error-description is 3,
+invalid-argument-error is 22,
+fcntl-getfd-command is 1,
+fcntl-setfd-command is 2,
+fcntl-getfl-command is 3,
+close-on-exec-flag is 1,
+read-only-status is 0,
+write-only-status is 1,
+stat-layout-bytes is 144,
+console-device is 0,
+console-inode is 1,
+console-mode is 8576,
+console-special-device is 17408,
+console-block-size is 4096,
+terminal-layout-bytes is 36,
+terminal-get-attributes-request is 21505,
+terminal-control-flags is 2239,
+terminal-minimum-input is 1,
+not-a-terminal-error is 25
+)
 
 lang systems artifact (
   bootstrap-storage is lang systems bounded-bootstrap-storage (

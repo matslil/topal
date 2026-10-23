@@ -591,6 +591,122 @@ and return success only after every action. The root shall publish ready
 generation two and one affine output object and reject malformed, partial,
 duplicated, reordered, substituted, or premature extraction.
 
+The bounded initial-`AT_RANDOM` refinement shall accept exactly one opaque-
+output delivery after extraction and before initial user-context entry. It
+shall validate output, address-space, and Linux-interface identity one; source
+extent 32; selected offset zero and extent 16; discarded offset 16 and extent
+16; auxiliary tag 25; single-use policy; the prepared pre-state; and exact
+ordering. The provider shall publish and verify one distinct bounded 16-byte
+stack object, wipe and verify all 32 provider-output bytes, and return success
+only after every action. The root shall permit entry only from the randomized
+entry-ready state and reject malformed, partial, duplicated, reordered,
+substituted, reused, or premature delivery.
+
+The bounded initial-`getrandom` refinement shall accept one fresh extraction
+from generator generation two to generation three and reserve opaque output
+identity two for process, Linux interface, and user-random service identity one
+before entry. It shall validate source extent 32, maximum request extent 16,
+selected offset zero, discard partition, current Linux supported flag mask 7,
+incompatible mask 6, and single-use policy. The x86-64 provider shall privately
+map the service to syscall 318, preserve the reservation on zero, argument, and
+range failures, copy and verify one successful 1–16-byte prefix, wipe and verify
+all output storage, clear private reservation state, and reject partial,
+duplicated, reordered, substituted, reused, or premature delivery.
+
+The reusable process-`getrandom` refinement shall accept one checked binding
+of generator identity one at generation three and the live initial reservation
+into a process-lifetime service. It shall preserve output identity two for the
+first success and lower later successes to the same qualified ChaCha20
+extraction with key replacement before output publication. The x86-64 provider
+shall validate complete arguments and user ranges before later extraction,
+return and verify 1–16 bytes, wipe the full output after every success, retain
+only the successor generator, and leave state unchanged for zero and rejected
+calls. It shall execute two successful calls in ring 3 and wipe the unused
+output, generator key, and private service state before process return.
+
+The full-output process-`getrandom` refinement shall accept maximum delivery
+extent 32 for both the initial reservation and reusable binding, with selected
+offset zero and an empty discard partition. The x86-64 provider shall reject
+larger requests before extraction, copy and verify all 32 bytes for the added
+full-output call, wipe and verify the complete output, increment delivery state
+only after success, and retain no output remainder. The ring-3 probe shall
+preserve the preceding calls and read four qwords from the added request.
+
+The bounded small-request `getrandom` refinement shall lower one exact checked
+service expansion with output extent 32, maximum output count eight, maximum
+delivery 256, and complete-request policy. The x86-64 provider shall validate
+the full range before extraction, iterate at most eight fresh outputs in order,
+replace the key before each publication, copy and verify every chunk, wipe each
+complete output, and increment delivery state exactly once. The ring-3 probe
+shall preserve prior calls, require a 256-byte return, and read the first and
+last qwords without constraining them.
+
+The bounded large-request `getrandom` refinement shall lower one subsequent
+checked service expansion with output extent 32, maximum output count 16,
+maximum delivery 512, and signal-free complete-request policy. The x86-64
+provider shall preserve full-range validation before extraction, iterate at
+most 16 fresh outputs in order, replace the key before every publication,
+copy and verify every chunk, wipe every complete output, and increment delivery
+state exactly once. The ring-3 probe shall preserve prior calls, require a
+512-byte return, and read the first and last qwords without constraining them.
+
+The initial standard-descriptor close refinement shall lower descriptor count
+three and `EBADF` value nine through the checked Linux syscall-dispatch policy.
+The x86-64 provider shall initialize one private live/closed state for
+descriptors zero through two, map native syscall 3 to an atomic live-to-closed
+transition, reject negative, out-of-range, and repeated close with `-EBADF`,
+and make the existing bounded read/write arms consult the same state before any
+input, user access, or output. The ring-3 image shall close standard input after
+its final successful read, verify a later read and repeated close both return
+`-EBADF`, and preserve terminal success. Provider-object and physical evidence
+shall prove initialization, lookup, transition, rejection, complete teardown
+clearing, and the ordered `TOPAL_KERNEL_USER_CLOSE_OK` observation.
+
+The bounded initial-descriptor duplication refinement shall lower table count
+three, `EBADF` value nine, `EMFILE` value 24, and the three fixed description
+identities and access modes through checked dispatch policy. The x86-64
+provider shall map native syscalls 32 and 33 to lowest-free duplication and
+validation-before-replacement duplication, preserve aliases across one-slot
+close, and make read/write authorize the mapped description. The ring-3 image
+shall prove full-table rejection, zero-slot allocation, source-slot close
+survival, alias restoration, write-only read rejection without input, invalid-
+source nonreplacement, error-description replacement, exact close results,
+and terminal clearing. Provider-object and physical evidence shall prove the
+private mapping encoding, exact branches and returns, no premature state
+change, and ordered `TOPAL_KERNEL_USER_DUP_OK` observation.
+
+The bounded initial-descriptor metadata refinement shall lower `F_GETFD=1`,
+`F_SETFD=2`, `F_GETFL=3`, `FD_CLOEXEC=1`, `O_RDONLY=0`, `O_WRONLY=1`, and
+`EINVAL=22` through checked dispatch policy. The x86-64 provider shall map
+native syscall 72, retain three private per-slot flags separately from
+description identities, enforce lookup-before-command precedence, mask set
+arguments, clear destination flags on duplication, and clear close/terminal
+state. The ring-3 image and provider-object evidence shall prove access-mode
+lookup, set/get, unsupported command, alias flag independence, `dup2` clearing,
+closed-slot rejection, exact results, and ordered
+`TOPAL_KERNEL_USER_FCNTL_OK` observation.
+
+The bounded initial-descriptor `fstat` refinement shall lower one immutable
+console metadata value and the native 144-byte x86-64 layout through checked
+dispatch policy. The provider shall map syscall 5, look up description identity
+before user access, validate a complete writable extent, privately stage every
+field and zero byte, publish under generated fault recovery, and retain no user
+pointer. The ring-3 image and provider-object evidence shall prove exact object,
+ttyS0 device, character-mode, ownership, link, size, block, timestamp, padding,
+alias-equality, `EBADF`, `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_FSTAT_OK` behavior.
+
+The bounded initial-console terminal refinement shall lower `TCGETS=0x5401`,
+`ENOTTY=25`, the native 36-byte x86-64 `termios` layout, raw zero-valued input,
+output, and local flags, control flags `0x8bf`, line discipline zero, and only
+`VMIN=1` through checked dispatch policy. The provider shall map native syscall
+16, enforce descriptor-before-request-before-pointer precedence, privately
+stage every byte, validate one complete writable extent, publish under
+generated fault recovery, and retain no user pointer. Ring-3 and provider-
+object evidence shall prove input/output equality, every exact byte, unknown-
+request `ENOTTY`, closed-slot `EBADF`, invalid-candidate `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_TCGETS_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall

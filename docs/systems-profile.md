@@ -693,6 +693,17 @@ and retains no pointer. The fixed mapping set, exact-fill behavior, and lack of
 signals, partial reads, and terminal policy remain profile limits rather than
 Linux-wide semantics.
 
+The initial descriptor-close refinement gives the Linux personality a bounded
+private descriptor table for the three inherited standard descriptors. A
+successful `close` changes exactly one live descriptor to closed and returns
+zero; an invalid or already closed descriptor returns `-EBADF` without state
+change. The existing bounded `read` and `write` paths consult the same state
+before input, user-memory access, or output, and terminal process teardown
+clears it. Portable source selects the descriptor count and error policy but
+does not observe the provider's table representation, native syscall number,
+or register convention. This is a process-lifetime compatibility refinement,
+not a VFS object model or general descriptor-allocation interface.
+
 The bounded initial-heap refinement gives the initial process one byte-granular
 program-break state within the already-owned RW/NX data page. Its initial value
 is derived from the validated ELF data-memory extent; zero requests query that
@@ -1410,6 +1421,59 @@ output, wipe all temporary cipher state, and fail closed on partial key or
 output publication. Source observes neither key nor output bytes; a separate
 checked delivery operation must consume the output object into a selected
 kernel or userspace interface.
+
+A checked initial-process random delivery may consume one opaque output object
+into a prepared but not yet entered user stack. The qualified Linux profile
+fixes the `AT_RANDOM` tag, 16-byte object extent, complete in-stack bounds,
+output partition and discard policy, and ordering before context entry. The
+provider copies and verifies the selected bytes, wipes and verifies the entire
+consumed output object, and returns a refined entry-ready process capability.
+Source observes neither the random bytes nor their provider-selected address.
+
+A checked user-random reservation may consume a fresh opaque output object into
+one process and interface capability before entry without performing the user
+copy. The qualified profile fixes the maximum delivery extent, output discard
+partition, accepted and incompatible interface flags, and single-use policy.
+Argument and complete-range validation failures preserve the reservation; the
+first successful nonempty request copies and verifies the selected prefix,
+consumes the capability, and wipes the entire provider output. Native syscall
+numbers, registers, pointer validation, and copy-fault recovery remain provider
+details, while source observes neither random bytes nor an address.
+
+A checked reusable user-random binding may consume a ready generator together
+with one live initial reservation into an affine process-lifetime service. The
+reserved output supplies the first successful request. Each later successful
+request performs a fresh generator transition with key replacement before
+publication; complete argument and user-range validation precedes that
+transition, and every call wipes its full output after the requested prefix is
+copied. Zero and rejected requests do not advance the generator. Process exit
+consumes the service only after the provider destroys any live output, the
+generator key, and private service state. Source observes neither secret state
+nor target syscall, register, exception, or copy mechanics.
+
+A bounded full-output refinement may raise the per-call delivery limit to the
+complete provider-output extent. The request still validates the complete user
+range before changing generator state, consumes at most one output object,
+copies and verifies exactly the requested prefix, and wipes the complete output
+even when every output byte was selected. The extent is a property of the
+qualified generator contract rather than an architecture syscall mechanism.
+
+A checked small-request refinement may consume a live reusable user-random
+service into a service that can satisfy one request from a bounded sequence of
+fresh output objects. It names the maximum output count and complete-request
+policy. The provider validates the entire user range before the first state
+transition, replaces the key before each fresh output is published, copies each
+selected chunk in order, wipes every complete output, and reports one completed
+interface delivery only after the full request. Source observes neither the
+chunk loop nor cryptographic, syscall, register, address, or fault mechanics.
+
+A checked large-request refinement may raise those explicit bounds while the
+qualified process remains single-threaded and signal-free. It preserves
+whole-range validation before extraction, ordered fixed-size output chunks,
+per-output key replacement and complete erasure, exact completion in the
+absence of interruption, and one interface delivery for the syscall. The
+larger bound does not imply unbounded allocation, partial-progress policy, or
+an architecture page-size dependency.
 
 ## Storage, placement, and artifacts
 

@@ -54,16 +54,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/96")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/107")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/86")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/97")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/94",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/105",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/54",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/65",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -139,8 +139,31 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
                 "TOPAL_KERNEL_USER_IMAGE_READY",
                 "TOPAL_KERNEL_BOOT_RESOURCE_OK",
+                "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
+                "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
+                "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
+                "TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+                "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
+                "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
+                "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
+                "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+                "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
+                "TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
+                "TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
+                "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
+                "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
                 "TOPAL_KERNEL_USER_WRITE_OK",
+                "TOPAL_KERNEL_USER_GETRANDOM_OK",
+                "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
+                "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
+                "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK",
+                "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK",
                 "TOPAL_KERNEL_USER_READ_OK",
+                "TOPAL_KERNEL_USER_CLOSE_OK",
+                "TOPAL_KERNEL_USER_DUP_OK",
+                "TOPAL_KERNEL_USER_FCNTL_OK",
+                "TOPAL_KERNEL_USER_FSTAT_OK",
+                "TOPAL_KERNEL_USER_TCGETS_OK",
                 "TOPAL_KERNEL_USER_COPY_TO_OK",
                 "TOPAL_KERNEL_USER_COPY_FROM_OK",
                 "TOPAL_KERNEL_USER_SYSCALL_OK",
@@ -166,18 +189,6 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_USER_MAPPING_OK",
                 "TOPAL_KERNEL_FRAME_DISJOINT_OK",
                 "TOPAL_KERNEL_USER_BACKING_OK",
-                "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
-                "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
-                "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
-                "TOPAL_KERNEL_VIRTIO_USED_RING_OK",
-                "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
-                "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
-                "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
-                "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
-                "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
-                "TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
-                "TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
-                "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
             ],
         )
         self.assertEqual(observations["result"], "pass")

@@ -17,7 +17,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/86";
+    "topal.provider-object.x86_64-qemu-pc-q35/97";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -125,6 +125,12 @@ pub const X86_SYSTEMS_ENTROPY_GENERATOR_INITIALIZE_SYMBOL: &str =
     "topal_x86_systems_entropy_initialize_chacha20_generator";
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_EXTRACT_SYMBOL: &str =
     "topal_x86_systems_entropy_extract_chacha20_generator";
+pub const X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_entropy_deliver_initial_auxv_random";
+pub const X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_entropy_reserve_initial_user_random";
+pub const X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL: &str =
+    "topal_x86_systems_entropy_bind_reusable_user_random";
 pub const X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL: &str =
     "topal_x86_systems_dma_virtqueue_control";
 pub const X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL: &str = "topal_x86_systems_dma_entropy_payload";
@@ -133,6 +139,8 @@ pub const X86_SYSTEMS_ENTROPY_POOL_STATE_SYMBOL: &str = "topal_x86_systems_entro
 pub const X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL: &str =
     "topal_x86_systems_entropy_generator_key";
 pub const X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL: &str = "topal_x86_systems_entropy_output";
+pub const X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL: &str =
+    "topal_x86_systems_entropy_user_random_service";
 pub const X86_SYSTEMS_PCI_REGION_READ_SYMBOL: &str =
     "topal_x86_systems_pci_region_configuration_gateway_read_equals";
 pub const X86_SYSTEMS_PCI_REGION_READ_EVENTUALLY_SYMBOL: &str =
@@ -153,7 +161,7 @@ pub(crate) const INITIAL_USER_CODE_MEMORY_SIZE_ELF_OFFSET: usize = 104;
 pub(crate) const INITIAL_USER_DATA_FILE_SIZE_ELF_OFFSET: usize = 152;
 pub(crate) const INITIAL_USER_DATA_MEMORY_SIZE_ELF_OFFSET: usize = 160;
 pub(crate) const INITIAL_USER_DATA_CAPACITY: usize = 4096;
-const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1ee0;
+const INITIAL_USER_STACK_ADDRESS: u64 = 0x0060_1eb0;
 const INITIAL_USER_UNAME_CANDIDATE: u32 = 0x0060_1e00;
 const INITIAL_USER_NANOSLEEP_CANDIDATE: u32 = 0x0060_1ff0;
 
@@ -837,6 +845,136 @@ fn entropy_extract_chacha20_generator() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+fn entropy_deliver_initial_auxv_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // affine 32-byte output
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x01]); // prepared probe, not entered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 0]); // not previously delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x4f, 0x68]); // allocator-owned backing
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+
+    for offset in [0_u8, 8] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x8b, 0x46, offset]);
+        }
+        code.bytes(&[0x48, 0x89, 0x81]);
+        code.bytes(&(0x1fe0_u32 + u32::from(offset)).to_le_bytes());
+        code.bytes(&[0x48, 0x3b, 0x81]);
+        code.bytes(&(0x1fe0_u32 + u32::from(offset)).to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x46, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x8b, 0x06]);
+    for offset in [8_u8, 16, 24] {
+        code.bytes(&[0x48, 0x0b, 0x46, offset]);
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail_wipe");
+    code.bytes(&[0xc6, 0x87, 0xd0, 0, 0, 0, 1]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fail_wipe")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x46, offset]);
+        }
+    }
+    for offset in [0x1fe0_u32, 0x1fe8] {
+        code.bytes(&[0x48, 0x89, 0x81]);
+        code.bytes(&offset.to_le_bytes());
+    }
+    code.bytes(&[0xc6, 0x87, 0xd0, 0, 0, 0, 0]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn entropy_reserve_initial_user_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // affine 32-byte output
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 0x01]); // prepared probe, not entered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]); // AT_RANDOM delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]); // no live pointer
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0xb7, 0xd8, 0, 0, 0]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn entropy_bind_reusable_user_random() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]); // prepared address-space state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]); // live generator key
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]); // fresh service state
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd7]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]); // AT_RANDOM delivered
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x8f, 0xd8, 0, 0, 0]); // reserved first output
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xd1]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf1]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x0b, 0x02]);
+        } else {
+            code.bytes(&[0x48, 0x0b, 0x42, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0x32]);
+    code.bytes(&[0x48, 0x89, 0x4a, 0x08]);
+    code.bytes(&[0xc6, 0x42, 0x10, 0x01]); // reserved first output is live
+    code.bytes(&[0x48, 0x89, 0x97, 0xd8, 0, 0, 0]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn pci_region_write_dma_reference() -> Result<Vec<u8>, CompileError> {
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x81, 0xff, 0x84, 0x28, 0x00, 0x80]); // pinned access selector
@@ -1028,6 +1166,24 @@ pub fn generate_x86_64_systems_provider_object(
     append_encoded_function(
         &mut object,
         text,
+        X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+        &entropy_deliver_initial_auxv_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+        &entropy_reserve_initial_user_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL,
+        &entropy_bind_reusable_user_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
         X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL,
         &pci_region_write_dma_reference()?,
     );
@@ -1169,6 +1325,19 @@ pub fn generate_x86_64_systems_provider_object(
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL.as_bytes().to_vec(),
         value: output_offset,
+        size: 32,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+    let user_random_service_offset = object.append_section_bss(entropy_storage, 32, 32);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL
+            .as_bytes()
+            .to_vec(),
+        value: user_random_service_offset,
         size: 32,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
@@ -1471,14 +1640,14 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
     for (index, chunk) in initial_user_stack_bytes().chunks_exact(8).enumerate() {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(chunk);
-        let displacement = u32::try_from(0x1ee0 + index * 8).map_err(|_| {
+        let displacement = u32::try_from(0x1eb0 + index * 8).map_err(|_| {
             CompileError::Tool("initial user stack displacement exceeds u32".into())
         })?;
         code.bytes(&[0x49, 0x89, 0x82]);
         code.bytes(&displacement.to_le_bytes());
     }
     code.bytes(&[0x4d, 0x8b, 0x99, 0x88, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x4d, 0x89, 0x9a, 0x18, 0x1f, 0x00, 0x00]); // runtime AT_ENTRY
+    code.bytes(&[0x4d, 0x89, 0x9a, 0xe8, 0x1e, 0x00, 0x00]); // runtime AT_ENTRY
     code.bytes(&[0x4d, 0x8d, 0x9a, 0x00, 0x20, 0x00, 0x00]); // leaf table
     code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]); // clear frame
@@ -1500,6 +1669,13 @@ fn user_prepare_initial_address_space() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x41, 0x0f, 0x01, 0x38]); // invlpg [r8]
     }
 
+    code.bytes(&[0xc6, 0x87, 0xc0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xc6, 0x87, 0xd0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xd8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
+    code.bytes(&[
+        0x48, 0xc7, 0x87, 0xe0, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x00,
+    ]);
+    code.bytes(&[0x48, 0xc7, 0x87, 0xe8, 0x00, 0x00, 0x00, 0, 0, 0, 0]);
     code.bytes(&[0xc6, 0x87, 0x70, 0x00, 0x00, 0x00, 0x01]);
     code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
     code.bind("fail")?;
@@ -1711,16 +1887,16 @@ struct InitialUserEntryPayload {
     nanosleep_return_address: u64,
 }
 
-fn initial_user_stack_bytes() -> [u8; 288] {
-    let mut bytes = [0_u8; 288];
+fn initial_user_stack_bytes() -> [u8; 336] {
+    let mut bytes = [0_u8; 336];
     bytes[0..8].copy_from_slice(&1_u64.to_le_bytes());
-    bytes[8..16].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[8..16].copy_from_slice(&0x0060_1fc8_u64.to_le_bytes());
     bytes[32..40].copy_from_slice(&6_u64.to_le_bytes());
     bytes[40..48].copy_from_slice(&4096_u64.to_le_bytes());
     bytes[48..56].copy_from_slice(&9_u64.to_le_bytes());
     bytes[56..64].copy_from_slice(&0_u64.to_le_bytes());
     bytes[64..72].copy_from_slice(&31_u64.to_le_bytes());
-    bytes[72..80].copy_from_slice(&0x0060_1ff0_u64.to_le_bytes());
+    bytes[72..80].copy_from_slice(&0x0060_1fc8_u64.to_le_bytes());
     for (offset, tag) in [(80, 11_u64), (96, 12), (112, 13), (128, 14)] {
         bytes[offset..offset + 8].copy_from_slice(&tag.to_le_bytes());
     }
@@ -1734,9 +1910,11 @@ fn initial_user_stack_bytes() -> [u8; 288] {
     bytes[208..216].copy_from_slice(&17_u64.to_le_bytes());
     bytes[216..224].copy_from_slice(&100_u64.to_le_bytes());
     bytes[224..232].copy_from_slice(&15_u64.to_le_bytes());
-    bytes[232..240].copy_from_slice(&0x0060_1fe0_u64.to_le_bytes());
-    bytes[256..263].copy_from_slice(b"x86_64\0");
-    bytes[272..283].copy_from_slice(b"topal-probe");
+    bytes[232..240].copy_from_slice(&0x0060_1fc0_u64.to_le_bytes());
+    bytes[240..248].copy_from_slice(&25_u64.to_le_bytes());
+    bytes[248..256].copy_from_slice(&0x0060_1fe0_u64.to_le_bytes());
+    bytes[272..279].copy_from_slice(b"x86_64\0");
+    bytes[280..291].copy_from_slice(b"topal-probe");
     bytes
 }
 
@@ -1806,7 +1984,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x01]); // argc = 1
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x08]);
-    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // argv[0]
+    entry.bytes(&0x0060_1fc8_u32.to_le_bytes()); // argv[0]
     entry.jump_if(0x85, "entry-fail");
     for displacement in [0x10_u8, 0x18] {
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, 0x00]);
@@ -1827,7 +2005,7 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     entry.bytes(&[0x48, 0x83, 0x7c, 0x24, 0x40, 0x1f]); // AT_EXECFN
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0x81, 0x7c, 0x24, 0x48]);
-    entry.bytes(&0x0060_1ff0_u32.to_le_bytes()); // same string as argv[0]
+    entry.bytes(&0x0060_1fc8_u32.to_le_bytes()); // same string as argv[0]
     entry.jump_if(0x85, "entry-fail");
     for (displacement, tag) in [(0x50_u8, 11_u8), (0x60, 12), (0x70, 13)] {
         entry.bytes(&[0x48, 0x83, 0x7c, 0x24, displacement, tag]);
@@ -1855,8 +2033,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
         (0xd0, 17),
         (0xd8, 100),
         (0xe0, 15),
-        (0xf0, 0),
-        (0xf8, 0),
+        (0xf0, 25),
+        (0x100, 0),
+        (0x108, 0),
     ] {
         entry.bytes(&[0x48, 0x83, 0xbc, 0x24]);
         entry.bytes(&displacement.to_le_bytes());
@@ -1865,24 +2044,33 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     }
     entry.bytes(&[0x48, 0x81, 0xbc, 0x24]);
     entry.bytes(&0xe8_u32.to_le_bytes());
+    entry.bytes(&0x0060_1fc0_u32.to_le_bytes());
+    entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x81, 0xbc, 0x24]);
+    entry.bytes(&0xf8_u32.to_le_bytes());
     entry.bytes(&0x0060_1fe0_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"x86_64\0\0").to_le_bytes());
     entry.bytes(&[0x48, 0x39, 0x84, 0x24]);
-    entry.bytes(&0x100_u32.to_le_bytes());
+    entry.bytes(&0x110_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x48, 0xb8]);
     entry.bytes(&u64::from_le_bytes(*b"topal-pr").to_le_bytes());
     entry.bytes(&[0x48, 0x39, 0x84, 0x24]);
-    entry.bytes(&0x110_u32.to_le_bytes());
+    entry.bytes(&0x118_u32.to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
     entry.bytes(&[0x81, 0xbc, 0x24]);
-    entry.bytes(&0x118_u32.to_le_bytes());
+    entry.bytes(&0x120_u32.to_le_bytes());
     entry.bytes(&u32::from_le_bytes(*b"obe\0").to_le_bytes());
     entry.jump_if(0x85, "entry-fail");
+    entry.bytes(&[0x48, 0x8b, 0x84, 0x24]);
+    entry.bytes(&0x130_u32.to_le_bytes()); // read complete first random qword
+    entry.bytes(&[0x48, 0x8b, 0x8c, 0x24]);
+    entry.bytes(&0x138_u32.to_le_bytes()); // read complete second random qword
+    entry.bytes(&[0x48, 0x09, 0xc8]); // consume both values without constraining them
     entry.bytes(&[0x48, 0x81, 0xc4]);
-    entry.bytes(&288_u32.to_le_bytes()); // consume bounded initial block
+    entry.bytes(&336_u32.to_le_bytes()); // consume bounded initial block
     entry.bytes(&[0x49, 0xba]);
     entry.bytes(&INITIAL_USER_DATA_ADDRESS.to_le_bytes());
     entry.bytes(&[0x41, 0x80, 0x3a, 0x6d]);
@@ -2242,6 +2430,218 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.bytes(&[0x48, 0x83, 0x3c, 0x24, 0x00]);
     continuation.jump_if(0x85, "fs-buffer-fail");
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.bytes(&[0x48, 0x81, 0xec, 0x00, 0x01, 0x00, 0x00]); // bounded getrandom result
+    continuation.bytes(&[0x31, 0xff, 0x31, 0xf6, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // zero length
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0xba, 0x08, 0, 0, 0]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // unknown flag
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0xba, 0x06, 0, 0, 0]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]); // incompatible flags
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0xbf, 0xf8, 0x1f, 0x60, 0x00]); // crosses stack guard
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf2]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x10, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x10]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x20, 0x00, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x20]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 0x08]);
+    continuation.bytes(&[0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]);
+    continuation.bytes(&[0x48, 0x89, 0xe7]);
+    continuation.bytes(&[0xbe, 0x00, 0x01, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x00, 0x01, 0x00, 0x00]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x24]);
+    continuation.bytes(&[0x4c, 0x8b, 0x9c, 0x24, 0xf8, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xbf, 0x00, 0x10, 0x60, 0x00]); // complete writable data page
+    continuation.bytes(&[0xbe, 0x00, 0x02, 0x00, 0x00, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x3e, 0x01, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x3d, 0x00, 0x02, 0x00, 0x00]);
+    continuation.jump_if(0x85, "getrandom-buffer-fail");
+    continuation.bytes(&[0x4c, 0x8b, 0x14, 0x25, 0x00, 0x10, 0x60, 0x00]);
+    continuation.bytes(&[0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]);
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]); // stdout
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]); // writable stat destination
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(stdout)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.rip_lea(&[0x48, 0x8d, 0x3d], "fstat-expected");
+    continuation.bytes(&[0xb9, 0x12, 0x00, 0x00, 0x00, 0xf3, 0x48, 0xa7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.jump("fstat-expected-complete");
+    continuation.bind("fstat-expected")?;
+    for value in [
+        0_u64, 1, 1, 0x2180, 0, 0x4400, 0, 4096, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    ] {
+        continuation.bytes(&value.to_le_bytes());
+    }
+    continuation.bind("fstat-expected-complete")?;
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0xba, 0x20, 0x51, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
+    continuation.rip_lea(&[0x48, 0x8d, 0x3d], "termios-expected");
+    continuation.bytes(&[0xb9, 0x24, 0x00, 0x00, 0x00, 0xf3, 0xa6]);
+    continuation.jump_if(0x85, "fail");
+    continuation.jump("termios-expected-complete");
+    continuation.bind("termios-expected")?;
+    let mut expected_termios = [0_u8; 36];
+    expected_termios[8..12].copy_from_slice(&0x8bf_u32.to_le_bytes());
+    expected_termios[23] = 1;
+    continuation.bytes(&expected_termios);
+    continuation.bind("termios-expected-complete")?;
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0xba, 0x50, 0x51, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbe, 0x20, 0x51, 0x60, 0x00]);
+    continuation.bytes(&[0xbf, 0x50, 0x51, 0x60, 0x00]);
+    continuation.bytes(&[0xb9, 0x24, 0x00, 0x00, 0x00, 0xf3, 0xa6]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xbe, 0xff, 0xff, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
+    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xe7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x03, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFL stdout
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFD clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x02, 0, 0, 0]);
+    continuation.bytes(&[0xba, 0x01, 0, 0, 0, 0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_SETFD
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // F_GETFD set
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x63, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // unsupported command
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xea]); // -EINVAL
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xb8, 0x20, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup(full table)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xe8]); // -EMFILE
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close(stdin)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x00, 0x10, 0x60, 0x00]);
+    continuation.bytes(&[0xba, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x31, 0xc0, 0x0f, 0x05]); // read(closed stdin)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // repeated close
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xb8, 0x20, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup(stdout)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]); // duplicated stdout alias in slot zero
+    continuation.bytes(&[0xbe, 0x90, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(alias)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xbf, 0x90, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb9, 0x12, 0x00, 0x00, 0x00, 0xf3, 0x48, 0xa7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // duplicate flag clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // source flag retained
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close source slot
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0xb8, 0x21, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup2(0,1)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0x01]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x01, 0, 0, 0, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // dup2 flag clear
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x00, 0x10, 0x60, 0x00]);
+    continuation.bytes(&[0xba, 0x01, 0x00, 0x00, 0x00]);
+    continuation.bytes(&[0x31, 0xc0, 0x0f, 0x05]); // read(write-only alias)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close duplicate
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x48, 0xc7, 0xc7, 0xff, 0xff, 0xff, 0xff, 0x31, 0xf6]);
+    continuation.bytes(&[0xb8, 0x21, 0x00, 0x00, 0x00, 0x0f, 0x05]); // invalid dup2
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0xbf, 0x02, 0x00, 0x00, 0x00, 0x31, 0xf6]);
+    continuation.bytes(&[0xb8, 0x21, 0x00, 0x00, 0x00, 0x0f, 0x05]); // dup2(2,0)
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xb8, 0x03, 0x00, 0x00, 0x00, 0x0f, 0x05]); // close error alias
+    continuation.bytes(&[0x48, 0x85, 0xc0]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x00, 0x50, 0x60, 0x00]);
+    continuation.bytes(&[0xb8, 0x05, 0x00, 0x00, 0x00, 0x0f, 0x05]); // fstat(closed slot)
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF before pointer access
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff]);
+    continuation.bytes(&[0xbe, 0x01, 0x54, 0x00, 0x00]);
+    continuation.bytes(&[0x48, 0xc7, 0xc2, 0xff, 0xff, 0xff, 0xff]);
+    continuation.bytes(&[0xb8, 0x10, 0x00, 0x00, 0x00, 0x0f, 0x05]);
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]);
+    continuation.jump_if(0x85, "fail");
+    continuation.bytes(&[0x31, 0xff, 0xbe, 0x01, 0, 0, 0, 0x31, 0xd2]);
+    continuation.bytes(&[0xb8, 0x48, 0, 0, 0, 0x0f, 0x05]); // closed-slot F_GETFD
+    continuation.bytes(&[0x48, 0x83, 0xf8, 0xf7]); // -EBADF
+    continuation.jump_if(0x85, "fail");
     continuation.bytes(&[0x31, 0xff]);
     continuation.bytes(&[0xb8, 0xe7, 0x00, 0x00, 0x00, 0x0f, 0x05]); // exit_group(0)
     continuation.bytes(&[0x0f, 0x0b]);
@@ -2265,6 +2665,9 @@ fn initial_user_entry_payload() -> Result<InitialUserEntryPayload, CompileError>
     continuation.jump("fail");
     continuation.bind("fs-buffer-fail")?;
     continuation.bytes(&[0x48, 0x83, 0xc4, 0x10]);
+    continuation.jump("fail");
+    continuation.bind("getrandom-buffer-fail")?;
+    continuation.bytes(&[0x48, 0x81, 0xc4, 0x00, 0x01, 0x00, 0x00]);
     continuation.bind("fail")?;
     continuation.bytes(&[0x0f, 0x0b]);
     bytes.extend(continuation.finish()?);
@@ -2834,6 +3237,10 @@ fn user_enter_initial_context() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x3f, 0x01]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[0x80, 0xbf, 0xd0, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]);
+    code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x89, 0x67, 0x08]); // continuation RSP
     code.bytes(&[0xc6, 0x07, 0x02]);
     code.bytes(&[0x6a, 0x23]); // user SS
@@ -2874,6 +3281,18 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "read");
     code.bytes(&[0x83, 0xf8, 0x01]);
     code.jump_if(0x84, "write");
+    code.bytes(&[0x83, 0xf8, 0x03]);
+    code.jump_if(0x84, "close");
+    code.bytes(&[0x83, 0xf8, 0x05]);
+    code.jump_if(0x84, "fstat");
+    code.bytes(&[0x83, 0xf8, 0x10]);
+    code.jump_if(0x84, "ioctl");
+    code.bytes(&[0x83, 0xf8, 0x20]);
+    code.jump_if(0x84, "dup");
+    code.bytes(&[0x83, 0xf8, 0x21]);
+    code.jump_if(0x84, "dup2");
+    code.bytes(&[0x83, 0xf8, 0x48]);
+    code.jump_if(0x84, "fcntl");
     code.bytes(&[0x83, 0xf8, 0x09]);
     code.jump_if(0x84, "mmap");
     code.bytes(&[0x83, 0xf8, 0x0a]);
@@ -2910,6 +3329,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "getrlimit");
     code.bytes(&[0x3d, 0x2e, 0x01, 0x00, 0x00]);
     code.jump_if(0x84, "prlimit64");
+    code.bytes(&[0x3d, 0x3e, 0x01, 0x00, 0x00]);
+    code.jump_if(0x84, "getrandom");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "uname");
     code.bytes(&[0x83, 0xf8, 0x23]);
@@ -2921,6 +3342,85 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
 
     code.bind("sched-yield")?;
     code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("getrandom")?;
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x58, 0, 0, 0]); // flags
+    code.bytes(&[0x4d, 0x89, 0xc1, 0x49, 0x83, 0xe1, 0xf8]); // unknown bits
+    code.jump_if(0x85, "getrandom-einval");
+    code.bytes(&[0x49, 0x83, 0xe0, 0x06, 0x49, 0x83, 0xf8, 0x06]);
+    code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x02, 0x00, 0x00]);
+    code.jump_if(0x87, "getrandom-einval");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "getrandom-zero");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]); // private service
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "getrandom-einval");
+    code.bytes(&[0x48, 0x81, 0xff, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x89, 0xfa, 0x49, 0x01, 0xf2]); // checked end
+    code.jump_if(0x82, "getrandom-efault");
+    code.bytes(&[0x49, 0x81, 0xfa, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x87, "getrandom-efault");
+    code.bytes(&[0x56]); // retain exact syscall length until every output succeeds
+    code.bind("getrandom-output-loop")?;
+    code.bytes(&[0x80, 0x79, 0x10, 0x01]);
+    code.jump_if(0x84, "getrandom-output-ready");
+    code.bytes(&[0x80, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x51, 0x57, 0x56]); // retain service, destination, and remaining length
+    code.bytes(&[0x48, 0x8b, 0x39, 0x48, 0x8b, 0x71, 0x08]);
+    code.call("getrandom-extract-chacha20");
+    code.bytes(&[0x5e, 0x5f, 0x59, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bind("getrandom-output-ready")?;
+    code.bytes(&[0x4c, 0x8b, 0x49, 0x08]);
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x89, 0xf2, 0x48, 0x83, 0xfa, 0x20]); // chunk=min(remaining,32)
+    code.jump_if(0x86, "getrandom-chunk-ready");
+    code.bytes(&[0xba, 0x20, 0x00, 0x00, 0x00]);
+    code.bind("getrandom-chunk-ready")?;
+    code.bytes(&[0x45, 0x31, 0xc0]);
+    code.bind("getrandom-copy-loop")?;
+    code.bytes(&[0x49, 0x39, 0xd0]);
+    code.jump_if(0x84, "getrandom-copy-complete");
+    code.bytes(&[0x43, 0x8a, 0x04, 0x01, 0x42, 0x88, 0x04, 0x07]);
+    code.bytes(&[0x42, 0x3a, 0x04, 0x07]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0xff, 0xc0]);
+    code.jump("getrandom-copy-loop");
+    code.bind("getrandom-copy-complete")?;
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x89, 0x01]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x41, offset]);
+        }
+    }
+    code.bytes(&[0x4d, 0x8b, 0x01]);
+    for offset in [8_u8, 16, 24] {
+        code.bytes(&[0x4d, 0x0b, 0x41, offset]);
+    }
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xc6, 0x41, 0x10, 0x00]);
+    code.bytes(&[0x48, 0x01, 0xd7, 0x48, 0x29, 0xd6]);
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x85, "getrandom-output-loop");
+    code.bytes(&[0x48, 0xff, 0x41, 0x18]);
+    code.bytes(&[0x58]);
+    code.jump("return-user");
+    code.bind("getrandom-zero")?;
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("getrandom-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("getrandom-einval")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
     code.bind("getpid")?;
@@ -3682,8 +4182,14 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x83, "fail");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x83, 0xff, 0x01]);
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "write-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x41, 0x80, 0xf8, 0x02]);
+    code.jump_if(0x84, "write-descriptor-ok");
+    code.bytes(&[0x41, 0x80, 0xf8, 0x03]);
     code.jump_if(0x85, "write-ebadf");
+    code.bind("write-descriptor-ok")?;
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x84, "write-einval");
     code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x01, 0x00, 0x00]);
@@ -3750,7 +4256,10 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x83, "fail");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x85, 0xff]);
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "read-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x41, 0x80, 0xf8, 0x01]);
     code.jump_if(0x85, "read-ebadf");
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x84, "read-einval");
@@ -3812,6 +4321,216 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
     code.jump("return-user");
 
+    code.bind("close")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x65, 0xc6, 0x87, 0xe0, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x87, 0xe8, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("close-ebadf")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf7, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("dup")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe0, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "dup-zero");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe1, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "dup-one");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe2, 0x00, 0x00, 0x00, 0x00]);
+    code.jump_if(0x84, "dup-two");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe8, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("dup-zero")?;
+    code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xe8, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("dup-one")?;
+    code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe1, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xe9, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+    code.bind("dup-two")?;
+    code.bytes(&[0x65, 0x44, 0x88, 0x04, 0x25, 0xe2, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xea, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xb8, 0x02, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("dup2")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "dup2-same");
+    code.bytes(&[0x65, 0x44, 0x88, 0x86, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x86, 0xe8, 0x00, 0x00, 0x00, 0x00]);
+    code.bind("dup2-same")?;
+    code.bytes(&[0x48, 0x89, 0xf0]);
+    code.jump("return-user");
+
+    code.bind("fcntl")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x01]);
+    code.jump_if(0x84, "fcntl-getfd");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x02]);
+    code.jump_if(0x84, "fcntl-setfd");
+    code.bytes(&[0x48, 0x83, 0xfe, 0x03]);
+    code.jump_if(0x84, "fcntl-getfl");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xea, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("fcntl-getfd")?;
+    code.bytes(&[0x65, 0x0f, 0xb6, 0x87, 0xe8, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+    code.bind("fcntl-setfd")?;
+    code.bytes(&[0x80, 0xe2, 0x01]);
+    code.bytes(&[0x65, 0x88, 0x97, 0xe8, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc0]);
+    code.jump("return-user");
+    code.bind("fcntl-getfl")?;
+    code.bytes(&[0x31, 0xc0, 0x41, 0x80, 0xf8, 0x01]);
+    code.jump_if(0x84, "return-user");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00]);
+    code.jump("return-user");
+
+    code.bind("fstat")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x49, 0x89, 0xf1]); // destination candidate
+    code.bytes(&[0x49, 0x89, 0xf0, 0x49, 0x81, 0xc0, 0x90, 0x00, 0x00, 0x00]);
+    code.jump_if(0x82, "fstat-efault");
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "fstat-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "fstat-candidate-ok");
+    code.bind("fstat-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfe, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "fstat-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "fstat-efault");
+    code.bind("fstat-candidate-ok")?;
+    code.bytes(&[0x48, 0x81, 0xec, 0x90, 0x00, 0x00, 0x00]); // private stat staging
+    code.bytes(&[0x31, 0xc0]);
+    for offset in (0_u32..144).step_by(8) {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else if offset <= 0x7f {
+            code.bytes(&[0x48, 0x89, 0x44, 0x24, offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x84, 0x24]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    for (offset, value) in [
+        (8_u8, 1_u32),
+        (16, 1),
+        (24, 0x2180),
+        (40, 0x4400),
+        (56, 4096),
+    ] {
+        code.bytes(&[0x48, 0xc7, 0x44, 0x24, offset]);
+        code.bytes(&value.to_le_bytes());
+    }
+    code.bytes(&[0x45, 0x31, 0xd2]); // copied prefix
+    code.rip_lea(&[0x48, 0x8d, 0x05], "fstat-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "fstat-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("fstat-copy-loop")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14]);
+    code.bind("fstat-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2]);
+    code.bytes(&[0x49, 0x81, 0xfa, 0x90, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fstat-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00, 0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("fstat-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x81, 0xc4, 0x90, 0x00, 0x00, 0x00]);
+    code.bind("fstat-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
+    code.bind("ioctl")?;
+    code.bytes(&[0x48, 0x83, 0xff, 0x02]);
+    code.jump_if(0x87, "close-ebadf");
+    code.bytes(&[0x65, 0x44, 0x8a, 0x87, 0xe0, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x45, 0x84, 0xc0]);
+    code.jump_if(0x84, "close-ebadf");
+    code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0x00, 0x00]);
+    code.jump_if(0x85, "ioctl-enotty");
+    code.bytes(&[0x49, 0x89, 0xd1]);
+    code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 0x24]);
+    code.jump_if(0x82, "ioctl-efault");
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-second-range");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00]);
+    code.jump_if(0x86, "ioctl-candidate-ok");
+    code.bind("ioctl-second-range")?;
+    code.bytes(&[0x48, 0x81, 0xfa, 0x00, 0x50, 0x60, 0x00]);
+    code.jump_if(0x82, "ioctl-efault");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00]);
+    code.jump_if(0x87, "ioctl-efault");
+    code.bind("ioctl-candidate-ok")?;
+    code.bytes(&[0x48, 0x83, 0xec, 0x28, 0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24, 32] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x04, 0x24]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x44, 0x24, offset]);
+        }
+    }
+    code.bytes(&[0x48, 0xc7, 0x44, 0x24, 0x08, 0xbf, 0x08, 0x00, 0x00]);
+    code.bytes(&[0xc6, 0x44, 0x24, 0x17, 0x01]);
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-copy-fault-site");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x20, 0x00, 0x00, 0x00]);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "ioctl-copy-recovery");
+    code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25, 0x28, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x01]);
+    code.bind("ioctl-copy-loop")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x14]);
+    code.bind("ioctl-copy-fault-site")?;
+    code.bytes(&[0x43, 0x88, 0x04, 0x11]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x24]);
+    code.jump_if(0x85, "ioctl-copy-loop");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x18, 0x00, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0]);
+    code.jump("return-user");
+
+    code.bind("ioctl-copy-recovery")?;
+    code.bytes(&[0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28]);
+    code.bind("ioctl-efault")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xf2, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+    code.bind("ioctl-enotty")?;
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
+    code.jump("return-user");
+
     code.bind("return-user")?;
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x40, 0x00, 0x00, 0x00]);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x0c, 0x25, 0x48, 0x00, 0x00, 0x00]);
@@ -3826,6 +4545,58 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x00, 0x00, 0x00, 0x00, 0x07]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xd0, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x79, 0x10, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0x79, 0x18, 0x02]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x01, 0x4c, 0x8b, 0x49, 0x08]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x31, 0xc0]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x89, 0x00, 0x49, 0x89, 0x01, 0x48, 0x89, 0x01]);
+        } else {
+            code.bytes(&[
+                0x49, 0x89, 0x40, offset, 0x49, 0x89, 0x41, offset, 0x48, 0x89, 0x41, offset,
+            ]);
+        }
+    }
+    code.bytes(&[0x31, 0xd2]);
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x49, 0x0b, 0x10, 0x49, 0x0b, 0x11, 0x48, 0x0b, 0x11]);
+        } else {
+            code.bytes(&[
+                0x49, 0x0b, 0x50, offset, 0x49, 0x0b, 0x51, offset, 0x48, 0x0b, 0x51, offset,
+            ]);
+        }
+    }
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xd8, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xd0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe0, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe1, 0, 0, 0, 2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xe2, 0, 0, 0, 3]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe0, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe8, 0, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xe8, 0, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xe8, 0, 0, 0, 0]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25, 0xc8, 0x00, 0x00, 0x00, 0x01]);
     code.jump_if(0x84, "exit-anonymous-already-revoked");
@@ -3913,6 +4684,8 @@ fn user_dispatch_initial_syscall() -> Result<Vec<u8>, CompileError> {
     code.bind("rlimit-data")?;
     code.bytes(&0x0080_0000_u64.to_le_bytes());
     code.bytes(&u64::MAX.to_le_bytes());
+    code.bind("getrandom-extract-chacha20")?;
+    code.bytes(&entropy_extract_chacha20_generator()?);
     code.finish()
 }
 
@@ -5016,6 +5789,11 @@ impl X86FunctionEncoder {
         self.fixup(label);
     }
 
+    fn call(&mut self, label: &'static str) {
+        self.bytes.push(0xe8);
+        self.fixup(label);
+    }
+
     fn rip_lea(&mut self, opcode: &[u8], label: &'static str) {
         self.bytes.extend_from_slice(opcode);
         self.fixup(label);
@@ -5284,7 +6062,7 @@ assert bytes(output) == block[32:]
             .section_by_name(X86_SYSTEMS_ENTROPY_STORAGE_SECTION)
             .unwrap();
         assert_eq!(entropy_storage.kind(), SectionKind::UninitializedData);
-        assert_eq!(entropy_storage.size(), 128);
+        assert_eq!(entropy_storage.size(), 160);
         assert_eq!(entropy_storage.align(), 32);
         let raw_sample = file
             .symbol_by_name(X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL)
@@ -5314,6 +6092,15 @@ assert bytes(output) == block[32:]
         assert_eq!(entropy_output.address(), 96);
         assert_eq!(
             entropy_output.section_index(),
+            entropy_storage.index().into()
+        );
+        let user_random_service = file
+            .symbol_by_name(X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL)
+            .unwrap();
+        assert_eq!(user_random_service.size(), 32);
+        assert_eq!(user_random_service.address(), 128);
+        assert_eq!(
+            user_random_service.section_index(),
             entropy_storage.index().into()
         );
         let note = file
@@ -6049,7 +6836,7 @@ assert bytes(output) == block[32:]
                 .any(|bytes| bytes == [0x4c, 0x89, 0x9f, 0x88, 0, 0, 0])
                 && user_address_prepare
                     .windows(7)
-                    .any(|bytes| bytes == [0x4d, 0x89, 0x9a, 0x18, 0x1f, 0, 0]),
+                    .any(|bytes| bytes == [0x4d, 0x89, 0x9a, 0xe8, 0x1e, 0, 0]),
             "address-space preparation must validate and retain one ELF entry for AT_ENTRY"
         );
         let initial_stack = initial_user_stack_bytes();
@@ -6059,7 +6846,7 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[8..16].try_into().unwrap()),
-            0x0060_1ff0
+            0x0060_1fc8
         );
         assert_eq!(initial_stack[16..32], [0; 16]);
         assert_eq!(
@@ -6084,7 +6871,7 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[72..80].try_into().unwrap()),
-            0x0060_1ff0
+            0x0060_1fc8
         );
         for (offset, tag) in [(80, 11_u64), (96, 12), (112, 13), (128, 14)] {
             assert_eq!(
@@ -6126,12 +6913,137 @@ assert bytes(output) == block[32:]
         );
         assert_eq!(
             u64::from_le_bytes(initial_stack[232..240].try_into().unwrap()),
+            0x0060_1fc0
+        );
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[240..248].try_into().unwrap()),
+            25
+        );
+        assert_eq!(
+            u64::from_le_bytes(initial_stack[248..256].try_into().unwrap()),
             0x0060_1fe0
         );
-        assert_eq!(initial_stack[240..256], [0; 16]);
-        assert_eq!(&initial_stack[256..263], b"x86_64\0");
-        assert_eq!(&initial_stack[272..283], b"topal-probe");
-        assert_eq!(initial_stack[283], 0);
+        assert_eq!(initial_stack[256..272], [0; 16]);
+        assert_eq!(&initial_stack[272..279], b"x86_64\0");
+        assert_eq!(&initial_stack[280..291], b"topal-probe");
+        assert_eq!(initial_stack[291], 0);
+        assert_eq!(initial_stack[304..320], [0; 16]);
+        let auxv_random_delivery = symbol_bytes(
+            &file,
+            X86_SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM_SYMBOL,
+        );
+        assert!(
+            auxv_random_delivery
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x81, 0xe0, 0x1f, 0, 0])
+                && auxv_random_delivery
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x89, 0x81, 0xe8, 0x1f, 0, 0])
+                && auxv_random_delivery
+                    .windows(7)
+                    .any(|bytes| bytes == [0xc6, 0x87, 0xd0, 0, 0, 0, 1]),
+            "initial AT_RANDOM delivery must copy both selected qwords and publish entry readiness"
+        );
+        let user_enter = symbol_bytes(&file, X86_SYSTEMS_USER_ENTER_SYMBOL);
+        assert!(
+            user_enter
+                .windows(7)
+                .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
+            "initial user entry must reject an address space without AT_RANDOM delivery"
+        );
+        assert!(
+            user_enter
+                .windows(8)
+                .any(|bytes| bytes == [0x48, 0x83, 0xbf, 0xd8, 0, 0, 0, 0]),
+            "initial user entry must reject an address space without a live getrandom reservation"
+        );
+        let getrandom_reservation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM_SYMBOL,
+        );
+        assert!(
+            getrandom_reservation
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0xb7, 0xd8, 0, 0, 0])
+                && getrandom_reservation
+                    .windows(7)
+                    .any(|bytes| bytes == [0x80, 0xbf, 0xd0, 0, 0, 0, 1]),
+            "initial getrandom reservation must retain only a private affine output reference"
+        );
+        let getrandom_binding =
+            symbol_bytes(&file, X86_SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE_SYMBOL);
+        assert!(
+            getrandom_binding
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x89, 0x97, 0xd8, 0, 0, 0])
+                && getrandom_binding
+                    .windows(4)
+                    .any(|bytes| bytes == [0xc6, 0x42, 0x10, 0x01]),
+            "reusable getrandom binding must replace the reservation with sealed service state"
+        );
+        let user_syscall = symbol_bytes(&file, X86_SYSTEMS_USER_SYSCALL_SYMBOL);
+        assert!(
+            user_syscall
+                .windows(5)
+                .any(|bytes| bytes == [0x3d, 0x3e, 0x01, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x65, 0x48, 0x8b, 0x0c, 0x25, 0xd8, 0, 0, 0])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0xff, 0x41, 0x18]),
+            "native syscall 318 must validate and count each reusable service delivery"
+        );
+        let entry_payload = initial_user_entry_payload().unwrap();
+        assert_eq!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| **bytes == [0xb8, 0x3e, 0x01, 0, 0, 0x0f, 0x05])
+                .count(),
+            9,
+            "ring-3 must preserve the prior eight getrandom calls and add one maximum large request"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(9)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x14, 0x24, 0x4c, 0x8b, 0x5c, 0x24, 8]),
+            "ring-3 must read both returned qwords without comparing them with constants"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(10)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x64, 0x24, 0x10, 0x4c, 0x8b, 0x6c, 0x24, 0x18]),
+            "ring-3 must read the complete four-qword provider output without constraining it"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x9c, 0x24, 0xf8, 0x00, 0x00, 0x00]),
+            "ring-3 must read the last qword of the maximum 256-byte small request"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(8)
+                .any(|bytes| bytes == [0x4c, 0x8b, 0x1c, 0x25, 0xf8, 0x11, 0x60, 0x00]),
+            "ring-3 must read the last qword of the maximum 512-byte large request"
+        );
+        assert!(
+            user_syscall
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x02, 0x00, 0x00])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x48, 0x83, 0xfa, 0x20])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0xba, 0x20, 0x00, 0x00, 0x00]),
+            "getrandom must cap complete requests at 512 bytes and split them into 32-byte outputs"
+        );
         assert!(
             initial_stack
                 .chunks_exact(8)
@@ -6271,12 +7183,12 @@ assert bytes(output) == block[32:]
                     .bytes
                     .windows(12)
                     .any(|bytes| bytes
-                        == [0x48, 0x81, 0xbc, 0x24, 0xe8, 0, 0, 0, 0xe0, 0x1f, 0x60, 0])
+                        == [0x48, 0x81, 0xbc, 0x24, 0xe8, 0, 0, 0, 0xc0, 0x1f, 0x60, 0])
                 && entry_payload
                     .bytes
                     .windows(7)
-                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x20, 0x01, 0, 0]),
-            "constructed user code must validate AT_SECURE, AT_CLKTCK, and AT_PLATFORM before consuming the enlarged initial block"
+                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x50, 0x01, 0, 0]),
+            "constructed user code must validate AT_SECURE, AT_CLKTCK, AT_PLATFORM, and the enlarged initial block"
         );
         assert!(
             entry_payload
@@ -6453,7 +7365,7 @@ assert bytes(output) == block[32:]
                 && entry_payload
                     .bytes
                     .windows(9)
-                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x48, 0xf0, 0x1f, 0x60, 0x00])
+                    .any(|bytes| bytes == [0x48, 0x81, 0x7c, 0x24, 0x48, 0xc8, 0x1f, 0x60, 0x00])
                 && entry_payload
                     .bytes
                     .windows(6)
@@ -6486,7 +7398,7 @@ assert bytes(output) == block[32:]
                 && entry_payload
                     .bytes
                     .windows(7)
-                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x20, 0x01, 0, 0]),
+                    .any(|bytes| bytes == [0x48, 0x81, 0xc4, 0x50, 0x01, 0, 0]),
             "constructed entry must validate process facts and resident program-header metadata before consuming the complete bounded stack"
         );
         assert!(
@@ -6603,6 +7515,228 @@ assert bytes(output) == block[32:]
                 "bounded write must retain distinct EBADF, EINVAL, and EFAULT results"
             );
         }
+        let dup2_replace = user_syscall
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x88, 0x86, 0xe0, 0, 0, 0])
+            .expect("dup2 must perform one dynamic destination replacement");
+        let dup2_source_lookup = user_syscall[..dup2_replace]
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("dup2 must look up the source description before replacement");
+        let dup2_destination_bound = user_syscall[..dup2_replace]
+            .windows(4)
+            .rposition(|bytes| bytes == [0x48, 0x83, 0xfe, 0x02])
+            .expect("dup2 must validate its destination before replacement");
+        assert!(
+            dup2_source_lookup < dup2_destination_bound && dup2_destination_bound < dup2_replace,
+            "dup2 must validate the source and destination before atomic replacement"
+        );
+        assert!(
+            entry_payload
+                .bytes
+                .windows(7)
+                .filter(|bytes| *bytes == [0xb8, 0x03, 0, 0, 0, 0x0f, 0x05])
+                .count()
+                == 5
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x20, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 2
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x21, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 3
+                && entry_payload
+                    .bytes
+                    .windows(4)
+                    .filter(|bytes| *bytes == [0x31, 0xc0, 0x0f, 0x05])
+                    .count()
+                    >= 2
+                && user_address_prepare
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xe0, 0, 0, 0, 1, 2, 3, 0])
+                && [0x03_u8, 0x20, 0x21].into_iter().all(|number| {
+                    user_syscall
+                        .windows(3)
+                        .any(|bytes| bytes == [0x83, 0xf8, number])
+                })
+                && user_syscall
+                    .windows(8)
+                    .filter(|bytes| *bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+                    .count()
+                    >= 5
+                && [1_u8, 2, 3].into_iter().all(|identity| {
+                    user_syscall
+                        .windows(4)
+                        .any(|bytes| bytes == [0x41, 0x80, 0xf8, identity])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0xc6, 0x87, 0xe0, 0, 0, 0, 0])
+                && [0xe0_u8, 0xe1, 0xe2].into_iter().all(|offset| {
+                    user_syscall
+                        .windows(9)
+                        .any(|bytes| bytes == [0x65, 0x44, 0x88, 0x04, 0x25, offset, 0, 0, 0])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0x44, 0x88, 0x86, 0xe0, 0, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe8, 0xff, 0xff, 0xff])
+                && [(0xe0_u8, 0_u8), (0xe1, 2), (0xe2, 3)]
+                    .into_iter()
+                    .all(|(offset, identity)| {
+                        user_syscall.windows(9).any(|bytes| {
+                            bytes == [0x65, 0x80, 0x3c, 0x25, offset, 0, 0, 0, identity]
+                        })
+                    })
+                && user_syscall.windows(13).any(|bytes| {
+                    bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe0, 0, 0, 0, 0, 0, 0, 0]
+                }),
+            "duplication must map fixed description identities, preserve access modes and aliases, reject full or invalid requests, and verify complete terminal clearing"
+        );
+        let fcntl_first_command = user_syscall
+            .windows(4)
+            .rposition(|bytes| bytes == [0x48, 0x83, 0xfe, 0x01])
+            .expect("fcntl must decode F_GETFD");
+        let fcntl_lookup = user_syscall[..fcntl_first_command]
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("fcntl must look up the mapped description");
+        assert!(
+            fcntl_lookup < fcntl_first_command
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x48, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 9
+                && user_address_prepare
+                    .windows(11)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x87, 0xe8, 0, 0, 0, 0, 0, 0, 0])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x48])
+                && [1_u8, 2, 3].into_iter().all(|command| {
+                    user_syscall
+                        .windows(4)
+                        .any(|bytes| bytes == [0x48, 0x83, 0xfe, command])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0x0f, 0xb6, 0x87, 0xe8, 0, 0, 0])
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x80, 0xe2, 0x01])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x65, 0x88, 0x97, 0xe8, 0, 0, 0])
+                && [0xe8_u8, 0xe9, 0xea].into_iter().all(|offset| {
+                    user_syscall
+                        .windows(9)
+                        .any(|bytes| bytes == [0x65, 0xc6, 0x04, 0x25, offset, 0, 0, 0, 0])
+                })
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0xc6, 0x86, 0xe8, 0, 0, 0, 0])
+                && user_syscall.windows(13).any(|bytes| {
+                    bytes == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xe8, 0, 0, 0, 0, 0, 0, 0]
+                }),
+            "fcntl must separate slot flags from descriptions, decode only after lookup, clear duplication destinations, and erase terminal state"
+        );
+        let fstat_first_candidate_bound = user_syscall
+            .windows(7)
+            .rposition(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x10, 0x60, 0x00])
+            .expect("fstat must bound the writable stack range");
+        let fstat_lookup = user_syscall[..fstat_first_candidate_bound]
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("fstat must look up the mapped description");
+        assert!(
+            fstat_lookup < fstat_first_candidate_bound
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x05, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 3
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x05])
+                && user_syscall
+                    .windows(10)
+                    .any(|bytes| bytes == [0x49, 0x89, 0xf0, 0x49, 0x81, 0xc0, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf8, 0x00, 0x20, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xfe, 0x00, 0x50, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xf8, 0x00, 0x60, 0x60, 0x00])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0x81, 0xec, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(9)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x44, 0x24, 0x18, 0x80, 0x21, 0, 0])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0x81, 0xfa, 0x90, 0, 0, 0])
+                && user_syscall
+                    .windows(4)
+                    .any(|bytes| bytes == [0x43, 0x88, 0x04, 0x11])
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x65, 0x4c, 0x89, 0x14, 0x25, 0x60, 0, 0]),
+            "fstat must resolve a live description before pointer access, stage the complete native layout, and fault-contain one full writable-range copy"
+        );
+        let ioctl_lookup = user_syscall
+            .windows(8)
+            .rposition(|bytes| bytes == [0x65, 0x44, 0x8a, 0x87, 0xe0, 0, 0, 0])
+            .expect("ioctl must look up the mapped description");
+        let ioctl_request = user_syscall[ioctl_lookup..]
+            .windows(6)
+            .position(|bytes| bytes == [0x81, 0xfe, 0x01, 0x54, 0, 0])
+            .map(|position| position + ioctl_lookup)
+            .expect("ioctl must decode TCGETS");
+        let ioctl_candidate = user_syscall[ioctl_request..]
+            .windows(7)
+            .position(|bytes| bytes == [0x48, 0x81, 0xfa, 0x00, 0x10, 0x60, 0x00])
+            .map(|position| position + ioctl_request)
+            .expect("ioctl must bound the writable candidate");
+        assert!(
+            ioctl_lookup < ioctl_request
+                && ioctl_request < ioctl_candidate
+                && entry_payload
+                    .bytes
+                    .windows(7)
+                    .filter(|bytes| *bytes == [0xb8, 0x10, 0, 0, 0, 0x0f, 0x05])
+                    .count()
+                    == 4
+                && user_syscall
+                    .windows(3)
+                    .any(|bytes| bytes == [0x83, 0xf8, 0x10])
+                && user_syscall
+                    .windows(8)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0x44, 0x24, 0x08, 0xbf, 0x08, 0])
+                && user_syscall
+                    .windows(5)
+                    .any(|bytes| bytes == [0xc6, 0x44, 0x24, 0x17, 0x01])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 0x24])
+                && user_syscall
+                    .windows(7)
+                    .any(|bytes| bytes == [0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]),
+            "TCGETS must enforce descriptor/request/pointer precedence, stage the exact raw termios, copy 36 bytes under recovery, and return ENOTTY for unknown live-console requests"
+        );
         assert!(
             user_syscall
                 .windows(7)

@@ -570,6 +570,192 @@ address, serial mechanism, arbitrary descriptor, end-of-file, partial-read or
 signal policy, line discipline, terminal interface, or unbounded input buffer
 interface to source.
 
+### TOPAL-SYSTEMS-USER-CLOSE-001 — Initial standard-descriptor close
+
+Before initial user entry, the Linux personality SHALL create exactly three
+live process-private descriptor entries numbered zero through two. The source
+dispatch policy SHALL name descriptor count three and Linux `EBADF` value nine.
+Provider storage and encoding SHALL remain private and SHALL NOT be observable
+as a Topal reference, address, register, bitset, or target object.
+
+Linux-compatible `close` SHALL accept a live descriptor in the closed initial
+set, atomically make that entry unavailable, and return zero. A negative,
+out-of-range, or already closed descriptor SHALL return `-EBADF` without
+changing any entry. The signal-free one-thread profile SHALL NOT fabricate
+`EINTR` or an ambiguous post-close result. The bounded `read` and `write`
+adapters SHALL consult the same state before input consumption, user-memory
+access, staging, or external output and SHALL return `-EBADF` for a closed
+entry without those effects.
+
+The constructed ring-3 image SHALL preserve all prior calls, close descriptor
+zero after its final successful input, require return zero, require `-EBADF`
+from a following one-byte read without consuming input, require `-EBADF` from
+repeated close, and then terminate normally. Process completion SHALL clear
+the complete descriptor state before restoring the registered kernel
+continuation, and source SHALL emit exactly one
+`TOPAL_KERNEL_USER_CLOSE_OK` observation after exact return and before later
+image-lifecycle witnesses.
+
+The profile SHALL reject stateless close success, another initial bound or
+error policy, missing initial entries, state change on failure, later I/O
+through a closed entry, early input or memory access, missing or reordered
+qualification calls, or live descriptor state after process return. This rule
+SHALL NOT define `open`, `openat`, `dup`, `fcntl`, descriptor allocation,
+open-file-description sharing, filesystem objects, sockets, pipes, polling,
+close-on-exec, fork or exec inheritance, concurrent close, signals,
+cancellation, device-specific release, or deferred writeback errors.
+
+### TOPAL-SYSTEMS-USER-DUP-001 — Bounded initial descriptor duplication
+
+The three-entry initial descriptor state SHALL refine each live entry into a
+mapping to one fixed open-description identity and access mode. Initially,
+descriptor zero SHALL reference a readable console-input description,
+descriptor one SHALL reference a writable console-output description, and
+descriptor two SHALL reference a distinct writable console-error description.
+`read` and `write` SHALL authorize the referenced description rather than the
+integer slot. Closing one mapping SHALL NOT invalidate another mapping to the
+same description.
+
+Linux-compatible `dup` SHALL return `-EBADF` for a negative, out-of-range, or
+closed source without state change. Given a live source, it SHALL install the
+same description in the lowest closed slot and return that slot, or return
+`-EMFILE` with unchanged state when no slot is closed. Source SHALL name Linux
+`EMFILE` value 24 in addition to the existing count and `EBADF` policy.
+
+Linux-compatible `dup2` SHALL validate the source before modifying an existing
+destination. An invalid or closed source or out-of-range destination SHALL
+return `-EBADF` without changing any mapping. Equal live source and destination
+SHALL return that number unchanged. Otherwise dispatch SHALL atomically replace
+the destination mapping with the source description and return the destination
+number. No allocation failure SHALL occur after validation in this fixed table.
+
+The constructed ring-3 image SHALL prove `dup(1)` returns `-EMFILE` while the
+table is full. After the existing close of zero, it SHALL require `dup(1)` to
+return zero, close one, use `dup2(0, 1)` to restore the alias, and require a
+read through zero to return `-EBADF` without consuming input because the shared
+description is write-only. It SHALL then close zero, prove `dup2(-1, 0)` leaves
+zero closed, install descriptor two at zero with `dup2(2, 0)`, close zero, and
+terminate with only one and two live. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_DUP_OK` observation after exact returns and before later
+image-lifecycle witnesses. Terminal completion SHALL clear every mapping.
+
+The profile SHALL reject a live-bit-only duplicate, non-lowest `dup` result,
+destination mutation after invalid-source `dup2`, close of all aliases through
+one slot, access-mode change, missing or reordered qualification calls, or a
+mapping retained after process return. This rule SHALL NOT define `dup3`,
+`fcntl`, close-on-exec, descriptors above two, dynamic open descriptions, VFS
+paths, general reference counts, pipes, sockets, polling, fork or exec
+inheritance, concurrent lookup/close, signals, cancellation, or final device
+release.
+
+### TOPAL-SYSTEMS-USER-FCNTL-001 — Bounded initial descriptor metadata
+
+Each initial descriptor slot SHALL retain one private close-on-exec bit,
+initially clear, separately from its optional open-description mapping.
+Closing a slot SHALL clear both states. `dup` and non-identity `dup2` SHALL
+clear the destination bit while preserving the source bit. Identity
+`dup2(old, old)` SHALL preserve the bit because it changes no mapping.
+
+Linux-compatible `fcntl` command `F_GETFD` SHALL return either zero or
+`FD_CLOEXEC` for a live slot. `F_SETFD` SHALL set that bit from the argument
+masked by `FD_CLOEXEC`, ignore every other argument bit, and return zero.
+`F_GETFL` SHALL return `O_RDONLY` for the input open description and
+`O_WRONLY` for the output and error descriptions, independent of the slot
+number. A negative, out-of-range, or closed descriptor SHALL return `-EBADF`
+before command decoding; an unsupported command on a live descriptor SHALL
+return `-EINVAL` without changing state.
+
+The constructed ring-3 image SHALL observe `O_WRONLY`, observe clear flags,
+set and observe `FD_CLOEXEC`, and reject an unsupported command on output. Its
+existing duplication sequence SHALL additionally prove the duplicate flag is
+clear while the source remains set and that `dup2` clears the replaced
+destination flag. A query after the final close of zero SHALL return `-EBADF`.
+Source SHALL emit exactly one `TOPAL_KERNEL_USER_FCNTL_OK` observation after
+exact returns and before later image-lifecycle witnesses. Terminal completion
+SHALL require clear flags on the remaining live slots and clear all flag state.
+
+The profile SHALL reject open-description-owned close-on-exec, slot-derived
+access mode, copied flags on duplication, command-first error precedence,
+unsupported-command mutation, or retained flag state. This rule SHALL NOT
+define `F_DUPFD`, `F_DUPFD_CLOEXEC`, `F_SETFL`, status flags beyond access mode,
+locks, leases, ownership, asynchronous notification, seals, pipe sizing, exec-
+time close, fork inheritance, dynamically opened descriptions, or concurrent
+`fcntl`.
+
+### TOPAL-SYSTEMS-USER-FSTAT-001 — Bounded initial console metadata
+
+The three fixed initial open descriptions SHALL reference one immutable console
+device object with stable identity one, character-device kind, owner UID/GID
+zero, permissions `0600`, link count one, zero size and allocated blocks,
+preferred I/O size 4096, and zero access/modification/change timestamps. Every
+alias SHALL publish the same object and special-device identity. Open access
+mode SHALL remain separate and SHALL NOT alter permission bits.
+
+The x86-64 personality SHALL encode that value as the complete native 144-byte
+`struct stat`: `st_dev=0`, `st_ino=1`, `st_nlink=1`,
+`st_mode=S_IFCHR|0600`, root UID/GID, zero padding, `st_rdev=0x4400` for Linux
+ttyS0 major 4 minor 64, zero size, `st_blksize=4096`, zero blocks and timestamp
+components, and three zero unused words.
+
+Linux-compatible `fstat` SHALL look up a live descriptor before user access,
+construct the complete native value in private staging, validate one overflow-
+free writable 144-byte extent, and publish it completely under fault recovery.
+Success SHALL return zero and retain no user pointer. Invalid or closed
+descriptors SHALL return `-EBADF` without candidate access. Invalid, read-only,
+wrapping, or cross-hole candidates SHALL return `-EFAULT` without partial
+publication.
+
+The constructed ring-3 image SHALL validate every defined field and padding
+byte for output, duplicate that description into slot zero, and prove the
+alias returns identical object/device/mode metadata. After closing the final
+temporary alias, `fstat(0, …)` SHALL return `-EBADF`. Source SHALL emit exactly
+one `TOPAL_KERNEL_USER_FSTAT_OK` observation after exact returns and before
+later image-lifecycle witnesses.
+
+The profile SHALL reject slot-derived object identity, regular-file kind,
+access-mode-derived permissions, partial publication, lookup after memory
+access, nonzero padding, host-derived timestamps, or retained user pointers.
+This rule SHALL NOT define path lookup, `stat`, `lstat`, `newfstatat`, `statx`,
+mounts, mutable inode metadata, terminal ioctls, dynamic device registration,
+or general VFS state.
+
+### TOPAL-SYSTEMS-USER-TCGETS-001 — Bounded initial console attributes
+
+The console object shared by the three fixed initial open descriptions SHALL
+own one immutable raw terminal-attribute value. Every description and alias
+SHALL expose identical attributes independently of access mode and descriptor
+flags.
+
+The x86-64 personality SHALL implement Linux `ioctl` request `TCGETS=0x5401`
+with the complete native 36-byte `struct termios`: zero input, output, and
+local flag words; control flags `B38400|CS8|CREAD|CLOCAL` (`0x8bf`); line
+discipline zero; and 19 control bytes all zero except `VMIN=1`. The value SHALL
+describe the current exact-fill raw serial path and SHALL NOT advertise
+canonical processing, echo, signal generation, or output conversion.
+
+Dispatch SHALL look up a live descriptor before request decoding and decode
+the request before candidate access. Invalid or closed descriptors SHALL
+return `-EBADF`. Unsupported requests on the live console SHALL return
+`-ENOTTY` without candidate access. `TCGETS` SHALL construct the whole value in
+private staging, validate one overflow-free complete writable 36-byte extent,
+publish it under fault recovery, return zero only after complete visibility,
+and retain no user pointer. Invalid, read-only, wrapping, cross-hole, or
+incomplete candidates SHALL return `-EFAULT` without partial publication.
+
+The constructed ring-3 image SHALL query standard input and output into
+disjoint writable extents, validate every byte, prove both values identical,
+reject an unsupported live-console request with `-ENOTTY`, and reject `TCGETS`
+on slot zero after its final close with `-EBADF`. Source SHALL emit exactly one
+`TOPAL_KERNEL_USER_TCGETS_OK` observation after exact returns and before later
+image-lifecycle witnesses.
+
+The profile SHALL reject fabricated cooked flags, slot-derived terminal state,
+command decoding before descriptor lookup, pointer access before accepted
+request, partial publication, wrong errno, or retained user pointers. This
+rule SHALL NOT define `TCSETS*`, `termios2`, window size, sessions, process
+groups, job control, canonical input, echo, signal generation, ptys, polling,
+dynamically opened ttys, or a general ioctl registry.
+
 ### TOPAL-SYSTEMS-USER-BRK-001 — Bounded initial program break
 
 The initial-process profile MAY dispatch Linux-compatible `brk` when the user
@@ -1859,6 +2045,135 @@ target instruction. The prior generator generation SHALL NOT remain live.
 Extraction SHALL NOT deliver the output object to a kernel or userspace
 interface, perform another block, reseed, or authorize output reuse.
 
+### TOPAL-SYSTEMS-ENTROPY-DELIVER-001 — Opaque affine output delivery
+
+`topal.systems.entropy.output.deliver-initial-auxv-random/1` SHALL consume one
+affine opaque output object and refine one prepared, not-yet-entered user
+address space to an entry-ready state. The request SHALL name nonzero output,
+address-space, and interface identities; source, selected, delivered, and
+discarded extents that form one exact nonoverlapping partition; the qualified
+interface tag; and single-use policy. The complete destination object SHALL be
+within initialized writable user-stack storage before entry.
+
+The provider SHALL copy and verify the complete selected output into the
+interface object, then wipe and verify the entire consumed provider output
+before success. It SHALL fail closed rather than publish a partial object,
+retain reusable provider output, or permit premature user entry. Source SHALL
+NOT observe an output byte, user or backing address, stack representation,
+temporary value, or target instruction. Delivery SHALL NOT modify the ready
+generator or imply another extraction.
+
+### TOPAL-SYSTEMS-ENTROPY-RESERVE-001 — Opaque affine output reservation
+
+`topal.systems.entropy.output.reserve-initial-user-random/1` SHALL consume one
+affine opaque output object into one single-use user-random capability before
+the named process first enters user context. The request SHALL name nonzero
+output, process, interface, and service identities; exact source, selected,
+maximum-delivery, and discarded extents that form one complete nonoverlapping
+partition; supported and incompatible interface-flag masks; and single-use
+policy. The selected extent SHALL begin at source offset zero and the maximum
+delivery SHALL NOT exceed it.
+
+The provider SHALL retain the output only in private storage governed by the
+capability. It SHALL validate the complete writable user extent before a
+nonempty delivery, preserve the capability on argument and range failure, and
+on success copy and verify exactly the requested prefix, discard every
+undelivered byte, wipe and verify the complete output storage, clear its private
+reference, and consume the capability. Source SHALL NOT observe an output byte,
+address, native interface number, register convention, copy mechanism,
+temporary value, or target instruction. Reservation SHALL NOT modify the ready
+generator, perform another extraction, or authorize output reuse.
+
+The live reservation MAY instead be consumed before entry by
+`topal.systems.entropy.user-random.bind-reusable/1` as specified by
+`TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001`. After that consumption, direct
+single-use delivery through the reservation is unavailable.
+
+### TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001 — Reusable user-random service
+
+`topal.systems.entropy.user-random.bind-reusable/1` SHALL consume one ready
+affine generator and one compatible live user-random reservation into one
+affine process-lifetime service before the named process first enters user
+context. The request SHALL name matching nonzero generator, initial-output,
+process, interface, and service identities; the exact ready generation, block
+and per-call extents, flag policy, first-output policy, and reusable policy.
+The maximum per-call delivery extent SHALL NOT exceed the provider-output
+extent.
+
+The service SHALL exclusively own the generator and reserved first output.
+Zero and rejected calls SHALL NOT change either. Each successful nonempty call
+SHALL validate its complete writable user extent before changing generator or
+output state. The first success SHALL consume the reserved output. Before every
+later success, the provider SHALL perform the qualified generator-extraction
+transition with persistent-key replacement before output publication. Every
+success SHALL copy and verify only the requested prefix, discard the complete
+remainder, wipe and verify the complete output, and retain only the successor
+generator in the service.
+
+Process exit SHALL consume the service only after the provider wipes and
+verifies any unused initial output, the live generator key, and private service
+state. Source SHALL NOT observe a key, output byte, address, generation
+representation, native interface number, register convention, copy or fault
+mechanism, temporary value, or target instruction. This rule does not admit
+concurrent callers, implicit reseeding, a device read, or a retained output
+remainder.
+
+### TOPAL-SYSTEMS-ENTROPY-USER-SMALL-REQUEST-001 — Bounded small-request service
+
+`topal.systems.entropy.user-random.expand-small-requests/1` SHALL consume one
+live affine reusable user-random service into one refined service before its
+process enters user context. The request SHALL name matching nonzero process,
+interface, service, and generator-algorithm identities; nonzero output extent,
+maximum output count, and maximum delivery extent; and complete-request policy.
+The maximum delivery SHALL equal output extent multiplied by maximum output
+count. The transition SHALL NOT extract output or change generator state.
+
+For every successful nonempty call, the provider SHALL validate the complete
+writable range before changing service state, partition the exact request into
+ordered chunks no larger than the output extent, and consume no more than the
+named maximum output count. Each fresh chunk SHALL use the qualified generator
+transition with persistent-key replacement before publication. Each chunk
+SHALL be copied and verified at its exact request offset before the provider
+wipes and verifies the complete output. The service SHALL retain no output
+remainder and only the successor generator.
+
+The call SHALL return its exact complete length and increment interface
+delivery state once only after all chunks succeed. Zero and rejected calls
+SHALL NOT extract, copy, consume output, increment delivery state, or otherwise
+change the service. Internal extraction, copy, wipe, or accounting failure
+SHALL fail closed rather than return fabricated partial success. Source SHALL
+NOT observe a loop, key, output byte, address, chunk representation, native
+interface number, register convention, copy or fault mechanism, temporary
+value, or target instruction. This rule does not admit signals, concurrent
+callers, partial progress, implicit reseeding, or an unbounded request.
+
+### TOPAL-SYSTEMS-ENTROPY-USER-LARGE-REQUEST-001 — Bounded large-request service
+
+`topal.systems.entropy.user-random.expand-large-requests/1` SHALL consume one
+live affine small-request user-random service into one refined service before
+its process enters user context. The request SHALL name matching nonzero
+process, interface, service, and generator-algorithm identities; nonzero output
+extent, maximum output count, and maximum delivery extent; and signal-free
+complete-request policy. Maximum delivery SHALL equal output extent multiplied
+by maximum output count and SHALL exceed the preceding small-request maximum.
+The transition SHALL NOT extract output or change generator state.
+
+Every successful nonempty call SHALL preserve the full-range validation,
+ordered chunk partition, qualified fresh extraction, persistent-key
+replacement, exact-offset copy and verification, complete-output wipe and
+verification, no-remainder, and successor-generator obligations of
+`TOPAL-SYSTEMS-ENTROPY-USER-SMALL-REQUEST-001`. It SHALL consume no more than
+the raised maximum output count, return the exact complete request length, and
+increment interface delivery state once only after all chunks succeed.
+
+Zero and rejected calls SHALL NOT change the service. Internal extraction,
+copy, wipe, or accounting failure SHALL fail closed rather than fabricate a
+partial result. Source SHALL NOT observe a loop, key, output byte, address,
+chunk representation, architecture page size, native interface number,
+register convention, copy or fault mechanism, temporary value, or target
+instruction. This rule does not admit signals, concurrent callers, partial
+progress, implicit reseeding, or an unbounded request.
+
 ### TOPAL-SYSTEMS-DMA-PUBLISH-001 — Device-register DMA references
 
 `topal.systems.device.pci-region.write-dma-reference/1` SHALL name one
@@ -2113,10 +2428,10 @@ recovery.
 ### TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-EXTRACT-001 — Bounded first CRNG extraction
 
 After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-GENERATOR-001`, the initial profile
-SHALL perform exactly one `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001` operation. It
-SHALL name generator and ChaCha20 algorithm identity one, prior generation one,
-resulting generation two, output identity one, block extent 64, output offset
-32, output extent 32, counter zero, and nonce identity zero.
+SHALL perform exactly one first-output `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`
+operation. It SHALL name generator and ChaCha20 algorithm identity one, prior
+generation one, resulting generation two, output identity one, block extent
+64, output offset 32, output extent 32, counter zero, and nonce identity zero.
 
 The provider SHALL construct the standard 20-round ChaCha20 state using the
 eight 32-bit little-endian key words, zero 32-bit counter, and zero 96-bit
@@ -2133,6 +2448,201 @@ This refinement SHALL NOT populate `AT_RANDOM`, implement `getrandom` or
 `/dev/random`, deliver to a kernel consumer, compute another block, reseed,
 recycle or renotify the queue, configure asynchronous interrupt delivery,
 reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-USER-AUXV-RANDOM-001 — Bounded initial `AT_RANDOM`
+
+After `TOPAL-SYSTEMS-VIRTIO-PCI-ENTROPY-EXTRACT-001` and before initial user-
+context entry, the initial profile SHALL perform exactly one
+`TOPAL-SYSTEMS-ENTROPY-DELIVER-001` operation. It SHALL name output identity
+one, address-space and Linux-interface identity one, source extent 32, selected
+offset zero and extent 16, discarded offset 16 and extent 16, auxiliary tag 25,
+and single-use delivery.
+
+The x86-64 provider SHALL add one native `AT_RANDOM` entry before `AT_NULL`
+whose value points to a distinct complete 16-byte object inside the initialized
+bounded stack. It SHALL copy and verify output bytes 0 through 15 into that
+object, wipe and verify all 32 provider-output bytes, and publish the address
+space as `RandomizedEntryReady`. The constructed user image SHALL validate the
+ordered tag, exact provider pointer, complete readable object, nonoverlap with
+the vector and strings, unchanged strings, exact terminator, and complete
+enlarged-block consumption.
+
+The profile SHALL reject another identity, interface, tag, extent, partition,
+pre-state, omission, duplication, reordering, partial copy, retained output,
+reuse, or user entry before delivery. This refinement SHALL NOT implement
+`getrandom` or `/dev/random`, return a remainder object, compute another block,
+reseed, recycle or renotify the queue, configure asynchronous interrupt
+delivery, reset the device, or define failure recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-001 — Bounded initial `getrandom`
+
+After `TOPAL-SYSTEMS-USER-AUXV-RANDOM-001` and before initial user-context
+entry, the initial profile SHALL freshly perform
+`TOPAL-SYSTEMS-ENTROPY-EXTRACT-001` from ready generator generation two to
+generation three with output identity two, followed exactly once by
+`TOPAL-SYSTEMS-ENTROPY-RESERVE-001`. The reservation SHALL name process,
+Linux-interface, and user-random service identity one; source extent 32;
+selected offset zero and maximum-delivery extent 16; discarded offset 16 and
+extent 16; supported flag mask 7; incompatible flag mask 6; and single-use
+policy.
+
+The x86-64 provider SHALL map the service privately to native syscall 318. It
+SHALL return zero for a zero-length request without consumption; `-EINVAL` for
+an unknown flag bit, any combination containing mask 6, or a length greater
+than 16 without consumption; and `-EFAULT` when the complete requested writable
+user extent is invalid without consumption. Current valid flags SHALL NOT alter
+the result after CRNG readiness. The first valid nonempty request of 1 through
+16 bytes SHALL copy and verify the requested prefix, discard its selected
+suffix and source bytes 16 through 31, wipe and verify all 32 provider-output
+bytes, clear the private reservation reference, return the exact requested
+length, and consume the reservation.
+
+The constructed ring-3 image SHALL initially exercise, in order, zero length, an unknown
+flag bit, the incompatible `GRND_RANDOM | GRND_INSECURE` combination, a
+complete-range fault, and one successful 16-byte request, and SHALL read both
+returned qwords without comparing them with a constant. The profile SHALL
+reject another identity, generation, extent, flag policy, process, service,
+pre-state, omission, duplication, reordering, partial copy, incomplete wipe,
+reuse, or a live reservation at process teardown. This rule does not by itself
+require another successful nonempty call, a request larger than 16 bytes,
+pre-readiness blocking, signal interruption, `/dev/random`, `/dev/urandom`,
+vDSO delivery, multi-block generation, reseeding, per-processor generators,
+queue recycling, asynchronous interrupt delivery, reset, or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-REPEATED-001 — Repeated process `getrandom`
+
+After `TOPAL-SYSTEMS-USER-GETRANDOM-001` reserves output identity two and
+before initial user-context entry, the initial profile SHALL perform exactly
+one `TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001` binding. The binding SHALL consume
+ready generator identity one at generation three and the live reservation for
+process, Linux-interface, and user-random service identity one. It SHALL name
+initial output identity two, ChaCha20 block extent 64, provider output extent
+32, maximum per-call delivery extent 16, supported flag mask 7, incompatible
+flag mask 6, reserved-first-output policy, and reusable policy.
+
+The x86-64 provider SHALL continue to map the service privately to native
+syscall 318. The first valid nonempty call SHALL use reserved output two. Every
+later valid nonempty call SHALL first replace the live generator key and create
+one fresh 32-byte output using the extraction contract of
+`TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`. Complete argument and writable-range
+validation SHALL precede the later extraction. Each successful call SHALL
+return 1 through 16 copied and verified bytes, discard all unselected bytes,
+wipe and verify the complete output, and retain the successor generator. Zero,
+`-EINVAL`, and `-EFAULT` results SHALL NOT advance the generator or change an
+available output.
+
+The constructed ring-3 image SHALL retain the existing four non-consuming
+probes and then complete two consecutive 16-byte requests. It SHALL read all
+four returned qwords without constraining their values. Process exit SHALL
+wipe and verify an unused first output when present, the current 32-byte
+generator key, the 32-byte output storage, and private service state before it
+clears the process binding and returns to the kernel continuation. The profile
+SHALL reject a mismatched generator, reservation, process, interface, service,
+generation, extent, flag policy, pre-state, omitted or duplicate binding,
+extraction before validation, partial key replacement, incomplete copy or
+wipe, retained output remainder, service reuse after teardown, or live secret
+state at process return. This refinement SHALL NOT provide requests larger
+than 16 bytes, pre-readiness blocking, signal interruption, concurrent
+callers, fork or exec inheritance, `/dev/random`, `/dev/urandom`, vDSO
+delivery, reseeding, per-processor generators, batching, queue recycling,
+asynchronous interrupt delivery, reset, or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-FULL-OUTPUT-001 — Full-output process `getrandom`
+
+The current initial profile SHALL refine
+`TOPAL-SYSTEMS-USER-GETRANDOM-REPEATED-001` by binding the same generator,
+reservation, process, Linux interface, and user-random service identities with
+maximum per-call delivery extent 32, equal to the qualified provider-output
+extent. All other identities, extents, flag masks, ownership policies, and
+teardown obligations SHALL remain unchanged.
+
+The preceding `TOPAL-SYSTEMS-ENTROPY-RESERVE-001` request SHALL likewise name
+maximum delivery extent 32, selected offset zero, discarded offset 32, and
+discarded extent zero. It SHALL remain a live single-use reservation until the
+reusable binding consumes it; the larger partition SHALL NOT permit direct
+delivery after binding.
+
+Each successful nonempty call SHALL consume exactly one reserved or freshly
+extracted 32-byte output, copy and verify exactly 1 through 32 requested bytes,
+wipe and verify all 32 output bytes, retain no remainder, and preserve only the
+successor generator. A request larger than 32 SHALL return `-EINVAL`; zero,
+`-EINVAL`, and `-EFAULT` results SHALL NOT extract, consume output, increment
+the delivery count, or otherwise change service state. Complete argument and
+writable-range validation SHALL precede each later extraction.
+
+The constructed ring-3 image SHALL retain the four non-consuming probes and
+two 16-byte successes, then complete one 32-byte request after a fresh
+extraction. It SHALL read all four returned qwords without constraining their
+values. The profile SHALL reject another maximum, a multi-output request,
+partial copy, incomplete verification or wipe, retained suffix, premature
+advance, wrong delivery count, or changed teardown behavior. This refinement
+SHALL NOT provide requests larger than one output, partial completion,
+pre-readiness blocking, signal interruption, concurrent callers, fork or exec
+inheritance, `/dev/random`, `/dev/urandom`, vDSO delivery, reseeding,
+per-processor generators, batching, queue recycling, asynchronous interrupt
+delivery, reset, or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-SMALL-001 — Bounded small process `getrandom`
+
+After `TOPAL-SYSTEMS-USER-GETRANDOM-FULL-OUTPUT-001` binds the reusable service
+and before initial user entry, the current profile SHALL perform exactly one
+`TOPAL-SYSTEMS-ENTROPY-USER-SMALL-REQUEST-001` refinement. It SHALL preserve
+process, Linux-interface, user-random service, and ChaCha20 algorithm identities
+one; name output extent 32, maximum output count eight, maximum delivery extent
+256, and complete-request policy; and perform no extraction during refinement.
+
+The x86-64 provider SHALL map the refined service to native syscall 318. It
+SHALL return `-EINVAL` for lengths above 256 without state change. For each
+valid 1-through-256-byte request, it SHALL validate the complete writable range
+before the first extraction, use at most eight ordered 32-byte outputs, replace
+the persistent key before each fresh output is published, copy and verify every
+selected chunk, wipe and verify every complete output, retain no suffix, return
+the exact requested length, and increment the delivery count exactly once.
+
+The constructed ring-3 image SHALL preserve all preceding probes and successes,
+then complete one 256-byte request using eight fresh outputs. It SHALL read the
+first and last returned qwords without constraining their values. The profile
+SHALL reject another identity, extent, count, maximum, policy, pre-state,
+omitted or duplicate refinement, extraction before full-range validation, more
+than eight outputs, partial copy, incomplete wipe, retained output, short
+success, per-output delivery counting, or changed teardown. This refinement
+SHALL NOT provide larger requests, partial progress, pre-readiness blocking,
+signal interruption, concurrent callers, fork or exec inheritance,
+`/dev/random`, `/dev/urandom`, vDSO delivery, reseeding, per-processor
+generators, batching, queue recycling, asynchronous interrupt delivery, reset,
+or recovery.
+
+### TOPAL-SYSTEMS-USER-GETRANDOM-LARGE-001 — Bounded large process `getrandom`
+
+After `TOPAL-SYSTEMS-USER-GETRANDOM-SMALL-001` refines the reusable service and
+before initial user entry, the current profile SHALL perform exactly one
+`TOPAL-SYSTEMS-ENTROPY-USER-LARGE-REQUEST-001` refinement. It SHALL preserve
+process, Linux-interface, user-random service, and ChaCha20 algorithm identities
+one; name output extent 32, maximum output count 16, maximum delivery extent
+512, and signal-free complete-request policy; and perform no extraction
+during refinement.
+
+The x86-64 provider SHALL continue to map the service to native syscall 318. It
+SHALL return `-EINVAL` for lengths above 512 without state change. For each
+valid 1-through-512-byte request in this signal-free profile, it SHALL
+validate the complete writable range before the first extraction, use at most
+16 ordered 32-byte outputs, replace the persistent key before each fresh
+output is published, copy and verify every selected chunk, wipe and verify
+every complete output, retain no suffix, return the exact requested length, and
+increment the delivery count exactly once.
+
+The constructed ring-3 image SHALL preserve all preceding probes and successes,
+then complete one 512-byte request using 16 fresh outputs. It SHALL read the
+first and last returned qwords without constraining their values. The profile
+SHALL reject another identity, extent, count, maximum, policy, pre-state,
+omitted or duplicate refinement, extraction before full-range validation, more
+than 16 outputs, partial copy, incomplete wipe, retained output, short success,
+per-output delivery counting, architecture-page-size coupling, or changed
+teardown. This refinement SHALL NOT provide larger requests, partial progress,
+pre-readiness blocking, signal interruption, concurrent callers, fork or exec
+inheritance, `/dev/random`, `/dev/urandom`, vDSO delivery, reseeding,
+per-processor generators, batching, queue recycling, asynchronous interrupt
+delivery, reset, or recovery.
 
 ### TOPAL-SYSTEMS-STORAGE-001 — Allocation and semantic placement
 

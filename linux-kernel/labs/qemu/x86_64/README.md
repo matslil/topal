@@ -143,7 +143,7 @@ user image to the packaging-only
 ignored temporary state. The packager verifies the image against artifact
 provenance instead of regenerating it. The harness then boots through QEMU's
 direct Linux interface
-and waits for the 72 ordered serial markers. The generated real-mode adapter
+and waits for the 83 ordered serial markers. The generated real-mode adapter
 first collects the bounded SeaBIOS E820 continuation into the Linux zeropage;
 the first marker is reachable only after the generated description validator
 proves an allocatable page above the closed bootstrap reservation floor, the
@@ -164,6 +164,32 @@ its mappings revoked, its three relevant virtual locations invalidated, its
 opaque address-space state reclaimed, its exact affine ownership returned, and
 the extent released by source. Construction, user-context binding, revocation,
 and reclaim are separate checked operations in the artifact trace. The
+`TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK` marker precedes user entry and is
+reachable only after the first conditioned CRNG output has copied and verified
+16 bytes in the enlarged initial stack, published native `AT_RANDOM`, wiped and
+verified the complete 32-byte provider output, and refined the prepared address
+space to its single-use entry-ready state. The ring-3 probe reads both random
+qwords without constraining their values and validates the tag, pointer,
+strings, terminator, and exact 336-byte stack extent. The later
+`TOPAL_KERNEL_USER_GETRANDOM_OK` marker is reachable only after a second CRNG
+extraction is reserved and bound with the live generator into the native Linux
+x86-64 `getrandom` service. The ring-3 probe verifies zero length, unknown and
+incompatible flags, a guard-crossing range, and one successful 16-byte copy
+without advancing on a rejected call. The following
+`TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK` marker additionally requires a fresh
+ChaCha20 extraction and a second successful 16-byte copy. The following
+`TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK` marker requires another fresh
+extraction, one successful complete 32-byte copy, and observation of all four
+returned qwords without constraining their values. The following
+`TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK` marker requires a complete
+256-byte request to be validated in full before extraction, split across eight
+fresh 32-byte outputs, and returned only after its first and last qwords are
+observable. Each output is wiped before its successor is produced, and the
+service records one delivery for the complete request. The following
+`TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK` marker extends the same checked
+policy to a 512-byte request and 16 fresh outputs in the signal-free profile.
+All complete output objects are wiped after use; clean process teardown then
+wipes and verifies the remaining generator key and service state. The
 `TOPAL_KERNEL_FRAME_DISJOINT_OK` marker additionally requires the prepared
 address space and one source-owned frame to coexist without overlap, followed
 by release of that frame before user-context binding. The preceding
@@ -221,6 +247,49 @@ contains no expected input value or baked candidate/call-site equality oracle.
 User mode validates the count and all four bytes before restoring its stack.
 `TOPAL_KERNEL_USER_READ_OK` is the first source-owned post-return witness and
 proves that path reached terminal completion.
+The continuation then invokes Linux x86-64 `close(0)`, requires success, and
+proves that the shared private descriptor state rejects a later `read(0, ...)`
+and repeated `close(0)` with `-EBADF`. The rejected read occurs without user-
+memory access or serial-input consumption. `TOPAL_KERNEL_USER_CLOSE_OK` is
+reachable only after exact results return to ring 3; terminal teardown then
+requires descriptors one and two to remain live, clears that bounded state,
+and verifies it is empty before resuming the kernel continuation.
+The same continuation first proves `dup(1)` returns `-EMFILE` while all three
+slots are live. After closing zero it duplicates output into the lowest slot,
+closes the original slot, restores it with `dup2(0, 1)`, and proves a read
+through the output alias returns `-EBADF` without consuming input. It then
+proves invalid-source `dup2` does not replace a closed destination, duplicates
+the error description into zero, and closes that alias. The ordered
+`TOPAL_KERNEL_USER_DUP_OK` witness and terminal identity checks establish
+independent slot lifetime, preserved access mode, replacement ordering, and
+complete mapping teardown.
+The continuation also invokes Linux x86-64 `fcntl` to observe the output open
+description's `O_WRONLY` mode, set and read back per-slot `FD_CLOEXEC`, and
+reject an unsupported command. It proves `dup` leaves the source bit set but
+clears the new slot, `dup2` clears the replaced destination bit, and a closed
+slot returns `-EBADF` before command decoding. `TOPAL_KERNEL_USER_FCNTL_OK`
+and terminal flag erasure establish the separation between descriptor flags
+and shared open-description access modes.
+The continuation additionally invokes Linux x86-64 `fstat` on standard output
+and requires the complete native 144-byte `struct stat`: one shared console
+object, character-device mode `0600`, root ownership, inode and link count one,
+`ttyS0` device identity, 4 KiB preferred block size, and zero size, blocks,
+timestamps, and padding. It then duplicates output into slot zero and proves
+all eighteen qwords are identical before closing the alias. A final `fstat` on
+that closed slot returns `-EBADF` before candidate access. Dispatch resolves the
+description before pointer validation, admits only a complete overflow-free
+writable mapping range, builds the whole layout in private staging, copies it
+under fault recovery, and retains no user pointer. The ordered
+`TOPAL_KERNEL_USER_FSTAT_OK` witness establishes this bounded native ABI path.
+The continuation then issues `ioctl(TCGETS)` on input and output, validates the
+complete native 36-byte raw `termios`, and proves both console descriptions
+return identical attributes. An unsupported request on the live console
+returns `-ENOTTY` without candidate access, while a later query on closed slot
+zero returns `-EBADF` before request or pointer handling. The provider stages
+all bytes privately, admits only a complete writable extent, copies under
+fault recovery, and retains no user pointer. The ordered
+`TOPAL_KERNEL_USER_TCGETS_OK` witness establishes terminal discovery without
+claiming unimplemented canonical, echo, signal, or output-conversion behavior.
 The continuation then uses Linux x86-64 `brk` to query its runtime-ELF-derived
 initial break, grow it by 16 bytes, write and read the first newly admitted
 heap byte, shrink back to the initial break, and prove that an out-of-range

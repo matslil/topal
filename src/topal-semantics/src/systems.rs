@@ -72,6 +72,16 @@ pub const SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION: &str =
 pub const SYSTEMS_ENTROPY_GENERATOR_INITIALIZE: &str =
     "topal.systems.entropy.generator.initialize/1";
 pub const SYSTEMS_ENTROPY_GENERATOR_EXTRACT: &str = "topal.systems.entropy.generator.extract/1";
+pub const SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM: &str =
+    "topal.systems.entropy.output.deliver-initial-auxv-random/1";
+pub const SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM: &str =
+    "topal.systems.entropy.output.reserve-initial-user-random/1";
+pub const SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE: &str =
+    "topal.systems.entropy.user-random.bind-reusable/1";
+pub const SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS: &str =
+    "topal.systems.entropy.user-random.expand-small-requests/1";
+pub const SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS: &str =
+    "topal.systems.entropy.user-random.expand-large-requests/1";
 pub const SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE: &str =
     "topal.systems.device.pci-region.write-dma-reference/1";
 pub const SYSTEMS_PCI_REGION_READ: &str = "topal.systems.device.pci-region.read/1";
@@ -679,6 +689,19 @@ impl EntropyGeneratorExtractRequest {
         nonce_identity: 0,
     };
 
+    pub const INITIAL_Q35_GETRANDOM: Self = Self {
+        generator_identity: 1,
+        algorithm_identity: 1,
+        prior_generation: 2,
+        resulting_generation: 3,
+        output_identity: 2,
+        block_byte_count: 64,
+        output_offset_bytes: 32,
+        output_byte_count: 32,
+        counter: 0,
+        nonce_identity: 0,
+    };
+
     #[must_use]
     pub const fn is_well_formed(self) -> bool {
         self.generator_identity != 0
@@ -693,6 +716,230 @@ impl EntropyGeneratorExtractRequest {
             }
             && match self.output_offset_bytes.checked_add(self.output_byte_count) {
                 Some(end) => end == self.block_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyOutputReservationRequest {
+    pub output_identity: u64,
+    pub source_byte_count: u64,
+    pub selected_offset_bytes: u64,
+    pub maximum_delivery_byte_count: u64,
+    pub discarded_offset_bytes: u64,
+    pub discarded_byte_count: u64,
+    pub process_identity: u64,
+    pub interface_identity: u64,
+    pub service_identity: u64,
+    pub supported_flag_mask: u64,
+    pub incompatible_flag_mask: u64,
+    pub single_use: bool,
+}
+
+impl EntropyOutputReservationRequest {
+    pub const INITIAL_GETRANDOM: Self = Self {
+        output_identity: 2,
+        source_byte_count: 32,
+        selected_offset_bytes: 0,
+        maximum_delivery_byte_count: 32,
+        discarded_offset_bytes: 32,
+        discarded_byte_count: 0,
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        supported_flag_mask: 7,
+        incompatible_flag_mask: 6,
+        single_use: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.output_identity != 0
+            && self.source_byte_count != 0
+            && self.maximum_delivery_byte_count != 0
+            && self.process_identity != 0
+            && self.interface_identity != 0
+            && self.service_identity != 0
+            && self.supported_flag_mask != 0
+            && self.incompatible_flag_mask != 0
+            && self.incompatible_flag_mask & !self.supported_flag_mask == 0
+            && self.single_use
+            && match self
+                .selected_offset_bytes
+                .checked_add(self.maximum_delivery_byte_count)
+            {
+                Some(end) => end == self.discarded_offset_bytes,
+                None => false,
+            }
+            && match self
+                .discarded_offset_bytes
+                .checked_add(self.discarded_byte_count)
+            {
+                Some(end) => end == self.source_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyUserRandomServiceRequest {
+    pub generator_identity: u64,
+    pub generation: u64,
+    pub initial_output_identity: u64,
+    pub block_byte_count: u64,
+    pub output_byte_count: u64,
+    pub maximum_delivery_byte_count: u64,
+    pub process_identity: u64,
+    pub interface_identity: u64,
+    pub service_identity: u64,
+    pub supported_flag_mask: u64,
+    pub incompatible_flag_mask: u64,
+    pub reserved_first_output: bool,
+    pub reusable: bool,
+}
+
+impl EntropyUserRandomServiceRequest {
+    pub const INITIAL_GETRANDOM: Self = Self {
+        generator_identity: 1,
+        generation: 3,
+        initial_output_identity: 2,
+        block_byte_count: 64,
+        output_byte_count: 32,
+        maximum_delivery_byte_count: 32,
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        supported_flag_mask: 7,
+        incompatible_flag_mask: 6,
+        reserved_first_output: true,
+        reusable: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.generator_identity != 0
+            && self.generation != 0
+            && self.initial_output_identity != 0
+            && self.block_byte_count != 0
+            && self.output_byte_count != 0
+            && self.maximum_delivery_byte_count != 0
+            && self.maximum_delivery_byte_count <= self.output_byte_count
+            && self.output_byte_count < self.block_byte_count
+            && self.process_identity != 0
+            && self.interface_identity != 0
+            && self.service_identity != 0
+            && self.supported_flag_mask != 0
+            && self.incompatible_flag_mask != 0
+            && self.incompatible_flag_mask & !self.supported_flag_mask == 0
+            && self.reserved_first_output
+            && self.reusable
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyUserRandomSmallRequest {
+    pub process_identity: u64,
+    pub interface_identity: u64,
+    pub service_identity: u64,
+    pub algorithm_identity: u64,
+    pub output_byte_count: u64,
+    pub maximum_output_count: u64,
+    pub maximum_delivery_byte_count: u64,
+    pub complete_request: bool,
+}
+
+impl EntropyUserRandomSmallRequest {
+    pub const INITIAL_GETRANDOM: Self = Self {
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        algorithm_identity: 1,
+        output_byte_count: 32,
+        maximum_output_count: 8,
+        maximum_delivery_byte_count: 256,
+        complete_request: true,
+    };
+
+    pub const LARGE_GETRANDOM: Self = Self {
+        process_identity: 1,
+        interface_identity: 1,
+        service_identity: 1,
+        algorithm_identity: 1,
+        output_byte_count: 32,
+        maximum_output_count: 16,
+        maximum_delivery_byte_count: 512,
+        complete_request: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.process_identity != 0
+            && self.interface_identity != 0
+            && self.service_identity != 0
+            && self.algorithm_identity != 0
+            && self.output_byte_count != 0
+            && self.maximum_output_count != 0
+            && self.complete_request
+            && match self
+                .output_byte_count
+                .checked_mul(self.maximum_output_count)
+            {
+                Some(maximum) => maximum == self.maximum_delivery_byte_count,
+                None => false,
+            }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct EntropyOutputDeliveryRequest {
+    pub output_identity: u64,
+    pub source_byte_count: u64,
+    pub selected_offset_bytes: u64,
+    pub delivered_byte_count: u64,
+    pub discarded_offset_bytes: u64,
+    pub discarded_byte_count: u64,
+    pub address_space_identity: u64,
+    pub interface_identity: u64,
+    pub auxiliary_tag: u64,
+    pub single_use: bool,
+}
+
+impl EntropyOutputDeliveryRequest {
+    pub const INITIAL_AUXV_RANDOM: Self = Self {
+        output_identity: 1,
+        source_byte_count: 32,
+        selected_offset_bytes: 0,
+        delivered_byte_count: 16,
+        discarded_offset_bytes: 16,
+        discarded_byte_count: 16,
+        address_space_identity: 1,
+        interface_identity: 1,
+        auxiliary_tag: 25,
+        single_use: true,
+    };
+
+    #[must_use]
+    pub const fn is_well_formed(self) -> bool {
+        self.output_identity != 0
+            && self.source_byte_count != 0
+            && self.delivered_byte_count != 0
+            && self.address_space_identity != 0
+            && self.interface_identity != 0
+            && self.auxiliary_tag != 0
+            && self.single_use
+            && match self
+                .selected_offset_bytes
+                .checked_add(self.delivered_byte_count)
+            {
+                Some(end) => end == self.discarded_offset_bytes,
+                None => false,
+            }
+            && match self
+                .discarded_offset_bytes
+                .checked_add(self.discarded_byte_count)
+            {
+                Some(end) => end == self.source_byte_count,
                 None => false,
             }
     }
@@ -1002,6 +1249,21 @@ pub enum SystemsOperation {
     ExtractEntropyGenerator {
         request: EntropyGeneratorExtractRequest,
     },
+    DeliverInitialAuxvRandom {
+        request: EntropyOutputDeliveryRequest,
+    },
+    ReserveInitialUserRandom {
+        request: EntropyOutputReservationRequest,
+    },
+    BindReusableUserRandom {
+        request: EntropyUserRandomServiceRequest,
+    },
+    ExpandSmallUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
+    },
+    ExpandLargeUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
+    },
     PublishPciRegionDmaReference {
         request: PciRegionDmaReferenceRequest,
     },
@@ -1126,6 +1388,19 @@ impl SystemsOperation {
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
+            Self::DeliverInitialAuxvRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
+            Self::ReserveInitialUserRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
+            }
+            Self::BindReusableUserRandom { .. } => SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
+            Self::ExpandSmallUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+            }
+            Self::ExpandLargeUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
+            }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -1216,6 +1491,30 @@ pub enum SystemsDisposition {
         write_maximum_bytes: u64,
         read_descriptor: u64,
         read_maximum_bytes: u64,
+        initial_descriptor_count: u64,
+        bad_descriptor_error: u64,
+        too_many_open_files_error: u64,
+        console_input_description: u64,
+        console_output_description: u64,
+        console_error_description: u64,
+        invalid_argument_error: u64,
+        fcntl_getfd_command: u64,
+        fcntl_setfd_command: u64,
+        fcntl_getfl_command: u64,
+        close_on_exec_flag: u64,
+        read_only_status: u64,
+        write_only_status: u64,
+        stat_layout_bytes: u64,
+        console_device: u64,
+        console_inode: u64,
+        console_mode: u64,
+        console_special_device: u64,
+        console_block_size: u64,
+        terminal_layout_bytes: u64,
+        terminal_get_attributes_request: u64,
+        terminal_control_flags: u64,
+        terminal_minimum_input: u64,
+        not_a_terminal_error: u64,
         brk_data_page_bytes: u64,
         getppid_result: u64,
         gettid_result: u64,
@@ -1388,6 +1687,21 @@ pub enum SystemsTransition {
     },
     ExtractEntropyGenerator {
         request: EntropyGeneratorExtractRequest,
+    },
+    DeliverInitialAuxvRandom {
+        request: EntropyOutputDeliveryRequest,
+    },
+    ReserveInitialUserRandom {
+        request: EntropyOutputReservationRequest,
+    },
+    BindReusableUserRandom {
+        request: EntropyUserRandomServiceRequest,
+    },
+    ExpandSmallUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
+    },
+    ExpandLargeUserRandomRequests {
+        request: EntropyUserRandomSmallRequest,
     },
     PublishPciRegionDmaReference {
         transaction_identity: u64,
@@ -1737,6 +2051,19 @@ impl SystemsTransition {
             Self::CreditEntropyPoolContribution { .. } => SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION,
             Self::InitializeEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_INITIALIZE,
             Self::ExtractEntropyGenerator { .. } => SYSTEMS_ENTROPY_GENERATOR_EXTRACT,
+            Self::DeliverInitialAuxvRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM
+            }
+            Self::ReserveInitialUserRandom { .. } => {
+                SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM
+            }
+            Self::BindReusableUserRandom { .. } => SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE,
+            Self::ExpandSmallUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS
+            }
+            Self::ExpandLargeUserRandomRequests { .. } => {
+                SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS
+            }
             Self::PublishPciRegionDmaReference { .. } => SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE,
             Self::AccessPciRegionRegister { request, .. } => match request.direction {
                 PciRegionRegisterDirection::ReadEquals => SYSTEMS_PCI_REGION_READ,
@@ -2181,6 +2508,30 @@ fn validate_user_syscall_handler(handler: &SystemsHandler) -> Result<(), Systems
                 write_maximum_bytes: 256,
                 read_descriptor: 0,
                 read_maximum_bytes: 256,
+                initial_descriptor_count: 3,
+                bad_descriptor_error: 9,
+                too_many_open_files_error: 24,
+                console_input_description: 1,
+                console_output_description: 2,
+                console_error_description: 3,
+                invalid_argument_error: 22,
+                fcntl_getfd_command: 1,
+                fcntl_setfd_command: 2,
+                fcntl_getfl_command: 3,
+                close_on_exec_flag: 1,
+                read_only_status: 0,
+                write_only_status: 1,
+                stat_layout_bytes: 144,
+                console_device: 0,
+                console_inode: 1,
+                console_mode: 8576,
+                console_special_device: 17408,
+                console_block_size: 4096,
+                terminal_layout_bytes: 36,
+                terminal_get_attributes_request: 21505,
+                terminal_control_flags: 2239,
+                terminal_minimum_input: 1,
+                not_a_terminal_error: 25,
                 brk_data_page_bytes: 4096,
                 getppid_result: 0,
                 gettid_result: 1,
@@ -2275,6 +2626,11 @@ struct BootstrapAuthorityState {
     anonymous_user_mapping_reserved: bool,
     initial_boot_resource_validated: bool,
     constructed_user_read_completed: bool,
+    constructed_user_close_completed: bool,
+    constructed_user_dup_completed: bool,
+    constructed_user_fcntl_completed: bool,
+    constructed_user_fstat_completed: bool,
+    constructed_user_tcgets_completed: bool,
     constructed_user_image_entered: bool,
     constructed_user_initial_stack_validated: bool,
     constructed_user_initial_auxv_validated: bool,
@@ -2310,6 +2666,14 @@ struct BootstrapAuthorityState {
     entropy_pool_credited: bool,
     entropy_generator_ready: bool,
     entropy_generator_extracted: bool,
+    initial_auxv_random_delivered: bool,
+    initial_getrandom_extracted: bool,
+    initial_user_random_reserved: bool,
+    user_random_service_bound: bool,
+    user_random_small_requests_enabled: bool,
+    user_random_large_requests_enabled: bool,
+    user_random_service_completed: bool,
+    initial_user_random_delivered: bool,
 }
 
 #[derive(Default, Eq, PartialEq)]
@@ -2830,17 +3194,118 @@ impl BootstrapAuthorityState {
                 self.entropy_generator_ready = true;
             }
             SystemsOperation::ExtractEntropyGenerator { request } => {
-                if !self.entropy_generator_ready
-                    || self.entropy_generator_extracted
-                    || !request.is_well_formed()
-                    || *request != EntropyGeneratorExtractRequest::INITIAL_Q35
-                {
+                if !self.entropy_generator_ready || !request.is_well_formed() {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-ENTROPY-EXTRACT",
-                        "entropy-generator extraction requires the exact sealed ready generation-one ChaCha20 request",
+                        "entropy-generator extraction requires the next exact sealed ready ChaCha20 generation",
                     ));
                 }
-                self.entropy_generator_extracted = true;
+                if *request == EntropyGeneratorExtractRequest::INITIAL_Q35
+                    && !self.entropy_generator_extracted
+                {
+                    self.entropy_generator_extracted = true;
+                } else if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM
+                    && self.entropy_generator_extracted
+                    && self.initial_auxv_random_delivered
+                    && !self.initial_getrandom_extracted
+                {
+                    self.initial_getrandom_extracted = true;
+                } else {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-EXTRACT",
+                        "entropy-generator extraction requires the next exact sealed ready ChaCha20 generation",
+                    ));
+                }
+            }
+            SystemsOperation::DeliverInitialAuxvRandom { request } => {
+                if !self.entropy_generator_extracted
+                    || self.initial_auxv_random_delivered
+                    || !request.is_well_formed()
+                    || *request != EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-DELIVER",
+                        "initial AT_RANDOM delivery requires the exact live first output and prepared resident initial process before entry",
+                    ));
+                }
+                self.initial_auxv_random_delivered = true;
+            }
+            SystemsOperation::ReserveInitialUserRandom { request } => {
+                if !self.initial_getrandom_extracted
+                    || self.initial_user_random_reserved
+                    || !request.is_well_formed()
+                    || *request != EntropyOutputReservationRequest::INITIAL_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-RESERVE",
+                        "initial getrandom reservation requires the exact live second output and prepared resident initial process before entry",
+                    ));
+                }
+                self.initial_user_random_reserved = true;
+            }
+            SystemsOperation::BindReusableUserRandom { request } => {
+                if !self.initial_user_random_reserved
+                    || self.user_random_service_bound
+                    || self.user_random_service_completed
+                    || !request.is_well_formed()
+                    || *request != EntropyUserRandomServiceRequest::INITIAL_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-USER-SERVICE",
+                        "reusable getrandom binding requires the generation-three generator, live initial reservation, and prepared resident initial process before entry",
+                    ));
+                }
+                self.initial_user_random_reserved = false;
+                self.user_random_service_bound = true;
+            }
+            SystemsOperation::ExpandSmallUserRandomRequests { request } => {
+                if !self.user_random_service_bound
+                    || self.user_random_small_requests_enabled
+                    || self.user_random_service_completed
+                    || !request.is_well_formed()
+                    || *request != EntropyUserRandomSmallRequest::INITIAL_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-USER-SMALL-REQUEST",
+                        "small-request getrandom refinement requires the exact live reusable service and prepared resident initial process before entry",
+                    ));
+                }
+                self.user_random_small_requests_enabled = true;
+            }
+            SystemsOperation::ExpandLargeUserRandomRequests { request } => {
+                if !self.user_random_service_bound
+                    || !self.user_random_small_requests_enabled
+                    || self.user_random_large_requests_enabled
+                    || self.user_random_service_completed
+                    || !request.is_well_formed()
+                    || *request != EntropyUserRandomSmallRequest::LARGE_GETRANDOM
+                    || !matches!(
+                        self.user_execution,
+                        BootstrapUserExecutionState::PreparedWithResidentImage(_)
+                    )
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-ENTROPY-USER-LARGE-REQUEST",
+                        "large-request getrandom refinement requires the exact live small-request service and prepared resident initial process before entry",
+                    ));
+                }
+                self.user_random_large_requests_enabled = true;
             }
             SystemsOperation::PublishPciRegionDmaReference { request } => {
                 let expected = PciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
@@ -3565,6 +4030,86 @@ impl BootstrapAuthorityState {
                 }
                 self.constructed_user_read_completed = true;
             }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_CLOSE_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_read_completed
+                    || self.constructed_user_close_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-close witness requires the completed constructed read and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_close_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_DUP_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_close_completed
+                    || self.constructed_user_dup_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-duplication witness requires the close witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_dup_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_FCNTL_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_dup_completed
+                    || self.constructed_user_fcntl_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-metadata witness requires the duplication witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_fcntl_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_FSTAT_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_fcntl_completed
+                    || self.constructed_user_fstat_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "descriptor-stat witness requires the fcntl witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_fstat_completed = true;
+            }
+            SystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_USER_TCGETS_OK" => {
+                if !matches!(
+                    self.user_execution,
+                    BootstrapUserExecutionState::CompletedWithResidentImage(_)
+                ) || self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.resident_user_image_ready
+                    || !self.constructed_user_fstat_completed
+                    || self.constructed_user_tcgets_completed
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-USER-CONTEXT",
+                        "terminal-attributes witness requires the fstat witness and exact user return with both finalized mappings resident",
+                    ));
+                }
+                self.constructed_user_tcgets_completed = true;
+            }
             SystemsOperation::ConsoleWrite { text }
                 if text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK" =>
             {
@@ -3574,6 +4119,11 @@ impl BootstrapAuthorityState {
                 ) || self.memory_ownership != BootstrapMemoryOwnership::None
                     || !self.resident_user_image_ready
                     || !self.constructed_user_read_completed
+                    || !self.constructed_user_close_completed
+                    || !self.constructed_user_dup_completed
+                    || !self.constructed_user_fcntl_completed
+                    || !self.constructed_user_fstat_completed
+                    || !self.constructed_user_tcgets_completed
                     || self.constructed_user_image_entered
                 {
                     return Err(SystemsModelError::new(
@@ -3956,12 +4506,22 @@ impl BootstrapAuthorityState {
                         "user entry requires the exact prepared probe with both image mappings resident",
                     ));
                 };
-                if !self.critical_stack.is_empty() {
+                if !self.critical_stack.is_empty()
+                    || !self.initial_auxv_random_delivered
+                    || !self.user_random_service_bound
+                    || !self.user_random_small_requests_enabled
+                    || !self.user_random_large_requests_enabled
+                {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "user entry requires the exact prepared probe and restored kernel context",
+                        "user entry requires the exact prepared probe, delivered initial AT_RANDOM object, reusable getrandom service, and restored kernel context",
                     ));
                 }
+                self.user_random_service_bound = false;
+                self.user_random_small_requests_enabled = false;
+                self.user_random_large_requests_enabled = false;
+                self.user_random_service_completed = true;
+                self.initial_user_random_delivered = true;
                 self.user_execution =
                     BootstrapUserExecutionState::CompletedWithResidentImage(backing);
             }
@@ -4349,6 +4909,25 @@ impl BootstrapAuthorityState {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-USER-CONTEXT-LIVE",
                 "bootstrap completion requires one consumed getpid/exit_group user execution",
+            ));
+        }
+        if !self.initial_auxv_random_delivered {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-DELIVER-LIVE",
+                "bootstrap completion requires affine delivery of the first entropy output to initial AT_RANDOM",
+            ));
+        }
+        if !self.initial_getrandom_extracted
+            || self.initial_user_random_reserved
+            || self.user_random_service_bound
+            || self.user_random_small_requests_enabled
+            || self.user_random_large_requests_enabled
+            || !self.user_random_service_completed
+            || !self.initial_user_random_delivered
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-ENTROPY-RESERVE-LIVE",
+                "bootstrap completion requires affine reservation, reusable-service binding, repeated delivery, and teardown of the initial getrandom service",
             ));
         }
         Ok(())
@@ -5109,6 +5688,30 @@ fn model_user_execution_transition(
                     write_maximum_bytes: _,
                     read_descriptor: _,
                     read_maximum_bytes: _,
+                    initial_descriptor_count: _,
+                    bad_descriptor_error: _,
+                    too_many_open_files_error: _,
+                    console_input_description: _,
+                    console_output_description: _,
+                    console_error_description: _,
+                    invalid_argument_error: _,
+                    fcntl_getfd_command: _,
+                    fcntl_setfd_command: _,
+                    fcntl_getfl_command: _,
+                    close_on_exec_flag: _,
+                    read_only_status: _,
+                    write_only_status: _,
+                    stat_layout_bytes: _,
+                    console_device: _,
+                    console_inode: _,
+                    console_mode: _,
+                    console_special_device: _,
+                    console_block_size: _,
+                    terminal_layout_bytes: _,
+                    terminal_get_attributes_request: _,
+                    terminal_control_flags: _,
+                    terminal_minimum_input: _,
+                    not_a_terminal_error: _,
                     brk_data_page_bytes: _,
                     getppid_result: _,
                     gettid_result: _,
@@ -6014,6 +6617,23 @@ fn model_bootstrap_operation(
         SystemsOperation::ExtractEntropyGenerator { request } => {
             transitions.push(SystemsTransition::ExtractEntropyGenerator { request: *request });
         }
+        SystemsOperation::DeliverInitialAuxvRandom { request } => {
+            transitions.push(SystemsTransition::DeliverInitialAuxvRandom { request: *request });
+        }
+        SystemsOperation::ReserveInitialUserRandom { request } => {
+            transitions.push(SystemsTransition::ReserveInitialUserRandom { request: *request });
+        }
+        SystemsOperation::BindReusableUserRandom { request } => {
+            transitions.push(SystemsTransition::BindReusableUserRandom { request: *request });
+        }
+        SystemsOperation::ExpandSmallUserRandomRequests { request } => {
+            transitions
+                .push(SystemsTransition::ExpandSmallUserRandomRequests { request: *request });
+        }
+        SystemsOperation::ExpandLargeUserRandomRequests { request } => {
+            transitions
+                .push(SystemsTransition::ExpandLargeUserRandomRequests { request: *request });
+        }
         SystemsOperation::PublishPciRegionDmaReference { request } => {
             let transaction_identity = *next_pci_region_transaction_identity;
             *next_pci_region_transaction_identity =
@@ -6367,6 +6987,11 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::CreditEntropyPoolContribution { .. }
         | SystemsOperation::InitializeEntropyGenerator { .. }
         | SystemsOperation::ExtractEntropyGenerator { .. }
+        | SystemsOperation::DeliverInitialAuxvRandom { .. }
+        | SystemsOperation::ReserveInitialUserRandom { .. }
+        | SystemsOperation::BindReusableUserRandom { .. }
+        | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+        | SystemsOperation::ExpandLargeUserRandomRequests { .. }
         | SystemsOperation::PublishPciRegionDmaReference { .. }
         | SystemsOperation::AccessPciRegionRegister { .. } => {
             unreachable!("PCI configuration and region accesses are modeled by the caller")
@@ -6516,6 +7141,11 @@ mod tests {
             SYSTEMS_ENTROPY_POOL_CREDIT_CONTRIBUTION.into(),
             SYSTEMS_ENTROPY_GENERATOR_INITIALIZE.into(),
             SYSTEMS_ENTROPY_GENERATOR_EXTRACT.into(),
+            SYSTEMS_ENTROPY_OUTPUT_DELIVER_INITIAL_AUXV_RANDOM.into(),
+            SYSTEMS_ENTROPY_OUTPUT_RESERVE_INITIAL_USER_RANDOM.into(),
+            SYSTEMS_ENTROPY_USER_RANDOM_BIND_REUSABLE.into(),
+            SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_SMALL_REQUESTS.into(),
+            SYSTEMS_ENTROPY_USER_RANDOM_EXPAND_LARGE_REQUESTS.into(),
             SYSTEMS_DMA_BUFFER_PREPARE_DEVICE.into(),
             SYSTEMS_DMA_BUFFER_STORE_INTEGER.into(),
             SYSTEMS_PCI_CONFIGURATION_READ_DWORD.into(),
@@ -7013,9 +7643,57 @@ mod tests {
                         SystemsOperation::PrepareUserProbe {
                             process_identity: 1,
                         },
+                        SystemsOperation::DeliverInitialAuxvRandom {
+                            request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
+                        },
+                        SystemsOperation::ExtractEntropyGenerator {
+                            request: EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM,
+                        },
+                        SystemsOperation::ReserveInitialUserRandom {
+                            request: EntropyOutputReservationRequest::INITIAL_GETRANDOM,
+                        },
+                        SystemsOperation::BindReusableUserRandom {
+                            request: EntropyUserRandomServiceRequest::INITIAL_GETRANDOM,
+                        },
+                        SystemsOperation::ExpandSmallUserRandomRequests {
+                            request: EntropyUserRandomSmallRequest::INITIAL_GETRANDOM,
+                        },
+                        SystemsOperation::ExpandLargeUserRandomRequests {
+                            request: EntropyUserRandomSmallRequest::LARGE_GETRANDOM,
+                        },
                         SystemsOperation::EnterUserContext,
                         SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_CLOSE_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_DUP_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
+                        },
+                        SystemsOperation::ConsoleWrite {
+                            text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
                         },
                         SystemsOperation::ConsoleWrite {
                             text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -7201,6 +7879,30 @@ mod tests {
                         write_maximum_bytes: 256,
                         read_descriptor: 0,
                         read_maximum_bytes: 256,
+                        initial_descriptor_count: 3,
+                        bad_descriptor_error: 9,
+                        too_many_open_files_error: 24,
+                        console_input_description: 1,
+                        console_output_description: 2,
+                        console_error_description: 3,
+                        invalid_argument_error: 22,
+                        fcntl_getfd_command: 1,
+                        fcntl_setfd_command: 2,
+                        fcntl_getfl_command: 3,
+                        close_on_exec_flag: 1,
+                        read_only_status: 0,
+                        write_only_status: 1,
+                        stat_layout_bytes: 144,
+                        console_device: 0,
+                        console_inode: 1,
+                        console_mode: 8576,
+                        console_special_device: 17408,
+                        console_block_size: 4096,
+                        terminal_layout_bytes: 36,
+                        terminal_get_attributes_request: 21505,
+                        terminal_control_flags: 2239,
+                        terminal_minimum_input: 1,
+                        not_a_terminal_error: 25,
                         brk_data_page_bytes: 4096,
                         getppid_result: 0,
                         gettid_result: 1,
@@ -7260,6 +7962,11 @@ mod tests {
             .handler
             .operations
             .retain(|operation| match operation {
+                SystemsOperation::ExtractEntropyGenerator { request }
+                    if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM =>
+                {
+                    false
+                }
                 SystemsOperation::CreateKernelContext
                 | SystemsOperation::CreateKernelCompletion
                 | SystemsOperation::CreateRunnableQueue { .. }
@@ -7288,6 +7995,11 @@ mod tests {
                 | SystemsOperation::UnmapUserAddressSpace
                 | SystemsOperation::ReleaseAnonymousUserMapping
                 | SystemsOperation::PrepareUserProbe { .. }
+                | SystemsOperation::DeliverInitialAuxvRandom { .. }
+                | SystemsOperation::ReserveInitialUserRandom { .. }
+                | SystemsOperation::BindReusableUserRandom { .. }
+                | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+                | SystemsOperation::ExpandLargeUserRandomRequests { .. }
                 | SystemsOperation::EnterUserContext
                 | SystemsOperation::CompleteUserExecution
                 | SystemsOperation::ReclaimUserAddressSpace
@@ -7300,6 +8012,11 @@ mod tests {
                         || text == "TOPAL_KERNEL_USER_IMAGE_READY"
                         || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                         || text == "TOPAL_KERNEL_USER_READ_OK"
+                        || text == "TOPAL_KERNEL_USER_CLOSE_OK"
+                        || text == "TOPAL_KERNEL_USER_DUP_OK"
+                        || text == "TOPAL_KERNEL_USER_FCNTL_OK"
+                        || text == "TOPAL_KERNEL_USER_FSTAT_OK"
+                        || text == "TOPAL_KERNEL_USER_TCGETS_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                         || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -7714,6 +8431,24 @@ mod tests {
                     process_identity: 1,
                     probe_identity: 1,
                 },
+                SystemsTransition::DeliverInitialAuxvRandom {
+                    request: EntropyOutputDeliveryRequest::INITIAL_AUXV_RANDOM,
+                },
+                SystemsTransition::ExtractEntropyGenerator {
+                    request: EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM,
+                },
+                SystemsTransition::ReserveInitialUserRandom {
+                    request: EntropyOutputReservationRequest::INITIAL_GETRANDOM,
+                },
+                SystemsTransition::BindReusableUserRandom {
+                    request: EntropyUserRandomServiceRequest::INITIAL_GETRANDOM,
+                },
+                SystemsTransition::ExpandSmallUserRandomRequests {
+                    request: EntropyUserRandomSmallRequest::INITIAL_GETRANDOM,
+                },
+                SystemsTransition::ExpandLargeUserRandomRequests {
+                    request: EntropyUserRandomSmallRequest::LARGE_GETRANDOM,
+                },
                 SystemsTransition::EnterUserExecution {
                     process_identity: 1,
                     kernel_continuation_identity: 1,
@@ -7835,7 +8570,37 @@ mod tests {
                     status: 0,
                 },
                 SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_READ_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_CLOSE_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_DUP_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_FCNTL_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_FSTAT_OK".into(),
+                },
+                SystemsTransition::ConsoleWrite {
+                    text: "TOPAL_KERNEL_USER_TCGETS_OK".into(),
                 },
                 SystemsTransition::ConsoleWrite {
                     text: "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK".into(),
@@ -8663,6 +9428,11 @@ mod tests {
                         if text == "TOPAL_KERNEL_USER_IMAGE_READY"
                             || text == "TOPAL_KERNEL_BOOT_RESOURCE_OK"
                             || text == "TOPAL_KERNEL_USER_READ_OK"
+                            || text == "TOPAL_KERNEL_USER_CLOSE_OK"
+                            || text == "TOPAL_KERNEL_USER_DUP_OK"
+                            || text == "TOPAL_KERNEL_USER_FCNTL_OK"
+                            || text == "TOPAL_KERNEL_USER_FSTAT_OK"
+                            || text == "TOPAL_KERNEL_USER_TCGETS_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_STACK_OK"
                             || text == "TOPAL_KERNEL_USER_IMAGE_AUXV_OK"
@@ -8690,6 +9460,10 @@ mod tests {
             .retain(|operation| {
                 !matches!(
                     operation,
+                    SystemsOperation::ExtractEntropyGenerator { request }
+                        if *request == EntropyGeneratorExtractRequest::INITIAL_Q35_GETRANDOM
+                ) && !matches!(
+                    operation,
                     SystemsOperation::ConsumeKernelCompletion
                         | SystemsOperation::ConsumeEmptyRunnableQueue
                         | SystemsOperation::PrepareUserAddressSpace
@@ -8707,6 +9481,11 @@ mod tests {
                         | SystemsOperation::UnmapUserAddressSpace
                         | SystemsOperation::ReleaseAnonymousUserMapping
                         | SystemsOperation::PrepareUserProbe { .. }
+                        | SystemsOperation::DeliverInitialAuxvRandom { .. }
+                        | SystemsOperation::ReserveInitialUserRandom { .. }
+                        | SystemsOperation::BindReusableUserRandom { .. }
+                        | SystemsOperation::ExpandSmallUserRandomRequests { .. }
+                        | SystemsOperation::ExpandLargeUserRandomRequests { .. }
                         | SystemsOperation::EnterUserContext
                         | SystemsOperation::CompleteUserExecution
                         | SystemsOperation::ReclaimUserAddressSpace

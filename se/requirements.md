@@ -744,6 +744,68 @@ the constructed-image entry marker. Partial reception, early user publication,
 wrong transfer or result, unbalanced disposal, or witness reordering shall fail
 closed.
 
+The initial-process descriptor adapter shall create descriptors zero, one, and
+two as live process-private entries before user entry. Linux `close` shall
+atomically change one live entry to closed and return zero; a negative, out-of-
+range, or already closed descriptor shall return `-EBADF` without state change.
+The bounded `read` and `write` adapters shall consult the same state before
+input consumption, user-memory access, or output. The ring-3 probe shall close
+standard input only after its final successful read, observe `-EBADF` from a
+later read and repeated close without consuming input, and then exit normally.
+Terminal completion shall clear every entry before restoring the kernel
+continuation. Stateless success, I/O through a closed entry, retained state,
+provider-selected policy, or a general VFS/descriptor-allocation model shall
+fail closed or remain unavailable as applicable.
+
+The initial descriptor adapter shall refine each live entry into a mapping to
+one fixed access-mode-bearing open description. Linux `dup` shall install the
+same description in the lowest closed slot, return `-EBADF` for an invalid
+source, and return `-EMFILE` without state change when the three-slot table is
+full. Linux `dup2` shall validate its source before atomically replacing the
+destination, preserve an equal live source/destination, and return `-EBADF`
+without replacement for invalid arguments. Closing either alias shall preserve
+the other, and read/write shall authorize the shared description rather than
+the slot number. Ring-3 qualification shall cover full-table rejection,
+lowest-free selection, source-slot close survival, output-mode read rejection,
+invalid-source nonreplacement, error-description replacement, exact returns,
+and terminal mapping clearing. Live-bit-only copying, altered access mode,
+non-lowest selection, premature replacement, or retained mappings shall fail
+closed.
+
+The initial descriptor adapter shall retain a separate `FD_CLOEXEC` bit per
+slot, initially clear. Linux `fcntl` shall implement `F_GETFD`, masked
+`F_SETFD`, and `F_GETFL`; it shall return shared open-description access modes,
+look up the descriptor before command decoding, and return exact `EBADF` or
+`EINVAL`. Close shall clear the slot bit, while `dup` and non-identity `dup2`
+shall clear only the new destination bit. Ring-3 qualification shall cover
+mode observation, set/get, unknown command, duplicate/source flag separation,
+replacement clearing, closed-slot rejection, and terminal clearing. Flags on
+open descriptions, slot-derived modes, copied duplication flags, wrong error
+precedence, or retained state shall fail closed.
+
+The initial descriptor adapter shall publish one immutable console object
+through Linux `fstat`. Every initial description and alias shall share
+character-device identity, root ownership, mode `0600`, link count one,
+preferred I/O size 4096, zero size/blocks/timestamps, and ttyS0 special-device
+identity. The x86-64 adapter shall stage and fault-contain the complete native
+144-byte layout, including zero padding. It shall look up the descriptor before
+candidate access and return exact `EBADF` or `EFAULT` without partial output.
+Ring-3 qualification shall compare output and duplicate-alias metadata, inspect
+every field and padding byte, and reject a closed slot. Slot-derived identity,
+regular-file kind, access-mode permissions, partial publication, host time, or
+retained pointers shall fail closed.
+
+The initial descriptor adapter shall expose the shared console's immutable raw
+terminal attributes through Linux `ioctl(TCGETS)`. The x86-64 adapter shall
+publish the complete native 36-byte `termios` with raw input/output/local
+flags, `B38400|CS8|CREAD|CLOCAL`, line discipline zero, and only `VMIN=1` among
+the 19 control bytes. It shall enforce descriptor-before-command-before-
+pointer precedence, privately stage and fault-contain the complete value, and
+return exact `EBADF`, `ENOTTY`, or `EFAULT`. Ring-3 qualification shall inspect
+every byte, compare input and output descriptions, reject an unknown live-
+console request, and reject a closed slot. Fabricated cooked behavior, partial
+publication, wrong precedence, or retained pointers shall fail closed.
+
 The initial-process program-break adapter shall derive its initial value from
 the validated runtime ELF data-memory extent and bound it by the already-owned
 4096-byte RW/NX data page. The provider shall zero the complete page tail from
@@ -1083,6 +1145,68 @@ bytes; and wipe and verify all temporary cipher state. It shall reject
 malformed, omitted, duplicated, reordered, substituted, premature, partially
 published, or incompletely wiped extraction and shall perform no interface
 delivery.
+
+The bounded initial-`AT_RANDOM` refinement shall consume opaque output identity
+one into prepared address-space identity one before its first context entry. It
+shall require Linux interface identity one, source extent 32, selected offset
+zero and extent 16, discarded offset 16 and extent 16, auxiliary tag 25, and
+single-use delivery; copy and verify a distinct in-stack 16-byte object; wipe
+and verify the complete provider output; and return only a randomized entry-
+ready address space. It shall reject malformed, omitted, duplicated, reordered,
+substituted, premature, partially copied, incompletely wiped, or reused
+delivery and shall not expose random bytes or an address to source.
+
+The bounded initial-`getrandom` refinement shall freshly extract generation two
+to generation three as opaque output identity two and reserve that output for
+process, Linux interface, and user-random service identity one before entry. It
+shall require source extent 32, a maximum selected prefix of 16 bytes, discard
+the unused selected suffix and bytes 16 through 31, accept only the current
+Linux flag mask 7 while rejecting combinations containing mask 6, and permit
+one successful nonempty request. Zero, flag-error, length-error, and complete-
+range-fault results shall not consume the reservation. Success shall copy and
+verify the requested prefix, wipe and verify all provider output, consume the
+reservation, and expose neither random bytes, an address, nor a native syscall
+number to source.
+
+The reusable process-`getrandom` refinement shall consume the ready generation-
+three generator and the live initial reservation into one affine process-
+lifetime service before entry. The reserved output shall supply the first
+successful request. Every later successful request shall validate its complete
+arguments and writable range before a fresh extraction, replace the persistent
+key before publication, return and verify at most 16 requested bytes, discard
+the remainder, and wipe and verify the complete output. Zero and rejected
+requests shall not advance the generator. Process exit shall destroy any live
+output, generator key, and private service state. The refinement shall expose
+no secret byte, address, generation representation, syscall number, register,
+or target mechanism to source.
+
+The full-output process-`getrandom` refinement shall raise both the initial
+reservation and reusable service maximum request to the complete 32-byte
+qualified provider output, with an empty reservation discard partition. It
+shall preserve validation before state advance, use exactly one reserved or
+freshly extracted output per success, copy and verify 1–32 requested bytes,
+wipe and verify the complete output, retain no remainder, and leave the service
+unchanged for zero and rejected calls. Qualification shall execute the existing
+two 16-byte successes followed by one 32-byte success and observe every
+returned qword without constraining secret-derived values.
+
+The bounded small-request `getrandom` refinement shall consume the live service
+into one service admitting complete requests through 256 bytes and at most
+eight 32-byte outputs per call. It shall validate the complete writable range
+before the first state transition; replace the persistent key before each fresh
+output; copy ordered chunks; wipe and verify every complete output; retain no
+remainder; return only the exact full length; and increment interface delivery
+state once. Zero and rejected calls shall not change service state, and the
+refinement shall expose no loop, key, byte, address, syscall, register, or
+target fault mechanism to source.
+
+The bounded large-request `getrandom` refinement shall consume that service
+into one service admitting signal-free complete requests through 512 bytes
+and at most 16 32-byte outputs per call. It shall preserve whole-range
+validation before state change, ordered chunking, per-output key replacement,
+complete copy verification and erasure, no retained remainder, exact return
+length, and one interface delivery update. The numeric bound shall remain a
+profile constant rather than a portable architecture page-size operation.
 
 ## TOPAL-REQ-SYSTEMS-ARTIFACT-001 — Host-independent kernel artifact
 
