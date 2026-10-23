@@ -375,6 +375,20 @@ role, count, order, duplicate sealing, or early revocation and shall prove no
 source-visible page ordinal, permission bit, address, loop, page-table entry,
 or activation authority.
 
+The bounded static-ELF hierarchy-extent increment shall admit exactly one typed
+`static image construction reserve hierarchy` operation for a four-frame,
+one-frame-aligned allocation while the sealed construction remains live.
+X86-64 lowering shall fail closed through the fatal edge, preserve the payload and leaf-table identities,
+select the complete hierarchy extent after and disjoint from both resources,
+the boot resource, and active translation metadata, and return it only as one
+whole affine extent. The checker and model shall require permission sealing
+before allocation, one exact hierarchy witness while both authorities are
+live, whole hierarchy release before construction revocation, and no live
+extent at disposition. Structural and pinned-QEMU tests shall reject wrong
+count, order, marker, split, early release, or early revocation and shall prove
+that allocation grants no byte, mapping, attachment, activation, or entry
+authority.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
