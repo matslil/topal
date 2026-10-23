@@ -990,6 +990,58 @@ its numeric representation, add another auxiliary-vector fact, initialize
 TLS, construct a user context, enter user mode, execute BusyBox, or add a
 syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-ENTRY-001 — Executable-entry fact
+
+`static image construction add stack entry fact` SHALL require the exact live
+`PageSizeStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PAGESZ-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `authorized-static-elf-entry`, and
+policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`ExecutableEntryStackEntryStaticImageConstruction` retaining every prior
+entry-block and translation fact while adding one `AT_ENTRY` fact immediately
+after `AT_PAGESZ` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the page-size block,
+exact RW/NX stack leaf, absent guard, final image leaves, inactive hierarchy,
+current bootstrap root, resident static ELF header, exact executable leaf, and
+opaque executable-entry authority. It SHALL prove that the authorized entry is
+contained by the executable leaf, clear the complete backing, reconstruct the
+complete target-aligned block with the executable-entry fact, perform every
+target-required visibility operation, and read back every word, pointer
+relation, string byte, terminator, executable-entry relation, and otherwise-
+zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK` observation.
+
+Source SHALL invoke `static image construction remove stack entry fact` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-entry-fact-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact page-size block, preserve every translation
+and entry-authority obligation, and reproduce the exact
+`PageSizeStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK` observation before page-size
+removal.
+
+A wrong owner, backing, value, policy, resident header, executable leaf, or
+containment relation; duplicate addition; partial mutation or readback; wrong
+entry ordering; page-size removal, ordinary clearing, or leaf revocation while
+extended; backing release; activation; teardown; or recoverable disposition
+SHALL be invalid. Only exact entry-fact removal SHALL restore the state admitted
+by page-size removal.
+
+For qualified x86-64 realization, the provider SHALL encode native tag 9 with
+the exact retained ELF entry `0x4a6580` after `AT_PAGESZ=(6,4096)` and before
+`AT_NULL`, retain the exact `busybox` and `true` string relations, and retain
+16-byte entry alignment. Addition and removal SHALL each clear all 512 qwords
+before reconstruction, execute one store fence, and completely read back the
+result. They SHALL preserve the exact inactive hierarchy and issue no active-
+address invalidation.
+
+This rule SHALL NOT retain the executable-entry fact after its removal witness,
+expose its numeric representation or an address, add another auxiliary-vector
+fact, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
