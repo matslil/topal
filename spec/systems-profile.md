@@ -835,6 +835,55 @@ This rule SHALL NOT retain or map the frame after its witness, install a stack
 leaf, publish a stack pointer, initialize process-entry contents or TLS,
 construct a user context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001 — Inactive stack-leaf publication
+
+`static image construction publish stack leaf` SHALL require the exact live
+`ZeroedStackBackingStaticImageConstruction` and nested one-frame extent from
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001`. It SHALL accept only that owner,
+that backing identity, `access` equal to `writable-non-executable`, and
+`extent` equal to `complete`, borrow the live extent, and produce one affine
+`PublishedStackLeafStaticImageConstruction` retaining the unchanged entry and
+slot authorities, complete-zero invariant, and exact published-leaf invariant.
+
+Before success, the provider SHALL revalidate the complete inactive address
+space and final image leaves, the absent selected slot and guard, the qualified
+bootstrap root as current, the static hierarchy as inactive, and every byte of
+the backing as zero. It SHALL publish exactly one user-accessible RW/NX leaf
+binding that slot to that backing, perform every target-required visibility
+operation, and completely read back the selected leaf, guard, neighboring
+absence, final image leaves, hierarchy, and current-root obligations. Numeric
+addresses, leaf indices and encodings, permission bits, barriers, cache or
+translation operations, and verification loops SHALL remain provider-private.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK` observation and then invoke
+`static image construction revoke stack leaf` with the exact published owner,
+backing identity, and policy `bounded-stack-leaf-qualification-rollback`.
+Revocation SHALL remove exactly the selected leaf, perform every target-
+required visibility and invalidation operation, completely revalidate the
+slot and guard as absent and the backing as zero, and reproduce the exact
+`ZeroedStackBackingStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK` observation before whole
+backing release.
+
+Publication from a wrong owner or backing, another access or extent, duplicate
+publication, partial or executable mapping, active-hierarchy mutation, wrong
+witness order, backing release, slot or entry revocation, teardown, or
+recoverable disposition while the leaf is live SHALL be invalid. Only exact
+leaf revocation SHALL restore the state admitted by whole backing release.
+
+For qualified x86-64 realization, leaf ordinal 511 SHALL equal the exact
+backing identity combined with present, user, writable, and NX attributes.
+Ordinal 510 SHALL remain absent; all 503 final image leaves and the seven other
+absent entries SHALL remain byte-identical. Publication and revocation SHALL
+each execute one store fence before complete readback. No active-address-space
+invalidation is required because the qualified hierarchy remains inactive and
+the leaf has never been active.
+
+This rule SHALL NOT retain the mapping after its revocation witness, publish a
+stack pointer, initialize process-entry contents or TLS, construct a user
+context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

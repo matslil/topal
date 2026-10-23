@@ -477,6 +477,24 @@ publication, stack pointer, process-entry initialization, TLS, user-mode,
 syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001` and `TK-DEC-141`.
 
+The bounded static-ELF stack-leaf increment shall accept one exact typed
+publication from the zeroed-backing construction and one exact typed
+revocation back to it. X86-64 lowering shall validate the inactive hierarchy,
+current bootstrap root, all 503 final image leaves, absent guard and slot, and
+complete zero backing; publish only leaf ordinal 511 as the exact backing with
+present/user/writable/NX attributes; execute one store fence; and completely
+read back the result. Revocation shall validate that exact leaf, erase only it,
+execute one store fence, and completely revalidate the absent slot/guard,
+unchanged image leaves, inactive hierarchy, current root, and zero backing.
+The checker and semantic model shall preserve affine published-leaf ownership
+and reject another owner/backing/access/extent/policy, duplicate publication,
+early release, activation, teardown, or disposition while the leaf is live.
+Structural and duplicate pinned-QEMU tests shall prove exact publication and
+revocation, complete readback, preserved guard/image/hierarchy/root/backing,
+ordered witnesses, and no stack pointer, process-entry initialization, TLS,
+user-mode, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001` and `TK-DEC-142`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
