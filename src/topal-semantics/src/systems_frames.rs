@@ -38,6 +38,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME: &str =
     "topal.systems.static-image.construction.add-stack-executable-name/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME: &str =
     "topal.systems.static-image.construction.remove-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.add-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.remove-stack-credentials/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =

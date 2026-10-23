@@ -84,6 +84,7 @@ pub use topal_semantics::{
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
@@ -99,6 +100,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
@@ -9285,6 +9287,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
@@ -9300,6 +9303,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
@@ -10438,7 +10442,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 324);
+        assert_eq!(program.bootstrap.handler.operations.len(), 328);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10515,6 +10519,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
@@ -10530,6 +10535,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
@@ -13429,7 +13435,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_BAD",
             ),
             SOURCE.replace(
-                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
+                "owner is executable-name-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
                 "owner is program-header-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13449,6 +13455,48 @@ mod tests {
             assert!(
                 error.message.contains("executable-name")
                     || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_credential_group() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001.
+        for source in [
+            SOURCE.replace(
+                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-process-credentials,",
+                "owner is program-header-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-process-credentials,",
+            ),
+            SOURCE.replace(
+                "value is initial-process-credentials",
+                "value is source-process-credentials",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_BAD",
+            ),
+            SOURCE.replace(
+                "owner is credential-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-credentials-qualification-rollback",
+                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-credentials-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-credentials-qualification-rollback",
+                "retained-stack-credentials",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("credential") || error.message.contains("exact marker"),
                 "{}",
                 error.message
             );

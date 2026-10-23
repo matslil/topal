@@ -192,8 +192,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK"
-                                                                              program-header-stack-restored-construction is unmapped static image construction remove stack executable name (
+                                                                              credential-stack-construction is unmapped static image construction add stack credentials (
                                                                                 owner is executable-name-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-process-credentials,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK"
+                                                                              executable-name-stack-restored-construction is unmapped static image construction remove stack credentials (
+                                                                                owner is credential-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-credentials-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK"
+                                                                              program-header-stack-restored-construction is unmapped static image construction remove stack executable name (
+                                                                                owner is executable-name-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-executable-name-qualification-rollback
                                                                               )

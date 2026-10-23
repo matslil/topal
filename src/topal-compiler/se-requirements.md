@@ -598,6 +598,27 @@ representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
 BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001` and `TK-DEC-147`.
 
+The bounded static-ELF credential auxiliary-vector increment shall accept one
+exact typed addition from the executable-name-qualified stack construction and
+one exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+and sealed PID-one process profile; clear the full frame; reconstruct a
+16-byte-aligned block with ordered `AT_UID=(11,0)`, `AT_EUID=(12,0)`,
+`AT_GID=(13,0)`, and `AT_EGID=(14,0)`, all prior facts, arguments, strings,
+and terminating `AT_NULL`; fence; and completely read back all content,
+relations, and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact executable-name-qualified
+block, fence, and completely read it back. The checker and semantic model
+shall preserve affine credential-group ownership and reject another owner,
+backing, value, policy, duplicate addition, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact tags, zero values,
+order, profile agreement, complete reconstruction and rollback, preserved
+translation state, ordered witnesses, and no exposed numeric identity or
+representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001` and `TK-DEC-148`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
