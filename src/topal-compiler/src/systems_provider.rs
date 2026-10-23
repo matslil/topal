@@ -38,6 +38,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
@@ -56,6 +57,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
@@ -87,7 +89,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/122";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/123";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -110,6 +112,8 @@ pub enum X86SystemsLowering {
     AddStaticImageStackCredentials,
     AddStaticImageStackSecureMode,
     AddStaticImageStackClockTickRate,
+    AddStaticImageStackPlatform,
+    RemoveStaticImageStackPlatform,
     RemoveStaticImageStackClockTickRate,
     RemoveStaticImageStackSecureMode,
     RemoveStaticImageStackCredentials,
@@ -264,6 +268,12 @@ impl X86SystemsLowering {
             }
             Self::AddStaticImageStackClockTickRate => {
                 "topal.provider.x86_64.static-image.add-stack-clock-tick-rate/1"
+            }
+            Self::AddStaticImageStackPlatform => {
+                "topal.provider.x86_64.static-image.add-stack-platform/1"
+            }
+            Self::RemoveStaticImageStackPlatform => {
+                "topal.provider.x86_64.static-image.remove-stack-platform/1"
             }
             Self::RemoveStaticImageStackClockTickRate => {
                 "topal.provider.x86_64.static-image.remove-stack-clock-tick-rate/1"
@@ -722,6 +732,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE => {
             X86SystemsLowering::AddStaticImageStackClockTickRate
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM => {
+            X86SystemsLowering::AddStaticImageStackPlatform
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM => {
+            X86SystemsLowering::RemoveStaticImageStackPlatform
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE => {
             X86SystemsLowering::RemoveStaticImageStackClockTickRate
         }
@@ -952,6 +968,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::AddStaticImageStackClockTickRate => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            X86SystemsLowering::AddStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM
+            }
+            X86SystemsLowering::RemoveStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
             }
             X86SystemsLowering::RemoveStaticImageStackClockTickRate => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
@@ -1189,7 +1211,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 118);
+        assert_eq!(plan.operations.len(), 120);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

@@ -62,12 +62,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/134")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/135")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/122")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/123")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/132",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/133",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -148,6 +148,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",

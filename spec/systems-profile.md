@@ -1301,6 +1301,58 @@ expose its numeric value or representation, add another auxiliary-vector fact,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001 — Native platform fact
+
+`static image construction add stack platform` SHALL require the exact live
+`ClockTickRateStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `native-userspace-platform`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`PlatformStackEntryStaticImageConstruction` retaining every prior fact while
+adding one provider-consistent platform fact after `AT_CLKTCK` and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the clock-rate-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove the native platform identity, complete bounded string and
+termination, pointer containment, and separation from the executable-name
+object; clear the complete backing; reconstruct the complete target-aligned
+block; perform every target-required visibility operation; and read back every
+word, pointer relation, string byte, terminator, identity relation, and
+otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK` observation.
+
+Source SHALL invoke `static image construction remove stack platform` with the
+exact extended owner, backing identity, and policy
+`bounded-stack-platform-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact clock-rate-qualified block, preserve every
+prior obligation, and reproduce the exact
+`ClockTickRateStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK` observation before clock-
+rate removal.
+
+A wrong owner, backing, value, policy, platform identity, pointer, string,
+termination, containment, or alias relation; duplicate addition; partial
+mutation or readback; wrong ordering; prior-fact removal, ordinary clearing,
+or leaf revocation while extended; backing release; activation; teardown; or
+recoverable disposition SHALL be invalid. Only exact platform-fact removal
+SHALL restore the state admitted by clock-rate removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_PLATFORM=(15,pointer-to-"x86_64\0")` after `AT_CLKTCK=(17,100)` and before
+`AT_NULL`. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact prior facts and inactive hierarchy, retain exact
+`argv[0]`/`AT_EXECFN` alias identity only with `busybox`, keep the platform
+string distinct, and issue no active-address invalidation.
+
+This rule SHALL NOT retain the platform fact after its removal witness, expose
+its string, pointer, or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

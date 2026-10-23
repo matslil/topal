@@ -659,6 +659,26 @@ ordered witnesses, and no exposed rate or representation, further auxiliary-
 vector fact, TLS, user-mode, syscall, or BusyBox execution authority. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001` and `TK-DEC-150`.
 
+The bounded static-ELF native-platform increment shall accept one exact typed
+addition from the clock-rate-qualified stack construction and one exact typed
+removal back to it. X86-64 lowering shall validate that block, inactive
+translation obligations, exact stack leaf, complete argument strings, and
+prior facts; clear the full frame; reconstruct a 16-byte-aligned block with
+native `AT_PLATFORM` pointing to one complete bounded `x86_64\0` string, all
+prior facts, arguments, strings, and terminating `AT_NULL`; fence; and
+completely read back all content, pointer containment, alias separation, and
+otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact clock-rate-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+platform ownership and reject another owner, backing, value, policy, duplicate
+addition, early prior-fact removal, ordinary clearing or leaf revocation,
+activation, release, teardown, or disposition. Structural and duplicate pinned-
+QEMU tests shall prove exact tag, pointer, string and termination, complete
+reconstruction and rollback, executable-name separation, preserved translation
+state, ordered witnesses, and no exposed platform representation, further
+auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001` and `TK-DEC-151`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

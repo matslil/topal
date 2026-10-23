@@ -89,6 +89,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
@@ -107,6 +108,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
@@ -9296,6 +9298,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
@@ -9314,6 +9317,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
@@ -10450,7 +10454,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 336);
+        assert_eq!(program.bootstrap.handler.operations.len(), 340);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10532,6 +10536,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
@@ -10550,6 +10555,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
@@ -13571,7 +13577,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_BAD",
             ),
             SOURCE.replace(
-                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback",
+                "owner is clock-tick-rate-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback",
                 "owner is secure-mode-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13591,6 +13597,36 @@ mod tests {
             assert!(
                 error.message.contains("clock-tick-rate")
                     || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_platform_fact() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001.
+        for source in [
+            SOURCE.replace(
+                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-platform,",
+                "owner is secure-mode-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-platform,",
+            ),
+            SOURCE.replace("value is native-userspace-platform", "value is source-platform-string"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK", "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_BAD"),
+            SOURCE.replace(
+                "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-platform-qualification-rollback",
+                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-platform-qualification-rollback",
+            ),
+            SOURCE.replace("bounded-stack-platform-qualification-rollback", "retained-stack-platform"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK", "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_BAD"),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("platform") || error.message.contains("exact marker"),
                 "{}",
                 error.message
             );
