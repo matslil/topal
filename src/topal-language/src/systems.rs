@@ -85,11 +85,13 @@ pub use topal_semantics::{
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -9268,12 +9270,14 @@ mod tests {
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -10403,7 +10407,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 287);
+        assert_eq!(program.bootstrap.handler.operations.len(), 291);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10481,12 +10485,14 @@ mod tests {
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -12871,10 +12877,66 @@ mod tests {
                 ),
                 "exact marker",
             ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(error.message.contains(expected), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entry_authorization_and_revocation() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001.
+        for (source, expected) in [
             (
                 SOURCE.replace(
+                    "owner is restored-static-elf-construction,\n                                                                                policy is validated-static-elf-entry",
+                    "owner is active-static-elf-construction,\n                                                                                policy is validated-static-elf-entry",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is validated-static-elf-entry",
+                    "policy is unchecked-static-elf-entry",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
+                    "owner is restored-static-elf-construction,\n                                                                                policy is bounded-entry-qualification-rollback",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "policy is bounded-entry-qualification-rollback",
+                    "policy is unbounded-entry-qualification-rollback",
+                ),
+                "exact owner and policy",
+            ),
+            (
+                SOURCE.replace(
+                    "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
+                    "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_BAD",
+                ),
+                "exact marker",
+            ),
+            (
+                SOURCE.replace(
+                    "owner is entry-restored-static-elf-construction\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK\"",
                     "owner is restored-static-elf-construction\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK\"",
-                    "owner is attached-static-elf-construction\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK\"",
                 ),
                 "exact restored construction",
             ),

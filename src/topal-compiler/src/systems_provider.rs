@@ -34,11 +34,13 @@ use topal_language::compiler::{
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -63,7 +65,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/110";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/111";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -81,6 +83,8 @@ pub enum X86SystemsLowering {
     AttachStaticImageAddressSpace,
     ActivateStaticImageAddressSpace,
     RestoreStaticImageAddressSpace,
+    AuthorizeStaticImageEntry,
+    RevokeStaticImageEntry,
     DetachStaticImageAddressSpace,
     ReturnStaticImageHierarchy,
     RevokeInitialStaticImageLeaves,
@@ -201,6 +205,10 @@ impl X86SystemsLowering {
             Self::RestoreStaticImageAddressSpace => {
                 "topal.provider.x86_64.static-image.restore-address-space/1"
             }
+            Self::AuthorizeStaticImageEntry => {
+                "topal.provider.x86_64.static-image.authorize-entry/1"
+            }
+            Self::RevokeStaticImageEntry => "topal.provider.x86_64.static-image.revoke-entry/1",
             Self::DetachStaticImageAddressSpace => {
                 "topal.provider.x86_64.static-image.detach-address-space/1"
             }
@@ -593,6 +601,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE => {
             X86SystemsLowering::RestoreStaticImageAddressSpace
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY => {
+            X86SystemsLowering::AuthorizeStaticImageEntry
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY => {
+            X86SystemsLowering::RevokeStaticImageEntry
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE => {
             X86SystemsLowering::DetachStaticImageAddressSpace
         }
@@ -754,6 +768,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::RestoreStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE
+            }
+            X86SystemsLowering::AuthorizeStaticImageEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY
+            }
+            X86SystemsLowering::RevokeStaticImageEntry => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
             }
             X86SystemsLowering::DetachStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
@@ -937,7 +957,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 95);
+        assert_eq!(plan.operations.len(), 97);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -1003,6 +1023,14 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE
                 && operation.lowering == X86SystemsLowering::RestoreStaticImageAddressSpace
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY
+                && operation.lowering == X86SystemsLowering::AuthorizeStaticImageEntry
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+                && operation.lowering == X86SystemsLowering::RevokeStaticImageEntry
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE

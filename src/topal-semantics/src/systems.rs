@@ -32,11 +32,13 @@ use crate::{
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -1176,6 +1178,8 @@ pub enum SystemsOperation {
     AttachStaticImageAddressSpace,
     ActivateStaticImageAddressSpace,
     RestoreStaticImageAddressSpace,
+    AuthorizeStaticImageEntry,
+    RevokeStaticImageEntry,
     DetachStaticImageAddressSpace,
     ReclaimStaticImageConstructionHierarchy,
     RevokeStaticImageConstructionMetadata,
@@ -1403,6 +1407,8 @@ impl SystemsOperation {
             Self::RestoreStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE
             }
+            Self::AuthorizeStaticImageEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+            Self::RevokeStaticImageEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
             Self::DetachStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
             }
@@ -1670,6 +1676,8 @@ pub enum SystemsTransition {
     AttachStaticImageAddressSpace,
     ActivateStaticImageAddressSpace,
     RestoreStaticImageAddressSpace,
+    AuthorizeStaticImageEntry,
+    RevokeStaticImageEntry,
     DetachStaticImageAddressSpace,
     ReclaimStaticImageConstructionHierarchy,
     RevokeStaticImageConstructionMetadata,
@@ -2112,6 +2120,8 @@ impl SystemsTransition {
             Self::RestoreStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE
             }
+            Self::AuthorizeStaticImageEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+            Self::RevokeStaticImageEntry => SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
             Self::DetachStaticImageAddressSpace => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
             }
@@ -2402,6 +2412,8 @@ fn validate_entry(
                     | SystemsOperation::AttachStaticImageAddressSpace
                     | SystemsOperation::ActivateStaticImageAddressSpace
                     | SystemsOperation::RestoreStaticImageAddressSpace
+                    | SystemsOperation::AuthorizeStaticImageEntry
+                    | SystemsOperation::RevokeStaticImageEntry
                     | SystemsOperation::DetachStaticImageAddressSpace
                     | SystemsOperation::ReclaimStaticImageConstructionHierarchy
                     | SystemsOperation::RevokeStaticImageConstructionMetadata
@@ -2894,6 +2906,8 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionAttached,
     StaticElfConstructionActive,
     StaticElfConstructionRestored,
+    StaticElfConstructionEntryAuthorized,
+    StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
     StaticElfConstructionMetadataReturned,
@@ -3111,8 +3125,32 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionRestored;
             }
-            SystemsOperation::DetachStaticImageAddressSpace => {
+            SystemsOperation::AuthorizeStaticImageEntry => {
                 if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionRestored
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entry authorization requires one restored attached construction",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionEntryAuthorized;
+            }
+            SystemsOperation::RevokeStaticImageEntry => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionEntryAuthorized
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entry revocation requires one authorized construction",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionEntryRestored;
+            }
+            SystemsOperation::DetachStaticImageAddressSpace => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
@@ -5082,6 +5120,8 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionAttached
             | BootstrapMemoryOwnership::StaticElfConstructionActive
             | BootstrapMemoryOwnership::StaticElfConstructionRestored
+            | BootstrapMemoryOwnership::StaticElfConstructionEntryAuthorized
+            | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
             | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
@@ -6900,6 +6940,12 @@ fn model_bootstrap_operation(
         SystemsOperation::RestoreStaticImageAddressSpace => {
             transitions.push(SystemsTransition::RestoreStaticImageAddressSpace);
         }
+        SystemsOperation::AuthorizeStaticImageEntry => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageEntry);
+        }
+        SystemsOperation::RevokeStaticImageEntry => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntry);
+        }
         SystemsOperation::DetachStaticImageAddressSpace => {
             transitions.push(SystemsTransition::DetachStaticImageAddressSpace);
         }
@@ -7361,6 +7407,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AttachStaticImageAddressSpace
         | SystemsOperation::ActivateStaticImageAddressSpace
         | SystemsOperation::RestoreStaticImageAddressSpace
+        | SystemsOperation::AuthorizeStaticImageEntry
+        | SystemsOperation::RevokeStaticImageEntry
         | SystemsOperation::DetachStaticImageAddressSpace
         | SystemsOperation::ReclaimStaticImageConstructionHierarchy
         | SystemsOperation::RevokeStaticImageConstructionMetadata

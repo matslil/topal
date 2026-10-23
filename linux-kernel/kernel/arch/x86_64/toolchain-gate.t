@@ -128,8 +128,18 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-bootstrap-kernel-continuation
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK"
+                                                                              entry-authorized-static-elf-construction is unmapped static image construction authorize entry (
+                                                                                owner is restored-static-elf-construction,
+                                                                                policy is validated-static-elf-entry
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK"
+                                                                              entry-restored-static-elf-construction is unmapped static image construction revoke entry (
+                                                                                owner is entry-authorized-static-elf-construction,
+                                                                                policy is bounded-entry-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK"
                                                                               detached-static-elf-construction is unmapped static image construction detach address space (
-                                                                                owner is restored-static-elf-construction
+                                                                                owner is entry-restored-static-elf-construction
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK"
                                                                               returned-static-elf-hierarchy is unmapped static image construction reclaim (
