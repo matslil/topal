@@ -30,7 +30,10 @@ use crate::{
     SYSTEMS_KERNEL_THREAD_ENTRY, SYSTEMS_KERNEL_UNMAP, SYSTEMS_LOCAL_NOTIFICATION_COMPLETE,
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
@@ -1168,6 +1171,9 @@ pub enum SystemsOperation {
     ZeroStaticImageConstructionPayload,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
+    AttachStaticImageAddressSpace,
+    DetachStaticImageAddressSpace,
+    ReclaimStaticImageConstructionHierarchy,
     RevokeStaticImageConstructionMetadata,
     ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
@@ -1383,6 +1389,15 @@ impl SystemsOperation {
             }
             Self::SealStaticImageConstructionPermissions => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
+            }
+            Self::AttachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE
+            }
+            Self::DetachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            }
+            Self::ReclaimStaticImageConstructionHierarchy => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
             }
             Self::RevokeStaticImageConstructionMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
@@ -1642,6 +1657,9 @@ pub enum SystemsTransition {
     ZeroStaticImageConstructionPayload,
     CopyStaticImageConstructionPayload,
     SealStaticImageConstructionPermissions,
+    AttachStaticImageAddressSpace,
+    DetachStaticImageAddressSpace,
+    ReclaimStaticImageConstructionHierarchy,
     RevokeStaticImageConstructionMetadata,
     ReclaimStaticImageConstructionPayload,
     MapKernelFrames {
@@ -2073,6 +2091,15 @@ impl SystemsTransition {
             Self::SealStaticImageConstructionPermissions => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
             }
+            Self::AttachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE
+            }
+            Self::DetachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            }
+            Self::ReclaimStaticImageConstructionHierarchy => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            }
             Self::RevokeStaticImageConstructionMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
             }
@@ -2354,6 +2381,9 @@ fn validate_entry(
                     | SystemsOperation::ZeroStaticImageConstructionPayload
                     | SystemsOperation::CopyStaticImageConstructionPayload
                     | SystemsOperation::SealStaticImageConstructionPermissions
+                    | SystemsOperation::AttachStaticImageAddressSpace
+                    | SystemsOperation::DetachStaticImageAddressSpace
+                    | SystemsOperation::ReclaimStaticImageConstructionHierarchy
                     | SystemsOperation::RevokeStaticImageConstructionMetadata
                     | SystemsOperation::ReclaimStaticImageConstructionPayload
                     | SystemsOperation::MapKernelFrames { .. }
@@ -2841,6 +2871,9 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionPopulated,
     StaticElfConstructionSealed,
     StaticElfConstructionSealedWithHierarchy,
+    StaticElfConstructionAttached,
+    StaticElfConstructionDetached,
+    StaticElfConstructionHierarchyReturned,
     StaticElfConstructionMetadataReturned,
     StaticElfConstructionRevoked,
 }
@@ -2977,6 +3010,9 @@ impl BootstrapAuthorityState {
                     BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy => {
                         BootstrapMemoryOwnership::StaticElfConstructionSealed
                     }
+                    BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned => {
+                        BootstrapMemoryOwnership::StaticElfConstructionSealed
+                    }
                     BootstrapMemoryOwnership::Frames(_) => BootstrapMemoryOwnership::None,
                     _ => {
                         return Err(SystemsModelError::new(
@@ -3022,6 +3058,38 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionSealed;
+            }
+            SystemsOperation::AttachStaticImageAddressSpace => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image address-space attachment requires one sealed construction and its live four-frame hierarchy",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionAttached;
+            }
+            SystemsOperation::DetachStaticImageAddressSpace => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionAttached
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image address-space detachment requires one attached inactive construction",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionDetached;
+            }
+            SystemsOperation::ReclaimStaticImageConstructionHierarchy => {
+                if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionDetached
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image hierarchy reclaim requires one detached construction",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned;
             }
             SystemsOperation::RevokeStaticImageConstructionMetadata => {
                 if self.memory_ownership != BootstrapMemoryOwnership::StaticElfConstructionSealed {
@@ -4970,6 +5038,9 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionPopulated
             | BootstrapMemoryOwnership::StaticElfConstructionSealed
             | BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy
+            | BootstrapMemoryOwnership::StaticElfConstructionAttached
+            | BootstrapMemoryOwnership::StaticElfConstructionDetached
+            | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
             | BootstrapMemoryOwnership::StaticElfConstructionMetadataReturned
             | BootstrapMemoryOwnership::StaticElfConstructionRevoked => {
                 return Err(SystemsModelError::new(
@@ -6777,6 +6848,15 @@ fn model_bootstrap_operation(
         SystemsOperation::SealStaticImageConstructionPermissions => {
             transitions.push(SystemsTransition::SealStaticImageConstructionPermissions);
         }
+        SystemsOperation::AttachStaticImageAddressSpace => {
+            transitions.push(SystemsTransition::AttachStaticImageAddressSpace);
+        }
+        SystemsOperation::DetachStaticImageAddressSpace => {
+            transitions.push(SystemsTransition::DetachStaticImageAddressSpace);
+        }
+        SystemsOperation::ReclaimStaticImageConstructionHierarchy => {
+            transitions.push(SystemsTransition::ReclaimStaticImageConstructionHierarchy);
+        }
         SystemsOperation::RevokeStaticImageConstructionMetadata => {
             transitions.push(SystemsTransition::RevokeStaticImageConstructionMetadata);
         }
@@ -7229,6 +7309,9 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::ZeroStaticImageConstructionPayload
         | SystemsOperation::CopyStaticImageConstructionPayload
         | SystemsOperation::SealStaticImageConstructionPermissions
+        | SystemsOperation::AttachStaticImageAddressSpace
+        | SystemsOperation::DetachStaticImageAddressSpace
+        | SystemsOperation::ReclaimStaticImageConstructionHierarchy
         | SystemsOperation::RevokeStaticImageConstructionMetadata
         | SystemsOperation::ReclaimStaticImageConstructionPayload
         | SystemsOperation::MapKernelFrames { .. }

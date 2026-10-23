@@ -32,8 +32,11 @@ use topal_language::compiler::{
     SYSTEMS_PCI_CONFIGURATION_READ_DWORD, SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD,
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEBUG_BREAK,
-    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_TRANSLATION_ACTIVATE,
@@ -58,7 +61,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/108";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/109";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -73,6 +76,9 @@ pub enum X86SystemsLowering {
     ZeroStaticImagePayload,
     CopyStaticImagePayload,
     SealStaticImagePermissions,
+    AttachStaticImageAddressSpace,
+    DetachStaticImageAddressSpace,
+    ReturnStaticImageHierarchy,
     RevokeInitialStaticImageLeaves,
     ReturnStaticImagePayload,
     AdoptBootstrapIdentityMapping,
@@ -181,6 +187,15 @@ impl X86SystemsLowering {
             Self::CopyStaticImagePayload => "topal.provider.x86_64.static-image.copy-payload/1",
             Self::SealStaticImagePermissions => {
                 "topal.provider.x86_64.static-image.seal-permissions/1"
+            }
+            Self::AttachStaticImageAddressSpace => {
+                "topal.provider.x86_64.static-image.attach-address-space/1"
+            }
+            Self::DetachStaticImageAddressSpace => {
+                "topal.provider.x86_64.static-image.detach-address-space/1"
+            }
+            Self::ReturnStaticImageHierarchy => {
+                "topal.provider.x86_64.static-image.return-hierarchy/1"
             }
             Self::RevokeInitialStaticImageLeaves => {
                 "topal.provider.x86_64.static-image.revoke-initial-leaves/1"
@@ -559,6 +574,15 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS => {
             X86SystemsLowering::SealStaticImagePermissions
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE => {
+            X86SystemsLowering::AttachStaticImageAddressSpace
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE => {
+            X86SystemsLowering::DetachStaticImageAddressSpace
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY => {
+            X86SystemsLowering::ReturnStaticImageHierarchy
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA => {
             X86SystemsLowering::RevokeInitialStaticImageLeaves
         }
@@ -705,6 +729,15 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::SealStaticImagePermissions => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
+            }
+            X86SystemsLowering::AttachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE
+            }
+            X86SystemsLowering::DetachStaticImageAddressSpace => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            }
+            X86SystemsLowering::ReturnStaticImageHierarchy => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
             }
             X86SystemsLowering::RevokeInitialStaticImageLeaves => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
@@ -882,7 +915,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 90);
+        assert_eq!(plan.operations.len(), 93);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
@@ -936,6 +969,18 @@ mod tests {
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS
                 && operation.lowering == X86SystemsLowering::SealStaticImagePermissions
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE
+                && operation.lowering == X86SystemsLowering::AttachStaticImageAddressSpace
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+                && operation.lowering == X86SystemsLowering::DetachStaticImageAddressSpace
+        }));
+        assert!(plan.operations.iter().any(|operation| {
+            operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+                && operation.lowering == X86SystemsLowering::ReturnStaticImageHierarchy
         }));
         assert!(plan.operations.iter().any(|operation| {
             operation.semantic_identity == SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA

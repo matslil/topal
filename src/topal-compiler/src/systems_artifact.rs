@@ -71,8 +71,11 @@ use topal_language::compiler::{
     SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE, SYSTEMS_PCI_CONFIGURATION_READ_DWORD,
     SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD, SYSTEMS_PCI_REGION_READ,
     SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
-    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD, SYSTEMS_USER_MAPPING_INSTALL_ENTRY_TRAMPOLINE,
@@ -117,7 +120,9 @@ use crate::{
     X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL, X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_OBJECT_REVISION, X86_SYSTEMS_PROVIDER_REVISION,
     X86_SYSTEMS_PROVIDER_TEXT_SECTION, X86_SYSTEMS_RAW_ENTROPY_SAMPLE_SYMBOL,
-    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -140,8 +145,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/117";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/106";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/118";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/107";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -157,7 +162,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 53] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 55] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -171,6 +176,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 53] = [
     X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
     X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -1929,6 +1936,8 @@ enum ProviderSymbol {
     ZeroStaticImagePayload,
     CopyStaticImagePayload,
     SealStaticImagePermissions,
+    AttachStaticImageAddressSpace,
+    DetachStaticImageAddressSpace,
     RevokeStaticImage,
     BeginTranslation,
     CommitTranslation,
@@ -2020,6 +2029,12 @@ impl ProviderSymbol {
             Self::ZeroStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
             Self::CopyStaticImagePayload => X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
             Self::SealStaticImagePermissions => X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL,
+            Self::AttachStaticImageAddressSpace => {
+                X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL
+            }
+            Self::DetachStaticImageAddressSpace => {
+                X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL
+            }
             Self::RevokeStaticImage => X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
             Self::BeginTranslation => X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
             Self::CommitTranslation => X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
@@ -2137,6 +2152,8 @@ impl ProviderSymbol {
             | Self::ZeroStaticImagePayload
             | Self::CopyStaticImagePayload
             | Self::SealStaticImagePermissions
+            | Self::AttachStaticImageAddressSpace
+            | Self::DetachStaticImageAddressSpace
             | Self::RevokeStaticImage
             | Self::BeginTranslation
             | Self::CommitTranslation
@@ -2347,6 +2364,9 @@ enum RootStaticImageState {
     Zeroed,
     Populated,
     Sealed,
+    Attached,
+    Detached,
+    HierarchyReturned,
     MetadataReturned,
     PayloadReturned,
 }
@@ -2444,6 +2464,8 @@ struct ProviderSymbols {
     zero_static_image_payload: SymbolId,
     copy_static_image_payload: SymbolId,
     seal_static_image_permissions: SymbolId,
+    attach_static_image_address_space: SymbolId,
+    detach_static_image_address_space: SymbolId,
     revoke_static_image: SymbolId,
     begin_translation: SymbolId,
     commit_translation: SymbolId,
@@ -2593,7 +2615,9 @@ impl RootEncoder {
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
             self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]); // no excluded end
         }
-        if resident_code {
+        if nested_static_elf_hierarchy {
+            // The exact post-leaf candidate and empty exclusion were prepared above.
+        } else if resident_code {
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
             self.bytes
                 .extend_from_slice(&[0x48, 0x81, 0xc7, 0x00, 0x20, 0x00, 0x00]); // after code extent
@@ -2709,11 +2733,16 @@ impl RootEncoder {
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
         };
-        if self.static_image == RootStaticImageState::Sealed && frame_count == 4 {
+        if matches!(
+            self.static_image,
+            RootStaticImageState::Sealed | RootStaticImageState::HierarchyReturned
+        ) && frame_count == 4
+        {
             self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe3]); // restore leaf metadata
             self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // clear hierarchy identity
             self.bytes.extend_from_slice(&[0x31, 0xd2]);
             self.physical_frame_count = None;
+            self.static_image = RootStaticImageState::Sealed;
             return Ok(());
         }
         if self.retained_static_elf_payload {
@@ -2837,6 +2866,63 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe9]); // boot params
         self.call_checked_bool(ProviderSymbol::SealStaticImagePermissions)?;
         self.static_image = RootStaticImageState::Sealed;
+        Ok(())
+    }
+
+    fn attach_static_image_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::Sealed
+            || self.physical_frame_count != Some(4)
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image address-space attachment requires one sealed construction and its live hierarchy"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]); // payload base
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]); // leaf metadata base
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]); // 503 leaves
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xd9]); // hierarchy base
+        self.call_checked_bool(ProviderSymbol::AttachStaticImageAddressSpace)?;
+        self.physical_frame_count = None;
+        self.static_image = RootStaticImageState::Attached;
+        Ok(())
+    }
+
+    fn detach_static_image_address_space(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::Attached
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image address-space detachment requires one attached inactive construction"
+                    .into(),
+            ));
+        }
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf7]);
+        self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe6]);
+        self.bytes
+            .extend_from_slice(&[0xba, 0xf7, 0x01, 0x00, 0x00]);
+        self.bytes.extend_from_slice(&[0x48, 0x89, 0xd9]);
+        self.call_checked_bool(ProviderSymbol::DetachStaticImageAddressSpace)?;
+        self.static_image = RootStaticImageState::Detached;
+        Ok(())
+    }
+
+    fn reclaim_static_image_hierarchy(&mut self) -> Result<(), CompileError> {
+        if self.static_image != RootStaticImageState::Detached
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+        {
+            return Err(CompileError::Tool(
+                "x86 static-image hierarchy reclaim requires one detached construction".into(),
+            ));
+        }
+        self.physical_frame_count = Some(4);
+        self.static_image = RootStaticImageState::HierarchyReturned;
         Ok(())
     }
 
@@ -5200,6 +5286,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::SealStaticImagePermissions,
         ),
+        attach_static_image_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AttachStaticImageAddressSpace,
+        ),
+        detach_static_image_address_space: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::DetachStaticImageAddressSpace,
+        ),
         revoke_static_image: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RevokeStaticImage,
@@ -5832,6 +5926,15 @@ fn encode_operations(
             CompilerSystemsOperation::SealStaticImageConstructionPermissions => {
                 encoder.seal_static_image_permissions()?;
             }
+            CompilerSystemsOperation::AttachStaticImageAddressSpace => {
+                encoder.attach_static_image_address_space()?;
+            }
+            CompilerSystemsOperation::DetachStaticImageAddressSpace => {
+                encoder.detach_static_image_address_space()?;
+            }
+            CompilerSystemsOperation::ReclaimStaticImageConstructionHierarchy => {
+                encoder.reclaim_static_image_hierarchy()?;
+            }
             CompilerSystemsOperation::RevokeStaticImageConstructionMetadata => {
                 encoder.revoke_static_image_construction()?;
             }
@@ -6134,6 +6237,12 @@ fn append_root(
             ProviderSymbol::CopyStaticImagePayload => provider_symbols.copy_static_image_payload,
             ProviderSymbol::SealStaticImagePermissions => {
                 provider_symbols.seal_static_image_permissions
+            }
+            ProviderSymbol::AttachStaticImageAddressSpace => {
+                provider_symbols.attach_static_image_address_space
+            }
+            ProviderSymbol::DetachStaticImageAddressSpace => {
+                provider_symbols.detach_static_image_address_space
             }
             ProviderSymbol::RevokeStaticImage => provider_symbols.revoke_static_image,
             ProviderSymbol::BeginTranslation => provider_symbols.begin_translation,
@@ -6891,6 +7000,9 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::ZeroStaticImageConstructionPayload
                 | CompilerSystemsTransition::CopyStaticImageConstructionPayload
                 | CompilerSystemsTransition::SealStaticImageConstructionPermissions
+                | CompilerSystemsTransition::AttachStaticImageAddressSpace
+                | CompilerSystemsTransition::DetachStaticImageAddressSpace
+                | CompilerSystemsTransition::ReclaimStaticImageConstructionHierarchy
                 | CompilerSystemsTransition::RevokeStaticImageConstructionMetadata
                 | CompilerSystemsTransition::ReclaimStaticImageConstructionPayload
                 | CompilerSystemsTransition::UnmapKernelFrames
@@ -7278,7 +7390,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3488);
+        assert_eq!(relocation_targets.len(), 3581);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -7446,7 +7558,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            3088
+            3177
         );
         assert_eq!(
             relocation_targets
@@ -7607,7 +7719,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            152
+            154
         );
         assert_eq!(
             relocation_targets
@@ -7743,6 +7855,8 @@ mod tests {
                 "topal_x86_systems_static_image_zero_payload",
                 "topal_x86_systems_static_image_copy_payload",
                 "topal_x86_systems_static_image_seal_permissions",
+                "topal_x86_systems_static_image_attach_address_space",
+                "topal_x86_systems_static_image_detach_address_space",
                 "topal_x86_systems_static_image_revoke_initial_leaves",
                 "topal_x86_systems_begin_bootstrap_translation",
                 "topal_x86_systems_commit_bootstrap_translation",
@@ -7894,13 +8008,19 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 339);
+        assert_eq!(decoded.semantic_trace.len(), 344);
         assert!(
             decoded
                 .semantic_trace
                 .iter()
                 .any(|entry| { entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE) })
         );
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE)
+        }));
         assert!(
             decoded.semantic_trace.iter().any(|entry| {
                 entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA)
@@ -7982,18 +8102,32 @@ mod tests {
             "topal.systems.frames.allocate/1:frames=4:alignment=1"
         );
         assert!(decoded.semantic_trace[43].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[44], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[45],
+            decoded.semantic_trace[44],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE
+        );
+        assert!(decoded.semantic_trace[45].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[46],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+        );
+        assert!(decoded.semantic_trace[47].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[48],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+        );
+        assert_eq!(decoded.semantic_trace[49], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[50],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
         );
-        assert_eq!(decoded.semantic_trace[46], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(decoded.semantic_trace[51], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[47],
+            decoded.semantic_trace[52],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
         );
-        assert_eq!(decoded.semantic_trace[48], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..49);
+        assert_eq!(decoded.semantic_trace[53], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..54);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
