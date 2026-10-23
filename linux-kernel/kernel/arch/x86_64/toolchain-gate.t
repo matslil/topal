@@ -171,8 +171,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK"
-                                                                              initialized-stack-entry-restored-construction is unmapped static image construction remove stack pagesz (
+                                                                              entry-auxv-stack-construction is unmapped static image construction add stack entry fact (
                                                                                 owner is pagesz-stack-entry-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is authorized-static-elf-entry,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK"
+                                                                              pagesz-stack-entry-restored-construction is unmapped static image construction remove stack entry fact (
+                                                                                owner is entry-auxv-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-entry-fact-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK"
+                                                                              initialized-stack-entry-restored-construction is unmapped static image construction remove stack pagesz (
+                                                                                owner is pagesz-stack-entry-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-pagesz-qualification-rollback
                                                                               )

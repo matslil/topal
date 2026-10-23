@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -822,12 +822,63 @@ fn analyze_static_elf_frame_sequence(
             "static ELF AT_PAGESZ addition must publish its exact marker before removal",
         ));
     }
+    let entry_fact_stack_construction_name = parse_static_image_stack_entry_fact_addition(
+        source,
+        add_stack_entry_fact,
+        allocator_context,
+        &pagesz_stack_entry_construction_name,
+        &stack_backing_name,
+    )?;
+    let stack_entry_fact_marker_span = statement_span(stack_entry_fact_marker);
+    let stack_entry_fact_marker = analyze_operation(
+        source,
+        stack_entry_fact_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_entry_fact_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_entry_fact_marker_span,
+            "static ELF AT_ENTRY addition must publish its exact marker before removal",
+        ));
+    }
+    let pagesz_stack_entry_restored_construction_name =
+        parse_static_image_stack_entry_fact_removal(
+            source,
+            remove_stack_entry_fact,
+            allocator_context,
+            &entry_fact_stack_construction_name,
+            &stack_backing_name,
+        )?;
+    let stack_entry_fact_revoked_marker_span = statement_span(stack_entry_fact_revoked_marker);
+    let stack_entry_fact_revoked_marker = analyze_operation(
+        source,
+        stack_entry_fact_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(
+        &stack_entry_fact_revoked_marker,
+        CompilerSystemsOperation::ConsoleWrite { text }
+            if text == "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK"
+    ) {
+        return Err(translation_edit_diagnostic(
+            source,
+            stack_entry_fact_revoked_marker_span,
+            "static ELF AT_ENTRY removal must publish its exact marker before AT_PAGESZ removal",
+        ));
+    }
     let initialized_stack_entry_restored_construction_name =
         parse_static_image_stack_pagesz_removal(
             source,
             remove_stack_pagesz,
             allocator_context,
-            &pagesz_stack_entry_construction_name,
+            &pagesz_stack_entry_restored_construction_name,
             &stack_backing_name,
         )?;
     let stack_pagesz_revoked_marker_span = statement_span(stack_pagesz_revoked_marker);
@@ -1101,6 +1152,10 @@ fn analyze_static_elf_frame_sequence(
         stack_entry_initialized_marker,
         CompilerSystemsOperation::AddStaticImageStackPageSize,
         stack_pagesz_marker,
+        CompilerSystemsOperation::AddStaticImageStackEntryFact,
+        stack_entry_fact_marker,
+        CompilerSystemsOperation::RemoveStaticImageStackEntryFact,
+        stack_entry_fact_revoked_marker,
         CompilerSystemsOperation::RemoveStaticImageStackPageSize,
         stack_pagesz_revoked_marker,
         CompilerSystemsOperation::ClearStaticImageStackEntry,
@@ -2267,6 +2322,187 @@ fn parse_static_image_stack_pagesz_addition(
             source,
             span,
             "static-image AT_PAGESZ addition requires the exact owner, backing, provider page value, and policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_entry_fact_addition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image AT_ENTRY addition must refine one page-size-qualified stack entry",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, add, stack, entry, fact, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY addition requires its exact owner, backing, entry value, and policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, add, "add")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, entry, "entry")
+        || !identifier_is(source, fact, "fact")
+        || fields.len() != 4
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY addition requires its exact owner, backing, entry value, and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut value = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(identity)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image AT_ENTRY addition parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "backing" => backing = Some(source.slice(*identity)),
+            "value" => value = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image AT_ENTRY addition parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || value != Some("authorized-static-elf-entry")
+        || policy != Some("bounded-linux-auxv-before-null")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY addition requires the exact owner, backing, authorized entry value, and policy",
+        ));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_entry_fact_removal(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image AT_ENTRY removal must refine one entry-fact stack entry",
+            ));
+        }
+    };
+    let [receiver, static_word, image, construction, remove, stack, entry, fact, Expression::Product { fields, .. }] =
+        items.as_slice()
+    else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY removal requires its exact owner, backing, and rollback policy",
+        ));
+    };
+    if !identifier_is(source, receiver, context_name)
+        || !identifier_is(source, static_word, "static")
+        || !identifier_is(source, image, "image")
+        || !identifier_is(source, construction, "construction")
+        || !identifier_is(source, remove, "remove")
+        || !identifier_is(source, stack, "stack")
+        || !identifier_is(source, entry, "entry")
+        || !identifier_is(source, fact, "fact")
+        || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY removal requires its exact owner, backing, and rollback policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut policy = None;
+    for field in fields {
+        let (Some(label), Expression::Identifier(identity)) = (field.label, &field.value) else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image AT_ENTRY removal parameters must be named identities",
+            ));
+        };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "backing" => backing = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image AT_ENTRY removal parameter",
+                ));
+            }
+        }
+    }
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || policy != Some("bounded-stack-entry-fact-qualification-rollback")
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image AT_ENTRY removal requires the exact owner, backing, and rollback policy",
         ));
     }
     Ok(source.slice(name).to_owned())
