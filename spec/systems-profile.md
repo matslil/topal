@@ -767,6 +767,42 @@ backing, install a leaf, initialize stack contents or TLS, construct a user
 context, enter user mode, fetch or execute a static-image instruction, handle
 a user fault or syscall, or retain slot authority after its bounded witness.
 
+### TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001 — Opaque stack-backing extent
+
+`static image construction reserve stack backing` SHALL be admitted only under
+the exact `StackSlotAuthorizedStaticImageConstruction` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001`. It SHALL accept only that owner,
+`frame-count` one, and `alignment-frames` one, and SHALL produce one affine
+page-sized physical extent nested beneath the unchanged stack-slot owner.
+
+The allocator/provider SHALL prove the complete returned frame allocatable,
+page-aligned, and disjoint from the static ELF payload, leaf metadata,
+translation hierarchy, boot resources, every earlier reservation, and every
+non-allocatable firmware interval. Numeric physical and virtual addresses,
+frame descriptors, allocation metadata, and target placement SHALL remain
+provider-private.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK` observation, then release the
+exact whole extent before invoking stack-slot revocation. Whole release SHALL
+restore the unchanged slot-authorized construction. An alternative request,
+partial or duplicate release, second live backing extent, wrong order or
+witness, slot or entry revocation while backing is live, reuse of a construction
+frame, or recoverable disposition with the extent live SHALL be invalid.
+
+For qualified x86-64 realization, the allocation floor SHALL be the first frame
+after the exact four-frame static hierarchy. The existing bounded E820
+allocator SHALL validate the complete candidate and boot reservations. The
+checked root SHALL retain the hierarchy identity separately while the backing
+identity is live, then clear the backing identity and restore the hierarchy
+identity on whole release.
+
+Reservation and release SHALL NOT modify the static hierarchy, leaf metadata,
+payload, or root register. This rule SHALL NOT zero or initialize the frame,
+install a stack leaf, publish a stack pointer, initialize process-entry state
+or TLS, construct a user context, enter user mode, execute BusyBox, or add a
+syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

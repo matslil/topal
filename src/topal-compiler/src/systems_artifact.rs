@@ -157,8 +157,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/121";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/110";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/122";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/111";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -2629,6 +2629,11 @@ impl RootEncoder {
             && self.physical_frame_count.is_none()
             && frame_count == 4
             && !self.retained_static_elf_payload;
+        let nested_static_elf_stack_backing = self.static_image
+            == RootStaticImageState::StackSlotAuthorized
+            && self.physical_frame_count.is_none()
+            && frame_count == 1
+            && !self.retained_static_elf_payload;
         if !self.frame_allocator_created
             || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
@@ -2636,6 +2641,8 @@ impl RootEncoder {
             || alignment_frames != 1
             || (frame_count == 4 && !nested_static_elf_hierarchy)
             || (self.static_image == RootStaticImageState::Sealed && !nested_static_elf_hierarchy)
+            || (self.static_image == RootStaticImageState::StackSlotAuthorized
+                && !nested_static_elf_stack_backing)
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
                 && frame_count != 2)
         {
@@ -2644,7 +2651,13 @@ impl RootEncoder {
             ));
         }
         let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
-        if nested_static_elf_hierarchy {
+        if nested_static_elf_stack_backing {
+            self.bytes.extend_from_slice(&[0x48, 0x89, 0xdd]); // retain hierarchy in rbp
+            self.bytes
+                .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00]); // floor after hierarchy
+            self.bytes.extend_from_slice(&[0x31, 0xc9]); // no separate exclusion
+            self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]);
+        } else if nested_static_elf_hierarchy {
             self.bytes.extend_from_slice(&[0x49, 0x89, 0xdc]); // retain leaf metadata in r12
             self.bytes
                 .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x10, 0x00, 0x00]); // floor after leaf table
@@ -2668,8 +2681,8 @@ impl RootEncoder {
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no excluded extent
             self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]); // no excluded end
         }
-        if nested_static_elf_hierarchy {
-            // The exact post-leaf candidate and empty exclusion were prepared above.
+        if nested_static_elf_hierarchy || nested_static_elf_stack_backing {
+            // The exact monotonic candidate and empty exclusion were prepared above.
         } else if resident_code {
             self.bytes.extend_from_slice(&[0x48, 0x8b, 0x7f, 0x78]); // code frame base
             self.bytes
@@ -2796,6 +2809,14 @@ impl RootEncoder {
             self.bytes.extend_from_slice(&[0x31, 0xd2]);
             self.physical_frame_count = None;
             self.static_image = RootStaticImageState::Sealed;
+            return Ok(());
+        }
+        if self.static_image == RootStaticImageState::StackSlotAuthorized && frame_count == 1 {
+            self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear backing identity
+            self.bytes.extend_from_slice(&[0x48, 0x89, 0xeb]); // restore hierarchy identity
+            self.bytes.extend_from_slice(&[0x48, 0x31, 0xed]); // clear retained hierarchy copy
+            self.bytes.extend_from_slice(&[0x31, 0xd2]);
+            self.physical_frame_count = None;
             return Ok(());
         }
         if self.retained_static_elf_payload {
@@ -7636,6 +7657,18 @@ mod tests {
                     .any(|bytes| bytes == [0x4c, 0x89, 0xe3]),
             "checked root must place the hierarchy after the leaf table and preserve its owner"
         );
+        assert!(
+            root_bytes
+                .windows(7)
+                .any(|bytes| bytes == [0x48, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00])
+                && root_bytes
+                    .windows(3)
+                    .any(|bytes| bytes == [0x48, 0x89, 0xdd])
+                && root_bytes.windows(9).any(|bytes| {
+                    bytes == [0x48, 0x31, 0xdb, 0x48, 0x89, 0xeb, 0x48, 0x31, 0xed]
+                }),
+            "checked root must allocate stack backing after the hierarchy, clear it, and restore the hierarchy owner"
+        );
         let relocation_targets = text
             .relocations()
             .map(|(_, relocation)| {
@@ -7645,7 +7678,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 3883);
+        assert_eq!(relocation_targets.len(), 3932);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -7741,7 +7774,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            10
+            11
         );
         for target in [
             X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
@@ -7822,7 +7855,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            3467
+            3514
         );
         assert_eq!(
             relocation_targets
@@ -7983,7 +8016,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            160
+            161
         );
         assert_eq!(
             relocation_targets
@@ -8278,7 +8311,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 356);
+        assert_eq!(decoded.semantic_trace.len(), 359);
         assert!(
             decoded
                 .semantic_trace
@@ -8422,35 +8455,41 @@ mod tests {
         assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[54],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            "topal.systems.frames.allocate/1:frames=1:alignment=1"
         );
         assert!(decoded.semantic_trace[55].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[56], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[56],
+            decoded.semantic_trace[57],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+        );
+        assert!(decoded.semantic_trace[58].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[59],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
-        assert!(decoded.semantic_trace[57].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[60].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[58],
+            decoded.semantic_trace[61],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert!(decoded.semantic_trace[59].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[62].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[60],
+            decoded.semantic_trace[63],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
-        assert_eq!(decoded.semantic_trace[61], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(decoded.semantic_trace[64], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[62],
+            decoded.semantic_trace[65],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
         );
-        assert_eq!(decoded.semantic_trace[63], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(decoded.semantic_trace[66], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[64],
+            decoded.semantic_trace[67],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
         );
-        assert_eq!(decoded.semantic_trace[65], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..66);
+        assert_eq!(decoded.semantic_trace[68], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..69);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()
