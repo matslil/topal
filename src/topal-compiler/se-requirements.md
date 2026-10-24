@@ -736,6 +736,23 @@ preserved translation state, ordered witnesses, and no exposed address, byte,
 tag, pointer, entropy, TLS, user-mode, syscall, or BusyBox execution authority.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001` and `TK-DEC-154`.
 
+The bounded static-ELF prepared-process-retention increment shall accept one
+exact typed transfer from the random-slot-authorized construction into an
+opaque affine retained-process owner and one exact qualification restoration.
+X86-64 lowering shall preserve the provider-private payload, metadata,
+hierarchy, leaf, entry, and stack-backing identities in compiler-controlled
+root state, close construction allocator state without resource release, and
+restore the exact nested one-frame backing obligation. Both transitions shall
+completely validate the inactive hierarchy, image, deterministic stack, future
+random-object zeros, guard, and identity tuple without stores, fences,
+invalidation, release, or activation. The checker and semantic model shall
+reject another owner, backing, value, policy, duplicate retention, mutation,
+early restore, resource reuse, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove complete survival, closed allocator
+state, exact restoration, ordered witnesses, and no exposed resource, entropy,
+TLS, user-mode, syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001` and `TK-DEC-155`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

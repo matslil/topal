@@ -1508,6 +1508,56 @@ placeholder, consume entropy, publish `AT_RANDOM`, expose an address, byte,
 offset, tag, pointer, or representation, add a vDSO, initialize TLS, construct
 a user context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001 — Prepared-process retention
+
+`static image construction retain prepared process` SHALL require the exact
+live `RandomSlotAuthorizedStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001`. It SHALL accept only that
+owner, that backing identity, `value` equal to
+`bounded-static-elf-initial-process`, and policy
+`bounded-static-elf-pre-entropy-retention`. It SHALL consume the construction-
+facing owners and produce one affine `RetainedStaticElfInitialProcess`
+containing the sealed image, inactive hierarchy, entry authority, guarded
+RW/NX stack, deterministic process table, and random-slot authority.
+
+Before success, the provider SHALL completely revalidate the random-slot-
+authorized construction and bind its opaque resource tuple to the retained
+owner. It SHALL close construction-facing allocator state without releasing,
+aliasing, activating, exposing, or mutating any resource. Subsequent unrelated
+kernel operations MAY own disjoint resources but SHALL gain no access to the
+retained process. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK` observation.
+
+For qualification, source SHALL immediately invoke
+`static image construction restore prepared process` with the exact retained
+owner and policy `bounded-static-elf-retention-qualification-rollback`.
+Restoration SHALL prove every retained resource and byte unchanged, consume the
+retained owner, reopen only the exact random-slot-authorized construction and
+nested one-frame backing, and emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK` observation before
+random-slot revocation.
+
+A wrong owner, backing, value, policy, resource tuple, content, translation
+state, or ordering; duplicate or partial retention; construction mutation,
+backing release, activation, teardown, or bootstrap completion while retained;
+or recoverable disposition SHALL be invalid. Only exact restoration or a later
+approved retained-process consumer may consume the retained owner.
+
+For qualified x86-64 realization, compiler-controlled root state SHALL retain
+the provider-private payload, metadata, hierarchy, leaf, entry, and stack-
+backing identities across ordinary provider calls. Retention SHALL clear the
+construction allocator channel without returning frames; restoration SHALL
+recreate its exact one-frame nested backing obligation. Both transitions SHALL
+completely validate the inactive root, hierarchy, leaves, resident ELF
+metadata, deterministic process table, future random-object zeros, strings,
+guard, and otherwise-zero stack bytes. They SHALL perform no store, fence,
+active-address invalidation, release, or activation.
+
+This rule SHALL NOT retain the process beyond its restoration witness in this
+increment, consume entropy, publish `AT_RANDOM`, expose resource representation,
+add a vDSO, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
