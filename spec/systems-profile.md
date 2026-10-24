@@ -1691,6 +1691,37 @@ This rule SHALL NOT negotiate or drive the device, span the entropy pipeline,
 consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a
 user context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-DISCOVERY-001 — Entropy-transport discovery
+
+`static image construction qualify entropy transport` SHALL require, consume,
+and return the exact `EntropyAcquiringStaticElfInitialProcess` accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DEVICE-COEXISTENCE-001`. It SHALL accept only
+transport identity `initial-virtio-rng-pci-transport` and policy
+`bounded-static-elf-entropy-transport-discovery`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL then perform the remaining 23
+read-only PCI configuration observations of the existing exact 24-dword pinned
+Q35 virtio-rng discovery sequence. Together with the immediately preceding
+device-identity observation, the sequence SHALL prove the sealed capability
+list, BAR roles, offsets, lengths, and notification multiplier. It SHALL use
+the generic checked PCI-configuration boundary, return the same acquisition
+owner, and permit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OK` observation only after complete
+process and transport proofs succeed.
+
+Another owner, transport, policy, coordinate, value, ordering, omission,
+duplication, or observation; incomplete process validation; process mutation,
+release, alias, activation, or exposure; configuration write; BAR or DMA
+access; negotiation; entropy use; or recoverable disposition SHALL be invalid.
+Source SHALL receive no process resource, PCI coordinate, capability field,
+configuration value, address, port, allocator state, output byte, or provider
+representation.
+
+This rule SHALL NOT negotiate or drive the device, span the entropy pipeline,
+consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a
+user context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
