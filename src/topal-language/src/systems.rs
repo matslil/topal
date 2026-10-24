@@ -95,6 +95,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -121,6 +122,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -9315,6 +9317,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -9341,6 +9344,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -10476,7 +10480,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 362);
+        assert_eq!(program.bootstrap.handler.operations.len(), 366);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10564,6 +10568,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -10590,6 +10595,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -13889,6 +13895,53 @@ mod tests {
         ] {
             let error = analyze_systems_for_compiler(&source, &CompilerSystemsTargetSelection::initial_x86_64_qemu()).unwrap_err();
             assert!(error.message.contains("entropy handoff") || error.message.contains("exact marker"), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_acquisition_authority() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001.
+        for source in [
+            SOURCE.replace(
+                "owner is entropy-pending-static-process,",
+                "owner is retained-static-process,",
+            ),
+            SOURCE.replace(
+                "output is initial-entropy-output",
+                "output is unrelated-output",
+            ),
+            SOURCE.replace(
+                "generation is generation-two",
+                "generation is generation-one",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-initial-entropy-acquisition",
+                "loader-owned-entropy-acquisition",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_BAD",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-entropy-acquisition-qualification-rollback",
+                "discard-entropy-acquisition",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("entropy acquisition")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
         }
     }
 

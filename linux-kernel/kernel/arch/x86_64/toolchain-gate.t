@@ -262,8 +262,20 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-initial-random-delivery
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK"
-                                                                              retained-static-process-after-entropy-rollback is unmapped static image construction revoke entropy handoff (
+                                                                              entropy-acquiring-static-process is unmapped static image construction authorize entropy acquisition (
                                                                                 owner is entropy-pending-static-process,
+                                                                                output is initial-entropy-output,
+                                                                                generation is generation-two,
+                                                                                policy is bounded-static-elf-initial-entropy-acquisition
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process,
+                                                                                policy is bounded-static-elf-entropy-acquisition-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
+                                                                              retained-static-process-after-entropy-rollback is unmapped static image construction revoke entropy handoff (
+                                                                                owner is entropy-pending-static-process-after-acquisition-rollback,
                                                                                 policy is bounded-static-elf-entropy-handoff-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK"

@@ -70,6 +70,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK: &str
     "topal.systems.static-image.construction.qualify-retained-disjoint-work/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.authorize-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.authorize-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.revoke-entropy-acquisition/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =

@@ -44,6 +44,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -70,6 +71,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -100,7 +102,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/129";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/130";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -130,6 +132,8 @@ pub enum X86SystemsLowering {
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
     AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
@@ -311,6 +315,12 @@ impl X86SystemsLowering {
             }
             Self::AuthorizeStaticImageEntropyHandoff => {
                 "topal.provider.x86_64.static-image.authorize-entropy-handoff/1"
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                "topal.provider.x86_64.static-image.authorize-entropy-acquisition/1"
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                "topal.provider.x86_64.static-image.revoke-entropy-acquisition/1"
             }
             Self::RevokeStaticImageEntropyHandoff => {
                 "topal.provider.x86_64.static-image.revoke-entropy-handoff/1"
@@ -808,6 +818,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF => {
             X86SystemsLowering::AuthorizeStaticImageEntropyHandoff
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION => {
+            X86SystemsLowering::AuthorizeStaticImageEntropyAcquisition
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION => {
+            X86SystemsLowering::RevokeStaticImageEntropyAcquisition
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF => {
             X86SystemsLowering::RevokeStaticImageEntropyHandoff
         }
@@ -1078,6 +1094,12 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::AuthorizeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
             }
+            X86SystemsLowering::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            X86SystemsLowering::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            }
             X86SystemsLowering::RevokeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
             }
@@ -1332,7 +1354,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 131);
+        assert_eq!(plan.operations.len(), 133);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

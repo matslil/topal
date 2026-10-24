@@ -84,6 +84,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -110,6 +111,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -172,6 +174,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PROGRAM_HEADERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
@@ -195,6 +198,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
@@ -222,8 +226,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/139";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/128";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/140";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/129";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -239,7 +243,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 93] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 95] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -268,6 +272,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 93] = [
     X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
@@ -2066,6 +2072,8 @@ enum ProviderSymbol {
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
     AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
@@ -2222,6 +2230,12 @@ impl ProviderSymbol {
             }
             Self::AuthorizeStaticImageEntropyHandoff => {
                 X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL
             }
             Self::RevokeStaticImageEntropyHandoff => {
                 X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL
@@ -2416,6 +2430,8 @@ impl ProviderSymbol {
             | Self::RetainStaticImagePreparedProcess
             | Self::QualifyStaticImageRetainedDisjointWork
             | Self::AuthorizeStaticImageEntropyHandoff
+            | Self::AuthorizeStaticImageEntropyAcquisition
+            | Self::RevokeStaticImageEntropyAcquisition
             | Self::RevokeStaticImageEntropyHandoff
             | Self::RestoreStaticImagePreparedProcess
             | Self::RevokeStaticImageStackRandomSlot
@@ -2672,6 +2688,7 @@ enum RootStaticImageState {
     StackRandomSlotAuthorized,
     PreparedProcessRetained,
     EntropyPendingProcess,
+    EntropyAcquiringProcess,
     EntryRestored,
     Detached,
     HierarchyReturned,
@@ -2787,6 +2804,8 @@ struct ProviderSymbols {
     retain_static_image_prepared_process: SymbolId,
     qualify_static_image_retained_disjoint_work: SymbolId,
     authorize_static_image_entropy_handoff: SymbolId,
+    authorize_static_image_entropy_acquisition: SymbolId,
+    revoke_static_image_entropy_acquisition: SymbolId,
     revoke_static_image_entropy_handoff: SymbolId,
     restore_static_image_prepared_process: SymbolId,
     revoke_static_image_stack_random_slot: SymbolId,
@@ -4024,6 +4043,48 @@ impl RootEncoder {
 
     fn revoke_static_image_entropy_handoff(&mut self) -> Result<(), CompileError> {
         self.transition_static_image_entropy_handoff(false)
+    }
+
+    fn transition_static_image_entropy_acquisition(
+        &mut self,
+        authorize: bool,
+    ) -> Result<(), CompileError> {
+        let required = if authorize {
+            RootStaticImageState::EntropyPendingProcess
+        } else {
+            RootStaticImageState::EntropyAcquiringProcess
+        };
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != required
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool("x86 static-image entropy-acquisition transition requires its exact opaque process owner".into()));
+        }
+        self.bytes.extend_from_slice(&[
+            0x4c, 0x89, 0xf7, 0x4c, 0x89, 0xe6, 0xba, 0xf7, 0x01, 0, 0, 0x48, 0x89, 0xe9, 0x4d,
+            0x89, 0xf8, 0x49, 0x89, 0xd9,
+        ]);
+        self.call_checked_bool(if authorize {
+            ProviderSymbol::AuthorizeStaticImageEntropyAcquisition
+        } else {
+            ProviderSymbol::RevokeStaticImageEntropyAcquisition
+        })?;
+        self.static_image = if authorize {
+            RootStaticImageState::EntropyAcquiringProcess
+        } else {
+            RootStaticImageState::EntropyPendingProcess
+        };
+        Ok(())
+    }
+
+    fn authorize_static_image_entropy_acquisition(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_entropy_acquisition(true)
+    }
+
+    fn revoke_static_image_entropy_acquisition(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_entropy_acquisition(false)
     }
 
     fn remove_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
@@ -6559,6 +6620,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::AuthorizeStaticImageEntropyHandoff,
         ),
+        authorize_static_image_entropy_acquisition: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AuthorizeStaticImageEntropyAcquisition,
+        ),
+        revoke_static_image_entropy_acquisition: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RevokeStaticImageEntropyAcquisition,
+        ),
         revoke_static_image_entropy_handoff: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RevokeStaticImageEntropyHandoff,
@@ -7336,6 +7405,12 @@ fn encode_operations(
             CompilerSystemsOperation::AuthorizeStaticImageEntropyHandoff => {
                 encoder.authorize_static_image_entropy_handoff()?;
             }
+            CompilerSystemsOperation::AuthorizeStaticImageEntropyAcquisition => {
+                encoder.authorize_static_image_entropy_acquisition()?;
+            }
+            CompilerSystemsOperation::RevokeStaticImageEntropyAcquisition => {
+                encoder.revoke_static_image_entropy_acquisition()?;
+            }
             CompilerSystemsOperation::RevokeStaticImageEntropyHandoff => {
                 encoder.revoke_static_image_entropy_handoff()?;
             }
@@ -7763,6 +7838,12 @@ fn append_root(
             }
             ProviderSymbol::AuthorizeStaticImageEntropyHandoff => {
                 provider_symbols.authorize_static_image_entropy_handoff
+            }
+            ProviderSymbol::AuthorizeStaticImageEntropyAcquisition => {
+                provider_symbols.authorize_static_image_entropy_acquisition
+            }
+            ProviderSymbol::RevokeStaticImageEntropyAcquisition => {
+                provider_symbols.revoke_static_image_entropy_acquisition
             }
             ProviderSymbol::RevokeStaticImageEntropyHandoff => {
                 provider_symbols.revoke_static_image_entropy_handoff
@@ -8606,6 +8687,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::RetainStaticImagePreparedProcess
                 | CompilerSystemsTransition::QualifyStaticImageRetainedDisjointWork
                 | CompilerSystemsTransition::AuthorizeStaticImageEntropyHandoff
+                | CompilerSystemsTransition::AuthorizeStaticImageEntropyAcquisition
+                | CompilerSystemsTransition::RevokeStaticImageEntropyAcquisition
                 | CompilerSystemsTransition::RevokeStaticImageEntropyHandoff
                 | CompilerSystemsTransition::RestoreStaticImagePreparedProcess
                 | CompilerSystemsTransition::RevokeStaticImageStackRandomSlot
@@ -9039,7 +9122,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 5466);
+        assert_eq!(relocation_targets.len(), 5581);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -9225,7 +9308,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            4982
+            5093
         );
         assert_eq!(
             relocation_targets
@@ -9386,7 +9469,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            194
+            196
         );
         assert_eq!(
             relocation_targets
@@ -9537,6 +9620,8 @@ mod tests {
                 "topal_x86_systems_static_image_retain_prepared_process",
                 "topal_x86_systems_static_image_qualify_retained_disjoint_work",
                 "topal_x86_systems_static_image_authorize_entropy_handoff",
+                "topal_x86_systems_static_image_authorize_entropy_acquisition",
+                "topal_x86_systems_static_image_revoke_entropy_acquisition",
                 "topal_x86_systems_static_image_revoke_entropy_handoff",
                 "topal_x86_systems_static_image_restore_prepared_process",
                 "topal_x86_systems_static_image_revoke_stack_random_slot",
@@ -9713,7 +9798,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 423);
+        assert_eq!(decoded.semantic_trace.len(), 427);
         assert!(
             decoded
                 .semantic_trace
@@ -10022,10 +10107,20 @@ mod tests {
         assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[90],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
         );
         assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..92);
+        assert_eq!(
+            decoded.semantic_trace[92],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+        );
+        assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(
+            decoded.semantic_trace[94],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+        );
+        assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..96);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS

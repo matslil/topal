@@ -42,6 +42,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
@@ -68,6 +69,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
@@ -1225,6 +1227,8 @@ pub enum SystemsOperation {
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
     AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
@@ -1509,6 +1513,12 @@ impl SystemsOperation {
             }
             Self::AuthorizeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
             Self::RevokeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
@@ -1851,6 +1861,8 @@ pub enum SystemsTransition {
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
     AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
@@ -2351,6 +2363,12 @@ impl SystemsTransition {
             Self::AuthorizeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
             }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            }
             Self::RevokeStaticImageEntropyHandoff => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
             }
@@ -2715,6 +2733,8 @@ fn validate_entry(
                     | SystemsOperation::RetainStaticImagePreparedProcess
                     | SystemsOperation::QualifyStaticImageRetainedDisjointWork
                     | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+                    | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
+                    | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
                     | SystemsOperation::RevokeStaticImageStackRandomSlot
@@ -3069,6 +3089,7 @@ struct BootstrapAuthorityState {
     memory_ownership: BootstrapMemoryOwnership,
     retained_static_process: bool,
     entropy_pending_static_process: bool,
+    entropy_acquiring_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -3728,10 +3749,37 @@ impl BootstrapAuthorityState {
                 self.retained_static_process = false;
                 self.entropy_pending_static_process = true;
             }
+            SystemsOperation::AuthorizeStaticImageEntropyAcquisition => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy acquisition authorization requires the exact entropy-pending process",
+                    ));
+                }
+                self.entropy_pending_static_process = false;
+                self.entropy_acquiring_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyAcquisition => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy acquisition revocation requires the exact acquisition owner",
+                    ));
+                }
+                self.entropy_acquiring_static_process = false;
+                self.entropy_pending_static_process = true;
+            }
             SystemsOperation::RevokeStaticImageEntropyHandoff => {
                 if self.memory_ownership != BootstrapMemoryOwnership::None
                     || self.retained_static_process
                     || !self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
@@ -5872,7 +5920,9 @@ impl BootstrapAuthorityState {
         }
         match self.memory_ownership {
             BootstrapMemoryOwnership::None
-                if !self.retained_static_process && !self.entropy_pending_static_process => {}
+                if !self.retained_static_process
+                    && !self.entropy_pending_static_process
+                    && !self.entropy_acquiring_static_process => {}
             BootstrapMemoryOwnership::None => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
@@ -7761,6 +7811,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AuthorizeStaticImageEntropyHandoff => {
             transitions.push(SystemsTransition::AuthorizeStaticImageEntropyHandoff);
         }
+        SystemsOperation::AuthorizeStaticImageEntropyAcquisition => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageEntropyAcquisition);
+        }
+        SystemsOperation::RevokeStaticImageEntropyAcquisition => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
+        }
         SystemsOperation::RevokeStaticImageEntropyHandoff => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyHandoff);
         }
@@ -8306,6 +8362,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::RetainStaticImagePreparedProcess
         | SystemsOperation::QualifyStaticImageRetainedDisjointWork
         | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+        | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
+        | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
         | SystemsOperation::RevokeStaticImageStackRandomSlot
@@ -11346,6 +11404,8 @@ mod tests {
                 SystemsOperation::RetainStaticImagePreparedProcess,
                 SystemsOperation::QualifyStaticImageRetainedDisjointWork,
                 SystemsOperation::AuthorizeStaticImageEntropyHandoff,
+                SystemsOperation::AuthorizeStaticImageEntropyAcquisition,
+                SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
                 SystemsOperation::RevokeStaticImageStackRandomSlot,
@@ -11391,6 +11451,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RetainStaticImagePreparedProcess));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageRetainedDisjointWork));
         assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyHandoff));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyAcquisition));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackRandomSlot));
@@ -11410,6 +11472,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
