@@ -158,6 +158,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF entropy-handoff authority](bounded-static-elf-entropy-handoff-authority.md)
 - [Bounded static ELF entropy-acquisition authority](bounded-static-elf-entropy-acquisition-authority.md)
 - [Bounded static ELF entropy-device coexistence](bounded-static-elf-entropy-device-coexistence.md)
+- [Bounded static ELF entropy-transport discovery](bounded-static-elf-entropy-transport-discovery.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
