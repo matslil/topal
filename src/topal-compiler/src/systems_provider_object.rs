@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/132";
+    "topal.provider-object.x86_64-qemu-pc-q35/133";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -93,6 +93,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DEVICE_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_device";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_transport";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_negotiation";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -428,6 +430,13 @@ fn pci_region_configuration_gateway(
     }
 
     code.bind("success")?;
+    for selector_delta in [4_u8, 8, 12] {
+        code.bytes(&[0x41, 0x8d, 0x42, selector_delta]);
+        code.bytes(&[0x66, 0xba, 0xf8, 0x0c, 0xef]);
+        code.bytes(&[0x66, 0xba, 0xfc, 0x0c]);
+        code.bytes(&[0x31, 0xc0, 0xef, 0xed, 0x85, 0xc0]);
+        code.jump_if(0x85, "fail");
+    }
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -1449,6 +1458,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
         &static_image_qualify_entropy_transport()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+        &static_image_qualify_entropy_negotiation()?,
     );
     append_encoded_function(
         &mut object,
@@ -8615,6 +8630,10 @@ fn static_image_qualify_entropy_transport() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_negotiation() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -9933,16 +9952,24 @@ assert bytes(output) == block[32:]
                     .windows(5)
                     .filter(|window| *window == [0x66, 0xba, 0xf8, 0x0c, 0xef])
                     .count(),
-                4,
-                "gateway access must select BAR, offset, width, and data fields"
+                7,
+                "gateway access must select BAR, offset, width, data, and three rollback fields"
             );
             assert_eq!(
                 bytes
                     .windows(4)
                     .filter(|window| *window == [0x66, 0xba, 0xfc, 0x0c])
                     .count(),
-                4,
-                "gateway access must address BAR, offset, width, and data fields"
+                7,
+                "gateway access must address BAR, offset, width, data, and three rollback fields"
+            );
+            assert_eq!(
+                bytes
+                    .windows(6)
+                    .filter(|window| *window == [0x31, 0xc0, 0xef, 0xed, 0x85, 0xc0])
+                    .count(),
+                3,
+                "gateway access must restore and verify the discovered zero BAR, offset, and length fields"
             );
             if read {
                 assert!(
@@ -11337,6 +11364,10 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
         );
+        let qualify_entropy_negotiation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11353,6 +11384,7 @@ assert bytes(output) == block[32:]
             authorize_entropy_acquisition,
             qualify_entropy_device,
             qualify_entropy_transport,
+            qualify_entropy_negotiation,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,

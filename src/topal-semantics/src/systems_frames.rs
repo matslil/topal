@@ -78,6 +78,8 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE: &str =
     "topal.systems.static-image.construction.qualify-entropy-device/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT: &str =
     "topal.systems.static-image.construction.qualify-entropy-transport/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-negotiation/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
