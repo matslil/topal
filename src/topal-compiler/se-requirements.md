@@ -698,6 +698,26 @@ witnesses, and no exposed mask, CPUID, feature-bit, random, TLS, user-mode,
 syscall, or BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001` and `TK-DEC-152`.
 
+The bounded static-ELF load-metadata increment shall accept one exact typed
+addition from the hardware-capability-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete strings, prior
+facts, absent interpreter, and accepted ELF flags; clear the full frame;
+reconstruct a 16-byte-aligned block with native `AT_BASE=(7,0)` and
+`AT_FLAGS=(8,0)`, all prior facts and strings, and terminating `AT_NULL`; fence;
+and completely read back all content and otherwise-zero bytes. Removal shall
+validate the extended block, clear the full frame, reconstruct the exact
+capability-qualified block, fence, and completely read it back. The checker and
+semantic model shall preserve affine load-metadata ownership and reject another
+owner, backing, value, policy, duplicate addition, early prior-fact removal,
+ordinary clearing or leaf revocation, activation, release, teardown, or
+disposition. Structural and duplicate pinned-QEMU tests shall prove exact tags
+and explicit zero values, complete reconstruction and rollback, non-overlapping
+block growth, preserved prior facts and translation state, ordered witnesses,
+and no exposed value, header, random, TLS, user-mode, syscall, or BusyBox
+execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001` and `TK-DEC-153`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

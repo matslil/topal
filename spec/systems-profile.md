@@ -1406,6 +1406,57 @@ expose masks, CPUID leaves, feature bits, or representation, add random data or
 a vDSO, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001 — Static load metadata
+
+`static image construction add stack load metadata` SHALL require the exact
+live `HardwareCapabilitiesStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `static-executable-load-metadata`, and
+policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`LoadMetadataStackEntryStaticImageConstruction` retaining every prior fact
+while atomically adding coherent `AT_BASE` and `AT_FLAGS` facts after
+`AT_HWCAP2` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the capability-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument and platform
+strings, and the validated absence of an interpreter and accepted ELF flags.
+It SHALL clear the complete backing; reconstruct the complete target-aligned
+block; perform every target-required visibility operation; and read back every
+word, pointer relation, string byte, metadata fact, terminator, identity
+relation, and otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK` observation.
+
+Source SHALL invoke `static image construction remove stack load metadata` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-load-metadata-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact capability-qualified block, preserve every
+prior obligation, and reproduce the exact
+`HardwareCapabilitiesStackEntryStaticImageConstruction`. Source SHALL emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK` observation
+before capability removal.
+
+A wrong owner, backing, value, policy, tag, metadata value, or ordering;
+duplicate or partial addition; partial mutation or readback; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+load-metadata removal SHALL restore the state admitted by capability removal.
+
+For qualified x86-64 realization of the accepted static `ET_EXEC`, the provider
+SHALL encode `AT_BASE=(7,0)` and `AT_FLAGS=(8,0)` after `AT_HWCAP2=(26,0)` and
+before `AT_NULL`. The nonzero tags SHALL remain explicit despite both zero
+values. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact prior facts, strings, and inactive hierarchy,
+enlarge the aligned block without overlap, and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the metadata facts after their removal witness,
+expose values, header fields, or representation, admit an interpreter or
+dynamic loading, add random data or a vDSO, initialize TLS, construct a user
+context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
