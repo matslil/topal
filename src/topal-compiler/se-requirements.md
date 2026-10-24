@@ -894,6 +894,25 @@ complete rollback, same-owner return, later-sequence preservation, and no
 exposed process, DMA, address, PCI, or entropy representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001` and `TK-DEC-164`.
 
+The bounded static-ELF entropy-split-ring-coexistence increment shall consume
+and return the exact acquisition owner around one transaction-scoped queue
+construction. X86-64 lowering shall completely validate the retained process;
+replay negotiation, queue discovery, bus mastering, and both DMA-buffer
+qualifications; perform the exact opaque reference binding and four ordered
+split-ring stores; then erase all five fields in reverse publication order,
+including an exact 8-byte zero store for the reference field. It shall reverse
+bus mastering and restore device and gateway state. No buffer identity or bound
+address shall escape and the later ordinary sequence shall remain unconsumed.
+The checker and semantic model shall reject another owner, device, domain,
+queue, policy, field, width, offset, value, order, omission, duplicate, exposed
+identity/address, nonzero final byte, early rollback, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove complete process
+validation, exact prerequisite replay, exact ring construction, reverse-order
+erasure, complete rollback, same-owner return, later-sequence preservation, and
+no exposed process, DMA, address, PCI, queue, or entropy representation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001` and
+`TK-DEC-165`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

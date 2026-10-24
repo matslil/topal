@@ -1863,6 +1863,48 @@ the device, span the entropy pipeline, consume or expose entropy, publish
 `AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001 — Reversible entropy split-ring coexistence
+
+`static image construction qualify entropy split ring` SHALL require, consume,
+and return the exact `EntropyAcquiringStaticElfInitialProcess` accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001`. It SHALL accept
+only device identity `initial-virtio-rng-device`, translation-domain identity
+`initial-dma-domain`, queue identity `initial-virtio-rng-queue-zero`, and policy
+`bounded-static-elf-entropy-split-ring-coexistence`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL replay exact negotiation,
+queue-discovery, bus-master, and two-buffer creation sequences. It SHALL then
+perform the exact reference binding and four ordered integer stores of
+`TOPAL-SYSTEMS-DMA-CONSTRUCTION-001`, including available-index publication
+last, without exposing the bound address or either buffer identity.
+
+Before return, the transaction SHALL erase the available index, available slot,
+descriptor flags, descriptor length, and opaque descriptor reference in reverse
+publication order using naturally aligned exact-width zero stores. An 8-byte
+zero store used to erase the opaque reference SHALL remain inside provider
+lowering and SHALL NOT convert the reference into a source-visible integer. The
+transition SHALL then perform the exact inverse bus-master update, reset device
+status, verify configuration-gateway rollback after every region access, prove
+all transaction-scoped control bytes are restored to zero, and leave the later
+ordinary sequence unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK` observation is permitted only
+after every proof and rollback succeeds.
+
+Another owner, device, domain, queue, policy, buffer, reference, field, width,
+offset, value, order, omission, duplication, final byte, masked or unmasked
+command state, or final device state; an exposed address or identity; incomplete
+gateway restoration or process validation; process mutation, release, alias,
+activation, or exposure; entropy use; or recoverable disposition SHALL be
+invalid. Source SHALL receive no process resource, buffer identity, address,
+PCI coordinate, register, command word, queue field, output byte, or provider
+representation.
+
+This rule SHALL NOT prepare or publish DMA, enable or notify the queue, grant
+device ownership, span the entropy pipeline, consume or expose entropy, publish
+`AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
