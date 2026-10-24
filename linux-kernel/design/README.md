@@ -156,6 +156,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF prepared-process retention](bounded-static-elf-prepared-process-retention.md)
 - [Bounded static ELF retained-process disjoint work](bounded-static-elf-retained-disjoint-work.md)
 - [Bounded static ELF entropy-handoff authority](bounded-static-elf-entropy-handoff-authority.md)
+- [Bounded static ELF entropy-acquisition authority](bounded-static-elf-entropy-acquisition-authority.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
