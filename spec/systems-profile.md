@@ -1905,6 +1905,40 @@ device ownership, span the entropy pipeline, consume or expose entropy, publish
 `AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-PREPARATION-COEXISTENCE-001 — Reversible entropy DMA preparation
+
+`static image construction qualify entropy dma preparation` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001`. It
+SHALL accept only device identity `initial-virtio-rng-device`, translation-
+domain identity `initial-dma-domain`, queue identity
+`initial-virtio-rng-queue-zero`, and policy
+`bounded-static-elf-entropy-dma-preparation-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte, replay the exact prerequisite sequence through split-ring construction,
+and perform the exact payload-first, control-second preparation of
+`TOPAL-SYSTEMS-DMA-PREPARE-001`. Since no queue address is published, it SHALL
+cancel that unexposed ownership in reverse control-then-payload order before
+any device access is possible. It SHALL then erase and exactly read back all
+ring fields, reverse bus mastering, reset device status, verify configuration-
+gateway rollback, and leave the later ordinary sequence unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK` observation is permitted
+only after every proof and rollback succeeds.
+
+Another owner, device, domain, queue, policy, buffer, direction, visibility,
+role, preparation or cancellation order, omission, duplication, escaped
+identity, final ownership or byte state, incomplete process/device/gateway
+restoration, process mutation or exposure, entropy use, or recoverable
+disposition SHALL be invalid. Source SHALL receive no process resource, buffer
+identity, address, cache fact, mapping, PCI coordinate, queue field, output
+byte, or provider representation.
+
+This rule SHALL NOT publish queue addresses, enable or notify the queue, permit
+device access, span the entropy pipeline, consume or expose entropy, publish
+`AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
