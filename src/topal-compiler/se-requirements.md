@@ -797,6 +797,19 @@ witnesses, and no exposed process or entropy representation, TLS, user-mode,
 syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001` and `TK-DEC-158`.
 
+The bounded static-ELF entropy-device-coexistence increment shall consume and
+return the exact acquisition owner around one sealed read-only initial entropy-
+device observation. X86-64 lowering shall completely validate the retained
+process, then use the existing generic PCI configuration boundary to require
+the pinned Q35 virtio-rng identity at `0000:00:05.0` without a configuration
+write, BAR access, DMA, negotiation, process mutation, release, activation, or
+output use. The checker and semantic model shall reject another owner, device,
+policy, ordering, duplicate observation, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation before one real read, same-owner return, exact ordered
+witness, and no exposed process, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DEVICE-COEXISTENCE-001` and `TK-DEC-159`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

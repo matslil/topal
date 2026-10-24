@@ -1664,6 +1664,33 @@ This rule SHALL NOT span the entropy pipeline, acquire, consume, or expose
 entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
 user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DEVICE-COEXISTENCE-001 — Entropy-device coexistence
+
+`static image construction qualify entropy device` SHALL require, consume, and
+return the exact `EntropyAcquiringStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001`. It SHALL accept
+only device identity `initial-virtio-rng-device` and policy
+`bounded-static-elf-entropy-device-coexistence`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL then perform exactly one
+read-only PCI configuration observation of pinned function `0000:00:05.0`,
+aligned register zero, and require dword `0x1044_1af4`. It SHALL reuse the
+generic checked PCI-configuration boundary, return the same acquisition owner,
+and permit exactly one `TOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OK` observation
+only after both process and device proofs succeed.
+
+Another owner, device, policy, coordinate, value, ordering, or duplicate
+observation; incomplete process validation; process mutation, release, alias,
+activation, or exposure; configuration write; BAR or DMA access; negotiation;
+entropy use; or recoverable disposition SHALL be invalid. Source SHALL receive
+no process resource, PCI coordinate, configuration value, address, port,
+allocator state, output byte, or provider representation.
+
+This rule SHALL NOT negotiate or drive the device, span the entropy pipeline,
+consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a
+user context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
