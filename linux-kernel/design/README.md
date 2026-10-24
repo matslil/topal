@@ -160,6 +160,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF entropy-device coexistence](bounded-static-elf-entropy-device-coexistence.md)
 - [Bounded static ELF entropy-transport discovery](bounded-static-elf-entropy-transport-discovery.md)
 - [Bounded static ELF entropy-transport negotiation](bounded-static-elf-entropy-transport-negotiation.md)
+- [Bounded static ELF entropy-queue discovery](bounded-static-elf-entropy-queue-discovery.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
