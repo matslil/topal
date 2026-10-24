@@ -242,8 +242,20 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-random-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK"
-                                                                              load-metadata-stack-restored-construction is unmapped static image construction revoke stack random slot (
+                                                                              retained-static-process is unmapped static image construction retain prepared process (
                                                                                 owner is random-slot-authorized-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is bounded-static-elf-initial-process,
+                                                                                policy is bounded-static-elf-pre-entropy-retention
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK"
+                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                                owner is retained-static-process,
+                                                                                policy is bounded-static-elf-retention-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK"
+                                                                              load-metadata-stack-restored-construction is unmapped static image construction revoke stack random slot (
+                                                                                owner is random-slot-authorized-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-random-slot-qualification-rollback
                                                                               )

@@ -117,6 +117,8 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -9332,6 +9334,8 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -10466,7 +10470,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 352);
+        assert_eq!(program.bootstrap.handler.operations.len(), 356);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10576,6 +10580,8 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -13756,7 +13762,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_BAD",
             ),
             SOURCE.replace(
-                "owner is random-slot-authorized-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-random-slot-qualification-rollback",
+                "owner is random-slot-authorized-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-random-slot-qualification-rollback",
                 "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-random-slot-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13775,6 +13781,47 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("random-slot")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_prepared_process_retention() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001.
+        for source in [
+            SOURCE.replace(
+                "owner is random-slot-authorized-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is bounded-static-elf-initial-process,",
+                "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is bounded-static-elf-initial-process,",
+            ),
+            SOURCE.replace("value is bounded-static-elf-initial-process", "value is unsealed-process"),
+            SOURCE.replace("bounded-static-elf-pre-entropy-retention", "unbounded-process-retention"),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_BAD",
+            ),
+            SOURCE.replace(
+                "owner is retained-static-process,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
+                "owner is random-slot-authorized-stack-construction,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-retention-qualification-rollback",
+                "discard-retained-process",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("prepared-process")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message

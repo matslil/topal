@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/126";
+    "topal.provider-object.x86_64-qemu-pc-q35/127";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -81,6 +81,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL: &str =
     "topal_x86_systems_static_image_remove_stack_load_metadata";
 pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL: &str =
     "topal_x86_systems_static_image_authorize_stack_random_slot";
+pub const X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL: &str =
+    "topal_x86_systems_static_image_retain_prepared_process";
+pub const X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL: &str =
+    "topal_x86_systems_static_image_restore_prepared_process";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_stack_random_slot";
 pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL: &str =
@@ -1395,6 +1399,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
         &static_image_authorize_stack_random_slot()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+        &static_image_retain_prepared_process()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+        &static_image_restore_prepared_process()?,
     );
     append_encoded_function(
         &mut object,
@@ -8466,6 +8482,63 @@ fn static_image_revoke_stack_random_slot() -> Result<Vec<u8>, CompileError> {
     static_image_stack_random_slot_authority(false)
 }
 
+fn static_image_prepared_process_retention(retain: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if retain {
+            [
+                "prepared-retain-h",
+                "prepared-retain-x",
+                "prepared-retain-r",
+                "prepared-retain-w",
+            ]
+        } else {
+            [
+                "prepared-restore-h",
+                "prepared-restore-x",
+                "prepared-restore-r",
+                "prepared-restore-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if retain {
+            "prepared-retain-pd"
+        } else {
+            "prepared-restore-pd"
+        },
+        if retain {
+            "prepared-retain-pd-e"
+        } else {
+            "prepared-restore-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    emit_static_image_load_metadata_stack(&mut code, true)?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_retain_prepared_process() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_restore_prepared_process() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -11152,7 +11225,20 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
         );
-        for bytes in [authorize_random_slot, revoke_random_slot] {
+        let retain_prepared_process = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+        );
+        let restore_prepared_process = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+        );
+        for bytes in [
+            authorize_random_slot,
+            retain_prepared_process,
+            restore_prepared_process,
+            revoke_random_slot,
+        ] {
             assert_eq!(
                 bytes
                     .windows(11)
@@ -11161,7 +11247,7 @@ assert bytes(output) == block[32:]
                     })
                     .count(),
                 1,
-                "random-slot authority must completely verify unchanged zero regions"
+                "random-slot and prepared-process authority must completely verify unchanged zero regions"
             );
             for offset in [0x0fd0_u32, 0x0fd8_u32] {
                 assert!(
@@ -11170,12 +11256,12 @@ assert bytes(output) == block[32:]
                             && window[3..7] == offset.to_le_bytes()
                             && window[7] == 0
                     }),
-                    "random-slot authority must verify both future object qwords as zero"
+                    "random-slot and prepared-process authority must verify both future object qwords as zero"
                 );
             }
             assert!(
                 !bytes.windows(3).any(|window| window == [0x49, 0x89, 0x83]),
-                "random-slot authority must not mutate the deterministic stack"
+                "random-slot and prepared-process authority must not mutate the deterministic stack"
             );
             assert!(
                 !bytes.windows(3).any(|window| window == [0x0f, 0xae, 0xf8]),

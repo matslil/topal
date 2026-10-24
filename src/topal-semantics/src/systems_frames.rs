@@ -64,6 +64,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA: &str =
     "topal.systems.static-image.construction.remove-stack-load-metadata/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT: &str =
     "topal.systems.static-image.construction.authorize-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.retain-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.restore-prepared-process/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT: &str =
     "topal.systems.static-image.construction.revoke-stack-random-slot/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
