@@ -1558,6 +1558,40 @@ increment, consume entropy, publish `AT_RANDOM`, expose resource representation,
 add a vDSO, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001 — Retained-process disjoint work
+
+`static image construction qualify retained disjoint work` SHALL require and
+consume the exact `RetainedStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001`. It SHALL accept only that
+owner, `frame-count` one, `alignment-frames` one, and policy
+`bounded-static-elf-retained-disjoint-work`.
+
+The provider SHALL use the same sealed allocator to select one fresh frame,
+prove its complete physical extent disjoint from the retained payload, leaf
+metadata, upper hierarchy, and stack backing, release only the fresh frame,
+completely revalidate every retained resource and byte, and return the same
+opaque affine retained-process owner. It SHALL NOT expose either extent,
+allocator state, or any representation; mutate, release, alias, activate, or
+invalidate retained resources; or retain the fresh frame.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK` observation after successful
+fresh-frame release and before prepared-process restoration. Another owner,
+request, policy, allocator, overlapping selection, incomplete exclusion,
+partial or wrong release, changed retained byte or identity, duplicate work,
+early restoration, or recoverable disposition SHALL be invalid.
+
+For qualified x86-64 realization, compiler-controlled root state SHALL keep the
+retained process tuple private while the existing E820-backed allocator advances
+through a fresh one-frame selection. Complete unsigned interval exclusion and
+the same retained-process validations required on restoration SHALL precede
+success. No retained-process store, fence, active-address invalidation,
+activation, or release is permitted.
+
+This rule SHALL NOT perform DMA or device work, consume entropy, publish
+`AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

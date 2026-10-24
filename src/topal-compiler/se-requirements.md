@@ -753,6 +753,20 @@ state, exact restoration, ordered witnesses, and no exposed resource, entropy,
 TLS, user-mode, syscall, or BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001` and `TK-DEC-155`.
 
+The bounded static-ELF retained-disjoint-work increment shall consume and return
+the exact opaque retained-process owner while using the same sealed allocator
+for one fresh aligned frame. X86-64 lowering shall prove the selected extent
+disjoint from payload, leaf metadata, upper hierarchy, and stack backing,
+release only the fresh frame, and completely revalidate all retained identities
+and bytes before returning the owner. The checker and semantic model shall
+reject another owner, request, policy, allocator, overlap, incomplete proof,
+partial or wrong release, mutation, duplication, early restore, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove fresh allocation
+and release, retained-state survival, exact later restoration, ordered witnesses,
+and no exposed address, DMA, entropy, TLS, user-mode, syscall, or BusyBox
+authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001` and `TK-DEC-156`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
