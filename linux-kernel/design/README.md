@@ -153,6 +153,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF hardware-capability facts](bounded-static-elf-auxv-hwcap.md)
 - [Bounded static ELF load-metadata facts](bounded-static-elf-auxv-load-metadata.md)
 - [Bounded static ELF random-delivery slot authority](bounded-static-elf-random-slot-authority.md)
+- [Bounded static ELF prepared-process retention](bounded-static-elf-prepared-process-retention.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
