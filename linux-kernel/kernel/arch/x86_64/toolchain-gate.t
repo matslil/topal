@@ -227,8 +227,21 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK"
-                                                                              platform-stack-restored-construction is unmapped static image construction remove stack hardware capabilities (
+                                                                              load-metadata-stack-construction is unmapped static image construction add stack load metadata (
                                                                                 owner is hardware-capabilities-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is static-executable-load-metadata,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK"
+                                                                              hardware-capabilities-stack-restored-construction is unmapped static image construction remove stack load metadata (
+                                                                                owner is load-metadata-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-load-metadata-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK"
+                                                                              platform-stack-restored-construction is unmapped static image construction remove stack hardware capabilities (
+                                                                                owner is hardware-capabilities-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-hardware-capabilities-qualification-rollback
                                                                               )

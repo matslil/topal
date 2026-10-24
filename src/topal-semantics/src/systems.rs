@@ -36,6 +36,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
@@ -56,6 +57,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
@@ -1211,6 +1213,8 @@ pub enum SystemsOperation {
     AddStaticImageStackClockTickRate,
     AddStaticImageStackPlatform,
     AddStaticImageStackHardwareCapabilities,
+    AddStaticImageStackLoadMetadata,
+    RemoveStaticImageStackLoadMetadata,
     RemoveStaticImageStackHardwareCapabilities,
     RemoveStaticImageStackPlatform,
     RemoveStaticImageStackClockTickRate,
@@ -1476,6 +1480,12 @@ impl SystemsOperation {
             }
             Self::AddStaticImageStackHardwareCapabilities => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES
+            }
+            Self::AddStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            Self::RemoveStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
             }
             Self::RemoveStaticImageStackHardwareCapabilities => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
@@ -1801,6 +1811,8 @@ pub enum SystemsTransition {
     AddStaticImageStackClockTickRate,
     AddStaticImageStackPlatform,
     AddStaticImageStackHardwareCapabilities,
+    AddStaticImageStackLoadMetadata,
+    RemoveStaticImageStackLoadMetadata,
     RemoveStaticImageStackHardwareCapabilities,
     RemoveStaticImageStackPlatform,
     RemoveStaticImageStackClockTickRate,
@@ -2282,6 +2294,12 @@ impl SystemsTransition {
             Self::AddStaticImageStackHardwareCapabilities => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES
             }
+            Self::AddStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            Self::RemoveStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            }
             Self::RemoveStaticImageStackHardwareCapabilities => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
             }
@@ -2629,6 +2647,8 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackClockTickRate
                     | SystemsOperation::AddStaticImageStackPlatform
                     | SystemsOperation::AddStaticImageStackHardwareCapabilities
+                    | SystemsOperation::AddStaticImageStackLoadMetadata
+                    | SystemsOperation::RemoveStaticImageStackLoadMetadata
                     | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
                     | SystemsOperation::RemoveStaticImageStackPlatform
                     | SystemsOperation::RemoveStaticImageStackClockTickRate
@@ -3156,6 +3176,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackClockTickRateAdded,
     StaticElfConstructionStackPlatformAdded,
     StaticElfConstructionStackHardwareCapabilitiesAdded,
+    StaticElfConstructionStackLoadMetadataAdded,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3569,6 +3590,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack hardware-capability addition requires one live platform fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded;
+            }
+            SystemsOperation::AddStaticImageStackLoadMetadata => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack load-metadata addition requires one live hardware-capability group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackLoadMetadata => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack load-metadata removal requires one live load-metadata group",
                     ));
                 }
                 self.memory_ownership =
@@ -5693,6 +5738,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7533,6 +7579,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackHardwareCapabilities => {
             transitions.push(SystemsTransition::AddStaticImageStackHardwareCapabilities);
         }
+        SystemsOperation::AddStaticImageStackLoadMetadata => {
+            transitions.push(SystemsTransition::AddStaticImageStackLoadMetadata);
+        }
+        SystemsOperation::RemoveStaticImageStackLoadMetadata => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackLoadMetadata);
+        }
         SystemsOperation::RemoveStaticImageStackHardwareCapabilities => {
             transitions.push(SystemsTransition::RemoveStaticImageStackHardwareCapabilities);
         }
@@ -8061,6 +8113,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackClockTickRate
         | SystemsOperation::AddStaticImageStackPlatform
         | SystemsOperation::AddStaticImageStackHardwareCapabilities
+        | SystemsOperation::AddStaticImageStackLoadMetadata
+        | SystemsOperation::RemoveStaticImageStackLoadMetadata
         | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
         | SystemsOperation::RemoveStaticImageStackPlatform
         | SystemsOperation::RemoveStaticImageStackClockTickRate
@@ -11092,6 +11146,8 @@ mod tests {
                 SystemsOperation::AddStaticImageStackClockTickRate,
                 SystemsOperation::AddStaticImageStackPlatform,
                 SystemsOperation::AddStaticImageStackHardwareCapabilities,
+                SystemsOperation::AddStaticImageStackLoadMetadata,
+                SystemsOperation::RemoveStaticImageStackLoadMetadata,
                 SystemsOperation::RemoveStaticImageStackHardwareCapabilities,
                 SystemsOperation::RemoveStaticImageStackPlatform,
                 SystemsOperation::RemoveStaticImageStackClockTickRate,
@@ -11128,6 +11184,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackClockTickRate));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackPlatform));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackHardwareCapabilities));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackLoadMetadata));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackLoadMetadata));
         assert!(
             transitions.contains(&SystemsTransition::RemoveStaticImageStackHardwareCapabilities)
         );
@@ -11143,6 +11201,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
@@ -11274,14 +11342,14 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut remove_hardware_capabilities_before_addition = program;
-        remove_hardware_capabilities_before_addition
+        let mut remove_load_metadata_before_addition = program;
+        remove_load_metadata_before_addition
             .bootstrap
             .handler
             .operations
-            .swap(26, 27);
+            .swap(27, 28);
         assert_eq!(
-            validate_systems_program(&remove_hardware_capabilities_before_addition)
+            validate_systems_program(&remove_load_metadata_before_addition)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"

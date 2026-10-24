@@ -58,6 +58,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES: &st
     "topal.systems.static-image.construction.add-stack-hardware-capabilities/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES: &str =
     "topal.systems.static-image.construction.remove-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.add-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.remove-stack-load-metadata/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =

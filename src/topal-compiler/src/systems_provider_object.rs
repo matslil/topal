@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/124";
+    "topal.provider-object.x86_64-qemu-pc-q35/125";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -75,6 +75,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL: &str 
     "topal_x86_systems_static_image_add_stack_hardware_capabilities";
 pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL: &str =
     "topal_x86_systems_static_image_remove_stack_hardware_capabilities";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_load_metadata";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_load_metadata";
 pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL: &str =
     "topal_x86_systems_static_image_remove_stack_pagesz";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
@@ -1369,6 +1373,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
         &static_image_add_stack_hardware_capabilities()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+        &static_image_add_stack_load_metadata()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+        &static_image_remove_stack_load_metadata()?,
     );
     append_encoded_function(
         &mut object,
@@ -8178,6 +8194,205 @@ fn static_image_remove_stack_hardware_capabilities() -> Result<Vec<u8>, CompileE
     static_image_stack_hardware_capabilities(false)
 }
 
+fn emit_static_image_load_metadata_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0e90;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (O + 216, 17),
+        (O + 224, 100),
+        (O + 232, 15),
+        (O + 240, 0x005f_fff0),
+        (O + 248, 16),
+        (O + 256, 0x178b_fbfd),
+        (O + 264, 26),
+        (O + 272, 0),
+        (O + 280, 7),
+        (O + 288, 0),
+        (O + 296, 8),
+        (O + 304, 0),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+        (0x0ff0, u64::from_le_bytes(*b"x86_64\0\0")),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&466_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+        }
+        code.bytes(&offset.to_le_bytes());
+        if verify {
+            code.jump_if(0x85, "fail");
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 312,
+            O + 320,
+            O + 328,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_load_metadata(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "load-metadata-add-h",
+                "load-metadata-add-x",
+                "load-metadata-add-r",
+                "load-metadata-add-w",
+            ]
+        } else {
+            [
+                "load-metadata-remove-h",
+                "load-metadata-remove-x",
+                "load-metadata-remove-r",
+                "load-metadata-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "load-metadata-add-pd"
+        } else {
+            "load-metadata-remove-pd"
+        },
+        if add {
+            "load-metadata-add-pd-e"
+        } else {
+            "load-metadata-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    } else {
+        emit_static_image_load_metadata_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3,
+        0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_load_metadata_stack(&mut code, false)?;
+    } else {
+        emit_static_image_hardware_capabilities_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "load-metadata-add-ah",
+                "load-metadata-add-ax",
+                "load-metadata-add-ar",
+                "load-metadata-add-aw",
+            ]
+        } else {
+            [
+                "load-metadata-remove-ah",
+                "load-metadata-remove-ax",
+                "load-metadata-remove-ar",
+                "load-metadata-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "load-metadata-add-apd"
+        } else {
+            "load-metadata-remove-apd"
+        },
+        if add {
+            "load-metadata-add-apd-e"
+        } else {
+            "load-metadata-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_load_metadata_stack(&mut code, true)?;
+    } else {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_load_metadata() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_load_metadata(true)
+}
+
+fn static_image_remove_stack_load_metadata() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_load_metadata(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -10790,6 +11005,70 @@ assert bytes(output) == block[32:]
                 .windows(7)
                 .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xd0, 0x0e, 0x00, 0x00]),
             "hardware-capability removal must restore the platform entry position"
+        );
+
+        let add_load_metadata = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+        );
+        let remove_load_metadata = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+        );
+        for bytes in [
+            add_load_metadata.as_slice(),
+            remove_load_metadata.as_slice(),
+        ] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each load-metadata transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each load-metadata transition must fence once"
+            );
+            for (tag, value_offset) in [(7_u64, 0x0fb0_u32), (8_u64, 0x0fc0_u32)] {
+                assert!(
+                    bytes.windows(8).any(|window| window == tag.to_le_bytes()),
+                    "each transition must encode or verify both load-metadata tags"
+                );
+                assert!(
+                    bytes.windows(17).any(|window| {
+                        window[..10] == [0x48, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0]
+                            && window[10] == 0x49
+                            && matches!(window[11], 0x39 | 0x89)
+                            && window[12] == 0x83
+                            && window[13..] == value_offset.to_le_bytes()
+                    }),
+                    "each load-metadata fact must carry an explicit zero value"
+                );
+            }
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive load-metadata transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_load_metadata
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x90, 0x0e, 0x00, 0x00]),
+            "load-metadata addition must enlarge the aligned block downward"
+        );
+        assert!(
+            remove_load_metadata
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xb0, 0x0e, 0x00, 0x00]),
+            "load-metadata removal must restore the hardware-capability entry position"
         );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
