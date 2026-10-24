@@ -89,6 +89,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
@@ -109,6 +110,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
@@ -9300,6 +9302,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
@@ -9320,6 +9323,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
@@ -10458,7 +10462,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 344);
+        assert_eq!(program.bootstrap.handler.operations.len(), 348);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10540,6 +10544,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
@@ -10560,6 +10565,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
@@ -13656,7 +13662,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_BAD",
             ),
             SOURCE.replace(
-                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback",
+                "owner is hardware-capabilities-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback",
                 "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13675,6 +13681,49 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("hardware-capability")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_load_metadata() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001.
+        for source in [
+            SOURCE.replace(
+                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is static-executable-load-metadata,",
+                "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is static-executable-load-metadata,",
+            ),
+            SOURCE.replace(
+                "value is static-executable-load-metadata",
+                "value is source-loader-base",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_BAD",
+            ),
+            SOURCE.replace(
+                "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-load-metadata-qualification-rollback",
+                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-load-metadata-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-load-metadata-qualification-rollback",
+                "retained-stack-load-metadata",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("load-metadata")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message
