@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/128";
+    "topal.provider-object.x86_64-qemu-pc-q35/129";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -85,6 +85,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL: &str =
     "topal_x86_systems_static_image_retain_prepared_process";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_retained_disjoint_work";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_entropy_handoff";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entropy_handoff";
 pub const X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL: &str =
     "topal_x86_systems_static_image_restore_prepared_process";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL: &str =
@@ -1413,6 +1417,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
         &static_image_qualify_retained_disjoint_work()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+        &static_image_authorize_entropy_handoff()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+        &static_image_revoke_entropy_handoff()?,
     );
     append_encoded_function(
         &mut object,
@@ -8551,6 +8567,14 @@ fn static_image_qualify_retained_disjoint_work() -> Result<Vec<u8>, CompileError
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_authorize_entropy_handoff() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_revoke_entropy_handoff() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -11249,10 +11273,20 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
         );
+        let authorize_entropy_handoff = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+        );
+        let revoke_entropy_handoff = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+        );
         for bytes in [
             authorize_random_slot,
             retain_prepared_process,
             qualify_retained_disjoint_work,
+            authorize_entropy_handoff,
+            revoke_entropy_handoff,
             restore_prepared_process,
             revoke_random_slot,
         ] {

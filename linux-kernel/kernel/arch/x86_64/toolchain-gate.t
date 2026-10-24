@@ -256,8 +256,19 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-retained-disjoint-work
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK"
-                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                              entropy-pending-static-process is unmapped static image construction authorize entropy handoff (
                                                                                 owner is retained-static-process-after-disjoint-work,
+                                                                                process is bounded-static-elf-initial-process,
+                                                                                policy is bounded-static-elf-initial-random-delivery
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK"
+                                                                              retained-static-process-after-entropy-rollback is unmapped static image construction revoke entropy handoff (
+                                                                                owner is entropy-pending-static-process,
+                                                                                policy is bounded-static-elf-entropy-handoff-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK"
+                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                                owner is retained-static-process-after-entropy-rollback,
                                                                                 policy is bounded-static-elf-retention-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK"

@@ -42,6 +42,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
@@ -67,6 +68,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -1222,6 +1224,8 @@ pub enum SystemsOperation {
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
+    AuthorizeStaticImageEntropyHandoff,
+    RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -1502,6 +1506,12 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageRetainedDisjointWork => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
+            Self::AuthorizeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            Self::RevokeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
             }
             Self::RestoreStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
@@ -1840,6 +1850,8 @@ pub enum SystemsTransition {
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
     QualifyStaticImageRetainedDisjointWork,
+    AuthorizeStaticImageEntropyHandoff,
+    RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -2336,6 +2348,12 @@ impl SystemsTransition {
             Self::QualifyStaticImageRetainedDisjointWork => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
             }
+            Self::AuthorizeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            Self::RevokeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            }
             Self::RestoreStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
             }
@@ -2696,6 +2714,8 @@ fn validate_entry(
                     | SystemsOperation::AuthorizeStaticImageStackRandomSlot
                     | SystemsOperation::RetainStaticImagePreparedProcess
                     | SystemsOperation::QualifyStaticImageRetainedDisjointWork
+                    | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+                    | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
                     | SystemsOperation::RevokeStaticImageStackRandomSlot
                     | SystemsOperation::RemoveStaticImageStackLoadMetadata
@@ -3048,6 +3068,7 @@ struct BootstrapAuthorityState {
     allocator_created: bool,
     memory_ownership: BootstrapMemoryOwnership,
     retained_static_process: bool,
+    entropy_pending_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -3693,6 +3714,32 @@ impl BootstrapAuthorityState {
                         "static-image retained disjoint work requires the exact retained process and closed allocator channel",
                     ));
                 }
+            }
+            SystemsOperation::AuthorizeStaticImageEntropyHandoff => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.retained_static_process
+                    || self.entropy_pending_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy handoff authorization requires the exact retained process",
+                    ));
+                }
+                self.retained_static_process = false;
+                self.entropy_pending_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyHandoff => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.retained_static_process
+                    || !self.entropy_pending_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy handoff revocation requires the exact entropy-pending process",
+                    ));
+                }
+                self.entropy_pending_static_process = false;
+                self.retained_static_process = true;
             }
             SystemsOperation::RestoreStaticImagePreparedProcess => {
                 if self.memory_ownership != BootstrapMemoryOwnership::None
@@ -5824,7 +5871,8 @@ impl BootstrapAuthorityState {
             ));
         }
         match self.memory_ownership {
-            BootstrapMemoryOwnership::None if !self.retained_static_process => {}
+            BootstrapMemoryOwnership::None
+                if !self.retained_static_process && !self.entropy_pending_static_process => {}
             BootstrapMemoryOwnership::None => {
                 return Err(SystemsModelError::new(
                     "E-SYSTEMS-FRAMES-LIVE",
@@ -7710,6 +7758,12 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageRetainedDisjointWork => {
             transitions.push(SystemsTransition::QualifyStaticImageRetainedDisjointWork);
         }
+        SystemsOperation::AuthorizeStaticImageEntropyHandoff => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageEntropyHandoff);
+        }
+        SystemsOperation::RevokeStaticImageEntropyHandoff => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyHandoff);
+        }
         SystemsOperation::RestoreStaticImagePreparedProcess => {
             transitions.push(SystemsTransition::RestoreStaticImagePreparedProcess);
         }
@@ -8251,6 +8305,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AuthorizeStaticImageStackRandomSlot
         | SystemsOperation::RetainStaticImagePreparedProcess
         | SystemsOperation::QualifyStaticImageRetainedDisjointWork
+        | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+        | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
         | SystemsOperation::RevokeStaticImageStackRandomSlot
         | SystemsOperation::RemoveStaticImageStackLoadMetadata
@@ -11289,6 +11345,8 @@ mod tests {
                 SystemsOperation::AuthorizeStaticImageStackRandomSlot,
                 SystemsOperation::RetainStaticImagePreparedProcess,
                 SystemsOperation::QualifyStaticImageRetainedDisjointWork,
+                SystemsOperation::AuthorizeStaticImageEntropyHandoff,
+                SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
                 SystemsOperation::RevokeStaticImageStackRandomSlot,
                 SystemsOperation::RemoveStaticImageStackLoadMetadata,
@@ -11332,6 +11390,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageStackRandomSlot));
         assert!(transitions.contains(&SystemsTransition::RetainStaticImagePreparedProcess));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageRetainedDisjointWork));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyHandoff));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackRandomSlot));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackLoadMetadata));
@@ -11350,6 +11410,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
