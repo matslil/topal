@@ -1098,6 +1098,57 @@ expose any numeric representation or address, add another auxiliary-vector
 fact, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001 — Executable-name fact
+
+`static image construction add stack executable name` SHALL require the exact
+live `ProgramHeaderStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PHDR-001`. It SHALL accept only that owner, that
+backing identity, `value` equal to `initial-executable-name`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`ExecutableNameStackEntryStaticImageConstruction` retaining every prior fact
+while adding one `AT_EXECFN` fact after the program-header group and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the program-header-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and the complete `busybox` and
+`true` string objects. It SHALL prove that the executable-name fact designates
+the exact existing `argv[0]` string, clear the complete backing, reconstruct
+the complete target-aligned block, perform every target-required visibility
+operation, and read back every word, pointer relation, string byte, terminator,
+alias relation, and otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK` observation.
+
+Source SHALL invoke `static image construction remove stack executable name`
+with the exact extended owner, backing identity, and policy
+`bounded-stack-executable-name-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact program-header-qualified
+block, preserve every prior obligation, and reproduce the exact
+`ProgramHeaderStackEntryStaticImageConstruction`. Source SHALL emit exactly
+one `TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OK` observation before
+program-header removal.
+
+A wrong owner, backing, value, policy, string identity, alias, or bounds
+relation; duplicate addition; partial mutation or readback; wrong ordering;
+prior-fact removal, ordinary clearing, or leaf revocation while extended;
+backing release; activation; teardown; or recoverable disposition SHALL be
+invalid. Only exact executable-name removal SHALL restore the state admitted
+by program-header removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_EXECFN=(31,0x5fffe0)` after `AT_PHNUM=(5,11)` and before `AT_NULL`. Its
+value SHALL equal `argv[0]`, designate all eight bytes of `busybox\0` within
+the same leaf, and remain distinct from `true\0`. Addition and removal SHALL
+each clear all 512 qwords before reconstruction, execute one store fence, and
+completely read back the result. They SHALL preserve the exact inactive
+hierarchy and issue no active-address invalidation.
+
+This rule SHALL NOT retain the executable-name fact after its removal witness,
+expose its pointer or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
