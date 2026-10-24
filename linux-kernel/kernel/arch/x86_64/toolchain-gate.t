@@ -192,8 +192,142 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK"
-                                                                              program-header-stack-restored-construction is unmapped static image construction remove stack executable name (
+                                                                              credential-stack-construction is unmapped static image construction add stack credentials (
                                                                                 owner is executable-name-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-process-credentials,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK"
+                                                                              secure-mode-stack-construction is unmapped static image construction add stack secure mode (
+                                                                                owner is credential-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-execution-security,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK"
+                                                                              clock-tick-rate-stack-construction is unmapped static image construction add stack clock tick rate (
+                                                                                owner is secure-mode-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is linux-user-hz,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK"
+                                                                              platform-stack-construction is unmapped static image construction add stack platform (
+                                                                                owner is clock-tick-rate-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is native-userspace-platform,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK"
+                                                                              hardware-capabilities-stack-construction is unmapped static image construction add stack hardware capabilities (
+                                                                                owner is platform-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is native-userspace-hardware-capabilities,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK"
+                                                                              load-metadata-stack-construction is unmapped static image construction add stack load metadata (
+                                                                                owner is hardware-capabilities-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is static-executable-load-metadata,
+                                                                                policy is bounded-linux-auxv-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK"
+                                                                              random-slot-authorized-stack-construction is unmapped static image construction authorize stack random slot (
+                                                                                owner is load-metadata-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-auxv-random-object,
+                                                                                extent-bytes is 16,
+                                                                                policy is bounded-linux-auxv-random-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK"
+                                                                              retained-static-process is unmapped static image construction retain prepared process (
+                                                                                owner is random-slot-authorized-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is bounded-static-elf-initial-process,
+                                                                                policy is bounded-static-elf-pre-entropy-retention
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK"
+                                                                              retained-static-process-after-disjoint-work is unmapped static image construction qualify retained disjoint work (
+                                                                                owner is retained-static-process,
+                                                                                frame-count is 1,
+                                                                                alignment-frames is 1,
+                                                                                policy is bounded-static-elf-retained-disjoint-work
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK"
+                                                                              entropy-pending-static-process is unmapped static image construction authorize entropy handoff (
+                                                                                owner is retained-static-process-after-disjoint-work,
+                                                                                process is bounded-static-elf-initial-process,
+                                                                                policy is bounded-static-elf-initial-random-delivery
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK"
+                                                                              entropy-acquiring-static-process is unmapped static image construction authorize entropy acquisition (
+                                                                                owner is entropy-pending-static-process,
+                                                                                output is initial-entropy-output,
+                                                                                generation is generation-two,
+                                                                                policy is bounded-static-elf-initial-entropy-acquisition
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process,
+                                                                                policy is bounded-static-elf-entropy-acquisition-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
+                                                                              retained-static-process-after-entropy-rollback is unmapped static image construction revoke entropy handoff (
+                                                                                owner is entropy-pending-static-process-after-acquisition-rollback,
+                                                                                policy is bounded-static-elf-entropy-handoff-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK"
+                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                                owner is retained-static-process-after-entropy-rollback,
+                                                                                policy is bounded-static-elf-retention-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK"
+                                                                              load-metadata-stack-restored-construction is unmapped static image construction revoke stack random slot (
+                                                                                owner is random-slot-authorized-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-random-slot-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK"
+                                                                              hardware-capabilities-stack-restored-construction is unmapped static image construction remove stack load metadata (
+                                                                                owner is load-metadata-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-load-metadata-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK"
+                                                                              platform-stack-restored-construction is unmapped static image construction remove stack hardware capabilities (
+                                                                                owner is hardware-capabilities-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK"
+                                                                              clock-tick-rate-stack-restored-construction is unmapped static image construction remove stack platform (
+                                                                                owner is platform-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-platform-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK"
+                                                                              secure-mode-stack-restored-construction is unmapped static image construction remove stack clock tick rate (
+                                                                                owner is clock-tick-rate-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK"
+                                                                              credential-stack-restored-construction is unmapped static image construction remove stack secure mode (
+                                                                                owner is secure-mode-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-secure-mode-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK"
+                                                                              executable-name-stack-restored-construction is unmapped static image construction remove stack credentials (
+                                                                                owner is credential-stack-restored-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-credentials-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK"
+                                                                              program-header-stack-restored-construction is unmapped static image construction remove stack executable name (
+                                                                                owner is executable-name-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-executable-name-qualification-rollback
                                                                               )

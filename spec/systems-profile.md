@@ -1149,6 +1149,521 @@ expose its pointer or representation, add another auxiliary-vector fact,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001 — Process credential facts
+
+`static image construction add stack credentials` SHALL require the exact live
+`ExecutableNameStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `initial-process-credentials`, and
+policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`CredentialStackEntryStaticImageConstruction` retaining every prior fact while
+adding one coherent real/effective user/group identity group after `AT_EXECFN`
+and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the executable-name-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that all four credential facts agree with the provider-sealed
+initial PID-one process profile, clear the complete backing, reconstruct the
+complete target-aligned block, perform every target-required visibility
+operation, and read back every word, pointer relation, string byte, terminator,
+credential relation, and otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK` observation.
+
+Source SHALL invoke `static image construction remove stack credentials` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-credentials-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact executable-name-qualified block, preserve
+every prior obligation, and reproduce the exact
+`ExecutableNameStackEntryStaticImageConstruction`. Source SHALL emit exactly
+one `TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK` observation before
+executable-name removal.
+
+A wrong owner, backing, value, policy, credential identity or agreement;
+duplicate addition; partial mutation or readback; wrong ordering; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+credential removal SHALL restore the state admitted by executable-name
+removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_UID=(11,0)`, `AT_EUID=(12,0)`, `AT_GID=(13,0)`, and `AT_EGID=(14,0)` in
+that order after `AT_EXECFN=(31,0x5fffe0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact executable-name alias and inactive hierarchy and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the credential group after its removal witness,
+expose numeric credentials or representation, add another auxiliary-vector
+fact, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001 — Non-secure execution fact
+
+`static image construction add stack secure mode` SHALL require the exact live
+`CredentialStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001`. It SHALL accept only that
+owner, that backing identity, `value` equal to `initial-execution-security`,
+and policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`SecureModeStackEntryStaticImageConstruction` retaining every prior fact while
+adding one non-secure execution fact after the credential group and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the credential-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that the security fact agrees with equal real/effective credentials
+and the sealed absence of a privilege-changing executable transition, clear
+the complete backing, reconstruct the complete target-aligned block, perform
+every target-required visibility operation, and read back every word, pointer
+relation, string byte, terminator, security relation, and otherwise-zero byte.
+Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK`
+observation.
+
+Source SHALL invoke `static image construction remove stack secure mode` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-secure-mode-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact credential-qualified block, preserve every
+prior obligation, and reproduce the exact
+`CredentialStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK` observation before credential
+removal.
+
+A wrong owner, backing, value, policy, security result or credential agreement;
+duplicate addition; partial mutation or readback; wrong ordering; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+security-fact removal SHALL restore the state admitted by credential removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_SECURE=(23,0)` after `AT_EGID=(14,0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact credential group, executable-name alias, and inactive hierarchy and
+issue no active-address invalidation.
+
+This rule SHALL NOT retain the security fact after its removal witness, expose
+its numeric value or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001 — Userspace accounting tick rate
+
+`static image construction add stack clock tick rate` SHALL require the exact
+live `SecureModeStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `linux-user-hz`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`ClockTickRateStackEntryStaticImageConstruction` retaining every prior fact
+while adding one userspace accounting-rate fact after `AT_SECURE` and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the secure-mode-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove that the accounting-rate fact denotes Linux's baseline `USER_HZ`
+contract and is distinct from every hardware-clock and scheduler-frequency
+fact, clear the complete backing, reconstruct the complete target-aligned
+block, perform every target-required visibility operation, and read back every
+word, pointer relation, string byte, terminator, clock identity, and otherwise-
+zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK` observation.
+
+Source SHALL invoke `static image construction remove stack clock tick rate`
+with the exact extended owner, backing identity, and policy
+`bounded-stack-clock-tick-rate-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact secure-mode-qualified block,
+preserve every prior obligation, and reproduce the exact
+`SecureModeStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK` observation before secure-mode
+removal.
+
+A wrong owner, backing, value, policy, accounting-rate identity, or clock
+separation; duplicate addition; partial mutation or readback; wrong ordering;
+prior-fact removal, ordinary clearing, or leaf revocation while extended;
+backing release; activation; teardown; or recoverable disposition SHALL be
+invalid. Only exact accounting-rate removal SHALL restore the state admitted
+by secure-mode removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_CLKTCK=(17,100)` after `AT_SECURE=(23,0)` and before `AT_NULL`. Addition and
+removal SHALL each clear all 512 qwords before reconstruction, execute one
+store fence, and completely read back the result. They SHALL preserve the
+exact security and credential facts, executable-name alias, and inactive
+hierarchy and issue no active-address invalidation.
+
+This rule SHALL NOT retain the accounting-rate fact after its removal witness,
+expose its numeric value or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001 — Native platform fact
+
+`static image construction add stack platform` SHALL require the exact live
+`ClockTickRateStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `native-userspace-platform`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`PlatformStackEntryStaticImageConstruction` retaining every prior fact while
+adding one provider-consistent platform fact after `AT_CLKTCK` and before
+`AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the clock-rate-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, and complete argument strings. It
+SHALL prove the native platform identity, complete bounded string and
+termination, pointer containment, and separation from the executable-name
+object; clear the complete backing; reconstruct the complete target-aligned
+block; perform every target-required visibility operation; and read back every
+word, pointer relation, string byte, terminator, identity relation, and
+otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK` observation.
+
+Source SHALL invoke `static image construction remove stack platform` with the
+exact extended owner, backing identity, and policy
+`bounded-stack-platform-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact clock-rate-qualified block, preserve every
+prior obligation, and reproduce the exact
+`ClockTickRateStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK` observation before clock-
+rate removal.
+
+A wrong owner, backing, value, policy, platform identity, pointer, string,
+termination, containment, or alias relation; duplicate addition; partial
+mutation or readback; wrong ordering; prior-fact removal, ordinary clearing,
+or leaf revocation while extended; backing release; activation; teardown; or
+recoverable disposition SHALL be invalid. Only exact platform-fact removal
+SHALL restore the state admitted by clock-rate removal.
+
+For qualified x86-64 realization, the provider SHALL encode native
+`AT_PLATFORM=(15,pointer-to-"x86_64\0")` after `AT_CLKTCK=(17,100)` and before
+`AT_NULL`. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact prior facts and inactive hierarchy, retain exact
+`argv[0]`/`AT_EXECFN` alias identity only with `busybox`, keep the platform
+string distinct, and issue no active-address invalidation.
+
+This rule SHALL NOT retain the platform fact after its removal witness, expose
+its string, pointer, or representation, add another auxiliary-vector fact,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001 — Native hardware capabilities
+
+`static image construction add stack hardware capabilities` SHALL require the
+exact live `PlatformStackEntryStaticImageConstruction` and nested backing from
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to
+`native-userspace-hardware-capabilities`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`HardwareCapabilitiesStackEntryStaticImageConstruction` retaining every prior
+fact while atomically adding provider-consistent `AT_HWCAP` and `AT_HWCAP2`
+facts after `AT_PLATFORM` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the platform-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument strings, and
+platform string. It SHALL prove that both masks describe only capabilities
+enabled for the selected native userspace on the pinned guest profile; clear
+the complete backing; reconstruct the complete target-aligned block; perform
+every target-required visibility operation; and read back every word, pointer
+relation, string byte, capability mask, terminator, identity relation, and
+otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK` observation.
+
+Source SHALL invoke
+`static image construction remove stack hardware capabilities` with the exact
+extended owner, backing identity, and policy
+`bounded-stack-hardware-capabilities-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact platform-qualified block,
+preserve every prior obligation, and reproduce the exact
+`PlatformStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK` observation before platform
+removal.
+
+A wrong owner, backing, value, policy, mask, tag, capability set, or ordering;
+duplicate or partial addition; partial mutation or readback; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+capability-group removal SHALL restore the state admitted by platform removal.
+
+For qualified x86-64 realization on the pinned `qemu64-v1` profile, the
+provider SHALL encode `AT_HWCAP=(16,0x178bfbfd)` and `AT_HWCAP2=(26,0)` after
+`AT_PLATFORM` and before `AT_NULL`. Addition and removal SHALL each clear all
+512 qwords before reconstruction, execute one store fence, and completely read
+back the result. They SHALL preserve the exact prior facts and inactive
+hierarchy, retain the complete bounded platform and executable-name strings and
+their identity relations, and issue no active-address invalidation.
+
+This rule SHALL NOT retain the capability facts after their removal witness,
+expose masks, CPUID leaves, feature bits, or representation, add random data or
+a vDSO, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001 — Static load metadata
+
+`static image construction add stack load metadata` SHALL require the exact
+live `HardwareCapabilitiesStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to `static-executable-load-metadata`, and
+policy `bounded-linux-auxv-before-null`, and SHALL produce one affine
+`LoadMetadataStackEntryStaticImageConstruction` retaining every prior fact
+while atomically adding coherent `AT_BASE` and `AT_FLAGS` facts after
+`AT_HWCAP2` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the capability-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument and platform
+strings, and the validated absence of an interpreter and accepted ELF flags.
+It SHALL clear the complete backing; reconstruct the complete target-aligned
+block; perform every target-required visibility operation; and read back every
+word, pointer relation, string byte, metadata fact, terminator, identity
+relation, and otherwise-zero byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK` observation.
+
+Source SHALL invoke `static image construction remove stack load metadata` with
+the exact extended owner, backing identity, and policy
+`bounded-stack-load-metadata-qualification-rollback`. Removal SHALL completely
+revalidate the extended block, clear the complete backing, reconstruct and
+completely revalidate the exact capability-qualified block, preserve every
+prior obligation, and reproduce the exact
+`HardwareCapabilitiesStackEntryStaticImageConstruction`. Source SHALL emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK` observation
+before capability removal.
+
+A wrong owner, backing, value, policy, tag, metadata value, or ordering;
+duplicate or partial addition; partial mutation or readback; prior-fact
+removal, ordinary clearing, or leaf revocation while extended; backing release;
+activation; teardown; or recoverable disposition SHALL be invalid. Only exact
+load-metadata removal SHALL restore the state admitted by capability removal.
+
+For qualified x86-64 realization of the accepted static `ET_EXEC`, the provider
+SHALL encode `AT_BASE=(7,0)` and `AT_FLAGS=(8,0)` after `AT_HWCAP2=(26,0)` and
+before `AT_NULL`. The nonzero tags SHALL remain explicit despite both zero
+values. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact prior facts, strings, and inactive hierarchy,
+enlarge the aligned block without overlap, and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the metadata facts after their removal witness,
+expose values, header fields, or representation, admit an interpreter or
+dynamic loading, add random data or a vDSO, initialize TLS, construct a user
+context, enter user mode, execute BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001 — Random-delivery slot authority
+
+`static image construction authorize stack random slot` SHALL require the
+exact live `LoadMetadataStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001`. It SHALL accept only
+that owner, that backing identity, `value` equal to
+`initial-auxv-random-object`, `extent-bytes` equal to 16, and policy
+`bounded-linux-auxv-random-before-null`. It SHALL produce one affine
+`RandomSlotAuthorizedStackEntryStaticImageConstruction` retaining every prior
+fact and authorizing one future atomic native `AT_RANDOM` entry and distinct
+16-byte in-stack object.
+
+Before success, the provider SHALL completely revalidate the load-metadata-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument and platform
+strings, and all prior facts. It SHALL prove a target-aligned 16-byte future
+object and one future auxiliary entry fit wholly inside the stack leaf without
+overlap with any current object, vector entry, string, guard, or mapping. It
+SHALL completely read back the unchanged backing, including both zero qwords
+of the future object. It SHALL perform no store. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK` observation.
+
+Source SHALL invoke `static image construction revoke stack random slot` with
+the exact authorized owner, backing identity, and policy
+`bounded-stack-random-slot-qualification-rollback`. Revocation SHALL completely
+revalidate the unchanged extended obligations and reproduce the exact
+`LoadMetadataStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK` observation before load-
+metadata removal.
+
+A wrong owner, backing, value, extent, policy, placement, alignment, content,
+or ordering; duplicate or partial authorization; stack mutation; prior-fact
+removal, ordinary clearing, or leaf revocation while authorized; backing
+release; activation; teardown; or recoverable disposition SHALL be invalid.
+Only exact revocation SHALL restore the state admitted by load-metadata
+removal.
+
+For qualified x86-64 realization, the provider SHALL reserve one naturally
+aligned 16-byte destination below the fixed platform and executable-name
+strings and enough downward space for one future native `(25,pointer)` entry
+before `AT_NULL`. Authorization and revocation SHALL each read back all 512
+backing qwords and prove the deterministic entry block remains byte-for-byte
+unchanged, both future object qwords remain zero, the future enlarged aligned
+block remains in bounds, every identity relation and non-overlap obligation
+holds, and no active-address invalidation is issued.
+
+This rule SHALL NOT retain the authority after its revocation witness, write a
+placeholder, consume entropy, publish `AT_RANDOM`, expose an address, byte,
+offset, tag, pointer, or representation, add a vDSO, initialize TLS, construct
+a user context, enter user mode, execute BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001 — Prepared-process retention
+
+`static image construction retain prepared process` SHALL require the exact
+live `RandomSlotAuthorizedStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001`. It SHALL accept only that
+owner, that backing identity, `value` equal to
+`bounded-static-elf-initial-process`, and policy
+`bounded-static-elf-pre-entropy-retention`. It SHALL consume the construction-
+facing owners and produce one affine `RetainedStaticElfInitialProcess`
+containing the sealed image, inactive hierarchy, entry authority, guarded
+RW/NX stack, deterministic process table, and random-slot authority.
+
+Before success, the provider SHALL completely revalidate the random-slot-
+authorized construction and bind its opaque resource tuple to the retained
+owner. It SHALL close construction-facing allocator state without releasing,
+aliasing, activating, exposing, or mutating any resource. Subsequent unrelated
+kernel operations MAY own disjoint resources but SHALL gain no access to the
+retained process. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK` observation.
+
+For qualification, source SHALL immediately invoke
+`static image construction restore prepared process` with the exact retained
+owner and policy `bounded-static-elf-retention-qualification-rollback`.
+Restoration SHALL prove every retained resource and byte unchanged, consume the
+retained owner, reopen only the exact random-slot-authorized construction and
+nested one-frame backing, and emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK` observation before
+random-slot revocation.
+
+A wrong owner, backing, value, policy, resource tuple, content, translation
+state, or ordering; duplicate or partial retention; construction mutation,
+backing release, activation, teardown, or bootstrap completion while retained;
+or recoverable disposition SHALL be invalid. Only exact restoration or a later
+approved retained-process consumer may consume the retained owner.
+
+For qualified x86-64 realization, compiler-controlled root state SHALL retain
+the provider-private payload, metadata, hierarchy, leaf, entry, and stack-
+backing identities across ordinary provider calls. Retention SHALL clear the
+construction allocator channel without returning frames; restoration SHALL
+recreate its exact one-frame nested backing obligation. Both transitions SHALL
+completely validate the inactive root, hierarchy, leaves, resident ELF
+metadata, deterministic process table, future random-object zeros, strings,
+guard, and otherwise-zero stack bytes. They SHALL perform no store, fence,
+active-address invalidation, release, or activation.
+
+This rule SHALL NOT retain the process beyond its restoration witness in this
+increment, consume entropy, publish `AT_RANDOM`, expose resource representation,
+add a vDSO, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001 — Retained-process disjoint work
+
+`static image construction qualify retained disjoint work` SHALL require and
+consume the exact `RetainedStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001`. It SHALL accept only that
+owner, `frame-count` one, `alignment-frames` one, and policy
+`bounded-static-elf-retained-disjoint-work`.
+
+The provider SHALL use the same sealed allocator to select one fresh frame,
+prove its complete physical extent disjoint from the retained payload, leaf
+metadata, upper hierarchy, and stack backing, release only the fresh frame,
+completely revalidate every retained resource and byte, and return the same
+opaque affine retained-process owner. It SHALL NOT expose either extent,
+allocator state, or any representation; mutate, release, alias, activate, or
+invalidate retained resources; or retain the fresh frame.
+
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK` observation after successful
+fresh-frame release and before prepared-process restoration. Another owner,
+request, policy, allocator, overlapping selection, incomplete exclusion,
+partial or wrong release, changed retained byte or identity, duplicate work,
+early restoration, or recoverable disposition SHALL be invalid.
+
+For qualified x86-64 realization, compiler-controlled root state SHALL keep the
+retained process tuple private while the existing E820-backed allocator advances
+through a fresh one-frame selection. Complete unsigned interval exclusion and
+the same retained-process validations required on restoration SHALL precede
+success. No retained-process store, fence, active-address invalidation,
+activation, or release is permitted.
+
+This rule SHALL NOT perform DMA or device work, consume entropy, publish
+`AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001 — Entropy-handoff authority
+
+`static image construction authorize entropy handoff` SHALL require and
+consume the exact retained-process owner returned by
+`TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001`. It SHALL accept only that
+owner, process identity `bounded-static-elf-initial-process`, and policy
+`bounded-static-elf-initial-random-delivery`, and SHALL produce one affine
+`EntropyPendingStaticElfInitialProcess`.
+
+Before success, the provider SHALL completely revalidate every retained
+resource and byte. The resulting owner SHALL preserve the payload, metadata,
+inactive hierarchy, entry authority, guarded stack, deterministic process
+table, and random-slot authority while granting only future acceptance of one
+qualified entropy output. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK` observation and SHALL
+receive no address, byte, resource tuple, or representation.
+
+For qualification, `static image construction revoke entropy handoff` SHALL
+immediately consume the exact entropy-pending owner under policy
+`bounded-static-elf-entropy-handoff-qualification-rollback`, prove all retained
+state unchanged, return the exact retained-process owner, and emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK` observation before retained-
+process restoration.
+
+Another owner, process identity, policy, resource tuple, byte, translation
+state, or ordering; duplicate or partial transfer; allocation, release,
+mutation, activation, output use, early restoration, or recoverable disposition
+SHALL be invalid. Qualified x86-64 transitions SHALL perform complete retained-
+process validation and no store, fence, active-address invalidation, allocation,
+release, activation, entropy extraction, or delivery.
+
+This rule SHALL NOT retain the entropy-pending owner beyond its rollback witness
+in this increment, consume or expose entropy, publish `AT_RANDOM`, initialize
+TLS, construct a user context, enter user mode, execute BusyBox, or add a
+syscall.
+
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001 — Entropy-acquisition authority
+
+`static image construction authorize entropy acquisition` SHALL require and
+consume the exact `EntropyPendingStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001`. It SHALL accept only output
+identity one, resulting generator generation two, and policy
+`bounded-static-elf-initial-entropy-acquisition`, and SHALL produce one affine
+`EntropyAcquiringStaticElfInitialProcess`.
+
+Before success, the provider SHALL completely revalidate every retained
+resource and byte. The resulting owner SHALL preserve the complete prepared
+process while granting only future acceptance of the named qualified output.
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK` observation and
+SHALL receive no address, byte, resource tuple, device state, allocator state,
+or representation.
+
+For qualification, `static image construction revoke entropy acquisition`
+SHALL immediately consume the exact acquisition owner under policy
+`bounded-static-elf-entropy-acquisition-qualification-rollback`, prove all
+retained state unchanged, return the exact entropy-pending owner, and emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK`
+observation before entropy-handoff revocation.
+
+Another owner, output identity, generation, policy, resource tuple, byte,
+translation state, or ordering; duplicate or partial transfer; mutation;
+device access; allocation; release; extraction; output use; early handoff
+revocation; or recoverable disposition SHALL be invalid. Qualified x86-64
+transitions SHALL perform complete retained-process validation and no store,
+fence, active-address invalidation, allocation, release, activation,
+extraction, output copy, or delivery.
+
+This rule SHALL NOT span the entropy pipeline, acquire, consume, or expose
+entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

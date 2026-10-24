@@ -31,12 +31,21 @@ use crate::{
     SYSTEMS_LOCAL_NOTIFICATION_SEND, SYSTEMS_LOCAL_NOTIFICATION_WAIT, SYSTEMS_MONOTONIC_CLOCK_NOW,
     SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_LOCAL_NOTIFICATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -44,16 +53,28 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -1196,6 +1217,27 @@ pub enum SystemsOperation {
     AddStaticImageStackEntryFact,
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
+    AddStaticImageStackCredentials,
+    AddStaticImageStackSecureMode,
+    AddStaticImageStackClockTickRate,
+    AddStaticImageStackPlatform,
+    AddStaticImageStackHardwareCapabilities,
+    AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
+    AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyHandoff,
+    RestoreStaticImagePreparedProcess,
+    RevokeStaticImageStackRandomSlot,
+    RemoveStaticImageStackLoadMetadata,
+    RemoveStaticImageStackHardwareCapabilities,
+    RemoveStaticImageStackPlatform,
+    RemoveStaticImageStackClockTickRate,
+    RemoveStaticImageStackSecureMode,
+    RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
@@ -1441,6 +1483,69 @@ impl SystemsOperation {
             }
             Self::AddStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME
+            }
+            Self::AddStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            Self::AddStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
+            }
+            Self::AddStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            Self::AddStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM
+            }
+            Self::AddStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES
+            }
+            Self::AddStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
+            }
+            Self::RetainStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
+            Self::AuthorizeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            }
+            Self::RestoreStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
+            }
+            Self::RemoveStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            }
+            Self::RemoveStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
+            }
+            Self::RemoveStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
+            }
+            Self::RemoveStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            }
+            Self::RemoveStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
+            }
+            Self::RemoveStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
             }
             Self::RemoveStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
@@ -1746,6 +1851,27 @@ pub enum SystemsTransition {
     AddStaticImageStackEntryFact,
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
+    AddStaticImageStackCredentials,
+    AddStaticImageStackSecureMode,
+    AddStaticImageStackClockTickRate,
+    AddStaticImageStackPlatform,
+    AddStaticImageStackHardwareCapabilities,
+    AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
+    AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyHandoff,
+    RestoreStaticImagePreparedProcess,
+    RevokeStaticImageStackRandomSlot,
+    RemoveStaticImageStackLoadMetadata,
+    RemoveStaticImageStackHardwareCapabilities,
+    RemoveStaticImageStackPlatform,
+    RemoveStaticImageStackClockTickRate,
+    RemoveStaticImageStackSecureMode,
+    RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
@@ -2207,6 +2333,69 @@ impl SystemsTransition {
             Self::AddStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME
             }
+            Self::AddStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            Self::AddStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
+            }
+            Self::AddStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            Self::AddStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM
+            }
+            Self::AddStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES
+            }
+            Self::AddStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
+            }
+            Self::RetainStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
+            Self::AuthorizeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            }
+            Self::RevokeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            }
+            Self::RestoreStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
+            }
+            Self::RemoveStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            }
+            Self::RemoveStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
+            }
+            Self::RemoveStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
+            }
+            Self::RemoveStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            }
+            Self::RemoveStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
+            }
+            Self::RemoveStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
+            }
             Self::RemoveStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
             }
@@ -2534,6 +2723,27 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackEntryFact
                     | SystemsOperation::AddStaticImageStackProgramHeaders
                     | SystemsOperation::AddStaticImageStackExecutableName
+                    | SystemsOperation::AddStaticImageStackCredentials
+                    | SystemsOperation::AddStaticImageStackSecureMode
+                    | SystemsOperation::AddStaticImageStackClockTickRate
+                    | SystemsOperation::AddStaticImageStackPlatform
+                    | SystemsOperation::AddStaticImageStackHardwareCapabilities
+                    | SystemsOperation::AddStaticImageStackLoadMetadata
+                    | SystemsOperation::AuthorizeStaticImageStackRandomSlot
+                    | SystemsOperation::RetainStaticImagePreparedProcess
+                    | SystemsOperation::QualifyStaticImageRetainedDisjointWork
+                    | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+                    | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
+                    | SystemsOperation::RevokeStaticImageEntropyAcquisition
+                    | SystemsOperation::RevokeStaticImageEntropyHandoff
+                    | SystemsOperation::RestoreStaticImagePreparedProcess
+                    | SystemsOperation::RevokeStaticImageStackRandomSlot
+                    | SystemsOperation::RemoveStaticImageStackLoadMetadata
+                    | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
+                    | SystemsOperation::RemoveStaticImageStackPlatform
+                    | SystemsOperation::RemoveStaticImageStackClockTickRate
+                    | SystemsOperation::RemoveStaticImageStackSecureMode
+                    | SystemsOperation::RemoveStaticImageStackCredentials
                     | SystemsOperation::RemoveStaticImageStackExecutableName
                     | SystemsOperation::RemoveStaticImageStackProgramHeaders
                     | SystemsOperation::RemoveStaticImageStackEntryFact
@@ -2877,6 +3087,9 @@ struct BootstrapAuthorityState {
     memory_described: bool,
     allocator_created: bool,
     memory_ownership: BootstrapMemoryOwnership,
+    retained_static_process: bool,
+    entropy_pending_static_process: bool,
+    entropy_acquiring_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -3051,6 +3264,13 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackEntryFactAdded,
     StaticElfConstructionStackProgramHeadersAdded,
     StaticElfConstructionStackExecutableNameAdded,
+    StaticElfConstructionStackCredentialsAdded,
+    StaticElfConstructionStackSecureModeAdded,
+    StaticElfConstructionStackClockTickRateAdded,
+    StaticElfConstructionStackPlatformAdded,
+    StaticElfConstructionStackHardwareCapabilitiesAdded,
+    StaticElfConstructionStackLoadMetadataAdded,
+    StaticElfConstructionStackRandomSlotAuthorized,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3392,6 +3612,263 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack executable-name addition requires one live program-header group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded;
+            }
+            SystemsOperation::AddStaticImageStackCredentials => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack credential addition requires one live executable-name fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded;
+            }
+            SystemsOperation::AddStaticImageStackSecureMode => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack secure-mode addition requires one live credential group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded;
+            }
+            SystemsOperation::AddStaticImageStackClockTickRate => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack clock-tick-rate addition requires one live security fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded;
+            }
+            SystemsOperation::AddStaticImageStackPlatform => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack platform addition requires one live clock-tick-rate fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackPlatform => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack platform removal requires one live platform fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded;
+            }
+            SystemsOperation::AddStaticImageStackHardwareCapabilities => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack hardware-capability addition requires one live platform fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded;
+            }
+            SystemsOperation::AddStaticImageStackLoadMetadata => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack load-metadata addition requires one live hardware-capability group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded;
+            }
+            SystemsOperation::AuthorizeStaticImageStackRandomSlot => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack random-slot authorization requires one live load-metadata group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized;
+            }
+            SystemsOperation::RetainStaticImagePreparedProcess => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized
+                    || self.retained_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image prepared-process retention requires one live random-slot-authorized construction",
+                    ));
+                }
+                self.memory_ownership = BootstrapMemoryOwnership::None;
+                self.retained_static_process = true;
+            }
+            SystemsOperation::QualifyStaticImageRetainedDisjointWork => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.retained_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image retained disjoint work requires the exact retained process and closed allocator channel",
+                    ));
+                }
+            }
+            SystemsOperation::AuthorizeStaticImageEntropyHandoff => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.retained_static_process
+                    || self.entropy_pending_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy handoff authorization requires the exact retained process",
+                    ));
+                }
+                self.retained_static_process = false;
+                self.entropy_pending_static_process = true;
+            }
+            SystemsOperation::AuthorizeStaticImageEntropyAcquisition => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy acquisition authorization requires the exact entropy-pending process",
+                    ));
+                }
+                self.entropy_pending_static_process = false;
+                self.entropy_acquiring_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyAcquisition => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy acquisition revocation requires the exact acquisition owner",
+                    ));
+                }
+                self.entropy_acquiring_static_process = false;
+                self.entropy_pending_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyHandoff => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.retained_static_process
+                    || !self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy handoff revocation requires the exact entropy-pending process",
+                    ));
+                }
+                self.entropy_pending_static_process = false;
+                self.retained_static_process = true;
+            }
+            SystemsOperation::RestoreStaticImagePreparedProcess => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.retained_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image prepared-process restoration requires the exact retained process and closed allocator channel",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized;
+                self.retained_static_process = false;
+            }
+            SystemsOperation::RevokeStaticImageStackRandomSlot => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack random-slot revocation requires one live random-slot authority",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackLoadMetadata => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack load-metadata removal requires one live load-metadata group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackHardwareCapabilities => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack hardware-capability removal requires one live capability group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackClockTickRate => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack clock-tick-rate removal requires one live accounting-rate fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackSecureMode => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack secure-mode removal requires one live security fact",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded;
+            }
+            SystemsOperation::RemoveStaticImageStackCredentials => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack credential removal requires one live credential group",
                     ));
                 }
                 self.memory_ownership =
@@ -5442,7 +5919,16 @@ impl BootstrapAuthorityState {
             ));
         }
         match self.memory_ownership {
-            BootstrapMemoryOwnership::None => {}
+            BootstrapMemoryOwnership::None
+                if !self.retained_static_process
+                    && !self.entropy_pending_static_process
+                    && !self.entropy_acquiring_static_process => {}
+            BootstrapMemoryOwnership::None => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-FRAMES-LIVE",
+                    "bootstrap handler consumes its context while a retained static process remains live",
+                ));
+            }
             BootstrapMemoryOwnership::Frames(_)
             | BootstrapMemoryOwnership::StaticElfMappingResources
             | BootstrapMemoryOwnership::StaticElfConstructionLive
@@ -5463,6 +5949,13 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackEntryFactAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackProgramHeadersAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackExecutableNameAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackCredentialsAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackSecureModeAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackClockTickRateAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7288,6 +7781,69 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackExecutableName => {
             transitions.push(SystemsTransition::AddStaticImageStackExecutableName);
         }
+        SystemsOperation::AddStaticImageStackCredentials => {
+            transitions.push(SystemsTransition::AddStaticImageStackCredentials);
+        }
+        SystemsOperation::AddStaticImageStackSecureMode => {
+            transitions.push(SystemsTransition::AddStaticImageStackSecureMode);
+        }
+        SystemsOperation::AddStaticImageStackClockTickRate => {
+            transitions.push(SystemsTransition::AddStaticImageStackClockTickRate);
+        }
+        SystemsOperation::AddStaticImageStackPlatform => {
+            transitions.push(SystemsTransition::AddStaticImageStackPlatform);
+        }
+        SystemsOperation::AddStaticImageStackHardwareCapabilities => {
+            transitions.push(SystemsTransition::AddStaticImageStackHardwareCapabilities);
+        }
+        SystemsOperation::AddStaticImageStackLoadMetadata => {
+            transitions.push(SystemsTransition::AddStaticImageStackLoadMetadata);
+        }
+        SystemsOperation::AuthorizeStaticImageStackRandomSlot => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageStackRandomSlot);
+        }
+        SystemsOperation::RetainStaticImagePreparedProcess => {
+            transitions.push(SystemsTransition::RetainStaticImagePreparedProcess);
+        }
+        SystemsOperation::QualifyStaticImageRetainedDisjointWork => {
+            transitions.push(SystemsTransition::QualifyStaticImageRetainedDisjointWork);
+        }
+        SystemsOperation::AuthorizeStaticImageEntropyHandoff => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageEntropyHandoff);
+        }
+        SystemsOperation::AuthorizeStaticImageEntropyAcquisition => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageEntropyAcquisition);
+        }
+        SystemsOperation::RevokeStaticImageEntropyAcquisition => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
+        }
+        SystemsOperation::RevokeStaticImageEntropyHandoff => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyHandoff);
+        }
+        SystemsOperation::RestoreStaticImagePreparedProcess => {
+            transitions.push(SystemsTransition::RestoreStaticImagePreparedProcess);
+        }
+        SystemsOperation::RevokeStaticImageStackRandomSlot => {
+            transitions.push(SystemsTransition::RevokeStaticImageStackRandomSlot);
+        }
+        SystemsOperation::RemoveStaticImageStackLoadMetadata => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackLoadMetadata);
+        }
+        SystemsOperation::RemoveStaticImageStackHardwareCapabilities => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackHardwareCapabilities);
+        }
+        SystemsOperation::RemoveStaticImageStackPlatform => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackPlatform);
+        }
+        SystemsOperation::RemoveStaticImageStackClockTickRate => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackClockTickRate);
+        }
+        SystemsOperation::RemoveStaticImageStackSecureMode => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackSecureMode);
+        }
+        SystemsOperation::RemoveStaticImageStackCredentials => {
+            transitions.push(SystemsTransition::RemoveStaticImageStackCredentials);
+        }
         SystemsOperation::RemoveStaticImageStackExecutableName => {
             transitions.push(SystemsTransition::RemoveStaticImageStackExecutableName);
         }
@@ -7796,6 +8352,27 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackEntryFact
         | SystemsOperation::AddStaticImageStackProgramHeaders
         | SystemsOperation::AddStaticImageStackExecutableName
+        | SystemsOperation::AddStaticImageStackCredentials
+        | SystemsOperation::AddStaticImageStackSecureMode
+        | SystemsOperation::AddStaticImageStackClockTickRate
+        | SystemsOperation::AddStaticImageStackPlatform
+        | SystemsOperation::AddStaticImageStackHardwareCapabilities
+        | SystemsOperation::AddStaticImageStackLoadMetadata
+        | SystemsOperation::AuthorizeStaticImageStackRandomSlot
+        | SystemsOperation::RetainStaticImagePreparedProcess
+        | SystemsOperation::QualifyStaticImageRetainedDisjointWork
+        | SystemsOperation::AuthorizeStaticImageEntropyHandoff
+        | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
+        | SystemsOperation::RevokeStaticImageEntropyAcquisition
+        | SystemsOperation::RevokeStaticImageEntropyHandoff
+        | SystemsOperation::RestoreStaticImagePreparedProcess
+        | SystemsOperation::RevokeStaticImageStackRandomSlot
+        | SystemsOperation::RemoveStaticImageStackLoadMetadata
+        | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
+        | SystemsOperation::RemoveStaticImageStackPlatform
+        | SystemsOperation::RemoveStaticImageStackClockTickRate
+        | SystemsOperation::RemoveStaticImageStackSecureMode
+        | SystemsOperation::RemoveStaticImageStackCredentials
         | SystemsOperation::RemoveStaticImageStackExecutableName
         | SystemsOperation::RemoveStaticImageStackProgramHeaders
         | SystemsOperation::RemoveStaticImageStackEntryFact
@@ -10817,6 +11394,27 @@ mod tests {
                 SystemsOperation::AddStaticImageStackEntryFact,
                 SystemsOperation::AddStaticImageStackProgramHeaders,
                 SystemsOperation::AddStaticImageStackExecutableName,
+                SystemsOperation::AddStaticImageStackCredentials,
+                SystemsOperation::AddStaticImageStackSecureMode,
+                SystemsOperation::AddStaticImageStackClockTickRate,
+                SystemsOperation::AddStaticImageStackPlatform,
+                SystemsOperation::AddStaticImageStackHardwareCapabilities,
+                SystemsOperation::AddStaticImageStackLoadMetadata,
+                SystemsOperation::AuthorizeStaticImageStackRandomSlot,
+                SystemsOperation::RetainStaticImagePreparedProcess,
+                SystemsOperation::QualifyStaticImageRetainedDisjointWork,
+                SystemsOperation::AuthorizeStaticImageEntropyHandoff,
+                SystemsOperation::AuthorizeStaticImageEntropyAcquisition,
+                SystemsOperation::RevokeStaticImageEntropyAcquisition,
+                SystemsOperation::RevokeStaticImageEntropyHandoff,
+                SystemsOperation::RestoreStaticImagePreparedProcess,
+                SystemsOperation::RevokeStaticImageStackRandomSlot,
+                SystemsOperation::RemoveStaticImageStackLoadMetadata,
+                SystemsOperation::RemoveStaticImageStackHardwareCapabilities,
+                SystemsOperation::RemoveStaticImageStackPlatform,
+                SystemsOperation::RemoveStaticImageStackClockTickRate,
+                SystemsOperation::RemoveStaticImageStackSecureMode,
+                SystemsOperation::RemoveStaticImageStackCredentials,
                 SystemsOperation::RemoveStaticImageStackExecutableName,
                 SystemsOperation::RemoveStaticImageStackProgramHeaders,
                 SystemsOperation::RemoveStaticImageStackEntryFact,
@@ -10843,6 +11441,29 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackEntryFact));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackProgramHeaders));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackExecutableName));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackCredentials));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackSecureMode));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackClockTickRate));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackPlatform));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackHardwareCapabilities));
+        assert!(transitions.contains(&SystemsTransition::AddStaticImageStackLoadMetadata));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageStackRandomSlot));
+        assert!(transitions.contains(&SystemsTransition::RetainStaticImagePreparedProcess));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageRetainedDisjointWork));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyHandoff));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyAcquisition));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
+        assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackRandomSlot));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackLoadMetadata));
+        assert!(
+            transitions.contains(&SystemsTransition::RemoveStaticImageStackHardwareCapabilities)
+        );
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackPlatform));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackClockTickRate));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackSecureMode));
+        assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackCredentials));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackExecutableName));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackProgramHeaders));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackEntryFact));
@@ -10851,6 +11472,111 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
@@ -10932,14 +11658,14 @@ mod tests {
             "E-SYSTEMS-STATIC-IMAGE"
         );
 
-        let mut remove_executable_name_before_addition = program;
-        remove_executable_name_before_addition
+        let mut remove_load_metadata_before_addition = program;
+        remove_load_metadata_before_addition
             .bootstrap
             .handler
             .operations
-            .swap(21, 22);
+            .swap(27, 28);
         assert_eq!(
-            validate_systems_program(&remove_executable_name_before_addition)
+            validate_systems_program(&remove_load_metadata_before_addition)
                 .unwrap_err()
                 .code,
             "E-SYSTEMS-STATIC-IMAGE"

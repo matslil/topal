@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/119";
+    "topal.provider-object.x86_64-qemu-pc-q35/130";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -55,6 +55,48 @@ pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL: &str =
     "topal_x86_systems_static_image_add_stack_executable_name";
 pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_EXECUTABLE_NAME_SYMBOL: &str =
     "topal_x86_systems_static_image_remove_stack_executable_name";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_credentials";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_credentials";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_secure_mode";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_secure_mode";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_clock_tick_rate";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_clock_tick_rate";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_platform";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_platform";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_hardware_capabilities";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_hardware_capabilities";
+pub const X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL: &str =
+    "topal_x86_systems_static_image_add_stack_load_metadata";
+pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL: &str =
+    "topal_x86_systems_static_image_remove_stack_load_metadata";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_stack_random_slot";
+pub const X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL: &str =
+    "topal_x86_systems_static_image_retain_prepared_process";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_retained_disjoint_work";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_entropy_handoff";
+pub const X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL: &str =
+    "topal_x86_systems_static_image_authorize_entropy_acquisition";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entropy_acquisition";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entropy_handoff";
+pub const X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL: &str =
+    "topal_x86_systems_static_image_restore_prepared_process";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_stack_random_slot";
 pub const X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PAGESZ_SYMBOL: &str =
     "topal_x86_systems_static_image_remove_stack_pagesz";
 pub const X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL: &str =
@@ -1319,6 +1361,132 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_EXECUTABLE_NAME_SYMBOL,
         &static_image_add_stack_executable_name()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL,
+        &static_image_add_stack_credentials()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
+        &static_image_add_stack_secure_mode()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL,
+        &static_image_add_stack_clock_tick_rate()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL,
+        &static_image_add_stack_platform()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+        &static_image_add_stack_hardware_capabilities()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+        &static_image_add_stack_load_metadata()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+        &static_image_remove_stack_load_metadata()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+        &static_image_authorize_stack_random_slot()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+        &static_image_retain_prepared_process()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
+        &static_image_qualify_retained_disjoint_work()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+        &static_image_authorize_entropy_handoff()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+        &static_image_authorize_entropy_acquisition()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
+        &static_image_revoke_entropy_acquisition()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+        &static_image_revoke_entropy_handoff()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+        &static_image_restore_prepared_process()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
+        &static_image_revoke_stack_random_slot()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+        &static_image_remove_stack_hardware_capabilities()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL,
+        &static_image_remove_stack_platform()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
+        &static_image_remove_stack_clock_tick_rate()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
+        &static_image_remove_stack_secure_mode()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
+        &static_image_remove_stack_credentials()?,
     );
     append_encoded_function(
         &mut object,
@@ -7159,6 +7327,1278 @@ fn static_image_remove_stack_executable_name() -> Result<Vec<u8>, CompileError> 
     static_image_stack_executable_name(false)
 }
 
+fn emit_static_image_credential_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0f00;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&480_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+            code.jump_if(0x85, "fail");
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 200,
+            O + 208,
+            O + 216,
+            0x0ff0,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_credentials(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "credentials-add-h",
+                "credentials-add-x",
+                "credentials-add-r",
+                "credentials-add-w",
+            ]
+        } else {
+            [
+                "credentials-remove-h",
+                "credentials-remove-x",
+                "credentials-remove-r",
+                "credentials-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "credentials-add-pd"
+        } else {
+            "credentials-remove-pd"
+        },
+        if add {
+            "credentials-add-pd-e"
+        } else {
+            "credentials-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_execfn_stack(&mut code, true)?;
+    } else {
+        emit_static_image_credential_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc,
+        0xf3, 0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_credential_stack(&mut code, false)?;
+    } else {
+        emit_static_image_execfn_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "credentials-add-ah",
+                "credentials-add-ax",
+                "credentials-add-ar",
+                "credentials-add-aw",
+            ]
+        } else {
+            [
+                "credentials-remove-ah",
+                "credentials-remove-ax",
+                "credentials-remove-ar",
+                "credentials-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "credentials-add-apd"
+        } else {
+            "credentials-remove-apd"
+        },
+        if add {
+            "credentials-add-apd-e"
+        } else {
+            "credentials-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_credential_stack(&mut code, true)?;
+    } else {
+        emit_static_image_execfn_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_credentials() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_credentials(true)
+}
+
+fn static_image_remove_stack_credentials() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_credentials(false)
+}
+
+fn emit_static_image_secure_mode_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0ef0;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&478_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+            code.jump_if(0x85, "fail");
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 216,
+            O + 224,
+            O + 232,
+            0x0ff0,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_secure_mode(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "secure-add-h",
+                "secure-add-x",
+                "secure-add-r",
+                "secure-add-w",
+            ]
+        } else {
+            [
+                "secure-remove-h",
+                "secure-remove-x",
+                "secure-remove-r",
+                "secure-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "secure-add-pd"
+        } else {
+            "secure-remove-pd"
+        },
+        if add {
+            "secure-add-pd-e"
+        } else {
+            "secure-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_credential_stack(&mut code, true)?;
+    } else {
+        emit_static_image_secure_mode_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc,
+        0xf3, 0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_secure_mode_stack(&mut code, false)?;
+    } else {
+        emit_static_image_credential_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "secure-add-ah",
+                "secure-add-ax",
+                "secure-add-ar",
+                "secure-add-aw",
+            ]
+        } else {
+            [
+                "secure-remove-ah",
+                "secure-remove-ax",
+                "secure-remove-ar",
+                "secure-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "secure-add-apd"
+        } else {
+            "secure-remove-apd"
+        },
+        if add {
+            "secure-add-apd-e"
+        } else {
+            "secure-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_secure_mode_stack(&mut code, true)?;
+    } else {
+        emit_static_image_credential_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_secure_mode() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_secure_mode(true)
+}
+
+fn static_image_remove_stack_secure_mode() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_secure_mode(false)
+}
+
+fn emit_static_image_clock_tick_rate_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0ee0;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (O + 216, 17),
+        (O + 224, 100),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&476_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+            code.jump_if(0x85, "fail");
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+            code.bytes(&offset.to_le_bytes());
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 232,
+            O + 240,
+            O + 248,
+            0x0ff0,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_clock_tick_rate(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "clktck-add-h",
+                "clktck-add-x",
+                "clktck-add-r",
+                "clktck-add-w",
+            ]
+        } else {
+            [
+                "clktck-remove-h",
+                "clktck-remove-x",
+                "clktck-remove-r",
+                "clktck-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "clktck-add-pd"
+        } else {
+            "clktck-remove-pd"
+        },
+        if add {
+            "clktck-add-pd-e"
+        } else {
+            "clktck-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_secure_mode_stack(&mut code, true)?;
+    } else {
+        emit_static_image_clock_tick_rate_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc,
+        0xf3, 0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_clock_tick_rate_stack(&mut code, false)?;
+    } else {
+        emit_static_image_secure_mode_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "clktck-add-ah",
+                "clktck-add-ax",
+                "clktck-add-ar",
+                "clktck-add-aw",
+            ]
+        } else {
+            [
+                "clktck-remove-ah",
+                "clktck-remove-ax",
+                "clktck-remove-ar",
+                "clktck-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "clktck-add-apd"
+        } else {
+            "clktck-remove-apd"
+        },
+        if add {
+            "clktck-add-apd-e"
+        } else {
+            "clktck-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_clock_tick_rate_stack(&mut code, true)?;
+    } else {
+        emit_static_image_secure_mode_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_clock_tick_rate() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_clock_tick_rate(true)
+}
+
+fn static_image_remove_stack_clock_tick_rate() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_clock_tick_rate(false)
+}
+
+fn emit_static_image_platform_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0ed0;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (O + 216, 17),
+        (O + 224, 100),
+        (O + 232, 15),
+        (O + 240, 0x005f_fff0),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+        (0x0ff0, u64::from_le_bytes(*b"x86_64\0\0")),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&474_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+        }
+        code.bytes(&offset.to_le_bytes());
+        if verify {
+            code.jump_if(0x85, "fail");
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 248,
+            O + 256,
+            O + 264,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_platform(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "platform-add-h",
+                "platform-add-x",
+                "platform-add-r",
+                "platform-add-w",
+            ]
+        } else {
+            [
+                "platform-remove-h",
+                "platform-remove-x",
+                "platform-remove-r",
+                "platform-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "platform-add-pd"
+        } else {
+            "platform-remove-pd"
+        },
+        if add {
+            "platform-add-pd-e"
+        } else {
+            "platform-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_clock_tick_rate_stack(&mut code, true)?;
+    } else {
+        emit_static_image_platform_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3,
+        0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_platform_stack(&mut code, false)?;
+    } else {
+        emit_static_image_clock_tick_rate_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "platform-add-ah",
+                "platform-add-ax",
+                "platform-add-ar",
+                "platform-add-aw",
+            ]
+        } else {
+            [
+                "platform-remove-ah",
+                "platform-remove-ax",
+                "platform-remove-ar",
+                "platform-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "platform-add-apd"
+        } else {
+            "platform-remove-apd"
+        },
+        if add {
+            "platform-add-apd-e"
+        } else {
+            "platform-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_platform_stack(&mut code, true)?;
+    } else {
+        emit_static_image_clock_tick_rate_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_platform() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_platform(true)
+}
+
+fn static_image_remove_stack_platform() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_platform(false)
+}
+
+fn emit_static_image_hardware_capabilities_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0eb0;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (O + 216, 17),
+        (O + 224, 100),
+        (O + 232, 15),
+        (O + 240, 0x005f_fff0),
+        (O + 248, 16),
+        (O + 256, 0x178b_fbfd),
+        (O + 264, 26),
+        (O + 272, 0),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+        (0x0ff0, u64::from_le_bytes(*b"x86_64\0\0")),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&470_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+        }
+        code.bytes(&offset.to_le_bytes());
+        if verify {
+            code.jump_if(0x85, "fail");
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 280,
+            O + 288,
+            O + 296,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_hardware_capabilities(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            ["hwcap-add-h", "hwcap-add-x", "hwcap-add-r", "hwcap-add-w"]
+        } else {
+            [
+                "hwcap-remove-h",
+                "hwcap-remove-x",
+                "hwcap-remove-r",
+                "hwcap-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "hwcap-add-pd"
+        } else {
+            "hwcap-remove-pd"
+        },
+        if add {
+            "hwcap-add-pd-e"
+        } else {
+            "hwcap-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_platform_stack(&mut code, true)?;
+    } else {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3,
+        0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_hardware_capabilities_stack(&mut code, false)?;
+    } else {
+        emit_static_image_platform_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "hwcap-add-ah",
+                "hwcap-add-ax",
+                "hwcap-add-ar",
+                "hwcap-add-aw",
+            ]
+        } else {
+            [
+                "hwcap-remove-ah",
+                "hwcap-remove-ax",
+                "hwcap-remove-ar",
+                "hwcap-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "hwcap-add-apd"
+        } else {
+            "hwcap-remove-apd"
+        },
+        if add {
+            "hwcap-add-apd-e"
+        } else {
+            "hwcap-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    } else {
+        emit_static_image_platform_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_hardware_capabilities() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_hardware_capabilities(true)
+}
+
+fn static_image_remove_stack_hardware_capabilities() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_hardware_capabilities(false)
+}
+
+fn emit_static_image_load_metadata_stack(
+    code: &mut X86FunctionEncoder,
+    verify: bool,
+) -> Result<(), CompileError> {
+    const O: u32 = 0x0e90;
+    let words = [
+        (O, 2_u64),
+        (O + 8, 0x005f_ffe0),
+        (O + 16, 0x005f_ffe8),
+        (O + 40, 6),
+        (O + 48, 4096),
+        (O + 56, 9),
+        (O + 64, 0x004a_6580),
+        (O + 72, 3),
+        (O + 80, 0x0040_0040),
+        (O + 88, 4),
+        (O + 96, 56),
+        (O + 104, 5),
+        (O + 112, 11),
+        (O + 120, 31),
+        (O + 128, 0x005f_ffe0),
+        (O + 136, 11),
+        (O + 152, 12),
+        (O + 168, 13),
+        (O + 184, 14),
+        (O + 200, 23),
+        (O + 216, 17),
+        (O + 224, 100),
+        (O + 232, 15),
+        (O + 240, 0x005f_fff0),
+        (O + 248, 16),
+        (O + 256, 0x178b_fbfd),
+        (O + 264, 26),
+        (O + 272, 0),
+        (O + 280, 7),
+        (O + 288, 0),
+        (O + 296, 8),
+        (O + 304, 0),
+        (0x0fe0, 0x0078_6f62_7973_7562),
+        (0x0fe8, 0x0000_0000_6575_7274),
+        (0x0ff0, u64::from_le_bytes(*b"x86_64\0\0")),
+    ];
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    if verify {
+        code.bytes(&[0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9]);
+        code.bytes(&466_u32.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fail");
+    }
+    for (offset, value) in words {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        if verify {
+            code.bytes(&[0x49, 0x39, 0x83]);
+        } else {
+            code.bytes(&[0x49, 0x89, 0x83]);
+        }
+        code.bytes(&offset.to_le_bytes());
+        if verify {
+            code.jump_if(0x85, "fail");
+        }
+    }
+    if verify {
+        for offset in [
+            O + 24,
+            O + 32,
+            O + 144,
+            O + 160,
+            O + 176,
+            O + 192,
+            O + 208,
+            O + 312,
+            O + 320,
+            O + 328,
+            0x0ff8,
+        ] {
+            code.bytes(&[0x49, 0x83, 0xbb]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fail");
+        }
+    }
+    Ok(())
+}
+
+fn static_image_stack_load_metadata(add: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "load-metadata-add-h",
+                "load-metadata-add-x",
+                "load-metadata-add-r",
+                "load-metadata-add-w",
+            ]
+        } else {
+            [
+                "load-metadata-remove-h",
+                "load-metadata-remove-x",
+                "load-metadata-remove-r",
+                "load-metadata-remove-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "load-metadata-add-pd"
+        } else {
+            "load-metadata-remove-pd"
+        },
+        if add {
+            "load-metadata-add-pd-e"
+        } else {
+            "load-metadata-remove-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    } else {
+        emit_static_image_load_metadata_stack(&mut code, true)?;
+    }
+    code.bytes(&[
+        0x4c, 0x8b, 0x5c, 0x24, 0x20, 0x4c, 0x89, 0xdf, 0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3,
+        0x48, 0xab,
+    ]);
+    if add {
+        emit_static_image_load_metadata_stack(&mut code, false)?;
+    } else {
+        emit_static_image_hardware_capabilities_stack(&mut code, false)?;
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if add {
+            [
+                "load-metadata-add-ah",
+                "load-metadata-add-ax",
+                "load-metadata-add-ar",
+                "load-metadata-add-aw",
+            ]
+        } else {
+            [
+                "load-metadata-remove-ah",
+                "load-metadata-remove-ax",
+                "load-metadata-remove-ar",
+                "load-metadata-remove-aw",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if add {
+            "load-metadata-add-apd"
+        } else {
+            "load-metadata-remove-apd"
+        },
+        if add {
+            "load-metadata-add-apd-e"
+        } else {
+            "load-metadata-remove-apd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    if add {
+        emit_static_image_load_metadata_stack(&mut code, true)?;
+    } else {
+        emit_static_image_hardware_capabilities_stack(&mut code, true)?;
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_add_stack_load_metadata() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_load_metadata(true)
+}
+
+fn static_image_remove_stack_load_metadata() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_load_metadata(false)
+}
+
+fn static_image_stack_random_slot_authority(authorize: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if authorize {
+            [
+                "random-slot-authorize-h",
+                "random-slot-authorize-x",
+                "random-slot-authorize-r",
+                "random-slot-authorize-w",
+            ]
+        } else {
+            [
+                "random-slot-revoke-h",
+                "random-slot-revoke-x",
+                "random-slot-revoke-r",
+                "random-slot-revoke-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if authorize {
+            "random-slot-authorize-pd"
+        } else {
+            "random-slot-revoke-pd"
+        },
+        if authorize {
+            "random-slot-authorize-pd-e"
+        } else {
+            "random-slot-revoke-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    emit_static_image_load_metadata_stack(&mut code, true)?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_authorize_stack_random_slot() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_random_slot_authority(true)
+}
+
+fn static_image_revoke_stack_random_slot() -> Result<Vec<u8>, CompileError> {
+    static_image_stack_random_slot_authority(false)
+}
+
+fn static_image_prepared_process_retention(retain: bool) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, 0x48, 0x8b, 0x74, 0x24, 0x08, 0x4c, 0x8b, 0x5c, 0x24, 0x20,
+    ]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        if retain {
+            [
+                "prepared-retain-h",
+                "prepared-retain-x",
+                "prepared-retain-r",
+                "prepared-retain-w",
+            ]
+        } else {
+            [
+                "prepared-restore-h",
+                "prepared-restore-x",
+                "prepared-restore-r",
+                "prepared-restore-w",
+            ]
+        },
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        if retain {
+            "prepared-retain-pd"
+        } else {
+            "prepared-restore-pd"
+        },
+        if retain {
+            "prepared-retain-pd-e"
+        } else {
+            "prepared-restore-pd-e"
+        },
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+    emit_static_image_load_metadata_stack(&mut code, true)?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_retain_prepared_process() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_restore_prepared_process() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(false)
+}
+
+fn static_image_qualify_retained_disjoint_work() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_authorize_entropy_handoff() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_authorize_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(false)
+}
+
+fn static_image_revoke_entropy_handoff() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(false)
+}
+
 fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
     const LOADS: [(u32, u32, u32); 4] = [
         (0, 0, 0x6e0),
@@ -9447,6 +10887,476 @@ assert bytes(output) == block[32:]
                 .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x50, 0x0f, 0x00, 0x00]),
             "AT_EXECFN removal must restore the program-header entry position"
         );
+
+        let add_credentials =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CREDENTIALS_SYMBOL);
+        let remove_credentials = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
+        );
+        for bytes in [add_credentials.as_slice(), remove_credentials.as_slice()] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each credential transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each credential transition must fence once"
+            );
+            assert!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x41, 0x80, 0xba])
+                    .count()
+                    >= 1360,
+                "each transition must verify the complete resident ELF header and table before and after reconstruction"
+            );
+            for tag in [11_u64, 12, 13, 14] {
+                assert!(
+                    bytes.windows(8).any(|window| window == tag.to_le_bytes()),
+                    "each transition must encode or verify every credential tag"
+                );
+            }
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == [0x49, 0x83, 0xbb, 0x90, 0x0f, 0, 0, 0]),
+                "credential values must be read back as the sealed zero identity"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive credential transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_credentials
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x00, 0x0f, 0x00, 0x00]),
+            "credential addition must reconstruct the extended entry position"
+        );
+        assert!(
+            remove_credentials
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x40, 0x0f, 0x00, 0x00]),
+            "credential removal must restore the AT_EXECFN entry position"
+        );
+
+        let add_secure_mode =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL);
+        let remove_secure_mode = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_SECURE_MODE_SYMBOL,
+        );
+        for bytes in [add_secure_mode.as_slice(), remove_secure_mode.as_slice()] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each AT_SECURE transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each AT_SECURE transition must fence once"
+            );
+            assert!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x41, 0x80, 0xba])
+                    .count()
+                    >= 1360,
+                "each transition must verify the complete resident ELF header and table before and after reconstruction"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 23_u64.to_le_bytes()),
+                "each transition must encode or verify native AT_SECURE"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == [0x49, 0x83, 0xbb, 0xc0, 0x0f, 0, 0, 0]),
+                "AT_SECURE must be read back as the sealed zero result"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive AT_SECURE transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_secure_mode
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xf0, 0x0e, 0x00, 0x00]),
+            "AT_SECURE addition must reconstruct the extended entry position"
+        );
+        assert!(
+            remove_secure_mode
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x00, 0x0f, 0x00, 0x00]),
+            "AT_SECURE removal must restore the credential entry position"
+        );
+
+        let add_clock_tick_rate = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_CLOCK_TICK_RATE_SYMBOL,
+        );
+        let remove_clock_tick_rate = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
+        );
+        for bytes in [
+            add_clock_tick_rate.as_slice(),
+            remove_clock_tick_rate.as_slice(),
+        ] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each AT_CLKTCK transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each AT_CLKTCK transition must fence once"
+            );
+            assert!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x41, 0x80, 0xba])
+                    .count()
+                    >= 1360,
+                "each transition must verify the complete resident ELF header and table before and after reconstruction"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 17_u64.to_le_bytes()),
+                "each transition must encode or verify native AT_CLKTCK"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 100_u64.to_le_bytes()),
+                "AT_CLKTCK must carry the sealed Linux USER_HZ value"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive AT_CLKTCK transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_clock_tick_rate
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xe0, 0x0e, 0x00, 0x00]),
+            "AT_CLKTCK addition must reconstruct the extended entry position"
+        );
+        assert!(
+            remove_clock_tick_rate
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xf0, 0x0e, 0x00, 0x00]),
+            "AT_CLKTCK removal must restore the AT_SECURE entry position"
+        );
+
+        let add_platform = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL);
+        let remove_platform =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL);
+        for bytes in [add_platform.as_slice(), remove_platform.as_slice()] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each AT_PLATFORM transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each AT_PLATFORM transition must fence once"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 15_u64.to_le_bytes()),
+                "each transition must encode or verify native AT_PLATFORM"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 0x005f_fff0_u64.to_le_bytes()),
+                "AT_PLATFORM must point to the bounded platform object"
+            );
+            assert!(
+                bytes.windows(8).any(|window| window == b"x86_64\0\0"),
+                "AT_PLATFORM must carry the complete native platform string"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive AT_PLATFORM transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_platform
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xd0, 0x0e, 0x00, 0x00]),
+            "AT_PLATFORM addition must reconstruct the extended entry position"
+        );
+        assert!(
+            remove_platform
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xe0, 0x0e, 0x00, 0x00]),
+            "AT_PLATFORM removal must restore the AT_CLKTCK entry position"
+        );
+
+        let add_hardware_capabilities = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+        );
+        let remove_hardware_capabilities = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
+        );
+        for bytes in [
+            add_hardware_capabilities.as_slice(),
+            remove_hardware_capabilities.as_slice(),
+        ] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each hardware-capability transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each hardware-capability transition must fence once"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 16_u64.to_le_bytes()),
+                "each transition must encode or verify native AT_HWCAP"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 0x178b_fbfd_u64.to_le_bytes()),
+                "AT_HWCAP must carry the pinned qemu64-v1 capability mask"
+            );
+            assert!(
+                bytes
+                    .windows(8)
+                    .any(|window| window == 26_u64.to_le_bytes()),
+                "each transition must encode or verify native AT_HWCAP2"
+            );
+            assert!(
+                bytes.windows(17).any(|window| {
+                    window[..10] == [0x48, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0]
+                        && window[10] == 0x49
+                        && matches!(window[11], 0x39 | 0x89)
+                        && window[12..] == [0x83, 0xc0, 0x0f, 0, 0]
+                }),
+                "AT_HWCAP2 must carry an explicit zero value before AT_NULL"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive hardware-capability transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_hardware_capabilities
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xb0, 0x0e, 0x00, 0x00]),
+            "hardware-capability addition must enlarge the aligned block downward"
+        );
+        assert!(
+            remove_hardware_capabilities
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xd0, 0x0e, 0x00, 0x00]),
+            "hardware-capability removal must restore the platform entry position"
+        );
+
+        let add_load_metadata = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+        );
+        let remove_load_metadata = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
+        );
+        for bytes in [
+            add_load_metadata.as_slice(),
+            remove_load_metadata.as_slice(),
+        ] {
+            assert_eq!(
+                bytes
+                    .windows(10)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                1,
+                "each load-metadata transition must clear the complete frame"
+            );
+            assert_eq!(
+                bytes
+                    .windows(3)
+                    .filter(|window| *window == [0x0f, 0xae, 0xf8])
+                    .count(),
+                1,
+                "each load-metadata transition must fence once"
+            );
+            for (tag, value_offset) in [(7_u64, 0x0fb0_u32), (8_u64, 0x0fc0_u32)] {
+                assert!(
+                    bytes.windows(8).any(|window| window == tag.to_le_bytes()),
+                    "each transition must encode or verify both load-metadata tags"
+                );
+                assert!(
+                    bytes.windows(17).any(|window| {
+                        window[..10] == [0x48, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0]
+                            && window[10] == 0x49
+                            && matches!(window[11], 0x39 | 0x89)
+                            && window[12] == 0x83
+                            && window[13..] == value_offset.to_le_bytes()
+                    }),
+                    "each load-metadata fact must carry an explicit zero value"
+                );
+            }
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive load-metadata transitions must not invalidate an active address"
+            );
+        }
+        assert!(
+            add_load_metadata
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0x90, 0x0e, 0x00, 0x00]),
+            "load-metadata addition must enlarge the aligned block downward"
+        );
+        assert!(
+            remove_load_metadata
+                .windows(7)
+                .any(|bytes| bytes == [0x49, 0x89, 0x83, 0xb0, 0x0e, 0x00, 0x00]),
+            "load-metadata removal must restore the hardware-capability entry position"
+        );
+
+        let authorize_random_slot = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+        );
+        let revoke_random_slot = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
+        );
+        let retain_prepared_process = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+        );
+        let restore_prepared_process = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
+        );
+        let qualify_retained_disjoint_work = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
+        );
+        let authorize_entropy_handoff = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_HANDOFF_SYMBOL,
+        );
+        let authorize_entropy_acquisition = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTROPY_ACQUISITION_SYMBOL,
+        );
+        let revoke_entropy_acquisition = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
+        );
+        let revoke_entropy_handoff = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL,
+        );
+        for bytes in [
+            authorize_random_slot,
+            retain_prepared_process,
+            qualify_retained_disjoint_work,
+            authorize_entropy_handoff,
+            authorize_entropy_acquisition,
+            revoke_entropy_acquisition,
+            revoke_entropy_handoff,
+            restore_prepared_process,
+            revoke_random_slot,
+        ] {
+            assert_eq!(
+                bytes
+                    .windows(11)
+                    .filter(|window| {
+                        *window == [0x31, 0xc0, 0xb9, 0xd2, 0x01, 0, 0, 0xfc, 0xf3, 0x48, 0xaf]
+                    })
+                    .count(),
+                1,
+                "random-slot and prepared-process authority must completely verify unchanged zero regions"
+            );
+            for offset in [0x0fd0_u32, 0x0fd8_u32] {
+                assert!(
+                    bytes.windows(8).any(|window| {
+                        window[..3] == [0x49, 0x83, 0xbb]
+                            && window[3..7] == offset.to_le_bytes()
+                            && window[7] == 0
+                    }),
+                    "random-slot and prepared-process authority must verify both future object qwords as zero"
+                );
+            }
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x49, 0x89, 0x83]),
+                "random-slot and prepared-process authority must not mutate the deterministic stack"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0xae, 0xf8]),
+                "read-only random-slot authority must not issue a store fence"
+            );
+            assert!(
+                !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
+                "inactive random-slot authority must not invalidate an active address"
+            );
+        }
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
         assert!(copy_payload.len() > 8_000);

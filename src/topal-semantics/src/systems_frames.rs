@@ -38,6 +38,48 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME: &str =
     "topal.systems.static-image.construction.add-stack-executable-name/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME: &str =
     "topal.systems.static-image.construction.remove-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.add-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.remove-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.add-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.remove-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.add-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.remove-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.add-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.remove-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.add-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.remove-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.add-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.remove-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.authorize-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.retain-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK: &str =
+    "topal.systems.static-image.construction.qualify-retained-disjoint-work/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.authorize-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.authorize-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.revoke-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.revoke-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.restore-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.revoke-stack-random-slot/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
     "topal.systems.static-image.construction.copy-payload/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =

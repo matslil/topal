@@ -598,6 +598,205 @@ representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
 BusyBox execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001` and `TK-DEC-147`.
 
+The bounded static-ELF credential auxiliary-vector increment shall accept one
+exact typed addition from the executable-name-qualified stack construction and
+one exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+and sealed PID-one process profile; clear the full frame; reconstruct a
+16-byte-aligned block with ordered `AT_UID=(11,0)`, `AT_EUID=(12,0)`,
+`AT_GID=(13,0)`, and `AT_EGID=(14,0)`, all prior facts, arguments, strings,
+and terminating `AT_NULL`; fence; and completely read back all content,
+relations, and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact executable-name-qualified
+block, fence, and completely read it back. The checker and semantic model
+shall preserve affine credential-group ownership and reject another owner,
+backing, value, policy, duplicate addition, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact tags, zero values,
+order, profile agreement, complete reconstruction and rollback, preserved
+translation state, ordered witnesses, and no exposed numeric identity or
+representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001` and `TK-DEC-148`.
+
+The bounded static-ELF non-secure auxiliary-vector increment shall accept one
+exact typed addition from the credential-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+sealed equal real/effective credentials, and absence of a privilege-changing
+executable transition; clear the full frame; reconstruct a 16-byte-aligned
+block with `AT_SECURE=(23,0)`, all prior facts, arguments, strings, and
+terminating `AT_NULL`; fence; and completely read back all content, relations,
+and otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact credential-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+security-fact ownership and reject another owner, backing, value, policy,
+duplicate addition, early prior-fact removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tag, zero value, credential
+agreement, complete reconstruction and rollback, preserved translation state,
+ordered witnesses, and no exposed policy number or representation, further
+auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001` and `TK-DEC-149`.
+
+The bounded static-ELF userspace-accounting-rate increment shall accept one
+exact typed addition from the secure-mode-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+and the separation of Linux's baseline userspace accounting rate from hardware
+and scheduler clocks; clear the full frame; reconstruct a 16-byte-aligned block
+with `AT_CLKTCK=(17,100)`, all prior facts, arguments, strings, and terminating
+`AT_NULL`; fence; and completely read back all content, relations, and
+otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact secure-mode-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+clock-tick-rate ownership and reject another owner, backing, value, policy,
+duplicate addition, early prior-fact removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tag and value, clock-identity
+separation, complete reconstruction and rollback, preserved translation state,
+ordered witnesses, and no exposed rate or representation, further auxiliary-
+vector fact, TLS, user-mode, syscall, or BusyBox execution authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001` and `TK-DEC-150`.
+
+The bounded static-ELF native-platform increment shall accept one exact typed
+addition from the clock-rate-qualified stack construction and one exact typed
+removal back to it. X86-64 lowering shall validate that block, inactive
+translation obligations, exact stack leaf, complete argument strings, and
+prior facts; clear the full frame; reconstruct a 16-byte-aligned block with
+native `AT_PLATFORM` pointing to one complete bounded `x86_64\0` string, all
+prior facts, arguments, strings, and terminating `AT_NULL`; fence; and
+completely read back all content, pointer containment, alias separation, and
+otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact clock-rate-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+platform ownership and reject another owner, backing, value, policy, duplicate
+addition, early prior-fact removal, ordinary clearing or leaf revocation,
+activation, release, teardown, or disposition. Structural and duplicate pinned-
+QEMU tests shall prove exact tag, pointer, string and termination, complete
+reconstruction and rollback, executable-name separation, preserved translation
+state, ordered witnesses, and no exposed platform representation, further
+auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001` and `TK-DEC-151`.
+
+The bounded static-ELF native hardware-capability increment shall accept one
+exact typed addition from the platform-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument and
+platform strings, and prior facts; clear the full frame; reconstruct a 16-byte-
+aligned block with native `AT_HWCAP=(16,0x178bfbfd)` and `AT_HWCAP2=(26,0)`,
+all prior facts, strings, and terminating `AT_NULL`; fence; and completely read
+back all content and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact platform-qualified block,
+fence, and completely read it back. The checker and semantic model shall
+preserve affine capability-group ownership and reject another owner, backing,
+value, policy, duplicate addition, early prior-fact removal, ordinary clearing
+or leaf revocation, activation, release, teardown, or disposition. Structural
+and duplicate pinned-QEMU tests shall prove exact tags and masks, complete
+reconstruction and rollback, preserved strings and translation state, ordered
+witnesses, and no exposed mask, CPUID, feature-bit, random, TLS, user-mode,
+syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001` and `TK-DEC-152`.
+
+The bounded static-ELF load-metadata increment shall accept one exact typed
+addition from the hardware-capability-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete strings, prior
+facts, absent interpreter, and accepted ELF flags; clear the full frame;
+reconstruct a 16-byte-aligned block with native `AT_BASE=(7,0)` and
+`AT_FLAGS=(8,0)`, all prior facts and strings, and terminating `AT_NULL`; fence;
+and completely read back all content and otherwise-zero bytes. Removal shall
+validate the extended block, clear the full frame, reconstruct the exact
+capability-qualified block, fence, and completely read it back. The checker and
+semantic model shall preserve affine load-metadata ownership and reject another
+owner, backing, value, policy, duplicate addition, early prior-fact removal,
+ordinary clearing or leaf revocation, activation, release, teardown, or
+disposition. Structural and duplicate pinned-QEMU tests shall prove exact tags
+and explicit zero values, complete reconstruction and rollback, non-overlapping
+block growth, preserved prior facts and translation state, ordered witnesses,
+and no exposed value, header, random, TLS, user-mode, syscall, or BusyBox
+execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001` and `TK-DEC-153`.
+
+The bounded static-ELF random-slot-authority increment shall accept one exact
+typed authorization from the load-metadata-qualified stack construction and
+one exact typed revocation back to it. X86-64 lowering shall validate the
+complete unchanged block, inactive translation obligations, exact stack leaf,
+complete strings and prior facts; prove one naturally aligned 16-byte zero
+destination and space for one future native tag-25 entry inside the same page;
+and completely read back all content and otherwise-zero bytes without a store.
+Revocation shall repeat the complete validation and restore the exact load-
+metadata-qualified owner. The checker and semantic model shall preserve affine
+random-slot authority and reject another owner, backing, value, extent,
+policy, duplicate authorization, mutation, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove the zero destination,
+alignment, complete bounds and non-overlap, unchanged deterministic block,
+preserved translation state, ordered witnesses, and no exposed address, byte,
+tag, pointer, entropy, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001` and `TK-DEC-154`.
+
+The bounded static-ELF prepared-process-retention increment shall accept one
+exact typed transfer from the random-slot-authorized construction into an
+opaque affine retained-process owner and one exact qualification restoration.
+X86-64 lowering shall preserve the provider-private payload, metadata,
+hierarchy, leaf, entry, and stack-backing identities in compiler-controlled
+root state, close construction allocator state without resource release, and
+restore the exact nested one-frame backing obligation. Both transitions shall
+completely validate the inactive hierarchy, image, deterministic stack, future
+random-object zeros, guard, and identity tuple without stores, fences,
+invalidation, release, or activation. The checker and semantic model shall
+reject another owner, backing, value, policy, duplicate retention, mutation,
+early restore, resource reuse, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove complete survival, closed allocator
+state, exact restoration, ordered witnesses, and no exposed resource, entropy,
+TLS, user-mode, syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001` and `TK-DEC-155`.
+
+The bounded static-ELF retained-disjoint-work increment shall consume and return
+the exact opaque retained-process owner while using the same sealed allocator
+for one fresh aligned frame. X86-64 lowering shall prove the selected extent
+disjoint from payload, leaf metadata, upper hierarchy, and stack backing,
+release only the fresh frame, and completely revalidate all retained identities
+and bytes before returning the owner. The checker and semantic model shall
+reject another owner, request, policy, allocator, overlap, incomplete proof,
+partial or wrong release, mutation, duplication, early restore, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove fresh allocation
+and release, retained-state survival, exact later restoration, ordered witnesses,
+and no exposed address, DMA, entropy, TLS, user-mode, syscall, or BusyBox
+authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001` and `TK-DEC-156`.
+
+The bounded static-ELF entropy-handoff increment shall consume the exact
+retained-process owner and produce one opaque entropy-pending process owner,
+then support one immediate qualification revocation back to the exact retained
+owner. X86-64 lowering shall keep the complete provider-private resource tuple
+in compiler-controlled root state and completely validate the inactive image,
+hierarchy, deterministic stack, future random-object zeros, strings, guard, and
+identities on both transitions without allocation, release, stores, fences,
+invalidation, activation, extraction, or delivery. The checker and semantic
+model shall reject another owner, process identity, policy, mutation,
+duplication, early restore, output use, or recoverable failure. Structural and
+duplicate pinned-QEMU tests shall prove exact transfer and rollback, unchanged
+state, ordered witnesses, and no exposed address, entropy, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001` and `TK-DEC-157`.
+
+The bounded static-ELF entropy-acquisition-authority increment shall consume the
+exact entropy-pending owner into one opaque acquisition owner bound to output
+identity one and resulting generation two, then support one immediate
+qualification revocation to the exact entropy-pending owner. X86-64 lowering
+shall preserve the complete provider-private process tuple and completely
+validate every retained identity and byte on both transitions without device
+access, allocation, release, mutation, activation, extraction, output copy, or
+delivery. The checker and semantic model shall reject another owner, output,
+generation, policy, ordering, mutation, duplication, early handoff revocation,
+output use, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove exact transfer and rollback, unchanged process state, ordered
+witnesses, and no exposed process or entropy representation, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001` and `TK-DEC-158`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

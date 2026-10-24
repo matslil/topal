@@ -84,12 +84,21 @@ pub use topal_semantics::{
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEADLINE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -97,16 +106,28 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -9285,12 +9306,21 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -9298,16 +9328,28 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -10438,7 +10480,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 324);
+        assert_eq!(program.bootstrap.handler.operations.len(), 366);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10515,12 +10557,21 @@ mod tests {
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -10528,16 +10579,28 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -13429,7 +13492,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_BAD",
             ),
             SOURCE.replace(
-                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
+                "owner is executable-name-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
                 "owner is program-header-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-executable-name-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13448,6 +13511,433 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("executable-name")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_credential_group() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001.
+        for source in [
+            SOURCE.replace(
+                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-process-credentials,",
+                "owner is program-header-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-process-credentials,",
+            ),
+            SOURCE.replace(
+                "value is initial-process-credentials",
+                "value is source-process-credentials",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_BAD",
+            ),
+            SOURCE.replace(
+                "owner is credential-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-credentials-qualification-rollback",
+                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-credentials-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-credentials-qualification-rollback",
+                "retained-stack-credentials",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("credential") || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_secure_mode_fact() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001.
+        for source in [
+            SOURCE.replace(
+                "owner is credential-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-execution-security,",
+                "owner is executable-name-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-execution-security,",
+            ),
+            SOURCE.replace(
+                "value is initial-execution-security",
+                "value is source-execution-security",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_BAD",
+            ),
+            SOURCE.replace(
+                "owner is secure-mode-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-secure-mode-qualification-rollback",
+                "owner is credential-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-secure-mode-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-secure-mode-qualification-rollback",
+                "retained-stack-secure-mode",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("secure-mode") || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_clock_tick_rate_fact() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001.
+        for source in [
+            SOURCE.replace(
+                "owner is secure-mode-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is linux-user-hz,",
+                "owner is credential-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is linux-user-hz,",
+            ),
+            SOURCE.replace("value is linux-user-hz", "value is hardware-timer-rate"),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_BAD",
+            ),
+            SOURCE.replace(
+                "owner is clock-tick-rate-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback",
+                "owner is secure-mode-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-clock-tick-rate-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-clock-tick-rate-qualification-rollback",
+                "retained-stack-clock-tick-rate",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("clock-tick-rate")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_platform_fact() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001.
+        for source in [
+            SOURCE.replace(
+                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-platform,",
+                "owner is secure-mode-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-platform,",
+            ),
+            SOURCE.replace("value is native-userspace-platform", "value is source-platform-string"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK", "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_BAD"),
+            SOURCE.replace(
+                "owner is platform-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-platform-qualification-rollback",
+                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-platform-qualification-rollback",
+            ),
+            SOURCE.replace("bounded-stack-platform-qualification-rollback", "retained-stack-platform"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK", "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_BAD"),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("platform") || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_hardware_capabilities() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001.
+        for source in [
+            SOURCE.replace(
+                "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-hardware-capabilities,",
+                "owner is clock-tick-rate-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is native-userspace-hardware-capabilities,",
+            ),
+            SOURCE.replace(
+                "value is native-userspace-hardware-capabilities",
+                "value is source-hardware-capability-mask",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_BAD",
+            ),
+            SOURCE.replace(
+                "owner is hardware-capabilities-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback",
+                "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-hardware-capabilities-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-hardware-capabilities-qualification-rollback",
+                "retained-stack-hardware-capabilities",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("hardware-capability")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_load_metadata() {
+        // TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001.
+        for source in [
+            SOURCE.replace(
+                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is static-executable-load-metadata,",
+                "owner is platform-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is static-executable-load-metadata,",
+            ),
+            SOURCE.replace(
+                "value is static-executable-load-metadata",
+                "value is source-loader-base",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_BAD",
+            ),
+            SOURCE.replace(
+                "owner is load-metadata-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-load-metadata-qualification-rollback",
+                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-load-metadata-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-load-metadata-qualification-rollback",
+                "retained-stack-load-metadata",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("load-metadata")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_stack_random_slot_authority() {
+        // TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001.
+        for source in [
+            SOURCE.replace(
+                "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-auxv-random-object,",
+                "owner is hardware-capabilities-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is initial-auxv-random-object,",
+            ),
+            SOURCE.replace("value is initial-auxv-random-object", "value is source-random-buffer"),
+            SOURCE.replace("extent-bytes is 16", "extent-bytes is 8"),
+            SOURCE.replace(
+                "bounded-linux-auxv-random-before-null",
+                "source-selected-random-placement",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_BAD",
+            ),
+            SOURCE.replace(
+                "owner is random-slot-authorized-stack-restored-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-random-slot-qualification-rollback",
+                "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                policy is bounded-stack-random-slot-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-stack-random-slot-qualification-rollback",
+                "retained-stack-random-slot",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("random-slot")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_prepared_process_retention() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001.
+        for source in [
+            SOURCE.replace(
+                "owner is random-slot-authorized-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is bounded-static-elf-initial-process,",
+                "owner is load-metadata-stack-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                value is bounded-static-elf-initial-process,",
+            ),
+            SOURCE.replace("value is bounded-static-elf-initial-process", "value is unsealed-process"),
+            SOURCE.replace("bounded-static-elf-pre-entropy-retention", "unbounded-process-retention"),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_BAD",
+            ),
+            SOURCE.replace(
+                "owner is retained-static-process-after-entropy-rollback,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
+                "owner is random-slot-authorized-stack-construction,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-retention-qualification-rollback",
+                "discard-retained-process",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("prepared-process")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_retained_disjoint_work() {
+        // TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001.
+        for source in [
+            SOURCE.replace(
+                "owner is retained-static-process,\n                                                                                frame-count is 1,",
+                "owner is random-slot-authorized-stack-construction,\n                                                                                frame-count is 1,",
+            ),
+            SOURCE.replace(
+                "owner is retained-static-process,\n                                                                                frame-count is 1,\n                                                                                alignment-frames is 1,",
+                "owner is retained-static-process,\n                                                                                frame-count is 2,\n                                                                                alignment-frames is 1,",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-retained-disjoint-work",
+                "overlapping-retained-work",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("retained disjoint")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_handoff() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001.
+        for source in [
+            SOURCE.replace(
+                "owner is retained-static-process-after-disjoint-work,\n                                                                                process is bounded-static-elf-initial-process,",
+                "owner is retained-static-process,\n                                                                                process is bounded-static-elf-initial-process,",
+            ),
+            SOURCE.replace("process is bounded-static-elf-initial-process", "process is unrelated-process"),
+            SOURCE.replace("bounded-static-elf-initial-random-delivery", "loader-owned-random-delivery"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK", "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_BAD"),
+            SOURCE.replace("bounded-static-elf-entropy-handoff-qualification-rollback", "discard-entropy-pending-process"),
+            SOURCE.replace("TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK", "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_BAD"),
+        ] {
+            let error = analyze_systems_for_compiler(&source, &CompilerSystemsTargetSelection::initial_x86_64_qemu()).unwrap_err();
+            assert!(error.message.contains("entropy handoff") || error.message.contains("exact marker"), "{}", error.message);
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_acquisition_authority() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001.
+        for source in [
+            SOURCE.replace(
+                "owner is entropy-pending-static-process,",
+                "owner is retained-static-process,",
+            ),
+            SOURCE.replace(
+                "output is initial-entropy-output",
+                "output is unrelated-output",
+            ),
+            SOURCE.replace(
+                "generation is generation-two",
+                "generation is generation-one",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-initial-entropy-acquisition",
+                "loader-owned-entropy-acquisition",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_BAD",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-entropy-acquisition-qualification-rollback",
+                "discard-entropy-acquisition",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("entropy acquisition")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message

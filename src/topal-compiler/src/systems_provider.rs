@@ -33,12 +33,21 @@ use topal_language::compiler::{
     SYSTEMS_PCI_REGION_READ, SYSTEMS_PCI_REGION_READ_EVENTUALLY, SYSTEMS_PCI_REGION_WRITE,
     SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE, SYSTEMS_RESUME_DEBUG_BREAK,
     SYSTEMS_RESUME_LOCAL_NOTIFICATION, SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -46,16 +55,28 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -81,7 +102,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/119";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/130";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -101,6 +122,27 @@ pub enum X86SystemsLowering {
     AddStaticImageStackEntryFact,
     AddStaticImageStackProgramHeaders,
     AddStaticImageStackExecutableName,
+    AddStaticImageStackCredentials,
+    AddStaticImageStackSecureMode,
+    AddStaticImageStackClockTickRate,
+    AddStaticImageStackPlatform,
+    AddStaticImageStackHardwareCapabilities,
+    AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
+    AuthorizeStaticImageEntropyHandoff,
+    AuthorizeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyAcquisition,
+    RevokeStaticImageEntropyHandoff,
+    RestoreStaticImagePreparedProcess,
+    RevokeStaticImageStackRandomSlot,
+    RemoveStaticImageStackLoadMetadata,
+    RemoveStaticImageStackHardwareCapabilities,
+    RemoveStaticImageStackPlatform,
+    RemoveStaticImageStackClockTickRate,
+    RemoveStaticImageStackSecureMode,
+    RemoveStaticImageStackCredentials,
     RemoveStaticImageStackExecutableName,
     RemoveStaticImageStackProgramHeaders,
     RemoveStaticImageStackEntryFact,
@@ -243,6 +285,69 @@ impl X86SystemsLowering {
             }
             Self::AddStaticImageStackExecutableName => {
                 "topal.provider.x86_64.static-image.add-stack-executable-name/1"
+            }
+            Self::AddStaticImageStackCredentials => {
+                "topal.provider.x86_64.static-image.add-stack-credentials/1"
+            }
+            Self::AddStaticImageStackSecureMode => {
+                "topal.provider.x86_64.static-image.add-stack-secure-mode/1"
+            }
+            Self::AddStaticImageStackClockTickRate => {
+                "topal.provider.x86_64.static-image.add-stack-clock-tick-rate/1"
+            }
+            Self::AddStaticImageStackPlatform => {
+                "topal.provider.x86_64.static-image.add-stack-platform/1"
+            }
+            Self::AddStaticImageStackHardwareCapabilities => {
+                "topal.provider.x86_64.static-image.add-stack-hardware-capabilities/1"
+            }
+            Self::AddStaticImageStackLoadMetadata => {
+                "topal.provider.x86_64.static-image.add-stack-load-metadata/1"
+            }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                "topal.provider.x86_64.static-image.authorize-stack-random-slot/1"
+            }
+            Self::RetainStaticImagePreparedProcess => {
+                "topal.provider.x86_64.static-image.retain-prepared-process/1"
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                "topal.provider.x86_64.static-image.qualify-retained-disjoint-work/1"
+            }
+            Self::AuthorizeStaticImageEntropyHandoff => {
+                "topal.provider.x86_64.static-image.authorize-entropy-handoff/1"
+            }
+            Self::AuthorizeStaticImageEntropyAcquisition => {
+                "topal.provider.x86_64.static-image.authorize-entropy-acquisition/1"
+            }
+            Self::RevokeStaticImageEntropyAcquisition => {
+                "topal.provider.x86_64.static-image.revoke-entropy-acquisition/1"
+            }
+            Self::RevokeStaticImageEntropyHandoff => {
+                "topal.provider.x86_64.static-image.revoke-entropy-handoff/1"
+            }
+            Self::RestoreStaticImagePreparedProcess => {
+                "topal.provider.x86_64.static-image.restore-prepared-process/1"
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                "topal.provider.x86_64.static-image.revoke-stack-random-slot/1"
+            }
+            Self::RemoveStaticImageStackLoadMetadata => {
+                "topal.provider.x86_64.static-image.remove-stack-load-metadata/1"
+            }
+            Self::RemoveStaticImageStackHardwareCapabilities => {
+                "topal.provider.x86_64.static-image.remove-stack-hardware-capabilities/1"
+            }
+            Self::RemoveStaticImageStackPlatform => {
+                "topal.provider.x86_64.static-image.remove-stack-platform/1"
+            }
+            Self::RemoveStaticImageStackClockTickRate => {
+                "topal.provider.x86_64.static-image.remove-stack-clock-tick-rate/1"
+            }
+            Self::RemoveStaticImageStackSecureMode => {
+                "topal.provider.x86_64.static-image.remove-stack-secure-mode/1"
+            }
+            Self::RemoveStaticImageStackCredentials => {
+                "topal.provider.x86_64.static-image.remove-stack-credentials/1"
             }
             Self::RemoveStaticImageStackExecutableName => {
                 "topal.provider.x86_64.static-image.remove-stack-executable-name/1"
@@ -683,6 +788,69 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME => {
             X86SystemsLowering::AddStaticImageStackExecutableName
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS => {
+            X86SystemsLowering::AddStaticImageStackCredentials
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE => {
+            X86SystemsLowering::AddStaticImageStackSecureMode
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE => {
+            X86SystemsLowering::AddStaticImageStackClockTickRate
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM => {
+            X86SystemsLowering::AddStaticImageStackPlatform
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES => {
+            X86SystemsLowering::AddStaticImageStackHardwareCapabilities
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA => {
+            X86SystemsLowering::AddStaticImageStackLoadMetadata
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT => {
+            X86SystemsLowering::AuthorizeStaticImageStackRandomSlot
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS => {
+            X86SystemsLowering::RetainStaticImagePreparedProcess
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK => {
+            X86SystemsLowering::QualifyStaticImageRetainedDisjointWork
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF => {
+            X86SystemsLowering::AuthorizeStaticImageEntropyHandoff
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION => {
+            X86SystemsLowering::AuthorizeStaticImageEntropyAcquisition
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION => {
+            X86SystemsLowering::RevokeStaticImageEntropyAcquisition
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF => {
+            X86SystemsLowering::RevokeStaticImageEntropyHandoff
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS => {
+            X86SystemsLowering::RestoreStaticImagePreparedProcess
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT => {
+            X86SystemsLowering::RevokeStaticImageStackRandomSlot
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA => {
+            X86SystemsLowering::RemoveStaticImageStackLoadMetadata
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES => {
+            X86SystemsLowering::RemoveStaticImageStackHardwareCapabilities
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM => {
+            X86SystemsLowering::RemoveStaticImageStackPlatform
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE => {
+            X86SystemsLowering::RemoveStaticImageStackClockTickRate
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE => {
+            X86SystemsLowering::RemoveStaticImageStackSecureMode
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS => {
+            X86SystemsLowering::RemoveStaticImageStackCredentials
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME => {
             X86SystemsLowering::RemoveStaticImageStackExecutableName
         }
@@ -895,6 +1063,69 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             }
             X86SystemsLowering::AddStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME
+            }
+            X86SystemsLowering::AddStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS
+            }
+            X86SystemsLowering::AddStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE
+            }
+            X86SystemsLowering::AddStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE
+            }
+            X86SystemsLowering::AddStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM
+            }
+            X86SystemsLowering::AddStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES
+            }
+            X86SystemsLowering::AddStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            X86SystemsLowering::AuthorizeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
+            }
+            X86SystemsLowering::RetainStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
+            }
+            X86SystemsLowering::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
+            X86SystemsLowering::AuthorizeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF
+            }
+            X86SystemsLowering::AuthorizeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION
+            }
+            X86SystemsLowering::RevokeStaticImageEntropyAcquisition => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            }
+            X86SystemsLowering::RevokeStaticImageEntropyHandoff => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            }
+            X86SystemsLowering::RestoreStaticImagePreparedProcess => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
+            }
+            X86SystemsLowering::RevokeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
+            }
+            X86SystemsLowering::RemoveStaticImageStackLoadMetadata => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            }
+            X86SystemsLowering::RemoveStaticImageStackHardwareCapabilities => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
+            }
+            X86SystemsLowering::RemoveStaticImageStackPlatform => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
+            }
+            X86SystemsLowering::RemoveStaticImageStackClockTickRate => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            }
+            X86SystemsLowering::RemoveStaticImageStackSecureMode => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
+            }
+            X86SystemsLowering::RemoveStaticImageStackCredentials => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
             }
             X86SystemsLowering::RemoveStaticImageStackExecutableName => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
@@ -1123,7 +1354,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 112);
+        assert_eq!(plan.operations.len(), 133);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,
