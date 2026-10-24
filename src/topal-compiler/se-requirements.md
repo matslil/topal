@@ -929,6 +929,25 @@ process, DMA, cache, mapping, PCI, queue, or entropy representation. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-PREPARATION-COEXISTENCE-001` and
 `TK-DEC-166`.
 
+The bounded static-ELF entropy-queue-address-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+three-reference publication. X86-64 lowering shall completely validate the
+retained process, replay the exact prerequisite sequence through payload-then-
+control DMA preparation, publish descriptor then driver then device-area
+references, clear and read back those complete registers in reverse order,
+cancel control then payload preparation, erase and read back the ring, and
+restore bus-master, device, and gateway state. No DMA identity or resolved
+reference shall escape and the later ordinary sequence shall remain
+unconsumed. The checker and semantic model shall reject another owner, device,
+domain, queue, transport, policy, publication or clearing order, omission,
+duplicate, escaped identity, nonzero final register, final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove the complete transaction, same-owner return, later-sequence
+preservation, and no exposed process, DMA, address, PCI, queue, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ADDRESS-COEXISTENCE-001` and
+`TK-DEC-167`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
