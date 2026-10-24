@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -999,12 +999,51 @@ fn analyze_static_elf_frame_sequence(
     if !matches!(&stack_load_metadata_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK") {
         return Err(translation_edit_diagnostic(source, stack_load_metadata_marker_span, "static ELF load-metadata addition must publish its exact marker before removal"));
     }
+    let random_slot_authorized_stack_construction_name =
+        parse_static_image_stack_random_slot_transition(
+            source,
+            authorize_stack_random_slot,
+            allocator_context,
+            &load_metadata_stack_construction_name,
+            &stack_backing_name,
+            true,
+        )?;
+    let stack_random_slot_authorized_marker_span =
+        statement_span(stack_random_slot_authorized_marker);
+    let stack_random_slot_authorized_marker = analyze_operation(
+        source,
+        stack_random_slot_authorized_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(&stack_random_slot_authorized_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK") {
+        return Err(translation_edit_diagnostic(source, stack_random_slot_authorized_marker_span, "static ELF random-slot authorization must publish its exact marker before revocation"));
+    }
+    let load_metadata_stack_restored_construction_name =
+        parse_static_image_stack_random_slot_transition(
+            source,
+            revoke_stack_random_slot,
+            allocator_context,
+            &random_slot_authorized_stack_construction_name,
+            &stack_backing_name,
+            false,
+        )?;
+    let stack_random_slot_revoked_marker_span = statement_span(stack_random_slot_revoked_marker);
+    let stack_random_slot_revoked_marker = analyze_operation(
+        source,
+        stack_random_slot_revoked_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(&stack_random_slot_revoked_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK") {
+        return Err(translation_edit_diagnostic(source, stack_random_slot_revoked_marker_span, "static ELF random-slot revocation must publish its exact marker before load-metadata removal"));
+    }
     let hardware_capabilities_stack_restored_construction_name =
         parse_static_image_stack_load_metadata_transition(
             source,
             remove_stack_load_metadata,
             allocator_context,
-            &load_metadata_stack_construction_name,
+            &load_metadata_stack_restored_construction_name,
             &stack_backing_name,
             false,
         )?;
@@ -1481,6 +1520,10 @@ fn analyze_static_elf_frame_sequence(
         stack_hardware_capabilities_marker,
         CompilerSystemsOperation::AddStaticImageStackLoadMetadata,
         stack_load_metadata_marker,
+        CompilerSystemsOperation::AuthorizeStaticImageStackRandomSlot,
+        stack_random_slot_authorized_marker,
+        CompilerSystemsOperation::RevokeStaticImageStackRandomSlot,
+        stack_random_slot_revoked_marker,
         CompilerSystemsOperation::RemoveStaticImageStackLoadMetadata,
         stack_load_metadata_revoked_marker,
         CompilerSystemsOperation::RemoveStaticImageStackHardwareCapabilities,
@@ -3104,6 +3147,121 @@ fn parse_static_image_stack_load_metadata_transition(
     let expected_policy = if add { "bounded-linux-auxv-before-null" } else { "bounded-stack-load-metadata-qualification-rollback" };
     if owner != Some(construction_name) || backing != Some(backing_name) || value != expected_value || policy != Some(expected_policy) {
         return Err(translation_edit_diagnostic(source, span, "static-image load-metadata transition requires the exact owner, backing, static executable metadata, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_stack_random_slot_transition(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    construction_name: &str,
+    backing_name: &str,
+    authorize: bool,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image random-slot transition must refine one exact stack entry",
+            ));
+        }
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image random-slot transition requires named parameters",
+        ));
+    };
+    let verb = if authorize { "authorize" } else { "revoke" };
+    if items.len() != 9
+        || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static")
+        || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction")
+        || !identifier_is(source, &items[4], verb)
+        || !identifier_is(source, &items[5], "stack")
+        || !identifier_is(source, &items[6], "random")
+        || !identifier_is(source, &items[7], "slot")
+        || fields.len() != if authorize { 5 } else { 3 }
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image random-slot transition requires its exact owner, backing, value, extent, and policy",
+        ));
+    }
+    let mut owner = None;
+    let mut backing = None;
+    let mut value = None;
+    let mut extent_bytes = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(translation_edit_diagnostic(
+                source,
+                field.value.span(),
+                "static-image random-slot parameters must be named",
+            ));
+        };
+        match source.slice(label) {
+            "owner" | "backing" | "value" | "policy" => {
+                let Expression::Identifier(identity) = &field.value else {
+                    return Err(translation_edit_diagnostic(
+                        source,
+                        field.value.span(),
+                        "static-image random-slot identity parameters must be identifiers",
+                    ));
+                };
+                match source.slice(label) {
+                    "owner" => owner = Some(source.slice(*identity)),
+                    "backing" => backing = Some(source.slice(*identity)),
+                    "value" => value = Some(source.slice(*identity)),
+                    "policy" => policy = Some(source.slice(*identity)),
+                    _ => unreachable!(),
+                }
+            }
+            "extent-bytes" => extent_bytes = Some(parse_storage_natural(source, &field.value)?),
+            _ => {
+                return Err(translation_edit_diagnostic(
+                    source,
+                    label,
+                    "unknown static-image random-slot parameter",
+                ));
+            }
+        }
+    }
+    let expected_value = authorize.then_some("initial-auxv-random-object");
+    let expected_extent = authorize.then_some(16);
+    let expected_policy = if authorize {
+        "bounded-linux-auxv-random-before-null"
+    } else {
+        "bounded-stack-random-slot-qualification-rollback"
+    };
+    if owner != Some(construction_name)
+        || backing != Some(backing_name)
+        || value != expected_value
+        || extent_bytes != expected_extent
+        || policy != Some(expected_policy)
+    {
+        return Err(translation_edit_diagnostic(
+            source,
+            span,
+            "static-image random-slot transition requires the exact owner, backing, 16-byte initial random object, and policy",
+        ));
     }
     Ok(source.slice(name).to_owned())
 }

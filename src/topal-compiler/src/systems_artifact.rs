@@ -85,6 +85,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -108,6 +109,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -166,6 +168,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_SECURE_MODE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ATTACH_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_ENTRY_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL,
@@ -185,6 +188,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
@@ -208,8 +212,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/135";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/124";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/136";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/125";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -225,7 +229,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 86] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 88] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -250,6 +254,8 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 86] = [
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_PLATFORM_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_HARDWARE_CAPABILITIES_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_HARDWARE_CAPABILITIES_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_PLATFORM_SYMBOL,
@@ -2041,6 +2047,8 @@ enum ProviderSymbol {
     AddStaticImageStackPlatform,
     AddStaticImageStackHardwareCapabilities,
     AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
     RemoveStaticImageStackHardwareCapabilities,
     RemoveStaticImageStackPlatform,
@@ -2182,6 +2190,12 @@ impl ProviderSymbol {
             }
             Self::AddStaticImageStackLoadMetadata => {
                 X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL
+            }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL
             }
             Self::RemoveStaticImageStackLoadMetadata => {
                 X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL
@@ -2363,6 +2377,8 @@ impl ProviderSymbol {
             | Self::AddStaticImageStackPlatform
             | Self::AddStaticImageStackHardwareCapabilities
             | Self::AddStaticImageStackLoadMetadata
+            | Self::AuthorizeStaticImageStackRandomSlot
+            | Self::RevokeStaticImageStackRandomSlot
             | Self::RemoveStaticImageStackLoadMetadata
             | Self::RemoveStaticImageStackHardwareCapabilities
             | Self::RemoveStaticImageStackPlatform
@@ -2613,6 +2629,7 @@ enum RootStaticImageState {
     StackPlatformAdded,
     StackHardwareCapabilitiesAdded,
     StackLoadMetadataAdded,
+    StackRandomSlotAuthorized,
     EntryRestored,
     Detached,
     HierarchyReturned,
@@ -2724,6 +2741,8 @@ struct ProviderSymbols {
     add_static_image_stack_platform: SymbolId,
     add_static_image_stack_hardware_capabilities: SymbolId,
     add_static_image_stack_load_metadata: SymbolId,
+    authorize_static_image_stack_random_slot: SymbolId,
+    revoke_static_image_stack_random_slot: SymbolId,
     remove_static_image_stack_load_metadata: SymbolId,
     remove_static_image_stack_hardware_capabilities: SymbolId,
     remove_static_image_stack_platform: SymbolId,
@@ -3793,6 +3812,48 @@ impl RootEncoder {
 
     fn remove_static_image_stack_load_metadata(&mut self) -> Result<(), CompileError> {
         self.transition_static_image_stack_load_metadata(false)
+    }
+
+    fn transition_static_image_stack_random_slot(
+        &mut self,
+        authorize: bool,
+    ) -> Result<(), CompileError> {
+        let required = if authorize {
+            RootStaticImageState::StackLoadMetadataAdded
+        } else {
+            RootStaticImageState::StackRandomSlotAuthorized
+        };
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != required
+            || self.physical_frame_count != Some(1)
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool("x86 static-image random-slot transition requires its exact qualified stack owner under the inactive hierarchy".into()));
+        }
+        self.bytes.extend_from_slice(&[
+            0x4c, 0x89, 0xf7, 0x4c, 0x89, 0xe6, 0xba, 0xf7, 0x01, 0, 0, 0x48, 0x89, 0xe9, 0x4d,
+            0x89, 0xf8, 0x49, 0x89, 0xd9,
+        ]);
+        self.call_checked_bool(if authorize {
+            ProviderSymbol::AuthorizeStaticImageStackRandomSlot
+        } else {
+            ProviderSymbol::RevokeStaticImageStackRandomSlot
+        })?;
+        self.static_image = if authorize {
+            RootStaticImageState::StackRandomSlotAuthorized
+        } else {
+            RootStaticImageState::StackLoadMetadataAdded
+        };
+        Ok(())
+    }
+
+    fn authorize_static_image_stack_random_slot(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_random_slot(true)
+    }
+
+    fn revoke_static_image_stack_random_slot(&mut self) -> Result<(), CompileError> {
+        self.transition_static_image_stack_random_slot(false)
     }
 
     fn remove_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
@@ -6312,6 +6373,14 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::AddStaticImageStackLoadMetadata,
         ),
+        authorize_static_image_stack_random_slot: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::AuthorizeStaticImageStackRandomSlot,
+        ),
+        revoke_static_image_stack_random_slot: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::RevokeStaticImageStackRandomSlot,
+        ),
         remove_static_image_stack_load_metadata: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RemoveStaticImageStackLoadMetadata,
@@ -7065,6 +7134,12 @@ fn encode_operations(
             CompilerSystemsOperation::AddStaticImageStackLoadMetadata => {
                 encoder.add_static_image_stack_load_metadata()?;
             }
+            CompilerSystemsOperation::AuthorizeStaticImageStackRandomSlot => {
+                encoder.authorize_static_image_stack_random_slot()?;
+            }
+            CompilerSystemsOperation::RevokeStaticImageStackRandomSlot => {
+                encoder.revoke_static_image_stack_random_slot()?;
+            }
             CompilerSystemsOperation::RemoveStaticImageStackLoadMetadata => {
                 encoder.remove_static_image_stack_load_metadata()?;
             }
@@ -7471,6 +7546,12 @@ fn append_root(
             }
             ProviderSymbol::AddStaticImageStackLoadMetadata => {
                 provider_symbols.add_static_image_stack_load_metadata
+            }
+            ProviderSymbol::AuthorizeStaticImageStackRandomSlot => {
+                provider_symbols.authorize_static_image_stack_random_slot
+            }
+            ProviderSymbol::RevokeStaticImageStackRandomSlot => {
+                provider_symbols.revoke_static_image_stack_random_slot
             }
             ProviderSymbol::RemoveStaticImageStackLoadMetadata => {
                 provider_symbols.remove_static_image_stack_load_metadata
@@ -8301,6 +8382,8 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::AddStaticImageStackPlatform
                 | CompilerSystemsTransition::AddStaticImageStackHardwareCapabilities
                 | CompilerSystemsTransition::AddStaticImageStackLoadMetadata
+                | CompilerSystemsTransition::AuthorizeStaticImageStackRandomSlot
+                | CompilerSystemsTransition::RevokeStaticImageStackRandomSlot
                 | CompilerSystemsTransition::RemoveStaticImageStackLoadMetadata
                 | CompilerSystemsTransition::RemoveStaticImageStackHardwareCapabilities
                 | CompilerSystemsTransition::RemoveStaticImageStackPlatform
@@ -8731,7 +8814,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 5099);
+        assert_eq!(relocation_targets.len(), 5198);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -8917,7 +9000,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            4631
+            4726
         );
         assert_eq!(
             relocation_targets
@@ -9078,7 +9161,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            186
+            188
         );
         assert_eq!(
             relocation_targets
@@ -9225,6 +9308,8 @@ mod tests {
                 "topal_x86_systems_static_image_add_stack_platform",
                 "topal_x86_systems_static_image_add_stack_hardware_capabilities",
                 "topal_x86_systems_static_image_add_stack_load_metadata",
+                "topal_x86_systems_static_image_authorize_stack_random_slot",
+                "topal_x86_systems_static_image_revoke_stack_random_slot",
                 "topal_x86_systems_static_image_remove_stack_load_metadata",
                 "topal_x86_systems_static_image_remove_stack_hardware_capabilities",
                 "topal_x86_systems_static_image_remove_stack_platform",
@@ -9398,7 +9483,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 409);
+        assert_eq!(decoded.semantic_trace.len(), 413);
         assert!(
             decoded
                 .semantic_trace
@@ -9480,6 +9565,12 @@ mod tests {
         }));
         assert!(decoded.semantic_trace.iter().any(|entry| {
             entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT)
+        }));
+        assert!(decoded.semantic_trace.iter().any(|entry| {
+            entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT)
         }));
         assert!(decoded.semantic_trace.iter().any(|entry| {
             entry.starts_with(SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA)
@@ -9681,96 +9772,106 @@ mod tests {
         assert!(decoded.semantic_trace[81].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[82],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
         );
         assert!(decoded.semantic_trace[83].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[84],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
         );
         assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[86],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
         );
         assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[88],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
         );
         assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[90],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
         );
         assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[92],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
         );
         assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[94],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
         );
         assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[96],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
         );
         assert!(decoded.semantic_trace[97].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[98],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
         );
         assert!(decoded.semantic_trace[99].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[100],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
         );
         assert!(decoded.semantic_trace[101].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[102],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
         );
         assert!(decoded.semantic_trace[103].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[104],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
         );
         assert!(decoded.semantic_trace[105].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[106], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[107],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            decoded.semantic_trace[106],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
         );
-        assert!(decoded.semantic_trace[108].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[107].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[109],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+            decoded.semantic_trace[108],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[110].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[109].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[110], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[111],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
         );
         assert!(decoded.semantic_trace[112].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[113],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
-        assert_eq!(decoded.semantic_trace[114], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[114].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[115],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert_eq!(decoded.semantic_trace[116], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[116].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[117],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
         assert_eq!(decoded.semantic_trace[118], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..119);
+        assert_eq!(
+            decoded.semantic_trace[119],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+        );
+        assert_eq!(decoded.semantic_trace[120], SYSTEMS_FRAMES_RELEASE);
+        assert_eq!(
+            decoded.semantic_trace[121],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[122], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..123);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

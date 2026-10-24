@@ -43,6 +43,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
@@ -66,6 +67,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
@@ -1214,6 +1216,8 @@ pub enum SystemsOperation {
     AddStaticImageStackPlatform,
     AddStaticImageStackHardwareCapabilities,
     AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
     RemoveStaticImageStackHardwareCapabilities,
     RemoveStaticImageStackPlatform,
@@ -1483,6 +1487,12 @@ impl SystemsOperation {
             }
             Self::AddStaticImageStackLoadMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
+            }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
             }
             Self::RemoveStaticImageStackLoadMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
@@ -1812,6 +1822,8 @@ pub enum SystemsTransition {
     AddStaticImageStackPlatform,
     AddStaticImageStackHardwareCapabilities,
     AddStaticImageStackLoadMetadata,
+    AuthorizeStaticImageStackRandomSlot,
+    RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
     RemoveStaticImageStackHardwareCapabilities,
     RemoveStaticImageStackPlatform,
@@ -2297,6 +2309,12 @@ impl SystemsTransition {
             Self::AddStaticImageStackLoadMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA
             }
+            Self::AuthorizeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT
+            }
+            Self::RevokeStaticImageStackRandomSlot => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
+            }
             Self::RemoveStaticImageStackLoadMetadata => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
             }
@@ -2648,6 +2666,8 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackPlatform
                     | SystemsOperation::AddStaticImageStackHardwareCapabilities
                     | SystemsOperation::AddStaticImageStackLoadMetadata
+                    | SystemsOperation::AuthorizeStaticImageStackRandomSlot
+                    | SystemsOperation::RevokeStaticImageStackRandomSlot
                     | SystemsOperation::RemoveStaticImageStackLoadMetadata
                     | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
                     | SystemsOperation::RemoveStaticImageStackPlatform
@@ -3177,6 +3197,7 @@ enum BootstrapMemoryOwnership {
     StaticElfConstructionStackPlatformAdded,
     StaticElfConstructionStackHardwareCapabilitiesAdded,
     StaticElfConstructionStackLoadMetadataAdded,
+    StaticElfConstructionStackRandomSlotAuthorized,
     StaticElfConstructionEntryRestored,
     StaticElfConstructionDetached,
     StaticElfConstructionHierarchyReturned,
@@ -3602,6 +3623,30 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image stack load-metadata addition requires one live hardware-capability group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded;
+            }
+            SystemsOperation::AuthorizeStaticImageStackRandomSlot => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack random-slot authorization requires one live load-metadata group",
+                    ));
+                }
+                self.memory_ownership =
+                    BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized;
+            }
+            SystemsOperation::RevokeStaticImageStackRandomSlot => {
+                if self.memory_ownership
+                    != BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image stack random-slot revocation requires one live random-slot authority",
                     ));
                 }
                 self.memory_ownership =
@@ -5739,6 +5784,7 @@ impl BootstrapAuthorityState {
             | BootstrapMemoryOwnership::StaticElfConstructionStackPlatformAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackHardwareCapabilitiesAdded
             | BootstrapMemoryOwnership::StaticElfConstructionStackLoadMetadataAdded
+            | BootstrapMemoryOwnership::StaticElfConstructionStackRandomSlotAuthorized
             | BootstrapMemoryOwnership::StaticElfConstructionEntryRestored
             | BootstrapMemoryOwnership::StaticElfConstructionDetached
             | BootstrapMemoryOwnership::StaticElfConstructionHierarchyReturned
@@ -7582,6 +7628,12 @@ fn model_bootstrap_operation(
         SystemsOperation::AddStaticImageStackLoadMetadata => {
             transitions.push(SystemsTransition::AddStaticImageStackLoadMetadata);
         }
+        SystemsOperation::AuthorizeStaticImageStackRandomSlot => {
+            transitions.push(SystemsTransition::AuthorizeStaticImageStackRandomSlot);
+        }
+        SystemsOperation::RevokeStaticImageStackRandomSlot => {
+            transitions.push(SystemsTransition::RevokeStaticImageStackRandomSlot);
+        }
         SystemsOperation::RemoveStaticImageStackLoadMetadata => {
             transitions.push(SystemsTransition::RemoveStaticImageStackLoadMetadata);
         }
@@ -8114,6 +8166,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackPlatform
         | SystemsOperation::AddStaticImageStackHardwareCapabilities
         | SystemsOperation::AddStaticImageStackLoadMetadata
+        | SystemsOperation::AuthorizeStaticImageStackRandomSlot
+        | SystemsOperation::RevokeStaticImageStackRandomSlot
         | SystemsOperation::RemoveStaticImageStackLoadMetadata
         | SystemsOperation::RemoveStaticImageStackHardwareCapabilities
         | SystemsOperation::RemoveStaticImageStackPlatform
@@ -11147,6 +11201,8 @@ mod tests {
                 SystemsOperation::AddStaticImageStackPlatform,
                 SystemsOperation::AddStaticImageStackHardwareCapabilities,
                 SystemsOperation::AddStaticImageStackLoadMetadata,
+                SystemsOperation::AuthorizeStaticImageStackRandomSlot,
+                SystemsOperation::RevokeStaticImageStackRandomSlot,
                 SystemsOperation::RemoveStaticImageStackLoadMetadata,
                 SystemsOperation::RemoveStaticImageStackHardwareCapabilities,
                 SystemsOperation::RemoveStaticImageStackPlatform,
@@ -11185,6 +11241,8 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackPlatform));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackHardwareCapabilities));
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackLoadMetadata));
+        assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageStackRandomSlot));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackRandomSlot));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackLoadMetadata));
         assert!(
             transitions.contains(&SystemsTransition::RemoveStaticImageStackHardwareCapabilities)
@@ -11201,6 +11259,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

@@ -234,8 +234,22 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-linux-auxv-before-null
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK"
-                                                                              hardware-capabilities-stack-restored-construction is unmapped static image construction remove stack load metadata (
+                                                                              random-slot-authorized-stack-construction is unmapped static image construction authorize stack random slot (
                                                                                 owner is load-metadata-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                value is initial-auxv-random-object,
+                                                                                extent-bytes is 16,
+                                                                                policy is bounded-linux-auxv-random-before-null
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK"
+                                                                              load-metadata-stack-restored-construction is unmapped static image construction revoke stack random slot (
+                                                                                owner is random-slot-authorized-stack-construction,
+                                                                                backing is static-elf-stack-backing,
+                                                                                policy is bounded-stack-random-slot-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK"
+                                                                              hardware-capabilities-stack-restored-construction is unmapped static image construction remove stack load metadata (
+                                                                                owner is load-metadata-stack-restored-construction,
                                                                                 backing is static-elf-stack-backing,
                                                                                 policy is bounded-stack-load-metadata-qualification-rollback
                                                                               )
