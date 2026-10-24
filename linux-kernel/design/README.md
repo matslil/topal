@@ -154,6 +154,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF load-metadata facts](bounded-static-elf-auxv-load-metadata.md)
 - [Bounded static ELF random-delivery slot authority](bounded-static-elf-random-slot-authority.md)
 - [Bounded static ELF prepared-process retention](bounded-static-elf-prepared-process-retention.md)
+- [Bounded static ELF retained-process disjoint work](bounded-static-elf-retained-disjoint-work.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
