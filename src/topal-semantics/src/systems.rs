@@ -56,6 +56,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
@@ -1242,6 +1243,7 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropyBusMaster,
     QualifyStaticImageEntropyDmaBuffers,
     QualifyStaticImageEntropySplitRing,
+    QualifyStaticImageEntropyDmaPreparation,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1551,6 +1553,9 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropySplitRing => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING
+            }
+            Self::QualifyStaticImageEntropyDmaPreparation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1904,6 +1909,7 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropyBusMaster,
     QualifyStaticImageEntropyDmaBuffers,
     QualifyStaticImageEntropySplitRing,
+    QualifyStaticImageEntropyDmaPreparation,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2429,6 +2435,9 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropySplitRing => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING
             }
+            Self::QualifyStaticImageEntropyDmaPreparation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2804,6 +2813,7 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropyBusMaster
                     | SystemsOperation::QualifyStaticImageEntropyDmaBuffers
                     | SystemsOperation::QualifyStaticImageEntropySplitRing
+                    | SystemsOperation::QualifyStaticImageEntropyDmaPreparation
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -3906,6 +3916,17 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image entropy split-ring coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyDmaPreparation => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy DMA-preparation coexistence requires the exact acquisition owner",
                     ));
                 }
             }
@@ -7982,6 +8003,9 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropySplitRing => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropySplitRing);
         }
+        SystemsOperation::QualifyStaticImageEntropyDmaPreparation => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyDmaPreparation);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8538,6 +8562,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropyBusMaster
         | SystemsOperation::QualifyStaticImageEntropyDmaBuffers
         | SystemsOperation::QualifyStaticImageEntropySplitRing
+        | SystemsOperation::QualifyStaticImageEntropyDmaPreparation
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11587,6 +11612,7 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropyBusMaster,
                 SystemsOperation::QualifyStaticImageEntropyDmaBuffers,
                 SystemsOperation::QualifyStaticImageEntropySplitRing,
+                SystemsOperation::QualifyStaticImageEntropyDmaPreparation,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11641,6 +11667,7 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyBusMaster));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyDmaBuffers));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySplitRing));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyDmaPreparation));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11661,6 +11688,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

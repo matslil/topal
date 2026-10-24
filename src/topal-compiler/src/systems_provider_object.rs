@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/137";
+    "topal.provider-object.x86_64-qemu-pc-q35/138";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -103,6 +103,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_dma_buffers";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_split_ring";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_dma_preparation";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1515,6 +1517,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
         &static_image_qualify_entropy_split_ring()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+        &static_image_qualify_entropy_dma_preparation()?,
     );
     append_encoded_function(
         &mut object,
@@ -8701,6 +8709,10 @@ fn static_image_qualify_entropy_split_ring() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_dma_preparation() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -11467,6 +11479,10 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
         );
+        let qualify_entropy_dma_preparation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11488,6 +11504,7 @@ assert bytes(output) == block[32:]
             qualify_entropy_bus_master,
             qualify_entropy_dma_buffers,
             qualify_entropy_split_ring,
+            qualify_entropy_dma_preparation,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,
