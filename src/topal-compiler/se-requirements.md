@@ -861,6 +861,23 @@ preservation, and no exposed process, BAR, register, queue, PCI, or entropy
 representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-DISCOVERY-001` and `TK-DEC-162`.
 
+The bounded static-ELF entropy-bus-master increment shall consume and return
+the exact acquisition owner around one reversible device-initiation-authority
+qualification. X86-64 lowering shall completely validate the retained process,
+replay the exact negotiation and queue-discovery sequences, perform the exact
+masked bus-master enable and inverse transitions with unmasked command bits
+preserved, then write and read back status zero. It shall restore and verify
+the provider-private configuration gateway after every region access and shall
+not consume the later ordinary transport sequence. The checker and semantic
+model shall reject another owner, device, policy, prerequisite access, masked
+transition, order, omission, duplicate, unmasked-bit change, final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove complete process validation before real accesses, exact
+prerequisite replay, exact enable and inverse transitions, device and gateway
+rollback, same-owner return, later-sequence preservation, and no exposed
+process, command, PCI, DMA, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-BUS-MASTER-001` and `TK-DEC-163`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
