@@ -1042,6 +1042,62 @@ expose its numeric representation or an address, add another auxiliary-vector
 fact, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-AUXV-PHDR-001 — Resident program-header facts
+
+`static image construction add stack program headers` SHALL require the exact
+live `ExecutableEntryStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-AUXV-ENTRY-001`. It SHALL accept only that owner,
+that backing identity, `value` equal to
+`resident-static-elf-program-headers`, and policy
+`bounded-linux-auxv-before-null`, and SHALL produce one affine
+`ProgramHeaderStackEntryStaticImageConstruction` retaining every prior fact
+while adding one coherent `AT_PHDR`, `AT_PHENT`, and `AT_PHNUM` group after
+`AT_ENTRY` and before `AT_NULL`.
+
+Before success, the provider SHALL completely revalidate the entry-qualified
+block, resident static ELF header and complete program-header table, exact
+immutable header leaf, final image leaves, inactive hierarchy, and current
+bootstrap root. It SHALL prove that the table identity, entry size, and count
+match the header and validated static ELF plan, clear the complete backing,
+reconstruct the complete target-aligned block with the group, perform every
+target-required visibility operation, and read back every word, pointer
+relation, string byte, terminator, resident-table relation, and otherwise-zero
+byte. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK` observation.
+
+Source SHALL invoke `static image construction remove stack program headers`
+with the exact extended owner, backing identity, and policy
+`bounded-stack-program-headers-qualification-rollback`. Removal SHALL
+completely revalidate the extended block, clear the complete backing,
+reconstruct and completely revalidate the exact entry-qualified block,
+preserve every translation, entry, and resident-metadata obligation, and
+reproduce the exact `ExecutableEntryStackEntryStaticImageConstruction`.
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK` observation before
+entry-fact removal.
+
+A wrong owner, backing, value, policy, resident header, table identity, entry
+size, entry count, header leaf, or bounds relation; duplicate addition;
+partial mutation or readback; wrong ordering; prior-fact removal, ordinary
+clearing, or leaf revocation while extended; backing release; activation;
+teardown; or recoverable disposition SHALL be invalid. Only exact group
+removal SHALL restore the state admitted by entry-fact removal.
+
+For qualified x86-64 realization, the provider SHALL derive native
+`AT_PHDR=(3,0x400040)`, encode `AT_PHENT=(4,56)` and `AT_PHNUM=(5,11)`, and
+place them after `AT_ENTRY=(9,0x4a6580)` and before `AT_NULL`. The complete
+eleven-row table SHALL begin at header-declared `e_phoff=64`, use
+`e_phentsize=56`, fit the exact immutable header leaf, and agree with the
+validated plan. Addition and removal SHALL each clear all 512 qwords before
+reconstruction, execute one store fence, and completely read back the result.
+They SHALL preserve the exact inactive hierarchy and issue no active-address
+invalidation.
+
+This rule SHALL NOT retain the program-header group after its removal witness,
+expose any numeric representation or address, add another auxiliary-vector
+fact, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
