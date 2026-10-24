@@ -101,6 +101,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
@@ -197,6 +198,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_TRANSPORT_SYMBOL,
@@ -242,8 +244,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/148";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/137";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/149";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/138";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -2105,6 +2107,7 @@ enum ProviderSymbol {
     QualifyStaticImageEntropyDmaBuffers,
     QualifyStaticImageEntropySplitRing,
     QualifyStaticImageEntropyDmaPreparation,
+    QualifyStaticImageEntropyQueueAddresses,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2289,6 +2292,9 @@ impl ProviderSymbol {
             }
             Self::QualifyStaticImageEntropyDmaPreparation => {
                 X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL
+            }
+            Self::QualifyStaticImageEntropyQueueAddresses => {
+                X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL
@@ -2495,6 +2501,7 @@ impl ProviderSymbol {
             | Self::QualifyStaticImageEntropyDmaBuffers
             | Self::QualifyStaticImageEntropySplitRing
             | Self::QualifyStaticImageEntropyDmaPreparation
+            | Self::QualifyStaticImageEntropyQueueAddresses
             | Self::RevokeStaticImageEntropyAcquisition
             | Self::RevokeStaticImageEntropyHandoff
             | Self::RestoreStaticImagePreparedProcess
@@ -2877,6 +2884,7 @@ struct ProviderSymbols {
     qualify_static_image_entropy_dma_buffers: SymbolId,
     qualify_static_image_entropy_split_ring: SymbolId,
     qualify_static_image_entropy_dma_preparation: SymbolId,
+    qualify_static_image_entropy_queue_addresses: SymbolId,
     revoke_static_image_entropy_acquisition: SymbolId,
     revoke_static_image_entropy_handoff: SymbolId,
     restore_static_image_prepared_process: SymbolId,
@@ -4390,12 +4398,22 @@ impl RootEncoder {
         self.qualify_static_image_entropy_ring_transaction(
             ProviderSymbol::QualifyStaticImageEntropySplitRing,
             false,
+            false,
         )
     }
 
     fn qualify_static_image_entropy_dma_preparation(&mut self) -> Result<(), CompileError> {
         self.qualify_static_image_entropy_ring_transaction(
             ProviderSymbol::QualifyStaticImageEntropyDmaPreparation,
+            true,
+            false,
+        )
+    }
+
+    fn qualify_static_image_entropy_queue_addresses(&mut self) -> Result<(), CompileError> {
+        self.qualify_static_image_entropy_ring_transaction(
+            ProviderSymbol::QualifyStaticImageEntropyQueueAddresses,
+            true,
             true,
         )
     }
@@ -4404,6 +4422,7 @@ impl RootEncoder {
         &mut self,
         provider: ProviderSymbol,
         prepare: bool,
+        publish: bool,
     ) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::EntropyAcquiringProcess
@@ -4445,6 +4464,45 @@ impl RootEncoder {
                     ProviderSymbol::PrepareDmaBufferForDevice,
                 )?;
             }
+        }
+        if publish {
+            for request in
+                CompilerPciRegionDmaReferenceRequest::INITIAL_Q35_VIRTIO_RNG_QUEUE_ADDRESSES
+            {
+                self.emit_unaccounted_pci_region_dma_reference(request)?;
+            }
+            for register_offset_bytes in [48, 40, 32] {
+                for request in [
+                    CompilerPciRegionRegisterRequest::initial(
+                        register_offset_bytes + 4,
+                        4,
+                        CompilerPciRegionRegisterDirection::Write,
+                        0,
+                    ),
+                    CompilerPciRegionRegisterRequest::initial(
+                        register_offset_bytes,
+                        4,
+                        CompilerPciRegionRegisterDirection::Write,
+                        0,
+                    ),
+                    CompilerPciRegionRegisterRequest::initial(
+                        register_offset_bytes,
+                        4,
+                        CompilerPciRegionRegisterDirection::ReadEquals,
+                        0,
+                    ),
+                    CompilerPciRegionRegisterRequest::initial(
+                        register_offset_bytes + 4,
+                        4,
+                        CompilerPciRegionRegisterDirection::ReadEquals,
+                        0,
+                    ),
+                ] {
+                    self.emit_unaccounted_pci_region_register_access(request)?;
+                }
+            }
+        }
+        if prepare {
             for request in [
                 CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[1],
                 CompilerDmaBufferPreparationRequest::INITIAL_Q35_VIRTIO_RNG[0],
@@ -4547,6 +4605,36 @@ impl RootEncoder {
             self.emit_unaccounted_pci_region_register_access(request)?;
         }
         Ok(())
+    }
+
+    fn emit_unaccounted_pci_region_dma_reference(
+        &mut self,
+        request: CompilerPciRegionDmaReferenceRequest,
+    ) -> Result<(), CompileError> {
+        let selector = 0x8000_0000
+            | (u32::from(request.bus) << 16)
+            | (u32::from(request.device) << 11)
+            | (u32::from(request.function) << 8)
+            | u32::from(request.access_capability_offset_bytes);
+        let target_offset = request
+            .region_offset_bytes
+            .checked_add(request.register_offset_bytes)
+            .ok_or_else(|| {
+                CompileError::Tool("PCI DMA-reference target offset overflowed".into())
+            })?;
+        self.bytes.push(0xbf);
+        self.bytes.extend_from_slice(&selector.to_le_bytes());
+        self.bytes.push(0xbe);
+        self.bytes
+            .extend_from_slice(&u32::from(request.bar).to_le_bytes());
+        self.bytes.push(0xba);
+        self.bytes.extend_from_slice(&target_offset.to_le_bytes());
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x0d]);
+        self.rip_relative_symbol(ProviderSymbol::DmaVirtqueueControl, 0)?;
+        self.bytes.extend_from_slice(&[0x41, 0xb8]);
+        self.bytes
+            .extend_from_slice(&(request.buffer_offset_bytes as u32).to_le_bytes());
+        self.call_checked_bool(ProviderSymbol::PublishPciRegionDmaReference)
     }
 
     fn emit_unaccounted_pci_configuration_word_update(
@@ -7295,6 +7383,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::QualifyStaticImageEntropyDmaPreparation,
         ),
+        qualify_static_image_entropy_queue_addresses: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::QualifyStaticImageEntropyQueueAddresses,
+        ),
         revoke_static_image_entropy_acquisition: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RevokeStaticImageEntropyAcquisition,
@@ -8103,6 +8195,9 @@ fn encode_operations(
             CompilerSystemsOperation::QualifyStaticImageEntropyDmaPreparation => {
                 encoder.qualify_static_image_entropy_dma_preparation()?;
             }
+            CompilerSystemsOperation::QualifyStaticImageEntropyQueueAddresses => {
+                encoder.qualify_static_image_entropy_queue_addresses()?;
+            }
             CompilerSystemsOperation::RevokeStaticImageEntropyAcquisition => {
                 encoder.revoke_static_image_entropy_acquisition()?;
             }
@@ -8560,6 +8655,9 @@ fn append_root(
             }
             ProviderSymbol::QualifyStaticImageEntropyDmaPreparation => {
                 provider_symbols.qualify_static_image_entropy_dma_preparation
+            }
+            ProviderSymbol::QualifyStaticImageEntropyQueueAddresses => {
+                provider_symbols.qualify_static_image_entropy_queue_addresses
             }
             ProviderSymbol::RevokeStaticImageEntropyAcquisition => {
                 provider_symbols.revoke_static_image_entropy_acquisition
@@ -9415,6 +9513,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::QualifyStaticImageEntropyDmaBuffers
                 | CompilerSystemsTransition::QualifyStaticImageEntropySplitRing
                 | CompilerSystemsTransition::QualifyStaticImageEntropyDmaPreparation
+                | CompilerSystemsTransition::QualifyStaticImageEntropyQueueAddresses
                 | CompilerSystemsTransition::RevokeStaticImageEntropyAcquisition
                 | CompilerSystemsTransition::RevokeStaticImageEntropyHandoff
                 | CompilerSystemsTransition::RestoreStaticImagePreparedProcess
@@ -9849,7 +9948,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 6400);
+        assert_eq!(relocation_targets.len(), 6597);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -10035,7 +10134,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            5450
+            5500
         );
         assert_eq!(
             relocation_targets
@@ -10049,49 +10148,49 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD_SYMBOL)
                 .count(),
-            9
+            11
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_CREATE_SYMBOL)
                 .count(),
-            8
+            10
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_BIND_REFERENCE_SYMBOL)
                 .count(),
-            3
+            4
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_STORE_INTEGER_SYMBOL)
                 .count(),
-            22
+            31
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL)
                 .count(),
-            4
+            6
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_COMPLETE_CPU_SYMBOL)
                 .count(),
-            4
+            6
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL)
                 .count(),
-            14
+            19
         );
         assert_eq!(
             relocation_targets
@@ -10112,7 +10211,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_DMA_REFERENCE_SYMBOL)
                 .count(),
-            3
+            6
         );
         assert_eq!(
             relocation_targets
@@ -10154,21 +10253,21 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_VIRTQUEUE_CONTROL_SYMBOL)
                 .count(),
-            46
+            66
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_DMA_ENTROPY_PAYLOAD_SYMBOL)
                 .count(),
-            8
+            11
         );
         assert_eq!(
             relocation_targets
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_READ_SYMBOL)
                 .count(),
-            74
+            91
         );
         assert_eq!(
             relocation_targets
@@ -10182,7 +10281,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_PCI_REGION_WRITE_SYMBOL)
                 .count(),
-            85
+            103
         );
         assert_eq!(
             relocation_targets
@@ -10196,7 +10295,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            409
+            471
         );
         assert_eq!(
             relocation_targets
@@ -10256,7 +10355,7 @@ mod tests {
                 .windows(7)
                 .filter(|bytes| bytes[..3] == [0x48, 0x8d, 0x3d])
                 .count(),
-            96,
+            115,
             "root must derive opaque storage for DMA, atomic, notification, clock, deadline, context, and user operations"
         );
         assert!(
@@ -10356,6 +10455,7 @@ mod tests {
                 "topal_x86_systems_static_image_qualify_entropy_dma_buffers",
                 "topal_x86_systems_static_image_qualify_entropy_split_ring",
                 "topal_x86_systems_static_image_qualify_entropy_dma_preparation",
+                "topal_x86_systems_static_image_qualify_entropy_queue_addresses",
                 "topal_x86_systems_static_image_revoke_entropy_acquisition",
                 "topal_x86_systems_static_image_revoke_entropy_handoff",
                 "topal_x86_systems_static_image_restore_prepared_process",
@@ -10533,7 +10633,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 443);
+        assert_eq!(decoded.semantic_trace.len(), 445);
         assert!(
             decoded
                 .semantic_trace
@@ -10887,15 +10987,20 @@ mod tests {
         assert!(decoded.semantic_trace[107].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[108],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES
         );
         assert!(decoded.semantic_trace[109].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[110],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
         );
         assert!(decoded.semantic_trace[111].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..112);
+        assert_eq!(
+            decoded.semantic_trace[112],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
+        );
+        assert!(decoded.semantic_trace[113].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..114);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS

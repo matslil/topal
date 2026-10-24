@@ -105,6 +105,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_split_ring";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_dma_preparation";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_queue_addresses";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1523,6 +1525,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
         &static_image_qualify_entropy_dma_preparation()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+        &static_image_qualify_entropy_queue_addresses()?,
     );
     append_encoded_function(
         &mut object,
@@ -8713,6 +8721,10 @@ fn static_image_qualify_entropy_dma_preparation() -> Result<Vec<u8>, CompileErro
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_queue_addresses() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -11483,6 +11495,10 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
         );
+        let qualify_entropy_queue_addresses = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11505,6 +11521,7 @@ assert bytes(output) == block[32:]
             qualify_entropy_dma_buffers,
             qualify_entropy_split_ring,
             qualify_entropy_dma_preparation,
+            qualify_entropy_queue_addresses,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,

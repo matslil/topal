@@ -90,6 +90,8 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING: &str =
     "topal.systems.static-image.construction.qualify-entropy-split-ring/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION: &str =
     "topal.systems.static-image.construction.qualify-entropy-dma-preparation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-addresses/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
