@@ -307,8 +307,16 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-dma-buffer-coexistence
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              entropy-acquiring-static-process-after-split-ring is unmapped static image construction qualify entropy split ring (
                                                                                 owner is entropy-acquiring-static-process-after-dma-buffers,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-split-ring,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"

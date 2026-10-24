@@ -111,6 +111,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -9339,6 +9340,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -10492,7 +10494,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 378);
+        assert_eq!(program.bootstrap.handler.operations.len(), 380);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10596,6 +10598,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -14170,6 +14173,49 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("entropy DMA-buffer")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_split_ring_coexistence() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001.
+        for source in [
+            SOURCE.replace(
+                "owner is entropy-acquiring-static-process-after-dma-buffers,",
+                "owner is entropy-pending-static-process,",
+            ),
+            SOURCE.replace(
+                "device is initial-virtio-rng-device,\n                                                                                domain is initial-dma-domain,\n                                                                                queue is initial-virtio-rng-queue-zero,",
+                "device is unrelated-device,\n                                                                                domain is initial-dma-domain,\n                                                                                queue is initial-virtio-rng-queue-zero,",
+            ),
+            SOURCE.replace(
+                "domain is initial-dma-domain,\n                                                                                queue is initial-virtio-rng-queue-zero,\n                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence",
+                "domain is unrelated-domain,\n                                                                                queue is initial-virtio-rng-queue-zero,\n                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence",
+            ),
+            SOURCE.replace(
+                "domain is initial-dma-domain,\n                                                                                queue is initial-virtio-rng-queue-zero,\n                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence",
+                "domain is initial-dma-domain,\n                                                                                queue is unrelated-queue,\n                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence",
+            ),
+            SOURCE.replace(
+                "policy is bounded-static-elf-entropy-split-ring-coexistence",
+                "policy is synthetic-entropy-split-ring",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("entropy split-ring")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message

@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/136";
+    "topal.provider-object.x86_64-qemu-pc-q35/137";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -101,6 +101,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_bus_master";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_dma_buffers";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_split_ring";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -543,12 +545,21 @@ fn dma_buffer_store_integer() -> Result<Vec<u8>, CompileError> {
     code.jump("success");
     code.bind("dword")?;
     code.bytes(&[0x83, 0xfa, 0x04]); // cmp edx, 4
-    code.jump_if(0x85, "fail");
+    code.jump_if(0x85, "qword");
     code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]); // cmp rsi, 4092
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]); // test rsi, 3
     code.jump_if(0x85, "fail");
     code.bytes(&[0x89, 0x0c, 0x37]); // mov [rdi+rsi], ecx
+    code.jump("success");
+    code.bind("qword")?;
+    code.bytes(&[0x83, 0xfa, 0x08]); // cmp edx, 8
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00]); // cmp rsi, 4088
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x07, 0x00, 0x00, 0x00]); // test rsi, 7
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0x0c, 0x37]); // mov [rdi+rsi], rcx
     code.bind("success")?;
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
@@ -594,12 +605,22 @@ fn dma_buffer_load_integer() -> Result<Vec<u8>, CompileError> {
     code.jump("success");
     code.bind("dword")?;
     code.bytes(&[0x83, 0xfa, 0x04]);
-    code.jump_if(0x85, "fail");
+    code.jump_if(0x85, "qword");
     code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]);
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x8b, 0x04, 0x37, 0x39, 0xc8]);
+    code.jump_if(0x85, "fail");
+    code.jump("success");
+    code.bind("qword")?;
+    code.bytes(&[0x83, 0xfa, 0x08]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x07, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x04, 0x37, 0x48, 0x39, 0xc8]);
     code.jump_if(0x85, "fail");
     code.bind("success")?;
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
@@ -1488,6 +1509,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
         &static_image_qualify_entropy_dma_buffers()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+        &static_image_qualify_entropy_split_ring()?,
     );
     append_encoded_function(
         &mut object,
@@ -8670,6 +8697,10 @@ fn static_image_qualify_entropy_dma_buffers() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_split_ring() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -10148,6 +10179,24 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x66, 0x89, 0x0c, 0x37])
         );
         assert!(bytes.windows(3).any(|window| window == [0x89, 0x0c, 0x37]));
+        assert!(
+            bytes
+                .windows(4)
+                .any(|window| window == [0x48, 0x89, 0x0c, 0x37])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x08]));
+        let load = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(load.address()).unwrap();
+        let end = start + usize::try_from(load.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(7)
+                .any(|window| window == [0x48, 0x8b, 0x04, 0x37, 0x48, 0x39, 0xc8])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x08]));
         let prepare = file
             .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL)
             .unwrap();
@@ -11414,6 +11463,10 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
         );
+        let qualify_entropy_split_ring = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11434,6 +11487,7 @@ assert bytes(output) == block[32:]
             qualify_entropy_queue,
             qualify_entropy_bus_master,
             qualify_entropy_dma_buffers,
+            qualify_entropy_split_ring,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,
