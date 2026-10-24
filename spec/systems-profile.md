@@ -1628,6 +1628,42 @@ in this increment, consume or expose entropy, publish `AT_RANDOM`, initialize
 TLS, construct a user context, enter user mode, execute BusyBox, or add a
 syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001 — Entropy-acquisition authority
+
+`static image construction authorize entropy acquisition` SHALL require and
+consume the exact `EntropyPendingStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001`. It SHALL accept only output
+identity one, resulting generator generation two, and policy
+`bounded-static-elf-initial-entropy-acquisition`, and SHALL produce one affine
+`EntropyAcquiringStaticElfInitialProcess`.
+
+Before success, the provider SHALL completely revalidate every retained
+resource and byte. The resulting owner SHALL preserve the complete prepared
+process while granting only future acceptance of the named qualified output.
+Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK` observation and
+SHALL receive no address, byte, resource tuple, device state, allocator state,
+or representation.
+
+For qualification, `static image construction revoke entropy acquisition`
+SHALL immediately consume the exact acquisition owner under policy
+`bounded-static-elf-entropy-acquisition-qualification-rollback`, prove all
+retained state unchanged, return the exact entropy-pending owner, and emit
+exactly one `TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK`
+observation before entropy-handoff revocation.
+
+Another owner, output identity, generation, policy, resource tuple, byte,
+translation state, or ordering; duplicate or partial transfer; mutation;
+device access; allocation; release; extraction; output use; early handoff
+revocation; or recoverable disposition SHALL be invalid. Qualified x86-64
+transitions SHALL perform complete retained-process validation and no store,
+fence, active-address invalidation, allocation, release, activation,
+extraction, output copy, or delivery.
+
+This rule SHALL NOT span the entropy pipeline, acquire, consume, or expose
+entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

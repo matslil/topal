@@ -782,6 +782,21 @@ state, ordered witnesses, and no exposed address, entropy, TLS, user-mode,
 syscall, or BusyBox authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001` and `TK-DEC-157`.
 
+The bounded static-ELF entropy-acquisition-authority increment shall consume the
+exact entropy-pending owner into one opaque acquisition owner bound to output
+identity one and resulting generation two, then support one immediate
+qualification revocation to the exact entropy-pending owner. X86-64 lowering
+shall preserve the complete provider-private process tuple and completely
+validate every retained identity and byte on both transitions without device
+access, allocation, release, mutation, activation, extraction, output copy, or
+delivery. The checker and semantic model shall reject another owner, output,
+generation, policy, ordering, mutation, duplication, early handoff revocation,
+output use, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove exact transfer and rollback, unchanged process state, ordered
+witnesses, and no exposed process or entropy representation, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001` and `TK-DEC-158`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
