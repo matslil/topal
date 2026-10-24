@@ -1592,6 +1592,42 @@ This rule SHALL NOT perform DMA or device work, consume entropy, publish
 `AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001 — Entropy-handoff authority
+
+`static image construction authorize entropy handoff` SHALL require and
+consume the exact retained-process owner returned by
+`TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001`. It SHALL accept only that
+owner, process identity `bounded-static-elf-initial-process`, and policy
+`bounded-static-elf-initial-random-delivery`, and SHALL produce one affine
+`EntropyPendingStaticElfInitialProcess`.
+
+Before success, the provider SHALL completely revalidate every retained
+resource and byte. The resulting owner SHALL preserve the payload, metadata,
+inactive hierarchy, entry authority, guarded stack, deterministic process
+table, and random-slot authority while granting only future acceptance of one
+qualified entropy output. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK` observation and SHALL
+receive no address, byte, resource tuple, or representation.
+
+For qualification, `static image construction revoke entropy handoff` SHALL
+immediately consume the exact entropy-pending owner under policy
+`bounded-static-elf-entropy-handoff-qualification-rollback`, prove all retained
+state unchanged, return the exact retained-process owner, and emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK` observation before retained-
+process restoration.
+
+Another owner, process identity, policy, resource tuple, byte, translation
+state, or ordering; duplicate or partial transfer; allocation, release,
+mutation, activation, output use, early restoration, or recoverable disposition
+SHALL be invalid. Qualified x86-64 transitions SHALL perform complete retained-
+process validation and no store, fence, active-address invalidation, allocation,
+release, activation, entropy extraction, or delivery.
+
+This rule SHALL NOT retain the entropy-pending owner beyond its rollback witness
+in this increment, consume or expose entropy, publish `AT_RANDOM`, initialize
+TLS, construct a user context, enter user mode, execute BusyBox, or add a
+syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

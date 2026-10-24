@@ -767,6 +767,21 @@ and no exposed address, DMA, entropy, TLS, user-mode, syscall, or BusyBox
 authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001` and `TK-DEC-156`.
 
+The bounded static-ELF entropy-handoff increment shall consume the exact
+retained-process owner and produce one opaque entropy-pending process owner,
+then support one immediate qualification revocation back to the exact retained
+owner. X86-64 lowering shall keep the complete provider-private resource tuple
+in compiler-controlled root state and completely validate the inactive image,
+hierarchy, deterministic stack, future random-object zeros, strings, guard, and
+identities on both transitions without allocation, release, stores, fences,
+invalidation, activation, extraction, or delivery. The checker and semantic
+model shall reject another owner, process identity, policy, mutation,
+duplication, early restore, output use, or recoverable failure. Structural and
+duplicate pinned-QEMU tests shall prove exact transfer and rollback, unchanged
+state, ordered witnesses, and no exposed address, entropy, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001` and `TK-DEC-157`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
