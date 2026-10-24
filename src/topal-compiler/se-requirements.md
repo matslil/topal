@@ -878,6 +878,22 @@ rollback, same-owner return, later-sequence preservation, and no exposed
 process, command, PCI, DMA, or entropy representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-BUS-MASTER-001` and `TK-DEC-163`.
 
+The bounded static-ELF entropy-DMA-buffer-coexistence increment shall consume
+and return the exact acquisition owner around one transaction-scoped two-buffer
+qualification. X86-64 lowering shall completely validate the retained process,
+replay negotiation and queue discovery, enable bus mastering, qualify the exact
+sealed control and payload requests, prove their aligned, disjoint, initially
+zero backing, then reverse bus mastering and restore device and gateway state.
+No candidate identity shall escape and the later ordinary sequence shall
+remain unconsumed. The checker and semantic model shall reject another owner,
+device, domain, policy, request, role, direction, visibility, order, omission,
+duplicate, backing property, final state, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation, exact prerequisite replay, both buffer qualifications,
+complete rollback, same-owner return, later-sequence preservation, and no
+exposed process, DMA, address, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001` and `TK-DEC-164`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

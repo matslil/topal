@@ -1827,6 +1827,42 @@ the device, span the entropy pipeline, consume or expose entropy, publish
 `AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
 BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001 — Reversible entropy DMA-buffer coexistence
+
+`static image construction qualify entropy dma buffers` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-BUS-MASTER-001`. It SHALL accept
+only device identity `initial-virtio-rng-device`, translation-domain identity
+`initial-dma-domain`, and policy
+`bounded-static-elf-entropy-dma-buffer-coexistence`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL replay the exact negotiation
+and queue-discovery sequences, perform the exact masked bus-master enable, and
+qualify the exact two requests of `TOPAL-SYSTEMS-DMA-BUFFER-001` in order. The
+transaction SHALL prove both provider backing objects are 4,096-byte aligned,
+disjoint, initially zero, and exactly match their sealed device, translation
+domain, direction, visibility, and control/payload roles. No DMA identity SHALL
+escape. It SHALL then perform the exact inverse bus-master transition, reset
+device status, verify configuration-gateway rollback after every region
+access, and leave the later ordinary sequence unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK` observation is permitted only
+after every proof and rollback succeeds.
+
+Another owner, device, domain, policy, request, role, direction, visibility,
+order, omission, duplication, alignment, overlap, initial byte, masked or
+unmasked command state, or final state; an escaped DMA identity; incomplete
+gateway restoration or process validation; process mutation, release, alias,
+activation, or exposure; entropy use; or recoverable disposition SHALL be
+invalid. Source SHALL receive no process resource, buffer identity, address,
+PCI coordinate, register, command word, allocator state, output byte, or
+provider representation.
+
+This rule SHALL NOT construct or enable a queue, grant device ownership, notify
+the device, span the entropy pipeline, consume or expose entropy, publish
+`AT_RANDOM`, initialize TLS, construct a user context, enter user mode, execute
+BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
