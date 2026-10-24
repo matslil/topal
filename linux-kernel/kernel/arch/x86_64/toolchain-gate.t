@@ -249,8 +249,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-pre-entropy-retention
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK"
-                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                              retained-static-process-after-disjoint-work is unmapped static image construction qualify retained disjoint work (
                                                                                 owner is retained-static-process,
+                                                                                frame-count is 1,
+                                                                                alignment-frames is 1,
+                                                                                policy is bounded-static-elf-retained-disjoint-work
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK"
+                                                                              random-slot-authorized-stack-restored-construction is unmapped static image construction restore prepared process (
+                                                                                owner is retained-static-process-after-disjoint-work,
                                                                                 policy is bounded-static-elf-retention-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK"

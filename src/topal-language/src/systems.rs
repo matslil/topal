@@ -104,6 +104,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -9321,6 +9322,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -10470,7 +10472,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 356);
+        assert_eq!(program.bootstrap.handler.operations.len(), 358);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10567,6 +10569,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -13803,7 +13806,7 @@ mod tests {
                 "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_BAD",
             ),
             SOURCE.replace(
-                "owner is retained-static-process,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
+                "owner is retained-static-process-after-disjoint-work,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
                 "owner is random-slot-authorized-stack-construction,\n                                                                                policy is bounded-static-elf-retention-qualification-rollback",
             ),
             SOURCE.replace(
@@ -13822,6 +13825,41 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("prepared-process")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_retained_disjoint_work() {
+        // TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001.
+        for source in [
+            SOURCE.replace(
+                "owner is retained-static-process,\n                                                                                frame-count is 1,",
+                "owner is random-slot-authorized-stack-construction,\n                                                                                frame-count is 1,",
+            ),
+            SOURCE.replace(
+                "owner is retained-static-process,\n                                                                                frame-count is 1,\n                                                                                alignment-frames is 1,",
+                "owner is retained-static-process,\n                                                                                frame-count is 2,\n                                                                                alignment-frames is 1,",
+            ),
+            SOURCE.replace(
+                "bounded-static-elf-retained-disjoint-work",
+                "overlapping-retained-work",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("retained disjoint")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message

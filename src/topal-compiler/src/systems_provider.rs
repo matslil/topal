@@ -53,6 +53,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -97,7 +98,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/127";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/128";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -125,6 +126,7 @@ pub enum X86SystemsLowering {
     AddStaticImageStackLoadMetadata,
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -299,6 +301,9 @@ impl X86SystemsLowering {
             }
             Self::RetainStaticImagePreparedProcess => {
                 "topal.provider.x86_64.static-image.retain-prepared-process/1"
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                "topal.provider.x86_64.static-image.qualify-retained-disjoint-work/1"
             }
             Self::RestoreStaticImagePreparedProcess => {
                 "topal.provider.x86_64.static-image.restore-prepared-process/1"
@@ -787,6 +792,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS => {
             X86SystemsLowering::RetainStaticImagePreparedProcess
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK => {
+            X86SystemsLowering::QualifyStaticImageRetainedDisjointWork
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS => {
             X86SystemsLowering::RestoreStaticImagePreparedProcess
         }
@@ -1048,6 +1056,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::RetainStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
             }
+            X86SystemsLowering::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
             X86SystemsLowering::RestoreStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
             }
@@ -1299,7 +1310,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 128);
+        assert_eq!(plan.operations.len(), 129);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

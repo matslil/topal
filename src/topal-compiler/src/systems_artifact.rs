@@ -93,6 +93,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -177,6 +178,7 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_DETACH_ADDRESS_SPACE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_INITIALIZE_STACK_ENTRY_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_PUBLISH_STACK_LEAF_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CLOCK_TICK_RATE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_CREDENTIALS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_ENTRY_FACT_SYMBOL,
@@ -216,8 +218,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/137";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/126";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/138";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/127";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -233,7 +235,7 @@ pub const SYSTEMS_INITIAL_USER_IMAGE_FILE: &str = "initial-user.elf";
 pub const SYSTEMS_STATIC_USER_IMAGE_FILE: &str = "static-user.elf";
 pub const SYSTEMS_PROVENANCE_FILE: &str = "provenance.json";
 
-const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 90] = [
+const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 91] = [
     X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_DEBUG_BREAK_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
@@ -260,6 +262,7 @@ const REQUIRED_LINKED_TEXT_SYMBOLS: [&str; 90] = [
     X86_SYSTEMS_STATIC_IMAGE_ADD_STACK_LOAD_METADATA_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_AUTHORIZE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REMOVE_STACK_LOAD_METADATA_SYMBOL,
@@ -2055,6 +2058,7 @@ enum ProviderSymbol {
     AddStaticImageStackLoadMetadata,
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -2204,6 +2208,9 @@ impl ProviderSymbol {
             }
             Self::RetainStaticImagePreparedProcess => {
                 X86_SYSTEMS_STATIC_IMAGE_RETAIN_PREPARED_PROCESS_SYMBOL
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                X86_SYSTEMS_STATIC_IMAGE_QUALIFY_RETAINED_DISJOINT_WORK_SYMBOL
             }
             Self::RestoreStaticImagePreparedProcess => {
                 X86_SYSTEMS_STATIC_IMAGE_RESTORE_PREPARED_PROCESS_SYMBOL
@@ -2393,6 +2400,7 @@ impl ProviderSymbol {
             | Self::AddStaticImageStackLoadMetadata
             | Self::AuthorizeStaticImageStackRandomSlot
             | Self::RetainStaticImagePreparedProcess
+            | Self::QualifyStaticImageRetainedDisjointWork
             | Self::RestoreStaticImagePreparedProcess
             | Self::RevokeStaticImageStackRandomSlot
             | Self::RemoveStaticImageStackLoadMetadata
@@ -2760,6 +2768,7 @@ struct ProviderSymbols {
     add_static_image_stack_load_metadata: SymbolId,
     authorize_static_image_stack_random_slot: SymbolId,
     retain_static_image_prepared_process: SymbolId,
+    qualify_static_image_retained_disjoint_work: SymbolId,
     restore_static_image_prepared_process: SymbolId,
     revoke_static_image_stack_random_slot: SymbolId,
     remove_static_image_stack_load_metadata: SymbolId,
@@ -2899,6 +2908,11 @@ impl RootEncoder {
             && self.physical_frame_count.is_none()
             && frame_count == 1
             && !self.retained_static_elf_payload;
+        let retained_static_process_work = self.static_image
+            == RootStaticImageState::PreparedProcessRetained
+            && self.physical_frame_count.is_none()
+            && frame_count == 1
+            && !self.retained_static_elf_payload;
         if !self.frame_allocator_created
             || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
@@ -2916,7 +2930,13 @@ impl RootEncoder {
             ));
         }
         let resident_code = self.user_execution == RootUserExecutionState::UserMappingExecutable(1);
-        if nested_static_elf_stack_backing {
+        if retained_static_process_work {
+            self.bytes.extend_from_slice(&[0x48, 0x83, 0xec, 0x10]);
+            self.bytes.extend_from_slice(&[0x48, 0x89, 0x1c, 0x24]);
+            self.bytes.extend_from_slice(&[0x4c, 0x89, 0xf1]);
+            self.bytes.extend_from_slice(&[0x4c, 0x8d, 0x83]);
+            self.bytes.extend_from_slice(&0x1000_u32.to_le_bytes());
+        } else if nested_static_elf_stack_backing {
             self.bytes.extend_from_slice(&[0x48, 0x89, 0xdd]); // retain hierarchy in rbp
             self.bytes
                 .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00]); // floor after hierarchy
@@ -3083,6 +3103,14 @@ impl RootEncoder {
             self.bytes.extend_from_slice(&[0x31, 0xd2]);
             self.physical_frame_count = None;
             self.static_image = RootStaticImageState::StackSlotAuthorized;
+            return Ok(());
+        }
+        if self.static_image == RootStaticImageState::PreparedProcessRetained && frame_count == 1 {
+            self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]);
+            self.bytes.extend_from_slice(&[0x48, 0x8b, 0x1c, 0x24]);
+            self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x10]);
+            self.bytes.extend_from_slice(&[0x31, 0xd2]);
+            self.physical_frame_count = None;
             return Ok(());
         }
         if self.retained_static_elf_payload {
@@ -3917,6 +3945,24 @@ impl RootEncoder {
 
     fn restore_static_image_prepared_process(&mut self) -> Result<(), CompileError> {
         self.transition_static_image_prepared_process(false)
+    }
+
+    fn qualify_static_image_retained_disjoint_work(&mut self) -> Result<(), CompileError> {
+        if self.role != RootRole::BootstrapWithLocalNotification
+            || self.static_image != RootStaticImageState::PreparedProcessRetained
+            || self.physical_frame_count.is_some()
+            || self.retained_static_elf_payload
+            || self.translation != RootTranslationState::RemovedActive
+        {
+            return Err(CompileError::Tool("x86 static-image retained disjoint work requires the exact retained owner and closed allocator channel".into()));
+        }
+        self.allocate_physical_frames(1, 1)?;
+        self.release_physical_frames()?;
+        self.bytes.extend_from_slice(&[
+            0x4c, 0x89, 0xf7, 0x4c, 0x89, 0xe6, 0xba, 0xf7, 0x01, 0, 0, 0x48, 0x89, 0xe9, 0x4d,
+            0x89, 0xf8, 0x49, 0x89, 0xd9,
+        ]);
+        self.call_checked_bool(ProviderSymbol::QualifyStaticImageRetainedDisjointWork)
     }
 
     fn remove_static_image_stack_program_headers(&mut self) -> Result<(), CompileError> {
@@ -6444,6 +6490,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::RetainStaticImagePreparedProcess,
         ),
+        qualify_static_image_retained_disjoint_work: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::QualifyStaticImageRetainedDisjointWork,
+        ),
         restore_static_image_prepared_process: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::RestoreStaticImagePreparedProcess,
@@ -7211,6 +7261,9 @@ fn encode_operations(
             CompilerSystemsOperation::RetainStaticImagePreparedProcess => {
                 encoder.retain_static_image_prepared_process()?;
             }
+            CompilerSystemsOperation::QualifyStaticImageRetainedDisjointWork => {
+                encoder.qualify_static_image_retained_disjoint_work()?;
+            }
             CompilerSystemsOperation::RestoreStaticImagePreparedProcess => {
                 encoder.restore_static_image_prepared_process()?;
             }
@@ -7629,6 +7682,9 @@ fn append_root(
             }
             ProviderSymbol::RetainStaticImagePreparedProcess => {
                 provider_symbols.retain_static_image_prepared_process
+            }
+            ProviderSymbol::QualifyStaticImageRetainedDisjointWork => {
+                provider_symbols.qualify_static_image_retained_disjoint_work
             }
             ProviderSymbol::RestoreStaticImagePreparedProcess => {
                 provider_symbols.restore_static_image_prepared_process
@@ -8467,6 +8523,7 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 | CompilerSystemsTransition::AddStaticImageStackLoadMetadata
                 | CompilerSystemsTransition::AuthorizeStaticImageStackRandomSlot
                 | CompilerSystemsTransition::RetainStaticImagePreparedProcess
+                | CompilerSystemsTransition::QualifyStaticImageRetainedDisjointWork
                 | CompilerSystemsTransition::RestoreStaticImagePreparedProcess
                 | CompilerSystemsTransition::RevokeStaticImageStackRandomSlot
                 | CompilerSystemsTransition::RemoveStaticImageStackLoadMetadata
@@ -8899,7 +8956,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 5306);
+        assert_eq!(relocation_targets.len(), 5359);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -8995,7 +9052,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL)
                 .count(),
-            11
+            12
         );
         for target in [
             X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL,
@@ -9085,7 +9142,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            4830
+            4879
         );
         assert_eq!(
             relocation_targets
@@ -9246,7 +9303,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_fatal")
                 .count(),
-            190
+            192
         );
         assert_eq!(
             relocation_targets
@@ -9395,6 +9452,7 @@ mod tests {
                 "topal_x86_systems_static_image_add_stack_load_metadata",
                 "topal_x86_systems_static_image_authorize_stack_random_slot",
                 "topal_x86_systems_static_image_retain_prepared_process",
+                "topal_x86_systems_static_image_qualify_retained_disjoint_work",
                 "topal_x86_systems_static_image_restore_prepared_process",
                 "topal_x86_systems_static_image_revoke_stack_random_slot",
                 "topal_x86_systems_static_image_remove_stack_load_metadata",
@@ -9570,7 +9628,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 417);
+        assert_eq!(decoded.semantic_trace.len(), 419);
         assert!(
             decoded
                 .semantic_trace
@@ -9869,106 +9927,111 @@ mod tests {
         assert!(decoded.semantic_trace[85].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[86],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
         );
         assert!(decoded.semantic_trace[87].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[88],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
         );
         assert!(decoded.semantic_trace[89].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[90],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT
         );
         assert!(decoded.semantic_trace[91].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[92],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA
         );
         assert!(decoded.semantic_trace[93].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[94],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES
         );
         assert!(decoded.semantic_trace[95].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[96],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM
         );
         assert!(decoded.semantic_trace[97].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[98],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE
         );
         assert!(decoded.semantic_trace[99].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[100],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE
         );
         assert!(decoded.semantic_trace[101].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[102],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS
         );
         assert!(decoded.semantic_trace[103].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[104],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME
         );
         assert!(decoded.semantic_trace[105].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[106],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS
         );
         assert!(decoded.semantic_trace[107].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[108],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT
         );
         assert!(decoded.semantic_trace[109].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[110],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ
         );
         assert!(decoded.semantic_trace[111].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[112],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY
         );
         assert!(decoded.semantic_trace[113].starts_with(SYSTEMS_CONSOLE_WRITE));
-        assert_eq!(decoded.semantic_trace[114], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
-            decoded.semantic_trace[115],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
+            decoded.semantic_trace[114],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF
         );
-        assert!(decoded.semantic_trace[116].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[115].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert_eq!(decoded.semantic_trace[116], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[117],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT
         );
         assert!(decoded.semantic_trace[118].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[119],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY
         );
         assert!(decoded.semantic_trace[120].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[121],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE
         );
-        assert_eq!(decoded.semantic_trace[122], SYSTEMS_FRAMES_RELEASE);
+        assert!(decoded.semantic_trace[122].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[123],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY
         );
         assert_eq!(decoded.semantic_trace[124], SYSTEMS_FRAMES_RELEASE);
         assert_eq!(
             decoded.semantic_trace[125],
-            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA
         );
         assert_eq!(decoded.semantic_trace[126], SYSTEMS_FRAMES_RELEASE);
-        decoded.semantic_trace.drain(27..127);
+        assert_eq!(
+            decoded.semantic_trace[127],
+            SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD
+        );
+        assert_eq!(decoded.semantic_trace[128], SYSTEMS_FRAMES_RELEASE);
+        decoded.semantic_trace.drain(27..129);
         for (index, request) in
             CompilerPciConfigurationDwordRequest::INITIAL_Q35_VIRTIO_RNG_DISCOVERY
                 .iter()

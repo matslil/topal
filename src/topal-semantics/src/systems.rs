@@ -51,6 +51,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE,
@@ -1220,6 +1221,7 @@ pub enum SystemsOperation {
     AddStaticImageStackLoadMetadata,
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -1497,6 +1499,9 @@ impl SystemsOperation {
             }
             Self::RetainStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
+            }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
             }
             Self::RestoreStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
@@ -1834,6 +1839,7 @@ pub enum SystemsTransition {
     AddStaticImageStackLoadMetadata,
     AuthorizeStaticImageStackRandomSlot,
     RetainStaticImagePreparedProcess,
+    QualifyStaticImageRetainedDisjointWork,
     RestoreStaticImagePreparedProcess,
     RevokeStaticImageStackRandomSlot,
     RemoveStaticImageStackLoadMetadata,
@@ -2327,6 +2333,9 @@ impl SystemsTransition {
             Self::RetainStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS
             }
+            Self::QualifyStaticImageRetainedDisjointWork => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK
+            }
             Self::RestoreStaticImagePreparedProcess => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
             }
@@ -2686,6 +2695,7 @@ fn validate_entry(
                     | SystemsOperation::AddStaticImageStackLoadMetadata
                     | SystemsOperation::AuthorizeStaticImageStackRandomSlot
                     | SystemsOperation::RetainStaticImagePreparedProcess
+                    | SystemsOperation::QualifyStaticImageRetainedDisjointWork
                     | SystemsOperation::RestoreStaticImagePreparedProcess
                     | SystemsOperation::RevokeStaticImageStackRandomSlot
                     | SystemsOperation::RemoveStaticImageStackLoadMetadata
@@ -3673,6 +3683,16 @@ impl BootstrapAuthorityState {
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::None;
                 self.retained_static_process = true;
+            }
+            SystemsOperation::QualifyStaticImageRetainedDisjointWork => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.retained_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image retained disjoint work requires the exact retained process and closed allocator channel",
+                    ));
+                }
             }
             SystemsOperation::RestoreStaticImagePreparedProcess => {
                 if self.memory_ownership != BootstrapMemoryOwnership::None
@@ -7687,6 +7707,9 @@ fn model_bootstrap_operation(
         SystemsOperation::RetainStaticImagePreparedProcess => {
             transitions.push(SystemsTransition::RetainStaticImagePreparedProcess);
         }
+        SystemsOperation::QualifyStaticImageRetainedDisjointWork => {
+            transitions.push(SystemsTransition::QualifyStaticImageRetainedDisjointWork);
+        }
         SystemsOperation::RestoreStaticImagePreparedProcess => {
             transitions.push(SystemsTransition::RestoreStaticImagePreparedProcess);
         }
@@ -8227,6 +8250,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AddStaticImageStackLoadMetadata
         | SystemsOperation::AuthorizeStaticImageStackRandomSlot
         | SystemsOperation::RetainStaticImagePreparedProcess
+        | SystemsOperation::QualifyStaticImageRetainedDisjointWork
         | SystemsOperation::RestoreStaticImagePreparedProcess
         | SystemsOperation::RevokeStaticImageStackRandomSlot
         | SystemsOperation::RemoveStaticImageStackLoadMetadata
@@ -11264,6 +11288,7 @@ mod tests {
                 SystemsOperation::AddStaticImageStackLoadMetadata,
                 SystemsOperation::AuthorizeStaticImageStackRandomSlot,
                 SystemsOperation::RetainStaticImagePreparedProcess,
+                SystemsOperation::QualifyStaticImageRetainedDisjointWork,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
                 SystemsOperation::RevokeStaticImageStackRandomSlot,
                 SystemsOperation::RemoveStaticImageStackLoadMetadata,
@@ -11306,6 +11331,7 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AddStaticImageStackLoadMetadata));
         assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageStackRandomSlot));
         assert!(transitions.contains(&SystemsTransition::RetainStaticImagePreparedProcess));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageRetainedDisjointWork));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackRandomSlot));
         assert!(transitions.contains(&SystemsTransition::RemoveStaticImageStackLoadMetadata));
@@ -11324,6 +11350,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

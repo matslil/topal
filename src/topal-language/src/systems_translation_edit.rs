@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -1037,12 +1037,29 @@ fn analyze_static_elf_frame_sequence(
     if !matches!(&prepared_process_retained_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK") {
         return Err(translation_edit_diagnostic(source, prepared_process_retained_marker_span, "static ELF prepared-process retention must publish its exact marker before restoration"));
     }
+    let retained_process_after_disjoint_work_name =
+        parse_static_image_retained_disjoint_work(
+            source,
+            qualify_retained_disjoint_work,
+            allocator_context,
+            &retained_process_name,
+        )?;
+    let retained_disjoint_work_marker_span = statement_span(retained_disjoint_work_marker);
+    let retained_disjoint_work_marker = analyze_operation(
+        source,
+        retained_disjoint_work_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(&retained_disjoint_work_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK") {
+        return Err(translation_edit_diagnostic(source, retained_disjoint_work_marker_span, "static ELF retained disjoint work must publish its exact marker before restoration"));
+    }
     let random_slot_authorized_stack_restored_construction_name =
         parse_static_image_prepared_process_transition(
             source,
             restore_prepared_process,
             allocator_context,
-            &retained_process_name,
+            &retained_process_after_disjoint_work_name,
             None,
             false,
         )?;
@@ -1561,6 +1578,8 @@ fn analyze_static_elf_frame_sequence(
         stack_random_slot_authorized_marker,
         CompilerSystemsOperation::RetainStaticImagePreparedProcess,
         prepared_process_retained_marker,
+        CompilerSystemsOperation::QualifyStaticImageRetainedDisjointWork,
+        retained_disjoint_work_marker,
         CompilerSystemsOperation::RestoreStaticImagePreparedProcess,
         prepared_process_restored_marker,
         CompilerSystemsOperation::RevokeStaticImageStackRandomSlot,
@@ -3188,6 +3207,82 @@ fn parse_static_image_stack_load_metadata_transition(
     let expected_policy = if add { "bounded-linux-auxv-before-null" } else { "bounded-stack-load-metadata-qualification-rollback" };
     if owner != Some(construction_name) || backing != Some(backing_name) || value != expected_value || policy != Some(expected_policy) {
         return Err(translation_edit_diagnostic(source, span, "static-image load-metadata transition requires the exact owner, backing, static executable metadata, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_retained_disjoint_work(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation {
+            name,
+            classifier: Expression::Application { items, span },
+            declarations,
+            ..
+        } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding {
+            name,
+            classifier: None,
+            value: Expression::Application { items, span },
+        } => (*name, items, *span),
+        _ => {
+            return Err(translation_edit_diagnostic(
+                source,
+                statement_span(statement),
+                "static-image retained disjoint work requires one exact affine owner",
+            ));
+        }
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image retained disjoint work requires named parameters"));
+    };
+    if items.len() != 9
+        || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static")
+        || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction")
+        || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "retained")
+        || !identifier_is(source, &items[6], "disjoint")
+        || !identifier_is(source, &items[7], "work")
+        || fields.len() != 4
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image retained disjoint work requires its exact owner, one-frame request, and policy"));
+    }
+    let mut owner = None;
+    let mut frame_count = None;
+    let mut alignment_frames = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else {
+            return Err(translation_edit_diagnostic(source, field.value.span(), "static-image retained disjoint-work parameters must be named"));
+        };
+        match source.slice(label) {
+            "owner" | "policy" => {
+                let Expression::Identifier(identity) = &field.value else {
+                    return Err(translation_edit_diagnostic(source, field.value.span(), "static-image retained disjoint-work identities must be identifiers"));
+                };
+                if source.slice(label) == "owner" {
+                    owner = Some(source.slice(*identity));
+                } else {
+                    policy = Some(source.slice(*identity));
+                }
+            }
+            "frame-count" => frame_count = Some(parse_storage_natural(source, &field.value)?),
+            "alignment-frames" => alignment_frames = Some(parse_storage_natural(source, &field.value)?),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image retained disjoint-work parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || frame_count != Some(1)
+        || alignment_frames != Some(1)
+        || policy != Some("bounded-static-elf-retained-disjoint-work")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image retained disjoint work requires the exact owner, one-frame request, and policy"));
     }
     Ok(source.slice(name).to_owned())
 }
