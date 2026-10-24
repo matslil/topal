@@ -718,6 +718,24 @@ and no exposed value, header, random, TLS, user-mode, syscall, or BusyBox
 execution authority. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001` and `TK-DEC-153`.
 
+The bounded static-ELF random-slot-authority increment shall accept one exact
+typed authorization from the load-metadata-qualified stack construction and
+one exact typed revocation back to it. X86-64 lowering shall validate the
+complete unchanged block, inactive translation obligations, exact stack leaf,
+complete strings and prior facts; prove one naturally aligned 16-byte zero
+destination and space for one future native tag-25 entry inside the same page;
+and completely read back all content and otherwise-zero bytes without a store.
+Revocation shall repeat the complete validation and restore the exact load-
+metadata-qualified owner. The checker and semantic model shall preserve affine
+random-slot authority and reject another owner, backing, value, extent,
+policy, duplicate authorization, mutation, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove the zero destination,
+alignment, complete bounds and non-overlap, unchanged deterministic block,
+preserved translation state, ordered witnesses, and no exposed address, byte,
+tag, pointer, entropy, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001` and `TK-DEC-154`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

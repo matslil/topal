@@ -1457,6 +1457,57 @@ expose values, header fields, or representation, admit an interpreter or
 dynamic loading, add random data or a vDSO, initialize TLS, construct a user
 context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001 — Random-delivery slot authority
+
+`static image construction authorize stack random slot` SHALL require the
+exact live `LoadMetadataStackEntryStaticImageConstruction` and nested backing
+from `TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001`. It SHALL accept only
+that owner, that backing identity, `value` equal to
+`initial-auxv-random-object`, `extent-bytes` equal to 16, and policy
+`bounded-linux-auxv-random-before-null`. It SHALL produce one affine
+`RandomSlotAuthorizedStackEntryStaticImageConstruction` retaining every prior
+fact and authorizing one future atomic native `AT_RANDOM` entry and distinct
+16-byte in-stack object.
+
+Before success, the provider SHALL completely revalidate the load-metadata-
+qualified block, exact RW/NX stack leaf, absent guard, final image leaves,
+inactive hierarchy, current bootstrap root, complete argument and platform
+strings, and all prior facts. It SHALL prove a target-aligned 16-byte future
+object and one future auxiliary entry fit wholly inside the stack leaf without
+overlap with any current object, vector entry, string, guard, or mapping. It
+SHALL completely read back the unchanged backing, including both zero qwords
+of the future object. It SHALL perform no store. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK` observation.
+
+Source SHALL invoke `static image construction revoke stack random slot` with
+the exact authorized owner, backing identity, and policy
+`bounded-stack-random-slot-qualification-rollback`. Revocation SHALL completely
+revalidate the unchanged extended obligations and reproduce the exact
+`LoadMetadataStackEntryStaticImageConstruction`. Source SHALL emit exactly one
+`TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK` observation before load-
+metadata removal.
+
+A wrong owner, backing, value, extent, policy, placement, alignment, content,
+or ordering; duplicate or partial authorization; stack mutation; prior-fact
+removal, ordinary clearing, or leaf revocation while authorized; backing
+release; activation; teardown; or recoverable disposition SHALL be invalid.
+Only exact revocation SHALL restore the state admitted by load-metadata
+removal.
+
+For qualified x86-64 realization, the provider SHALL reserve one naturally
+aligned 16-byte destination below the fixed platform and executable-name
+strings and enough downward space for one future native `(25,pointer)` entry
+before `AT_NULL`. Authorization and revocation SHALL each read back all 512
+backing qwords and prove the deterministic entry block remains byte-for-byte
+unchanged, both future object qwords remain zero, the future enlarged aligned
+block remains in bounds, every identity relation and non-overlap obligation
+holds, and no active-address invalidation is issued.
+
+This rule SHALL NOT retain the authority after its revocation witness, write a
+placeholder, consume entropy, publish `AT_RANDOM`, expose an address, byte,
+offset, tag, pointer, or representation, add a vDSO, initialize TLS, construct
+a user context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
