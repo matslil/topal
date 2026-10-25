@@ -360,8 +360,20 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-sample-capture-coexistence
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              entropy-acquiring-static-process-after-sample-quality is unmapped static image construction qualify entropy sample quality (
                                                                                 owner is entropy-acquiring-static-process-after-sample-capture,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                policy is bounded-static-elf-entropy-sample-quality-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-sample-quality,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
