@@ -823,6 +823,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF initial stack-limit query](step-4-bounded-static-elf-initial-stack-limit-query.md)
 - [Step 4 bounded static ELF initial `readlinkat` fallback](step-4-bounded-static-elf-initial-readlinkat-fallback.md)
 - [Step 4 bounded static ELF initial `getrandom`](step-4-bounded-static-elf-initial-getrandom.md)
+- [Step 4 bounded static ELF reusable `getrandom`](step-4-bounded-static-elf-reusable-getrandom.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
