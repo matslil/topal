@@ -989,6 +989,25 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001` and
 `TK-DEC-169`.
 
+The bounded static-ELF entropy-sample-capture-coexistence increment shall
+consume and return the exact acquisition owner around one captured and erased
+raw sample. X86-64 lowering shall completely validate the retained process,
+replay the exact ordinary sequence through payload ownership return, copy the
+complete 32-byte payload into the sealed raw-sample storage with zero credit,
+and preserve payload ownership. It shall expose no byte or sample identity,
+assess or credit no entropy, reset and verify all transport state, overwrite
+and read back the complete payload, ring, and raw-sample storage, reverse bus
+mastering, and restore gateway state. The later ordinary sequence shall remain
+structurally unconsumed. The checker and semantic model shall reject another
+owner, device, domain, queue, transport, sample, range, credit, policy,
+ordering, omission, duplicate, assessment, escaped byte or identity, partial
+erase, nonzero final state, or recoverable failure. Structural and duplicate
+pinned-QEMU tests shall prove exact capture, complete destruction, same-owner
+return, later-sequence preservation, and no exposed process, DMA, address, PCI,
+queue, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001` and
+`TK-DEC-170`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

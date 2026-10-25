@@ -2072,6 +2072,48 @@ This rule SHALL NOT retain or credit entropy, initialize an entropy pool or
 generator, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
 user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001 — Captured and erased raw entropy sample
+
+`static image construction qualify entropy sample capture` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001`. It SHALL
+accept only device identity `initial-virtio-rng-device`, translation-domain
+identity `initial-dma-domain`, queue identity
+`initial-virtio-rng-queue-zero`, transport identity
+`initial-virtio-rng-pci-transport`, sample identity
+`initial-virtio-rng-sample`, and policy
+`bounded-static-elf-entropy-sample-capture-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary prerequisite sequence through payload
+ownership return. It SHALL capture exactly sample identity one from all 32
+payload bytes with zero credited entropy bits as required by
+`TOPAL-SYSTEMS-ENTROPY-SAMPLE-001`, preserve CPU ownership of the payload, and
+expose no sample address, byte, comparison, branch, or provider representation.
+It SHALL NOT assess, condition, mix, trust, or credit the sample.
+
+The transaction SHALL reset and read back all transport state, overwrite and
+read back the complete DMA payload and every source- or device-written ring
+field, then overwrite and read back every byte of all provider-private storage
+owned by the raw sample. It SHALL reverse bus mastering, verify configuration-
+gateway rollback, and leave the later ordinary sequence structurally
+unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK` observation is permitted
+only after every copy, proof, destruction, and rollback succeeds.
+
+Another owner, device, domain, queue, transport, sample, range, credit, policy,
+capture order, omission, duplication, assessment, escaped byte or identity,
+early or partial erase, nonzero final transport/buffer/sample state,
+incomplete process/device/gateway restoration, process mutation or exposure,
+or recoverable disposition SHALL be invalid. Source SHALL receive no process
+resource, buffer or sample identity, address, mapping, PCI coordinate, queue
+field, entropy byte, or provider representation.
+
+This rule SHALL NOT assess or credit entropy, initialize an entropy pool or
+generator, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
