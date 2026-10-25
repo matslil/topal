@@ -62,6 +62,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
@@ -1250,6 +1251,7 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropyQueueAddresses,
     QualifyStaticImageEntropyQueueActivation,
     QualifyStaticImageEntropyRequestCompletion,
+    QualifyStaticImageEntropySampleCapture,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1571,6 +1573,9 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropyRequestCompletion => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION
+            }
+            Self::QualifyStaticImageEntropySampleCapture => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1928,6 +1933,7 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropyQueueAddresses,
     QualifyStaticImageEntropyQueueActivation,
     QualifyStaticImageEntropyRequestCompletion,
+    QualifyStaticImageEntropySampleCapture,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2465,6 +2471,9 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropyRequestCompletion => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION
             }
+            Self::QualifyStaticImageEntropySampleCapture => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2844,6 +2853,7 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropyQueueAddresses
                     | SystemsOperation::QualifyStaticImageEntropyQueueActivation
                     | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
+                    | SystemsOperation::QualifyStaticImageEntropySampleCapture
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -3990,6 +4000,17 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image entropy request-completion coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropySampleCapture => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-sample capture coexistence requires the exact acquisition owner",
                     ));
                 }
             }
@@ -8078,6 +8099,9 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropyRequestCompletion => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropyRequestCompletion);
         }
+        SystemsOperation::QualifyStaticImageEntropySampleCapture => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropySampleCapture);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8638,6 +8662,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropyQueueAddresses
         | SystemsOperation::QualifyStaticImageEntropyQueueActivation
         | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
+        | SystemsOperation::QualifyStaticImageEntropySampleCapture
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11691,6 +11716,7 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropyQueueAddresses,
                 SystemsOperation::QualifyStaticImageEntropyQueueActivation,
                 SystemsOperation::QualifyStaticImageEntropyRequestCompletion,
+                SystemsOperation::QualifyStaticImageEntropySampleCapture,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11751,6 +11777,7 @@ mod tests {
         assert!(
             transitions.contains(&SystemsTransition::QualifyStaticImageEntropyRequestCompletion)
         );
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleCapture));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11771,6 +11798,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

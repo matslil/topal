@@ -111,6 +111,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL: &str
     "topal_x86_systems_static_image_qualify_entropy_queue_activation";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_request_completion";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_sample_capture";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1547,6 +1549,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
         &static_image_qualify_entropy_request_completion()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+        &static_image_qualify_entropy_sample_capture()?,
     );
     append_encoded_function(
         &mut object,
@@ -8749,6 +8757,10 @@ fn static_image_qualify_entropy_request_completion() -> Result<Vec<u8>, CompileE
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_sample_capture() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -11531,6 +11543,10 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
         );
+        let qualify_entropy_sample_capture = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11556,6 +11572,7 @@ assert bytes(output) == block[32:]
             qualify_entropy_queue_addresses,
             qualify_entropy_queue_activation,
             qualify_entropy_request_completion,
+            qualify_entropy_sample_capture,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,

@@ -115,6 +115,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
@@ -9348,6 +9349,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
@@ -10502,7 +10504,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 388);
+        assert_eq!(program.bootstrap.handler.operations.len(), 390);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10610,6 +10612,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
@@ -14356,6 +14359,41 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("entropy request-completion")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_sample_capture_coexistence() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001.
+        for source in [
+            SOURCE.replace(
+                "owner is entropy-acquiring-static-process-after-request-completion,",
+                "owner is entropy-pending-static-process,",
+            ),
+            SOURCE.replace(
+                "sample is initial-virtio-rng-sample,",
+                "sample is synthetic-entropy-sample,",
+            ),
+            SOURCE.replace(
+                "policy is bounded-static-elf-entropy-sample-capture-coexistence",
+                "policy is synthetic-entropy-sample-capture",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("entropy-sample capture")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message
