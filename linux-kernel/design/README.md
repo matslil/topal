@@ -174,6 +174,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF entropy-generator lifecycle coexistence](bounded-static-elf-entropy-generator-lifecycle-coexistence.md)
 - [Bounded static ELF initial-random delivery coexistence](bounded-static-elf-initial-random-delivery-coexistence.md)
 - [Bounded static ELF process entry](bounded-static-elf-process-entry.md)
+- [Bounded static ELF initial `brk(0)` query](bounded-static-elf-initial-brk-query.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
