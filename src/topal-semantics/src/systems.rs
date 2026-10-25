@@ -58,6 +58,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
@@ -1254,6 +1255,7 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropyRequestCompletion,
     QualifyStaticImageEntropySampleCapture,
     QualifyStaticImageEntropySampleQuality,
+    QualifyStaticImageEntropyPoolLifecycle,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1581,6 +1583,9 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropySampleQuality => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY
+            }
+            Self::QualifyStaticImageEntropyPoolLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1940,6 +1945,7 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropyRequestCompletion,
     QualifyStaticImageEntropySampleCapture,
     QualifyStaticImageEntropySampleQuality,
+    QualifyStaticImageEntropyPoolLifecycle,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2483,6 +2489,9 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropySampleQuality => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY
             }
+            Self::QualifyStaticImageEntropyPoolLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2864,6 +2873,7 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
                     | SystemsOperation::QualifyStaticImageEntropySampleCapture
                     | SystemsOperation::QualifyStaticImageEntropySampleQuality
+                    | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -4032,6 +4042,17 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image entropy-sample quality coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyPoolLifecycle => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-pool lifecycle coexistence requires the exact acquisition owner",
                     ));
                 }
             }
@@ -8126,6 +8147,9 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropySampleQuality => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropySampleQuality);
         }
+        SystemsOperation::QualifyStaticImageEntropyPoolLifecycle => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyPoolLifecycle);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8688,6 +8712,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
         | SystemsOperation::QualifyStaticImageEntropySampleCapture
         | SystemsOperation::QualifyStaticImageEntropySampleQuality
+        | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11743,6 +11768,7 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropyRequestCompletion,
                 SystemsOperation::QualifyStaticImageEntropySampleCapture,
                 SystemsOperation::QualifyStaticImageEntropySampleQuality,
+                SystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11805,6 +11831,7 @@ mod tests {
         );
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleCapture));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleQuality));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyPoolLifecycle));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11825,6 +11852,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

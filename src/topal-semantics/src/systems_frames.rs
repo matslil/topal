@@ -100,6 +100,8 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE: &str
     "topal.systems.static-image.construction.qualify-entropy-sample-capture/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY: &str =
     "topal.systems.static-image.construction.qualify-entropy-sample-quality/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-pool-lifecycle/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
