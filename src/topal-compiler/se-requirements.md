@@ -1041,6 +1041,23 @@ destruction, same-owner return, and later-sequence preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001` and
 `TK-DEC-172`.
 
+The bounded static-ELF entropy-generator-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete generator
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through the exact credited pool, initialize the
+generation-one 32-byte ChaCha20 key, and extract only output range `[32, 64)`
+from the exact counter-zero, nonce-zero block while advancing to generation
+two. It shall deliver no output, reset and verify transport state, overwrite
+and read back payload, ring, sample, pool, key, and output storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, ordering error, omission, duplicate, delivery,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove the complete
+lifecycle, destruction, same-owner return, and later-sequence preservation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-173`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

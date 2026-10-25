@@ -2188,6 +2188,43 @@ This rule SHALL NOT initialize or extract a generator, publish `AT_RANDOM`,
 initialize TLS, construct a user context, enter user mode, execute BusyBox, or
 add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001 — Complete entropy-generator lifecycle
+
+`static image construction qualify entropy generator lifecycle` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001`. It SHALL
+accept only the sealed preceding entropy resources, generator identity one,
+algorithm identity one, output identity one, and policy
+`bounded-static-elf-entropy-generator-lifecycle-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary prerequisite sequence through the credited
+pool. It SHALL initialize the exact generation-one 32-byte ChaCha20 key under
+`TOPAL-SYSTEMS-ENTROPY-GENERATOR-001`, then perform the exact first extraction
+under `TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`: prior generation one, resulting
+generation two, counter zero, nonce identity zero, a 64-byte block, and only
+range `[32, 64)` retained as opaque output identity one. Source and the retained
+process SHALL observe neither key nor output.
+
+The transaction SHALL reset and read back all transport state, overwrite and
+read back the complete payload and ring, and overwrite and read back every
+provider-private byte owned by sample, pool, generator key, and output. It SHALL
+reverse bus mastering, verify gateway rollback, and leave the later ordinary
+sequence structurally unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK` observation is
+permitted only after initialization, extraction, destruction, and rollback
+succeed.
+
+Another owner or prerequisite resource, generator, algorithm, generation,
+counter, nonce, block, selected range, output, policy, order, omission,
+duplication, delivery, escaped byte or authority, partial erase, nonzero final
+state, process mutation or exposure, or recoverable disposition SHALL be
+invalid.
+
+This rule SHALL NOT deliver `AT_RANDOM`, initialize TLS, construct a user
+context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
