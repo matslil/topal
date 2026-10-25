@@ -54,6 +54,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD,
@@ -1230,6 +1231,7 @@ pub enum SystemsOperation {
     AuthorizeStaticImageEntropyHandoff,
     AuthorizeStaticImageEntropyAcquisition,
     QualifyStaticImageEntropyDevice,
+    QualifyStaticImageEntropyTransport,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1521,6 +1523,9 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropyDevice => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE
+            }
+            Self::QualifyStaticImageEntropyTransport => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1868,6 +1873,7 @@ pub enum SystemsTransition {
     AuthorizeStaticImageEntropyHandoff,
     AuthorizeStaticImageEntropyAcquisition,
     QualifyStaticImageEntropyDevice,
+    QualifyStaticImageEntropyTransport,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2375,6 +2381,9 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropyDevice => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE
             }
+            Self::QualifyStaticImageEntropyTransport => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2744,6 +2753,7 @@ fn validate_entry(
                     | SystemsOperation::AuthorizeStaticImageEntropyHandoff
                     | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
                     | SystemsOperation::QualifyStaticImageEntropyDevice
+                    | SystemsOperation::QualifyStaticImageEntropyTransport
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -3780,6 +3790,17 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image entropy-device qualification requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyTransport => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-transport qualification requires the exact acquisition owner",
                     ));
                 }
             }
@@ -7838,6 +7859,9 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropyDevice => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropyDevice);
         }
+        SystemsOperation::QualifyStaticImageEntropyTransport => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyTransport);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8388,6 +8412,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::AuthorizeStaticImageEntropyHandoff
         | SystemsOperation::AuthorizeStaticImageEntropyAcquisition
         | SystemsOperation::QualifyStaticImageEntropyDevice
+        | SystemsOperation::QualifyStaticImageEntropyTransport
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11431,6 +11456,7 @@ mod tests {
                 SystemsOperation::AuthorizeStaticImageEntropyHandoff,
                 SystemsOperation::AuthorizeStaticImageEntropyAcquisition,
                 SystemsOperation::QualifyStaticImageEntropyDevice,
+                SystemsOperation::QualifyStaticImageEntropyTransport,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11479,6 +11505,7 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::AuthorizeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyDevice));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyTransport));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11499,6 +11526,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

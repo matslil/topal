@@ -810,6 +810,22 @@ process validation before one real read, same-owner return, exact ordered
 witness, and no exposed process, PCI, or entropy representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DEVICE-COEXISTENCE-001` and `TK-DEC-159`.
 
+The bounded static-ELF entropy-transport-discovery increment shall consume and
+return the exact acquisition owner around the remaining sealed read-only
+initial entropy-transport observations. X86-64 lowering shall completely
+validate the retained process, then use the existing generic PCI configuration
+boundary for the remaining 23 entries of the exact pinned Q35 virtio-rng
+discovery sequence without a configuration write, BAR access, DMA,
+negotiation, process mutation, release, activation, or output use. Together
+with the preceding identity observation, the checker and semantic model shall
+require the complete sequence and reject another owner, transport, policy,
+coordinate, value, ordering, omission, duplicate observation, early rollback,
+or recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+complete process validation before real reads, same-owner return, exact ordered
+witnesses, and no exposed process, capability, PCI, or entropy representation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-DISCOVERY-001` and `TK-DEC-160`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
