@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/146";
+    "topal.provider-object.x86_64-qemu-pc-q35/147";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9076,6 +9076,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-rseq-fallback");
     code.bytes(&[0x3d, 0x2e, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-stack-limit");
+    code.bytes(&[0x3d, 0x0b, 0x01, 0, 0]);
+    code.jump_if(0x84, "static-process-readlinkat-fallback");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
@@ -9250,6 +9252,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0xc7, 0x42, 0x08, 0xff, 0xff, 0xff, 0xff]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 6]);
     code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-readlinkat-fallback")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]);
+    code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
     code.bind("returned")?;
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
@@ -12310,7 +12318,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 291];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 325];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12326,6 +12334,10 @@ assert bytes(output) == block[32:]
             &[
                 0x48, 0x81, 0xec, 0x40, 0x01, 0, 0, 0x31, 0xff, 0xbe, 3, 0, 0, 0, 0x31, 0xd2, 0x49,
                 0x89, 0xe2, 0xb8, 0x2e, 0x01, 0, 0, 0x0f, 0x05,
+            ][..],
+            &[
+                0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0xda, 0xfd, 0x5b, 0, 0xba, 0, 0xe0, 0x5f, 0,
+                0x41, 0xba, 0, 0x10, 0, 0, 0xb8, 0x0b, 0x01, 0, 0, 0x0f, 0x05,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -12387,6 +12399,12 @@ assert bytes(output) == block[32:]
                     .windows(8)
                     .any(|window| window == [0x49, 0xc7, 0x42, 8, 0xff, 0xff, 0xff, 0xff]),
             "the static dispatcher must publish the exact immutable stack-limit pair"
+        );
+        assert!(
+            process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x0b, 0x01, 0, 0]),
+            "the static dispatcher must select the readlinkat unsupported-operation path"
         );
         assert!(
             process_enter
