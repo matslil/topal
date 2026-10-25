@@ -1094,6 +1094,23 @@ shall prove real `IRETQ` entry, native `SYSCALL` return, exact CR3 restoration,
 the affine forward/inverse lifecycle, and later-sequence preservation. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001` and `TK-DEC-175`.
 
+The bounded static-ELF initial-break-query increment shall refine that exact
+entry with `startup is initial-brk-query` and policy
+`bounded-static-elf-initial-brk-query`. X86-64 lowering shall derive the initial
+break by checked 4 KiB ceiling of the retained writable load segment's memory
+end, admit exactly one native `brk(0)` from the sealed executable before
+`exit_group(0)`, return the derived value, and retain no source-provided or
+independently embedded address authority. The clean-room fixture shall compare
+the complete returned `0x005f7000` value before terminal return. The
+qualification inverse shall clear the private query-completion state. The
+checker and semantic model shall reject every substituted startup service,
+policy, request, result, ordering error, duplicate query, non-executable
+continuation, changed process state, nonzero inverse state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove derivation from
+the writable image, native dispatch, query-before-terminal ordering, affine
+forward/inverse preservation, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001` and `TK-DEC-176`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
