@@ -2234,18 +2234,23 @@ produce one affine `RandomizedStaticElfInitialProcess`. It SHALL accept only
 the sealed preceding entropy resources, generator and output identity one,
 Linux interface identity one, auxiliary tag 25, exact 32-byte source range,
 selected range `[0, 16)`, discarded range `[16, 32)`, single-use delivery, and
-policy `bounded-static-elf-initial-random-delivery-coexistence`.
+policy `bounded-static-elf-initial-random-delivery-coexistence`. A later
+static-process refinement MAY replace the discarded range with one opaque
+affine reservation governed by `TOPAL-SYSTEMS-ENTROPY-RESERVE-001`, provided
+the reservation remains bound to the same process and output identity.
 
 The provider SHALL completely revalidate every retained process resource and
 byte and replay the exact ordinary entropy sequence through first extraction.
 It SHALL atomically publish one provider-chosen native `AT_RANDOM` pointer and
 one distinct aligned 16-byte object inside the previously authorized stack
-slot, copy and verify the selected output without exposing its value, wipe and
-verify the complete provider output, and retain the stack result while
+slot, copy and verify the selected output without exposing its value, MAY move
+an approved reserved range into the process-private affine reservation, wipe
+and verify the complete provider output, and retain the stack result while
 destroying and verifying every sample, pool, key, DMA, ring, transport, bus-
 master, and gateway resource. Exactly one
 `TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK` observation is permitted
-only after the randomized owner remains live with no entropy resource.
+only after the randomized owner remains live with no ungoverned entropy
+resource.
 
 For reversible qualification, `static image construction revoke entropy
 initial random` SHALL consume that exact randomized owner, verify and erase the
@@ -3544,6 +3549,37 @@ state change, terminal fallback, source-visible native detail, or recoverable
 process-entry failure SHALL be invalid. This rule SHALL NOT add procfs, VFS
 lookup, symbolic links, path resolution, executable-name publication, BusyBox
 execution, or a prompt.
+
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001 — Initial static-process random request
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom`
+and select policy `bounded-static-elf-initial-getrandom`. After the exact
+`readlinkat` fallback, the process MAY consume the private affine reservation
+derived under
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` through one
+bounded request.
+
+The initial x86-64 qualification SHALL issue native syscall 318 with output
+candidate `0x005f5e68`, length eight, native nonblocking flag one, and a
+continuation inside the sealed executable mapping. The complete candidate
+SHALL lie in the validated writable static mapping. The adapter SHALL publish
+the exact eight-byte prefix of the reservation, verify complete publication,
+wipe all 16 reserved bytes, mark the reservation consumed, retain no candidate
+or random value, and return eight. Terminal handling SHALL require the
+consumed marker and zero reserved storage, then clear the marker before
+restoration.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK` observation SHALL
+follow the `readlinkat` fallback observation and precede process exit. Another
+request, size, flag, result, order, duplicate, incomplete or unwritable
+destination, exposed value, partial wipe, available reservation at terminal
+completion, source-visible native detail, or recoverable process-entry failure
+SHALL be invalid. This rule SHALL NOT retain the generator, admit a second
+nonempty request, implement blocking or reseeding, expose random bytes to
+source, execute BusyBox, or provide a prompt.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
