@@ -46,7 +46,7 @@ image.
 
 The provider shall encode native `AT_UID=(11,0)`, `AT_EUID=(12,0)`,
 `AT_GID=(13,0)`, and `AT_EGID=(14,0)` in that order after
-`AT_EXECFN=(31,0x5fffe0)` and before `AT_NULL`. The four facts form one atomic
+`AT_EXECFN=(31,0x7fffe0)` and before `AT_NULL`. The four facts form one atomic
 group and all agree with the sealed PID-one root profile.
 
 Addition and removal shall each clear all 512 backing qwords before

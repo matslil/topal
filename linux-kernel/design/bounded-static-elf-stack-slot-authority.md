@@ -38,17 +38,19 @@ or enters the image.
 For the approved static ELF plan, the provider shall require:
 
 - the inactive static root and active qualified bootstrap root;
-- the exact four-frame hierarchy and 503 final image leaves;
+- the exact five-frame hierarchy and 503 final image leaves;
 - unchanged entry authority for ELF entry `0x004a6580`;
-- absent leaf ordinal 511, denoting the page `[0x005ff000, 0x00600000)`;
+- absent high-table leaf ordinal 511, denoting the page
+  `[0x007ff000, 0x00800000)`;
 - absent leaf ordinal 510 as the immediate guard below the downward-growing
   stack slot; and
-- an initial top of `0x00600000`, aligned to both the 4096-byte page boundary
+- an initial top of `0x00800000`, aligned to both the 4096-byte page boundary
   and the x86-64 16-byte process-entry convention.
 
-All nine non-image leaves 503 through 511 remain absent during authorization
-and revocation. The checked root retains only an affine semantic state; the
-numeric slot and initial top remain provider-private.
+All nine non-image leaves 503 through 511 in the low image table and all 512
+high-table leaves remain absent during authorization and revocation. The
+checked root retains only an affine semantic state; the numeric slot and
+initial top remain provider-private.
 
 ## Affine lifecycle and rollback
 

@@ -10,12 +10,12 @@ physical placement and future translation-table representation.
 While the exact `SealedStaticImageConstruction` remains live, the initial
 x86-64 profile shall admit one typed
 `static image construction reserve hierarchy` request with
-`frame-count` four and `alignment-frames` one. Success shall produce one
+`frame-count` five and `alignment-frames` one. Success shall produce one
 indivisible opaque extent reserved solely for the static image's future upper
 translation hierarchy. It shall not refine, consume, expose, or alias the
 sealed payload or leaf-table ownership.
 
-The provider shall select the complete four-frame extent:
+The provider shall select the complete five-frame extent:
 
 - inside one normalized E820 RAM interval and below the first-GiB bootstrap
   ceiling;
@@ -33,7 +33,7 @@ with either authority live is invalid.
 
 ## Resource and rollback boundary
 
-The four frames are future translation metadata, not payload and not an
+The five frames are future translation metadata, not payload and not an
 implicit address space. Allocation grants no byte access, mapping authority,
 entry authority, activation token, or execution right. Whole release restores
 the exact sealed-construction state, after which the existing leaf-table then
@@ -47,9 +47,10 @@ the hierarchy without inventing hidden provider ownership.
 ## Architecture pressure test
 
 Explicit caller-owned affine metadata and disjoint placement are portable
-policy. The count of four is an x86-64 profile fact: one PML4, one PDPT, one
-low-memory page directory, and one page directory for the qualified MMIO
-window. AArch64 may need a different number of translation-table pages for its
+policy. The count of five is an x86-64 profile fact: one PML4, one PDPT, one
+low-memory page directory, one page directory for the qualified MMIO window,
+and one high leaf table that keeps the bounded user stack disjoint from later
+heap growth. AArch64 may need a different number of translation-table pages for its
 granule and level choice; RISC-V may need a different Sv39/Sv48 hierarchy; a
 capability system may use sealed mapping objects rather than page-table pages.
 Those target representations and counts stay in their profiles. Future source
