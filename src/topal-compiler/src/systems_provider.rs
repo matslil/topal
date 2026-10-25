@@ -97,7 +97,8 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+    SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -119,7 +120,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/146";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/147";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -166,6 +167,8 @@ pub enum X86SystemsLowering {
     QualifyStaticImageEntropyPoolLifecycle,
     QualifyStaticImageEntropyGeneratorLifecycle,
     DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
     RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
@@ -400,6 +403,10 @@ impl X86SystemsLowering {
             }
             Self::DeliverStaticImageEntropyInitialRandom => {
                 "topal.provider.x86_64.static-image.deliver-entropy-initial-random/1"
+            }
+            Self::EnterStaticImageProcess => "topal.provider.x86_64.static-image.process-enter/1",
+            Self::RestoreStaticImageProcessEntry => {
+                "topal.provider.x86_64.static-image.process-restore-entry/1"
             }
             Self::RevokeStaticImageEntropyInitialRandom => {
                 "topal.provider.x86_64.static-image.revoke-entropy-initial-random/1"
@@ -954,6 +961,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM => {
             X86SystemsLowering::DeliverStaticImageEntropyInitialRandom
         }
+        SYSTEMS_STATIC_IMAGE_PROCESS_ENTER => X86SystemsLowering::EnterStaticImageProcess,
+        SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY => {
+            X86SystemsLowering::RestoreStaticImageProcessEntry
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM => {
             X86SystemsLowering::RevokeStaticImageEntropyInitialRandom
         }
@@ -1281,6 +1292,10 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::DeliverStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
             }
+            X86SystemsLowering::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            X86SystemsLowering::RestoreStaticImageProcessEntry => {
+                SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
+            }
             X86SystemsLowering::RevokeStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
             }
@@ -1541,7 +1556,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 150);
+        assert_eq!(plan.operations.len(), 152);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

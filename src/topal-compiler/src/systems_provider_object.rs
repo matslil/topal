@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/138";
+    "topal.provider-object.x86_64-qemu-pc-q35/139";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -123,6 +123,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
     "topal_x86_systems_static_image_deliver_entropy_initial_random";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_initial_random";
+pub const X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL: &str =
+    "topal_x86_systems_static_image_process_enter";
+pub const X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL: &str =
+    "topal_x86_systems_static_image_process_restore_entry";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1589,6 +1593,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
         &static_image_deliver_entropy_initial_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+        &static_image_process_enter()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL,
+        &static_image_process_restore_entry()?,
     );
     append_encoded_function(
         &mut object,
@@ -8866,6 +8882,198 @@ fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail_wipe")?;
     code.jump("wipe");
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    const CONTEXT_QWORDS: u32 = 13;
+    let mut code = X86FunctionEncoder::default();
+
+    // Preserve static root, metadata, payload, bootstrap root, and stack backing.
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]); // private context argument
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0x07, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd7, 0x31, 0xc0, 0xb9]);
+    code.bytes(&CONTEXT_QWORDS.to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        [
+            "process-entry-h",
+            "process-entry-x",
+            "process-entry-r",
+            "process-entry-w",
+        ],
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        "process-entry-pd",
+        "process-entry-pd-expected",
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+
+    // Preserve the opaque random object while reusing the exact deterministic
+    // initial-stack verifier, then restore and verify its published ABI facts.
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    code.bytes(&[0x49, 0x8b, 0x83]);
+    code.bytes(&OBJECT.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x20]);
+    code.bytes(&[0x49, 0x8b, 0x83]);
+    code.bytes(&(OBJECT + 8).to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x28]);
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x39, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x49, 0x83, 0xbb]);
+    code.bytes(&TERMINATOR.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE] {
+        code.bytes(&[0x49, 0xc7, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+    }
+    emit_static_image_load_metadata_stack(&mut code, true)?;
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    for (context_offset, target_offset) in [(0x20_u8, OBJECT), (0x28, OBJECT + 8)] {
+        code.bytes(&[0x49, 0x8b, 0x42, context_offset]);
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+
+    // Save all privileged state changed by this bounded entry.
+    for (msr, context_offset) in [
+        (0xc000_0102_u32, 56_u8),
+        (0xc000_0100, 64),
+        (0xc000_0080, 72),
+        (0xc000_0081, 80),
+        (0xc000_0082, 88),
+        (0xc000_0084, 96),
+    ] {
+        code.bytes(&[0xb9]);
+        code.bytes(&msr.to_le_bytes());
+        code.bytes(&[0x0f, 0x32, 0x48, 0xc1, 0xe2, 0x20, 0x48, 0x09, 0xd0]);
+        code.bytes(&[0x49, 0x89, 0x42, context_offset]);
+    }
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x18]);
+    code.bytes(&[0x49, 0x89, 0x42, 0x10]); // bootstrap CR3
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24]);
+    code.bytes(&[0x49, 0x89, 0x42, 0x18]); // static CR3
+    code.bytes(&[0x49, 0x89, 0x62, 0x08]); // continuation RSP
+
+    code.bytes(&[0xb9]);
+    code.bytes(&0xc000_0080_u32.to_le_bytes());
+    code.bytes(&[0x0f, 0x32, 0x83, 0xc8, 0x01, 0x0f, 0x30]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0081, 0x001b_0010_0000_0000);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "static-process-syscall");
+    emit_wrmsr_register(&mut code, 0xc000_0082, &[]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0084, 0x200);
+    emit_wrmsr_register(&mut code, 0xc000_0102, &[0x4c, 0x89, 0xd0]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0100, 0);
+    code.bytes(&[0x41, 0xc6, 0x02, 0x01]);
+
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24, 0x0f, 0x22, 0xd8]);
+    code.bytes(&[0x6a, 0x23, 0x48, 0xb8]);
+    code.bytes(&0x005f_ffa0_u64.to_le_bytes());
+    code.bytes(&[0x50, 0x6a, 0x02, 0x6a, 0x2b, 0x48, 0xb8]);
+    code.bytes(&0x004a_6580_u64.to_le_bytes());
+    code.bytes(&[0x50, 0x48, 0xcf]);
+
+    code.bind("static-process-syscall")?;
+    code.bytes(&[0x0f, 0x01, 0xf8]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x89, 0x24, 0x25, 0x30, 0, 0, 0]);
+    code.bytes(&[
+        0x65, 0x48, 0x8b, 0x04, 0x25, 0x10, 0, 0, 0, 0x0f, 0x22, 0xd8,
+    ]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 0x08, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0, 0, 0, 0, 2]);
+    code.bytes(&[0x0f, 0x01, 0xf8]);
+    code.jump("returned");
+
+    code.bind("returned")?;
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    code.bytes(&[0x41, 0x80, 0x3a, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x3b, 0x42, 0x10]);
+    code.jump_if(0x85, "fatal");
+    for (msr, context_offset) in [
+        (0xc000_0102_u32, 56_u8),
+        (0xc000_0100, 64),
+        (0xc000_0080, 72),
+        (0xc000_0081, 80),
+        (0xc000_0082, 88),
+        (0xc000_0084, 96),
+    ] {
+        code.bytes(&[0x49, 0x8b, 0x42, context_offset]);
+        emit_wrmsr_register(&mut code, msr, &[]);
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    for context_offset in [8_u8, 48] {
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fatal")?;
+    code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0x3b, 0x47, 0x10]);
+    code.jump_if(0x85, "fail");
+    for offset in [8_u8, 32, 40, 48, 56, 64, 72, 80, 88, 96] {
+        code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x31, 0xc0, 0xb9, 13, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
     code.finish()

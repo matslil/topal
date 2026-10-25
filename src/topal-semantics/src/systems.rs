@@ -95,7 +95,8 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+    SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -1261,6 +1262,8 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropyPoolLifecycle,
     QualifyStaticImageEntropyGeneratorLifecycle,
     DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
     RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
@@ -1599,6 +1602,8 @@ impl SystemsOperation {
             Self::DeliverStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
             }
+            Self::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            Self::RestoreStaticImageProcessEntry => SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
             Self::RevokeStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
             }
@@ -1963,6 +1968,8 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropyPoolLifecycle,
     QualifyStaticImageEntropyGeneratorLifecycle,
     DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
     RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
@@ -2516,6 +2523,8 @@ impl SystemsTransition {
             Self::DeliverStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
             }
+            Self::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            Self::RestoreStaticImageProcessEntry => SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
             Self::RevokeStaticImageEntropyInitialRandom => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
             }
@@ -2903,6 +2912,8 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
                     | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
                     | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+                    | SystemsOperation::EnterStaticImageProcess
+                    | SystemsOperation::RestoreStaticImageProcessEntry
                     | SystemsOperation::RevokeStaticImageEntropyInitialRandom
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
@@ -3261,6 +3272,7 @@ struct BootstrapAuthorityState {
     entropy_pending_static_process: bool,
     entropy_acquiring_static_process: bool,
     randomized_static_process: bool,
+    completed_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -4110,6 +4122,32 @@ impl BootstrapAuthorityState {
                     ));
                 }
                 self.entropy_acquiring_static_process = false;
+                self.randomized_static_process = true;
+            }
+            SystemsOperation::EnterStaticImageProcess => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.randomized_static_process
+                    || self.completed_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image process entry requires the exact randomized owner",
+                    ));
+                }
+                self.randomized_static_process = false;
+                self.completed_static_process = true;
+            }
+            SystemsOperation::RestoreStaticImageProcessEntry => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.randomized_static_process
+                    || !self.completed_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image process-entry restoration requires the exact completed owner",
+                    ));
+                }
+                self.completed_static_process = false;
                 self.randomized_static_process = true;
             }
             SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
@@ -8226,6 +8264,12 @@ fn model_bootstrap_operation(
         SystemsOperation::DeliverStaticImageEntropyInitialRandom => {
             transitions.push(SystemsTransition::DeliverStaticImageEntropyInitialRandom);
         }
+        SystemsOperation::EnterStaticImageProcess => {
+            transitions.push(SystemsTransition::EnterStaticImageProcess);
+        }
+        SystemsOperation::RestoreStaticImageProcessEntry => {
+            transitions.push(SystemsTransition::RestoreStaticImageProcessEntry);
+        }
         SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyInitialRandom);
         }
@@ -8794,6 +8838,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
         | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
         | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+        | SystemsOperation::EnterStaticImageProcess
+        | SystemsOperation::RestoreStaticImageProcessEntry
         | SystemsOperation::RevokeStaticImageEntropyInitialRandom
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
@@ -11853,6 +11899,8 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
                 SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
                 SystemsOperation::DeliverStaticImageEntropyInitialRandom,
+                SystemsOperation::EnterStaticImageProcess,
+                SystemsOperation::RestoreStaticImageProcessEntry,
                 SystemsOperation::RevokeStaticImageEntropyInitialRandom,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
@@ -11921,6 +11969,8 @@ mod tests {
             transitions.contains(&SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle)
         );
         assert!(transitions.contains(&SystemsTransition::DeliverStaticImageEntropyInitialRandom));
+        assert!(transitions.contains(&SystemsTransition::EnterStaticImageProcess));
+        assert!(transitions.contains(&SystemsTransition::RestoreStaticImageProcessEntry));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyInitialRandom));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
