@@ -162,6 +162,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF entropy-transport negotiation](bounded-static-elf-entropy-transport-negotiation.md)
 - [Bounded static ELF entropy-queue discovery](bounded-static-elf-entropy-queue-discovery.md)
 - [Bounded static ELF entropy bus-master qualification](bounded-static-elf-entropy-bus-master.md)
+- [Bounded static ELF entropy DMA-buffer coexistence](bounded-static-elf-entropy-dma-buffer-coexistence.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
