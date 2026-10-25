@@ -1111,6 +1111,24 @@ the writable image, native dispatch, query-before-terminal ordering, affine
 forward/inverse preservation, and later-sequence preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001` and `TK-DEC-176`.
 
+The bounded static-ELF initial-break-growth increment shall refine that entry
+with startup service `initial-brk-query-growth`, one distinct aligned zeroed
+artifact reserve, and policy `bounded-static-elf-initial-brk-growth`. X86-64
+lowering shall preserve the exact initial query, then accept one request for
+`0x005f7dc0`, publish and invalidate one user RW/NX leaf at `0x005f7000`,
+return the request through `SYSRETQ`, and permit a first-byte store/load before
+terminal exit. Terminal handling shall remove and verify the leaf, reset the
+private break, erase and verify all 4,096 reserve bytes, and clear mapping
+authority before returning. The qualification inverse shall prove and clear
+query/growth completion. The checker and semantic model shall reject another
+startup service, reserve, request, result, order, duplicate, early terminal,
+permission, alias, partial publication, inaccessible byte, retained state,
+partial erase, or recoverable failure. Structural and duplicate pinned-QEMU
+tests shall prove distinct BSS ownership, exact leaf mechanics, query/growth/
+terminal order, first-byte access, complete teardown, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001` and `TK-DEC-177`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
