@@ -1008,6 +1008,23 @@ queue, or entropy representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001` and
 `TK-DEC-170`.
 
+The bounded static-ELF entropy-sample-quality-coexistence increment shall
+consume and return the exact acquisition owner around one assessed and erased
+sample. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact zero-credit capture. The checked
+kernel policy shall apply only the sealed Q35 source/evidence, 32-byte extent,
+1024/1024 quality, and 256-bit credit transition without emitting target trust
+mechanics or inspecting bytes. Lowering shall reset and verify transport state,
+overwrite and read back payload, ring, and assessed-sample storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, provider-selected trust, omission, duplicate,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove exact
+assessment, complete destruction, same-owner return, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001` and
+`TK-DEC-171`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

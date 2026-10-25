@@ -2114,6 +2114,41 @@ This rule SHALL NOT assess or credit entropy, initialize an entropy pool or
 generator, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
 user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001 — Assessed and erased entropy sample
+
+`static image construction qualify entropy sample quality` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001`. It SHALL
+accept only the sealed initial virtio-rng device, DMA domain, queue and
+transport, sample identity one, source identity one, trust-evidence identity
+one, and policy `bounded-static-elf-entropy-sample-quality-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary prerequisite sequence through zero-credit
+opaque sample capture. Target-independent kernel policy SHALL then perform the
+exact `TOPAL-SYSTEMS-ENTROPY-QUALITY-001` transition for 32 bytes, quality 1024
+parts per 1024, and 256 credited bits under the initial Q35 deployment
+evidence. Assessment SHALL neither inspect nor change sample bytes and SHALL
+invoke no target-provider trust decision.
+
+The transaction SHALL reset and read back all transport state, overwrite and
+read back the complete DMA payload, every source- or device-written ring field,
+and every provider-private byte owned by the assessed sample. It SHALL reverse
+bus mastering, verify gateway rollback, and leave the later ordinary sequence
+structurally unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK` observation is permitted
+only after assessment, destruction, and rollback succeed.
+
+Another owner, device, domain, queue, transport, sample, source, evidence,
+extent, quality, credit, policy, order, omission, duplication, provider-
+selected trust, escaped byte or authority, partial erase, nonzero final state,
+process mutation or exposure, or recoverable disposition SHALL be invalid.
+
+This rule SHALL NOT create or mix a pool, initialize or extract a generator,
+publish `AT_RANDOM`, initialize TLS, construct a user context, enter user mode,
+execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
