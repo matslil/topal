@@ -1756,6 +1756,42 @@ allocate DMA, notify the device, span the entropy pipeline, consume or expose
 entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
 user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-DISCOVERY-001 — Reversible entropy-queue discovery
+
+`static image construction qualify entropy queue` SHALL require, consume, and
+return the exact `EntropyAcquiringStaticElfInitialProcess` accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-NEGOTIATION-001`. It SHALL accept
+only transport identity `initial-virtio-rng-pci-transport`, queue identity
+`initial-virtio-rng-queue-zero`, and policy
+`bounded-static-elf-entropy-queue-discovery`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL replay the exact 16 ordered
+negotiation accesses and then execute the exact five ordered queue-discovery
+accesses of `TOPAL-SYSTEMS-VIRTIO-QUEUE-DISCOVERY-001`. It SHALL prove queue
+zero exists with size eight, is disabled, and has notification identity zero.
+Before returning the owner, it SHALL write device status zero and read back
+zero through the same generic checked PCI-region boundary. After every region
+access, the provider SHALL restore and read back the discovered zero BAR,
+offset, and length fields of its private PCI configuration-access gateway. It
+SHALL leave the later ordinary transport sequence unconsumed and permit
+exactly one `TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK` observation only after
+the complete process, negotiation, queue, reset, and gateway proofs succeed.
+
+Another owner, transport, queue, policy, capability, BAR role, region,
+register, width, direction, value, feature selection, ordering, omission,
+duplication, or final state; incomplete gateway restoration or process
+validation; process mutation, release, alias, activation, or exposure; bus
+mastering; DMA; entropy use; or recoverable disposition SHALL be invalid.
+Source SHALL receive no process resource, PCI coordinate, capability field,
+BAR, register, address, port, feature word, queue size, notification offset,
+allocator state, output byte, or provider representation.
+
+This rule SHALL NOT authorize bus mastering, allocate DMA, construct or enable
+a queue, notify the device, span the entropy pipeline, consume or expose
+entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

@@ -287,8 +287,15 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-transport-negotiation
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              entropy-acquiring-static-process-after-queue is unmapped static image construction qualify entropy queue (
                                                                                 owner is entropy-acquiring-static-process-after-negotiation,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                policy is bounded-static-elf-entropy-queue-discovery
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-queue,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
