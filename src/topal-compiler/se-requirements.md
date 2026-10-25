@@ -968,6 +968,27 @@ representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ACTIVATION-COEXISTENCE-001` and
 `TK-DEC-168`.
 
+The bounded static-ELF entropy-request-completion-coexistence increment shall
+consume and return the exact acquisition owner around one completed and erased
+32-byte device request. X86-64 lowering shall completely validate the retained
+process, replay the exact ordinary sequence through activated available work,
+notify queue zero, observe and acknowledge the bounded signal, validate the
+four used-ring facts, and return control then payload ownership. It shall
+capture or credit no sample, reset and verify all transport state, overwrite
+and read back the complete payload and every source- or device-written ring
+field, reverse bus mastering, and restore gateway state. No payload byte, DMA
+identity, or resolved reference shall escape and the later ordinary sequence
+shall remain structurally unconsumed. The checker and semantic model shall
+reject another owner, device, domain, queue, transport, policy, completion
+fact, ownership order, early CPU access, missing acknowledgement, partial
+erase, captured or credited sample, escaped byte or identity, nonzero final
+state, or recoverable failure. Structural and duplicate pinned-QEMU tests shall
+prove the complete transaction, same-owner return, later-sequence preservation,
+and no exposed process, DMA, address, PCI, queue, or entropy representation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001` and
+`TK-DEC-169`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

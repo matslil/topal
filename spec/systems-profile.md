@@ -2025,6 +2025,53 @@ This rule SHALL NOT submit work, observe completion, span the entropy pipeline,
 consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a user
 context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001 — Completed and erased entropy request
+
+`static image construction qualify entropy request completion` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ACTIVATION-COEXISTENCE-001`. It SHALL
+accept only device identity `initial-virtio-rng-device`, translation-domain
+identity `initial-dma-domain`, queue identity
+`initial-virtio-rng-queue-zero`, transport identity
+`initial-virtio-rng-pci-transport`, and policy
+`bounded-static-elf-entropy-request-completion-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary prerequisite sequence through activated
+queue zero with descriptor zero available. It SHALL perform the exact queue
+notification of `TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-NOTIFY-001`, the bounded signal
+observation and acknowledgement of
+`TOPAL-SYSTEMS-VIRTIO-PCI-COMPLETION-SIGNAL-001`, control-buffer ownership
+return and all four used-ring reads of
+`TOPAL-SYSTEMS-VIRTIO-PCI-USED-RING-001`, then payload ownership return under
+`TOPAL-SYSTEMS-VIRTIO-PAYLOAD-COMPLETE-001`. It SHALL NOT capture a sample,
+attribute entropy, or expose a payload byte.
+
+After both buffers are CPU-owned, the transaction SHALL reset device status to
+zero and read status, queue enable, and all three complete logical 64-bit queue
+addresses back as zero. It SHALL overwrite all 32 payload bytes with zero using
+naturally aligned exact-width stores and read every byte back as zero. It SHALL
+erase and read back descriptor reference, length, flags, available index and
+slot, used flags and index, and used element identity and length. It SHALL then
+reverse bus mastering, verify configuration-gateway rollback, and leave the
+later ordinary sequence structurally unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK` observation is permitted
+only after every proof and rollback succeeds.
+
+Another owner, device, domain, queue, transport, policy, buffer, reference,
+notification, completion signal, used-ring fact, result length, ownership
+order, register, width, offset, value, operation order, omission, duplication,
+early CPU access, captured or credited sample, escaped identity or byte,
+nonzero final transport/buffer state, incomplete process/device/gateway
+restoration, process mutation or exposure, or recoverable disposition SHALL be
+invalid. Source SHALL receive no process resource, buffer identity, address,
+mapping, PCI coordinate, queue field, entropy byte, or provider representation.
+
+This rule SHALL NOT retain or credit entropy, initialize an entropy pool or
+generator, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
