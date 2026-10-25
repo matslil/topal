@@ -62,7 +62,9 @@ The pinned provider shall:
 ## Scope
 
 This is a systems-profile refinement only and changes no core-language rule.
-It admits one exact one-page-backed growth after the initial query. It does not
-support another request, shrink, multiple pages, lazy faults, overcommit,
+It admits one exact one-page-backed growth after the initial query. The
+approved [post-random query](bounded-static-elf-post-random-brk-query.md) may
+observe its current result without mutation. It does not support another
+nonzero request, shrink, multiple pages, lazy faults, overcommit,
 `mmap`, `munmap`, `mprotect`, TLS initialization, BusyBox execution in the
 qualification fixture, a prompt, or general memory-management compatibility.
