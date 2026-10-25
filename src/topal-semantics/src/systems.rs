@@ -49,6 +49,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -86,6 +87,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -1258,6 +1260,8 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropySampleQuality,
     QualifyStaticImageEntropyPoolLifecycle,
     QualifyStaticImageEntropyGeneratorLifecycle,
+    DeliverStaticImageEntropyInitialRandom,
+    RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1591,6 +1595,12 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropyGeneratorLifecycle => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
+            }
+            Self::DeliverStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
+            }
+            Self::RevokeStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1952,6 +1962,8 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropySampleQuality,
     QualifyStaticImageEntropyPoolLifecycle,
     QualifyStaticImageEntropyGeneratorLifecycle,
+    DeliverStaticImageEntropyInitialRandom,
+    RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2501,6 +2513,12 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropyGeneratorLifecycle => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
             }
+            Self::DeliverStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
+            }
+            Self::RevokeStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2884,6 +2902,8 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropySampleQuality
                     | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
                     | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
+                    | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+                    | SystemsOperation::RevokeStaticImageEntropyInitialRandom
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -3240,6 +3260,7 @@ struct BootstrapAuthorityState {
     retained_static_process: bool,
     entropy_pending_static_process: bool,
     entropy_acquiring_static_process: bool,
+    randomized_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -4076,6 +4097,34 @@ impl BootstrapAuthorityState {
                         "static-image entropy-generator lifecycle coexistence requires the exact acquisition owner",
                     ));
                 }
+            }
+            SystemsOperation::DeliverStaticImageEntropyInitialRandom => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                    || self.randomized_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image initial-random delivery requires the exact acquisition owner",
+                    ));
+                }
+                self.entropy_acquiring_static_process = false;
+                self.randomized_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
+                    || !self.randomized_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image initial-random revocation requires the exact randomized owner",
+                    ));
+                }
+                self.randomized_static_process = false;
+                self.entropy_acquiring_static_process = true;
             }
             SystemsOperation::RevokeStaticImageEntropyAcquisition => {
                 if self.memory_ownership != BootstrapMemoryOwnership::None
@@ -8174,6 +8223,12 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle);
         }
+        SystemsOperation::DeliverStaticImageEntropyInitialRandom => {
+            transitions.push(SystemsTransition::DeliverStaticImageEntropyInitialRandom);
+        }
+        SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyInitialRandom);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8738,6 +8793,8 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropySampleQuality
         | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
         | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
+        | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+        | SystemsOperation::RevokeStaticImageEntropyInitialRandom
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11795,6 +11852,8 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropySampleQuality,
                 SystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
                 SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
+                SystemsOperation::DeliverStaticImageEntropyInitialRandom,
+                SystemsOperation::RevokeStaticImageEntropyInitialRandom,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11861,6 +11920,8 @@ mod tests {
         assert!(
             transitions.contains(&SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle)
         );
+        assert!(transitions.contains(&SystemsTransition::DeliverStaticImageEntropyInitialRandom));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyInitialRandom));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11881,6 +11942,16 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

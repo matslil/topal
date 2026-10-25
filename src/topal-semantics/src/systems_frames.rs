@@ -104,6 +104,10 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE: &str
     "topal.systems.static-image.construction.qualify-entropy-pool-lifecycle/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE: &str =
     "topal.systems.static-image.construction.qualify-entropy-generator-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.deliver-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.revoke-entropy-initial-random/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =

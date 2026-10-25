@@ -405,8 +405,34 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-generator-lifecycle-coexistence
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              randomized-static-process-after-initial-random-delivery is unmapped static image construction deliver entropy initial random (
                                                                                 owner is entropy-acquiring-static-process-after-generator-lifecycle,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                pool is initial-entropy-pool,
+                                                                                conditioner is initial-blake2s-conditioner,
+                                                                                contribution is initial-entropy-contribution,
+                                                                                generator is initial-entropy-generator,
+                                                                                algorithm is chacha20,
+                                                                                output is initial-entropy-output,
+                                                                                interface is initial-linux-random-interface,
+                                                                                delivery is initial-auxv-random-delivery,
+                                                                                policy is bounded-static-elf-initial-random-delivery-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK"
+                                                                              entropy-acquiring-static-process-after-initial-random-revocation is unmapped static image construction revoke entropy initial random (
+                                                                                owner is randomized-static-process-after-initial-random-delivery,
+                                                                                delivery is initial-auxv-random-delivery,
+                                                                                policy is bounded-static-elf-initial-random-delivery-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-initial-random-revocation,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"

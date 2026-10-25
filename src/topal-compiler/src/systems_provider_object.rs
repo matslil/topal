@@ -119,6 +119,10 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_pool_lifecycle";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_generator_lifecycle";
+pub const X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_static_image_deliver_entropy_initial_random";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entropy_initial_random";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1579,6 +1583,18 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL,
         &static_image_qualify_entropy_generator_lifecycle()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        &static_image_deliver_entropy_initial_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        &static_image_revoke_entropy_initial_random()?,
     );
     append_encoded_function(
         &mut object,
@@ -8795,6 +8811,98 @@ fn static_image_qualify_entropy_pool_lifecycle() -> Result<Vec<u8>, CompileError
 
 fn static_image_qualify_entropy_generator_lifecycle() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
+}
+
+fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE, TERMINATOR] {
+        code.bytes(&[0x48, 0x83, 0xbf]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fail");
+    }
+    for (source_offset, target_offset) in [(0_u8, OBJECT), (8, OBJECT + 8)] {
+        if source_offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x8b, 0x46, source_offset]);
+        }
+        code.bytes(&[0x48, 0x89, 0x87]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.bytes(&[0x48, 0x3b, 0x87]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x48, 0x89, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    code.bind("wipe")?;
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0xc7, 0x06, 0, 0, 0, 0]);
+            code.bytes(&[0x48, 0x83, 0x3e, 0]);
+        } else {
+            code.bytes(&[0x48, 0xc7, 0x46, offset, 0, 0, 0, 0]);
+            code.bytes(&[0x48, 0x83, 0x7e, offset, 0]);
+        }
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail_wipe")?;
+    code.jump("wipe");
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_revoke_entropy_initial_random() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x48, 0x83, 0xbf]);
+    code.bytes(&TERMINATOR.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE] {
+        code.bytes(&[0x48, 0xc7, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x48, 0x83, 0xbf]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
 }
 
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
