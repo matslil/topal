@@ -592,6 +592,14 @@ records an artifact-owned zero-page reserve, one exact RW/NX user mapping, a
 first-byte write/read proof, complete terminal revocation and erasure,
 structural inspection, and two deterministic pinned-QEMU runs.
 
+The following target-qualified startup refinement installs the pinned static
+process's [initial x86-64 FS base](design/bounded-static-elf-initial-x86-fs-base.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-initial-x86-fs-base.md)
+records one exact thread-pointer selection inside the live anonymous reserve,
+an FS-relative access proof, exact pre-entry physical-base restoration, private
+state clearing, structural inspection, and duplicate deterministic QEMU
+evidence without exposing native controls to source.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -773,6 +781,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF process entry](step-4-bounded-static-elf-process-entry.md)
 - [Step 4 bounded static ELF initial `brk(0)` query](step-4-bounded-static-elf-initial-brk-query.md)
 - [Step 4 bounded static ELF initial `brk` growth](step-4-bounded-static-elf-initial-brk-growth.md)
+- [Step 4 bounded static ELF initial x86-64 FS base](step-4-bounded-static-elf-initial-x86-fs-base.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

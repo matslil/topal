@@ -9149,7 +9149,21 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x90, 0, 0, 0]);
     code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25, 0x88, 0, 0, 0]);
     for context_offset in [136_u8, 144] {
-        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, context_offset, 0, 0, 0, 0, 0, 0, 0]);
+        code.bytes(&[
+            0x65,
+            0x48,
+            0xc7,
+            0x04,
+            0x25,
+            context_offset,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ]);
     }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 3]);
     code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
