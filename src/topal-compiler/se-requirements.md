@@ -826,6 +826,23 @@ witnesses, and no exposed process, capability, PCI, or entropy representation.
 This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-DISCOVERY-001` and `TK-DEC-160`.
 
+The bounded static-ELF entropy-transport-negotiation increment shall consume
+and return the exact acquisition owner around one reversible write-capable
+transport qualification. X86-64 lowering shall completely validate the
+retained process, use the existing generic PCI-region boundary for the exact
+16-access pinned Q35 virtio-rng negotiation, prove the mandatory version-one
+feature and retained `FEATURES_OK`, then write and read back status zero. It
+shall restore and verify the discovered zero BAR, offset, and length fields of
+the provider-private configuration gateway after every access and shall not
+consume the later ordinary transport sequence. The checker and
+semantic model shall reject another owner, transport, policy, access, feature,
+order, omission, duplicate, final status, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation before real accesses, exact negotiation, reset, and gateway
+rollback, same-owner return, later-sequence preservation, and no exposed
+process, BAR, register, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-NEGOTIATION-001` and `TK-DEC-161`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

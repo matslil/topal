@@ -1722,6 +1722,40 @@ This rule SHALL NOT negotiate or drive the device, span the entropy pipeline,
 consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a
 user context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-NEGOTIATION-001 — Reversible entropy-transport negotiation
+
+`static image construction qualify entropy negotiation` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-DISCOVERY-001`. It SHALL accept
+only transport identity `initial-virtio-rng-pci-transport` and policy
+`bounded-static-elf-entropy-transport-negotiation`.
+
+The provider SHALL first completely revalidate every retained process resource
+and byte. The qualified x86-64 transition SHALL then execute the exact 16
+ordered accesses of `TOPAL-SYSTEMS-VIRTIO-PCI-NEGOTIATION-001`, select only
+`VIRTIO_F_VERSION_1`, and prove retained `FEATURES_OK`. Before returning the
+owner, it SHALL write device status zero and read back zero through the same
+generic checked PCI-region boundary. After every region access, the x86-64
+provider SHALL restore and read back the discovered zero BAR, offset, and
+length fields of its private PCI configuration-access gateway. It SHALL leave
+the later ordinary transport sequence unconsumed and permit exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK` observation only after the
+complete process, negotiation, and reset proofs succeed.
+
+Another owner, transport, policy, capability, BAR role, region, register,
+width, direction, value, feature selection, ordering, omission, duplication,
+or final status; incomplete gateway restoration or process validation; process mutation, release,
+alias, activation, or exposure; queue access; bus mastering; DMA; entropy use;
+or recoverable disposition SHALL be invalid. Source SHALL receive no process
+resource, PCI coordinate, capability field, BAR, register, address, port,
+feature word, allocator state, output byte, or provider representation.
+
+This rule SHALL NOT discover or configure a queue, authorize bus mastering,
+allocate DMA, notify the device, span the entropy pipeline, consume or expose
+entropy, publish `AT_RANDOM`, initialize TLS, construct a user context, enter
+user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

@@ -107,6 +107,7 @@ pub use topal_semantics::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -9331,6 +9332,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -10484,7 +10486,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 370);
+        assert_eq!(program.bootstrap.handler.operations.len(), 372);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10584,6 +10586,7 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -14013,6 +14016,41 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("entropy-transport")
+                    || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_entropy_transport_negotiation() {
+        // TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-NEGOTIATION-001.
+        for source in [
+            SOURCE.replace(
+                "owner is entropy-acquiring-static-process-after-transport,",
+                "owner is entropy-pending-static-process,",
+            ),
+            SOURCE.replace(
+                "transport is initial-virtio-rng-pci-transport,\n                                                                                policy is bounded-static-elf-entropy-transport-negotiation",
+                "transport is unrelated-transport,\n                                                                                policy is bounded-static-elf-entropy-transport-negotiation",
+            ),
+            SOURCE.replace(
+                "policy is bounded-static-elf-entropy-transport-negotiation",
+                "policy is synthetic-entropy-negotiation",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("entropy-transport negotiation")
                     || error.message.contains("exact marker"),
                 "{}",
                 error.message
