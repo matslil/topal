@@ -181,6 +181,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF initial empty robust list](bounded-static-elf-initial-empty-robust-list.md)
 - [Bounded static ELF initial `rseq` fallback](bounded-static-elf-initial-rseq-fallback.md)
 - [Bounded static ELF initial stack-limit query](bounded-static-elf-initial-stack-limit-query.md)
+- [Bounded static ELF initial `readlinkat` fallback](bounded-static-elf-initial-readlinkat-fallback.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
