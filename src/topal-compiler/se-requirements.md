@@ -1076,6 +1076,24 @@ preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` and
 `TK-DEC-174`.
 
+The bounded static-ELF process-entry increment shall consume the exact
+randomized-process owner and produce one affine completed-process owner. X86-64
+lowering shall completely revalidate the retained process, derive its entry
+and initial stack from provider-private authorities, install a private static-
+process syscall/continuation context, activate the retained address space,
+enter CPL3, accept only `exit_group(0)`, and restore the exact kernel CR3, GS,
+stack, and continuation before returning. The qualification fixture shall use
+clean-room bytes at the sealed ELF entry and shall not redistribute or claim
+BusyBox. A qualification-only inverse shall validate and clear the terminal
+context and restore the exact randomized owner before the existing nested
+rollback. The checker and semantic model shall reject every substituted owner,
+ABI, terminal result, policy, ordering error, duplicate entry, escaped native
+state, changed process resource, incomplete restoration, nonzero inverse
+state, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove real `IRETQ` entry, native `SYSCALL` return, exact CR3 restoration,
+the affine forward/inverse lifecycle, and later-sequence preservation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001` and `TK-DEC-175`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

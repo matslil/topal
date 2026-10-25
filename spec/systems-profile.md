@@ -2262,6 +2262,42 @@ erase, nonzero inverse state, source-visible representation, or recoverable
 disposition SHALL be invalid. This rule SHALL NOT construct a user context,
 enter user mode, execute BusyBox, add a syscall, or provide `getrandom`.
 
+### TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001 — Static process entry and terminal return
+
+`static image process enter` SHALL require and consume the exact
+`RandomizedStaticElfInitialProcess` produced by
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` and produce
+one affine `CompletedStaticElfInitialProcess`. It SHALL accept only the sealed
+Linux process ABI identity, terminal result `exit-group-zero`, and policy
+`bounded-static-elf-process-entry`.
+
+The provider SHALL completely revalidate the retained process, derive the
+native entry and initial stack from its opaque authorities, install a private
+kernel continuation and syscall entry, activate the process address space,
+enter the least-privileged application context, and return only after that
+context requests the selected terminal result. It SHALL restore the exact
+kernel address space, privilege-local state, stack, and continuation before
+returning. The completed owner SHALL retain the unchanged process mappings,
+payload, stack, and delivered initial-random result. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK` observation is permitted after the
+completed owner is live.
+
+For reversible qualification, `static image process restore entry` SHALL
+consume that exact completed owner, prove and clear the private terminal
+context without entering user mode, restore the exact randomized-process
+owner, and permit exactly one
+`TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK` observation before the
+existing initial-random inverse.
+
+Another owner, ABI, terminal result, policy, entry, stack, address space,
+privilege level, syscall, status, ordering, duplicate entry, escaped native
+state, failed restoration, changed process byte or mapping, nonzero private
+context after inverse, source-visible representation, or recoverable
+disposition SHALL be invalid. The first x86-64 qualification SHALL use a
+clean-room payload at the sealed ELF entry that invokes only native
+`exit_group(0)`. This rule SHALL NOT initialize TLS, execute BusyBox, add a
+nonterminal syscall, provide a prompt, or claim general application support.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
