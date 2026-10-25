@@ -347,7 +347,8 @@ non-overlap, ownership, and provenance observations remain equivalent.
 The initial x86-64 executable profile SHALL admit only the static allocation
 shapes `(frame-count: 1, alignment-frames: 1)`, `(frame-count: 2,
 alignment-frames: 1)`, `(frame-count: 3, alignment-frames: 1)`,
-`(frame-count: 4, alignment-frames: 1)`, and
+`(frame-count: 5, alignment-frames: 1)`,
+`(frame-count: 34, alignment-frames: 1)`, and
 `(frame-count: 503, alignment-frames: 1)`. Every successful request SHALL
 produce one indivisible extent and SHALL require release of that complete
 extent. The profile SHALL reject every other count or alignment, a dynamic
@@ -552,12 +553,12 @@ While the exact `SealedStaticImageConstruction` from
 `TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` remains live, the initial x86-64
 profile SHALL admit exactly one typed
 `static image construction reserve hierarchy` operation with request
-`(frame-count: 4, alignment-frames: 1)`. Success SHALL produce one indivisible
+`(frame-count: 5, alignment-frames: 1)`. Success SHALL produce one indivisible
 opaque `PhysicalFrameExtent` reserved for the future static-image upper
 translation hierarchy. The allocation SHALL preserve the sealed construction
 and every authority, frame identity, byte, and final leaf role that it owns.
 
-The provider SHALL derive the complete 16,384-byte candidate with checked
+The provider SHALL derive the complete 20,480-byte candidate with checked
 arithmetic and select it wholly inside one normalized E820 RAM interval,
 page-aligned, below the first-GiB bootstrap ceiling, and disjoint from the
 503-frame payload, one-frame leaf table, retained boot resource, active
@@ -569,7 +570,7 @@ execution authority.
 Source SHALL emit exactly one
 `TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK` observation while the hierarchy
 extent and sealed construction are simultaneously live. It SHALL then release
-the complete four-frame extent to its originating allocator before revoking
+the complete five-frame extent to its originating allocator before revoking
 the sealed construction. Whole release SHALL restore the exact sealed-only
 ownership state, after which the existing metadata-then-payload revocation
 and release obligations apply unchanged.
@@ -588,7 +589,7 @@ entry, retain the hierarchy extent, or execute the static image.
 
 `static image construction attach address space` SHALL consume the exact live
 `SealedStaticImageConstruction` from
-`TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` and the exact live four-frame
+`TOPAL-SYSTEMS-STATIC-ELF-PERMISSIONS-001` and the exact live five-frame
 hierarchy extent from `TOPAL-SYSTEMS-STATIC-ELF-HIERARCHY-EXTENT-001`. It
 SHALL accept only layout `bounded-static-elf-inactive-address-space`. Success
 SHALL produce one affine `AttachedStaticImageConstruction` owning the same
@@ -597,9 +598,10 @@ payload, leaf metadata, and hierarchy extents.
 Before construction, the initial x86-64 provider SHALL revalidate all three
 extents, their exact qualified adjacency and disjointness, all 503 final leaves
 and nine absent entries, and that the hierarchy root differs from the active
-translation root. It SHALL zero and read back all 16,384 hierarchy bytes. It
+translation root. It SHALL zero and read back all 20,480 hierarchy bytes. It
 SHALL then construct one complete inactive hierarchy comprising PML4, PDPT,
-low-memory directory, and qualified-MMIO directory frames in that order.
+low-memory directory, qualified-MMIO directory, and high user leaf-table
+frames in that order.
 
 PML4 entry zero and PDPT entry zero SHALL provide present/write/user traversal
 to the next level. PDPT entry three SHALL provide supervisor present/write
@@ -608,7 +610,10 @@ qualified 512 supervisor 2 MiB bootstrap identity mappings except entry two,
 which SHALL reference the existing final static leaf table through
 present/write/user traversal. The MMIO directory SHALL contain only the
 qualified HPET and local-APIC 2 MiB mappings at entries 502 and 503. Every
-other PML4, PDPT, and MMIO-directory entry SHALL remain absent.
+other PML4, PDPT, and MMIO-directory entry SHALL remain absent. Low-memory
+directory entry three SHALL reference the high user leaf table through
+present/write/user traversal, and every high-table leaf SHALL initially be
+absent.
 
 The provider SHALL publish the complete inactive hierarchy atomically, read
 back every present entry and every required absent interval, revalidate the
@@ -622,14 +627,14 @@ Source SHALL emit exactly one `TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK`
 observation while the attached owner is live. It SHALL then invoke
 `static image construction detach address space` with that exact owner.
 Detach SHALL revalidate the complete hierarchy, final leaves, and inactive
-root, clear and publish all four hierarchy frames, verify all 16,384 bytes
+root, clear and publish all five hierarchy frames, verify all 20,480 bytes
 zero, and produce one affine `DetachedStaticImageConstruction`. Source SHALL
 then emit exactly one
 `TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK` observation.
 
 `static image construction reclaim` with resource `hierarchy` SHALL consume
 that resource from the detached owner exactly once and return the complete
-four-frame extent. Source SHALL release it whole before invoking the existing
+five-frame extent. Source SHALL release it whole before invoking the existing
 metadata then payload revocation and release sequence with the same detached
 owner. A wrong owner, layout, extent, adjacency, hierarchy entry, leaf, role,
 active root, byte, operation order, witness, return order, partial release,
@@ -741,9 +746,10 @@ physical addresses, page-table indices and encodings, stack direction, stack
 pointer, pointer width, and target alignment SHALL remain provider-private.
 
 For qualified x86-64 realization, all nine non-image leaves 503 through 511
-SHALL remain absent. Leaf ordinal 511 SHALL denote the one-page slot, ordinal
-510 SHALL remain its immediate guard, and the provider-private initial top
-SHALL be `0x00600000`, aligned to both 4096 bytes and the 16-byte process-entry
+in the low image table and all 512 high-table leaves SHALL remain absent.
+High-table leaf ordinal 511 SHALL denote the one-page slot, ordinal 510 SHALL
+remain its immediate guard, and the provider-private initial top
+SHALL be `0x00800000`, aligned to both 4096 bytes and the 16-byte process-entry
 convention. Authorization and revocation SHALL modify no hierarchy, leaf,
 payload, or root-register byte.
 
@@ -791,7 +797,7 @@ witness, slot or entry revocation while backing is live, reuse of a construction
 frame, or recoverable disposition with the extent live SHALL be invalid.
 
 For qualified x86-64 realization, the allocation floor SHALL be the first frame
-after the exact four-frame static hierarchy. The existing bounded E820
+after the exact five-frame static hierarchy. The existing bounded E820
 allocator SHALL validate the complete candidate and boot reservations. The
 checked root SHALL retain the hierarchy identity separately while the backing
 identity is live, then clear the backing identity and restore the hierarchy
@@ -1137,7 +1143,7 @@ invalid. Only exact executable-name removal SHALL restore the state admitted
 by program-header removal.
 
 For qualified x86-64 realization, the provider SHALL encode native
-`AT_EXECFN=(31,0x5fffe0)` after `AT_PHNUM=(5,11)` and before `AT_NULL`. Its
+`AT_EXECFN=(31,0x7fffe0)` after `AT_PHNUM=(5,11)` and before `AT_NULL`. Its
 value SHALL equal `argv[0]`, designate all eight bytes of `busybox\0` within
 the same leaf, and remain distinct from `true\0`. Addition and removal SHALL
 each clear all 512 qwords before reconstruction, execute one store fence, and
@@ -1189,7 +1195,7 @@ removal.
 
 For qualified x86-64 realization, the provider SHALL encode native
 `AT_UID=(11,0)`, `AT_EUID=(12,0)`, `AT_GID=(13,0)`, and `AT_EGID=(14,0)` in
-that order after `AT_EXECFN=(31,0x5fffe0)` and before `AT_NULL`. Addition and
+that order after `AT_EXECFN=(31,0x7fffe0)` and before `AT_NULL`. Addition and
 removal SHALL each clear all 512 qwords before reconstruction, execute one
 store fence, and completely read back the result. They SHALL preserve the
 exact executable-name alias and inactive hierarchy and issue no active-address
@@ -3507,7 +3513,7 @@ recoverable `rseq` fallback, the process MAY issue one query under
 `TOPAL-SYSTEMS-USER-RLIMIT-STACK-001`.
 
 The initial x86-64 qualification SHALL issue native syscall 302 with PID zero,
-resource selector 3, null new-limit candidate, output candidate `0x005ffe60`,
+resource selector 3, null new-limit candidate, output candidate `0x007ffe60`,
 and a continuation inside the sealed executable mapping. The complete writable
 16-byte candidate SHALL lie in the live initial stack mapping. The provider
 SHALL publish soft limit `0x0000000000800000` and hard limit
@@ -3655,6 +3661,46 @@ request, state, result, order, duplicate, mutation, source-visible native
 detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
 NOT add another nonzero request, shrink, allocation, multiple heap pages, VMA
 collections, accounting, concurrency, BusyBox redistribution, or a prompt.
+
+### TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001 — Post-random static-process break growth
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth`
+and select policy `bounded-static-elf-post-random-brk-growth`. After the exact
+post-random query, the process MAY issue one exact monotonic nonzero growth
+under the byte-granular behavior refined from
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001`.
+
+The provider SHALL require the live post-query process state, the exact old
+current break, an executable continuation in the sealed mapping, exclusively
+owned zero anonymous backing for the complete admitted range, and sufficient
+provider-private translation resources before mutation. It SHALL publish
+usable user-writable, non-executable, zero-filled backing for every newly
+admitted page before updating the current break and returning success. Failure
+before publication SHALL preserve the prior break and all process resources.
+
+The initial x86-64 qualification SHALL accept native syscall 12 request
+`0x00618dc0` after current break `0x005f7dc0`. Its target-qualified anonymous
+reserve SHALL comprise 34 zero data frames, while the separately owned fifth
+hierarchy frame SHALL provide the already-published high leaf table. The
+initial growth SHALL use the first data frame. The later growth SHALL retain
+the prior leaf and disjoint high stack leaf, add eight leaves to the existing
+low table, add 25 leaves to the high table, invalidate
+the admitted virtual range, return `0x00618dc0`, and permit a write/read at
+last admitted byte `0x00618dbf`.
+
+Terminal completion SHALL retain the high-table parent and stack leaf, remove all 34
+anonymous leaves, reset the break, clear and verify the complete 34-frame
+extent, and return the exact affine extent through the existing inverse.
+Exactly one `TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK` observation
+SHALL follow the post-random query observation and precede process exit.
+Another request, old break, extent, page state, result, order, duplicate,
+partial publication, retained mapping or byte, source-visible native detail,
+or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+another nonzero request, shrink, lazy faults, arbitrary mapping, VMA
+collections, overcommit, concurrency, BusyBox redistribution, or a prompt.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 

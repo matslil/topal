@@ -376,7 +376,7 @@ source-visible page ordinal, permission bit, address, loop, page-table entry,
 or activation authority.
 
 The bounded static-ELF hierarchy-extent increment shall admit exactly one typed
-`static image construction reserve hierarchy` operation for a four-frame,
+`static image construction reserve hierarchy` operation for a five-frame,
 one-frame-aligned allocation while the sealed construction remains live.
 X86-64 lowering shall fail closed through the fatal edge, preserve the payload and leaf-table identities,
 select the complete hierarchy extent after and disjoint from both resources,
@@ -391,7 +391,7 @@ authority.
 
 The bounded static-ELF address-space increment shall accept exact typed attach,
 detach, and hierarchy-reclaim transitions over the sealed construction and
-four-frame hierarchy extent. X86-64 lowering shall revalidate all extents and
+five-frame hierarchy extent. X86-64 lowering shall revalidate all extents and
 final leaves, prove the root inactive, zero and verify the hierarchy, construct
 and read back the exact supervisor bootstrap/MMIO hierarchy linked to the
 existing user leaf table, and preserve every payload byte and leaf role.
@@ -435,7 +435,7 @@ The bounded static-ELF stack-slot increment shall accept exact typed authorize
 and revoke transitions over the entry-authorized construction. X86-64 lowering
 shall revalidate the inactive hierarchy, all 503 final image leaves, copied ELF
 entry authority, all nine absent leaves, absent slot ordinal 511, immediate
-absent guard ordinal 510, and provider-private aligned top `0x00600000` without
+absent guard ordinal 510, and provider-private aligned top `0x00800000` without
 publishing an address, page-table index, or stack pointer. The checker and
 semantic model shall admit only policies `bounded-linux-initial-stack-slot` and
 `bounded-stack-slot-qualification-rollback`, keep both entry and slot authority
@@ -451,7 +451,7 @@ instruction-fetch, syscall, or BusyBox authority. This realizes
 The bounded static-ELF stack-backing increment shall admit one exact nested
 `(1, 1)` physical-frame request while stack-slot authority is live. X86-64
 lowering shall retain the static hierarchy identity, request at or above the
-first frame after its exact four-frame extent, reuse complete E820 and boot-
+first frame after its exact five-frame extent, reuse complete E820 and boot-
 reservation validation, keep the resulting backing identity opaque, and clear
 it while restoring the hierarchy identity on exact whole release. The checker
 and semantic model shall reject another shape, duplicate extent, partial or
@@ -583,7 +583,7 @@ and one exact typed removal back to it. X86-64 lowering shall validate that
 block, inactive translation obligations, exact stack leaf, and complete
 `busybox\0` and `true\0` objects; prove the executable-name identity equals
 the existing `argv[0]` object; clear the full frame; reconstruct a 16-byte-
-aligned block with `AT_EXECFN=(31,0x5fffe0)`, all prior facts, arguments,
+aligned block with `AT_EXECFN=(31,0x7fffe0)`, all prior facts, arguments,
 strings, and terminating `AT_NULL`; fence; and completely read back all
 content, aliases, and otherwise-zero bytes. Removal shall validate the
 extended block, clear the full frame, reconstruct the exact program-header-
@@ -1191,7 +1191,7 @@ service
 `initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit`
 and policy `bounded-static-elf-initial-stack-limit`. The clean-room x86-64
 payload shall issue query-only syscall 302 for PID zero, selector 3, null new
-limit, and exact writable stack candidate `0x005ffe60`. Lowering shall validate
+limit, and exact writable stack candidate `0x007ffe60`. Lowering shall validate
 the live state, executable continuation, exact request, and complete candidate;
 publish the established 8 MiB soft limit and infinite hard limit; retain no
 state; and return zero. The payload shall validate both words, balance its
@@ -1264,6 +1264,24 @@ mapping, random service, and terminal rollback unchanged. Negative,
 structural, and duplicate pinned-QEMU evidence shall enforce exact request,
 result, order, nonmutation, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001` and `TK-DEC-186`.
+
+The bounded static-ELF post-random-break-growth increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth`
+and policy `bounded-static-elf-post-random-brk-growth`. After the current-break
+witness, the clean-room x86-64 payload shall request native break
+`0x00618dc0`, require that exact result, and write/read last admitted byte
+`0x00618dbf`. Lowering shall consume one exact 34-frame anonymous extent, use
+the separately owned fifth hierarchy frame as the high leaf table, retain 34
+zero anonymous data frames, preserve the initial first-page behavior, publish
+eight remaining leaves in the existing table and 25 in the high table, and
+update the current break only after publication. Terminal handling shall
+retain the disjoint high stack leaf, remove all anonymous leaves, clear and verify the complete
+extent, and return it through the existing affine inverse. Negative,
+structural, full-workspace, and duplicate pinned-QEMU evidence shall enforce
+exact request, zero backing, hierarchy-boundary publication, last-byte access,
+complete rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001` and `TK-DEC-187`.
 
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
