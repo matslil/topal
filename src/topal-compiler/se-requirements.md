@@ -1148,6 +1148,19 @@ exact native dispatch, provider installation, access, restoration, clearing,
 and later-sequence preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001` and `TK-DEC-178`.
 
+The bounded static-ELF initial-clear-TID increment shall refine that entry with
+startup service `initial-brk-query-growth-x64-fs-base-clear-tid` and policy
+`bounded-static-elf-initial-clear-tid`. X86-64 lowering shall accept one native
+syscall 218 candidate `0x005f7710`, prove its complete writable word lies in the
+live anonymous break mapping, retain it without dereference, and return TID one
+through `SYSRETQ`. Terminal exit shall store and verify zero while the process
+address space remains active, clear the candidate, emit no futex wake, and
+preserve complete state and heap rollback. Checker, structural, negative, and
+duplicate pinned-QEMU evidence shall reject another candidate, result, order,
+duplicate, early terminal, invalid word, failed clear, retained state, native
+source detail, or recoverable failure. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CLEAR-TID-001` and `TK-DEC-179`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

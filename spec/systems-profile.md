@@ -3414,6 +3414,34 @@ or recoverable disposition SHALL be invalid. This rule SHALL NOT admit
 or initialization, multiple threads, cloning, context-switch restoration,
 signals, BusyBox execution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CLEAR-TID-001 — Initial static-process exit word
+
+The bounded static-process entry refinement MAY replace
+`startup is initial-brk-query-growth-x64-fs-base` with
+`startup is initial-brk-query-growth-x64-fs-base-clear-tid` and select policy
+`bounded-static-elf-initial-clear-tid`. After the exact thread-pointer install
+required by `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001`, the provider MAY
+accept exactly one initial-thread exit-word registration under
+`TOPAL-SYSTEMS-USER-CLEAR-TID-001`.
+
+The initial x86-64 qualification SHALL accept native syscall 218 only with
+candidate `0x005f7710` and a continuation inside the sealed executable mapping.
+The complete writable four-byte candidate SHALL lie in the live anonymous
+break reserve. The provider SHALL retain it without dereference and return TID
+one through `SYSRETQ`. `exit_group(0)` SHALL be accepted only after registration.
+While the process address space remains active, terminal handling SHALL store
+zero to the retained word, verify it, clear the private candidate, and only
+then restore kernel state and revoke the heap. No futex wake SHALL be emitted.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OK` observation SHALL
+follow the FS-base observation and precede the process-exited observation. The
+qualification inverse SHALL prove and clear complete startup state. Another
+candidate, result, order, duplicate registration, early exit, incomplete or
+unwritable word, failed clear, retained state, futex wake, source-visible native
+representation, or recoverable disposition SHALL be invalid. This rule SHALL
+NOT admit robust lists, cloning, multiple threads, futex waiters, signals,
+BusyBox execution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
