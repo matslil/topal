@@ -60,13 +60,21 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 28],
+            fixture[0xA_6580 : 0xA_6580 + 66],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
                     0x31, 0xFF,
                     0x0F, 0x05,
                     0x48, 0x3D, 0x00, 0x70, 0x5F, 0x00,
+                    0x75, 0x2F,
+                    0xBF, 0xC0, 0x7D, 0x5F, 0x00,
+                    0xB8, 0x0C, 0, 0, 0,
+                    0x0F, 0x05,
+                    0x48, 0x3D, 0xC0, 0x7D, 0x5F, 0x00,
+                    0x75, 0x1B,
+                    0xC6, 0x04, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
+                    0x80, 0x3C, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
                     0x75, 0x09,
                     0x31, 0xFF,
                     0xB8, 0xE7, 0, 0, 0,
@@ -78,12 +86,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/160")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/161")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/148")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/149")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/158",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/159",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -189,6 +197,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",

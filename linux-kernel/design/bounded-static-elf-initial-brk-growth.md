@@ -19,10 +19,10 @@ and restores the completed owner without retaining runtime heap state.
 
 ## Portable boundary
 
-Source names one bounded initial program-break growth service and its opaque
-reserve identity. It does not name the requested or returned address, page
-size, mapping slot, physical frame, PTE, invalidation instruction, syscall
-number, or register.
+Source names one bounded initial program-break growth profile. The artifact
+provides the profile's opaque reserve identity; source does not name it. Source
+also does not name the requested or returned address, page size, mapping slot,
+physical frame, PTE, invalidation instruction, syscall number, or register.
 
 The portable contract is byte-granular break state backed by an exclusively
 owned zero page. X86-64, AArch64, and RISC-V providers may realize the mapping
