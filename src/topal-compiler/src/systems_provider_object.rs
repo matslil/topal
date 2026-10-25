@@ -19,11 +19,14 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/140";
+    "topal.provider-object.x86_64-qemu-pc-q35/141";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
 pub const X86_SYSTEMS_ENTROPY_STORAGE_SECTION: &str = ".bss.topal.entropy";
+pub const X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION: &str = ".bss.topal.process";
+pub const X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL: &str =
+    "topal_x86_static_process_brk_reserve";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
@@ -1900,6 +1903,27 @@ pub fn generate_x86_64_systems_provider_object(
         scope: SymbolScope::Linkage,
         weak: false,
         section: SymbolSection::Section(entropy_storage),
+        flags: SymbolFlags::None,
+    });
+
+    let process_storage = object.add_section(
+        Vec::new(),
+        X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION
+            .as_bytes()
+            .to_vec(),
+        SectionKind::UninitializedData,
+    );
+    let brk_reserve_offset = object.append_section_bss(process_storage, 4096, 4096);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL
+            .as_bytes()
+            .to_vec(),
+        value: brk_reserve_offset,
+        size: 4096,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(process_storage),
         flags: SymbolFlags::None,
     });
 
@@ -8892,7 +8916,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     const TAG: u32 = 0x0fc8;
     const VALUE: u32 = 0x0fd0;
     const TERMINATOR: u32 = 0x0fd8;
-    const CONTEXT_QWORDS: u32 = 14;
+    const CONTEXT_QWORDS: u32 = 16;
     let mut code = X86FunctionEncoder::default();
 
     // Preserve static root, metadata, payload, bootstrap root, and stack backing.
@@ -8936,6 +8960,24 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_image_stack_leaf_root_verification(&mut code)?;
     emit_static_image_stack_leaf_entry_verification(&mut code)?;
     emit_static_image_resident_program_header_verification(&mut code)?;
+
+    // The exact bounded heap reserve is a distinct provider-owned zero page.
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xa9, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x48, 0x89, 0xc7, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
+    ]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x83, 0xbe, 0xb8, 0x0f, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x89, 0x72, 0x70]);
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
+    code.bytes(&[0x49, 0x89, 0x42, 0x78]);
 
     // Preserve the opaque random object while reusing the exact deterministic
     // initial-stack verifier, then restore and verify its published ABI facts.
@@ -9026,7 +9068,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-brk");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 1]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fatal");
@@ -9040,9 +9082,30 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("returned");
 
     code.bind("static-process-brk")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
-    code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "static-process-brk-query");
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x005f_7dc0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4c, 0x89, 0xc0, 0x48, 0x83, 0xc8, 0x07, 0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0000_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x09, 0xc8, 0x48, 0x89, 0x82, 0xb8, 0x0f, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0, 0x48, 0xb8]);
+    code.bytes(&0x005f_7000_u64.to_le_bytes());
+    code.bytes(&[0x0f, 0x01, 0x38, 0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 2]);
+    code.bytes(&[0x48, 0x89, 0xf8, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-brk-query")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x81, 0xf9]);
     code.bytes(&0x0040_1000_u32.to_le_bytes());
@@ -9059,7 +9122,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 1]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x49, 0x3b, 0x42, 0x10]);
@@ -9077,6 +9140,21 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
     for context_offset in [8_u8, 48] {
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    code.bytes(&[0x49, 0x8b, 0x72, 0x70]);
+    code.bytes(&[0x48, 0xc7, 0x86, 0xb8, 0x0f, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x83, 0xbe, 0xb8, 0x0f, 0, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xab,
+    ]);
+    code.bytes(&[
+        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
+    ]);
+    code.jump_if(0x85, "fatal");
+    for context_offset in [112_u8, 120] {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
     // Hardware sets Accessed on the entry leaf and Accessed/Dirty on the user
@@ -9108,7 +9186,7 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fail");
     code.bytes(&[0x80, 0x3f, 2]);
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x80, 0x7f, 104, 1]);
+    code.bytes(&[0x80, 0x7f, 104, 2]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x48, 0x3b, 0x47, 0x10]);
@@ -9117,7 +9195,11 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
         code.jump_if(0x85, "fail");
     }
-    code.bytes(&[0x31, 0xc0, 0xb9, 14, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    for offset in [112_u8, 120] {
+        code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x31, 0xc0, 0xb9, 16, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -12079,12 +12161,15 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         assert_eq!(
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 28],
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 66],
             &[
                 0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05, 0x48, 0x3d, 0x00, 0x70, 0x5f, 0x00,
-                0x75, 0x09, 0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b
+                0x75, 0x2f, 0xbf, 0xc0, 0x7d, 0x5f, 0x00, 0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05,
+                0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, 0x75, 0x1b, 0xc6, 0x04, 0x25, 0x00, 0x70,
+                0x5f, 0x00, 0x5a, 0x80, 0x3c, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, 0x75, 0x09,
+                0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b
             ],
-            "the clean-room process must query brk before terminal native SYSCALL"
+            "the clean-room process must query and grow brk before terminal native SYSCALL"
         );
         assert_eq!(
             process_enter
@@ -12132,7 +12217,7 @@ assert bytes(output) == block[32:]
             process_restore
                 .windows(12)
                 .any(|window| window
-                    == [0x31, 0xc0, 0xb9, 14, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
+                    == [0x31, 0xc0, 0xb9, 16, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
             "qualification restoration must clear the complete private context"
         );
 

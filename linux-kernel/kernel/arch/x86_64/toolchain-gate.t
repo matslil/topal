@@ -428,11 +428,12 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query,
+                                                                                startup is initial-brk-query-growth,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-initial-brk-query
+                                                                                policy is bounded-static-elf-initial-brk-growth
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK"
                                                                               randomized-static-process-after-entry-restoration is unmapped static image process restore entry (
                                                                                 owner is completed-static-process-after-entry,
