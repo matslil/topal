@@ -79,6 +79,7 @@ MARKERS = (
     b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
     b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
@@ -313,8 +314,18 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 14] = bytes(
-        [0xBF, 0, 0, 0, 0, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B]
+    image[0xA_6580 : 0xA_6580 + 28] = bytes(
+        [
+            0xB8, 0x0C, 0, 0, 0,
+            0x31, 0xFF,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x00, 0x70, 0x5F, 0x00,
+            0x75, 0x09,
+            0x31, 0xFF,
+            0xB8, 0xE7, 0, 0, 0,
+            0x0F, 0x05,
+            0x0F, 0x0B,
+        ]
     )
     return bytes(image)
 
@@ -536,7 +547,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/159",
+        "schema": "topal-kernel-toolchain-gate-qemu/160",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
