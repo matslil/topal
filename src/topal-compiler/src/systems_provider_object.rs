@@ -11771,6 +11771,39 @@ assert bytes(output) == block[32:]
             );
         }
 
+        let deliver_initial_random = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        );
+        let revoke_initial_random = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        );
+        for offset in [0x0e70_u32, 0x0e78, 0x0fc8, 0x0fd0] {
+            assert!(
+                deliver_initial_random
+                    .windows(7)
+                    .any(|window| window[3..7] == offset.to_le_bytes()),
+                "initial-random delivery must address every object and auxiliary-vector qword"
+            );
+            assert!(
+                revoke_initial_random
+                    .windows(7)
+                    .any(|window| window[3..7] == offset.to_le_bytes()),
+                "initial-random inverse must address every object and auxiliary-vector qword"
+            );
+        }
+        assert!(
+            deliver_initial_random
+                .windows(8)
+                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+        );
+        assert!(
+            revoke_initial_random
+                .windows(8)
+                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+        );
+
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
         assert!(copy_payload.len() > 8_000);
         assert_eq!(&copy_payload[..2], &[0x57, 0x56]);
