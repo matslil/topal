@@ -168,6 +168,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF entropy queue-address coexistence](bounded-static-elf-entropy-queue-address-coexistence.md)
 - [Bounded static ELF entropy queue-activation coexistence](bounded-static-elf-entropy-queue-activation-coexistence.md)
 - [Bounded static ELF entropy request-completion coexistence](bounded-static-elf-entropy-request-completion-coexistence.md)
+- [Bounded static ELF entropy-sample capture coexistence](bounded-static-elf-entropy-sample-capture-coexistence.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
