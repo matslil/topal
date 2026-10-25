@@ -62,12 +62,12 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/152")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/153")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/140")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/141")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/150",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/151",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -166,6 +166,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
