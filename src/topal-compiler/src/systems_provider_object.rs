@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/134";
+    "topal.provider-object.x86_64-qemu-pc-q35/135";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -97,6 +97,8 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_NEGOTIATION_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_negotiation";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_queue";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_bus_master";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -1472,6 +1474,12 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL,
         &static_image_qualify_entropy_queue()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL,
+        &static_image_qualify_entropy_bus_master()?,
     );
     append_encoded_function(
         &mut object,
@@ -8646,6 +8654,10 @@ fn static_image_qualify_entropy_queue() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_bus_master() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -11382,6 +11394,10 @@ assert bytes(output) == block[32:]
         );
         let qualify_entropy_queue =
             symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_SYMBOL);
+        let qualify_entropy_bus_master = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11400,6 +11416,7 @@ assert bytes(output) == block[32:]
             qualify_entropy_transport,
             qualify_entropy_negotiation,
             qualify_entropy_queue,
+            qualify_entropy_bus_master,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,
