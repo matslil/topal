@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/150";
+    "topal.provider-object.x86_64-qemu-pc-q35/151";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -3682,7 +3682,7 @@ fn user_release_initial_anonymous_mapping() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x8b, 0x87, 0xc0, 0x00, 0x00, 0x00]);
     code.bytes(&[0x48, 0x85, 0xc0]);
     code.jump_if(0x84, "fail");
-    code.bytes(&[0x48, 0x83, 0xbf, 0xc8, 0x00, 0x00, 0x00, 0x01]);
+    code.bytes(&[0x48, 0x83, 0xbf, 0xc8, 0x00, 0x00, 0x00, 1]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x8b, 0x4f, 0x68]);
     code.bytes(&[0x48, 0x85, 0xc9]);
@@ -6166,7 +6166,9 @@ fn physical_frame_selector() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "count-ready");
     code.bytes(&[0x83, 0xfa, 0x03]); // frame count == 3
     code.jump_if(0x84, "count-ready");
-    code.bytes(&[0x83, 0xfa, 0x04]); // frame count == 4
+    code.bytes(&[0x83, 0xfa, 0x05]); // frame count == 5
+    code.jump_if(0x84, "count-ready");
+    code.bytes(&[0x83, 0xfa, 34]); // post-random anonymous growth extent
     code.jump_if(0x84, "count-ready");
     code.bytes(&[0x81, 0xfa, 0xf7, 0x01, 0x00, 0x00]); // frame count == 503
     code.jump_if(0x85, "fail");
@@ -6457,8 +6459,14 @@ fn emit_static_image_published_stack_leaf_verification(
     emit_role(code, labels[1], 396, 0x0000_0000_0000_0005)?;
     emit_role(code, labels[2], 96, 0x8000_0000_0000_0005)?;
     emit_role(code, labels[3], 10, 0x8000_0000_0000_0007)?;
-    code.bytes(&[0x31, 0xc0, 0xb9, 0x08, 0x00, 0x00, 0x00]);
-    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // seven spare entries plus guard absent
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // remaining low-table entries absent
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x48, 0x8b, 0x3c, 0x24, 0x48, 0x81, 0xc7, 0x00, 0x40, 0x00, 0x00,
+    ]);
+    code.bytes(&[0x31, 0xc0, 0xb9, 0xff, 0x01, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // high-table prefix below the stack
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0xb8]);
     code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
@@ -6560,16 +6568,16 @@ fn static_image_stack_leaf(publish: bool) -> Result<Vec<u8>, CompileError> {
     emit_static_image_stack_leaf_entry_verification(&mut code)?;
     emit_static_image_stack_backing_zero_verification(&mut code)?;
 
-    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]); // leaf metadata
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]); // hierarchy base
     if publish {
         code.bytes(&[0x4c, 0x89, 0xd8]);
         code.bytes(&[0x49, 0xb8]);
         code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
         code.bytes(&[0x4c, 0x09, 0xc0]);
-        code.bytes(&[0x48, 0x89, 0x86, 0xf8, 0x0f, 0x00, 0x00]);
+        code.bytes(&[0x48, 0x89, 0x86, 0xf8, 0x4f, 0x00, 0x00]);
     } else {
         code.bytes(&[
-            0x48, 0xc7, 0x86, 0xf8, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x48, 0xc7, 0x86, 0xf8, 0x4f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         ]);
     }
     code.bytes(&[0x0f, 0xae, 0xf8]); // sfence before complete readback
@@ -6627,8 +6635,8 @@ fn emit_static_image_initialized_stack_entry_verification(
     const STACK_ENTRY_OFFSET: u32 = 0x0fa0;
     const BUSYBOX_STRING_OFFSET: u32 = 0x0fe0;
     const TRUE_STRING_OFFSET: u32 = 0x0fe8;
-    const BUSYBOX_POINTER: u64 = 0x005f_ffe0;
-    const TRUE_POINTER: u64 = 0x005f_ffe8;
+    const BUSYBOX_POINTER: u64 = 0x007f_ffe0;
+    const TRUE_POINTER: u64 = 0x007f_ffe8;
     const BUSYBOX_BYTES: u64 = 0x0078_6f62_7973_7562;
     const TRUE_BYTES: u64 = 0x0000_0000_6575_7274;
 
@@ -6733,8 +6741,8 @@ fn static_image_stack_entry(initialize: bool) -> Result<Vec<u8>, CompileError> {
         code.bytes(&STACK_ENTRY_OFFSET.to_le_bytes());
         code.bytes(&2_u32.to_le_bytes());
         for (offset, value) in [
-            (STACK_ENTRY_OFFSET + 8, 0x005f_ffe0_u64),
-            (STACK_ENTRY_OFFSET + 16, 0x005f_ffe8_u64),
+            (STACK_ENTRY_OFFSET + 8, 0x007f_ffe0_u64),
+            (STACK_ENTRY_OFFSET + 16, 0x007f_ffe8_u64),
             (BUSYBOX_STRING_OFFSET, 0x0078_6f62_7973_7562_u64),
             (TRUE_STRING_OFFSET, 0x0000_0000_6575_7274_u64),
         ] {
@@ -6816,8 +6824,8 @@ fn emit_static_image_pagesz_stack_entry_verification(
     code.jump_if(0x85, "fail");
     for (offset, expected) in [
         (ENTRY_OFFSET, 2_u64),
-        (ENTRY_OFFSET + 8, 0x005f_ffe0),
-        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 8, 0x007f_ffe0),
+        (ENTRY_OFFSET + 16, 0x007f_ffe8),
         (ENTRY_OFFSET + 40, 6),
         (ENTRY_OFFSET + 48, 4096),
         (0x0fe0, 0x0078_6f62_7973_7562),
@@ -6850,8 +6858,8 @@ fn emit_static_image_stack_entry_words(code: &mut X86FunctionEncoder, pagesz: bo
     let entry_offset = if pagesz { 0x0f90_u32 } else { 0x0fa0_u32 };
     for (offset, value) in [
         (entry_offset, 2_u64),
-        (entry_offset + 8, 0x005f_ffe0),
-        (entry_offset + 16, 0x005f_ffe8),
+        (entry_offset + 8, 0x007f_ffe0),
+        (entry_offset + 16, 0x007f_ffe8),
     ] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
@@ -6997,8 +7005,8 @@ fn emit_static_image_entry_fact_stack_verification(
     code.jump_if(0x85, "fail");
     for (offset, expected) in [
         (ENTRY_OFFSET, 2_u64),
-        (ENTRY_OFFSET + 8, 0x005f_ffe0),
-        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 8, 0x007f_ffe0),
+        (ENTRY_OFFSET + 16, 0x007f_ffe8),
         (ENTRY_OFFSET + 40, 6),
         (ENTRY_OFFSET + 48, 4096),
         (ENTRY_OFFSET + 56, 9),
@@ -7033,8 +7041,8 @@ fn emit_static_image_entry_fact_stack_words(code: &mut X86FunctionEncoder) {
     const ENTRY_OFFSET: u32 = 0x0f80;
     for (offset, value) in [
         (ENTRY_OFFSET, 2_u64),
-        (ENTRY_OFFSET + 8, 0x005f_ffe0),
-        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 8, 0x007f_ffe0),
+        (ENTRY_OFFSET + 16, 0x007f_ffe8),
         (ENTRY_OFFSET + 40, 6),
         (ENTRY_OFFSET + 48, 4096),
         (ENTRY_OFFSET + 56, 9),
@@ -7173,8 +7181,8 @@ fn emit_static_image_program_header_stack_verification(
     code.jump_if(0x85, "fail");
     for (offset, expected) in [
         (ENTRY_OFFSET, 2_u64),
-        (ENTRY_OFFSET + 8, 0x005f_ffe0),
-        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 8, 0x007f_ffe0),
+        (ENTRY_OFFSET + 16, 0x007f_ffe8),
         (ENTRY_OFFSET + 40, 6),
         (ENTRY_OFFSET + 48, 4096),
         (ENTRY_OFFSET + 56, 9),
@@ -7231,8 +7239,8 @@ fn emit_static_image_program_header_stack_words(code: &mut X86FunctionEncoder) {
     const ENTRY_OFFSET: u32 = 0x0f50;
     for (offset, value) in [
         (ENTRY_OFFSET, 2_u64),
-        (ENTRY_OFFSET + 8, 0x005f_ffe0),
-        (ENTRY_OFFSET + 16, 0x005f_ffe8),
+        (ENTRY_OFFSET + 8, 0x007f_ffe0),
+        (ENTRY_OFFSET + 16, 0x007f_ffe8),
         (ENTRY_OFFSET + 40, 6),
         (ENTRY_OFFSET + 48, 4096),
         (ENTRY_OFFSET + 56, 9),
@@ -7369,8 +7377,8 @@ fn emit_static_image_execfn_stack(
     const O: u32 = 0x0f40;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -7382,7 +7390,7 @@ fn emit_static_image_execfn_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (0x0fe0, 0x0078_6f62_7973_7562),
         (0x0fe8, 0x0000_0000_6575_7274),
     ];
@@ -7536,8 +7544,8 @@ fn emit_static_image_credential_stack(
     const O: u32 = 0x0f00;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -7549,7 +7557,7 @@ fn emit_static_image_credential_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -7720,8 +7728,8 @@ fn emit_static_image_secure_mode_stack(
     const O: u32 = 0x0ef0;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -7733,7 +7741,7 @@ fn emit_static_image_secure_mode_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -7906,8 +7914,8 @@ fn emit_static_image_clock_tick_rate_stack(
     const O: u32 = 0x0ee0;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -7919,7 +7927,7 @@ fn emit_static_image_clock_tick_rate_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -8094,8 +8102,8 @@ fn emit_static_image_platform_stack(
     const O: u32 = 0x0ed0;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -8107,7 +8115,7 @@ fn emit_static_image_platform_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -8116,7 +8124,7 @@ fn emit_static_image_platform_stack(
         (O + 216, 17),
         (O + 224, 100),
         (O + 232, 15),
-        (O + 240, 0x005f_fff0),
+        (O + 240, 0x007f_fff0),
         (0x0fe0, 0x0078_6f62_7973_7562),
         (0x0fe8, 0x0000_0000_6575_7274),
         (0x0ff0, u64::from_le_bytes(*b"x86_64\0\0")),
@@ -8285,8 +8293,8 @@ fn emit_static_image_hardware_capabilities_stack(
     const O: u32 = 0x0eb0;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -8298,7 +8306,7 @@ fn emit_static_image_hardware_capabilities_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -8307,7 +8315,7 @@ fn emit_static_image_hardware_capabilities_stack(
         (O + 216, 17),
         (O + 224, 100),
         (O + 232, 15),
-        (O + 240, 0x005f_fff0),
+        (O + 240, 0x007f_fff0),
         (O + 248, 16),
         (O + 256, 0x178b_fbfd),
         (O + 264, 26),
@@ -8475,8 +8483,8 @@ fn emit_static_image_load_metadata_stack(
     const O: u32 = 0x0e90;
     let words = [
         (O, 2_u64),
-        (O + 8, 0x005f_ffe0),
-        (O + 16, 0x005f_ffe8),
+        (O + 8, 0x007f_ffe0),
+        (O + 16, 0x007f_ffe8),
         (O + 40, 6),
         (O + 48, 4096),
         (O + 56, 9),
@@ -8488,7 +8496,7 @@ fn emit_static_image_load_metadata_stack(
         (O + 104, 5),
         (O + 112, 11),
         (O + 120, 31),
-        (O + 128, 0x005f_ffe0),
+        (O + 128, 0x007f_ffe0),
         (O + 136, 11),
         (O + 152, 12),
         (O + 168, 13),
@@ -8497,7 +8505,7 @@ fn emit_static_image_load_metadata_stack(
         (O + 216, 17),
         (O + 224, 100),
         (O + 232, 15),
-        (O + 240, 0x005f_fff0),
+        (O + 240, 0x007f_fff0),
         (O + 248, 16),
         (O + 256, 0x178b_fbfd),
         (O + 264, 26),
@@ -8903,7 +8911,7 @@ fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError
         code.bytes(&target_offset.to_le_bytes());
         code.jump_if(0x85, "fail_wipe");
     }
-    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x007f_fe70)] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
         code.bytes(&[0x48, 0x89, 0x87]);
@@ -9037,7 +9045,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_image_stack_leaf_entry_verification(&mut code)?;
     emit_static_image_resident_program_header_verification(&mut code)?;
 
-    // The exact bounded heap reserve is a distinct provider-owned zero page.
+    // The exact bounded heap reserve is 34 provider-owned zero data pages;
+    // the fifth hierarchy frame is the independent high leaf table.
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
     code.bytes(&[0x48, 0x85, 0xc0]);
@@ -9045,7 +9054,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xa9, 0xff, 0x0f, 0, 0]);
     code.jump_if(0x85, "fail");
     code.bytes(&[
-        0x48, 0x89, 0xc7, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
+        0x48, 0x89, 0xc7, 0x31, 0xc0, 0xb9, 0x00, 0x44, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
     ]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
@@ -9065,7 +9074,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x49, 0x8b, 0x83]);
     code.bytes(&(OBJECT + 8).to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x42, 0x28]);
-    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x007f_fe70)] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
         code.bytes(&[0x49, 0x39, 0x83]);
@@ -9090,7 +9099,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&target_offset.to_le_bytes());
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
-    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x007f_fe70)] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
         code.bytes(&[0x49, 0x89, 0x83]);
@@ -9131,7 +9140,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
 
     code.bytes(&[0x48, 0x8b, 0x04, 0x24, 0x0f, 0x22, 0xd8]);
     code.bytes(&[0x6a, 0x23, 0x48, 0xb8]);
-    code.bytes(&0x005f_ffa0_u64.to_le_bytes());
+    code.bytes(&0x007f_ffa0_u64.to_le_bytes());
     code.bytes(&[0x50, 0x6a, 0x02, 0x6a, 0x2b, 0x48, 0xb8]);
     code.bytes(&0x004a_6580_u64.to_le_bytes());
     code.bytes(&[0x50, 0x48, 0xcf]);
@@ -9158,7 +9167,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-getrandom");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 7]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
@@ -9224,10 +9233,15 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-brk")?;
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "static-process-brk-query");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 1]);
+    code.jump_if(0x84, "static-process-brk-initial-growth");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
+    code.jump_if(0x84, "static-process-brk-post-random-growth");
+    code.jump("fatal");
+
+    code.bind("static-process-brk-initial-growth")?;
     code.bytes(&[0x48, 0x81, 0xff]);
     code.bytes(&0x005f_7dc0_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 1]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
@@ -9243,6 +9257,96 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x0f, 0x01, 0x38, 0x0f, 0xae, 0xf0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 2]);
     code.bytes(&[0x48, 0x89, 0xf8, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-brk-post-random-growth")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0061_8dc0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x89, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+
+    // The existing first heap leaf must still name data frame zero while every
+    // other low-table heap slot and the private next table remain absent.
+    code.bytes(&[0x48, 0x8b, 0x82, 0xb8, 0x0f, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4d, 0x89, 0xc2, 0x49, 0x83, 0xca, 0x07]);
+    code.bytes(&[0x49, 0x0f, 0xba, 0xea, 0x3f, 0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    for offset in (0x0fc0_u32..=0x0ff8).step_by(8) {
+        code.bytes(&[0x48, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x49, 0x8d, 0xba, 0x00, 0x40, 0, 0, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0xff, 0x01, 0, 0]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fatal");
+
+    // Fill the heap prefix in the already-published high table, then fill the
+    // remaining entries in the low table. The high stack leaf stays disjoint.
+    code.bytes(&[0x4d, 0x8d, 0x90, 0x00, 0x90, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x48, 0x8d, 0xb8, 0x00, 0x40, 0, 0, 0x49, 0xb9]);
+    code.bytes(&0x8000_0000_0000_0007_u64.to_le_bytes());
+    code.bytes(&[0xb9, 25, 0, 0, 0]);
+    code.bind("static-process-brk-post-random-next-leaves")?;
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x4c, 0x09, 0xc8, 0x48, 0xab]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0, 0x10, 0, 0, 0xff, 0xc9]);
+    code.jump_if(0x85, "static-process-brk-post-random-next-leaves");
+
+    code.bytes(&[0x4d, 0x8d, 0x90, 0x00, 0x10, 0, 0]);
+    code.bytes(&[0x48, 0x8d, 0xba, 0xc0, 0x0f, 0, 0, 0xb9, 8, 0, 0, 0]);
+    code.bind("static-process-brk-post-random-low-leaves")?;
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x4c, 0x09, 0xc8, 0x48, 0xab]);
+    code.bytes(&[0x49, 0x81, 0xc2, 0, 0x10, 0, 0, 0xff, 0xc9]);
+    code.jump_if(0x85, "static-process-brk-post-random-low-leaves");
+
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x49, 0x8d, 0x92, 0x00, 0x40, 0, 0, 0x48, 0x83, 0xca, 0x07, 0x48, 0x39, 0xd0,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x005f_8000_u64.to_le_bytes());
+    code.bytes(&[0xb9, 33, 0, 0, 0]);
+    code.bind("static-process-brk-post-random-invalidate")?;
+    code.bytes(&[0x0f, 0x01, 0x38, 0x48, 0x05, 0, 0x10, 0, 0, 0xff, 0xc9]);
+    code.jump_if(0x85, "static-process-brk-post-random-invalidate");
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 7]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0xbf]);
+    code.bytes(&0x0061_8dc0_u32.to_le_bytes());
+    code.bytes(&[0xb8]);
+    code.bytes(&0x0061_8dc0_u32.to_le_bytes());
+    code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
@@ -9371,7 +9475,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x49, 0x81, 0xfa]);
-    code.bytes(&0x005f_fe60_u32.to_le_bytes());
+    code.bytes(&0x007f_fe60_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x49, 0xc7, 0x02, 0, 0, 0x80, 0]);
     code.bytes(&[0x49, 0xc7, 0x42, 0x08, 0xff, 0xff, 0xff, 0xff]);
@@ -9514,7 +9618,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 6]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 7]);
     code.jump_if(0x85, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -9551,17 +9655,28 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.jump_if(0x85, "fatal");
     }
     code.bytes(&[0x49, 0x8b, 0x72, 0x70]);
-    code.bytes(&[0x48, 0xc7, 0x86, 0xb8, 0x0f, 0, 0, 0, 0, 0, 0]);
+    code.bytes(&[0x48, 0x8d, 0xbe, 0xb8, 0x0f, 0, 0, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 9, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
-    code.bytes(&[0x48, 0x83, 0xbe, 0xb8, 0x0f, 0, 0, 0]);
+    code.bytes(&[0x48, 0x8d, 0xbe, 0xb8, 0x0f, 0, 0, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 9, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x42, 0x18]);
+    code.bytes(&[0x48, 0x8d, 0xb8, 0x00, 0x40, 0, 0, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 25, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x49, 0x8b, 0x42, 0x18]);
+    code.bytes(&[0x48, 0x8d, 0xb8, 0x00, 0x40, 0, 0, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 25, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[
-        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xab,
+        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x44, 0, 0, 0xfc, 0xf3, 0x48, 0xab,
     ]);
     code.bytes(&[
-        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x02, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
+        0x49, 0x8b, 0x7a, 0x78, 0x31, 0xc0, 0xb9, 0x00, 0x44, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
     ]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xc6, 0x42, 0x68, 6]);
     for context_offset in [112_u8, 120] {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
@@ -9573,7 +9688,6 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     for offset in [0x0530_u32]
         .into_iter()
         .chain((0x0f28_u32..=0x0fb0).step_by(8))
-        .chain([0x0ff8])
     {
         let mask = if offset == 0x0530 { 0xdf } else { 0x9f };
         code.bytes(&[0x48, 0x83, 0xa6]);
@@ -9584,6 +9698,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&0x60_u32.to_le_bytes());
         code.jump_if(0x85, "fatal");
     }
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24]);
+    code.bytes(&[0x48, 0x83, 0xa0, 0xf8, 0x4f, 0, 0, 0x9f]);
+    code.bytes(&[0x48, 0xf7, 0x80, 0xf8, 0x4f, 0, 0]);
+    code.bytes(&0x60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
 
@@ -9636,7 +9755,7 @@ fn static_image_revoke_entropy_initial_random() -> Result<Vec<u8>, CompileError>
     let mut code = X86FunctionEncoder::default();
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "fail");
-    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x007f_fe70)] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
         code.bytes(&[0x48, 0x39, 0x87]);
@@ -9876,7 +9995,7 @@ fn emit_static_image_address_space_resource_validation(
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x39, 0xc1]); // hierarchy follows leaf metadata exactly
     code.jump_if(0x85, "fail");
-    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0x05, 0x00, 0x40, 0x00, 0x00]);
+    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0x05, 0x00, 0x50, 0x00, 0x00]);
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x40]);
     code.jump_if(0x87, "fail");
@@ -9905,7 +10024,7 @@ fn emit_static_image_address_space_hierarchy_verification_labeled(
     code: &mut X86FunctionEncoder,
     expect_inactive_root: bool,
     low_pd_label: &'static str,
-    low_pd_expected_label: &'static str,
+    _low_pd_expected_label: &'static str,
 ) -> Result<(), CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x1c, 0x24]); // hierarchy base
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // leaf metadata base
@@ -9936,14 +10055,27 @@ fn emit_static_image_address_space_hierarchy_verification_labeled(
     code.bytes(&[0xb9, 0xfc, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fail");
 
-    code.bytes(&[0x31, 0xc9]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_0000_00e3_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0x00, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_0020_00e3_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0x08, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x83, 0xc8, 0x27]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x10, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x40, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x18, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0xb9, 0x04, 0x00, 0x00, 0x00]);
     code.bind(low_pd_label)?;
     code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0xc1, 0xe0, 0x15]);
     code.bytes(&[0x48, 0x0d, 0xe3, 0x00, 0x00, 0x00]);
-    code.bytes(&[0x83, 0xf9, 0x02]);
-    code.jump_if(0x85, low_pd_expected_label);
-    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x83, 0xc8, 0x27]);
-    code.bind(low_pd_expected_label)?;
     code.bytes(&[0x49, 0x39, 0x84, 0xcb, 0x00, 0x20, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
@@ -9962,6 +10094,10 @@ fn emit_static_image_address_space_hierarchy_verification_labeled(
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x8d, 0xbb, 0xc0, 0x3f, 0x00, 0x00, 0x31, 0xc0]);
     code.bytes(&[0xb9, 0x08, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x49, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0xff, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fail");
 
     code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
@@ -9987,10 +10123,10 @@ fn static_image_attach_address_space() -> Result<Vec<u8>, CompileError> {
     )?;
 
     code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
-    code.bytes(&[0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
-    code.bytes(&[0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x4c, 0x8b, 0x1c, 0x24]);
     // Preseed x86 accessed/dirty state so the bounded active interval is byte-stable.
@@ -10015,6 +10151,10 @@ fn static_image_attach_address_space() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "construct-static-address-space-low-pd");
     code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x08, 0x48, 0x83, 0xc8, 0x27]);
     code.bytes(&[0x49, 0x89, 0x83, 0x10, 0x20, 0x00, 0x00]);
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x40, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x89, 0x83, 0x18, 0x20, 0x00, 0x00]);
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&0x0000_0000_fec0_00fb_u64.to_le_bytes());
     code.bytes(&[0x49, 0x89, 0x83, 0xb0, 0x3f, 0x00, 0x00]);
@@ -10210,10 +10350,10 @@ fn static_image_detach_address_space() -> Result<Vec<u8>, CompileError> {
     )?;
     emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
     code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
-    code.bytes(&[0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
-    code.bytes(&[0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
     code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
@@ -11431,8 +11571,8 @@ assert bytes(output) == block[32:]
         assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x01]));
         assert!(selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x03]));
         assert!(
-            selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x04]),
-            "selector must admit the exact four-frame static ELF hierarchy extent"
+            selector.windows(3).any(|bytes| bytes == [0x83, 0xfa, 0x05]),
+            "selector must admit the exact five-frame static ELF hierarchy extent"
         );
         assert!(
             selector
@@ -11624,17 +11764,17 @@ assert bytes(output) == block[32:]
         assert!(
             publish_stack_leaf
                 .windows(7)
-                .any(|bytes| bytes == [0x48, 0x89, 0x86, 0xf8, 0x0f, 0x00, 0x00]),
-            "stack-leaf publication must write only leaf ordinal 511"
+                .any(|bytes| bytes == [0x48, 0x89, 0x86, 0xf8, 0x4f, 0x00, 0x00]),
+            "stack-leaf publication must write only high-table leaf ordinal 511"
         );
         assert!(
             revoke_stack_leaf.windows(11).any(|bytes| {
                 bytes
                     == [
-                        0x48, 0xc7, 0x86, 0xf8, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                        0x48, 0xc7, 0x86, 0xf8, 0x4f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                     ]
             }),
-            "stack-leaf revocation must erase only leaf ordinal 511"
+            "stack-leaf revocation must erase only high-table leaf ordinal 511"
         );
         for bytes in [publish_stack_leaf.as_slice(), revoke_stack_leaf.as_slice()] {
             assert_eq!(
@@ -11662,8 +11802,18 @@ assert bytes(output) == block[32:]
                         *window == [0xb9, 0x08, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48]
                     })
                     .count(),
-                3,
-                "both hierarchy readbacks and the seven-spare-plus-guard readback must be complete"
+                2,
+                "both hierarchy MMIO-tail readbacks must be complete"
+            );
+            assert_eq!(
+                bytes
+                    .windows(8)
+                    .filter(|window| {
+                        *window == [0xb9, 0x09, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48]
+                    })
+                    .count(),
+                2,
+                "the nine absent low-table leaves must be read back before and after the transition"
             );
             assert!(
                 !bytes.windows(3).any(|window| window == [0x0f, 0x01, 0x3f]),
@@ -11698,8 +11848,8 @@ assert bytes(output) == block[32:]
         let clear_stack_entry =
             symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_CLEAR_STACK_ENTRY_SYMBOL);
         for expected in [
-            0x005f_ffe0_u64,
-            0x005f_ffe8,
+            0x007f_ffe0_u64,
+            0x007f_ffe8,
             0x0078_6f62_7973_7562,
             0x0000_0000_6575_7274,
         ] {
@@ -11964,7 +12114,7 @@ assert bytes(output) == block[32:]
             assert!(
                 bytes
                     .windows(8)
-                    .any(|window| window == 0x005f_ffe0_u64.to_le_bytes()),
+                    .any(|window| window == 0x007f_ffe0_u64.to_le_bytes()),
                 "each transition must encode or verify the argv[0] pointer alias"
             );
             assert!(
@@ -12210,7 +12360,7 @@ assert bytes(output) == block[32:]
             assert!(
                 bytes
                     .windows(8)
-                    .any(|window| window == 0x005f_fff0_u64.to_le_bytes()),
+                    .any(|window| window == 0x007f_fff0_u64.to_le_bytes()),
                 "AT_PLATFORM must point to the bounded platform object"
             );
             assert!(
@@ -12553,12 +12703,12 @@ assert bytes(output) == block[32:]
         assert!(
             deliver_initial_random
                 .windows(8)
-                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+                .any(|window| { window == 0x007f_fe70_u64.to_le_bytes() })
         );
         assert!(
             revoke_initial_random
                 .windows(8)
-                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+                .any(|window| { window == 0x007f_fe70_u64.to_le_bytes() })
         );
         for offset in [
             168_u32, 176, 192, 200, 208, 216, 224, 232, 240, 248, 256, 264, 272,
@@ -12583,7 +12733,7 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(8)
-                .any(|window| window == 0x005f_ffa0_u64.to_le_bytes()),
+                .any(|window| window == 0x007f_ffa0_u64.to_le_bytes()),
             "static process entry must derive the sealed initial stack"
         );
         assert!(
@@ -12593,7 +12743,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 438];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 476];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12625,6 +12775,10 @@ assert bytes(output) == block[32:]
             &[
                 0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05, 0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0, 0x75,
                 0xfe,
+            ][..],
+            &[
+                0xbf, 0xc0, 0x8d, 0x61, 0, 0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05, 0x48, 0x3d, 0xc0, 0x8d,
+                0x61, 0, 0x75, 0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -12720,7 +12874,6 @@ assert bytes(output) == block[32:]
         for offset in [0x0530_u32]
             .into_iter()
             .chain((0x0f28_u32..=0x0fb0).step_by(8))
-            .chain([0x0ff8])
         {
             let mask = if offset == 0x0530 { 0xdf } else { 0x9f };
             assert!(
@@ -12732,6 +12885,12 @@ assert bytes(output) == block[32:]
                 "terminal return must normalize only the entry, writable-image, and stack hardware status bits"
             );
         }
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == [0x48, 0x83, 0xa0, 0xf8, 0x4f, 0, 0, 0x9f]),
+            "terminal return must normalize the high-table stack leaf hardware status bits"
+        );
         assert!(
             process_restore
                 .windows(12)
@@ -12924,15 +13083,15 @@ assert bytes(output) == block[32:]
                 lowering
                     .windows(9)
                     .filter(|bytes| {
-                        *bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]
+                        *bytes == [0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]
                     })
                     .count(),
                 1,
-                "{role} must clear the complete four-frame hierarchy"
+                "{role} must clear the complete five-frame hierarchy"
             );
             assert!(
                 lowering.windows(9).any(|bytes| {
-                    bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]
+                    bytes == [0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]
                 }),
                 "{role} must read back the complete cleared hierarchy"
             );
@@ -13000,7 +13159,7 @@ assert bytes(output) == block[32:]
             assert!(
                 !lowering
                     .windows(9)
-                    .any(|bytes| bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]),
+                    .any(|bytes| bytes == [0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]),
                 "{role} must not mutate the attached hierarchy"
             );
             for (flags, count) in [
@@ -13107,7 +13266,7 @@ assert bytes(output) == block[32:]
         assert!(
             !authorize_entry
                 .windows(9)
-                .any(|bytes| { bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab] }),
+                .any(|bytes| { bytes == [0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab] }),
             "entry authority must not mutate the attached hierarchy"
         );
         assert_eq!(authorize_stack_slot, revoke_stack_slot);
@@ -13149,7 +13308,7 @@ assert bytes(output) == block[32:]
                 .windows(3)
                 .any(|bytes| bytes[..2] == [0x0f, 0x22])
                 && !authorize_stack_slot.windows(9).any(|bytes| {
-                    bytes == [0xb9, 0x00, 0x08, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]
+                    bytes == [0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]
                 }),
             "stack-slot authority must not modify a root or hierarchy byte"
         );

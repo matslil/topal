@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, qualify_entropy_split_ring, entropy_split_ring_marker, qualify_entropy_dma_preparation, entropy_dma_preparation_marker, qualify_entropy_queue_addresses, entropy_queue_addresses_marker, qualify_entropy_queue_activation, entropy_queue_activation_marker, qualify_entropy_request_completion, entropy_request_completion_marker, qualify_entropy_sample_capture, entropy_sample_capture_marker, qualify_entropy_sample_quality, entropy_sample_quality_marker, qualify_entropy_pool_lifecycle, entropy_pool_lifecycle_marker, qualify_entropy_generator_lifecycle, entropy_generator_lifecycle_marker, deliver_entropy_initial_random, entropy_initial_random_delivered_marker, enter_static_process, static_process_initial_brk_query_marker, static_process_initial_brk_growth_marker, static_process_initial_x64_fs_base_marker, static_process_initial_clear_tid_marker, static_process_initial_empty_robust_list_marker, static_process_initial_rseq_fallback_marker, static_process_initial_stack_limit_marker, static_process_initial_readlinkat_fallback_marker, static_process_initial_getrandom_marker, static_process_reusable_getrandom_marker, static_process_post_random_brk_query_marker, static_process_exited_marker, restore_static_process_entry, static_process_entry_restored_marker, revoke_entropy_initial_random, entropy_initial_random_revoked_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, qualify_entropy_split_ring, entropy_split_ring_marker, qualify_entropy_dma_preparation, entropy_dma_preparation_marker, qualify_entropy_queue_addresses, entropy_queue_addresses_marker, qualify_entropy_queue_activation, entropy_queue_activation_marker, qualify_entropy_request_completion, entropy_request_completion_marker, qualify_entropy_sample_capture, entropy_sample_capture_marker, qualify_entropy_sample_quality, entropy_sample_quality_marker, qualify_entropy_pool_lifecycle, entropy_pool_lifecycle_marker, qualify_entropy_generator_lifecycle, entropy_generator_lifecycle_marker, deliver_entropy_initial_random, entropy_initial_random_delivered_marker, enter_static_process, static_process_initial_brk_query_marker, static_process_initial_brk_growth_marker, static_process_initial_x64_fs_base_marker, static_process_initial_clear_tid_marker, static_process_initial_empty_robust_list_marker, static_process_initial_rseq_fallback_marker, static_process_initial_stack_limit_marker, static_process_initial_readlinkat_fallback_marker, static_process_initial_getrandom_marker, static_process_reusable_getrandom_marker, static_process_post_random_brk_query_marker, static_process_post_random_brk_growth_marker, static_process_exited_marker, restore_static_process_entry, static_process_entry_restored_marker, revoke_entropy_initial_random, entropy_initial_random_revoked_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -1340,6 +1340,17 @@ fn analyze_static_elf_frame_sequence(
     if !matches!(&static_process_post_random_brk_query_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK") {
         return Err(translation_edit_diagnostic(source, static_process_post_random_brk_query_marker_span, "static ELF process entry must publish its exact post-random-brk-query marker after reusable getrandom and before its exit marker"));
     }
+    let static_process_post_random_brk_growth_marker_span =
+        statement_span(static_process_post_random_brk_growth_marker);
+    let static_process_post_random_brk_growth_marker = analyze_operation(
+        source,
+        static_process_post_random_brk_growth_marker,
+        CompilerSystemsContextKind::Bootstrap,
+        allocator_context,
+    )?;
+    if !matches!(&static_process_post_random_brk_growth_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK") {
+        return Err(translation_edit_diagnostic(source, static_process_post_random_brk_growth_marker_span, "static ELF process entry must publish its exact post-random-brk-growth marker after the current-break query and before its exit marker"));
+    }
     let static_process_exited_marker_span = statement_span(static_process_exited_marker);
     let static_process_exited_marker = analyze_operation(source, static_process_exited_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
     if !matches!(&static_process_exited_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK") {
@@ -1850,7 +1861,7 @@ fn analyze_static_elf_frame_sequence(
         seal_marker,
         CompilerSystemsOperation::AllocatePhysicalFrames {
             request: CompilerPhysicalFrameRequest {
-                frame_count: 4,
+                frame_count: 5,
                 alignment_frames: 1,
             },
             failure_message: "static ELF hierarchy frame reservation failed".into(),
@@ -1954,6 +1965,7 @@ fn analyze_static_elf_frame_sequence(
         static_process_initial_getrandom_marker,
         static_process_reusable_getrandom_marker,
         static_process_post_random_brk_query_marker,
+        static_process_post_random_brk_growth_marker,
         static_process_exited_marker,
         CompilerSystemsOperation::RestoreStaticImageProcessEntry,
         static_process_entry_restored_marker,
@@ -2053,7 +2065,7 @@ fn parse_static_image_hierarchy_reservation(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires its exact owner and four-frame shape",
+            "static-image hierarchy reservation requires its exact owner and five-frame shape",
         ));
     };
     if !identifier_is(source, receiver, context_name)
@@ -2067,7 +2079,7 @@ fn parse_static_image_hierarchy_reservation(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires its exact owner and four-frame shape",
+            "static-image hierarchy reservation requires its exact owner and five-frame shape",
         ));
     }
     let mut owner = None;
@@ -2105,11 +2117,11 @@ fn parse_static_image_hierarchy_reservation(
             }
         }
     }
-    if owner != Some(construction_name) || frame_count != Some(4) || alignment_frames != Some(1) {
+    if owner != Some(construction_name) || frame_count != Some(5) || alignment_frames != Some(1) {
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image hierarchy reservation requires the exact sealed construction and four unit-aligned frames",
+            "static-image hierarchy reservation requires the exact sealed construction and five unit-aligned frames",
         ));
     }
     Ok(source.slice(name).to_owned())
@@ -4576,9 +4588,9 @@ fn parse_static_image_process_entry(
         vec![
             ("owner", owner_name),
             ("abi", "linux-x86-64-process"),
-            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query"),
+            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth"),
             ("terminal", "exit-group-zero"),
-            ("policy", "bounded-static-elf-post-random-brk-query"),
+            ("policy", "bounded-static-elf-post-random-brk-growth"),
         ]
     } else {
         vec![

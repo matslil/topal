@@ -108,7 +108,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK"
                                                                               static-elf-hierarchy-frames is unmapped static image construction reserve hierarchy (
                                                                                 owner is sealed-static-elf-construction,
-                                                                                frame-count is 4,
+                                                                                frame-count is 5,
                                                                                 alignment-frames is 1
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK"
@@ -428,9 +428,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query,
+                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-post-random-brk-query
+                                                                                policy is bounded-static-elf-post-random-brk-growth
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"
@@ -443,6 +443,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK"
                                                                               randomized-static-process-after-entry-restoration is unmapped static image process restore entry (
                                                                                 owner is completed-static-process-after-entry,
@@ -1319,14 +1320,14 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                                                   verified-data is completion-resumed user mapping load byte protected-data
                                                                                                                   writable-data is completion-resumed user mapping permit writable data verified-data
                                                                                                                   completion-resumed frames allocate (
-                                                                                                                    frame-count is 1,
+                                                                                                                    frame-count is 34,
                                                                                                                     alignment-frames is 1
                                                                                                                   )
                                                                                                                     Ok anonymous-frame then {
                                                                                                                       anonymous-page is completion-resumed user address space reserve anonymous (
                                                                                                                         address-space is user-space,
                                                                                                                         backing is anonymous-frame,
-                                                                                                                        layout is initial-anonymous-page
+                                                                                                                        layout is post-random-anonymous-growth-extent
                                                                                                                       )
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_USER_IMAGE_READY"
                                                                                                                   completion-resumed console write "TOPAL_KERNEL_BOOT_RESOURCE_OK"

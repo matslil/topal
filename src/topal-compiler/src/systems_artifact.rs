@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/168";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/157";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/169";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/158";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -823,7 +823,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         put_program_header(&mut image, index, row);
     }
     let entry_offset = 0x0a_6580;
-    image[entry_offset..entry_offset + 438].copy_from_slice(&[
+    image[entry_offset..entry_offset + 476].copy_from_slice(&[
         0xb8, 0x0c, 0, 0, 0, // brk
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
@@ -916,6 +916,14 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x0f, 0x05, // syscall
         0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // established current break
         0x75, 0xfe, // fail closed on a different query result
+        0xbf, 0xc0, 0x8d, 0x61, 0x00, // exact post-random growth request
+        0xb8, 0x0c, 0, 0, 0, // brk
+        0x0f, 0x05, // syscall
+        0x48, 0x3d, 0xc0, 0x8d, 0x61, 0x00, // admitted current break
+        0x75, 0xfe, // fail closed on a different growth result
+        0xc6, 0x04, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // final admitted byte
+        0x80, 0x3c, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // read it back
+        0x75, 0xfe, // fail closed on inaccessible or changed backing
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall
@@ -3202,7 +3210,7 @@ impl RootEncoder {
             && !self.retained_static_elf_payload;
         let nested_static_elf_hierarchy = self.static_image == RootStaticImageState::Sealed
             && self.physical_frame_count.is_none()
-            && frame_count == 4
+            && frame_count == 5
             && !self.retained_static_elf_payload;
         let nested_static_elf_stack_backing = self.static_image
             == RootStaticImageState::StackSlotAuthorized
@@ -3214,15 +3222,20 @@ impl RootEncoder {
             && self.physical_frame_count.is_none()
             && frame_count == 1
             && !self.retained_static_elf_payload;
+        let post_random_anonymous_extent = self.user_execution
+            == RootUserExecutionState::UserMappingWritableData(2)
+            && self.physical_frame_count.is_none()
+            && frame_count == 34;
         if !self.frame_allocator_created
             || (self.physical_frame_count.is_some() && !nested_static_elf_metadata)
             || self.kernel_mapping_live
-            || !matches!(frame_count, 1..=4 | 503)
+            || !matches!(frame_count, 1..=3 | 5 | 34 | 503)
             || alignment_frames != 1
-            || (frame_count == 4 && !nested_static_elf_hierarchy)
+            || (frame_count == 5 && !nested_static_elf_hierarchy)
             || (self.static_image == RootStaticImageState::Sealed && !nested_static_elf_hierarchy)
             || (self.static_image == RootStaticImageState::StackSlotAuthorized
                 && !nested_static_elf_stack_backing)
+            || (frame_count == 34 && !post_random_anonymous_extent)
             || (self.user_execution == RootUserExecutionState::AddressSpacePrepared
                 && frame_count != 2)
         {
@@ -3240,7 +3253,7 @@ impl RootEncoder {
         } else if nested_static_elf_stack_backing {
             self.bytes.extend_from_slice(&[0x48, 0x89, 0xdd]); // retain hierarchy in rbp
             self.bytes
-                .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00]); // floor after hierarchy
+                .extend_from_slice(&[0x48, 0x8d, 0xbb, 0x00, 0x50, 0x00, 0x00]); // floor after hierarchy
             self.bytes.extend_from_slice(&[0x31, 0xc9]); // no separate exclusion
             self.bytes.extend_from_slice(&[0x45, 0x31, 0xc0]);
         } else if nested_static_elf_hierarchy {
@@ -3388,7 +3401,7 @@ impl RootEncoder {
         if matches!(
             self.static_image,
             RootStaticImageState::Sealed | RootStaticImageState::HierarchyReturned
-        ) && frame_count == 4
+        ) && frame_count == 5
         {
             self.bytes.extend_from_slice(&[0x4c, 0x89, 0xe3]); // restore leaf metadata
             self.bytes.extend_from_slice(&[0x4d, 0x31, 0xe4]); // clear hierarchy identity
@@ -3541,7 +3554,7 @@ impl RootEncoder {
     fn attach_static_image_address_space(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::Sealed
-            || self.physical_frame_count != Some(4)
+            || self.physical_frame_count != Some(5)
             || self.retained_static_elf_payload
         {
             return Err(CompileError::Tool(
@@ -5667,7 +5680,7 @@ impl RootEncoder {
                 "x86 static-image hierarchy reclaim requires one detached construction".into(),
             ));
         }
-        self.physical_frame_count = Some(4);
+        self.physical_frame_count = Some(5);
         self.static_image = RootStaticImageState::HierarchyReturned;
         Ok(())
     }
@@ -7742,7 +7755,7 @@ impl RootEncoder {
     fn reserve_anonymous_user_mapping(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.user_execution != RootUserExecutionState::UserMappingWritableData(2)
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(34)
         {
             return Err(CompileError::Tool(
                 "x86 anonymous reservation requires both finalized image mappings and one source-owned frame"
@@ -7773,7 +7786,7 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]);
-        self.physical_frame_count = Some(1);
+        self.physical_frame_count = Some(34);
         self.user_execution = RootUserExecutionState::CompletedWithResidentImageAnonymousReleased;
         Ok(())
     }
@@ -10748,7 +10761,7 @@ mod tests {
             root_bytes
                 .windows(5)
                 .any(|bytes| bytes == [0xba, 0x04, 0x00, 0x00, 0x00]),
-            "checked root must request the exact four-frame static ELF hierarchy extent"
+            "checked root must request the exact five-frame static ELF hierarchy extent"
         );
         assert!(
             root_bytes
@@ -10780,7 +10793,7 @@ mod tests {
         assert!(
             root_bytes
                 .windows(7)
-                .any(|bytes| bytes == [0x48, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00])
+                .any(|bytes| bytes == [0x48, 0x8d, 0xbb, 0x00, 0x50, 0x00, 0x00])
                 && root_bytes
                     .windows(3)
                     .any(|bytes| bytes == [0x48, 0x89, 0xdd])
@@ -10806,7 +10819,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 9135);
+        assert_eq!(relocation_targets.len(), 9184);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -10994,7 +11007,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            6511
+            6560
         );
         assert_eq!(
             relocation_targets
@@ -11516,7 +11529,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 476);
+        assert_eq!(decoded.semantic_trace.len(), 477);
         assert!(
             decoded
                 .semantic_trace
@@ -11717,7 +11730,7 @@ mod tests {
         assert!(decoded.semantic_trace[41].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[42],
-            "topal.systems.frames.allocate/1:frames=4:alignment=1"
+            "topal.systems.frames.allocate/1:frames=5:alignment=1"
         );
         assert!(decoded.semantic_trace[43].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
@@ -11936,27 +11949,28 @@ mod tests {
         assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[137],
+            decoded.semantic_trace[138],
             SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
         );
-        assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[139],
+            decoded.semantic_trace[140],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
         );
-        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[141].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[141],
+            decoded.semantic_trace[142],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
         );
-        assert!(decoded.semantic_trace[142].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[143].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[143],
+            decoded.semantic_trace[144],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
         );
-        assert!(decoded.semantic_trace[144].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..145);
+        assert!(decoded.semantic_trace[145].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..146);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS
