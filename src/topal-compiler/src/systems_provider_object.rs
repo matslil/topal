@@ -12286,13 +12286,19 @@ assert bytes(output) == block[32:]
             &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 195];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
-            &[0xbf, 0x02, 0x10, 0, 0, 0xbe, 0x40, 0x74, 0x5f, 0, 0xb8, 0x9e, 0, 0, 0][..],
+            &[
+                0xbf, 0x02, 0x10, 0, 0, 0xbe, 0x40, 0x74, 0x5f, 0, 0xb8, 0x9e, 0, 0, 0,
+            ][..],
             &[0xbf, 0x10, 0x77, 0x5f, 0, 0xb8, 0xda, 0, 0, 0][..],
             &[0xbf, 0x20, 0x77, 0x5f, 0, 0xbe, 0x18, 0, 0, 0][..],
             &[0xb8, 0x11, 0x01, 0, 0, 0x0f, 0x05][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
-            assert!(process_fixture.windows(sequence.len()).any(|window| window == sequence));
+            assert!(
+                process_fixture
+                    .windows(sequence.len())
+                    .any(|window| window == sequence)
+            );
         }
         assert_eq!(
             process_enter

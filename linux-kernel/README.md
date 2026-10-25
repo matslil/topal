@@ -607,6 +607,13 @@ records exact writable-word authority, sealed TID one, verified terminal
 zeroing before address-space restoration, private-state clearing, and duplicate
 pinned-QEMU evidence without adding futex or multi-thread policy.
 
+The following systems-only startup refinement registers the pinned process's
+[empty robust list](design/bounded-static-elf-initial-empty-robust-list.md).
+Its [qualification report](step-4-bounded-static-elf-initial-empty-robust-list.md)
+records the exact readable native head, deferred terminal copy and empty-state
+validation, private-state clearing, no futex action, and duplicate pinned-QEMU
+evidence.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -790,6 +797,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF initial `brk` growth](step-4-bounded-static-elf-initial-brk-growth.md)
 - [Step 4 bounded static ELF initial x86-64 FS base](step-4-bounded-static-elf-initial-x86-fs-base.md)
 - [Step 4 bounded static ELF initial clear-child-TID word](step-4-bounded-static-elf-initial-clear-child-tid.md)
+- [Step 4 bounded static ELF initial empty robust list](step-4-bounded-static-elf-initial-empty-robust-list.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
