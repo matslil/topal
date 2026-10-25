@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, qualify_entropy_split_ring, entropy_split_ring_marker, qualify_entropy_dma_preparation, entropy_dma_preparation_marker, qualify_entropy_queue_addresses, entropy_queue_addresses_marker, qualify_entropy_queue_activation, entropy_queue_activation_marker, qualify_entropy_request_completion, entropy_request_completion_marker, qualify_entropy_sample_capture, entropy_sample_capture_marker, qualify_entropy_sample_quality, entropy_sample_quality_marker, qualify_entropy_pool_lifecycle, entropy_pool_lifecycle_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, qualify_entropy_split_ring, entropy_split_ring_marker, qualify_entropy_dma_preparation, entropy_dma_preparation_marker, qualify_entropy_queue_addresses, entropy_queue_addresses_marker, qualify_entropy_queue_activation, entropy_queue_activation_marker, qualify_entropy_request_completion, entropy_request_completion_marker, qualify_entropy_sample_capture, entropy_sample_capture_marker, qualify_entropy_sample_quality, entropy_sample_quality_marker, qualify_entropy_pool_lifecycle, entropy_pool_lifecycle_marker, qualify_entropy_generator_lifecycle, entropy_generator_lifecycle_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -1198,9 +1198,18 @@ fn analyze_static_elf_frame_sequence(
     if !matches!(&entropy_pool_lifecycle_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK") {
         return Err(translation_edit_diagnostic(source, entropy_pool_lifecycle_marker_span, "static ELF entropy-pool lifecycle coexistence must publish its exact marker before acquisition revocation"));
     }
+    let entropy_acquiring_process_after_generator_lifecycle_name = parse_static_image_entropy_generator_lifecycle(
+        source, qualify_entropy_generator_lifecycle, allocator_context,
+        &entropy_acquiring_process_after_pool_lifecycle_name,
+    )?;
+    let entropy_generator_lifecycle_marker_span = statement_span(entropy_generator_lifecycle_marker);
+    let entropy_generator_lifecycle_marker = analyze_operation(source, entropy_generator_lifecycle_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_generator_lifecycle_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_generator_lifecycle_marker_span, "static ELF entropy-generator lifecycle coexistence must publish its exact marker before acquisition revocation"));
+    }
     let entropy_pending_process_after_acquisition_rollback_name = parse_static_image_entropy_acquisition(
         source, revoke_entropy_acquisition, allocator_context,
-        &entropy_acquiring_process_after_pool_lifecycle_name, false,
+        &entropy_acquiring_process_after_generator_lifecycle_name, false,
     )?;
     let entropy_acquisition_revoked_marker_span = statement_span(entropy_acquisition_revoked_marker);
     let entropy_acquisition_revoked_marker = analyze_operation(source, entropy_acquisition_revoked_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
@@ -1774,6 +1783,8 @@ fn analyze_static_elf_frame_sequence(
         entropy_sample_quality_marker,
         CompilerSystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
         entropy_pool_lifecycle_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
+        entropy_generator_lifecycle_marker,
         CompilerSystemsOperation::RevokeStaticImageEntropyAcquisition,
         entropy_acquisition_revoked_marker,
         CompilerSystemsOperation::RevokeStaticImageEntropyHandoff,
@@ -4184,6 +4195,61 @@ fn parse_static_image_entropy_pool_lifecycle(
         || exact.iter().any(|(label, value)| values.get(label) != Some(value))
     {
         return Err(translation_edit_diagnostic(source, span, "static-image entropy-pool lifecycle coexistence requires the exact owner, transport resources, entropy resources, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_generator_lifecycle(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy-generator lifecycle coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "generator")
+        || !identifier_is(source, &items[7], "lifecycle") || fields.len() != 15
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires its exact owner, transport resources, entropy resources, generator resources, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-generator lifecycle parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-generator lifecycle parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image entropy-generator lifecycle parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("device", "initial-virtio-rng-device"),
+        ("domain", "initial-dma-domain"),
+        ("queue", "initial-virtio-rng-queue-zero"),
+        ("transport", "initial-virtio-rng-pci-transport"),
+        ("sample", "initial-virtio-rng-sample"),
+        ("source", "initial-virtio-rng-source"),
+        ("evidence", "initial-q35-virtio-rng-trust-evidence"),
+        ("pool", "initial-entropy-pool"),
+        ("conditioner", "initial-blake2s-conditioner"),
+        ("contribution", "initial-entropy-contribution"),
+        ("generator", "initial-entropy-generator"),
+        ("algorithm", "chacha20"),
+        ("output", "initial-entropy-output"),
+        ("policy", "bounded-static-elf-entropy-generator-lifecycle-coexistence"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires the exact owner, transport resources, entropy resources, generator resources, and policy"));
     }
     Ok(source.slice(name).to_owned())
 }

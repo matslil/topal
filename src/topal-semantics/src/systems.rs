@@ -57,6 +57,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
@@ -1256,6 +1257,7 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropySampleCapture,
     QualifyStaticImageEntropySampleQuality,
     QualifyStaticImageEntropyPoolLifecycle,
+    QualifyStaticImageEntropyGeneratorLifecycle,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1586,6 +1588,9 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropyPoolLifecycle => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
+            }
+            Self::QualifyStaticImageEntropyGeneratorLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1946,6 +1951,7 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropySampleCapture,
     QualifyStaticImageEntropySampleQuality,
     QualifyStaticImageEntropyPoolLifecycle,
+    QualifyStaticImageEntropyGeneratorLifecycle,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2492,6 +2498,9 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropyPoolLifecycle => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
             }
+            Self::QualifyStaticImageEntropyGeneratorLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2874,6 +2883,7 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropySampleCapture
                     | SystemsOperation::QualifyStaticImageEntropySampleQuality
                     | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
+                    | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -4053,6 +4063,17 @@ impl BootstrapAuthorityState {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
                         "static-image entropy-pool lifecycle coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-generator lifecycle coexistence requires the exact acquisition owner",
                     ));
                 }
             }
@@ -8150,6 +8171,9 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropyPoolLifecycle => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropyPoolLifecycle);
         }
+        SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8713,6 +8737,7 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropySampleCapture
         | SystemsOperation::QualifyStaticImageEntropySampleQuality
         | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
+        | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11769,6 +11794,7 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropySampleCapture,
                 SystemsOperation::QualifyStaticImageEntropySampleQuality,
                 SystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
+                SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11832,6 +11858,9 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleCapture));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleQuality));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyPoolLifecycle));
+        assert!(
+            transitions.contains(&SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle)
+        );
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11852,6 +11881,11 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler
