@@ -49,6 +49,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -56,8 +57,17 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -77,6 +87,7 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -84,7 +95,8 @@ use crate::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+    SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -1240,6 +1252,19 @@ pub enum SystemsOperation {
     QualifyStaticImageEntropyQueue,
     QualifyStaticImageEntropyBusMaster,
     QualifyStaticImageEntropyDmaBuffers,
+    QualifyStaticImageEntropySplitRing,
+    QualifyStaticImageEntropyDmaPreparation,
+    QualifyStaticImageEntropyQueueAddresses,
+    QualifyStaticImageEntropyQueueActivation,
+    QualifyStaticImageEntropyRequestCompletion,
+    QualifyStaticImageEntropySampleCapture,
+    QualifyStaticImageEntropySampleQuality,
+    QualifyStaticImageEntropyPoolLifecycle,
+    QualifyStaticImageEntropyGeneratorLifecycle,
+    DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
+    RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -1546,6 +1571,41 @@ impl SystemsOperation {
             }
             Self::QualifyStaticImageEntropyDmaBuffers => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS
+            }
+            Self::QualifyStaticImageEntropySplitRing => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING
+            }
+            Self::QualifyStaticImageEntropyDmaPreparation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION
+            }
+            Self::QualifyStaticImageEntropyQueueAddresses => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES
+            }
+            Self::QualifyStaticImageEntropyQueueActivation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION
+            }
+            Self::QualifyStaticImageEntropyRequestCompletion => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION
+            }
+            Self::QualifyStaticImageEntropySampleCapture => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE
+            }
+            Self::QualifyStaticImageEntropySampleQuality => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY
+            }
+            Self::QualifyStaticImageEntropyPoolLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
+            }
+            Self::QualifyStaticImageEntropyGeneratorLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
+            }
+            Self::DeliverStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
+            }
+            Self::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            Self::RestoreStaticImageProcessEntry => SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
+            Self::RevokeStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
@@ -1898,6 +1958,19 @@ pub enum SystemsTransition {
     QualifyStaticImageEntropyQueue,
     QualifyStaticImageEntropyBusMaster,
     QualifyStaticImageEntropyDmaBuffers,
+    QualifyStaticImageEntropySplitRing,
+    QualifyStaticImageEntropyDmaPreparation,
+    QualifyStaticImageEntropyQueueAddresses,
+    QualifyStaticImageEntropyQueueActivation,
+    QualifyStaticImageEntropyRequestCompletion,
+    QualifyStaticImageEntropySampleCapture,
+    QualifyStaticImageEntropySampleQuality,
+    QualifyStaticImageEntropyPoolLifecycle,
+    QualifyStaticImageEntropyGeneratorLifecycle,
+    DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
+    RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -2420,6 +2493,41 @@ impl SystemsTransition {
             Self::QualifyStaticImageEntropyDmaBuffers => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS
             }
+            Self::QualifyStaticImageEntropySplitRing => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING
+            }
+            Self::QualifyStaticImageEntropyDmaPreparation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION
+            }
+            Self::QualifyStaticImageEntropyQueueAddresses => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES
+            }
+            Self::QualifyStaticImageEntropyQueueActivation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION
+            }
+            Self::QualifyStaticImageEntropyRequestCompletion => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION
+            }
+            Self::QualifyStaticImageEntropySampleCapture => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE
+            }
+            Self::QualifyStaticImageEntropySampleQuality => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY
+            }
+            Self::QualifyStaticImageEntropyPoolLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
+            }
+            Self::QualifyStaticImageEntropyGeneratorLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
+            }
+            Self::DeliverStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
+            }
+            Self::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            Self::RestoreStaticImageProcessEntry => SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
+            Self::RevokeStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
+            }
             Self::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -2794,6 +2902,19 @@ fn validate_entry(
                     | SystemsOperation::QualifyStaticImageEntropyQueue
                     | SystemsOperation::QualifyStaticImageEntropyBusMaster
                     | SystemsOperation::QualifyStaticImageEntropyDmaBuffers
+                    | SystemsOperation::QualifyStaticImageEntropySplitRing
+                    | SystemsOperation::QualifyStaticImageEntropyDmaPreparation
+                    | SystemsOperation::QualifyStaticImageEntropyQueueAddresses
+                    | SystemsOperation::QualifyStaticImageEntropyQueueActivation
+                    | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
+                    | SystemsOperation::QualifyStaticImageEntropySampleCapture
+                    | SystemsOperation::QualifyStaticImageEntropySampleQuality
+                    | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
+                    | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
+                    | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+                    | SystemsOperation::EnterStaticImageProcess
+                    | SystemsOperation::RestoreStaticImageProcessEntry
+                    | SystemsOperation::RevokeStaticImageEntropyInitialRandom
                     | SystemsOperation::RevokeStaticImageEntropyAcquisition
                     | SystemsOperation::RevokeStaticImageEntropyHandoff
                     | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -3150,6 +3271,8 @@ struct BootstrapAuthorityState {
     retained_static_process: bool,
     entropy_pending_static_process: bool,
     entropy_acquiring_static_process: bool,
+    randomized_static_process: bool,
+    completed_static_process: bool,
     translation: BootstrapTranslationState,
     critical_stack: Vec<(CriticalDomain, u64)>,
     next_critical_identity: u64,
@@ -3887,6 +4010,159 @@ impl BootstrapAuthorityState {
                         "static-image entropy DMA-buffer coexistence requires the exact acquisition owner",
                     ));
                 }
+            }
+            SystemsOperation::QualifyStaticImageEntropySplitRing => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy split-ring coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyDmaPreparation => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy DMA-preparation coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyQueueAddresses => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy queue-address coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyQueueActivation => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy queue-activation coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyRequestCompletion => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy request-completion coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropySampleCapture => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-sample capture coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropySampleQuality => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-sample quality coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyPoolLifecycle => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-pool lifecycle coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image entropy-generator lifecycle coexistence requires the exact acquisition owner",
+                    ));
+                }
+            }
+            SystemsOperation::DeliverStaticImageEntropyInitialRandom => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || !self.entropy_acquiring_static_process
+                    || self.randomized_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image initial-random delivery requires the exact acquisition owner",
+                    ));
+                }
+                self.entropy_acquiring_static_process = false;
+                self.randomized_static_process = true;
+            }
+            SystemsOperation::EnterStaticImageProcess => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || !self.randomized_static_process
+                    || self.completed_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image process entry requires the exact randomized owner",
+                    ));
+                }
+                self.randomized_static_process = false;
+                self.completed_static_process = true;
+            }
+            SystemsOperation::RestoreStaticImageProcessEntry => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.randomized_static_process
+                    || !self.completed_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image process-entry restoration requires the exact completed owner",
+                    ));
+                }
+                self.completed_static_process = false;
+                self.randomized_static_process = true;
+            }
+            SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
+                if self.memory_ownership != BootstrapMemoryOwnership::None
+                    || self.entropy_pending_static_process
+                    || self.entropy_acquiring_static_process
+                    || !self.randomized_static_process
+                {
+                    return Err(SystemsModelError::new(
+                        "E-SYSTEMS-STATIC-IMAGE",
+                        "static-image initial-random revocation requires the exact randomized owner",
+                    ));
+                }
+                self.randomized_static_process = false;
+                self.entropy_acquiring_static_process = true;
             }
             SystemsOperation::RevokeStaticImageEntropyAcquisition => {
                 if self.memory_ownership != BootstrapMemoryOwnership::None
@@ -7958,6 +8234,45 @@ fn model_bootstrap_operation(
         SystemsOperation::QualifyStaticImageEntropyDmaBuffers => {
             transitions.push(SystemsTransition::QualifyStaticImageEntropyDmaBuffers);
         }
+        SystemsOperation::QualifyStaticImageEntropySplitRing => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropySplitRing);
+        }
+        SystemsOperation::QualifyStaticImageEntropyDmaPreparation => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyDmaPreparation);
+        }
+        SystemsOperation::QualifyStaticImageEntropyQueueAddresses => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyQueueAddresses);
+        }
+        SystemsOperation::QualifyStaticImageEntropyQueueActivation => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyQueueActivation);
+        }
+        SystemsOperation::QualifyStaticImageEntropyRequestCompletion => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyRequestCompletion);
+        }
+        SystemsOperation::QualifyStaticImageEntropySampleCapture => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropySampleCapture);
+        }
+        SystemsOperation::QualifyStaticImageEntropySampleQuality => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropySampleQuality);
+        }
+        SystemsOperation::QualifyStaticImageEntropyPoolLifecycle => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyPoolLifecycle);
+        }
+        SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle => {
+            transitions.push(SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle);
+        }
+        SystemsOperation::DeliverStaticImageEntropyInitialRandom => {
+            transitions.push(SystemsTransition::DeliverStaticImageEntropyInitialRandom);
+        }
+        SystemsOperation::EnterStaticImageProcess => {
+            transitions.push(SystemsTransition::EnterStaticImageProcess);
+        }
+        SystemsOperation::RestoreStaticImageProcessEntry => {
+            transitions.push(SystemsTransition::RestoreStaticImageProcessEntry);
+        }
+        SystemsOperation::RevokeStaticImageEntropyInitialRandom => {
+            transitions.push(SystemsTransition::RevokeStaticImageEntropyInitialRandom);
+        }
         SystemsOperation::RevokeStaticImageEntropyAcquisition => {
             transitions.push(SystemsTransition::RevokeStaticImageEntropyAcquisition);
         }
@@ -8513,6 +8828,19 @@ fn model_bootstrap_storage_operation(
         | SystemsOperation::QualifyStaticImageEntropyQueue
         | SystemsOperation::QualifyStaticImageEntropyBusMaster
         | SystemsOperation::QualifyStaticImageEntropyDmaBuffers
+        | SystemsOperation::QualifyStaticImageEntropySplitRing
+        | SystemsOperation::QualifyStaticImageEntropyDmaPreparation
+        | SystemsOperation::QualifyStaticImageEntropyQueueAddresses
+        | SystemsOperation::QualifyStaticImageEntropyQueueActivation
+        | SystemsOperation::QualifyStaticImageEntropyRequestCompletion
+        | SystemsOperation::QualifyStaticImageEntropySampleCapture
+        | SystemsOperation::QualifyStaticImageEntropySampleQuality
+        | SystemsOperation::QualifyStaticImageEntropyPoolLifecycle
+        | SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle
+        | SystemsOperation::DeliverStaticImageEntropyInitialRandom
+        | SystemsOperation::EnterStaticImageProcess
+        | SystemsOperation::RestoreStaticImageProcessEntry
+        | SystemsOperation::RevokeStaticImageEntropyInitialRandom
         | SystemsOperation::RevokeStaticImageEntropyAcquisition
         | SystemsOperation::RevokeStaticImageEntropyHandoff
         | SystemsOperation::RestoreStaticImagePreparedProcess
@@ -11561,6 +11889,19 @@ mod tests {
                 SystemsOperation::QualifyStaticImageEntropyQueue,
                 SystemsOperation::QualifyStaticImageEntropyBusMaster,
                 SystemsOperation::QualifyStaticImageEntropyDmaBuffers,
+                SystemsOperation::QualifyStaticImageEntropySplitRing,
+                SystemsOperation::QualifyStaticImageEntropyDmaPreparation,
+                SystemsOperation::QualifyStaticImageEntropyQueueAddresses,
+                SystemsOperation::QualifyStaticImageEntropyQueueActivation,
+                SystemsOperation::QualifyStaticImageEntropyRequestCompletion,
+                SystemsOperation::QualifyStaticImageEntropySampleCapture,
+                SystemsOperation::QualifyStaticImageEntropySampleQuality,
+                SystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
+                SystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
+                SystemsOperation::DeliverStaticImageEntropyInitialRandom,
+                SystemsOperation::EnterStaticImageProcess,
+                SystemsOperation::RestoreStaticImageProcessEntry,
+                SystemsOperation::RevokeStaticImageEntropyInitialRandom,
                 SystemsOperation::RevokeStaticImageEntropyAcquisition,
                 SystemsOperation::RevokeStaticImageEntropyHandoff,
                 SystemsOperation::RestoreStaticImagePreparedProcess,
@@ -11614,6 +11955,23 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyQueue));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyBusMaster));
         assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyDmaBuffers));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySplitRing));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyDmaPreparation));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyQueueAddresses));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyQueueActivation));
+        assert!(
+            transitions.contains(&SystemsTransition::QualifyStaticImageEntropyRequestCompletion)
+        );
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleCapture));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropySampleQuality));
+        assert!(transitions.contains(&SystemsTransition::QualifyStaticImageEntropyPoolLifecycle));
+        assert!(
+            transitions.contains(&SystemsTransition::QualifyStaticImageEntropyGeneratorLifecycle)
+        );
+        assert!(transitions.contains(&SystemsTransition::DeliverStaticImageEntropyInitialRandom));
+        assert!(transitions.contains(&SystemsTransition::EnterStaticImageProcess));
+        assert!(transitions.contains(&SystemsTransition::RestoreStaticImageProcessEntry));
+        assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyInitialRandom));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyAcquisition));
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageEntropyHandoff));
         assert!(transitions.contains(&SystemsTransition::RestoreStaticImagePreparedProcess));
@@ -11634,6 +11992,71 @@ mod tests {
         assert!(transitions.contains(&SystemsTransition::RevokeStaticImageStackLeaf));
 
         let mut release_while_initialized = program.clone();
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         release_while_initialized
             .bootstrap
             .handler

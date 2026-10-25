@@ -894,6 +894,206 @@ complete rollback, same-owner return, later-sequence preservation, and no
 exposed process, DMA, address, PCI, or entropy representation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001` and `TK-DEC-164`.
 
+The bounded static-ELF entropy-split-ring-coexistence increment shall consume
+and return the exact acquisition owner around one transaction-scoped queue
+construction. X86-64 lowering shall completely validate the retained process;
+replay negotiation, queue discovery, bus mastering, and both DMA-buffer
+qualifications; perform the exact opaque reference binding and four ordered
+split-ring stores; then erase all five fields in reverse publication order,
+including an exact 8-byte zero store for the reference field. It shall reverse
+bus mastering and restore device and gateway state. No buffer identity or bound
+address shall escape and the later ordinary sequence shall remain unconsumed.
+The checker and semantic model shall reject another owner, device, domain,
+queue, policy, field, width, offset, value, order, omission, duplicate, exposed
+identity/address, nonzero final byte, early rollback, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove complete process
+validation, exact prerequisite replay, exact ring construction, reverse-order
+erasure, complete rollback, same-owner return, later-sequence preservation, and
+no exposed process, DMA, address, PCI, queue, or entropy representation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001` and
+`TK-DEC-165`.
+
+The bounded static-ELF entropy-DMA-preparation-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+payload-then-control ownership transfer. X86-64 lowering shall completely
+validate the retained process, replay the exact prerequisite sequence through
+ring construction, prepare payload then control, cancel unexposed ownership in
+control-then-payload order, erase and read back the ring, and restore bus-
+master, device, and gateway state. No DMA identity shall escape and the later
+ordinary sequence shall remain unconsumed. The checker and semantic model shall
+reject another owner, device, domain, queue, policy, ownership order, omission,
+duplicate, escaped identity, final state, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove the complete
+transaction, same-owner return, later-sequence preservation, and no exposed
+process, DMA, cache, mapping, PCI, queue, or entropy representation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-PREPARATION-COEXISTENCE-001` and
+`TK-DEC-166`.
+
+The bounded static-ELF entropy-queue-address-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+three-reference publication. X86-64 lowering shall completely validate the
+retained process, replay the exact prerequisite sequence through payload-then-
+control DMA preparation, publish descriptor then driver then device-area
+references, clear and read back those complete registers in reverse order,
+cancel control then payload preparation, erase and read back the ring, and
+restore bus-master, device, and gateway state. No DMA identity or resolved
+reference shall escape and the later ordinary sequence shall remain
+unconsumed. The checker and semantic model shall reject another owner, device,
+domain, queue, transport, policy, publication or clearing order, omission,
+duplicate, escaped identity, nonzero final register, final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove the complete transaction, same-owner return, later-sequence
+preservation, and no exposed process, DMA, address, PCI, queue, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ADDRESS-COEXISTENCE-001` and
+`TK-DEC-167`.
+
+The bounded static-ELF entropy-queue-activation-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+empty activation. X86-64 lowering shall completely validate the retained
+process, replay the exact prerequisite sequence through ring construction,
+withdraw and verify the available index while CPU-owned, prepare and publish
+both buffers, perform exact queue enablement and `DRIVER_OK` readback without
+notification, reset the device, and prove status, queue enable, and every queue
+address zero before DMA cancellation. It shall then erase and read back the
+ring and restore bus-master and gateway state. No DMA identity or resolved
+reference shall escape and the later ordinary sequence shall remain
+unconsumed. The checker and semantic model shall reject another owner, device,
+domain, queue, transport, policy, nonempty activation, notification, missing
+readback, omission, duplicate, escaped identity, nonzero final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove the complete transaction, same-owner return, later-sequence
+preservation, and no exposed process, DMA, address, PCI, queue, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ACTIVATION-COEXISTENCE-001` and
+`TK-DEC-168`.
+
+The bounded static-ELF entropy-request-completion-coexistence increment shall
+consume and return the exact acquisition owner around one completed and erased
+32-byte device request. X86-64 lowering shall completely validate the retained
+process, replay the exact ordinary sequence through activated available work,
+notify queue zero, observe and acknowledge the bounded signal, validate the
+four used-ring facts, and return control then payload ownership. It shall
+capture or credit no sample, reset and verify all transport state, overwrite
+and read back the complete payload and every source- or device-written ring
+field, reverse bus mastering, and restore gateway state. No payload byte, DMA
+identity, or resolved reference shall escape and the later ordinary sequence
+shall remain structurally unconsumed. The checker and semantic model shall
+reject another owner, device, domain, queue, transport, policy, completion
+fact, ownership order, early CPU access, missing acknowledgement, partial
+erase, captured or credited sample, escaped byte or identity, nonzero final
+state, or recoverable failure. Structural and duplicate pinned-QEMU tests shall
+prove the complete transaction, same-owner return, later-sequence preservation,
+and no exposed process, DMA, address, PCI, queue, or entropy representation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001` and
+`TK-DEC-169`.
+
+The bounded static-ELF entropy-sample-capture-coexistence increment shall
+consume and return the exact acquisition owner around one captured and erased
+raw sample. X86-64 lowering shall completely validate the retained process,
+replay the exact ordinary sequence through payload ownership return, copy the
+complete 32-byte payload into the sealed raw-sample storage with zero credit,
+and preserve payload ownership. It shall expose no byte or sample identity,
+assess or credit no entropy, reset and verify all transport state, overwrite
+and read back the complete payload, ring, and raw-sample storage, reverse bus
+mastering, and restore gateway state. The later ordinary sequence shall remain
+structurally unconsumed. The checker and semantic model shall reject another
+owner, device, domain, queue, transport, sample, range, credit, policy,
+ordering, omission, duplicate, assessment, escaped byte or identity, partial
+erase, nonzero final state, or recoverable failure. Structural and duplicate
+pinned-QEMU tests shall prove exact capture, complete destruction, same-owner
+return, later-sequence preservation, and no exposed process, DMA, address, PCI,
+queue, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001` and
+`TK-DEC-170`.
+
+The bounded static-ELF entropy-sample-quality-coexistence increment shall
+consume and return the exact acquisition owner around one assessed and erased
+sample. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact zero-credit capture. The checked
+kernel policy shall apply only the sealed Q35 source/evidence, 32-byte extent,
+1024/1024 quality, and 256-bit credit transition without emitting target trust
+mechanics or inspecting bytes. Lowering shall reset and verify transport state,
+overwrite and read back payload, ring, and assessed-sample storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, provider-selected trust, omission, duplicate,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove exact
+assessment, complete destruction, same-owner return, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001` and
+`TK-DEC-171`.
+
+The bounded static-ELF entropy-pool-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete pool
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact assessed-sample creation. Checked
+policy shall create the exact empty 256-bit pool, invoke the qualified BLAKE2s
+conditioner for the exact first contribution, and transfer zero-to-256 credit
+only after mixing. Lowering shall reset and verify transport state, overwrite
+and read back payload, ring, sample, and pool storage, reverse bus mastering,
+and restore gateway state. The checker and semantic model shall reject every
+substituted fact, early credit, ordering error, omission, duplicate, escaped
+byte or authority, partial erase, nonzero final state, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove the complete lifecycle,
+destruction, same-owner return, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-172`.
+
+The bounded static-ELF entropy-generator-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete generator
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through the exact credited pool, initialize the
+generation-one 32-byte ChaCha20 key, and extract only output range `[32, 64)`
+from the exact counter-zero, nonce-zero block while advancing to generation
+two. It shall deliver no output, reset and verify transport state, overwrite
+and read back payload, ring, sample, pool, key, and output storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, ordering error, omission, duplicate, delivery,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove the complete
+lifecycle, destruction, same-owner return, and later-sequence preservation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-173`.
+
+The bounded static-ELF initial-random-delivery-coexistence increment shall
+consume the exact acquisition owner and produce one affine randomized static-
+process owner. X86-64 lowering shall completely validate the retained process,
+replay the ordinary entropy sequence through exact first extraction, publish
+one native tag-25 pair and distinct aligned 16-byte stack object, verify the
+copy without exposing bytes, wipe the complete output, and destroy and verify
+all remaining entropy, DMA, transport, bus-master, and gateway resources while
+the process result remains live. A qualification-only inverse shall verify and
+erase the complete object and pair and restore the exact acquisition owner
+before existing rollback. The checker and semantic model shall reject every
+substituted fact, ordering error, omission, duplicate, premature delivery,
+overlap, escaped authority, partial copy or erase, nonzero inverse state, or
+recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+the persistent forward boundary, exact inverse, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` and
+`TK-DEC-174`.
+
+The bounded static-ELF process-entry increment shall consume the exact
+randomized-process owner and produce one affine completed-process owner. X86-64
+lowering shall completely revalidate the retained process, derive its entry
+and initial stack from provider-private authorities, install a private static-
+process syscall/continuation context, activate the retained address space,
+enter CPL3, accept only `exit_group(0)`, and restore the exact kernel CR3, GS,
+stack, and continuation before returning. The qualification fixture shall use
+clean-room bytes at the sealed ELF entry and shall not redistribute or claim
+BusyBox. A qualification-only inverse shall validate and clear the terminal
+context and restore the exact randomized owner before the existing nested
+rollback. The checker and semantic model shall reject every substituted owner,
+ABI, terminal result, policy, ordering error, duplicate entry, escaped native
+state, changed process resource, incomplete restoration, nonzero inverse
+state, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove real `IRETQ` entry, native `SYSCALL` return, exact CR3 restoration,
+the affine forward/inverse lifecycle, and later-sequence preservation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001` and `TK-DEC-175`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -59,15 +59,19 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[24:32], "little"), 0x004A_6580)
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
+        self.assertEqual(
+            fixture[0xA_6580 : 0xA_6580 + 14],
+            bytes([0xBF, 0, 0, 0, 0, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B]),
+        )
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/148")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/159")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/136")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/147")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/146",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/157",
         )
         self.assertEqual(
             evidence["boot_schema"],
@@ -162,6 +166,19 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",

@@ -51,6 +51,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE,
@@ -58,8 +59,17 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY,
@@ -79,6 +89,7 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF,
@@ -86,7 +97,8 @@ use topal_language::compiler::{
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
     SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
-    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_TRANSLATION_ACTIVATE,
+    SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING, SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+    SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY, SYSTEMS_TRANSLATION_ACTIVATE,
     SYSTEMS_TRANSLATION_BEGIN, SYSTEMS_TRANSLATION_COMMIT, SYSTEMS_TRANSLATION_EDIT_BEGIN,
     SYSTEMS_TRANSLATION_EDIT_COMMIT, SYSTEMS_TRANSLATION_EDIT_MAP, SYSTEMS_TRANSLATION_EDIT_UNMAP,
     SYSTEMS_USER_ADDRESS_SPACE_MAP, SYSTEMS_USER_ADDRESS_SPACE_PREPARE,
@@ -108,7 +120,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/136";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/147";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -145,6 +157,19 @@ pub enum X86SystemsLowering {
     QualifyStaticImageEntropyQueue,
     QualifyStaticImageEntropyBusMaster,
     QualifyStaticImageEntropyDmaBuffers,
+    QualifyStaticImageEntropySplitRing,
+    QualifyStaticImageEntropyDmaPreparation,
+    QualifyStaticImageEntropyQueueAddresses,
+    QualifyStaticImageEntropyQueueActivation,
+    QualifyStaticImageEntropyRequestCompletion,
+    QualifyStaticImageEntropySampleCapture,
+    QualifyStaticImageEntropySampleQuality,
+    QualifyStaticImageEntropyPoolLifecycle,
+    QualifyStaticImageEntropyGeneratorLifecycle,
+    DeliverStaticImageEntropyInitialRandom,
+    EnterStaticImageProcess,
+    RestoreStaticImageProcessEntry,
+    RevokeStaticImageEntropyInitialRandom,
     RevokeStaticImageEntropyAcquisition,
     RevokeStaticImageEntropyHandoff,
     RestoreStaticImagePreparedProcess,
@@ -348,6 +373,43 @@ impl X86SystemsLowering {
             }
             Self::QualifyStaticImageEntropyDmaBuffers => {
                 "topal.provider.x86_64.static-image.qualify-entropy-dma-buffers/1"
+            }
+            Self::QualifyStaticImageEntropySplitRing => {
+                "topal.provider.x86_64.static-image.qualify-entropy-split-ring/1"
+            }
+            Self::QualifyStaticImageEntropyDmaPreparation => {
+                "topal.provider.x86_64.static-image.qualify-entropy-dma-preparation/1"
+            }
+            Self::QualifyStaticImageEntropyQueueAddresses => {
+                "topal.provider.x86_64.static-image.qualify-entropy-queue-addresses/1"
+            }
+            Self::QualifyStaticImageEntropyQueueActivation => {
+                "topal.provider.x86_64.static-image.qualify-entropy-queue-activation/1"
+            }
+            Self::QualifyStaticImageEntropyRequestCompletion => {
+                "topal.provider.x86_64.static-image.qualify-entropy-request-completion/1"
+            }
+            Self::QualifyStaticImageEntropySampleCapture => {
+                "topal.provider.x86_64.static-image.qualify-entropy-sample-capture/1"
+            }
+            Self::QualifyStaticImageEntropySampleQuality => {
+                "topal.provider.x86_64.static-image.qualify-entropy-sample-quality/1"
+            }
+            Self::QualifyStaticImageEntropyPoolLifecycle => {
+                "topal.provider.x86_64.static-image.qualify-entropy-pool-lifecycle/1"
+            }
+            Self::QualifyStaticImageEntropyGeneratorLifecycle => {
+                "topal.provider.x86_64.static-image.qualify-entropy-generator-lifecycle/1"
+            }
+            Self::DeliverStaticImageEntropyInitialRandom => {
+                "topal.provider.x86_64.static-image.deliver-entropy-initial-random/1"
+            }
+            Self::EnterStaticImageProcess => "topal.provider.x86_64.static-image.process-enter/1",
+            Self::RestoreStaticImageProcessEntry => {
+                "topal.provider.x86_64.static-image.process-restore-entry/1"
+            }
+            Self::RevokeStaticImageEntropyInitialRandom => {
+                "topal.provider.x86_64.static-image.revoke-entropy-initial-random/1"
             }
             Self::RevokeStaticImageEntropyAcquisition => {
                 "topal.provider.x86_64.static-image.revoke-entropy-acquisition/1"
@@ -869,6 +931,43 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS => {
             X86SystemsLowering::QualifyStaticImageEntropyDmaBuffers
         }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING => {
+            X86SystemsLowering::QualifyStaticImageEntropySplitRing
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION => {
+            X86SystemsLowering::QualifyStaticImageEntropyDmaPreparation
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES => {
+            X86SystemsLowering::QualifyStaticImageEntropyQueueAddresses
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION => {
+            X86SystemsLowering::QualifyStaticImageEntropyQueueActivation
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION => {
+            X86SystemsLowering::QualifyStaticImageEntropyRequestCompletion
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE => {
+            X86SystemsLowering::QualifyStaticImageEntropySampleCapture
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY => {
+            X86SystemsLowering::QualifyStaticImageEntropySampleQuality
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE => {
+            X86SystemsLowering::QualifyStaticImageEntropyPoolLifecycle
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE => {
+            X86SystemsLowering::QualifyStaticImageEntropyGeneratorLifecycle
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM => {
+            X86SystemsLowering::DeliverStaticImageEntropyInitialRandom
+        }
+        SYSTEMS_STATIC_IMAGE_PROCESS_ENTER => X86SystemsLowering::EnterStaticImageProcess,
+        SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY => {
+            X86SystemsLowering::RestoreStaticImageProcessEntry
+        }
+        SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM => {
+            X86SystemsLowering::RevokeStaticImageEntropyInitialRandom
+        }
         SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION => {
             X86SystemsLowering::RevokeStaticImageEntropyAcquisition
         }
@@ -1163,6 +1262,43 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
             X86SystemsLowering::QualifyStaticImageEntropyDmaBuffers => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS
             }
+            X86SystemsLowering::QualifyStaticImageEntropySplitRing => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyDmaPreparation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyQueueAddresses => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyQueueActivation => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyRequestCompletion => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION
+            }
+            X86SystemsLowering::QualifyStaticImageEntropySampleCapture => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE
+            }
+            X86SystemsLowering::QualifyStaticImageEntropySampleQuality => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyPoolLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE
+            }
+            X86SystemsLowering::QualifyStaticImageEntropyGeneratorLifecycle => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE
+            }
+            X86SystemsLowering::DeliverStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM
+            }
+            X86SystemsLowering::EnterStaticImageProcess => SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+            X86SystemsLowering::RestoreStaticImageProcessEntry => {
+                SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
+            }
+            X86SystemsLowering::RevokeStaticImageEntropyInitialRandom => {
+                SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
+            }
             X86SystemsLowering::RevokeStaticImageEntropyAcquisition => {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
             }
@@ -1420,7 +1556,7 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 139);
+        assert_eq!(plan.operations.len(), 152);
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

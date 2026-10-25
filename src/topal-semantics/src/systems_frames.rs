@@ -86,6 +86,31 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER: &str =
     "topal.systems.static-image.construction.qualify-entropy-bus-master/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS: &str =
     "topal.systems.static-image.construction.qualify-entropy-dma-buffers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING: &str =
+    "topal.systems.static-image.construction.qualify-entropy-split-ring/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-dma-preparation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-addresses/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-activation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-request-completion/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-capture/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-quality/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-pool-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-generator-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.deliver-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.revoke-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_ENTER: &str = "topal.systems.static-image.process.enter/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY: &str =
+    "topal.systems.static-image.process.restore-entry/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
     "topal.systems.static-image.construction.revoke-entropy-handoff/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =

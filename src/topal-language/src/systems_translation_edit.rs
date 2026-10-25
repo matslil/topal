@@ -471,7 +471,7 @@ fn analyze_static_elf_frame_sequence(
         allocator_context,
         &construction_name,
     )?;
-    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
+    let [zero_marker, copy, copy_marker, seal, seal_marker, hierarchy_reserve, hierarchy_marker, attach, attach_marker, activate, active_marker, restore, restored_marker, authorize_entry, entry_marker, authorize_stack_slot, stack_slot_marker, stack_backing_reserve, stack_backing_marker, zero_stack_backing, stack_backing_zeroed_marker, publish_stack_leaf, stack_leaf_published_marker, initialize_stack_entry, stack_entry_initialized_marker, add_stack_pagesz, stack_pagesz_marker, add_stack_entry_fact, stack_entry_fact_marker, add_stack_program_headers, stack_program_headers_marker, add_stack_executable_name, stack_executable_name_marker, add_stack_credentials, stack_credentials_marker, add_stack_secure_mode, stack_secure_mode_marker, add_stack_clock_tick_rate, stack_clock_tick_rate_marker, add_stack_platform, stack_platform_marker, add_stack_hardware_capabilities, stack_hardware_capabilities_marker, add_stack_load_metadata, stack_load_metadata_marker, authorize_stack_random_slot, stack_random_slot_authorized_marker, retain_prepared_process, prepared_process_retained_marker, qualify_retained_disjoint_work, retained_disjoint_work_marker, authorize_entropy_handoff, entropy_handoff_authorized_marker, authorize_entropy_acquisition, entropy_acquisition_authorized_marker, qualify_entropy_device, entropy_device_marker, qualify_entropy_transport, entropy_transport_marker, qualify_entropy_negotiation, entropy_negotiation_marker, qualify_entropy_queue, entropy_queue_marker, qualify_entropy_bus_master, entropy_bus_master_marker, qualify_entropy_dma_buffers, entropy_dma_buffers_marker, qualify_entropy_split_ring, entropy_split_ring_marker, qualify_entropy_dma_preparation, entropy_dma_preparation_marker, qualify_entropy_queue_addresses, entropy_queue_addresses_marker, qualify_entropy_queue_activation, entropy_queue_activation_marker, qualify_entropy_request_completion, entropy_request_completion_marker, qualify_entropy_sample_capture, entropy_sample_capture_marker, qualify_entropy_sample_quality, entropy_sample_quality_marker, qualify_entropy_pool_lifecycle, entropy_pool_lifecycle_marker, qualify_entropy_generator_lifecycle, entropy_generator_lifecycle_marker, deliver_entropy_initial_random, entropy_initial_random_delivered_marker, enter_static_process, static_process_exited_marker, restore_static_process_entry, static_process_entry_restored_marker, revoke_entropy_initial_random, entropy_initial_random_revoked_marker, revoke_entropy_acquisition, entropy_acquisition_revoked_marker, revoke_entropy_handoff, entropy_handoff_revoked_marker, restore_prepared_process, prepared_process_restored_marker, revoke_stack_random_slot, stack_random_slot_revoked_marker, remove_stack_load_metadata, stack_load_metadata_revoked_marker, remove_stack_hardware_capabilities, stack_hardware_capabilities_revoked_marker, remove_stack_platform, stack_platform_revoked_marker, remove_stack_clock_tick_rate, stack_clock_tick_rate_revoked_marker, remove_stack_secure_mode, stack_secure_mode_revoked_marker, remove_stack_credentials, stack_credentials_revoked_marker, remove_stack_executable_name, stack_executable_name_revoked_marker, remove_stack_program_headers, stack_program_headers_revoked_marker, remove_stack_entry_fact, stack_entry_fact_revoked_marker, remove_stack_pagesz, stack_pagesz_revoked_marker, clear_stack_entry, stack_entry_cleared_marker, revoke_stack_leaf, stack_leaf_revoked_marker, stack_backing_release, revoke_stack_slot, stack_slot_revoked_marker, revoke_entry, entry_revoked_marker, detach, detach_marker, hierarchy_reclaim, hierarchy_release, revoke, metadata_release, reclaim, payload_release, rest @ ..] =
         after_zero
     else {
         return Err(translation_edit_diagnostic(
@@ -1126,9 +1126,123 @@ fn analyze_static_elf_frame_sequence(
     if !matches!(&entropy_dma_buffers_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK") {
         return Err(translation_edit_diagnostic(source, entropy_dma_buffers_marker_span, "static ELF entropy DMA-buffer coexistence must publish its exact marker before acquisition revocation"));
     }
+    let entropy_acquiring_process_after_split_ring_name = parse_static_image_entropy_split_ring(
+        source, qualify_entropy_split_ring, allocator_context,
+        &entropy_acquiring_process_after_dma_buffers_name,
+    )?;
+    let entropy_split_ring_marker_span = statement_span(entropy_split_ring_marker);
+    let entropy_split_ring_marker = analyze_operation(source, entropy_split_ring_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_split_ring_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_split_ring_marker_span, "static ELF entropy split-ring coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_dma_preparation_name = parse_static_image_entropy_dma_preparation(
+        source, qualify_entropy_dma_preparation, allocator_context,
+        &entropy_acquiring_process_after_split_ring_name,
+    )?;
+    let entropy_dma_preparation_marker_span = statement_span(entropy_dma_preparation_marker);
+    let entropy_dma_preparation_marker = analyze_operation(source, entropy_dma_preparation_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_dma_preparation_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_dma_preparation_marker_span, "static ELF entropy DMA-preparation coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_queue_addresses_name = parse_static_image_entropy_queue_addresses(
+        source, qualify_entropy_queue_addresses, allocator_context,
+        &entropy_acquiring_process_after_dma_preparation_name,
+    )?;
+    let entropy_queue_addresses_marker_span = statement_span(entropy_queue_addresses_marker);
+    let entropy_queue_addresses_marker = analyze_operation(source, entropy_queue_addresses_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_queue_addresses_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_queue_addresses_marker_span, "static ELF entropy queue-address coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_queue_activation_name = parse_static_image_entropy_queue_activation(
+        source, qualify_entropy_queue_activation, allocator_context,
+        &entropy_acquiring_process_after_queue_addresses_name,
+    )?;
+    let entropy_queue_activation_marker_span = statement_span(entropy_queue_activation_marker);
+    let entropy_queue_activation_marker = analyze_operation(source, entropy_queue_activation_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_queue_activation_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_queue_activation_marker_span, "static ELF entropy queue-activation coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_request_completion_name = parse_static_image_entropy_request_completion(
+        source, qualify_entropy_request_completion, allocator_context,
+        &entropy_acquiring_process_after_queue_activation_name,
+    )?;
+    let entropy_request_completion_marker_span = statement_span(entropy_request_completion_marker);
+    let entropy_request_completion_marker = analyze_operation(source, entropy_request_completion_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_request_completion_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_request_completion_marker_span, "static ELF entropy request-completion coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_sample_capture_name = parse_static_image_entropy_sample_capture(
+        source, qualify_entropy_sample_capture, allocator_context,
+        &entropy_acquiring_process_after_request_completion_name,
+    )?;
+    let entropy_sample_capture_marker_span = statement_span(entropy_sample_capture_marker);
+    let entropy_sample_capture_marker = analyze_operation(source, entropy_sample_capture_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_sample_capture_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_sample_capture_marker_span, "static ELF entropy-sample capture coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_sample_quality_name = parse_static_image_entropy_sample_quality(
+        source, qualify_entropy_sample_quality, allocator_context,
+        &entropy_acquiring_process_after_sample_capture_name,
+    )?;
+    let entropy_sample_quality_marker_span = statement_span(entropy_sample_quality_marker);
+    let entropy_sample_quality_marker = analyze_operation(source, entropy_sample_quality_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_sample_quality_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_sample_quality_marker_span, "static ELF entropy-sample quality coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_pool_lifecycle_name = parse_static_image_entropy_pool_lifecycle(
+        source, qualify_entropy_pool_lifecycle, allocator_context,
+        &entropy_acquiring_process_after_sample_quality_name,
+    )?;
+    let entropy_pool_lifecycle_marker_span = statement_span(entropy_pool_lifecycle_marker);
+    let entropy_pool_lifecycle_marker = analyze_operation(source, entropy_pool_lifecycle_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_pool_lifecycle_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_pool_lifecycle_marker_span, "static ELF entropy-pool lifecycle coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let entropy_acquiring_process_after_generator_lifecycle_name = parse_static_image_entropy_generator_lifecycle(
+        source, qualify_entropy_generator_lifecycle, allocator_context,
+        &entropy_acquiring_process_after_pool_lifecycle_name,
+    )?;
+    let entropy_generator_lifecycle_marker_span = statement_span(entropy_generator_lifecycle_marker);
+    let entropy_generator_lifecycle_marker = analyze_operation(source, entropy_generator_lifecycle_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_generator_lifecycle_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_generator_lifecycle_marker_span, "static ELF entropy-generator lifecycle coexistence must publish its exact marker before acquisition revocation"));
+    }
+    let randomized_process_name = parse_static_image_entropy_initial_random_delivery(
+        source, deliver_entropy_initial_random, allocator_context,
+        &entropy_acquiring_process_after_generator_lifecycle_name,
+    )?;
+    let entropy_initial_random_delivered_marker_span = statement_span(entropy_initial_random_delivered_marker);
+    let entropy_initial_random_delivered_marker = analyze_operation(source, entropy_initial_random_delivered_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_initial_random_delivered_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_initial_random_delivered_marker_span, "static ELF initial-random delivery must publish its exact marker before qualification revocation"));
+    }
+    let completed_process_name = parse_static_image_process_entry(
+        source, enter_static_process, allocator_context, &randomized_process_name, true,
+    )?;
+    let static_process_exited_marker_span = statement_span(static_process_exited_marker);
+    let static_process_exited_marker = analyze_operation(source, static_process_exited_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&static_process_exited_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK") {
+        return Err(translation_edit_diagnostic(source, static_process_exited_marker_span, "static ELF process entry must publish its exact marker before qualification restoration"));
+    }
+    let randomized_process_after_entry_restoration_name = parse_static_image_process_entry(
+        source, restore_static_process_entry, allocator_context, &completed_process_name, false,
+    )?;
+    let static_process_entry_restored_marker_span = statement_span(static_process_entry_restored_marker);
+    let static_process_entry_restored_marker = analyze_operation(source, static_process_entry_restored_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&static_process_entry_restored_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK") {
+        return Err(translation_edit_diagnostic(source, static_process_entry_restored_marker_span, "static ELF process-entry restoration must publish its exact marker before initial-random revocation"));
+    }
+    let entropy_acquiring_process_after_initial_random_revocation_name = parse_static_image_entropy_initial_random_revocation(
+        source, revoke_entropy_initial_random, allocator_context, &randomized_process_after_entry_restoration_name,
+    )?;
+    let entropy_initial_random_revoked_marker_span = statement_span(entropy_initial_random_revoked_marker);
+    let entropy_initial_random_revoked_marker = analyze_operation(source, entropy_initial_random_revoked_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
+    if !matches!(&entropy_initial_random_revoked_marker, CompilerSystemsOperation::ConsoleWrite { text } if text == "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK") {
+        return Err(translation_edit_diagnostic(source, entropy_initial_random_revoked_marker_span, "static ELF initial-random qualification revocation must publish its exact marker before acquisition revocation"));
+    }
     let entropy_pending_process_after_acquisition_rollback_name = parse_static_image_entropy_acquisition(
         source, revoke_entropy_acquisition, allocator_context,
-        &entropy_acquiring_process_after_dma_buffers_name, false,
+        &entropy_acquiring_process_after_initial_random_revocation_name, false,
     )?;
     let entropy_acquisition_revoked_marker_span = statement_span(entropy_acquisition_revoked_marker);
     let entropy_acquisition_revoked_marker = analyze_operation(source, entropy_acquisition_revoked_marker, CompilerSystemsContextKind::Bootstrap, allocator_context)?;
@@ -1686,6 +1800,32 @@ fn analyze_static_elf_frame_sequence(
         entropy_bus_master_marker,
         CompilerSystemsOperation::QualifyStaticImageEntropyDmaBuffers,
         entropy_dma_buffers_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropySplitRing,
+        entropy_split_ring_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyDmaPreparation,
+        entropy_dma_preparation_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyQueueAddresses,
+        entropy_queue_addresses_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyQueueActivation,
+        entropy_queue_activation_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyRequestCompletion,
+        entropy_request_completion_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropySampleCapture,
+        entropy_sample_capture_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropySampleQuality,
+        entropy_sample_quality_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyPoolLifecycle,
+        entropy_pool_lifecycle_marker,
+        CompilerSystemsOperation::QualifyStaticImageEntropyGeneratorLifecycle,
+        entropy_generator_lifecycle_marker,
+        CompilerSystemsOperation::DeliverStaticImageEntropyInitialRandom,
+        entropy_initial_random_delivered_marker,
+        CompilerSystemsOperation::EnterStaticImageProcess,
+        static_process_exited_marker,
+        CompilerSystemsOperation::RestoreStaticImageProcessEntry,
+        static_process_entry_restored_marker,
+        CompilerSystemsOperation::RevokeStaticImageEntropyInitialRandom,
+        entropy_initial_random_revoked_marker,
         CompilerSystemsOperation::RevokeStaticImageEntropyAcquisition,
         entropy_acquisition_revoked_marker,
         CompilerSystemsOperation::RevokeStaticImageEntropyHandoff,
@@ -3680,6 +3820,642 @@ fn parse_static_image_entropy_dma_buffers(
         || policy != Some("bounded-static-elf-entropy-dma-buffer-coexistence")
     {
         return Err(translation_edit_diagnostic(source, span, "static-image entropy DMA-buffer coexistence requires the exact owner, initial entropy device, DMA domain, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_split_ring(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy split-ring coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy split-ring coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "split")
+        || !identifier_is(source, &items[7], "ring") || fields.len() != 5
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy split-ring coexistence requires its exact owner, device, translation domain, queue, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy split-ring parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy split-ring parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy split-ring parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || policy != Some("bounded-static-elf-entropy-split-ring-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy split-ring coexistence requires the exact owner, initial entropy device, DMA domain, queue, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_dma_preparation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy DMA-preparation coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy DMA-preparation coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "dma")
+        || !identifier_is(source, &items[7], "preparation") || fields.len() != 5
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy DMA-preparation coexistence requires its exact owner, device, translation domain, queue, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy DMA-preparation parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy DMA-preparation parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy DMA-preparation parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || policy != Some("bounded-static-elf-entropy-dma-preparation-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy DMA-preparation coexistence requires the exact owner, initial entropy device, DMA domain, queue, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_queue_addresses(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy queue-address coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-address coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "queue")
+        || !identifier_is(source, &items[7], "addresses") || fields.len() != 6
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-address coexistence requires its exact owner, device, translation domain, queue, transport, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut transport = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy queue-address parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy queue-address parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "transport" => transport = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy queue-address parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || transport != Some("initial-virtio-rng-pci-transport")
+        || policy != Some("bounded-static-elf-entropy-queue-address-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-address coexistence requires the exact owner, initial entropy device, DMA domain, queue, transport, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_queue_activation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy queue-activation coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-activation coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "queue")
+        || !identifier_is(source, &items[7], "activation") || fields.len() != 6
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-activation coexistence requires its exact owner, device, translation domain, queue, transport, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut transport = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy queue-activation parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy queue-activation parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "transport" => transport = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy queue-activation parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || transport != Some("initial-virtio-rng-pci-transport")
+        || policy != Some("bounded-static-elf-entropy-empty-queue-activation-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy queue-activation coexistence requires the exact owner, initial entropy device, DMA domain, queue, transport, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_request_completion(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy request-completion coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy request-completion coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "request")
+        || !identifier_is(source, &items[7], "completion") || fields.len() != 6
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy request-completion coexistence requires its exact owner, device, translation domain, queue, transport, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut transport = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy request-completion parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy request-completion parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "transport" => transport = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy request-completion parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || transport != Some("initial-virtio-rng-pci-transport")
+        || policy != Some("bounded-static-elf-entropy-request-completion-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy request-completion coexistence requires the exact owner, initial entropy device, DMA domain, queue, transport, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_sample_capture(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy-sample capture coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample capture coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "sample")
+        || !identifier_is(source, &items[7], "capture") || fields.len() != 7
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample capture coexistence requires its exact owner, device, translation domain, queue, transport, sample, and policy"));
+    }
+    let mut owner = None;
+    let mut device = None;
+    let mut domain = None;
+    let mut queue = None;
+    let mut transport = None;
+    let mut sample = None;
+    let mut policy = None;
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-sample capture parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-sample capture parameters must be identifiers")); };
+        match source.slice(label) {
+            "owner" => owner = Some(source.slice(*identity)),
+            "device" => device = Some(source.slice(*identity)),
+            "domain" => domain = Some(source.slice(*identity)),
+            "queue" => queue = Some(source.slice(*identity)),
+            "transport" => transport = Some(source.slice(*identity)),
+            "sample" => sample = Some(source.slice(*identity)),
+            "policy" => policy = Some(source.slice(*identity)),
+            _ => return Err(translation_edit_diagnostic(source, label, "unknown static-image entropy-sample capture parameter")),
+        }
+    }
+    if owner != Some(owner_name)
+        || device != Some("initial-virtio-rng-device")
+        || domain != Some("initial-dma-domain")
+        || queue != Some("initial-virtio-rng-queue-zero")
+        || transport != Some("initial-virtio-rng-pci-transport")
+        || sample != Some("initial-virtio-rng-sample")
+        || policy != Some("bounded-static-elf-entropy-sample-capture-coexistence")
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample capture coexistence requires the exact owner, initial entropy device, DMA domain, queue, transport, sample, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_sample_quality(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy-sample quality coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample quality coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "sample")
+        || !identifier_is(source, &items[7], "quality") || fields.len() != 9
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample quality coexistence requires its exact owner, transport resources, sample, source, evidence, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-sample quality parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-sample quality parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image entropy-sample quality parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("device", "initial-virtio-rng-device"),
+        ("domain", "initial-dma-domain"),
+        ("queue", "initial-virtio-rng-queue-zero"),
+        ("transport", "initial-virtio-rng-pci-transport"),
+        ("sample", "initial-virtio-rng-sample"),
+        ("source", "initial-virtio-rng-source"),
+        ("evidence", "initial-q35-virtio-rng-trust-evidence"),
+        ("policy", "bounded-static-elf-entropy-sample-quality-coexistence"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-sample quality coexistence requires the exact owner, transport resources, sample, source, evidence, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_pool_lifecycle(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy-pool lifecycle coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-pool lifecycle coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "pool")
+        || !identifier_is(source, &items[7], "lifecycle") || fields.len() != 12
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-pool lifecycle coexistence requires its exact owner, transport resources, entropy resources, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-pool lifecycle parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-pool lifecycle parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image entropy-pool lifecycle parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("device", "initial-virtio-rng-device"),
+        ("domain", "initial-dma-domain"),
+        ("queue", "initial-virtio-rng-queue-zero"),
+        ("transport", "initial-virtio-rng-pci-transport"),
+        ("sample", "initial-virtio-rng-sample"),
+        ("source", "initial-virtio-rng-source"),
+        ("evidence", "initial-q35-virtio-rng-trust-evidence"),
+        ("pool", "initial-entropy-pool"),
+        ("conditioner", "initial-blake2s-conditioner"),
+        ("contribution", "initial-entropy-contribution"),
+        ("policy", "bounded-static-elf-entropy-pool-lifecycle-coexistence"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-pool lifecycle coexistence requires the exact owner, transport resources, entropy resources, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_generator_lifecycle(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image entropy-generator lifecycle coexistence requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "qualify")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "generator")
+        || !identifier_is(source, &items[7], "lifecycle") || fields.len() != 15
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires its exact owner, transport resources, entropy resources, generator resources, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-generator lifecycle parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image entropy-generator lifecycle parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image entropy-generator lifecycle parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("device", "initial-virtio-rng-device"),
+        ("domain", "initial-dma-domain"),
+        ("queue", "initial-virtio-rng-queue-zero"),
+        ("transport", "initial-virtio-rng-pci-transport"),
+        ("sample", "initial-virtio-rng-sample"),
+        ("source", "initial-virtio-rng-source"),
+        ("evidence", "initial-q35-virtio-rng-trust-evidence"),
+        ("pool", "initial-entropy-pool"),
+        ("conditioner", "initial-blake2s-conditioner"),
+        ("contribution", "initial-entropy-contribution"),
+        ("generator", "initial-entropy-generator"),
+        ("algorithm", "chacha20"),
+        ("output", "initial-entropy-output"),
+        ("policy", "bounded-static-elf-entropy-generator-lifecycle-coexistence"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image entropy-generator lifecycle coexistence requires the exact owner, transport resources, entropy resources, generator resources, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_initial_random_delivery(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image initial-random delivery requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random delivery requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "deliver")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "initial")
+        || !identifier_is(source, &items[7], "random") || fields.len() != 17
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random delivery requires its exact owner, entropy resources, interface, delivery, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image initial-random delivery parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image initial-random delivery parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image initial-random delivery parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("device", "initial-virtio-rng-device"),
+        ("domain", "initial-dma-domain"),
+        ("queue", "initial-virtio-rng-queue-zero"),
+        ("transport", "initial-virtio-rng-pci-transport"),
+        ("sample", "initial-virtio-rng-sample"),
+        ("source", "initial-virtio-rng-source"),
+        ("evidence", "initial-q35-virtio-rng-trust-evidence"),
+        ("pool", "initial-entropy-pool"),
+        ("conditioner", "initial-blake2s-conditioner"),
+        ("contribution", "initial-entropy-contribution"),
+        ("generator", "initial-entropy-generator"),
+        ("algorithm", "chacha20"),
+        ("output", "initial-entropy-output"),
+        ("interface", "initial-linux-random-interface"),
+        ("delivery", "initial-auxv-random-delivery"),
+        ("policy", "bounded-static-elf-initial-random-delivery-coexistence"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random delivery requires the exact owner, entropy resources, interface, delivery, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_entropy_initial_random_revocation(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image initial-random revocation requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random revocation requires named parameters"));
+    };
+    if items.len() != 9 || !identifier_is(source, &items[0], context_name)
+        || !identifier_is(source, &items[1], "static") || !identifier_is(source, &items[2], "image")
+        || !identifier_is(source, &items[3], "construction") || !identifier_is(source, &items[4], "revoke")
+        || !identifier_is(source, &items[5], "entropy") || !identifier_is(source, &items[6], "initial")
+        || !identifier_is(source, &items[7], "random") || fields.len() != 3
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random revocation requires its exact owner, delivery, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image initial-random revocation parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image initial-random revocation parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image initial-random revocation parameter"));
+        }
+    }
+    let exact = [
+        ("owner", owner_name),
+        ("delivery", "initial-auxv-random-delivery"),
+        ("policy", "bounded-static-elf-initial-random-delivery-qualification-rollback"),
+    ];
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image initial-random revocation requires the exact owner, delivery, and policy"));
+    }
+    Ok(source.slice(name).to_owned())
+}
+
+fn parse_static_image_process_entry(
+    source: &SourceText,
+    statement: &Statement,
+    context_name: &str,
+    owner_name: &str,
+    enter: bool,
+) -> Result<String, Diagnostic> {
+    let (name, items, span) = match statement {
+        Statement::Implementation { name, classifier: Expression::Application { items, span }, declarations, .. } if declarations.is_empty() => (*name, items, *span),
+        Statement::Binding { name, classifier: None, value: Expression::Application { items, span } } => (*name, items, *span),
+        _ => return Err(translation_edit_diagnostic(source, statement_span(statement), "static-image process entry transition requires one exact affine owner")),
+    };
+    let Some(Expression::Product { fields, .. }) = items.last() else {
+        return Err(translation_edit_diagnostic(source, span, "static-image process entry transition requires named parameters"));
+    };
+    let shape_matches = if enter {
+        items.len() == 6
+            && identifier_is(source, &items[0], context_name)
+            && identifier_is(source, &items[1], "static")
+            && identifier_is(source, &items[2], "image")
+            && identifier_is(source, &items[3], "process")
+            && identifier_is(source, &items[4], "enter")
+            && fields.len() == 4
+    } else {
+        items.len() == 7
+            && identifier_is(source, &items[0], context_name)
+            && identifier_is(source, &items[1], "static")
+            && identifier_is(source, &items[2], "image")
+            && identifier_is(source, &items[3], "process")
+            && identifier_is(source, &items[4], "restore")
+            && identifier_is(source, &items[5], "entry")
+            && fields.len() == 2
+    };
+    if !shape_matches {
+        return Err(translation_edit_diagnostic(source, span, "static-image process entry transition requires its exact owner, ABI, terminal result, and policy"));
+    }
+    let mut values = std::collections::BTreeMap::new();
+    for field in fields {
+        let Some(label) = field.label else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image process entry parameters must be named")); };
+        let Expression::Identifier(identity) = &field.value else { return Err(translation_edit_diagnostic(source, field.value.span(), "static-image process entry parameters must be identifiers")); };
+        if values.insert(source.slice(label), source.slice(*identity)).is_some() {
+            return Err(translation_edit_diagnostic(source, label, "duplicate static-image process entry parameter"));
+        }
+    }
+    let exact = if enter {
+        vec![
+            ("owner", owner_name),
+            ("abi", "linux-x86-64-process"),
+            ("terminal", "exit-group-zero"),
+            ("policy", "bounded-static-elf-process-entry"),
+        ]
+    } else {
+        vec![
+            ("owner", owner_name),
+            ("policy", "bounded-static-elf-process-entry-qualification-rollback"),
+        ]
+    };
+    if values.len() != exact.len()
+        || exact.iter().any(|(label, value)| values.get(label) != Some(value))
+    {
+        return Err(translation_edit_diagnostic(source, span, "static-image process entry transition requires the exact owner, ABI, terminal result, and policy"));
     }
     Ok(source.slice(name).to_owned())
 }

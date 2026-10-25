@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/136";
+    "topal.provider-object.x86_64-qemu-pc-q35/139";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -101,6 +101,32 @@ pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_BUS_MASTER_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_bus_master";
 pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL: &str =
     "topal_x86_systems_static_image_qualify_entropy_dma_buffers";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_split_ring";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_dma_preparation";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_queue_addresses";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_queue_activation";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_request_completion";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_sample_capture";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_QUALITY_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_sample_quality";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_pool_lifecycle";
+pub const X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL: &str =
+    "topal_x86_systems_static_image_qualify_entropy_generator_lifecycle";
+pub const X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_static_image_deliver_entropy_initial_random";
+pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL: &str =
+    "topal_x86_systems_static_image_revoke_entropy_initial_random";
+pub const X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL: &str =
+    "topal_x86_systems_static_image_process_enter";
+pub const X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL: &str =
+    "topal_x86_systems_static_image_process_restore_entry";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL: &str =
     "topal_x86_systems_static_image_revoke_entropy_acquisition";
 pub const X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_HANDOFF_SYMBOL: &str =
@@ -543,12 +569,21 @@ fn dma_buffer_store_integer() -> Result<Vec<u8>, CompileError> {
     code.jump("success");
     code.bind("dword")?;
     code.bytes(&[0x83, 0xfa, 0x04]); // cmp edx, 4
-    code.jump_if(0x85, "fail");
+    code.jump_if(0x85, "qword");
     code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]); // cmp rsi, 4092
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]); // test rsi, 3
     code.jump_if(0x85, "fail");
     code.bytes(&[0x89, 0x0c, 0x37]); // mov [rdi+rsi], ecx
+    code.jump("success");
+    code.bind("qword")?;
+    code.bytes(&[0x83, 0xfa, 0x08]); // cmp edx, 8
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00]); // cmp rsi, 4088
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x07, 0x00, 0x00, 0x00]); // test rsi, 7
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0x0c, 0x37]); // mov [rdi+rsi], rcx
     code.bind("success")?;
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
@@ -594,12 +629,22 @@ fn dma_buffer_load_integer() -> Result<Vec<u8>, CompileError> {
     code.jump("success");
     code.bind("dword")?;
     code.bytes(&[0x83, 0xfa, 0x04]);
-    code.jump_if(0x85, "fail");
+    code.jump_if(0x85, "qword");
     code.bytes(&[0x48, 0x81, 0xfe, 0xfc, 0x0f, 0x00, 0x00]);
     code.jump_if(0x87, "fail");
     code.bytes(&[0x48, 0xf7, 0xc6, 0x03, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x8b, 0x04, 0x37, 0x39, 0xc8]);
+    code.jump_if(0x85, "fail");
+    code.jump("success");
+    code.bind("qword")?;
+    code.bytes(&[0x83, 0xfa, 0x08]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x81, 0xfe, 0xf8, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x48, 0xf7, 0xc6, 0x07, 0x00, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x04, 0x37, 0x48, 0x39, 0xc8]);
     code.jump_if(0x85, "fail");
     code.bind("success")?;
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
@@ -1488,6 +1533,84 @@ pub fn generate_x86_64_systems_provider_object(
         text,
         X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
         &static_image_qualify_entropy_dma_buffers()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+        &static_image_qualify_entropy_split_ring()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+        &static_image_qualify_entropy_dma_preparation()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+        &static_image_qualify_entropy_queue_addresses()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL,
+        &static_image_qualify_entropy_queue_activation()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
+        &static_image_qualify_entropy_request_completion()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+        &static_image_qualify_entropy_sample_capture()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_QUALITY_SYMBOL,
+        &static_image_qualify_entropy_sample_quality()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL,
+        &static_image_qualify_entropy_pool_lifecycle()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL,
+        &static_image_qualify_entropy_generator_lifecycle()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        &static_image_deliver_entropy_initial_random()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+        &static_image_process_enter()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL,
+        &static_image_process_restore_entry()?,
+    );
+    append_encoded_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        &static_image_revoke_entropy_initial_random()?,
     );
     append_encoded_function(
         &mut object,
@@ -8670,6 +8793,347 @@ fn static_image_qualify_entropy_dma_buffers() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(true)
 }
 
+fn static_image_qualify_entropy_split_ring() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_dma_preparation() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_queue_addresses() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_queue_activation() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_request_completion() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_sample_capture() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_sample_quality() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_pool_lifecycle() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_qualify_entropy_generator_lifecycle() -> Result<Vec<u8>, CompileError> {
+    static_image_prepared_process_retention(true)
+}
+
+fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xf6]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x39, 0xf7]);
+    code.jump_if(0x84, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE, TERMINATOR] {
+        code.bytes(&[0x48, 0x83, 0xbf]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fail");
+    }
+    for (source_offset, target_offset) in [(0_u8, OBJECT), (8, OBJECT + 8)] {
+        if source_offset == 0 {
+            code.bytes(&[0x48, 0x8b, 0x06]);
+        } else {
+            code.bytes(&[0x48, 0x8b, 0x46, source_offset]);
+        }
+        code.bytes(&[0x48, 0x89, 0x87]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.bytes(&[0x48, 0x3b, 0x87]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x48, 0x89, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail_wipe");
+    }
+    code.bind("wipe")?;
+    for offset in [0_u8, 8, 16, 24] {
+        if offset == 0 {
+            code.bytes(&[0x48, 0xc7, 0x06, 0, 0, 0, 0]);
+            code.bytes(&[0x48, 0x83, 0x3e, 0]);
+        } else {
+            code.bytes(&[0x48, 0xc7, 0x46, offset, 0, 0, 0, 0]);
+            code.bytes(&[0x48, 0x83, 0x7e, offset, 0]);
+        }
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail_wipe")?;
+    code.jump("wipe");
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    const CONTEXT_QWORDS: u32 = 13;
+    let mut code = X86FunctionEncoder::default();
+
+    // Preserve static root, metadata, payload, bootstrap root, and stack backing.
+    code.bytes(&[0x41, 0x51, 0x41, 0x50, 0x57, 0x56, 0x51]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]); // private context argument
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0x07, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd7, 0x31, 0xc0, 0xb9]);
+    code.bytes(&CONTEXT_QWORDS.to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, // payload
+        0x48, 0x8b, 0x74, 0x24, 0x08, // leaf metadata
+        0x48, 0x8b, 0x0c, 0x24, // static root
+        0x4c, 0x8b, 0x44, 0x24, 0x18, // bootstrap root
+        0x4c, 0x8b, 0x4c, 0x24, 0x20, // stack backing
+    ]);
+
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    emit_static_image_published_stack_leaf_verification(
+        &mut code,
+        [
+            "process-entry-h",
+            "process-entry-x",
+            "process-entry-r",
+            "process-entry-w",
+        ],
+    )?;
+    emit_static_image_address_space_hierarchy_verification_labeled(
+        &mut code,
+        true,
+        "process-entry-pd",
+        "process-entry-pd-expected",
+    )?;
+    emit_static_image_stack_leaf_root_verification(&mut code)?;
+    emit_static_image_stack_leaf_entry_verification(&mut code)?;
+    emit_static_image_resident_program_header_verification(&mut code)?;
+
+    // Preserve the opaque random object while reusing the exact deterministic
+    // initial-stack verifier, then restore and verify its published ABI facts.
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    code.bytes(&[0x49, 0x8b, 0x83]);
+    code.bytes(&OBJECT.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x20]);
+    code.bytes(&[0x49, 0x8b, 0x83]);
+    code.bytes(&(OBJECT + 8).to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x42, 0x28]);
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x39, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x49, 0x83, 0xbb]);
+    code.bytes(&TERMINATOR.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE] {
+        code.bytes(&[0x49, 0xc7, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+    }
+    emit_static_image_load_metadata_stack(&mut code, true)?;
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x20]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    for (context_offset, target_offset) in [(0x20_u8, OBJECT), (0x28, OBJECT + 8)] {
+        code.bytes(&[0x49, 0x8b, 0x42, context_offset]);
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&target_offset.to_le_bytes());
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x49, 0x89, 0x83]);
+        code.bytes(&offset.to_le_bytes());
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+
+    // Save all privileged state changed by this bounded entry.
+    for (msr, context_offset) in [
+        (0xc000_0102_u32, 56_u8),
+        (0xc000_0100, 64),
+        (0xc000_0080, 72),
+        (0xc000_0081, 80),
+        (0xc000_0082, 88),
+        (0xc000_0084, 96),
+    ] {
+        code.bytes(&[0xb9]);
+        code.bytes(&msr.to_le_bytes());
+        code.bytes(&[0x0f, 0x32, 0x48, 0xc1, 0xe2, 0x20, 0x48, 0x09, 0xd0]);
+        code.bytes(&[0x49, 0x89, 0x42, context_offset]);
+    }
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x18]);
+    code.bytes(&[0x49, 0x89, 0x42, 0x10]); // bootstrap CR3
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24]);
+    code.bytes(&[0x49, 0x89, 0x42, 0x18]); // static CR3
+    code.bytes(&[0x49, 0x89, 0x62, 0x08]); // continuation RSP
+
+    code.bytes(&[0xb9]);
+    code.bytes(&0xc000_0080_u32.to_le_bytes());
+    code.bytes(&[0x0f, 0x32, 0x83, 0xc8, 0x01, 0x0f, 0x30]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0081, 0x001b_0010_0000_0000);
+    code.rip_lea(&[0x48, 0x8d, 0x05], "static-process-syscall");
+    emit_wrmsr_register(&mut code, 0xc000_0082, &[]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0084, 0x200);
+    emit_wrmsr_register(&mut code, 0xc000_0102, &[0x4c, 0x89, 0xd0]);
+    emit_wrmsr_immediate(&mut code, 0xc000_0100, 0);
+    code.bytes(&[0x41, 0xc6, 0x02, 0x01]);
+
+    code.bytes(&[0x48, 0x8b, 0x04, 0x24, 0x0f, 0x22, 0xd8]);
+    code.bytes(&[0x6a, 0x23, 0x48, 0xb8]);
+    code.bytes(&0x005f_ffa0_u64.to_le_bytes());
+    code.bytes(&[0x50, 0x6a, 0x02, 0x6a, 0x2b, 0x48, 0xb8]);
+    code.bytes(&0x004a_6580_u64.to_le_bytes());
+    code.bytes(&[0x50, 0x48, 0xcf]);
+
+    code.bind("static-process-syscall")?;
+    code.bytes(&[0x0f, 0x01, 0xf8]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x89, 0x24, 0x25, 0x30, 0, 0, 0]);
+    code.bytes(&[
+        0x65, 0x48, 0x8b, 0x04, 0x25, 0x10, 0, 0, 0, 0x0f, 0x22, 0xd8,
+    ]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 0x08, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0, 0, 0, 0, 2]);
+    code.bytes(&[0x0f, 0x01, 0xf8]);
+    code.jump("returned");
+
+    code.bind("returned")?;
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
+    code.bytes(&[0x41, 0x80, 0x3a, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x3b, 0x42, 0x10]);
+    code.jump_if(0x85, "fatal");
+    for (msr, context_offset) in [
+        (0xc000_0102_u32, 56_u8),
+        (0xc000_0100, 64),
+        (0xc000_0080, 72),
+        (0xc000_0081, 80),
+        (0xc000_0082, 88),
+        (0xc000_0084, 96),
+    ] {
+        code.bytes(&[0x49, 0x8b, 0x42, context_offset]);
+        emit_wrmsr_register(&mut code, msr, &[]);
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    for context_offset in [8_u8, 48] {
+        code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
+    }
+    // Hardware sets Accessed on the entry leaf and Accessed/Dirty on the user
+    // stack leaf. Normalize only those provider-private status bits so the
+    // completed owner retains the exact sealed mapping for qualification.
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+        code.bytes(&[0x48, 0x83, 0xa6]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[mask]);
+        code.bytes(&[0x48, 0xf7, 0x86]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&0x60_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
+
+    code.bind("fatal")?;
+    code.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x80, 0x3f, 2]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0x3b, 0x47, 0x10]);
+    code.jump_if(0x85, "fail");
+    for offset in [8_u8, 32, 40, 48, 56, 64, 72, 80, 88, 96] {
+        code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x31, 0xc0, 0xb9, 13, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_revoke_entropy_initial_random() -> Result<Vec<u8>, CompileError> {
+    const OBJECT: u32 = 0x0e70;
+    const TAG: u32 = 0x0fc8;
+    const VALUE: u32 = 0x0fd0;
+    const TERMINATOR: u32 = 0x0fd8;
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x84, "fail");
+    for (offset, value) in [(TAG, 25_u64), (VALUE, 0x005f_fe70)] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&value.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x48, 0x83, 0xbf]);
+    code.bytes(&TERMINATOR.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fail");
+    for offset in [OBJECT, OBJECT + 8, TAG, VALUE] {
+        code.bytes(&[0x48, 0xc7, 0x87]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x48, 0x83, 0xbf]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
 fn static_image_revoke_entropy_acquisition() -> Result<Vec<u8>, CompileError> {
     static_image_prepared_process_retention(false)
 }
@@ -10148,6 +10612,24 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x66, 0x89, 0x0c, 0x37])
         );
         assert!(bytes.windows(3).any(|window| window == [0x89, 0x0c, 0x37]));
+        assert!(
+            bytes
+                .windows(4)
+                .any(|window| window == [0x48, 0x89, 0x0c, 0x37])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x08]));
+        let load = file
+            .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_LOAD_INTEGER_SYMBOL)
+            .unwrap();
+        let start = usize::try_from(load.address()).unwrap();
+        let end = start + usize::try_from(load.size()).unwrap();
+        let bytes = &data[start..end];
+        assert!(
+            bytes
+                .windows(7)
+                .any(|window| window == [0x48, 0x8b, 0x04, 0x37, 0x48, 0x39, 0xc8])
+        );
+        assert!(bytes.windows(3).any(|window| window == [0x83, 0xfa, 0x08]));
         let prepare = file
             .symbol_by_name(X86_SYSTEMS_DMA_BUFFER_PREPARE_DEVICE_SYMBOL)
             .unwrap();
@@ -11414,6 +11896,42 @@ assert bytes(output) == block[32:]
             &file,
             X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_BUFFERS_SYMBOL,
         );
+        let qualify_entropy_split_ring = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SPLIT_RING_SYMBOL,
+        );
+        let qualify_entropy_dma_preparation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_DMA_PREPARATION_SYMBOL,
+        );
+        let qualify_entropy_queue_addresses = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ADDRESSES_SYMBOL,
+        );
+        let qualify_entropy_queue_activation = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_QUEUE_ACTIVATION_SYMBOL,
+        );
+        let qualify_entropy_request_completion = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_REQUEST_COMPLETION_SYMBOL,
+        );
+        let qualify_entropy_sample_capture = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_CAPTURE_SYMBOL,
+        );
+        let qualify_entropy_sample_quality = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_SAMPLE_QUALITY_SYMBOL,
+        );
+        let qualify_entropy_pool_lifecycle = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_POOL_LIFECYCLE_SYMBOL,
+        );
+        let qualify_entropy_generator_lifecycle = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE_SYMBOL,
+        );
         let revoke_entropy_acquisition = symbol_bytes(
             &file,
             X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_ACQUISITION_SYMBOL,
@@ -11434,6 +11952,15 @@ assert bytes(output) == block[32:]
             qualify_entropy_queue,
             qualify_entropy_bus_master,
             qualify_entropy_dma_buffers,
+            qualify_entropy_split_ring,
+            qualify_entropy_dma_preparation,
+            qualify_entropy_queue_addresses,
+            qualify_entropy_queue_activation,
+            qualify_entropy_request_completion,
+            qualify_entropy_sample_capture,
+            qualify_entropy_sample_quality,
+            qualify_entropy_pool_lifecycle,
+            qualify_entropy_generator_lifecycle,
             revoke_entropy_acquisition,
             revoke_entropy_handoff,
             restore_prepared_process,
@@ -11472,6 +11999,99 @@ assert bytes(output) == block[32:]
                 "inactive random-slot authority must not invalidate an active address"
             );
         }
+
+        let deliver_initial_random = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        );
+        let revoke_initial_random = symbol_bytes(
+            &file,
+            X86_SYSTEMS_STATIC_IMAGE_REVOKE_ENTROPY_INITIAL_RANDOM_SYMBOL,
+        );
+        for offset in [0x0e70_u32, 0x0e78, 0x0fc8, 0x0fd0] {
+            assert!(
+                deliver_initial_random
+                    .windows(7)
+                    .any(|window| window[3..7] == offset.to_le_bytes()),
+                "initial-random delivery must address every object and auxiliary-vector qword"
+            );
+            assert!(
+                revoke_initial_random
+                    .windows(7)
+                    .any(|window| window[3..7] == offset.to_le_bytes()),
+                "initial-random inverse must address every object and auxiliary-vector qword"
+            );
+        }
+        assert!(
+            deliver_initial_random
+                .windows(8)
+                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+        );
+        assert!(
+            revoke_initial_random
+                .windows(8)
+                .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+        );
+
+        let process_enter = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL);
+        let process_restore =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL);
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == 0x004a_6580_u64.to_le_bytes()),
+            "static process entry must derive the sealed ELF entry"
+        );
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == 0x005f_ffa0_u64.to_le_bytes()),
+            "static process entry must derive the sealed initial stack"
+        );
+        assert!(
+            process_enter
+                .windows(2)
+                .any(|window| window == [0x48, 0xcf]),
+            "static process entry must cross the native privilege boundary"
+        );
+        assert_eq!(
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 14],
+            &[
+                0xbf, 0, 0, 0, 0, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b
+            ],
+            "the clean-room process must return through native SYSCALL"
+        );
+        assert_eq!(
+            process_enter
+                .windows(3)
+                .filter(|window| *window == [0x0f, 0x22, 0xd8])
+                .count(),
+            2,
+            "entry and terminal return must each switch CR3 exactly once"
+        );
+        assert!(
+            process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0xe7, 0, 0, 0]),
+            "the static dispatcher must accept only exit_group"
+        );
+        for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+            assert!(
+                process_enter.windows(8).any(|window| {
+                    window[..3] == [0x48, 0x83, 0xa6]
+                        && window[3..7] == offset.to_le_bytes()
+                        && window[7] == mask
+                }),
+                "terminal return must normalize only the entry and stack hardware status bits"
+            );
+        }
+        assert!(
+            process_restore
+                .windows(12)
+                .any(|window| window
+                    == [0x31, 0xc0, 0xb9, 13, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
+            "qualification restoration must clear the complete private context"
+        );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
         assert!(copy_payload.len() > 8_000);

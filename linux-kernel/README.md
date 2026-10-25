@@ -568,6 +568,15 @@ records simultaneous disjoint 503-frame payload and one-frame metadata
 ownership, explicit whole-payload provider exclusion, metadata-then-payload
 rollback, structural rejection, and two deterministic pinned-QEMU runs.
 
+The latest systems-only execution refinement adds
+[bounded static ELF process entry](design/bounded-static-elf-process-entry.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-process-entry.md)
+records one affine randomized-to-completed transition, real x86-64 CPL3 entry,
+native `exit_group(0)` return, exact kernel-state restoration, provider-private
+Accessed/Dirty normalization, a qualification-only inverse, and two
+deterministic pinned-QEMU runs. The clean-room probe establishes the machine
+boundary without yet claiming BusyBox or general userspace compatibility.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -746,6 +755,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF page realization](step-4-bounded-static-elf-page-realization.md)
 - [Step 4 bounded static ELF frame extent](step-4-bounded-static-elf-frame-extent.md)
 - [Step 4 bounded static ELF mapping resources](step-4-bounded-static-elf-mapping-resources.md)
+- [Step 4 bounded static ELF process entry](step-4-bounded-static-elf-process-entry.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

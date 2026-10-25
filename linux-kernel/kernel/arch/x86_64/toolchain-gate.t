@@ -307,8 +307,144 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-dma-buffer-coexistence
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              entropy-acquiring-static-process-after-split-ring is unmapped static image construction qualify entropy split ring (
                                                                                 owner is entropy-acquiring-static-process-after-dma-buffers,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                policy is bounded-static-elf-entropy-split-ring-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK"
+                                                                              entropy-acquiring-static-process-after-dma-preparation is unmapped static image construction qualify entropy dma preparation (
+                                                                                owner is entropy-acquiring-static-process-after-split-ring,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                policy is bounded-static-elf-entropy-dma-preparation-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK"
+                                                                              entropy-acquiring-static-process-after-queue-addresses is unmapped static image construction qualify entropy queue addresses (
+                                                                                owner is entropy-acquiring-static-process-after-dma-preparation,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                policy is bounded-static-elf-entropy-queue-address-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK"
+                                                                              entropy-acquiring-static-process-after-queue-activation is unmapped static image construction qualify entropy queue activation (
+                                                                                owner is entropy-acquiring-static-process-after-queue-addresses,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                policy is bounded-static-elf-entropy-empty-queue-activation-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK"
+                                                                              entropy-acquiring-static-process-after-request-completion is unmapped static image construction qualify entropy request completion (
+                                                                                owner is entropy-acquiring-static-process-after-queue-activation,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                policy is bounded-static-elf-entropy-request-completion-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK"
+                                                                              entropy-acquiring-static-process-after-sample-capture is unmapped static image construction qualify entropy sample capture (
+                                                                                owner is entropy-acquiring-static-process-after-request-completion,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                policy is bounded-static-elf-entropy-sample-capture-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK"
+                                                                              entropy-acquiring-static-process-after-sample-quality is unmapped static image construction qualify entropy sample quality (
+                                                                                owner is entropy-acquiring-static-process-after-sample-capture,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                policy is bounded-static-elf-entropy-sample-quality-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK"
+                                                                              entropy-acquiring-static-process-after-pool-lifecycle is unmapped static image construction qualify entropy pool lifecycle (
+                                                                                owner is entropy-acquiring-static-process-after-sample-quality,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                pool is initial-entropy-pool,
+                                                                                conditioner is initial-blake2s-conditioner,
+                                                                                contribution is initial-entropy-contribution,
+                                                                                policy is bounded-static-elf-entropy-pool-lifecycle-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK"
+                                                                              entropy-acquiring-static-process-after-generator-lifecycle is unmapped static image construction qualify entropy generator lifecycle (
+                                                                                owner is entropy-acquiring-static-process-after-pool-lifecycle,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                pool is initial-entropy-pool,
+                                                                                conditioner is initial-blake2s-conditioner,
+                                                                                contribution is initial-entropy-contribution,
+                                                                                generator is initial-entropy-generator,
+                                                                                algorithm is chacha20,
+                                                                                output is initial-entropy-output,
+                                                                                policy is bounded-static-elf-entropy-generator-lifecycle-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK"
+                                                                              randomized-static-process-after-initial-random-delivery is unmapped static image construction deliver entropy initial random (
+                                                                                owner is entropy-acquiring-static-process-after-generator-lifecycle,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                sample is initial-virtio-rng-sample,
+                                                                                source is initial-virtio-rng-source,
+                                                                                evidence is initial-q35-virtio-rng-trust-evidence,
+                                                                                pool is initial-entropy-pool,
+                                                                                conditioner is initial-blake2s-conditioner,
+                                                                                contribution is initial-entropy-contribution,
+                                                                                generator is initial-entropy-generator,
+                                                                                algorithm is chacha20,
+                                                                                output is initial-entropy-output,
+                                                                                interface is initial-linux-random-interface,
+                                                                                delivery is initial-auxv-random-delivery,
+                                                                                policy is bounded-static-elf-initial-random-delivery-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK"
+                                                                              completed-static-process-after-entry is unmapped static image process enter (
+                                                                                owner is randomized-static-process-after-initial-random-delivery,
+                                                                                abi is linux-x86-64-process,
+                                                                                terminal is exit-group-zero,
+                                                                                policy is bounded-static-elf-process-entry
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK"
+                                                                              randomized-static-process-after-entry-restoration is unmapped static image process restore entry (
+                                                                                owner is completed-static-process-after-entry,
+                                                                                policy is bounded-static-elf-process-entry-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK"
+                                                                              entropy-acquiring-static-process-after-initial-random-revocation is unmapped static image construction revoke entropy initial random (
+                                                                                owner is randomized-static-process-after-entry-restoration,
+                                                                                delivery is initial-auxv-random-delivery,
+                                                                                policy is bounded-static-elf-initial-random-delivery-qualification-rollback
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-initial-random-revocation,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
