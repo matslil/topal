@@ -1980,6 +1980,51 @@ entropy pipeline, consume or expose entropy, publish `AT_RANDOM`, initialize
 TLS, construct a user context, enter user mode, execute BusyBox, or add a
 syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ACTIVATION-COEXISTENCE-001 — Reversible empty entropy-queue activation
+
+`static image construction qualify entropy queue activation` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ADDRESS-COEXISTENCE-001`. It SHALL
+accept only device identity `initial-virtio-rng-device`, translation-domain
+identity `initial-dma-domain`, queue identity
+`initial-virtio-rng-queue-zero`, transport identity
+`initial-virtio-rng-pci-transport`, and policy
+`bounded-static-elf-entropy-empty-queue-activation-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact prerequisite sequence through split-ring
+construction. While the control buffer remains CPU-owned, it SHALL change the
+available index from one to zero and read zero back without changing the
+descriptor or available slot. It SHALL then prepare payload before control,
+publish the exact three queue references, and perform the exact enable/readback
+then `DRIVER_OK`/readback sequence of
+`TOPAL-SYSTEMS-VIRTIO-PCI-QUEUE-ACTIVATE-001`. The zero available index SHALL
+remain device-visible throughout activation and no notification is permitted.
+
+The transaction SHALL reset device status to zero, read status and queue enable
+back as zero, and read all three complete logical 64-bit queue-address
+registers back as zero before cancelling control and payload preparation.
+Target-required access-width decomposition SHALL remain private provider
+representation. It SHALL then erase and exactly read back all ring fields,
+reverse bus mastering, verify configuration-gateway rollback, and leave the
+later ordinary sequence unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK` observation is permitted
+only after every proof and rollback succeeds.
+
+Another owner, device, domain, queue, transport, policy, buffer, reference,
+available index, activation or reset operation, register, width, offset, value,
+order, omission, duplication, notification, escaped identity, nonzero final
+transport state, final ownership or byte state, incomplete process/device/
+gateway restoration, process mutation or exposure, entropy use, or recoverable
+disposition SHALL be invalid. Source SHALL receive no process resource, buffer
+identity, address, mapping, PCI coordinate, queue field, output byte, or
+provider representation.
+
+This rule SHALL NOT submit work, observe completion, span the entropy pipeline,
+consume or expose entropy, publish `AT_RANDOM`, initialize TLS, construct a user
+context, enter user mode, execute BusyBox, or add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
