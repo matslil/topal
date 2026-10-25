@@ -1025,6 +1025,22 @@ preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001` and
 `TK-DEC-171`.
 
+The bounded static-ELF entropy-pool-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete pool
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact assessed-sample creation. Checked
+policy shall create the exact empty 256-bit pool, invoke the qualified BLAKE2s
+conditioner for the exact first contribution, and transfer zero-to-256 credit
+only after mixing. Lowering shall reset and verify transport state, overwrite
+and read back payload, ring, sample, and pool storage, reverse bus mastering,
+and restore gateway state. The checker and semantic model shall reject every
+substituted fact, early credit, ordering error, omission, duplicate, escaped
+byte or authority, partial erase, nonzero final state, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove the complete lifecycle,
+destruction, same-owner return, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-172`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

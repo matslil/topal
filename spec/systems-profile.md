@@ -2149,6 +2149,45 @@ This rule SHALL NOT create or mix a pool, initialize or extract a generator,
 publish `AT_RANDOM`, initialize TLS, construct a user context, enter user mode,
 execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001 — Complete entropy-pool lifecycle
+
+`static image construction qualify entropy pool lifecycle` SHALL require,
+consume, and return the exact `EntropyAcquiringStaticElfInitialProcess`
+accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001`. It SHALL
+accept only the sealed initial transport resources and Q35 quality evidence,
+sample identity one, pool identity one, conditioner identity one, contribution
+identity one, and policy
+`bounded-static-elf-entropy-pool-lifecycle-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary prerequisite sequence through the assessed
+32-byte, 256-credit sample. Kernel policy SHALL perform exact empty 256-bit-
+capacity pool creation under `TOPAL-SYSTEMS-ENTROPY-POOL-001`, exact BLAKE2s
+first-contribution mixing under `TOPAL-SYSTEMS-ENTROPY-MIX-001`, and exact
+zero-to-256 credit transfer under `TOPAL-SYSTEMS-ENTROPY-CREDIT-001`. Creation
+and credit SHALL require no target lowering; only the qualified opaque
+conditioner may receive target lowering. Credit SHALL NOT become available
+before complete mixing succeeds.
+
+The transaction SHALL reset and read back all transport state, overwrite and
+read back the complete DMA payload and ring, and overwrite and read back every
+provider-private byte owned by the assessed sample and credited pool. It SHALL
+reverse bus mastering, verify gateway rollback, and leave the later ordinary
+sequence structurally unconsumed. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK` observation is permitted
+only after creation, mixing, credit transfer, destruction, and rollback
+succeed.
+
+Another owner or transport resource, sample, pool, conditioner, contribution,
+capacity, credit fact, policy, order, omission, duplication, early credit,
+escaped byte or authority, partial erase, nonzero final state, process mutation
+or exposure, or recoverable disposition SHALL be invalid.
+
+This rule SHALL NOT initialize or extract a generator, publish `AT_RANDOM`,
+initialize TLS, construct a user context, enter user mode, execute BusyBox, or
+add a syscall.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh
