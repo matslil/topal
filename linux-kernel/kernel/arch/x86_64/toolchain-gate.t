@@ -332,8 +332,17 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                                 policy is bounded-static-elf-entropy-queue-address-coexistence
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK"
-                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                              entropy-acquiring-static-process-after-queue-activation is unmapped static image construction qualify entropy queue activation (
                                                                                 owner is entropy-acquiring-static-process-after-queue-addresses,
+                                                                                device is initial-virtio-rng-device,
+                                                                                domain is initial-dma-domain,
+                                                                                queue is initial-virtio-rng-queue-zero,
+                                                                                transport is initial-virtio-rng-pci-transport,
+                                                                                policy is bounded-static-elf-entropy-empty-queue-activation-coexistence
+                                                                              )
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK"
+                                                                              entropy-pending-static-process-after-acquisition-rollback is unmapped static image construction revoke entropy acquisition (
+                                                                                owner is entropy-acquiring-static-process-after-queue-activation,
                                                                                 policy is bounded-static-elf-entropy-acquisition-qualification-rollback
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK"
