@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/149";
+    "topal.provider-object.x86_64-qemu-pc-q35/150";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9246,7 +9246,20 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
 
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-brk-initial-query");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0xb8]);
+    code.bytes(&0x005f_7dc0_u32.to_le_bytes());
+    code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-brk-initial-query")?;
     code.bytes(&[0x48, 0x81, 0xf9]);
     code.bytes(&0x0040_1000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
@@ -12580,7 +12593,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 421];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 438];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12608,6 +12621,10 @@ assert bytes(output) == block[32:]
             &[
                 0xbf, 0x70, 0x5e, 0x5f, 0, 0xbe, 8, 0, 0, 0, 0xba, 1, 0, 0, 0, 0xb8, 0x3e, 0x01, 0,
                 0, 0x0f, 0x05,
+            ][..],
+            &[
+                0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05, 0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0, 0x75,
+                0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
