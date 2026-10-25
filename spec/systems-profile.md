@@ -2225,6 +2225,43 @@ invalid.
 This rule SHALL NOT deliver `AT_RANDOM`, initialize TLS, construct a user
 context, enter user mode, execute BusyBox, or add a syscall.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001 — Persistent initial-random delivery
+
+`static image construction deliver entropy initial random` SHALL require and
+consume the exact `EntropyAcquiringStaticElfInitialProcess` accepted by
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001` and
+produce one affine `RandomizedStaticElfInitialProcess`. It SHALL accept only
+the sealed preceding entropy resources, generator and output identity one,
+Linux interface identity one, auxiliary tag 25, exact 32-byte source range,
+selected range `[0, 16)`, discarded range `[16, 32)`, single-use delivery, and
+policy `bounded-static-elf-initial-random-delivery-coexistence`.
+
+The provider SHALL completely revalidate every retained process resource and
+byte and replay the exact ordinary entropy sequence through first extraction.
+It SHALL atomically publish one provider-chosen native `AT_RANDOM` pointer and
+one distinct aligned 16-byte object inside the previously authorized stack
+slot, copy and verify the selected output without exposing its value, wipe and
+verify the complete provider output, and retain the stack result while
+destroying and verifying every sample, pool, key, DMA, ring, transport, bus-
+master, and gateway resource. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK` observation is permitted
+only after the randomized owner remains live with no entropy resource.
+
+For reversible qualification, `static image construction revoke entropy
+initial random` SHALL consume that exact randomized owner, verify and erase the
+complete native object and auxiliary-vector pair, restore the exact preceding
+acquisition owner, and permit exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK` observation before the
+existing nested rollback. Production entry SHALL consume the randomized owner
+without invoking this inverse.
+
+Another owner, prerequisite resource, identity, interface, tag, extent,
+partition, policy, order, omission, duplicate, premature delivery, overlap,
+escaped byte or authority, partial copy, incomplete output/resource/object
+erase, nonzero inverse state, source-visible representation, or recoverable
+disposition SHALL be invalid. This rule SHALL NOT construct a user context,
+enter user mode, execute BusyBox, add a syscall, or provide `getrandom`.
+
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
 extent, the same allocator MAY return one additional `(1, 1)` extent with fresh

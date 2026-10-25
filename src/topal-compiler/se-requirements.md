@@ -1058,6 +1058,24 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001` and
 `TK-DEC-173`.
 
+The bounded static-ELF initial-random-delivery-coexistence increment shall
+consume the exact acquisition owner and produce one affine randomized static-
+process owner. X86-64 lowering shall completely validate the retained process,
+replay the ordinary entropy sequence through exact first extraction, publish
+one native tag-25 pair and distinct aligned 16-byte stack object, verify the
+copy without exposing bytes, wipe the complete output, and destroy and verify
+all remaining entropy, DMA, transport, bus-master, and gateway resources while
+the process result remains live. A qualification-only inverse shall verify and
+erase the complete object and pair and restore the exact acquisition owner
+before existing rollback. The checker and semantic model shall reject every
+substituted fact, ordering error, omission, duplicate, premature delivery,
+overlap, escaped authority, partial copy or erase, nonzero inverse state, or
+recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+the persistent forward boundary, exact inverse, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` and
+`TK-DEC-174`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
