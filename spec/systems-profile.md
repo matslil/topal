@@ -3518,6 +3518,33 @@ entry failure SHALL be invalid. This rule SHALL NOT add limit mutation or
 enforcement, another resource, accounting, inheritance, multiple processes,
 cgroups, BusyBox execution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001 — Initial static-process executable-name probe
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback`
+and select policy `bounded-static-elf-initial-readlinkat-fallback`. After the
+exact stack-limit query, the process MAY issue one optional executable-name
+probe through `TOPAL-SYSTEMS-USER-ENOSYS-001`.
+
+The initial x86-64 qualification SHALL issue native syscall 267 with native
+`AT_FDCWD`, path candidate `0x005bfdda`, output candidate `0x005fe000`, length
+4096, and a continuation inside the sealed executable mapping. Because syscall
+267 is not selected by an implemented static-process arm, the adapter SHALL
+return exact native `-ENOSYS` without reading or validating any argument,
+accessing path or output memory, retaining state, consuming an observation, or
+changing prior process state. The same context SHALL remain able to invoke
+implemented `exit_group(0)`.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK`
+observation SHALL follow the stack-limit observation and precede process exit.
+Another request, result, order, duplicate, argument access, output mutation,
+state change, terminal fallback, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add procfs, VFS
+lookup, symbolic links, path resolution, executable-name publication, BusyBox
+execution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
