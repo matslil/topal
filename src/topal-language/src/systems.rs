@@ -9389,6 +9389,8 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING,
+                SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+                SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -10515,7 +10517,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 400);
+        assert_eq!(program.bootstrap.handler.operations.len(), 404);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10657,6 +10659,8 @@ mod tests {
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING,
+                SYSTEMS_STATIC_IMAGE_PROCESS_ENTER,
+                SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY,
                 SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
                 SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
@@ -14550,6 +14554,37 @@ mod tests {
             .unwrap_err();
             assert!(
                 error.message.contains("initial-random") || error.message.contains("exact marker"),
+                "{}",
+                error.message
+            );
+        }
+    }
+
+    #[test]
+    fn requires_exact_static_elf_process_entry() {
+        // TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001.
+        for source in [
+            SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
+            SOURCE.replace(
+                "terminal is exit-group-zero,",
+                "terminal is exit-group-one,",
+            ),
+            SOURCE.replace(
+                "policy is bounded-static-elf-process-entry",
+                "policy is synthetic-process-entry",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+                "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_BAD",
+            ),
+        ] {
+            let error = analyze_systems_for_compiler(
+                &source,
+                &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+            )
+            .unwrap_err();
+            assert!(
+                error.message.contains("process entry") || error.message.contains("exact marker"),
                 "{}",
                 error.message
             );

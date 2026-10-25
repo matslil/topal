@@ -12227,6 +12227,16 @@ mod tests {
             .handler
             .operations
             .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
+        release_while_initialized
+            .bootstrap
+            .handler
+            .operations
+            .remove(19);
         refresh_bootstrap_effects(&mut release_while_initialized);
         assert_eq!(
             validate_systems_program(&release_while_initialized)

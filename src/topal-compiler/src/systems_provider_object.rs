@@ -8906,6 +8906,13 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&CONTEXT_QWORDS.to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x48, 0x8b, 0x7c, 0x24, 0x10, // payload
+        0x48, 0x8b, 0x74, 0x24, 0x08, // leaf metadata
+        0x48, 0x8b, 0x0c, 0x24, // static root
+        0x4c, 0x8b, 0x44, 0x24, 0x18, // bootstrap root
+        0x4c, 0x8b, 0x4c, 0x24, 0x20, // stack backing
+    ]);
 
     emit_static_image_address_space_resource_validation(&mut code, true)?;
     code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
@@ -9050,6 +9057,20 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     for context_offset in [8_u8, 48] {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
+    // Hardware sets Accessed on the entry leaf and Accessed/Dirty on the user
+    // stack leaf. Normalize only those provider-private status bits so the
+    // completed owner retains the exact sealed mapping for qualification.
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+        code.bytes(&[0x48, 0x83, 0xa6]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[mask]);
+        code.bytes(&[0x48, 0xf7, 0x86]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&0x60_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x0f, 0xae, 0xf0]);
     code.bytes(&[0x48, 0x83, 0xc4, 0x28, 0xb8, 1, 0, 0, 0, 0xc3]);
 
     code.bind("fatal")?;
@@ -12010,6 +12031,66 @@ assert bytes(output) == block[32:]
             revoke_initial_random
                 .windows(8)
                 .any(|window| { window == 0x005f_fe70_u64.to_le_bytes() })
+        );
+
+        let process_enter = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL);
+        let process_restore =
+            symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY_SYMBOL);
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == 0x004a_6580_u64.to_le_bytes()),
+            "static process entry must derive the sealed ELF entry"
+        );
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == 0x005f_ffa0_u64.to_le_bytes()),
+            "static process entry must derive the sealed initial stack"
+        );
+        assert!(
+            process_enter
+                .windows(2)
+                .any(|window| window == [0x48, 0xcf]),
+            "static process entry must cross the native privilege boundary"
+        );
+        assert_eq!(
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 14],
+            &[
+                0xbf, 0, 0, 0, 0, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b
+            ],
+            "the clean-room process must return through native SYSCALL"
+        );
+        assert_eq!(
+            process_enter
+                .windows(3)
+                .filter(|window| *window == [0x0f, 0x22, 0xd8])
+                .count(),
+            2,
+            "entry and terminal return must each switch CR3 exactly once"
+        );
+        assert!(
+            process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0xe7, 0, 0, 0]),
+            "the static dispatcher must accept only exit_group"
+        );
+        for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+            assert!(
+                process_enter.windows(8).any(|window| {
+                    window[..3] == [0x48, 0x83, 0xa6]
+                        && window[3..7] == offset.to_le_bytes()
+                        && window[7] == mask
+                }),
+                "terminal return must normalize only the entry and stack hardware status bits"
+            );
+        }
+        assert!(
+            process_restore
+                .windows(12)
+                .any(|window| window
+                    == [0x31, 0xc0, 0xb9, 13, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
+            "qualification restoration must clear the complete private context"
         );
 
         let copy_payload = symbol_bytes(&file, X86_SYSTEMS_STATIC_IMAGE_COPY_PAYLOAD_SYMBOL);
