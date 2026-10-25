@@ -3380,6 +3380,40 @@ disposition SHALL be invalid. This rule SHALL NOT admit another request,
 shrink, multiple pages, lazy faults, general VMAs, `mmap`, `munmap`, `mprotect`,
 TLS initialization, BusyBox execution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001 — Initial static-process x86-64 FS base
+
+The bounded static-process entry refinement MAY replace
+`startup is initial-brk-query-growth` with
+`startup is initial-brk-query-growth-x64-fs-base` and select policy
+`bounded-static-elf-initial-x64-fs-base`. After the exact query and growth
+required by `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001`, the provider MAY
+accept exactly one target-qualified initial-thread-pointer install. The complete
+selected byte SHALL lie inside an already-owned readable process mapping, and
+the provider SHALL retain the selection as private live-thread state, install
+it for user return, report success, and preserve all other process state.
+
+The initial x86-64 qualification SHALL accept native syscall 158 only with
+operation `0x1002`, candidate `0x005f7440`, and a continuation inside the
+sealed executable mapping. The candidate SHALL lie in the live anonymous break
+reserve. The provider SHALL install it as the physical FS base, return zero in
+`rax` through `SYSRETQ`, and permit the process to reload a known byte through
+FS-relative addressing. `exit_group(0)` SHALL be accepted only after the
+install completes.
+
+Terminal handling SHALL restore the exact pre-entry physical FS base and clear
+the private selected value before the existing heap leaf and backing are
+revoked. Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OK`
+observation SHALL follow the break-growth observation and precede the process-
+exited observation. The qualification-only inverse SHALL prove and clear the
+query/growth/install completion state. Another operation, candidate, result,
+order, duplicate install, early exit, unreadable candidate, non-executable
+continuation, wrong physical base, failed FS-relative access, retained private
+or physical state, source-visible native representation, nonzero inverse state,
+or recoverable disposition SHALL be invalid. This rule SHALL NOT admit
+`ARCH_GET_FS`, another architecture-control operation, general TLS allocation
+or initialization, multiple threads, cloning, context-switch restoration,
+signals, BusyBox execution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
