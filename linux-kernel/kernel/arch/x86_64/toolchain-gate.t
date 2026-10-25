@@ -428,9 +428,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback,
+                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-initial-readlinkat-fallback
+                                                                                policy is bounded-static-elf-initial-getrandom
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"
@@ -440,6 +440,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK"
                                                                               randomized-static-process-after-entry-restoration is unmapped static image process restore entry (
                                                                                 owner is completed-static-process-after-entry,
