@@ -577,6 +577,14 @@ Accessed/Dirty normalization, a qualification-only inverse, and two
 deterministic pinned-QEMU runs. The clean-room probe establishes the machine
 boundary without yet claiming BusyBox or general userspace compatibility.
 
+The following systems-only startup refinement adds the pinned executable's
+[initial `brk(0)` query](design/bounded-static-elf-initial-brk-query.md).
+Its [implementation and qualification report](step-4-bounded-static-elf-initial-brk-query.md)
+records a provider-derived page-rounded initial break, one real nonterminal
+`SYSCALL`/`SYSRETQ` round trip before terminal return, private ordering state,
+structural inspection, and two deterministic pinned-QEMU runs without exposing
+native syscall or address representation to source.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -756,6 +764,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF frame extent](step-4-bounded-static-elf-frame-extent.md)
 - [Step 4 bounded static ELF mapping resources](step-4-bounded-static-elf-mapping-resources.md)
 - [Step 4 bounded static ELF process entry](step-4-bounded-static-elf-process-entry.md)
+- [Step 4 bounded static ELF initial `brk(0)` query](step-4-bounded-static-elf-initial-brk-query.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

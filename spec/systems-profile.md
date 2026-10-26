@@ -3305,6 +3305,42 @@ fallback selection, wrong context identity, or non-executable return SHALL be
 invalid. This rule SHALL NOT add runnable collections, priorities, affinity,
 multiple user threads, preemption, migration, or SMP scheduling.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001 — Initial static-process break query
+
+The bounded static-process entry refinement MAY add the exact named parameter
+`startup is initial-brk-query` and replace its policy with
+`bounded-static-elf-initial-brk-query`. When selected, the provider SHALL derive
+the initial program break as the checked base-page ceiling of the validated
+writable load segment's memory end. Source SHALL NOT name or observe the
+segment boundary, page size, rounded address, native syscall selector, or
+physical process-state representation.
+
+After entering the exact randomized process under
+`TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001`, the provider SHALL accept exactly
+one Linux-compatible program-break request with requested address zero. The
+request SHALL occur from the sealed executable mapping, SHALL return the exact
+derived initial break through the native process ABI, and SHALL leave the
+initial and current break, all mappings, bytes, stack facts, random material,
+and private privileged state unchanged. Only after that successful query MAY
+the same entry accept the existing terminal `exit-group-zero` result and
+produce the completed-process owner.
+
+The initial x86-64 qualification SHALL derive `0x005f7000` from the checked
+writable memory end `0x005f61c8`, accept native syscall 12 with zero in its
+first argument, return the derived result in `rax`, and then accept native
+syscall 231 with status zero. Its clean-room entry payload SHALL compare the
+complete query result before requesting terminal return. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK` observation SHALL be permitted
+after completion and before the existing process-exited observation.
+
+The qualification-only process-entry inverse SHALL additionally prove and
+clear the private query-completion state. Another owner, service, policy,
+request, result, order, duplicate query, non-executable continuation, changed
+process state, source-visible representation, nonzero inverse state, or
+recoverable disposition SHALL be invalid. This rule SHALL NOT admit program-
+break growth or shrink, another nonterminal syscall, TLS initialization,
+BusyBox execution, a prompt, or general memory-management compatibility.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
