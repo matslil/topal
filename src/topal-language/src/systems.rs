@@ -10519,7 +10519,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 419);
+        assert_eq!(program.bootstrap.handler.operations.len(), 420);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -14579,11 +14579,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001,
         // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001,
         // TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14591,7 +14592,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-initial-process-name",
+                "policy is bounded-static-elf-initial-getuid",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
@@ -14653,6 +14654,10 @@ mod tests {
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",

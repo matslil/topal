@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/154";
+    "topal.provider-object.x86_64-qemu-pc-q35/155";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9169,9 +9169,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-relro-mprotect");
     code.bytes(&[0x3d, 0x9d, 0, 0, 0]);
     code.jump_if(0x84, "static-process-initial-process-name");
+    code.bytes(&[0x3d, 0x66, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-initial-getuid");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 10]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
@@ -9686,6 +9688,62 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 10]);
     code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
+    code.bind("static-process-initial-getuid")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 10]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+
+    // Validate the active hierarchy and recover the exact retained stack
+    // frame without consulting or retaining any native argument register.
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x4d, 0x8d, 0x82, 0, 0x40, 0, 0, 0x49, 0x83, 0xc8, 7, 0x4c, 0x39, 0xc0,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd6, 0x81, 0xe6, 0xff, 0x0f, 0, 0, 0x83, 0xfe, 7]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0xba]);
+    code.bytes(&0x007f_f000_u32.to_le_bytes());
+
+    // The sealed real/effective user/group facts must remain complete and
+    // coherent with the zero-valued real UID returned below.
+    for (offset, value) in [
+        (0x0f18_u32, 11_u8),
+        (0x0f20, 0),
+        (0x0f28, 12),
+        (0x0f30, 0),
+        (0x0f38, 13),
+        (0x0f40, 0),
+        (0x0f48, 14),
+        (0x0f50, 0),
+    ] {
+        code.bytes(&[0x48, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[value]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 11]);
+    code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x84, "static-process-brk-initial-query");
@@ -9956,7 +10014,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 10]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
     code.jump_if(0x85, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -13217,6 +13275,12 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x66, 0, 0, 0]),
+            "the static dispatcher must select the initial getuid path"
+        );
+        assert!(
+            process_enter
                 .windows(7)
                 .any(|window| window == [0x48, 0x81, 0xec, 0x80, 0, 0, 0]),
             "repeated static getrandom must use bounded privileged extraction scratch"
@@ -13243,8 +13307,8 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(5)
-                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 10]),
-            "process completion must require the process-name terminal state"
+                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 11]),
+            "process completion must require the getuid terminal state"
         );
         let alignment_start = process_enter
             .windows(7)
@@ -13366,6 +13430,34 @@ assert bytes(output) == block[32:]
                     .windows(3)
                     .all(|window| window != [0x4d, 0x89, 0xc3]),
             "initial process-name output must require the writable stack leaf and preserve RFLAGS"
+        );
+        for (offset, value) in [
+            (0x0f18_u32, 11_u8),
+            (0x0f20, 0),
+            (0x0f28, 12),
+            (0x0f30, 0),
+            (0x0f38, 13),
+            (0x0f40, 0),
+            (0x0f48, 14),
+            (0x0f50, 0),
+        ] {
+            assert!(
+                process_enter.windows(8).any(|window| {
+                    window[..3] == [0x48, 0x83, 0xba]
+                        && window[3..7] == offset.to_le_bytes()
+                        && window[7] == value
+                }),
+                "initial getuid must revalidate every sealed credential word"
+            );
+        }
+        assert!(
+            process_enter
+                .windows(11)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 11, 0x31, 0xc0])
+                && process_enter
+                    .windows(3)
+                    .all(|window| window != [0x4d, 0x89, 0xc3]),
+            "initial getuid must publish its phase, return zero, and preserve RFLAGS"
         );
         assert!(
             process_enter
