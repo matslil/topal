@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/171";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/160";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/172";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/161";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -823,7 +823,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         put_program_header(&mut image, index, row);
     }
     let entry_offset = 0x0a_6580;
-    image[entry_offset..entry_offset + 541].copy_from_slice(&[
+    image[entry_offset..entry_offset + 616].copy_from_slice(&[
         0xb8, 0x0c, 0, 0, 0, // brk
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
@@ -939,6 +939,19 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x0f, 0x05, // syscall
         0x48, 0x85, 0xc0, // exact zero result
         0x75, 0xfe, // fail closed on rejection
+        0x48, 0x81, 0xec, 0x40, 0x01, 0, 0, // qualified temporary stack area
+        0xbf, 0x10, 0x00, 0x00, 0x00, // PR_GET_NAME
+        0x48, 0x89, 0xe6, // exact output candidate
+        0xb8, 0x9d, 0x00, 0x00, 0x00, // prctl
+        0x0f, 0x05, // syscall
+        0x48, 0x85, 0xc0, // exact zero result
+        0x75, 0xfe, // fail closed on rejection
+        0x48, 0xb8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6f, 0x78, 0x00, // "busybox\0"
+        0x48, 0x39, 0x04, 0x24, // exact first word
+        0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 0x08, 0x00, // zero-padded second word
+        0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, // clear first scratch word
+        0x48, 0xc7, 0x44, 0x24, 0x08, 0, 0, 0, 0, // clear second scratch word
+        0x48, 0x81, 0xc4, 0x40, 0x01, 0, 0, // restore initial stack pointer
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall
@@ -10834,7 +10847,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 9282);
+        assert_eq!(relocation_targets.len(), 9329);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -11022,7 +11035,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            6658
+            6705
         );
         assert_eq!(
             relocation_targets
@@ -11544,7 +11557,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 479);
+        assert_eq!(decoded.semantic_trace.len(), 480);
         assert!(
             decoded
                 .semantic_trace
@@ -11967,27 +11980,28 @@ mod tests {
         assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[140],
+            decoded.semantic_trace[141],
             SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
         );
-        assert!(decoded.semantic_trace[141].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[142].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[142],
+            decoded.semantic_trace[143],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
         );
-        assert!(decoded.semantic_trace[143].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[144].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[144],
+            decoded.semantic_trace[145],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
         );
-        assert!(decoded.semantic_trace[145].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[146],
+            decoded.semantic_trace[147],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
         );
-        assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..148);
+        assert!(decoded.semantic_trace[148].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..149);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS

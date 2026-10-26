@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/153";
+    "topal.provider-object.x86_64-qemu-pc-q35/154";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9167,9 +9167,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-getrandom");
     code.bytes(&[0x3d, 0x0a, 0, 0, 0]);
     code.jump_if(0x84, "static-process-relro-mprotect");
+    code.bytes(&[0x3d, 0x9d, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-initial-process-name");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 9]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 10]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
@@ -9613,6 +9615,77 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 9]);
     code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
+    code.bind("static-process-initial-process-name")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 9]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xff, 0x10]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fe60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+
+    // Validate the active hierarchy and the exact writable, NX stack leaf.
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x4d, 0x8d, 0x82, 0, 0x40, 0, 0, 0x49, 0x83, 0xc8, 7, 0x4c, 0x39, 0xc0,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd7, 0x81, 0xe7, 0xff, 0x0f, 0, 0, 0x83, 0xff, 7]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x48, 0x0f, 0xba, 0xf2, 0x3f, 0x48, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff,
+    ]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+
+    // The reusable random service remains live and quiescent.
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x3c, 3]);
+    code.jump_if(0x87, "fatal");
+    for offset in [168_u32, 176, 224, 232, 240, 248, 272] {
+        code.bytes(&[0x65, 0x48, 0x83, 0xbc, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in [256_u32, 264] {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x84, "fatal");
+    }
+
+    // Publish and read back the complete immutable native field.
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0078_6f62_7973_7562_u64.to_le_bytes());
+    code.bytes(&[0x48, 0x89, 0x06, 0x48, 0xc7, 0x46, 0x08, 0, 0, 0, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0, 0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0x7e, 0x08, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 10]);
+    code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x84, "static-process-brk-initial-query");
@@ -9883,7 +9956,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 9]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 10]);
     code.jump_if(0x85, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -13008,7 +13081,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 541];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 616];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -13052,6 +13125,10 @@ assert bytes(output) == block[32:]
             &[
                 0xbf, 0x00, 0x50, 0x5e, 0, 0xbe, 0x00, 0x80, 0, 0, 0xba, 1, 0, 0, 0, 0xb8, 0x0a, 0,
                 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe,
+            ][..],
+            &[
+                0x48, 0x81, 0xec, 0x40, 0x01, 0, 0, 0xbf, 0x10, 0, 0, 0, 0x48, 0x89, 0xe6, 0xb8,
+                0x9d, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -13134,6 +13211,12 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x9d, 0, 0, 0]),
+            "the static dispatcher must select the initial process-name path"
+        );
+        assert!(
+            process_enter
                 .windows(7)
                 .any(|window| window == [0x48, 0x81, 0xec, 0x80, 0, 0, 0]),
             "repeated static getrandom must use bounded privileged extraction scratch"
@@ -13160,8 +13243,8 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(5)
-                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 9]),
-            "process completion must require the RELRO-confirmed terminal state"
+                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 10]),
+            "process completion must require the process-name terminal state"
         );
         let alignment_start = process_enter
             .windows(7)
@@ -13252,6 +13335,37 @@ assert bytes(output) == block[32:]
                 .windows(3)
                 .all(|window| window != [0x4d, 0x89, 0xc3]),
             "RELRO validation must preserve the SYSRETQ RFLAGS register"
+        );
+        let process_name_start = process_enter
+            .windows(4)
+            .position(|window| window == [0x48, 0x83, 0xff, 0x10])
+            .expect("initial process-name handler start");
+        let process_name_end = process_name_start
+            + process_enter[process_name_start..]
+                .windows(11)
+                .position(|window| {
+                    window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 10, 0x31, 0xc0]
+                })
+                .expect("initial process-name state publication")
+            + 11;
+        let process_name_handler = &process_enter[process_name_start..process_name_end];
+        assert!(
+            process_name_handler
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x60, 0xfe, 0x7f, 0])
+                && process_name_handler.windows(10).any(|window| {
+                    window == [0x48, 0xb8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6f, 0x78, 0]
+                }),
+            "initial process-name query must publish the exact complete sealed field"
+        );
+        assert!(
+            process_name_handler
+                .windows(7)
+                .any(|window| window == [0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0])
+                && process_name_handler
+                    .windows(3)
+                    .all(|window| window != [0x4d, 0x89, 0xc3]),
+            "initial process-name output must require the writable stack leaf and preserve RFLAGS"
         );
         assert!(
             process_enter
