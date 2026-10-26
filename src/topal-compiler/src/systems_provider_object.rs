@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/152";
+    "topal.provider-object.x86_64-qemu-pc-q35/153";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9165,9 +9165,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-readlinkat-fallback");
     code.bytes(&[0x3d, 0x3e, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-getrandom");
+    code.bytes(&[0x3d, 0x0a, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-relro-mprotect");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 8]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 9]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
@@ -9458,6 +9460,159 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x0061_9000_u32.to_le_bytes());
     code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
+    code.bind("static-process-relro-mprotect")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 8]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x005e_5000_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x0000_8000_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x89, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+
+    // Recover the checked image leaf table through the active hierarchy. The
+    // exact GNU RELRO leaves must retain their original affine frames and
+    // abstract RO/NX role; target-maintained accessed/dirty bits are ignored.
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x49, 0x39, 0xc0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x8d, 0x88, 0, 0x10, 0, 0, 0x49, 0x83, 0xc9, 0x27]);
+    code.bytes(&[0x4d, 0x39, 0x08]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x8d, 0x88, 0, 0x20, 0, 0, 0x49, 0x83, 0xc9, 0x27]);
+    code.bytes(&[0x4d, 0x39, 0x88, 0, 0x10, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x8b, 0x88, 0x10, 0x20, 0, 0]);
+    code.bytes(&[
+        0x4c, 0x89, 0xc8, 0x48, 0x83, 0xe0, 0x9f, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x80, 0x10, 0x20, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x81, 0xe1, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4d, 0x85, 0xc9]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x8b, 0x11, 0x49, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x49, 0x81, 0xc2, 0, 0x50, 0x1e, 0]);
+    code.bytes(&[0x4d, 0x8d, 0x81, 0x28, 0x0f, 0, 0, 0xb9, 8, 0, 0, 0]);
+    code.bind("static-process-relro-mprotect-leaves")?;
+    code.bytes(&[0x49, 0x8b, 0x00, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xd2, 0x48, 0x83, 0xca, 5]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xea, 0x3f, 0x48, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc2, 0, 0x10, 0, 0, 0x49, 0x83, 0xc0, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, "static-process-relro-mprotect-leaves");
+
+    // Revalidate all 34 retained heap leaves and the disjoint stack leaf.
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x49, 0x8d, 0xba, 0, 0x40, 0, 0, 0x48, 0x83, 0xcf, 7, 0x48, 0x39, 0xf8,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x89, 0xc1]);
+    code.bytes(&[0x48, 0x8d, 0xba, 0xb8, 0x0f, 0, 0, 0xb9, 9, 0, 0, 0]);
+    code.bind("static-process-relro-mprotect-low-heap")?;
+    code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 7]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, "static-process-relro-mprotect-low-heap");
+    code.bytes(&[0x49, 0x8d, 0xba, 0, 0x40, 0, 0, 0xb9, 25, 0, 0, 0]);
+    code.bind("static-process-relro-mprotect-high-heap")?;
+    code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 7]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, "static-process-relro-mprotect-high-heap");
+    code.bytes(&[0x31, 0xc0, 0xb9]);
+    code.bytes(&486_u32.to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd6, 0x81, 0xe6, 0xff, 0x0f, 0, 0, 0x83, 0xfe, 7]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x48, 0x0f, 0xba, 0xf2, 0x3f, 0x48, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff,
+    ]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4c, 0x89, 0xc8, 0x48, 0x2d, 0, 0x20, 0x02, 0]);
+    code.bytes(&[0x48, 0x39, 0xc2]);
+    code.jump_if(0x82, "static-process-relro-mprotect-stack-disjoint");
+    code.bytes(&[0x4c, 0x39, 0xca]);
+    code.jump_if(0x82, "fatal");
+    code.bind("static-process-relro-mprotect-stack-disjoint")?;
+
+    // The reusable random service remains live and quiescent.
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x3c, 3]);
+    code.jump_if(0x87, "fatal");
+    for offset in [168_u32, 176, 224, 232, 240, 248] {
+        code.bytes(&[0x65, 0x48, 0x83, 0xbc, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in [256_u32, 264] {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x84, "fatal");
+    }
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 9]);
+    code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x84, "static-process-brk-initial-query");
@@ -9728,7 +9883,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 8]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 9]);
     code.jump_if(0x85, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -12853,7 +13008,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 514];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 541];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12893,6 +13048,10 @@ assert bytes(output) == block[32:]
             &[
                 0xbf, 0x00, 0x90, 0x61, 0, 0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05, 0x48, 0x3d, 0x00, 0x90,
                 0x61, 0, 0x75, 0xfe,
+            ][..],
+            &[
+                0xbf, 0x00, 0x50, 0x5e, 0, 0xbe, 0x00, 0x80, 0, 0, 0xba, 1, 0, 0, 0, 0xb8, 0x0a, 0,
+                0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -12969,6 +13128,12 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x0a, 0, 0, 0]),
+            "the static dispatcher must select the exact RELRO mprotect path"
+        );
+        assert!(
+            process_enter
                 .windows(7)
                 .any(|window| window == [0x48, 0x81, 0xec, 0x80, 0, 0, 0]),
             "repeated static getrandom must use bounded privileged extraction scratch"
@@ -12995,8 +13160,8 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(5)
-                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 8]),
-            "process completion must require the aligned-break terminal state"
+                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 9]),
+            "process completion must require the RELRO-confirmed terminal state"
         );
         let alignment_start = process_enter
             .windows(7)
@@ -13030,6 +13195,64 @@ assert bytes(output) == block[32:]
                 "page-alignment growth must revalidate every retained heap-leaf interval"
             );
         }
+        let relro_start = process_enter
+            .windows(7)
+            .position(|window| window == [0x48, 0x81, 0xff, 0x00, 0x50, 0x5e, 0x00])
+            .expect("RELRO mprotect handler start");
+        let relro_end = relro_start
+            + process_enter[relro_start..]
+                .windows(11)
+                .position(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 9, 0x31, 0xc0])
+                .expect("RELRO mprotect state publication")
+            + 11;
+        let relro_handler = &process_enter[relro_start..relro_end];
+        assert!(
+            relro_handler
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x00, 0x80, 0x00, 0x00])
+                && relro_handler
+                    .windows(4)
+                    .any(|window| window == [0x48, 0x83, 0xfa, 1]),
+            "RELRO mprotect must require the exact eight-page read-only request"
+        );
+        assert!(
+            relro_handler
+                .windows(7)
+                .any(|window| window == [0x4d, 0x8d, 0x81, 0x28, 0x0f, 0, 0])
+                && relro_handler
+                    .windows(5)
+                    .any(|window| window == [0xb9, 8, 0, 0, 0]),
+            "RELRO mprotect must validate all eight checked-role leaves"
+        );
+        assert!(
+            relro_handler
+                .windows(3)
+                .any(|window| window == [0x4d, 0x89, 0xc1])
+                && relro_handler
+                    .windows(7)
+                    .filter(|window| *window == [0x49, 0x8d, 0xba, 0, 0x40, 0, 0])
+                    .count()
+                    >= 2
+                && relro_handler
+                    .windows(7)
+                    .all(|window| window != [0x49, 0x8d, 0xb8, 0, 0x40, 0, 0]),
+            "RELRO validation must keep anonymous-frame and high-table identities distinct"
+        );
+        assert!(
+            relro_handler
+                .windows(2)
+                .all(|window| window != [0x48, 0xab])
+                && relro_handler
+                    .windows(3)
+                    .all(|window| window != [0x0f, 0x01, 0x38]),
+            "idempotent RELRO confirmation must not write leaves or invalidate pages"
+        );
+        assert!(
+            relro_handler
+                .windows(3)
+                .all(|window| window != [0x4d, 0x89, 0xc3]),
+            "RELRO validation must preserve the SYSRETQ RFLAGS register"
+        );
         assert!(
             process_enter
                 .windows(3)
