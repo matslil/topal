@@ -1336,6 +1336,23 @@ complete byte publication, stack bounds, nonretention, scratch clearing,
 rollback, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001` and `TK-DEC-190`.
 
+The bounded static-ELF initial-`getuid` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid`
+and policy `bounded-static-elf-initial-getuid`. After the process-name witness,
+the clean-room x86-64 payload shall issue native syscall 102, require result
+zero, and continue. Lowering shall require the live process-name phase, sealed
+executable continuation, active checked hierarchy, exact retained stack leaf,
+and complete zero-valued `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` group. It shall
+ignore native argument registers, retain no argument or mutable identity
+state, and advance only the private startup phase. Terminal handling shall
+require that phase before performing the complete existing rollback. Negative,
+structural, full-workspace, and duplicate pinned-QEMU evidence shall enforce
+exact dispatch, credential coherence, zero result, nonretention, rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001`,
+`TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-191`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

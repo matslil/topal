@@ -3808,6 +3808,39 @@ failure SHALL be invalid. This rule SHALL NOT add name mutation, other `prctl`
 operations, arbitrary candidates, multiple processes, threads, signals, procfs,
 BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001 — Static-process real user identity query
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid`
+and select policy `bounded-static-elf-initial-getuid`. After the exact
+process-name witness, the process MAY query its sealed real user identity.
+
+The provider SHALL require the live process-name phase, sealed executable
+continuation, active checked address-space hierarchy, exact retained
+initial-stack leaf, and complete coherent `AT_UID`, `AT_EUID`, `AT_GID`, and
+`AT_EGID` fact group before success. It SHALL return the sealed real UID, which
+is zero for the approved PID-one root profile, retain no argument, pointer,
+mutable identity, or identity cache, and advance only its private startup
+phase. Failure SHALL preserve the prior phase and every process resource.
+
+The initial x86-64 qualification SHALL accept native syscall 102 in the
+process-name phase, ignore its argument registers, and return zero. The
+clean-room process SHALL require that exact result and continue.
+
+Terminal completion SHALL require the real-user-identity phase and then
+perform the complete heap, random-service, stack, hierarchy, and storage
+rollback required by
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001`. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK` observation SHALL follow the
+process-name observation and precede process exit. Another query, credential
+fact, phase, result, order, duplicate, retained argument or state,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add the remaining scalar identity family,
+credential mutation, supplementary groups, user namespaces, capabilities,
+multiple processes or threads, BusyBox redistribution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
