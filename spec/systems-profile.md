@@ -3466,6 +3466,31 @@ detail, or recoverable disposition SHALL be invalid. This rule SHALL NOT admit
 nonempty recovery, cloning, multiple threads, signals, BusyBox execution, or a
 prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001 — Initial static-process optional `rseq` probe
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list` with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback`
+and select policy `bounded-static-elf-initial-rseq-fallback`. After the exact
+empty robust-list registration, the process MAY issue one optional-feature
+probe through `TOPAL-SYSTEMS-USER-ENOSYS-001`.
+
+The initial x86-64 qualification SHALL issue native syscall 334 with candidate
+`0x005f7340`, length 33, flags zero, signature `0x53053053`, and a continuation
+inside the sealed executable mapping. Because syscall 334 is not selected by an
+implemented dispatch arm, the adapter SHALL return exact native `-ENOSYS`
+without reading or validating any argument, accessing user memory, retaining
+state, consuming an observation, or changing prior process state. The same
+context SHALL remain able to invoke implemented `exit_group(0)`.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK` observation SHALL
+follow the empty-robust-list observation and precede process exit. Another
+request, result, order, duplicate, argument access, state change, terminal
+fallback, source-visible native detail, or recoverable process-entry failure
+SHALL be invalid. This rule SHALL NOT implement restartable sequences, expose
+CPU identity, add scheduler or signal semantics, execute BusyBox, or provide a
+prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

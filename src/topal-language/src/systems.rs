@@ -10517,7 +10517,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 409);
+        assert_eq!(program.bootstrap.handler.operations.len(), 410);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -14567,11 +14567,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CLEAR-TID-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14579,7 +14580,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-initial-empty-robust-list",
+                "policy is bounded-static-elf-initial-rseq-fallback",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
@@ -14601,6 +14602,10 @@ mod tests {
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",

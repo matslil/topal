@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/144";
+    "topal.provider-object.x86_64-qemu-pc-q35/145";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9072,6 +9072,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-set-tid-address");
     code.bytes(&[0x3d, 0x11, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-set-robust-list");
+    code.bytes(&[0x3d, 0x4e, 0x01, 0, 0]);
+    code.jump_if(0x84, "static-process-rseq-fallback");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 5]);
@@ -9223,6 +9225,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x48, 0x89, 0x3c, 0x25, 0xa0, 0, 0, 0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 5]);
     code.bytes(&[0x31, 0xc0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-rseq-fallback")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 5]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]);
+    code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
     code.bind("returned")?;
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
@@ -12283,7 +12291,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 195];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 226];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12292,6 +12300,10 @@ assert bytes(output) == block[32:]
             &[0xbf, 0x10, 0x77, 0x5f, 0, 0xb8, 0xda, 0, 0, 0][..],
             &[0xbf, 0x20, 0x77, 0x5f, 0, 0xbe, 0x18, 0, 0, 0][..],
             &[0xb8, 0x11, 0x01, 0, 0, 0x0f, 0x05][..],
+            &[
+                0xbf, 0x40, 0x73, 0x5f, 0, 0xbe, 0x21, 0, 0, 0, 0x31, 0xd2, 0x41, 0xba, 0x53, 0x30,
+                0x05, 0x53, 0xb8, 0x4e, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xda,
+            ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
             assert!(
@@ -12331,6 +12343,15 @@ assert bytes(output) == block[32:]
                 .windows(5)
                 .any(|window| window == [0x3d, 0xda, 0, 0, 0]),
             "the static dispatcher must accept initial clear-child-TID registration"
+        );
+        assert!(
+            process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x4e, 0x01, 0, 0])
+                && process_enter
+                    .windows(7)
+                    .any(|window| window == [0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]),
+            "the static dispatcher must return exact ENOSYS for the initial rseq probe"
         );
         assert!(
             process_enter

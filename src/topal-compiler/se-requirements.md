@@ -1173,6 +1173,19 @@ Negative, structural, and duplicate pinned-QEMU evidence shall enforce this
 boundary. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001` and `TK-DEC-180`.
 
+The bounded static-ELF initial-`rseq` fallback increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback`
+and policy `bounded-static-elf-initial-rseq-fallback`. The clean-room x86-64
+payload shall issue native syscall 334 with candidate `0x005f7340`, length 33,
+flags zero, and signature `0x53053053` immediately after robust-list
+registration. The existing unsupported-call arm shall return exact `-ENOSYS`
+without inspecting the arguments, touching user memory, retaining state, or
+changing any prior process state; later implemented terminal dispatch shall
+remain usable. Negative, structural, and duplicate pinned-QEMU evidence shall
+enforce exact request order, result, state preservation, and continuation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001` and `TK-DEC-181`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
