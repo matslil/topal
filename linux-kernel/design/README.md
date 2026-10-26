@@ -177,6 +177,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF initial `brk(0)` query](bounded-static-elf-initial-brk-query.md)
 - [Bounded static ELF initial `brk` growth](bounded-static-elf-initial-brk-growth.md)
 - [Bounded static ELF initial x86-64 FS base](bounded-static-elf-initial-x86-fs-base.md)
+- [Bounded static ELF initial clear-child-TID word](bounded-static-elf-initial-clear-child-tid.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
