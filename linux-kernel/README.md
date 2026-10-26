@@ -827,6 +827,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF post-random `brk(0)` query](step-4-bounded-static-elf-post-random-brk-query.md)
 - [Step 4 bounded static ELF post-random `brk` growth](step-4-bounded-static-elf-post-random-brk-growth.md)
 - [Step 4 bounded static ELF post-random `brk` page alignment](step-4-bounded-static-elf-post-random-brk-page-alignment.md)
+- [Step 4 bounded static ELF RELRO `mprotect`](step-4-bounded-static-elf-relro-mprotect.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

@@ -60,7 +60,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 514],
+            fixture[0xA_6580 : 0xA_6580 + 541],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
@@ -172,6 +172,13 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0xC6, 0x04, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
                     0x80, 0x3C, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
                     0x75, 0xFE,
+                    0xBF, 0x00, 0x50, 0x5E, 0x00,
+                    0xBE, 0x00, 0x80, 0x00, 0x00,
+                    0xBA, 0x01, 0x00, 0x00, 0x00,
+                    0xB8, 0x0A, 0x00, 0x00, 0x00,
+                    0x0F, 0x05,
+                    0x48, 0x85, 0xC0,
+                    0x75, 0xFE,
                     0x31, 0xFF,
                     0xB8, 0xE7, 0, 0, 0,
                     0x0F, 0x05,
@@ -182,16 +189,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/172")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/173")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/160")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/161")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/170",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/171",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/70",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/71",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -305,6 +312,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
