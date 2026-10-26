@@ -3491,6 +3491,33 @@ SHALL be invalid. This rule SHALL NOT implement restartable sequences, expose
 CPU identity, add scheduler or signal semantics, execute BusyBox, or provide a
 prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-STACK-LIMIT-001 — Initial static-process stack-limit query
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit`
+and select policy `bounded-static-elf-initial-stack-limit`. After the exact
+recoverable `rseq` fallback, the process MAY issue one query under
+`TOPAL-SYSTEMS-USER-RLIMIT-STACK-001`.
+
+The initial x86-64 qualification SHALL issue native syscall 302 with PID zero,
+resource selector 3, null new-limit candidate, output candidate `0x005ffe60`,
+and a continuation inside the sealed executable mapping. The complete writable
+16-byte candidate SHALL lie in the live initial stack mapping. The provider
+SHALL publish soft limit `0x0000000000800000` and hard limit
+`0xffffffffffffffff`, retain no candidate or mutable resource state, and return
+zero. The process SHALL validate both words and restore its prior stack pointer
+before terminal dispatch.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK` observation SHALL
+follow the `rseq` observation and precede process exit. Another request, result,
+order, duplicate, output pair, incomplete or unwritable destination, retained
+state, stack imbalance, source-visible native detail, or recoverable process-
+entry failure SHALL be invalid. This rule SHALL NOT add limit mutation or
+enforcement, another resource, accounting, inheritance, multiple processes,
+cgroups, BusyBox execution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

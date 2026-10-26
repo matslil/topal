@@ -1186,6 +1186,19 @@ remain usable. Negative, structural, and duplicate pinned-QEMU evidence shall
 enforce exact request order, result, state preservation, and continuation. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001` and `TK-DEC-181`.
 
+The bounded static-ELF initial-stack-limit increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit`
+and policy `bounded-static-elf-initial-stack-limit`. The clean-room x86-64
+payload shall issue query-only syscall 302 for PID zero, selector 3, null new
+limit, and exact writable stack candidate `0x005ffe60`. Lowering shall validate
+the live state, executable continuation, exact request, and complete candidate;
+publish the established 8 MiB soft limit and infinite hard limit; retain no
+state; and return zero. The payload shall validate both words, balance its
+temporary stack extent, and continue through terminal dispatch. Negative,
+structural, and duplicate pinned-QEMU evidence shall enforce the boundary. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-STACK-LIMIT-001` and `TK-DEC-182`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
