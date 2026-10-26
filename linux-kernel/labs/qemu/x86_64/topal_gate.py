@@ -93,6 +93,7 @@ MARKERS = (
     b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
     b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
     b"TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
@@ -327,7 +328,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 541] = bytes(
+    image[0xA_6580 : 0xA_6580 + 616] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -445,6 +446,21 @@ def static_user_fixture() -> bytes:
             0x0F, 0x05,
             0x48, 0x85, 0xC0,
             0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x01, 0x00, 0x00,
+            0xBF, 0x10, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xB8, 0x9D, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0xB8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6F, 0x78, 0x00,
+            0x48, 0x39, 0x04, 0x24,
+            0x75, 0xFE,
+            0x48, 0x83, 0x7C, 0x24, 0x08, 0x00,
+            0x75, 0xFE,
+            0x48, 0xC7, 0x04, 0x24, 0, 0, 0, 0,
+            0x48, 0xC7, 0x44, 0x24, 0x08, 0, 0, 0, 0,
+            0x48, 0x81, 0xC4, 0x40, 0x01, 0x00, 0x00,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
@@ -671,7 +687,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/173",
+        "schema": "topal-kernel-toolchain-gate-qemu/174",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
