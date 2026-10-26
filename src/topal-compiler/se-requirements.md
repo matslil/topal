@@ -1283,6 +1283,23 @@ exact request, zero backing, hierarchy-boundary publication, last-byte access,
 complete rollback, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001` and `TK-DEC-187`.
 
+The bounded static-ELF post-random-break-page-alignment increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment`
+and policy `bounded-static-elf-post-random-brk-page-alignment`. After the
+cross-boundary growth witness, the clean-room x86-64 payload shall request
+native break `0x00619000`, require that exact result, and write/read final newly
+admitted byte `0x00618fff`. Lowering shall require current break `0x00618dc0`,
+the live 34-frame anonymous extent, the complete existing heap-leaf set, the
+disjoint stack leaf, sealed executable continuation, and reusable-random
+service; allocate no storage; edit no translation entry; and update only the
+byte-granular break state. Terminal handling shall require the aligned state
+before performing the complete existing rollback. Negative, structural,
+full-workspace, and duplicate pinned-QEMU evidence shall enforce exact request,
+nonallocation, mapping preservation, final-byte access, complete rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001` and `TK-DEC-188`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
