@@ -3341,6 +3341,45 @@ recoverable disposition SHALL be invalid. This rule SHALL NOT admit program-
 break growth or shrink, another nonterminal syscall, TLS initialization,
 BusyBox execution, a prompt, or general memory-management compatibility.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001 — Initial static-process break growth
+
+The bounded static-process entry refinement MAY replace
+`startup is initial-brk-query` with
+`startup is initial-brk-query-growth` and select policy
+`bounded-static-elf-initial-brk-growth`. The provider SHALL own one distinct,
+base-page-aligned, initially zero, artifact-provided anonymous reserve for the
+complete live-entry interval. That reserve SHALL alias neither the static ELF
+payload, stack, translation metadata, bootstrap storage, entropy/DMA storage,
+nor another live resource.
+
+After the exact zero-request query required by
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001`, the provider SHALL accept
+exactly one later Linux-compatible program-break request for the sealed next
+startup boundary. It SHALL atomically publish one user-readable, user-writable,
+non-executable mapping backed only by the reserve, complete the target
+translation-publication contract, set and return the requested byte-granular
+break, and preserve all other process state. The process SHALL be able to store
+and reload the first newly admitted byte before terminal return.
+
+The initial x86-64 qualification SHALL accept request `0x005f7dc0`, publish one
+RW/NX leaf for virtual page `0x005f7000`, invalidate that page, and return the
+request in `rax`. `exit_group(0)` SHALL be accepted only after both the query
+and growth complete. Terminal handling SHALL restore the kernel address space,
+remove and verify the complete leaf, reset private break and mapping authority,
+clear and verify all 4,096 reserve bytes, and retain no runtime heap state in
+the completed owner.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK` observation SHALL
+follow the existing query observation and precede the process-exited
+observation. The qualification-only inverse SHALL prove and clear the complete
+query/growth completion state. Another reserve, request, result, order,
+duplicate call, early exit, permission, alias, partial publication, missing
+invalidation, inaccessible admitted byte, retained mapping or byte, incomplete
+erase, source-visible representation, nonzero inverse state, or recoverable
+disposition SHALL be invalid. This rule SHALL NOT admit another request,
+shrink, multiple pages, lazy faults, general VMAs, `mmap`, `munmap`, `mprotect`,
+TLS initialization, BusyBox execution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

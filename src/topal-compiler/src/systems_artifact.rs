@@ -242,7 +242,8 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_RANDOM_SLOT_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
-    X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
     X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
     X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
@@ -263,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/158";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/147";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/159";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/148";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -822,12 +823,20 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         put_program_header(&mut image, index, row);
     }
     let entry_offset = 0x0a_6580;
-    image[entry_offset..entry_offset + 28].copy_from_slice(&[
+    image[entry_offset..entry_offset + 66].copy_from_slice(&[
         0xb8, 0x0c, 0, 0, 0, // brk
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
         0x48, 0x3d, 0x00, 0x70, 0x5f, 0x00, // derived initial break
-        0x75, 0x09, // fail closed on a different result
+        0x75, 0x2f, // fail closed on a different query result
+        0xbf, 0xc0, 0x7d, 0x5f, 0x00, // exact growth request
+        0xb8, 0x0c, 0, 0, 0, // brk
+        0x0f, 0x05, // syscall
+        0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // admitted current break
+        0x75, 0x1b, // fail closed on a different growth result
+        0xc6, 0x04, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // first admitted byte
+        0x80, 0x3c, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // read it back
+        0x75, 0x09, // fail closed on inaccessible or changed backing
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall
@@ -2255,6 +2264,7 @@ enum ProviderSymbol {
     EntropyGeneratorKey,
     EntropyOutput,
     EntropyUserRandomService,
+    StaticProcessBrkReserve,
 }
 
 impl ProviderSymbol {
@@ -2527,6 +2537,7 @@ impl ProviderSymbol {
             Self::EntropyGeneratorKey => X86_SYSTEMS_ENTROPY_GENERATOR_KEY_SYMBOL,
             Self::EntropyOutput => X86_SYSTEMS_ENTROPY_OUTPUT_SYMBOL,
             Self::EntropyUserRandomService => X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL,
+            Self::StaticProcessBrkReserve => X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL,
         }
     }
 
@@ -2539,7 +2550,8 @@ impl ProviderSymbol {
             | Self::EntropyPoolState
             | Self::EntropyGeneratorKey
             | Self::EntropyOutput
-            | Self::EntropyUserRandomService => SymbolKind::Data,
+            | Self::EntropyUserRandomService
+            | Self::StaticProcessBrkReserve => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
             | Self::PrepareStaticImage
@@ -3042,6 +3054,7 @@ struct ProviderSymbols {
     entropy_generator_key: SymbolId,
     entropy_output: SymbolId,
     entropy_user_random_service: SymbolId,
+    static_process_brk_reserve: SymbolId,
     read_pci_region_register: SymbolId,
     read_pci_region_register_eventually: SymbolId,
     write_pci_region_register: SymbolId,
@@ -4673,12 +4686,17 @@ impl RootEncoder {
             0x48, 0x89, 0xe9, // static root
             0x4d, 0x89, 0xf8, // bootstrap root
             0x49, 0x89, 0xd9, // stack backing
+            0x48, 0x8d, 0x05, // private brk reserve
+        ]);
+        self.rip_relative_symbol(ProviderSymbol::StaticProcessBrkReserve, 0)?;
+        self.bytes.extend_from_slice(&[
+            0x50, // eighth System V argument
             0x48, 0x8d, 0x05, // private context
         ]);
         self.rip_relative_storage(512, 0)?;
         self.bytes.push(0x50); // seventh System V argument
         self.call_checked_bool(ProviderSymbol::EnterStaticImageProcess)?;
-        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x08]);
+        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x10]);
         self.static_image = RootStaticImageState::CompletedProcess;
         Ok(())
     }
@@ -8317,6 +8335,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::EntropyUserRandomService,
         ),
+        static_process_brk_reserve: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::StaticProcessBrkReserve,
+        ),
         read_pci_region_register: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ReadPciRegionRegister,
@@ -9535,6 +9557,7 @@ fn append_root(
             ProviderSymbol::EntropyUserRandomService => {
                 provider_symbols.entropy_user_random_service
             }
+            ProviderSymbol::StaticProcessBrkReserve => provider_symbols.static_process_brk_reserve,
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
             ProviderSymbol::ReadPciRegionRegisterEventually => {
                 provider_symbols.read_pci_region_register_eventually
@@ -10700,7 +10723,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 8660);
+        assert_eq!(relocation_targets.len(), 8706);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -10888,7 +10911,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            6039
+            6084
         );
         assert_eq!(
             relocation_targets
@@ -11298,6 +11321,7 @@ mod tests {
                 "topal_x86_systems_entropy_generator_key",
                 "topal_x86_systems_entropy_output",
                 "topal_x86_systems_entropy_user_random_service",
+                "topal_x86_static_process_brk_reserve",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",
@@ -11409,7 +11433,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 466);
+        assert_eq!(decoded.semantic_trace.len(), 467);
         assert!(
             decoded
                 .semantic_trace
@@ -11819,27 +11843,28 @@ mod tests {
         );
         assert!(decoded.semantic_trace[125].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[126].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[127].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[127],
+            decoded.semantic_trace[128],
             SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
         );
-        assert!(decoded.semantic_trace[128].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[129].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[129],
+            decoded.semantic_trace[130],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
         );
-        assert!(decoded.semantic_trace[130].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[131].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[131],
+            decoded.semantic_trace[132],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
         );
-        assert!(decoded.semantic_trace[132].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[133].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[133],
+            decoded.semantic_trace[134],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
         );
-        assert!(decoded.semantic_trace[134].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..135);
+        assert!(decoded.semantic_trace[135].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..136);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS

@@ -10517,7 +10517,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 405);
+        assert_eq!(program.bootstrap.handler.operations.len(), 406);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -14563,11 +14563,12 @@ mod tests {
     #[test]
     fn requires_exact_static_elf_process_entry() {
         // TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query,",
+                "startup is initial-brk-query-growth,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14575,12 +14576,16 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-initial-brk-query",
+                "policy is bounded-static-elf-initial-brk-growth",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
