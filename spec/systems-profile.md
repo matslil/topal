@@ -3442,6 +3442,30 @@ representation, or recoverable disposition SHALL be invalid. This rule SHALL
 NOT admit robust lists, cloning, multiple threads, futex waiters, signals,
 BusyBox execution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001 — Initial static-process robust list
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid` with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list` and select
+policy `bounded-static-elf-initial-empty-robust-list`. After the exact exit-word
+registration, the provider MAY accept one registration under
+`TOPAL-SYSTEMS-USER-ROBUST-LIST-001`.
+
+The initial x86-64 qualification SHALL accept native syscall 273 only with
+candidate `0x005f7720`, length 24, and a sealed executable continuation. The
+complete readable head SHALL lie in the anonymous break reserve. Registration
+SHALL retain it without dereference and return zero. Before terminal address-
+space restoration, the provider SHALL copy and validate self-link `0x005f7720`,
+futex offset `-32`, and null pending pointer, then clear private registration.
+It SHALL walk no entry and perform no futex operation.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK` observation
+SHALL precede process exit. Another candidate, length, head, result, order,
+duplicate, early exit, partial copy, retained state, futex action, source-native
+detail, or recoverable disposition SHALL be invalid. This rule SHALL NOT admit
+nonempty recovery, cloning, multiple threads, signals, BusyBox execution, or a
+prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

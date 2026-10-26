@@ -109,7 +109,7 @@ pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM: &str
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM: &str =
     "topal.systems.static-image.construction.revoke-entropy-initial-random/1";
 pub const SYSTEMS_STATIC_IMAGE_PROCESS_ENTER: &str =
-    "topal.systems.static-image.process.enter.initial-clear-tid/1";
+    "topal.systems.static-image.process.enter.initial-empty-robust-list/1";
 pub const SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY: &str =
     "topal.systems.static-image.process.restore-entry/1";
 pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =

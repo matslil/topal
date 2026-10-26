@@ -1161,6 +1161,18 @@ duplicate, early terminal, invalid word, failed clear, retained state, native
 source detail, or recoverable failure. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CLEAR-TID-001` and `TK-DEC-179`.
 
+The bounded static-ELF empty-robust-list increment shall refine startup with
+service `initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list` and
+policy `bounded-static-elf-initial-empty-robust-list`. X86-64 lowering shall
+accept syscall 273 only for candidate `0x005f7720` and length 24, prove the
+complete readable head lies in the anonymous break mapping, retain it without
+dereference, and return zero. Terminal handling shall copy and validate the
+exact self-link, `-32` offset, and null pending pointer before restoration,
+clear registration, perform no futex action, and preserve earlier teardown.
+Negative, structural, and duplicate pinned-QEMU evidence shall enforce this
+boundary. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001` and `TK-DEC-180`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
