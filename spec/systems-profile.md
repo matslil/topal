@@ -3773,6 +3773,41 @@ be invalid. This rule SHALL NOT add general `mprotect`, multiple roles,
 executable permission, splitting, protection keys, VMA collections, dynamic
 linking, concurrency, BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001 — Static-process immutable name query
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name`
+and select policy `bounded-static-elf-initial-process-name`. After the exact
+RELRO-protection witness, the process MAY query its immutable sealed name into
+one complete provider-approved writable output extent.
+
+The provider SHALL require the live RELRO-confirmed process state, sealed
+executable continuation, active address-space hierarchy, exact writable stack
+leaf, complete output extent, and reusable-random service before publication.
+It SHALL publish the complete native name field atomically from sealed process
+metadata, retain no user pointer or mutable name state, advance only its private
+startup phase, and return zero. Failure SHALL preserve the prior phase, output,
+and every process resource.
+
+The initial x86-64 qualification SHALL accept native syscall 157 only for
+`PR_GET_NAME` (`16`) and the complete 16-byte stack interval beginning at
+`0x007ffe60`. It SHALL publish bytes `busybox` followed by nine zero bytes and
+return zero. The clean-room process SHALL verify both native words, clear the
+scratch field, restore its stack pointer, and continue.
+
+Terminal completion SHALL require the process-name phase and then perform the
+complete heap, random-service, stack, hierarchy, and storage rollback required
+by `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001`. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK` observation SHALL follow the
+RELRO observation and precede process exit. Another operation, candidate,
+extent, phase, name, result, order, duplicate, partial output, retained pointer,
+mutable name state, source-visible native detail, or recoverable process-entry
+failure SHALL be invalid. This rule SHALL NOT add name mutation, other `prctl`
+operations, arbitrary candidates, multiple processes, threads, signals, procfs,
+BusyBox redistribution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

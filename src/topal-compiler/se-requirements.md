@@ -1317,6 +1317,25 @@ evidence shall enforce exact request, role and frame validation, permission
 preservation, no translation mutation, complete rollback, and continuation.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001` and `TK-DEC-189`.
 
+The bounded static-ELF initial-process-name increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name`
+and policy `bounded-static-elf-initial-process-name`. After the RELRO witness,
+the clean-room x86-64 payload shall reuse the qualified temporary area below its initial stack,
+request native `prctl(PR_GET_NAME)` into exact interval
+`[0x007ffe60, 0x007ffe70)`, require result zero, verify the complete `busybox`
+plus zero-padding field, erase the scratch, and restore its stack pointer.
+Lowering shall require the live RELRO-confirmed phase, sealed executable
+continuation, active hierarchy, exact writable stack leaf and output extent,
+and reusable-random service. It shall publish the complete field from sealed
+process metadata, retain no user pointer or mutable name state, and advance
+only the private startup phase. Terminal handling shall require that phase
+before performing the complete existing rollback. Negative, structural,
+full-workspace, and duplicate pinned-QEMU evidence shall enforce exact request,
+complete byte publication, stack bounds, nonretention, scratch clearing,
+rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001` and `TK-DEC-190`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
