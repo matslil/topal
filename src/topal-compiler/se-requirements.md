@@ -1129,6 +1129,25 @@ terminal order, first-byte access, complete teardown, and later-sequence
 preservation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001` and `TK-DEC-177`.
 
+The bounded static-ELF initial-x86-FS-base increment shall refine that entry
+with startup service `initial-brk-query-growth-x64-fs-base` and policy
+`bounded-static-elf-initial-x64-fs-base`. After the exact query and growth,
+x86-64 lowering shall accept one native syscall 158 operation `0x1002` with
+candidate `0x005f7440`, prove the complete byte lies in the live readable
+anonymous break mapping, retain it privately, install `IA32_FS_BASE`, return
+zero through `SYSRETQ`, and permit an FS-relative byte read before terminal
+exit. Terminal handling shall require install completion, restore the exact
+pre-entry physical FS base, clear the private selection, and preserve complete
+heap rollback. The qualification inverse shall prove and clear query/growth/
+install completion. The checker and semantic model shall reject another
+startup service, operation, candidate, result, order, duplicate, early
+terminal, unreadable base, non-executable continuation, wrong physical state,
+failed relative access, retained selection, source-visible native detail, or
+recoverable failure. Structural and duplicate pinned-QEMU tests shall prove the
+exact native dispatch, provider installation, access, restoration, clearing,
+and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001` and `TK-DEC-178`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
