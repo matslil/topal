@@ -1300,6 +1300,23 @@ nonallocation, mapping preservation, final-byte access, complete rollback, and
 continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001` and `TK-DEC-188`.
 
+The bounded static-ELF RELRO-protection increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect`
+and policy `bounded-static-elf-relro-mprotect`. After the aligned-break witness,
+the clean-room x86-64 payload shall request native `mprotect` for exact interval
+`[0x005e5000, 0x005ed000)` with `PROT_READ` and require result zero. Lowering
+shall require the live aligned-break phase, sealed executable continuation,
+active checked hierarchy, exact eight-page GNU RELRO role with original affine
+frames and RO/NX leaves, complete existing heap and disjoint stack state, and
+reusable-random service. It shall edit no translation or perform target
+invalidation, and shall advance only the private startup phase. Terminal
+handling shall require that phase before performing the complete existing
+rollback. Negative, structural, full-workspace, and duplicate pinned-QEMU
+evidence shall enforce exact request, role and frame validation, permission
+preservation, no translation mutation, complete rollback, and continuation.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001` and `TK-DEC-189`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

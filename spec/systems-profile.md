@@ -3735,6 +3735,44 @@ process-entry failure SHALL be invalid. This rule SHALL NOT add another
 request, shrink, lazy faults, arbitrary mapping, VMA collections, overcommit,
 concurrency, BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001 — Static-process GNU RELRO protection confirmation
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect`
+and select policy `bounded-static-elf-relro-mprotect`. After the exact aligned
+break witness, the process MAY issue one exact read-only protection request for
+the page-rounded GNU RELRO role of its validated static image.
+
+The provider SHALL require the live aligned-break process state, sealed
+executable continuation, active address-space hierarchy, exact checked RELRO
+interval, complete eight-leaf role, original affine frame identities, complete
+heap and disjoint stack state, and reusable-random service before success. Each
+RELRO leaf SHALL already be present, user-readable, non-writable, and
+non-executable. The provider SHALL edit no translation, perform no target
+invalidation, advance only its private startup phase, and return zero. Failure
+SHALL preserve the prior phase and every process resource.
+
+The initial x86-64 qualification SHALL accept native syscall 10 only for
+address `0x005e5000`, length `0x8000`, and protection `PROT_READ` (`1`). Those
+eight pages SHALL retain their sealed RO/NX leaves and original frames. The
+current break SHALL remain `0x00619000`; all 34 heap leaves and the separate
+stack leaf SHALL remain unchanged.
+
+Terminal completion SHALL require the RELRO-confirmed phase and then perform
+the complete heap, random-service, stack, hierarchy, and storage rollback
+required by
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001`. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK` observation SHALL follow the
+page-alignment observation and precede process exit. Another address, length,
+protection, phase, interval, leaf role, frame identity, result, order,
+duplicate, permission weakening, translation edit, invalidation, retained
+state, source-visible native detail, or recoverable process-entry failure SHALL
+be invalid. This rule SHALL NOT add general `mprotect`, multiple roles,
+executable permission, splitting, protection keys, VMA collections, dynamic
+linking, concurrency, BusyBox redistribution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
