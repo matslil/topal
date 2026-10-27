@@ -1497,6 +1497,23 @@ and QEMU evidence shall enforce exact dispatch, ordering, result,
 nonretention, disposition preservation, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` and `TK-DEC-202`.
 
+The bounded static-process empty-input shell increment shall accept exactly
+native x86-64 `uname` into a checked stack extent, publish the established
+390-byte identity, accept `getcwd(0x5f99e0, 4096)`, publish `"/\0"`, return
+two, then accept `ioctl(0, TCGETS, candidate)` with `-ENOTTY`, ordered
+`rt_sigaction` observations for signals 2, 3, and 15, one native ignored
+signal-3 installation, and `read(0, 0x5f94e0, 1023)` with result zero after
+the shell-getppid phase. It shall publish complete zeroed 32-byte old actions
+only to checked writable stack extents, validate and copy the ignored action,
+retain only a private ignored-disposition fact, and clear it with the existing
+child disposition at successful exit. The clean fixture shall continue in a
+sealed executable island and require every result. The pinned external
+profile shall select exact `busybox sh` arguments with an empty environment
+and reach the same terminal phase. Structural and QEMU evidence shall enforce
+dispatch, arguments, order, output, nonretention, disposition lifecycle,
+sealed identity, directory, end-of-input, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` and `TK-DEC-203`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
