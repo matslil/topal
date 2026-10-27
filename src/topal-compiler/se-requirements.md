@@ -1213,6 +1213,24 @@ exact request order, result, state preservation, and continuation. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001` and
 `TK-DEC-183`.
 
+The bounded static-ELF initial-`getrandom` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom`
+and policy `bounded-static-elf-initial-getrandom`. Initial-random delivery
+shall move output bytes 16 through 31 into one process-private affine
+reservation before wiping provider output and destroying every other entropy
+resource. The clean-room x86-64 payload shall then issue native syscall 318
+with output candidate `0x005f5e68`, length eight, and nonblocking flag one.
+Lowering shall validate the live startup state, sealed executable
+continuation, exact request, available reservation, and complete writable
+static destination; publish and verify the exact reserved prefix without a
+value oracle; wipe the complete reservation; mark it consumed; and return
+eight. Terminal handling shall require consumed zero state and clear the
+marker before restoration. Negative, structural, and duplicate pinned-QEMU
+evidence shall enforce exact provenance, request order, publication,
+single-use consumption, destruction, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001` and `TK-DEC-184`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

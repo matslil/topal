@@ -17,10 +17,13 @@ prefix and discarded 16-byte suffix, single-use delivery, and policy
 The x86-64 provider shall completely revalidate the retained process, replay
 the exact entropy pipeline, atomically publish one native `AT_RANDOM` pair and
 one distinct aligned 16-byte object in the authorized stack slot, verify the
-copy without exposing bytes, and wipe and verify the complete 32-byte provider
-output. It shall then destroy and verify every remaining sample, pool, key,
-DMA, ring, and transport resource before returning the randomized owner. The
-stack result remains live after all entropy resources are gone.
+copy without exposing bytes, and permit a later refinement to move the
+disjoint second 16-byte half into one private affine process reservation before
+wiping and verifying the complete 32-byte provider output. It shall then
+destroy and verify every remaining sample, pool, key, DMA, ring, and transport
+resource before returning the randomized owner. The stack result and any
+explicitly refined reservation remain live after all other entropy resources
+are gone.
 
 For reversible qualification, `static image construction revoke entropy
 initial random` shall consume that exact randomized owner, verify and erase the
@@ -50,7 +53,9 @@ construction rollback before process entry is added.
 ## Deliberate bounds
 
 This increment admits one exact output-one delivery and one exact inverse for
-qualification. It rejects another owner, identity, tag, extent, partition,
-policy, duplicate, premature delivery, overlap, partial copy, incomplete wipe,
-or escaped entropy resource. It does not construct a user context, enter the
-static process, execute BusyBox, add a syscall, or provide `getrandom`.
+qualification. A later approved refinement may reserve only the disjoint
+undelivered half under the generic opaque reservation contract. It rejects
+another owner, identity, tag, extent, partition, policy, duplicate, premature
+delivery, overlap, partial copy, incomplete wipe, or ungoverned escaped entropy
+resource. It does not itself construct a user context, enter the static
+process, execute BusyBox, add a syscall, or provide `getrandom`.

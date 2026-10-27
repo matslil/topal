@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/147";
+    "topal.provider-object.x86_64-qemu-pc-q35/148";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -8865,6 +8865,16 @@ fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError
     code.jump_if(0x84, "fail");
     code.bytes(&[0x48, 0x39, 0xf7]);
     code.jump_if(0x84, "fail");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc2, 0x07, 0, 0, 0]);
+    code.jump_if(0x85, "fail");
+    for offset in [168_u32, 176, 184] {
+        code.bytes(&[0x48, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fail");
+    }
     for offset in [OBJECT, OBJECT + 8, TAG, VALUE, TERMINATOR] {
         code.bytes(&[0x48, 0x83, 0xbf]);
         code.bytes(&offset.to_le_bytes());
@@ -8892,6 +8902,22 @@ fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError
         code.bytes(&offset.to_le_bytes());
         code.jump_if(0x85, "fail_wipe");
     }
+    for (source_offset, context_offset) in [(16_u8, 168_u32), (24, 176)] {
+        code.bytes(&[0x48, 0x8b, 0x46, source_offset]);
+        code.bytes(&[0x48, 0x89, 0x82]);
+        code.bytes(&context_offset.to_le_bytes());
+        code.bytes(&[0x48, 0x3b, 0x82]);
+        code.bytes(&context_offset.to_le_bytes());
+        code.jump_if(0x85, "fail_context_wipe");
+    }
+    code.bytes(&[0xc6, 0x82]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x80, 0xba]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fail_context_wipe");
+    code.bytes(&[0x41, 0xb8, 1, 0, 0, 0]);
     code.bind("wipe")?;
     for offset in [0_u8, 8, 16, 24] {
         if offset == 0 {
@@ -8903,8 +8929,17 @@ fn static_image_deliver_entropy_initial_random() -> Result<Vec<u8>, CompileError
         }
         code.jump_if(0x85, "fail");
     }
-    code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
+    code.bytes(&[0x44, 0x89, 0xc0, 0xc3]);
     code.bind("fail_wipe")?;
+    code.bytes(&[0x45, 0x31, 0xc0]);
+    code.jump("wipe");
+    code.bind("fail_context_wipe")?;
+    for offset in [168_u32, 176, 184] {
+        code.bytes(&[0x48, 0xc7, 0x82]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+    }
+    code.bytes(&[0x45, 0x31, 0xc0]);
     code.jump("wipe");
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -8929,6 +8964,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x89, 0xd7, 0x31, 0xc0, 0xb9]);
     code.bytes(&CONTEXT_QWORDS.to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0x80, 0xba]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[1]);
     code.jump_if(0x85, "fail");
     code.bytes(&[
         0x48, 0x8b, 0x7c, 0x24, 0x10, // payload
@@ -9078,10 +9117,23 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-stack-limit");
     code.bytes(&[0x3d, 0x0b, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-readlinkat-fallback");
+    code.bytes(&[0x3d, 0x3e, 0x01, 0, 0]);
+    code.jump_if(0x84, "static-process-getrandom");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xb8, 0, 0, 0, 2]);
+    code.jump_if(0x85, "fatal");
+    for offset in [168_u32, 176] {
+        code.bytes(&[0x65, 0x48, 0x83, 0xbc, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0xa0, 0, 0, 0]);
@@ -9259,12 +9311,49 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]);
     code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
+    code.bind("static-process-getrandom")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0xb8, 0, 0, 0, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x005f_5e68_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfe, 8]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+    code.bytes(&168_u32.to_le_bytes());
+    code.bytes(&[0x48, 0x89, 0x04, 0x25]);
+    code.bytes(&0x005f_5e68_u32.to_le_bytes());
+    code.bytes(&[0x48, 0x3b, 0x04, 0x25]);
+    code.bytes(&0x005f_5e68_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    for offset in [168_u32, 176] {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0xb8, 0, 0, 0, 2]);
+    code.bytes(&[0xb8, 8, 0, 0, 0, 0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
     code.bind("returned")?;
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x41, 0x80, 0x7a, 0x68, 6]);
     code.jump_if(0x85, "fatal");
+    for offset in [168_u32, 176, 184] {
+        code.bytes(&[0x49, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
     code.bytes(&[0x49, 0x3b, 0x42, 0x10]);
     code.jump_if(0x85, "fatal");
@@ -9308,11 +9397,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     for context_offset in [112_u8, 120] {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
-    // Hardware sets Accessed on the entry leaf and Accessed/Dirty on the user
-    // stack leaf. Normalize only those provider-private status bits so the
-    // completed owner retains the exact sealed mapping for qualification.
+    // Hardware sets Accessed on the entry leaf and Accessed/Dirty on the
+    // getrandom destination and user-stack leaves. Normalize only those
+    // provider-private status bits so the completed owner retains the exact
+    // sealed mapping for qualification.
     code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
-    for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+    for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0fa8, 0x9f), (0x0ff8, 0x9f)] {
         code.bytes(&[0x48, 0x83, 0xa6]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[mask]);
@@ -9346,7 +9436,7 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
         code.jump_if(0x85, "fail");
     }
-    for offset in [112_u8, 120, 128, 136, 144, 152, 160] {
+    for offset in [112_u8, 120, 128, 136, 144, 152, 160, 168, 176, 184] {
         if offset < 128 {
             code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
         } else {
@@ -9356,7 +9446,7 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
         }
         code.jump_if(0x85, "fail");
     }
-    code.bytes(&[0x31, 0xc0, 0xb9, 21, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0x31, 0xc0, 0xb9, 24, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -12318,7 +12408,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 325];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 373];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12338,6 +12428,10 @@ assert bytes(output) == block[32:]
             &[
                 0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0xda, 0xfd, 0x5b, 0, 0xba, 0, 0xe0, 0x5f, 0,
                 0x41, 0xba, 0, 0x10, 0, 0, 0xb8, 0x0b, 0x01, 0, 0, 0x0f, 0x05,
+            ][..],
+            &[
+                0xbf, 0x68, 0x5e, 0x5f, 0, 0xbe, 8, 0, 0, 0, 0xba, 1, 0, 0, 0, 0xb8, 0x3e, 0x01, 0,
+                0, 0x0f, 0x05,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -12408,6 +12502,12 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x3e, 0x01, 0, 0]),
+            "the static dispatcher must select the bounded getrandom path"
+        );
+        assert!(
+            process_enter
                 .windows(4)
                 .any(|window| window == [0x00, 0x70, 0x5f, 0x00]),
             "the static dispatcher must derive the page-rounded initial break"
@@ -12418,21 +12518,21 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x48, 0x0f, 0x07]),
             "the nonterminal query must return through native SYSRETQ"
         );
-        for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0ff8, 0x9f)] {
+        for (offset, mask) in [(0x0530_u32, 0xdf_u8), (0x0fa8, 0x9f), (0x0ff8, 0x9f)] {
             assert!(
                 process_enter.windows(8).any(|window| {
                     window[..3] == [0x48, 0x83, 0xa6]
                         && window[3..7] == offset.to_le_bytes()
                         && window[7] == mask
                 }),
-                "terminal return must normalize only the entry and stack hardware status bits"
+                "terminal return must normalize only the entry, getrandom, and stack hardware status bits"
             );
         }
         assert!(
             process_restore
                 .windows(12)
                 .any(|window| window
-                    == [0x31, 0xc0, 0xb9, 21, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
+                    == [0x31, 0xc0, 0xb9, 24, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
             "qualification restoration must clear the complete private context"
         );
 
