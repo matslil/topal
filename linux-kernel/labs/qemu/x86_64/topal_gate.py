@@ -337,7 +337,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 890] = bytes(
+    image[0xA_6580 : 0xA_6580 + 888] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -515,11 +515,14 @@ def static_user_fixture() -> bytes:
             0x41, 0xBA, 0x08, 0x00, 0x00, 0x00,
             0xB8, 0x0D, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-            0x48, 0xC7, 0x04, 0x24, 0x00, 0x00, 0x00, 0x00,
-            0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x00,
-            0x48, 0xC7, 0x44, 0x24, 0x10, 0x00, 0x00, 0x00, 0x00,
-            0x48, 0xC7, 0x44, 0x24, 0x18, 0x00, 0x00, 0x00, 0x00,
+            0x31, 0xC0,
+            0x48, 0x89, 0x04, 0x24,
+            0x48, 0x89, 0x44, 0x24, 0x08,
+            0x48, 0x89, 0x44, 0x24, 0x10,
+            0x48, 0x89, 0x44, 0x24, 0x18,
             0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x6E, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
@@ -766,7 +769,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/182",
+        "schema": "topal-kernel-toolchain-gate-qemu/183",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -809,6 +812,11 @@ def evidence_record(
                 "external-echo-terminal"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-installed-cleared-witness"
+            ),
+            "static_shell_getppid_profile": (
+                "external-echo-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-no-parent-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
