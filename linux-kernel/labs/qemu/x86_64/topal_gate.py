@@ -337,7 +337,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 759] = bytes(
+    image[0xA_6580 : 0xA_6580 + 772] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -501,6 +501,8 @@ def static_user_fixture() -> bytes:
             0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
             0xC6, 0x04, 0x24, 0x00,
             0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x27, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
@@ -747,7 +749,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/180",
+        "schema": "topal-kernel-toolchain-gate-qemu/181",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -781,6 +783,11 @@ def evidence_record(
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
             "static_applet_newline_count": serial.count(b"\n"),
+            "static_shell_getpid_profile": (
+                "external-echo-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-pid-one-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",

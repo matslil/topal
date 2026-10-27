@@ -834,6 +834,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF startup credential normalization](step-4-bounded-static-elf-initial-credential-tail.md)
 - [Step 4 bounded static ELF applet newline output](step-4-bounded-static-elf-applet-newline-write.md)
 - [Step 4 pinned static BusyBox `echo`](step-4-pinned-static-busybox-echo.md)
+- [Step 4 bounded static-process shell `getpid`](step-4-bounded-static-elf-shell-getpid.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
