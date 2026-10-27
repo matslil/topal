@@ -4057,6 +4057,35 @@ output count, byte, status, or rollback result SHALL be invalid. This rule
 SHALL NOT add arbitrary arguments, output, option parsing, environment values,
 dynamic linking, filesystem service, a shell, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001 — Static-process shell identity observation
+
+The bounded static-process entry MAY extend its selected startup profile with
+one observation of the sealed initial process identity. The provider SHALL
+require the live process, sealed executable continuation, active checked
+address-space hierarchy, exact retained initial-stack leaf, and coherent
+PID-one process profile. It SHALL return one, retain no argument, pointer,
+identity cache, allocator, or mutable task state, and advance only its private
+startup phase. Failure SHALL preserve the predecessor phase and every process
+resource.
+
+For qualified x86-64 realization, the provider SHALL bind the operation to
+native syscall 39 (`getpid`). The clean-room fixture SHALL issue the call after
+its newline-output witness, require result one, and continue. The pinned
+external `echo` profile MAY terminate at the newline phase without issuing the
+call. A future pinned external shell profile MAY bind the call directly to its
+sealed `getuid(0)` phase. Only the exact header-selected predecessor SHALL be
+valid; successful observation SHALL establish one common shell-identity phase.
+
+The existing applet-newline profile observation SHALL precede the request, and
+the existing process-exit observation SHALL follow its successful result.
+Together with the selected qualification input they SHALL certify either the
+clean fixture's result-one witness or the external echo terminal boundary.
+Another selector, identity, phase, continuation, order, duplicate, retained
+state, source-visible native detail, or recoverable process-entry failure SHALL
+be invalid. This rule SHALL NOT add PID allocation, namespaces, parent
+identity, a task table, signals, multiple processes, fork, clone, wait, shell
+execution, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
