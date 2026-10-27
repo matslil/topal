@@ -3630,6 +3630,32 @@ requests larger than 16 bytes, pre-readiness blocking, signals, concurrency,
 fork or exec inheritance, reseeding, random device files, vDSO delivery,
 BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001 — Post-random current-break query
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query`
+and select policy `bounded-static-elf-post-random-brk-query`. After the exact
+reusable-random observation, the process MAY issue one zero request under the
+read-only query behavior of
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001`.
+
+The provider SHALL require the live post-growth process state, a zero request,
+and a continuation in the sealed executable mapping. It SHALL return the
+current byte-granular break established by
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001`, preserve the anonymous
+reserve and its mapping, and change no break, random-service, or other process
+state. The initial x86-64 qualification SHALL return exact `0x005f7dc0` from
+native syscall 12.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK` observation
+SHALL follow the reusable-random observation and precede process exit. Another
+request, state, result, order, duplicate, mutation, source-visible native
+detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
+NOT add another nonzero request, shrink, allocation, multiple heap pages, VMA
+collections, accounting, concurrency, BusyBox redistribution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

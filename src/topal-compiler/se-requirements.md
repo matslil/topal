@@ -1252,6 +1252,19 @@ fast key erasure, repeated delivery, complete destruction, and continuation.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001` and
 `TK-DEC-185`.
 
+The bounded static-ELF post-random-break-query increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query`
+and policy `bounded-static-elf-post-random-brk-query`. After the reusable-random
+witness, the clean-room x86-64 payload shall issue native syscall 12 with a
+zero request and require exact current break `0x005f7dc0`. Lowering shall
+validate the live post-growth state and sealed executable continuation, return
+the established byte-granular break, and preserve the anonymous reserve,
+mapping, random service, and terminal rollback unchanged. Negative,
+structural, and duplicate pinned-QEMU evidence shall enforce exact request,
+result, order, nonmutation, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001` and `TK-DEC-186`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
