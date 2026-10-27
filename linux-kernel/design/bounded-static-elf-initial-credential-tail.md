@@ -35,10 +35,8 @@ not Linux syscall numbers or a target register file.
 The provider binds the sequence to Linux x86-64 `getgid` number 104, `setgid`
 number 106, and `setuid` number 105. The clean-room process issues them in that
 order, supplies zero to both setters, requires zero after each call, and then
-exits. The digest-pinned external `true` applet may retain its header-bound
-early terminal path after `getuid`; the external path is regression evidence
-for unchanged execution and rollback, not evidence that this applet issued the
-new calls.
+exits. The digest-pinned root `echo` applet skips this optional branch after
+`getuid(0)` and proceeds directly to its output dependency.
 
 ## Cross-architecture mapping
 

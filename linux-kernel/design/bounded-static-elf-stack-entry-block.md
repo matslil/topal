@@ -11,7 +11,7 @@ alignment, concrete addresses, and write mechanics.
 `static image construction initialize stack entry` shall require the exact
 live `PublishedStackLeafStaticImageConstruction` and nested one-frame backing
 from `TK-DEC-142`. It shall accept only that owner, that backing identity,
-profile `bounded-static-elf-busybox-true`, and extent `complete`. The operation
+profile `bounded-static-elf-busybox-echo`, and extent `complete`. The operation
 shall borrow the live extent and produce one affine
 `InitializedStackEntryStaticImageConstruction` retaining the unchanged entry,
 slot, leaf, and backing authorities.
@@ -19,7 +19,7 @@ slot, leaf, and backing authorities.
 The sealed profile shall contain these semantic Linux process-entry facts:
 
 1. argument count two;
-2. immutable arguments `busybox` and `true`, in that order;
+2. immutable arguments `busybox` and `echo`, in that order;
 3. an argument-vector terminator;
 4. an empty environment with its terminator; and
 5. exactly one terminating `AT_NULL` auxiliary-vector pair.
@@ -96,7 +96,7 @@ consumption boundary.
 ## Deliberate bounds
 
 This increment initializes, witnesses, completely clears, and verifies one
-minimal static BusyBox `true` entry block. It does not retain the block after
+minimal static BusyBox `echo` entry block. It does not retain the block after
 qualification, add nonterminating auxiliary-vector entries, initialize TLS,
 derive a source-visible stack pointer, construct a user context, enter user
 mode, execute BusyBox, or add a syscall.

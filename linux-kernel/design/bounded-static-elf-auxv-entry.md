@@ -45,7 +45,7 @@ The provider shall encode native `AT_ENTRY` tag 9 with the exact retained ELF
 entry `0x4a6580`, after `AT_PAGESZ=(6,4096)` and before `AT_NULL`. It shall
 prove the value lies in the existing executable interval and corresponds to
 the existing entry authority. The reconstructed entry pointer shall remain
-16-byte aligned, with unchanged `busybox` and `true` pointer/string relations.
+16-byte aligned, with unchanged `busybox` and `echo` pointer/string relations.
 
 Addition and removal shall each clear all 512 backing qwords before
 reconstruction, execute one store fence, and completely read back the result.

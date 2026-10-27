@@ -4,7 +4,7 @@
 
 The x86-64 systems provider may execute the one digest-pinned external static
 BusyBox image through the existing affine static-process boundary. The
-qualification selects the exact `busybox true` argument vector and the already
+qualification selects the exact `busybox echo` argument vector and the already
 approved bounded startup syscall sequence. External bytes remain an explicit
 gate input and are neither committed nor redistributed.
 
@@ -62,6 +62,6 @@ broaden pointer acceptance.
 
 ## Scope
 
-This design executes one pinned BusyBox `true` path. It does not add a prompt,
+This design executes one pinned BusyBox `echo` path. It does not add a prompt,
 filesystem, dynamic linker, signals, multiple processes, arbitrary ELF support,
 containers, virtualization, or general application compatibility.

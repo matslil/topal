@@ -37,13 +37,13 @@ The provider binds the service to Linux x86-64 `newfstatat` number 262,
 role, reserves stack scratch below the initial vector, verifies the exact
 result, restores its stack pointer, and exits. The external resident-header
 variant also admits the exact immutable pathname occurrence already present in
-the digest-pinned image, but the currently qualified `true` applet may terminate
-immediately after `getuid` without issuing the optional probe.
+the digest-pinned image, but the qualified root `echo` path skips this optional
+branch after `getuid(0)` and proceeds directly to its output dependency.
 
 The selected header variant is provider-private and determines which exact
-immutable pathname candidate is valid. It may also determine whether terminal
-completion is admitted directly after `getuid` or only after the absence
-witness. Source sees one architecture-neutral startup profile rather than
+immutable pathname candidate is valid. The clean fixture must complete the
+absence witness; the root external path may skip it but must complete its later
+output phase. Source sees one architecture-neutral startup profile rather than
 addresses, a native syscall sequence, or a union of register-level cases.
 
 ## Cross-architecture mapping

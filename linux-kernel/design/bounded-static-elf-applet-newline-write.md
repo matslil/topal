@@ -5,14 +5,15 @@ Status: approved systems-feature design (`TK-DEC-198`).
 ## Purpose
 
 After its credential normalization, the pinned BusyBox `echo` startup path
-publishes one line-feed byte to standard output. This increment adds that exact
-process-entry dependency before changing the sealed argument profile from
-`true` to `echo`.
+publishes one line-feed byte to standard output. The sealed `echo` profile
+makes that exact process-entry dependency mandatory.
 
 ## Portable contract
 
-Following the credential-tail witness, the live initial process may publish
-exactly one line-feed byte to standard output. The provider requires descriptor
+Following the profile-bound preceding phase, the live initial process may
+publish exactly one line-feed byte to standard output. The clean profile binds
+that phase to its credential-tail witness; the external root `echo` profile
+binds it directly to `getuid(0)`. The provider requires descriptor
 one, length one, an executable continuation, and the profile-bound candidate
 byte in an already proved readable process mapping. It revalidates the active
 address space and that candidate's exact backing before reading, copies the
@@ -28,9 +29,9 @@ single-context profile. A wrong descriptor, length, value, candidate, mapping,
 continuation, phase, or credential state is a fatal violation of the sealed
 startup profile and produces no output.
 
-The digest-pinned external `true` applet retains its header-bound early
-terminal path. It is regression evidence in this increment and does not yet
-claim to execute the output operation.
+The digest-pinned external `echo` applet shall execute the output operation
+directly from its root-identity phase; its earlier silent terminal path is no
+longer admitted.
 
 ## X86-64 binding
 

@@ -40,7 +40,7 @@ TLS, activate the hierarchy, construct a user context, or enter the image.
 
 The provider shall use native `AT_PAGESZ` tag 6 with value 4096, place it after
 the empty environment terminator and before `AT_NULL`, and retain the exact
-`busybox` and `true` pointer/string relations. The reconstructed entry pointer
+`busybox` and `echo` pointer/string relations. The reconstructed entry pointer
 shall remain 16-byte aligned. Addition and removal shall each clear the
 complete backing before reconstruction, use one store fence, and completely
 read back the resulting frame.

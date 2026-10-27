@@ -516,7 +516,7 @@ initialization from the published-stack-leaf construction and one exact typed
 complete clearing back to it. X86-64 lowering shall validate the inactive
 hierarchy, current bootstrap root, all final image leaves, exact RW/NX stack
 leaf, absent guard, and complete zero backing; construct a 16-byte-aligned
-Linux entry block with `argc` two, in-leaf `busybox` and `true` strings,
+Linux entry block with `argc` two, in-leaf `busybox` and `echo` strings,
 terminated `argv`, empty terminated environment, and `AT_NULL`; execute one
 store fence; and completely read back all content, pointer relations, and
 otherwise-zero bytes. Clearing shall zero all 512 qwords, execute one store
@@ -597,7 +597,7 @@ The bounded static-ELF executable-name auxiliary-vector increment shall accept
 one exact typed addition from the program-header-qualified stack construction
 and one exact typed removal back to it. X86-64 lowering shall validate that
 block, inactive translation obligations, exact stack leaf, and complete
-`busybox\0` and `true\0` objects; prove the executable-name identity equals
+`busybox\0` and `echo\0` objects; prove the executable-name identity equals
 the existing `argv[0]` object; clear the full frame; reconstruct a 16-byte-
 aligned block with `AT_EXECFN=(31,0x7fffe0)`, all prior facts, arguments,
 strings, and terminating `AT_NULL`; fence; and completely read back all
@@ -1108,7 +1108,7 @@ checking CR0, initialize fresh x87/MXCSR/XMM state, and scrub it before return.
 It shall zero and verify the bounded mutable stack prefix and normalize A/D bits
 across all 503 image leaves plus the stack leaf before exact readback. The
 qualification shall cover clean-room bytes and the digest-pinned external
-BusyBox `true` path without redistributing the external bytes. A qualification-
+BusyBox `echo` path without redistributing the external bytes. A qualification-
 only inverse shall validate and clear the terminal context and restore the exact
 randomized owner before the existing nested rollback. The checker and semantic
 model shall reject every substituted owner, executable digest, header variant,
@@ -1394,9 +1394,9 @@ require the live real-UID phase, sealed executable continuation, active checked
 hierarchy, exact retained stack leaf, complete header-variant-bound immutable
 path, and complete writable destination. It shall publish no bytes, retain no
 argument or lookup state, and advance only the private startup phase. Clean-
-room terminal handling shall require that phase; the pinned external `true`
-profile may terminate from the preceding phase because it makes no optional
-probe. Negative, structural, full-workspace, clean-QEMU, and external-QEMU
+room terminal handling shall require the absence phase and all later phases;
+the pinned external root `echo` profile may skip from `getuid(0)` to its
+mandatory output phase. Negative, structural, full-workspace, clean-QEMU, and external-QEMU
 evidence shall enforce exact dispatch, complete path and range validation,
 absence result, nonmutation, nonretention, header-bound terminal choice,
 rollback, and continuation. This realizes
@@ -1415,9 +1415,9 @@ hierarchy, exact retained stack leaf, and complete zero-valued
 the `getgid` argument registers, require both setter arguments to equal the
 sealed zero identities, retain no argument or mutable identity state, leave the
 credential group unchanged, and advance only the exact private startup phase.
-Clean-room terminal handling shall require the same-user phase; the pinned
-external `true` profile shall preserve its previously admitted header-bound
-early terminal path. Negative, structural, full-workspace, clean-QEMU, and
+Clean-room terminal handling shall require this phase and its later output;
+the pinned external root `echo` profile may skip this optional branch but must
+complete output. Negative, structural, full-workspace, clean-QEMU, and
 external-QEMU evidence shall enforce exact dispatch, ordering, credential
 coherence, same-value setter requests, zero results, nonretention, rollback,
 and continuation. This realizes
@@ -1434,15 +1434,31 @@ stack, and continue. Lowering shall require the exact phase, sealed executable
 continuation, active checked hierarchy, and the header-profile-bound byte in
 the retained stack leaf or pinned anonymous program-break mapping. It shall revalidate backing,
 stage before output, require line feed, publish once, return one, retain no
-pointer or staging, and advance only the private startup phase. Clean-room
-terminal handling shall require that phase; the pinned external `true` profile
-shall preserve its previously admitted header-bound early terminal path.
+pointer or staging, and advance only the private startup phase. The clean
+profile shall require the credential-tail predecessor; the pinned external
+root `echo` profile shall require the sealed `getuid(0)` predecessor. Both
+shall require the output phase before terminal handling.
 Negative, structural, full-workspace, clean-QEMU, and external-QEMU evidence
 shall enforce dispatch, ordering, range and backing validation, staging,
 payload equality, exact output and result, nonretention, rollback, and
 continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001`,
 `TOPAL-SYSTEMS-USER-WRITE-001`, and `TK-DEC-198`.
+
+The pinned static-BusyBox echo-profile increment shall seal profile
+`bounded-static-elf-busybox-echo` and exact arguments `busybox`, `echo` in the
+existing complete initial stack. All later stack facts, native process entry,
+syscall returns, and rollback validation shall preserve those same strings and
+pointer relations until complete clearing. After sealed `getuid(0)`, the pinned
+external header shall skip its optional configuration and credential branch,
+complete exactly one staged line-feed write, and call `exit_group(0)`; no
+earlier terminal phase remains valid. The clean fixture shall retain its longer
+optional branch before the same output and terminal phase.
+Clean-room and external QEMU evidence shall each contain exactly one newline,
+while the external executable stays digest-pinned and outside the repository.
+Structural tests shall reject the former string bytes/profile and earlier
+external terminal phases. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ECHO-PROFILE-001` and `TK-DEC-199`.
 
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a

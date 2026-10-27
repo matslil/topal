@@ -555,8 +555,9 @@ shall use the complete final Linux initial stack, establish a fresh x87/SSE
 context, preserve all non-result syscall registers and provider callee-saved
 registers, and restore or scrub every private register, stack, translation-
 status, and process-context value before rollback. Qualification shall execute
-the pinned BusyBox `true` applet without committing its bytes and shall not
-generalize acceptance to another executable, stack shape, or syscall sequence.
+the pinned BusyBox `echo` applet through its one-byte newline and zero exit
+without committing its bytes and shall not generalize acceptance to another
+executable, stack shape, argument vector, or syscall sequence.
 
 The bounded initial-configuration adapter shall recognize exactly the sealed
 absolute path `/etc/busybox.conf` for the live initial process and report that

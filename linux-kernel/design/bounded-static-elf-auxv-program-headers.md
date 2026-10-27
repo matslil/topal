@@ -52,7 +52,7 @@ validated by the static ELF load plan.
 
 Addition and removal shall each clear all 512 backing qwords before
 reconstruction, execute one store fence, and completely read back the result.
-The entry pointer remains 16-byte aligned; the `busybox` and `true` strings and
+The entry pointer remains 16-byte aligned; the `busybox` and `echo` strings and
 all prior facts remain unchanged. The exact RW/NX stack leaf, guard, final
 image leaves, inactive hierarchy, and bootstrap root remain unchanged. No
 active-address invalidation is permitted.
