@@ -747,7 +747,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/179",
+        "schema": "topal-kernel-toolchain-gate-qemu/180",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -829,8 +829,7 @@ def verify(
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
-        expected_newline_count = 0 if external_static_user_image is not None else 1
-        if serial.count(b"\n") != expected_newline_count:
+        if serial.count(b"\n") != 1:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
             )

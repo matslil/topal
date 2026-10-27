@@ -252,16 +252,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/179")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/180")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/167")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/168")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/177",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/178",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/77",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/78",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -497,9 +497,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "\n"
             + "".join(observations["markers_in_order"][newline_position:])
         )
-        self.assertEqual(
-            observations["serial_utf8"], expected_serial
-        )
+        self.assertEqual(observations["serial_utf8"], expected_serial)
         self.assertEqual(
             observations["serial_sha256"],
             hashlib.sha256(observations["serial_utf8"].encode()).hexdigest(),
@@ -507,7 +505,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/179")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/180")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -519,7 +517,17 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(evidence["static_user_image_bytes"], 2_024_544)
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
-        self.assertEqual(evidence["observations"]["static_applet_newline_count"], 0)
+        observations = evidence["observations"]
+        self.assertEqual(observations["static_applet_newline_count"], 1)
+        newline_position = observations["markers_in_order"].index(
+            "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
+        )
+        expected_serial = (
+            "".join(observations["markers_in_order"][:newline_position])
+            + "\n"
+            + "".join(observations["markers_in_order"][newline_position:])
+        )
+        self.assertEqual(observations["serial_utf8"], expected_serial)
 
 
 if __name__ == "__main__":
