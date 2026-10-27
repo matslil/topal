@@ -559,6 +559,12 @@ the pinned BusyBox `echo` applet through its one-byte newline and zero exit
 without committing its bytes and shall not generalize acceptance to another
 executable, stack shape, argument vector, or syscall sequence.
 
+The bounded static-process identity adapter shall expose the existing sealed
+PID-one fact for one ordered `getpid` observation. It shall require the exact
+live process, executable continuation, active checked address space, retained
+stack, and header-selected predecessor; return one without retaining native
+arguments or mutable identity state; and preserve complete terminal rollback.
+
 The bounded initial-configuration adapter shall recognize exactly the sealed
 absolute path `/etc/busybox.conf` for the live initial process and report that
 the optional object is absent. Dispatch shall require an executable return

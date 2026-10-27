@@ -1460,6 +1460,16 @@ Structural tests shall reject the former string bytes/profile and earlier
 external terminal phases. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-ECHO-PROFILE-001` and `TK-DEC-199`.
 
+The bounded static-process shell-getpid increment shall accept native x86-64
+syscall 39 once, return the sealed PID one, retain no argument or mutable task
+state, and advance only its private startup phase. The clean fixture shall
+invoke it after newline output; the external echo profile may retain its
+newline terminal path, and the future external shell profile shall bind it
+directly to `getuid(0)`. Structural and QEMU evidence shall enforce exact
+header-selected predecessor, executable continuation, retained hierarchy and
+stack, result, nonretention, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001` and `TK-DEC-200`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
