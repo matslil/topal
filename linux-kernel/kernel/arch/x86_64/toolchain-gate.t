@@ -160,7 +160,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               initialized-stack-entry-construction is unmapped static image construction initialize stack entry (
                                                                                 owner is published-stack-leaf-construction,
                                                                                 backing is static-elf-stack-backing,
-                                                                                profile is bounded-static-elf-busybox-true,
+                                                                                profile is bounded-static-elf-busybox-echo,
                                                                                 extent is complete
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK"

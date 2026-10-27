@@ -13340,14 +13340,14 @@ mod tests {
         for (source, expected) in [
             (
                 SOURCE.replace(
-                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
-                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",
             ),
             (
                 SOURCE.replace(
-                    "profile is bounded-static-elf-busybox-true,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
+                    "profile is bounded-static-elf-busybox-echo,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                     "profile is unbounded-static-elf,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",

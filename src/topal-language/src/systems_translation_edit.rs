@@ -3137,7 +3137,7 @@ fn parse_static_image_stack_entry_initialization(
     }
     if owner != Some(construction_name)
         || backing != Some(backing_name)
-        || profile != Some("bounded-static-elf-busybox-true")
+        || profile != Some("bounded-static-elf-busybox-echo")
         || extent != Some("complete")
     {
         return Err(translation_edit_diagnostic(
