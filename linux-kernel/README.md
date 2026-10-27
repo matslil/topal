@@ -628,6 +628,13 @@ records the exact query-only `prlimit64`, complete immutable native pair,
 temporary-stack non-overlap and erasure, continued terminal dispatch, and
 duplicate deterministic QEMU evidence without adding resource enforcement.
 
+The next systems-only startup refinement preserves the pinned process's
+optional [`/proc/self/exe` probe](design/bounded-static-elf-initial-readlinkat-fallback.md).
+Its [qualification report](step-4-bounded-static-elf-initial-readlinkat-fallback.md)
+records exact `readlinkat` selection, side-effect-free `-ENOSYS`, unchanged
+startup state, continued terminal dispatch, and duplicate deterministic QEMU
+evidence without adding filesystem policy.
+
 The pinned compatibility baseline is [Linux 7.2.9](baseline.md). “Latest” means
 the complete observable native x86-64 interface of that immutable baseline
 during a qualification run. Updating to a later stable release requires a
@@ -814,6 +821,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF initial empty robust list](step-4-bounded-static-elf-initial-empty-robust-list.md)
 - [Step 4 bounded static ELF initial `rseq` fallback](step-4-bounded-static-elf-initial-rseq-fallback.md)
 - [Step 4 bounded static ELF initial stack-limit query](step-4-bounded-static-elf-initial-stack-limit-query.md)
+- [Step 4 bounded static ELF initial `readlinkat` fallback](step-4-bounded-static-elf-initial-readlinkat-fallback.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

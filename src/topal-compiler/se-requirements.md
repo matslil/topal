@@ -1199,6 +1199,20 @@ temporary stack extent, and continue through terminal dispatch. Negative,
 structural, and duplicate pinned-QEMU evidence shall enforce the boundary. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-STACK-LIMIT-001` and `TK-DEC-182`.
 
+The bounded static-ELF initial-`readlinkat` fallback increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback`
+and policy `bounded-static-elf-initial-readlinkat-fallback`. The clean-room
+x86-64 payload shall issue native syscall 267 with `AT_FDCWD`, path candidate
+`0x005bfdda`, output candidate `0x005fe000`, and length 4096 immediately after
+the stack-limit query. The unsupported-call path shall return exact `-ENOSYS`
+without inspecting arguments, touching user memory, retaining state, or
+changing prior process state; later implemented terminal dispatch shall remain
+usable. Negative, structural, and duplicate pinned-QEMU evidence shall enforce
+exact request order, result, state preservation, and continuation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001` and
+`TK-DEC-183`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
