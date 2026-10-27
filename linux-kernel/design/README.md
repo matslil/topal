@@ -192,6 +192,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF initial `getuid`](bounded-static-elf-initial-getuid.md)
 - [Bounded static ELF initial configuration-stat miss](bounded-static-elf-initial-config-stat-miss.md)
 - [Bounded static ELF startup credential normalization](bounded-static-elf-initial-credential-tail.md)
+- [Bounded static ELF applet newline write](bounded-static-elf-applet-newline-write.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)

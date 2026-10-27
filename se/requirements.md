@@ -938,6 +938,17 @@ adapter shall return zero, retain no request or mutable credential state, and
 leave the credential group unchanged. Another value, order, continuation,
 lifecycle phase, incomplete group, or state mutation shall fail closed.
 
+The bounded static-process applet-output adapter shall, after the complete
+credential tail, accept exactly one standard-output line-feed request. It shall
+require descriptor one, length one, an executable continuation, and the
+header-profile-bound candidate byte in the exact retained stack leaf or
+anonymous program-break extent. The provider shall revalidate the active
+hierarchy and backing, copy
+the byte into private staging before output, require line-feed value, publish
+it once, return one, and retain no pointer or staging state. Another phase,
+range, mapping, byte, descriptor, length, continuation, result, or output before
+complete validation shall fail closed.
+
 The initial-process entry adapter shall publish a native zero-valued
 `AT_SECURE` auxiliary-vector fact after the existing program-header facts and
 before `AT_NULL`. It shall agree with the sealed credentials and absence of a

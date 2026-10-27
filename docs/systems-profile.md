@@ -702,6 +702,17 @@ remain provider-owned. This completes one ordered startup sequence; it does
 not introduce credential mutation, supplementary groups, namespaces,
 capabilities, a process table, or a reusable identity service.
 
+The bounded static-applet-output refinement publishes one line-feed byte after
+that credential normalization. It requires standard output, length one, an
+executable continuation, and the header-profile-bound byte in its proved
+readable stack or anonymous process mapping. The provider revalidates the
+active address space and exact backing, stages the byte privately before
+output, verifies the sealed line-feed value, returns one, and retains no
+pointer or staging state. Native
+syscall selectors, registers, page tables, and console mechanics remain
+provider-owned. This is one applet-startup effect, not a descriptor table,
+general write service, file, pipe, socket, or prompt.
+
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
 and before either mapping is unmapped. At that boundary one RO/X code mapping
