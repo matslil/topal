@@ -1470,6 +1470,21 @@ header-selected predecessor, executable continuation, retained hierarchy and
 stack, result, nonretention, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001` and `TK-DEC-200`.
 
+The bounded static-process shell-child-disposition increment shall accept one
+native x86-64 `rt_sigaction` request for signal 17 after the shell-getpid
+phase. It shall require no old-action output, native signal-set size eight,
+the approved `SA_RESTORER` policy and child mask, complete readable candidate,
+executable handler, trampoline, and continuation addresses, active checked
+hierarchy and retained stack, and empty prior disposition. It shall copy and
+validate the complete request, retain only private disposition state, return
+zero, and advance one private startup phase. Terminal handling shall validate
+and clear that state before rollback. The clean fixture shall construct and
+erase the request; the external echo profile may retain its newline terminal
+path, and a future external shell profile may bind the operation after
+`getpid`. Structural and QEMU evidence shall enforce exact dispatch, fields,
+ordering, state lifecycle, result, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001` and `TK-DEC-201`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

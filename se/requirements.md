@@ -565,6 +565,17 @@ live process, executable continuation, active checked address space, retained
 stack, and header-selected predecessor; return one without retaining native
 arguments or mutable identity state; and preserve complete terminal rollback.
 
+The bounded static-process child-disposition adapter shall accept one complete
+readable request after the sealed process-identity observation. It shall
+require executable handler, return-trampoline, and continuation facts, the
+approved child-status policy and blocked set, active checked address space,
+retained stack, empty prior disposition, and exact predecessor phase. It shall
+copy and validate the complete request before retaining only private process
+state, return success, and validate and clear that state at terminal rollback.
+It shall expose no native layout in portable source and shall grant no signal
+generation, delivery, frame, handler-execution, restart, or general signal
+authority.
+
 The bounded initial-configuration adapter shall recognize exactly the sealed
 absolute path `/etc/busybox.conf` for the live initial process and report that
 the optional object is absent. Dispatch shall require an executable return
