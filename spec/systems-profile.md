@@ -520,11 +520,13 @@ one-frame metadata extents.
 The initial x86-64 provider SHALL revalidate both construction extents, all
 503 ordered initial RW/NX leaves, nine absent entries, and the complete
 populated payload before changing any leaf. It SHALL atomically publish these
-final ordinal roles over the inactive construction: header `[0, 1)` as user
-RO/NX; executable `[1, 397)` as user RO/X; immutable data `[397, 485)` as user
-RO/NX; GNU RELRO `[485, 493)` as user RO/NX; and remaining writable data and
-BSS `[493, 503)` as user RW/NX. Thus the final table SHALL contain exactly 97
-RO/NX, 396 RO/X, and 10 RW/NX leaves, with no writable-executable leaf.
+entry-stage ordinal roles over the inactive construction: header `[0, 1)` as
+user RO/NX; executable `[1, 397)` as user RO/X; immutable data `[397, 485)` as
+user RO/NX; and writable data and BSS `[485, 503)`, including GNU RELRO
+`[485, 493)`, as user RW/NX. Thus the entry-stage table SHALL contain exactly
+89 RO/NX, 396 RO/X, and 18 RW/NX leaves, with no writable-executable leaf. The
+GNU RELRO leaves SHALL remain writable only until the exact checked transition
+required by `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001`.
 
 Before success, the provider SHALL read back every leaf, verify the original
 payload-frame identity and ordinal order with its exact final role, and verify
@@ -2289,9 +2291,30 @@ enter the least-privileged application context, and return only after that
 context requests the selected terminal result. It SHALL restore the exact
 kernel address space, privilege-local state, stack, and continuation before
 returning. The completed owner SHALL retain the unchanged process mappings,
-payload, stack, and delivered initial-random result. Exactly one
+payload, canonical initial-stack block, and delivered initial-random result.
+Provider-owned writable stack space below that block MAY be used during the
+bounded execution but SHALL be completely zeroed and verified before return.
+Exactly one
 `TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK` observation is permitted after the
 completed owner is live.
+
+For an x86-64 process that uses scalar or SIMD instructions, the provider SHALL
+require `CR0.EM` and `CR0.TS` clear, retain the prior `CR4`, enable the
+architected OSFXSR and OSXMMEXCPT controls, initialize a fresh x87 state and
+MXCSR `0x1f80`, and zero all 16 XMM registers before application entry. Before
+return it SHALL scrub that process-owned SIMD state, restore exact prior `CR4`,
+and clear the private saved values. This target lowering SHALL NOT expose raw
+register, control-register, or assembly authority to portable source.
+
+Every accepted x86-64 `SYSCALL` SHALL return only its result in `rax`, preserve
+the syscall-boundary values of all other general registers under the Linux
+ABI, and use the saved `rcx` and `r11` values for `SYSRETQ`. The complete process
+transition SHALL separately preserve the provider caller's System V callee-
+saved registers. All saved user and caller registers, resident-header variant
+state, and stack-local output shall remain provider-private and SHALL be cleared
+before the completed owner is exposed. Hardware-maintained Accessed and Dirty
+bits MAY change while the process is active but SHALL be normalized across the
+complete bounded leaf set before exact mapping readback.
 
 For reversible qualification, `static image process restore entry` SHALL
 consume that exact completed owner, prove and clear the private terminal
@@ -2304,10 +2327,13 @@ Another owner, ABI, terminal result, policy, entry, stack, address space,
 privilege level, syscall, status, ordering, duplicate entry, escaped native
 state, failed restoration, changed process byte or mapping, nonzero private
 context after inverse, source-visible representation, or recoverable
-disposition SHALL be invalid. The first x86-64 qualification SHALL use a
-clean-room payload at the sealed ELF entry that invokes only native
-`exit_group(0)`. This rule SHALL NOT initialize TLS, execute BusyBox, add a
-nonterminal syscall, provide a prompt, or claim general application support.
+disposition SHALL be invalid. The x86-64 qualification SHALL cover both the
+clean-room payload and the digest-pinned external BusyBox executable with the
+exact `busybox true` initial argument vector, final initial stack pointer
+`0x007ffe90`, coherent external resident-header variant, and already selected
+bounded startup syscall sequence. External bytes SHALL NOT be committed or
+redistributed. This rule SHALL NOT accept another executable or argument vector,
+provide a prompt, or claim general application support.
 
 The disjoint-live-extent refinement SHALL permit one exception to that last
 restriction: after one `PreparedUserAddressSpace` owns the exact `(3, 1)`
@@ -2521,9 +2547,11 @@ plus exactly one ordered record for each virtual page with a distinct
 zero-based frame ordinal.
 
 Every page SHALL begin with RW/NX construction permission. Header and immutable
-data pages SHALL finalize RO/NX, executable pages SHALL finalize RO/X, and
-writable-data pages SHALL finalize RW/NX except that every RELRO page SHALL
-finalize RO/NX. No initial or final permission SHALL combine W and X. The plan
+data pages SHALL enter execution RO/NX, executable pages SHALL enter execution
+RO/X, and writable-data pages, including every RELRO page, SHALL enter execution
+RW/NX. RELRO SHALL become RO/NX only through the exact checked transition in
+`TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001`. No construction, entry-stage, or
+sealed permission SHALL combine W and X. The plan
 SHALL require zeroing the complete frame extent before four ordered copies from
 the exact validated file intervals to their corresponding memory starts.
 
@@ -2581,6 +2609,38 @@ NOT require repository possession or redistribution of the external binary,
 package the static image for boot, expose its bytes to source, copy it into a
 construction, publish final permissions or entry authority, or make it
 runtime-selectable.
+
+### TOPAL-SYSTEMS-STATIC-ELF-RESIDENT-HEADER-VARIANTS-001 — Sealed resident-header forms
+
+The qualified x86-64 supplied-static-image path MAY admit exactly two complete
+ELF-header forms whose runtime identity and complete eleven-row program-header
+table agree with `TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001`. The clean-room form
+SHALL have `e_shoff`, `e_shentsize`, `e_shnum`, and `e_shstrndx` all zero. The
+pinned external form SHALL have `e_shoff=0x1edea0`, `e_shentsize=64`,
+`e_shnum=23`, and `e_shstrndx=22`; its complete section-directory interval
+SHALL end exactly at the 2,024,544-byte input boundary.
+
+Artifact validation SHALL reject a mixed tuple, a third tuple, arithmetic
+overflow, a section-name index outside the declared count, or a directory
+interval outside the complete input before publication. Runtime resident-
+header qualification SHALL compare every other ELF-header byte, every byte of
+the selected coherent tuple, and every byte of the complete program-header
+table before deriving or revalidating program-header auxiliary-vector facts.
+The runtime provider SHALL NOT parse, map, retain, or expose the non-loadable
+section directory.
+
+Qualification SHALL preserve the clean-room gate and SHALL separately require
+the exact pinned external SHA-256
+`7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd`
+before compiling caller-supplied bytes. Artifact and boot provenance SHALL bind
+those exact bytes without recording the host path or committing the image.
+
+An unverified external digest, incomplete comparison, arbitrary header or
+program-header acceptance, runtime section access, source-visible field,
+redistributed executable, or successful qualification without complete
+existing process and rollback evidence SHALL be invalid. This rule SHALL NOT
+add a general ELF loader, dynamic linking, PIE, ASLR, filesystem lookup, a
+prompt, containers, or virtualization hosting.
 
 ### TOPAL-SYSTEMS-STATIC-ELF-BOOT-001 — Immutable static-image boot transport
 
@@ -3372,7 +3432,7 @@ translation-publication contract, set and return the requested byte-granular
 break, and preserve all other process state. The process SHALL be able to store
 and reload the first newly admitted byte before terminal return.
 
-The initial x86-64 qualification SHALL accept request `0x005f7dc0`, publish one
+The initial x86-64 qualification SHALL accept request `0x005f7d80`, publish one
 RW/NX leaf for virtual page `0x005f7000`, invalidate that page, and return the
 request in `rax`. `exit_group(0)` SHALL be accepted only after both the query
 and growth complete. Terminal handling SHALL restore the kernel address space,
@@ -3404,7 +3464,7 @@ the provider SHALL retain the selection as private live-thread state, install
 it for user return, report success, and preserve all other process state.
 
 The initial x86-64 qualification SHALL accept native syscall 158 only with
-operation `0x1002`, candidate `0x005f7440`, and a continuation inside the
+operation `0x1002`, candidate `0x005f7400`, and a continuation inside the
 sealed executable mapping. The candidate SHALL lie in the live anonymous break
 reserve. The provider SHALL install it as the physical FS base, return zero in
 `rax` through `SYSRETQ`, and permit the process to reload a known byte through
@@ -3436,7 +3496,7 @@ accept exactly one initial-thread exit-word registration under
 `TOPAL-SYSTEMS-USER-CLEAR-TID-001`.
 
 The initial x86-64 qualification SHALL accept native syscall 218 only with
-candidate `0x005f7710` and a continuation inside the sealed executable mapping.
+candidate `0x005f76d0` and a continuation inside the sealed executable mapping.
 The complete writable four-byte candidate SHALL lie in the live anonymous
 break reserve. The provider SHALL retain it without dereference and return TID
 one through `SYSRETQ`. `exit_group(0)` SHALL be accepted only after registration.
@@ -3463,10 +3523,10 @@ registration, the provider MAY accept one registration under
 `TOPAL-SYSTEMS-USER-ROBUST-LIST-001`.
 
 The initial x86-64 qualification SHALL accept native syscall 273 only with
-candidate `0x005f7720`, length 24, and a sealed executable continuation. The
+candidate `0x005f76e0`, length 24, and a sealed executable continuation. The
 complete readable head SHALL lie in the anonymous break reserve. Registration
 SHALL retain it without dereference and return zero. Before terminal address-
-space restoration, the provider SHALL copy and validate self-link `0x005f7720`,
+space restoration, the provider SHALL copy and validate self-link `0x005f76e0`,
 futex offset `-32`, and null pending pointer, then clear private registration.
 It SHALL walk no entry and perform no futex operation.
 
@@ -3487,7 +3547,7 @@ empty robust-list registration, the process MAY issue one optional-feature
 probe through `TOPAL-SYSTEMS-USER-ENOSYS-001`.
 
 The initial x86-64 qualification SHALL issue native syscall 334 with candidate
-`0x005f7340`, length 33, flags zero, signature `0x53053053`, and a continuation
+`0x005f7300`, length 33, flags zero, signature `0x53053053`, and a continuation
 inside the sealed executable mapping. Because syscall 334 is not selected by an
 implemented dispatch arm, the adapter SHALL return exact native `-ENOSYS`
 without reading or validating any argument, accessing user memory, retaining
@@ -3652,7 +3712,7 @@ and a continuation in the sealed executable mapping. It SHALL return the
 current byte-granular break established by
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001`, preserve the anonymous
 reserve and its mapping, and change no break, random-service, or other process
-state. The initial x86-64 qualification SHALL return exact `0x005f7dc0` from
+state. The initial x86-64 qualification SHALL return exact `0x005f7d80` from
 native syscall 12.
 
 Exactly one `TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK` observation
@@ -3682,14 +3742,14 @@ admitted page before updating the current break and returning success. Failure
 before publication SHALL preserve the prior break and all process resources.
 
 The initial x86-64 qualification SHALL accept native syscall 12 request
-`0x00618dc0` after current break `0x005f7dc0`. Its target-qualified anonymous
+`0x00618d80` after current break `0x005f7d80`. Its target-qualified anonymous
 reserve SHALL comprise 34 zero data frames, while the separately owned fifth
 hierarchy frame SHALL provide the already-published high leaf table. The
 initial growth SHALL use the first data frame. The later growth SHALL retain
 the prior leaf and disjoint high stack leaf, add eight leaves to the existing
 low table, add 25 leaves to the high table, invalidate
-the admitted virtual range, return `0x00618dc0`, and permit a write/read at
-last admitted byte `0x00618dbf`.
+the admitted virtual range, return `0x00618d80`, and permit a write/read at
+last admitted byte `0x00618d7f`.
 
 Terminal completion SHALL retain the high-table parent and stack leaf, remove all 34
 anonymous leaves, reset the break, clear and verify the complete 34-frame
@@ -3720,7 +3780,7 @@ byte-granular current break to the exact request, and return that value. Failure
 SHALL preserve the prior break and every process resource.
 
 The initial x86-64 qualification SHALL accept native syscall 12 request
-`0x00619000` after current break `0x00618dc0`, return `0x00619000`, and permit a
+`0x00619000` after current break `0x00618d80`, return `0x00619000`, and permit a
 write/read at final newly admitted byte `0x00618fff`. The existing 34-frame
 anonymous extent and all 34 heap leaves SHALL remain unchanged.
 
@@ -3735,7 +3795,7 @@ process-entry failure SHALL be invalid. This rule SHALL NOT add another
 request, shrink, lazy faults, arbitrary mapping, VMA collections, overcommit,
 concurrency, BusyBox redistribution, or a prompt.
 
-### TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001 — Static-process GNU RELRO protection confirmation
+### TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001 — Static-process GNU RELRO sealing
 
 The bounded static-process entry MAY replace startup
 `initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment`
@@ -3748,11 +3808,16 @@ the page-rounded GNU RELRO role of its validated static image.
 The provider SHALL require the live aligned-break process state, sealed
 executable continuation, active address-space hierarchy, exact checked RELRO
 interval, complete eight-leaf role, original affine frame identities, complete
-heap and disjoint stack state, and reusable-random service before success. Each
-RELRO leaf SHALL already be present, user-readable, non-writable, and
-non-executable. The provider SHALL edit no translation, perform no target
-invalidation, advance only its private startup phase, and return zero. Failure
-SHALL preserve the prior phase and every process resource.
+heap and disjoint stack state, and reusable-random service before publication.
+Each RELRO leaf SHALL be present, user-readable, writable, and non-executable.
+The provider SHALL replace exactly those eight leaves with present,
+user-readable, non-writable, non-executable leaves while preserving every frame
+identity, publish the complete edit, invalidate exactly the eight target pages,
+and read back every sealed leaf before advancing only its private startup phase
+and returning zero. Failure before publication SHALL preserve the prior phase
+and every process resource. A provider failure during or after publication
+SHALL select the existing fatal disposition and SHALL NOT expose partial success
+or a recoverable partially sealed process.
 
 The initial x86-64 qualification SHALL accept native syscall 10 only for
 address `0x005e5000`, length `0x8000`, and protection `PROT_READ` (`1`). Those
@@ -3766,9 +3831,10 @@ required by
 `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001`. Exactly one
 `TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK` observation SHALL follow the
 page-alignment observation and precede process exit. Another address, length,
-protection, phase, interval, leaf role, frame identity, result, order,
-duplicate, permission weakening, translation edit, invalidation, retained
-state, source-visible native detail, or recoverable process-entry failure SHALL
+protection, phase, interval, entry-stage or sealed leaf role, frame identity,
+result, order, duplicate, incomplete translation edit, incomplete or extra
+invalidation, writable retained RELRO state, source-visible native detail, or
+recoverable process-entry failure SHALL
 be invalid. This rule SHALL NOT add general `mprotect`, multiple roles,
 executable permission, splitting, protection keys, VMA collections, dynamic
 linking, concurrency, BusyBox redistribution, or a prompt.
