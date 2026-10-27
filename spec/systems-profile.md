@@ -4086,6 +4086,43 @@ be invalid. This rule SHALL NOT add PID allocation, namespaces, parent
 identity, a task table, signals, multiple processes, fork, clone, wait, shell
 execution, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001 — Static-process shell child disposition
+
+The bounded static-process entry MAY extend its selected shell startup profile
+with one process-owned child-status disposition after
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001`. The provider SHALL require a live
+process, sealed executable continuation, active checked address-space
+hierarchy, exact retained initial-stack leaf, empty prior child disposition,
+and a complete readable action candidate. It SHALL copy the complete candidate
+before validation, require executable process addresses for its handler and
+return trampoline, require the approved child-status policy and blocked set,
+retain only private disposition state, return success, and advance only its
+private startup phase. Failure SHALL preserve the predecessor phase, empty
+disposition, and every process resource.
+
+For qualified x86-64 realization, the provider SHALL bind the operation to
+native syscall 13 (`rt_sigaction`), signal 17, null old-action output,
+signal-set size eight, `SA_RESTORER`, and the approved child mask. Native field
+order, flag encoding, registers, and address validation SHALL remain
+provider-owned. The clean-room fixture SHALL construct the complete request on
+its stack after `getpid`, require result zero, clear the candidate, and
+continue. The pinned external `echo` profile MAY terminate at the newline
+phase. A future pinned external shell profile MAY bind the same transition
+after its successful `getpid`. Only the exact predecessor SHALL be valid.
+
+Terminal process completion SHALL validate and clear the retained disposition
+before address-space rollback. Together with the selected qualification input,
+structural and physical evidence SHALL certify either the clean fixture's
+installed-and-cleared witness or the external echo terminal boundary. Another
+selector, signal, old-action pointer, set size, flag, mask, nonexecutable
+handler or trampoline, incomplete candidate, phase, duplicate, result,
+retained user pointer, source-visible native detail, uncleared private state,
+or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+signal generation, pending queues, delivery, frames, `rt_sigreturn`, handler
+execution, restart execution, old-action publication, arbitrary dispositions,
+multiple processes or threads, child creation, wait, shell execution,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
