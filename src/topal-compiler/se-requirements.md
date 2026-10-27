@@ -1231,6 +1231,27 @@ evidence shall enforce exact provenance, request order, publication,
 single-use consumption, destruction, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001` and `TK-DEC-184`.
 
+The bounded static-ELF reusable-`getrandom` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated`
+and policy `bounded-static-elf-reusable-getrandom`. Initial-random delivery
+shall move both the 16-byte reserved first output and generation-two ChaCha20
+key into one process-private affine service before provider-global entropy
+teardown. The first call shall remain unchanged. Later valid calls of one
+through 16 bytes shall validate flags and the complete writable static extent
+before privileged-stack extraction, replace the persistent key before
+publication, copy and verify the requested prefix, wipe the complete temporary
+output, and retain only the successor key. Zero, `-EINVAL`, and `-EFAULT` paths
+shall not evolve service state. The clean-room x86-64 payload shall add a second
+eight-byte nonblocking request at `0x005f5e70`, observe no constant value, and
+clear its scratch. Terminal handling shall erase and verify every private key,
+output, reference, counter, and scratch byte and normalize every accepted
+writable static leaf before restoration. Negative, structural, and duplicate
+pinned-QEMU evidence shall enforce ownership, validation-before-evolution,
+fast key erasure, repeated delivery, complete destruction, and continuation.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001` and
+`TK-DEC-185`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

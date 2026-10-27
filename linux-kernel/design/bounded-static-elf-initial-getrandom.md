@@ -23,8 +23,8 @@ bytes, addresses, syscall numbers, flags, registers, or copy mechanics. The
 portable abstraction is an affine opaque output reservation bound to one
 process; architecture providers own native ABI lowering and fault containment.
 
-This systems-only refinement does not retain the generator, permit a second
-nonempty call, accept another size or flag profile, reseed, expose random
-bytes, redistribute BusyBox, or provide a prompt. A later reusable-service
-increment may carry generator ownership under the existing reusable
-`getrandom` contract without changing this first-call result.
+This systems-only refinement does not itself retain the generator, permit a
+second nonempty call, accept another size or flag profile, reseed, expose
+random bytes, redistribute BusyBox, or provide a prompt. The approved
+[reusable-service refinement](bounded-static-elf-reusable-getrandom.md) carries
+exclusive generator ownership without changing this first-call result.

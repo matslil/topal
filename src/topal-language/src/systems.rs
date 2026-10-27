@@ -10517,7 +10517,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 413);
+        assert_eq!(program.bootstrap.handler.operations.len(), 414);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -14571,11 +14571,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-STACK-LIMIT-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14583,7 +14584,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-initial-getrandom",
+                "policy is bounded-static-elf-reusable-getrandom",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
@@ -14621,6 +14622,10 @@ mod tests {
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK",
                 "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK",
+                "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",

@@ -3570,7 +3570,8 @@ the exact eight-byte prefix of the reservation, verify complete publication,
 wipe all 16 reserved bytes, mark the reservation consumed, retain no candidate
 or random value, and return eight. Terminal handling SHALL require the
 consumed marker and zero reserved storage, then clear the marker before
-restoration.
+restoration, unless an approved reusable-service refinement consumes that
+state and assumes terminal destruction.
 
 Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK` observation SHALL
 follow the `readlinkat` fallback observation and precede process exit. Another
@@ -3579,7 +3580,55 @@ destination, exposed value, partial wipe, available reservation at terminal
 completion, source-visible native detail, or recoverable process-entry failure
 SHALL be invalid. This rule SHALL NOT retain the generator, admit a second
 nonempty request, implement blocking or reseeding, expose random bytes to
-source, execute BusyBox, or provide a prompt.
+source, execute BusyBox, or provide a prompt. A later refinement MAY retain
+the ready generator exclusively under `TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001`
+without changing the first-call result.
+
+### TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001 — Reusable static-process random service
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated`
+and select policy `bounded-static-elf-reusable-getrandom`. Initial-random
+delivery MAY bind the reserved output and generation-two ChaCha20 key into one
+process-private affine service under
+`TOPAL-SYSTEMS-ENTROPY-USER-SERVICE-001` before wiping the provider-global key
+and output. Every other entropy, device, DMA, transport, pool, and sample
+resource SHALL still be destroyed before process entry.
+
+The service SHALL accept zero without state change; one through 16 bytes with
+supported Linux flag mask seven except incompatible mask six; and a complete
+overflow-free destination in the validated writable static mapping. An unknown
+flag bit, incompatible flag combination, or excessive length SHALL return
+`-EINVAL`; an invalid extent SHALL return `-EFAULT`; neither SHALL consume
+output, evolve the key, or change delivery state. The first successful
+nonempty call SHALL preserve
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001`. Every later success SHALL
+first perform the key-replacing extraction of
+`TOPAL-SYSTEMS-ENTROPY-EXTRACT-001`, copy and verify only the requested prefix,
+wipe and verify the complete 32-byte temporary output, and retain only the
+successor key.
+
+The initial x86-64 qualification SHALL next issue native syscall 318 with
+output candidate `0x005f5e70`, length eight, native nonblocking flag one, and a
+sealed executable continuation. It SHALL observe but not constrain the opaque
+result, clear its scratch destination, and then invoke terminal dispatch.
+Exactly one `TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK` observation SHALL
+follow the initial-getrandom observation and precede process exit.
+
+Terminal handling SHALL wipe and verify the live key, any reserved output, the
+complete temporary output, delivery state, provider-private references, and
+privileged stack scratch before clearing the service marker. It SHALL normalize
+hardware Accessed/Dirty status for every leaf of the accepted writable static
+mapping before reversible qualification continues. Another owner, identity,
+generation, extent, flag policy, request order, result, duplicate, output
+reuse, evolution before validation, partial key replacement, copy or wipe,
+retained secret, user-stack extraction, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+requests larger than 16 bytes, pre-readiness blocking, signals, concurrency,
+fork or exec inheritance, reseeding, random device files, vDSO delivery,
+BusyBox redistribution, or a prompt.
 
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
