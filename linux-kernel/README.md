@@ -831,6 +831,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF initial process-name query](step-4-bounded-static-elf-initial-process-name.md)
 - [Step 4 bounded static ELF initial `getuid`](step-4-bounded-static-elf-initial-getuid.md)
 - [Step 4 bounded static ELF initial configuration-stat miss](step-4-bounded-static-elf-initial-config-stat-miss.md)
+- [Step 4 bounded static ELF startup credential normalization](step-4-bounded-static-elf-initial-credential-tail.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
