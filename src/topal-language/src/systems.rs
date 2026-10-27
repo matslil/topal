@@ -14582,11 +14582,14 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14594,7 +14597,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-shell-getpid",
+                "policy is bounded-static-elf-shell-sigchld-disposition",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
