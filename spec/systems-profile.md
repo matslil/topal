@@ -4153,6 +4153,59 @@ a parent process, PID allocation, namespaces, a task table, child creation,
 wait, signal delivery, multiple processes or threads, shell execution,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001 — Static-process shell empty-input suffix
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` with one ordered empty-input shell
+suffix. The suffix SHALL publish the existing deterministic system identity;
+publish the sealed root current directory; observe that standard input has no
+terminal settings without modifying its output candidate; publish complete
+default dispositions for interrupt and quit; install one copied and validated
+ignored quit disposition; publish the complete default termination
+disposition; return end-of-input without modifying its input candidate; and
+accept process exit with status zero. Every transition SHALL require the exact
+predecessor phase, live process, sealed executable continuation, active checked
+address-space hierarchy, applicable retained output mapping, exact retained
+initial-stack leaf, and live child disposition.
+
+Disposition output SHALL replace exactly one complete checked writable action
+extent with the portable default value and SHALL retain no user pointer. The
+ignored quit request SHALL be copied from one complete checked readable action
+extent, SHALL name the ignored disposition with the qualified restorer and
+mask policy, and SHALL retain only process-owned disposition state. The
+end-of-input transition SHALL be authorized only by the sealed empty-input
+launch and SHALL retain no candidate, count, byte, or stream state. Successful
+exit SHALL validate and clear both retained dispositions before rollback.
+
+For qualified x86-64 realization, system identity SHALL bind to syscall 63
+(`uname`) and publish the established six 65-byte-field `new_utsname` into one
+checked 390-byte stack extent. Current directory SHALL bind to syscall 79
+(`getcwd`) with exact candidate `0x5f9460` and count 4096, publish exactly
+`"/\0"`, and return two. The terminal observation SHALL then bind to
+`ioctl(0, TCGETS, candidate)` and return `-ENOTTY` without output.
+Disposition operations SHALL bind to `rt_sigaction` with signal-set size eight
+in this order: query signal 2, query signal 3, install `SIG_IGN` for signal 3,
+and query signal 15. Each query SHALL publish the complete zero-valued native
+32-byte action. The installation SHALL require handler one, `SA_RESTORER`, an
+executable restorer, and mask `0xfffffffe7fffffff`. The input observation SHALL
+bind to `read(0, 0x5f8f60, 1023)` and return zero without output.
+
+The clean-room fixture MAY transfer from its original executable interval to
+one sealed disjoint executable island and SHALL require each exact result. The
+digest-pinned external profile SHALL select exact `busybox sh` arguments, an
+empty environment, and the same terminal phase. Structural and physical
+evidence SHALL certify the complete order, native bindings, checked extents,
+identity and directory outputs, private disposition lifecycle, sealed input
+result, terminal phase, and rollback. Another selector, identity, directory,
+descriptor, request, signal, action, mask, extent, count, result, order,
+duplicate, environment, retained pointer, unsealed input source,
+source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add terminal
+configuration, general ioctl, mutable UTS state, namespace selection, directory
+traversal or mutation, signal delivery, pending queues, signal frames, handler
+execution, mutable or blocking input, filesystem access, process creation, job
+control, command execution, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -1499,10 +1499,10 @@ nonretention, disposition preservation, and rollback. This realizes
 
 The bounded static-process empty-input shell increment shall accept exactly
 native x86-64 `uname` into a checked stack extent, publish the established
-390-byte identity, accept `getcwd(0x5f99e0, 4096)`, publish `"/\0"`, return
+390-byte identity, accept `getcwd(0x5f9460, 4096)`, publish `"/\0"`, return
 two, then accept `ioctl(0, TCGETS, candidate)` with `-ENOTTY`, ordered
 `rt_sigaction` observations for signals 2, 3, and 15, one native ignored
-signal-3 installation, and `read(0, 0x5f94e0, 1023)` with result zero after
+signal-3 installation, and `read(0, 0x5f8f60, 1023)` with result zero after
 the shell-getppid phase. It shall publish complete zeroed 32-byte old actions
 only to checked writable stack extents, validate and copy the ignored action,
 retain only a private ignored-disposition fact, and clear it with the existing
