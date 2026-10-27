@@ -101,6 +101,7 @@ MARKERS = (
     b"TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
@@ -335,7 +336,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 628] = bytes(
+    image[0xA_6580 : 0xA_6580 + 671] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -472,12 +473,23 @@ def static_user_fixture() -> bytes:
             0x0F, 0x05,
             0x48, 0x85, 0xC0,
             0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x20, 0x02, 0x00, 0x00,
+            0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
+            0xBE, 0x00, 0x69, 0x4A, 0x00,
+            0x48, 0x89, 0xE2,
+            0x45, 0x31, 0xD2,
+            0xB8, 0x06, 0x01, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0xFE,
+            0x75, 0xFE,
+            0x48, 0x81, 0xC4, 0x20, 0x02, 0x00, 0x00,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
             0x0F, 0x0B,
         ]
     )
+    image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     return bytes(image)
 
 
@@ -717,7 +729,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/176",
+        "schema": "topal-kernel-toolchain-gate-qemu/177",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
