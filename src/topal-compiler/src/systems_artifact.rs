@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/173";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/162";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/174";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/163";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -734,7 +734,7 @@ struct StaticElfPageRecord {
     frame_ordinal: u64,
     source_role: StaticElfLoadRole,
     initial_permission: StaticElfPagePermission,
-    final_permission: StaticElfPagePermission,
+    entry_permission: StaticElfPagePermission,
 }
 
 #[allow(dead_code)] // Retained for the following affine mapping increment.
@@ -829,17 +829,17 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x0f, 0x05, // syscall
         0x48, 0x3d, 0x00, 0x70, 0x5f, 0x00, // derived initial break
         0x75, 0xfe, // fail closed on a different query result
-        0xbf, 0xc0, 0x7d, 0x5f, 0x00, // exact growth request
+        0xbf, 0x80, 0x7d, 0x5f, 0x00, // exact growth request
         0xb8, 0x0c, 0, 0, 0, // brk
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // admitted current break
+        0x48, 0x3d, 0x80, 0x7d, 0x5f, 0x00, // admitted current break
         0x75, 0xfe, // fail closed on a different growth result
         0xc6, 0x04, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // first admitted byte
         0x80, 0x3c, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // read it back
         0x75, 0xfe, // fail closed on inaccessible or changed backing
-        0xc6, 0x04, 0x25, 0x40, 0x74, 0x5f, 0x00, 0x6b, // TLS-base byte
+        0xc6, 0x04, 0x25, 0x00, 0x74, 0x5f, 0x00, 0x6b, // TLS-base byte
         0xbf, 0x02, 0x10, 0x00, 0x00, // ARCH_SET_FS
-        0xbe, 0x40, 0x74, 0x5f, 0x00, // selected initial FS base
+        0xbe, 0x00, 0x74, 0x5f, 0x00, // selected initial FS base
         0xb8, 0x9e, 0, 0, 0, // arch_prctl
         0x0f, 0x05, // syscall
         0x48, 0x85, 0xc0, // exact zero result
@@ -847,21 +847,21 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x64, 0x8a, 0x04, 0x25, 0, 0, 0, 0, // load FS-relative byte zero
         0x3c, 0x6b, // installed base selects the known byte
         0x75, 0xfe, // fail closed on wrong physical FS base
-        0xc7, 0x04, 0x25, 0x10, 0x77, 0x5f, 0x00, 1, 0, 0, 0, // exit word
-        0xbf, 0x10, 0x77, 0x5f, 0x00, // exact candidate
+        0xc7, 0x04, 0x25, 0xd0, 0x76, 0x5f, 0x00, 1, 0, 0, 0, // exit word
+        0xbf, 0xd0, 0x76, 0x5f, 0x00, // exact candidate
         0xb8, 0xda, 0, 0, 0, // set_tid_address
         0x0f, 0x05, // syscall
         0x48, 0x83, 0xf8, 0x01, // sealed TID one
         0x75, 0xfe, // fail closed on a different result
-        0x48, 0xc7, 0x04, 0x25, 0x20, 0x77, 0x5f, 0x00, 0x20, 0x77, 0x5f, 0x00, 0x48, 0xc7, 0x04,
-        0x25, 0x28, 0x77, 0x5f, 0x00, 0xe0, 0xff, 0xff, 0xff, 0x48, 0xc7, 0x04, 0x25, 0x30, 0x77,
-        0x5f, 0x00, 0, 0, 0, 0, 0xbf, 0x20, 0x77, 0x5f, 0x00, // exact robust-list head
+        0x48, 0xc7, 0x04, 0x25, 0xe0, 0x76, 0x5f, 0x00, 0xe0, 0x76, 0x5f, 0x00, 0x48, 0xc7, 0x04,
+        0x25, 0xe8, 0x76, 0x5f, 0x00, 0xe0, 0xff, 0xff, 0xff, 0x48, 0xc7, 0x04, 0x25, 0xf0, 0x76,
+        0x5f, 0x00, 0, 0, 0, 0, 0xbf, 0xe0, 0x76, 0x5f, 0x00, // exact robust-list head
         0xbe, 0x18, 0, 0, 0, // native head size
         0xb8, 0x11, 0x01, 0, 0, // set_robust_list
         0x0f, 0x05, // syscall
         0x48, 0x85, 0xc0, // exact zero result
         0x75, 0xfe, // fail closed on rejected registration
-        0xbf, 0x40, 0x73, 0x5f, 0x00, // observed rseq candidate
+        0xbf, 0x00, 0x73, 0x5f, 0x00, // observed rseq candidate
         0xbe, 0x21, 0, 0, 0, // observed rseq length
         0x31, 0xd2, // flags = 0
         0x41, 0xba, 0x53, 0x30, 0x05, 0x53, // observed rseq signature
@@ -914,15 +914,15 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xb8, 0x0c, 0, 0, 0, // post-random brk query
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // established current break
+        0x48, 0x3d, 0x80, 0x7d, 0x5f, 0x00, // established current break
         0x75, 0xfe, // fail closed on a different query result
-        0xbf, 0xc0, 0x8d, 0x61, 0x00, // exact post-random growth request
+        0xbf, 0x80, 0x8d, 0x61, 0x00, // exact post-random growth request
         0xb8, 0x0c, 0, 0, 0, // brk
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x8d, 0x61, 0x00, // admitted current break
+        0x48, 0x3d, 0x80, 0x8d, 0x61, 0x00, // admitted current break
         0x75, 0xfe, // fail closed on a different growth result
-        0xc6, 0x04, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // final admitted byte
-        0x80, 0x3c, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // read it back
+        0xc6, 0x04, 0x25, 0x7f, 0x8d, 0x61, 0x00, 0x6d, // final admitted byte
+        0x80, 0x3c, 0x25, 0x7f, 0x8d, 0x61, 0x00, 0x6d, // read it back
         0x75, 0xfe, // fail closed on inaccessible or changed backing
         0xbf, 0x00, 0x90, 0x61, 0x00, // exact page-alignment growth request
         0xb8, 0x0c, 0, 0, 0, // brk
@@ -1322,24 +1322,19 @@ fn derive_x86_64_static_elf_page_plan(
     for segment in &load.segments {
         let mut virtual_address = segment.pages.start;
         while virtual_address < segment.pages.end {
-            let relro = load.relro_pages.is_some_and(|interval| {
-                virtual_address >= interval.start && virtual_address < interval.end
-            });
-            let final_permission = match segment.role {
+            let entry_permission = match segment.role {
                 StaticElfLoadRole::Executable => StaticElfPagePermission::ReadOnlyExecute,
-                StaticElfLoadRole::WritableData if !relro => {
-                    StaticElfPagePermission::ReadWriteNoExecute
+                StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadWriteNoExecute,
+                StaticElfLoadRole::Headers | StaticElfLoadRole::ImmutableData => {
+                    StaticElfPagePermission::ReadOnlyNoExecute
                 }
-                StaticElfLoadRole::Headers
-                | StaticElfLoadRole::ImmutableData
-                | StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadOnlyNoExecute,
             };
             pages.push(StaticElfPageRecord {
                 virtual_address,
                 frame_ordinal: (virtual_address - load.pages.start) / STATIC_ELF_PAGE_SIZE,
                 source_role: segment.role,
                 initial_permission: StaticElfPagePermission::ReadWriteNoExecute,
-                final_permission,
+                entry_permission,
             });
             virtual_address += STATIC_ELF_PAGE_SIZE;
         }
@@ -1501,10 +1496,26 @@ fn validate_x86_64_static_user_image(image: &[u8]) -> Result<(), CompileError> {
                 && image_u64(image, header + 48) == alignment
         },
     );
+    let section_header_shape = match (
+        image_u64(image, 40),
+        elf_u16(image, 58),
+        elf_u16(image, 60),
+        elf_u16(image, 62),
+    ) {
+        (0, 0, 0, 0) => true,
+        (0x1e_dea0, 64, 23, 22) => {
+            let directory_bytes = 64_usize.checked_mul(23);
+            let directory_end =
+                directory_bytes.and_then(|bytes| 0x1e_dea0_usize.checked_add(bytes));
+            directory_end == Some(image.len())
+        }
+        _ => false,
+    };
 
     if image.len() != EXPECTED_FILE_BYTES
         || image_u64(image, 32) != 64
         || elf_u16(image, 56) != 11
+        || !section_header_shape
         || !exact_program_headers
         || load.entry != EXPECTED_ENTRY
         || load.segments.as_slice() != expected_segments
@@ -10617,10 +10628,19 @@ mod tests {
 
     #[test]
     fn static_user_image_validation_requires_the_exact_approved_shape() {
-        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-RESIDENT-HEADER-VARIANTS-001,
+        // TOPAL-COMP-SYSTEMS-TEST-001.
         let mut image = busybox_shaped_static_elf();
         image[0x1000] = 0xa5;
         validate_x86_64_static_user_image(&image).unwrap();
+
+        let mut external_header = image.clone();
+        put_u64(&mut external_header, 40, 0x1e_dea0);
+        put_u16(&mut external_header, 58, 64);
+        put_u16(&mut external_header, 60, 23);
+        put_u16(&mut external_header, 62, 22);
+        validate_x86_64_static_user_image(&external_header).unwrap();
 
         let rejected = |mutate: fn(&mut Vec<u8>)| {
             let mut malformed = image.clone();
@@ -10635,6 +10655,13 @@ mod tests {
         rejected(|candidate| put_u64(candidate, 64 + 2 * 56 + 32, 0x5_703f));
         rejected(|candidate| put_u64(candidate, 64 + 7 * 56 + 40, 0x81));
         rejected(|candidate| put_u64(candidate, 64 + 10 * 56 + 40, 0x799f));
+        rejected(|candidate| put_u64(candidate, 40, 0x1e_dea0));
+        rejected(|candidate| {
+            put_u64(candidate, 40, 0x1e_dea0);
+            put_u16(candidate, 58, 64);
+            put_u16(candidate, 60, 24);
+            put_u16(candidate, 62, 22);
+        });
     }
 
     #[test]
@@ -10655,7 +10682,7 @@ mod tests {
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadOnlyExecute
+                    page.entry_permission == StaticElfPagePermission::ReadOnlyExecute
                 })
                 .count(),
             396
@@ -10664,19 +10691,19 @@ mod tests {
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadOnlyNoExecute
+                    page.entry_permission == StaticElfPagePermission::ReadOnlyNoExecute
                 })
                 .count(),
-            97
+            89
         );
         assert_eq!(
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadWriteNoExecute
+                    page.entry_permission == StaticElfPagePermission::ReadWriteNoExecute
                 })
                 .count(),
-            10
+            18
         );
         assert_eq!(
             plan.construction.first(),
