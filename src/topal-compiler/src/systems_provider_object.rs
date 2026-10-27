@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/157";
+    "topal.provider-object.x86_64-qemu-pc-q35/158";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9408,6 +9408,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-initial-getuid");
     code.bytes(&[0x3d, 0x06, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-initial-config-stat-miss");
+    for number in [104_u8, 106, 105] {
+        code.bytes(&[0x3d, number, 0, 0, 0]);
+        code.jump_if(0x84, "static-process-initial-credential-tail");
+    }
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -9421,10 +9425,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
     code.jump_if(0x84, "static-process-terminal-phase-ready");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
+    code.jump_if(0x84, "static-process-terminal-phase-ready");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]);
     code.jump_if(0x85, "fatal");
     code.jump("static-process-terminal-phase-ready");
     code.bind("static-process-clean-terminal-phase")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-terminal-phase-ready")?;
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
@@ -10085,6 +10091,79 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]); // -ENOENT
     emit_static_process_sysret(&mut code);
 
+    code.bind("static-process-initial-credential-tail")?;
+    code.bytes(&[0x3d, 104, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-initial-getgid");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x3d, 106, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-initial-setgid");
+    code.bytes(&[0x3d, 105, 0, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 14]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xb1, 15]);
+    code.jump("static-process-initial-credential-tail-common");
+    code.bind("static-process-initial-getgid")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xb1, 13]);
+    code.jump("static-process-initial-credential-tail-common");
+    code.bind("static-process-initial-setgid")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 13]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xb1, 14]);
+    code.bind("static-process-initial-credential-tail-common")?;
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+
+    // Revalidate the active hierarchy, retained stack, and complete coherent
+    // credential group before observing or idempotently selecting a view.
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x4d, 0x8d, 0x82, 0, 0x40, 0, 0, 0x49, 0x83, 0xc8, 7, 0x4c, 0x39, 0xc0,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd6, 0x81, 0xe6, 0xff, 0x0f, 0, 0, 0x83, 0xfe, 7]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x0f, 0xba, 0xf2, 0x3f]);
+    code.bytes(&[0x48, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    for (offset, value) in [
+        (0x0f18_u32, 11_u8),
+        (0x0f20, 0),
+        (0x0f28, 12),
+        (0x0f30, 0),
+        (0x0f38, 13),
+        (0x0f40, 0),
+        (0x0f48, 14),
+        (0x0f50, 0),
+    ] {
+        code.bytes(&[0x48, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[value]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0x44, 0x88, 0x0c, 0x25, 0x68, 0, 0, 0]);
+    code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x84, "static-process-brk-initial-query");
@@ -10369,7 +10448,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 12]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 15]);
     code.jump_if(0x87, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -13630,6 +13709,24 @@ assert bytes(output) == block[32:]
                     .any(|window| window == sequence)
             );
         }
+        for number in [104_u8, 106, 105] {
+            assert!(
+                process_fixture.windows(12).any(|window| window
+                    == [
+                        0xb8, number, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe
+                    ]),
+                "clean process fixture must require every credential-tail result"
+            );
+        }
+        for number in [106_u8, 105] {
+            assert!(
+                process_fixture.windows(14).any(|window| window
+                    == [
+                        0x31, 0xff, 0xb8, number, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe
+                    ]),
+                "clean process fixture must select only the sealed zero credential"
+            );
+        }
         assert_eq!(
             process_enter
                 .windows(3)
@@ -13792,6 +13889,20 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x3d, 0x06, 0x01, 0, 0]),
             "the static dispatcher must select the initial configuration-stat miss path"
         );
+        for number in [104_u8, 106, 105] {
+            assert!(
+                process_enter
+                    .windows(5)
+                    .any(|window| window == [0x3d, number, 0, 0, 0]),
+                "the static dispatcher must select every credential-tail operation"
+            );
+        }
+        assert!(
+            process_enter
+                .windows(3)
+                .any(|window| window == [0x48, 0x85, 0xff]),
+            "credential setters must require the sealed zero identity argument"
+        );
         assert!(
             process_enter
                 .windows(7)
@@ -13820,8 +13931,8 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(9)
-                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]),
-            "clean process completion must require the configuration-stat terminal state"
+                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]),
+            "clean process completion must require the credential-tail terminal state"
         );
         let alignment_start = process_enter
             .windows(7)
@@ -13992,6 +14103,23 @@ assert bytes(output) == block[32:]
                     .windows(11)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 12, 0x48, 0xc7]),
             "initial configuration-stat miss must bind both immutable paths and publish absence phase"
+        );
+        for phase in [13_u8, 14, 15] {
+            assert!(
+                process_enter
+                    .windows(3)
+                    .any(|window| window == [0x41, 0xb1, phase]),
+                "credential-tail operations must publish each exact ordered phase"
+            );
+        }
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0x44, 0x88, 0x0c, 0x25, 0x68, 0, 0, 0])
+                && process_enter
+                    .windows(3)
+                    .all(|window| window != [0x4d, 0x89, 0xc3]),
+            "credential-tail operations must publish only private phase and preserve RFLAGS"
         );
         assert!(
             process_enter
