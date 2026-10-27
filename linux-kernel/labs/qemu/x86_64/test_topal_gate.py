@@ -76,7 +76,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 888],
+            fixture[0xA_6580 : 0xA_6580 + 882],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
@@ -263,27 +263,30 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
                     0xB8, 0x6E, 0x00, 0x00, 0x00,
                     0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x31, 0xFF,
-                    0xB8, 0xE7, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x0F, 0x0B,
+                    0xE9, 0x0E, 0x07, 0x00, 0x00,
                 ]
             ),
         )
+        continuation = fixture[0xA_7000 : 0xA_71F4]
+        self.assertEqual(len(continuation), 500)
+        self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
+        self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
+        self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
+        self.assertTrue(continuation.endswith(bytes.fromhex("31ffb8e70000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/183")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/184")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/171")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/172")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/181",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/182",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/81",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/82",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -521,6 +524,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(
             observations["static_shell_getppid_profile"], "clean-no-parent-witness"
         )
+        self.assertEqual(
+            observations["static_shell_empty_input_profile"],
+            "clean-empty-input-witness",
+        )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
@@ -537,7 +544,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/183")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/184")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -550,24 +557,21 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
         observations = evidence["observations"]
-        self.assertEqual(observations["static_applet_newline_count"], 1)
+        self.assertEqual(observations["static_applet_newline_count"], 0)
         self.assertEqual(
-            observations["static_shell_getpid_profile"], "external-echo-terminal"
-        )
-        self.assertEqual(
-            observations["static_shell_sigchld_profile"], "external-echo-terminal"
+            observations["static_shell_getpid_profile"], "external-shell-empty-input"
         )
         self.assertEqual(
-            observations["static_shell_getppid_profile"], "external-echo-terminal"
+            observations["static_shell_sigchld_profile"], "external-shell-empty-input"
         )
-        newline_position = observations["markers_in_order"].index(
-            "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
+        self.assertEqual(
+            observations["static_shell_getppid_profile"], "external-shell-empty-input"
         )
-        expected_serial = (
-            "".join(observations["markers_in_order"][:newline_position])
-            + "\n"
-            + "".join(observations["markers_in_order"][newline_position:])
+        self.assertEqual(
+            observations["static_shell_empty_input_profile"],
+            "external-busybox-sh-terminal",
         )
+        expected_serial = "".join(observations["markers_in_order"])
         self.assertEqual(observations["serial_utf8"], expected_serial)
 
 

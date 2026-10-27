@@ -337,7 +337,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 888] = bytes(
+    image[0xA_6580 : 0xA_6580 + 882] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -523,11 +523,26 @@ def static_user_fixture() -> bytes:
             0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
             0xB8, 0x6E, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-            0x31, 0xFF,
-            0xB8, 0xE7, 0, 0, 0,
-            0x0F, 0x05,
-            0x0F, 0x0B,
+            0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
+    )
+    image[0xA_7000 : 0xA_71F4] = bytes.fromhex(
+        "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
+        "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
+        "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
+        "00be00100000b84f0000000f054883f80275fe66813c2560945f002f0075fe48"
+        "c7042560945f0000000000c604246d31ffbe015400004889e2b8100000000f05"
+        "4883f8e775fe803c246d75fec604240048b8a5a5a5a5a5a5a5a54889e7b904"
+        "000000f348abbf0200000031f64889e241ba08000000b80d0000000f054885c0"
+        "75fe31c0b9040000004889e7fcf348af75fe48b8a5a5a5a5a5a5a5a54889e7"
+        "b904000000f348abbf0300000031f64889e241ba08000000b80d0000000f0548"
+        "85c075fe31c0b9040000004889e7fcf348af75fe48c704240100000048c74424"
+        "080000000448c744241080654a0048b8ffffff7ffeffffff4889442418bf030000"
+        "004889e631d241ba08000000b80d0000000f054885c075fe31c0488904244889"
+        "4424084889442410488944241848b8a5a5a5a5a5a5a5a54889e7b904000000f3"
+        "48abbf0f00000031f64889e241ba08000000b80d0000000f054885c075fe31c0"
+        "b9040000004889e7fcf348af75fe31ffbe608f5f00baff03000031c00f054885"
+        "c075fe4881c40004000031ffb8e70000000f050f0b"
     )
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     return bytes(image)
@@ -769,7 +784,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/183",
+        "schema": "topal-kernel-toolchain-gate-qemu/184",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -804,19 +819,24 @@ def evidence_record(
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
             "static_applet_newline_count": serial.count(b"\n"),
             "static_shell_getpid_profile": (
-                "external-echo-terminal"
+                "external-shell-empty-input"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-pid-one-witness"
             ),
             "static_shell_sigchld_profile": (
-                "external-echo-terminal"
+                "external-shell-empty-input"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-installed-cleared-witness"
             ),
             "static_shell_getppid_profile": (
-                "external-echo-terminal"
+                "external-shell-empty-input"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-no-parent-witness"
+            ),
+            "static_shell_empty_input_profile": (
+                "external-busybox-sh-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-empty-input-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
@@ -866,7 +886,12 @@ def verify(
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
-        if serial.count(b"\n") != 1:
+        expected_newline_count = (
+            0
+            if static_user_input == "pinned-external-static-busybox"
+            else 1
+        )
+        if serial.count(b"\n") != expected_newline_count:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
             )
