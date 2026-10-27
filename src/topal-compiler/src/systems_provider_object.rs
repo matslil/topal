@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/156";
+    "topal.provider-object.x86_64-qemu-pc-q35/157";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9406,10 +9406,27 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-initial-process-name");
     code.bytes(&[0x3d, 0x66, 0, 0, 0]);
     code.jump_if(0x84, "static-process-initial-getuid");
+    code.bytes(&[0x3d, 0x06, 0x01, 0, 0]);
+    code.jump_if(0x84, "static-process-initial-config-stat-miss");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x84, "static-process-clean-terminal-phase");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[2]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
+    code.jump_if(0x84, "static-process-terminal-phase-ready");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-terminal-phase-ready");
+    code.bind("static-process-clean-terminal-phase")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-terminal-phase-ready")?;
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
     code.bytes(&[0x3c, 2]);
@@ -10016,6 +10033,58 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
+    code.bind("static-process-initial-config-stat-miss")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]); // 32-bit AT_FDCWD = -100
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]); // flags = 0
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&0x007f_f000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&0x007f_ff70_u32.to_le_bytes());
+    code.jump_if(0x87, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+
+    // Bind each resident-header form to its exact immutable pathname candidate.
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x84, "static-process-clean-config-path");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005c_0aa7_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-config-path-ready");
+    code.bind("static-process-clean-config-path")?;
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x004a_6900_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-config-path-ready")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x7375_622f_6374_652f_u64.to_le_bytes()); // "/etc/bus"
+    code.bytes(&[0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x6e6f_632e_786f_6279_u64.to_le_bytes()); // "ybox.con"
+    code.bytes(&[0x48, 0x39, 0x46, 8]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x66, 0x83, 0x7e, 0x10, 0x66]); // "f\0"
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 12]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]); // -ENOENT
+    emit_static_process_sysret(&mut code);
+
     code.bind("static-process-brk-query")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 0]);
     code.jump_if(0x84, "static-process-brk-initial-query");
@@ -10299,7 +10368,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
-    code.jump_if(0x85, "fatal");
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 12]);
+    code.jump_if(0x87, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -13493,8 +13564,8 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x48, 0xcf]),
             "static process entry must cross the native privilege boundary"
         );
-        let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 616];
+        let process_fixture_image = qualified_x86_64_static_user_image_fixture();
+        let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -13542,6 +13613,14 @@ assert bytes(output) == block[32:]
             &[
                 0x48, 0x81, 0xec, 0x40, 0x01, 0, 0, 0xbf, 0x10, 0, 0, 0, 0x48, 0x89, 0xe6, 0xb8,
                 0x9d, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe,
+            ][..],
+            &[
+                0xb8, 0x66, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe,
+            ][..],
+            &[
+                0x48, 0x81, 0xec, 0x20, 0x02, 0, 0, 0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x00, 0x69,
+                0x4a, 0x00, 0x48, 0x89, 0xe2, 0x45, 0x31, 0xd2, 0xb8, 0x06, 0x01, 0, 0, 0x0f, 0x05,
+                0x48, 0x83, 0xf8, 0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
         ] {
@@ -13709,6 +13788,12 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 0x06, 0x01, 0, 0]),
+            "the static dispatcher must select the initial configuration-stat miss path"
+        );
+        assert!(
+            process_enter
                 .windows(7)
                 .any(|window| window == [0x48, 0x81, 0xec, 0x80, 0, 0, 0]),
             "repeated static getrandom must use bounded privileged extraction scratch"
@@ -13734,9 +13819,9 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
-                .windows(5)
-                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 11]),
-            "process completion must require the getuid terminal state"
+                .windows(9)
+                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]),
+            "clean process completion must require the configuration-stat terminal state"
         );
         let alignment_start = process_enter
             .windows(7)
@@ -13892,6 +13977,21 @@ assert bytes(output) == block[32:]
                     .windows(3)
                     .all(|window| window != [0x4d, 0x89, 0xc3]),
             "initial getuid must publish its phase, return zero, and preserve RFLAGS"
+        );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x00, 0x69, 0x4a, 0])
+                && process_enter
+                    .windows(7)
+                    .any(|window| window == [0x48, 0x81, 0xfe, 0xa7, 0x0a, 0x5c, 0])
+                && process_enter.windows(10).any(|window| {
+                    window == [0x48, 0xb8, 0x2f, 0x65, 0x74, 0x63, 0x2f, 0x62, 0x75, 0x73]
+                })
+                && process_enter
+                    .windows(11)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 12, 0x48, 0xc7]),
+            "initial configuration-stat miss must bind both immutable paths and publish absence phase"
         );
         assert!(
             process_enter
