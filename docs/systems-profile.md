@@ -691,6 +691,17 @@ address validation. This is one startup compatibility fact, not a filesystem,
 pathname resolver, descriptor namespace, metadata service, or general `stat`
 interface.
 
+The bounded startup-credential-tail refinement completes the credential
+normalization needed after that optional lookup. It observes the sealed real
+group ID, then admits exact idempotent group-ID and user-ID selections only
+when the requested value equals the corresponding immutable root credential.
+Each operation is pointer-free, revalidates the complete initial credential
+group, retains no argument or mutable credential state, and leaves the group
+unchanged. Native syscall numbers, argument registers, and result registers
+remain provider-owned. This completes one ordered startup sequence; it does
+not introduce credential mutation, supplementary groups, namespaces,
+capabilities, a process table, or a reusable identity service.
+
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
 and before either mapping is unmapped. At that boundary one RO/X code mapping

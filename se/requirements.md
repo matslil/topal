@@ -570,6 +570,17 @@ phase, duplicate request, or success result shall fail closed. This requirement
 does not introduce a VFS, mount, inode, descriptor-allocation, pathname-
 resolution, or general metadata-query service.
 
+The bounded startup-credential-tail adapter shall expose sealed real GID,
+effective UID, and effective GID observations after the optional configuration
+lookup. Each pointer-free query shall require the live initial process and an
+executable continuation, return the matching immutable zero-valued credential
+fact, retain no argument or mutable identity state, and advance only the exact
+private startup phase. Results shall remain coherent with `AT_GID`, `AT_EUID`,
+and `AT_EGID`. A missing, duplicate, reordered, inconsistent, or post-terminal
+query shall fail closed. Native syscall selection and result placement shall
+remain provider-owned. This adds no credential mutation, supplementary groups,
+namespaces, capabilities, process table, or general identity service.
+
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
 ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and
@@ -917,6 +928,15 @@ Credential results shall agree with the corresponding initial auxiliary-vector
 facts. Dispatch shall retain no argument, pointer, or mutable identity state.
 A missing family member, wrong or inconsistent result, non-executable return,
 wrong lifecycle state, or result after terminal disposition shall fail closed.
+
+The bounded static-process credential tail shall, after the exact optional
+configuration absence, observe the sealed real group and then admit exact
+idempotent group and user selections. Both requested identities shall equal
+the corresponding zero-valued sealed auxiliary-vector facts, and all three
+operations shall revalidate the complete real/effective UID/GID group. The
+adapter shall return zero, retain no request or mutable credential state, and
+leave the credential group unchanged. Another value, order, continuation,
+lifecycle phase, incomplete group, or state mutation shall fail closed.
 
 The initial-process entry adapter shall publish a native zero-valued
 `AT_SECURE` auxiliary-vector fact after the existing program-header facts and
