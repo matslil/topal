@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/151";
+    "topal.provider-object.x86_64-qemu-pc-q35/152";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9167,7 +9167,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-getrandom");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 7]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 8]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&184_u32.to_le_bytes());
@@ -9237,6 +9237,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-brk-initial-growth");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 6]);
     code.jump_if(0x84, "static-process-brk-post-random-growth");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 7]);
+    code.jump_if(0x84, "static-process-brk-post-random-page-alignment");
     code.jump("fatal");
 
     code.bind("static-process-brk-initial-growth")?;
@@ -9346,6 +9348,114 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x0061_8dc0_u32.to_le_bytes());
     code.bytes(&[0xb8]);
     code.bytes(&0x0061_8dc0_u32.to_le_bytes());
+    code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
+
+    code.bind("static-process-brk-post-random-page-alignment")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x0061_9000_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x89, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+
+    // Revalidate every retained heap leaf without publishing another mapping.
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x89, 0xc1]);
+    code.bytes(&[0x48, 0x8d, 0xba, 0xb8, 0x0f, 0, 0, 0xb9, 9, 0, 0, 0]);
+    code.bind("static-process-brk-page-alignment-low-leaves")?;
+    code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 0x07]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, "static-process-brk-page-alignment-low-leaves");
+
+    code.bytes(&[0x49, 0x8d, 0xba, 0, 0x40, 0, 0, 0xb9, 25, 0, 0, 0]);
+    code.bind("static-process-brk-page-alignment-high-leaves")?;
+    code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 0x07]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, "static-process-brk-page-alignment-high-leaves");
+    code.bytes(&[0x31, 0xc0, 0xb9]);
+    code.bytes(&486_u32.to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fatal");
+
+    // The retained stack leaf must remain present, writable, non-executable,
+    // and physically disjoint from the complete anonymous extent.
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd6, 0x81, 0xe6, 0xff, 0x0f, 0, 0, 0x83, 0xfe, 7]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x48, 0x0f, 0xba, 0xf2, 0x3f, 0x48, 0x81, 0xe2, 0, 0xf0, 0xff, 0xff,
+    ]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4c, 0x39, 0xc2]);
+    code.jump_if(0x82, "static-process-brk-page-alignment-stack-disjoint");
+    code.bytes(&[0x4c, 0x89, 0xc0, 0x48, 0x05, 0, 0x20, 0x02, 0]);
+    code.bytes(&[0x48, 0x39, 0xc2]);
+    code.jump_if(0x82, "fatal");
+    code.bind("static-process-brk-page-alignment-stack-disjoint")?;
+
+    // The reusable random service remains live and quiescent.
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&184_u32.to_le_bytes());
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x3c, 3]);
+    code.jump_if(0x87, "fatal");
+    for offset in [168_u32, 176, 224, 232, 240, 248] {
+        code.bytes(&[0x65, 0x48, 0x83, 0xbc, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in [256_u32, 264] {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x84, "fatal");
+    }
+    code.bytes(&[0x65, 0x48, 0x8b, 0x0c, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&272_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 8]);
+    code.bytes(&[0xbf]);
+    code.bytes(&0x0061_9000_u32.to_le_bytes());
+    code.bytes(&[0xb8]);
+    code.bytes(&0x0061_9000_u32.to_le_bytes());
     code.bytes(&[0x0f, 0x01, 0xf8, 0x48, 0x0f, 0x07]);
 
     code.bind("static-process-brk-query")?;
@@ -9618,7 +9728,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 7]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 8]);
     code.jump_if(0x85, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -12743,7 +12853,7 @@ assert bytes(output) == block[32:]
             "static process entry must cross the native privilege boundary"
         );
         let process_fixture =
-            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 476];
+            &qualified_x86_64_static_user_image_fixture()[0x0a_6580..0x0a_6580 + 514];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -12778,6 +12888,10 @@ assert bytes(output) == block[32:]
             ][..],
             &[
                 0xbf, 0xc0, 0x8d, 0x61, 0, 0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05, 0x48, 0x3d, 0xc0, 0x8d,
+                0x61, 0, 0x75, 0xfe,
+            ][..],
+            &[
+                0xbf, 0x00, 0x90, 0x61, 0, 0xb8, 0x0c, 0, 0, 0, 0x0f, 0x05, 0x48, 0x3d, 0x00, 0x90,
                 0x61, 0, 0x75, 0xfe,
             ][..],
             &[0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b][..],
@@ -12865,6 +12979,57 @@ assert bytes(output) == block[32:]
                 .any(|window| window == [0x00, 0x70, 0x5f, 0x00]),
             "the static dispatcher must derive the page-rounded initial break"
         );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xff, 0x00, 0x90, 0x61, 0x00])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 8])
+                && process_enter.windows(12).any(|window| window
+                    == [
+                        0xbf, 0x00, 0x90, 0x61, 0x00, 0xb8, 0x00, 0x90, 0x61, 0x00, 0x0f, 0x01
+                    ]),
+            "page-alignment growth must require and publish the exact byte-granular break"
+        );
+        assert!(
+            process_enter
+                .windows(5)
+                .any(|window| window == [0x41, 0x80, 0x7a, 0x68, 8]),
+            "process completion must require the aligned-break terminal state"
+        );
+        let alignment_start = process_enter
+            .windows(7)
+            .position(|window| window == [0x48, 0x81, 0xff, 0x00, 0x90, 0x61, 0x00])
+            .expect("alignment handler start");
+        let alignment_end = alignment_start
+            + process_enter[alignment_start..]
+                .windows(10)
+                .position(|window| {
+                    window == [0xbf, 0x00, 0x90, 0x61, 0x00, 0xb8, 0x00, 0x90, 0x61, 0x00]
+                })
+                .expect("alignment handler response")
+            + 10;
+        let alignment_handler = &process_enter[alignment_start..alignment_end];
+        assert!(
+            alignment_handler
+                .windows(3)
+                .any(|window| window == [0x4d, 0x89, 0xc1])
+                && alignment_handler
+                    .windows(3)
+                    .all(|window| window != [0x4d, 0x89, 0xc3]),
+            "alignment leaf validation must preserve the SYSRETQ RFLAGS register"
+        );
+        for count in [9_u32, 25, 486] {
+            let mut instruction = vec![0xb9];
+            instruction.extend_from_slice(&count.to_le_bytes());
+            assert!(
+                process_enter
+                    .windows(instruction.len())
+                    .any(|window| window == instruction),
+                "page-alignment growth must revalidate every retained heap-leaf interval"
+            );
+        }
         assert!(
             process_enter
                 .windows(3)

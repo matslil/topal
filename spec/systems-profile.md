@@ -3702,6 +3702,39 @@ or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
 another nonzero request, shrink, lazy faults, arbitrary mapping, VMA
 collections, overcommit, concurrency, BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001 — Post-random static-process break page alignment
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment`
+and select policy `bounded-static-elf-post-random-brk-page-alignment`. After the
+exact cross-boundary growth, the process MAY issue one exact monotonic nonzero
+growth within its already-backed anonymous reserve.
+
+The provider SHALL require the live post-growth process state, exact current
+break, executable continuation in the sealed mapping, complete live anonymous
+extent, unchanged heap and stack leaves, and reusable-random service before
+mutation. It SHALL allocate no storage, edit no translation entry, update the
+byte-granular current break to the exact request, and return that value. Failure
+SHALL preserve the prior break and every process resource.
+
+The initial x86-64 qualification SHALL accept native syscall 12 request
+`0x00619000` after current break `0x00618dc0`, return `0x00619000`, and permit a
+write/read at final newly admitted byte `0x00618fff`. The existing 34-frame
+anonymous extent and all 34 heap leaves SHALL remain unchanged.
+
+Terminal completion SHALL require the aligned-break state and then perform the
+complete heap, random-service, stack, hierarchy, and storage rollback required
+by `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001`. Exactly one
+`TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK` observation SHALL
+follow the growth observation and precede process exit. Another request, old
+break, extent, leaf state, result, order, duplicate, allocation, translation
+edit, retained state, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add another
+request, shrink, lazy faults, arbitrary mapping, VMA collections, overcommit,
+concurrency, BusyBox redistribution, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
