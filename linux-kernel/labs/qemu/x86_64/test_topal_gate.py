@@ -76,7 +76,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 772],
+            fixture[0xA_6580 : 0xA_6580 + 890],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
@@ -243,6 +243,23 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
                     0xB8, 0x27, 0x00, 0x00, 0x00,
                     0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+                    0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+                    0x48, 0xC7, 0x04, 0x24, 0x80, 0x65, 0x4A, 0x00,
+                    0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x04,
+                    0x48, 0xC7, 0x44, 0x24, 0x10, 0x80, 0x65, 0x4A, 0x00,
+                    0x48, 0xB8, 0xFF, 0xFF, 0xFF, 0x7F, 0xFE, 0xFF, 0xFF, 0xFF,
+                    0x48, 0x89, 0x44, 0x24, 0x18,
+                    0xBF, 0x11, 0x00, 0x00, 0x00,
+                    0x48, 0x89, 0xE6,
+                    0x31, 0xD2,
+                    0x41, 0xBA, 0x08, 0x00, 0x00, 0x00,
+                    0xB8, 0x0D, 0x00, 0x00, 0x00,
+                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+                    0x48, 0xC7, 0x04, 0x24, 0x00, 0x00, 0x00, 0x00,
+                    0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x00,
+                    0x48, 0xC7, 0x44, 0x24, 0x10, 0x00, 0x00, 0x00, 0x00,
+                    0x48, 0xC7, 0x44, 0x24, 0x18, 0x00, 0x00, 0x00, 0x00,
+                    0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
                     0x31, 0xFF,
                     0xB8, 0xE7, 0, 0, 0,
                     0x0F, 0x05,
@@ -254,16 +271,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/181")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/182")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/169")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/170")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/179",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/180",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/79",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/80",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -494,6 +511,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
+        self.assertEqual(
+            observations["static_shell_sigchld_profile"],
+            "clean-installed-cleared-witness",
+        )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
@@ -510,7 +531,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/181")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/182")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -526,6 +547,9 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["static_applet_newline_count"], 1)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "external-echo-terminal"
+        )
+        self.assertEqual(
+            observations["static_shell_sigchld_profile"], "external-echo-terminal"
         )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
