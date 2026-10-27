@@ -551,7 +551,7 @@ The next systems-only compiler refinement adds a
 [bounded static ELF page realization](design/bounded-static-elf-page-realization.md).
 Its [implementation and qualification report](step-4-bounded-static-elf-page-realization.md)
 records one future affine 503-frame request, exact ordered page/frame facts,
-whole-span zeroing before four copies, W^X-safe final roles including RELRO,
+whole-span zeroing before four copies, W^X-safe entry roles with staged RELRO,
 malformed inherited-plan rejection, and two unchanged pinned-QEMU runs.
 
 The following systems-only physical refinement adds the

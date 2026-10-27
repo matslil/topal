@@ -5,7 +5,7 @@ the pinned x86-64 BusyBox after its repeated `getrandom` startup work. The
 native syscall dispatcher admits the query only after the established initial
 heap growth and startup-service sequence, validates that the saved return
 address remains inside the sealed executable mapping, returns the current
-break `0x005f7dc0`, and leaves the lifecycle and reusable entropy service
+break `0x005f7d80`, and leaves the lifecycle and reusable entropy service
 unchanged.
 
 Rule `TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001`, negative translation

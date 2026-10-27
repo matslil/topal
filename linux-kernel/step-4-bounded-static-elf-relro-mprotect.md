@@ -6,16 +6,21 @@ BusyBox after its post-random break alignment. The native dispatcher verifies
 the live aligned-break phase, executable continuation, active hierarchy,
 checked GNU RELRO interval, all eight RELRO leaves and their original affine
 frames, every retained heap leaf, the disjoint stack leaf, and reusable-random
-service. It returns zero and advances the private startup phase without writing
-a translation entry or invalidating the target.
+service. It seals and invalidates the exact target interval before returning
+zero and advancing the private startup phase.
 
-The loader already publishes the GNU RELRO pages RO/NX. Treating the request as
-an exact idempotent confirmation preserves the approved W^X and immutable-RELRO
-contract while providing the Linux-visible success expected by the executable.
+The pinned-external qualification exposed that the executable self-relocates
+inside GNU RELRO before this request. `TK-DEC-193` therefore refines this
+earlier increment: the loader now publishes the eight pages RW/NX for entry,
+and this handler replaces them with RO/NX leaves, preserves exact frame
+identity, publishes and invalidates all eight target pages, and reads them back
+before success. W^X holds throughout and RELRO is immutable after the observed
+request.
 Rule `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001`, negative translation tests,
-provider-structure tests, and the exact 541-byte clean-room fixture enforce the
-request, role and frame identity, hardware-status-bit normalization, lack of
-translation mutation, terminal phase, and complete existing rollback. Marker
+provider-structure tests, and the refined clean-room fixture enforce the
+request, entry and sealed role and frame identity, hardware-status-bit
+normalization, exact translation mutation and invalidation, terminal phase,
+and complete existing rollback. Marker
 `TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK` binds runtime evidence to the path.
 
 Artifact `/171`, provider `/161`, provider object `/153`, root `/160`, boot
@@ -43,21 +48,23 @@ Risk is high: the logical change is narrow, but it adds another native syscall
 return path whose `rcx` and `r11` registers carry architectural `SYSRETQ`
 state and whose checks traverse two page-table ownership domains. Review covers
 exact native arguments, checked-role derivation, affine frame identity,
-accessed/dirty-bit normalization, complete heap and stack validation,
-nonmutation, user return-address and RFLAGS preservation, terminal rollback,
-generic-user regression coverage, full workspace validation, and duplicate VM
-execution.
+accessed/dirty-bit normalization, complete heap and stack validation, bounded
+translation publication and invalidation, user return-address and RFLAGS
+preservation, terminal rollback, generic-user regression coverage, full
+workspace validation, and duplicate VM execution.
 
 Development qualification found and corrected two provider-representation
-mistakes before evidence was recorded. The first compared a live hierarchy
-entry without normalizing target-maintained accessed state. The second confused
-the anonymous-frame base with the separately owned high leaf-table address.
-GDB-backed pinned-QEMU traces located both fail-closed branches. The final path
-normalizes only accessed/dirty status, derives the high table from the checked
-hierarchy root, uses the anonymous base solely for expected frame identity, and
-preserves `r11` throughout.
+mistakes before the original evidence was recorded. The first compared a live
+hierarchy entry without normalizing target-maintained accessed state. The second
+confused the anonymous-frame base with the separately owned high leaf-table
+address. GDB-backed pinned-QEMU traces located both fail-closed branches. The
+refined path additionally stages and seals exactly eight leaves, normalizes only
+accessed/dirty status, derives the high table from the checked hierarchy root,
+uses the anonymous base solely for expected frame identity, and preserves `r11`
+throughout. The artifact revisions and hashes above remain the historical
+pre-refinement evidence; the pinned-external increment records current evidence.
 
 This increment does not add other `mprotect` ranges or permissions, writable
-RELRO, executable publication, splitting, protection keys, VMA collections,
-dynamic linking, signals, concurrency, filesystem access, redistributed
-BusyBox, containers, or a prompt.
+RELRO after the checked transition, executable publication, splitting,
+protection keys, VMA collections, dynamic linking, signals, concurrency,
+filesystem access, redistributed BusyBox, containers, or a prompt.

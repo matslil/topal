@@ -4,7 +4,7 @@
 
 The bounded static-process startup path now extends its proven `brk(0)` query
 with one exact successful growth. The clean-room executable requests
-`0x005f7dc0`, checks the complete returned value, writes `0x5a` to the first
+`0x005f7d80`, checks the complete returned value, writes `0x5a` to the first
 newly admitted byte at `0x005f7000`, reads it back, and only then requests
 `exit_group(0)`.
 

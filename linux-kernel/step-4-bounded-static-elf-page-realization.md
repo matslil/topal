@@ -8,9 +8,10 @@ BusyBox shape yields one future affine 503-frame request with alignment one,
 503 ordered virtual-page/frame-ordinal records, a whole-span zero operation,
 and four exact segment copies.
 
-Every page begins RW/NX for construction. Final roles contain 396 RO/X pages,
-97 RO/NX pages, and ten RW/NX pages. The RO/NX total includes the header,
-immutable data, and eight page-rounded RELRO pages. The type model cannot
+Every page begins RW/NX for construction. As refined by `TK-DEC-193`,
+entry-stage roles contain 396 RO/X pages, 89 RO/NX pages, and 18 RW/NX pages.
+The writable total includes eight page-rounded RELRO pages that the exact
+checked runtime protection transition later seals RO/NX. The type model cannot
 represent a W+X permission, and exact adjacency prevents undeclared gap pages
 from becoming accessible.
 
@@ -20,8 +21,8 @@ Rule `TOPAL-SYSTEMS-STATIC-ELF-PAGE-PLAN-001` adds no core-language element.
 The approved systems profile, requirements, formal rule, compiler contract,
 and implementation require exact inherited span arithmetic, role order and
 adjacency, complete page coverage, sequential ordinals, zero-before-copy
-construction, exact copy containment, RELRO containment, and W^X-safe final
-permissions.
+construction, exact copy containment, RELRO containment, and W^X-safe staged
+and final permissions.
 
 Focused tests prove the pinned 503-page distribution and construction order.
 Negative tests perturb the inherited page count, combined span, adjacency,

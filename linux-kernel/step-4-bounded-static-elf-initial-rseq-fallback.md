@@ -1,7 +1,7 @@
 # Step 4 bounded static ELF initial `rseq` fallback
 
 The bounded static process now performs the observed
-`rseq(0x005f7340, 33, 0, 0x53053053)` probe after empty robust-list
+`rseq(0x005f7300, 33, 0, 0x53053053)` probe after empty robust-list
 registration. Native syscall 334 selects a dedicated unsupported-operation
 path that checks only the process lifecycle state, returns exact `-ENOSYS`,
 does not inspect any argument or user memory, retains no state, and leaves the

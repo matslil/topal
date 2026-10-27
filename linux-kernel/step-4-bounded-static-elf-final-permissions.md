@@ -3,8 +3,8 @@
 ## Outcome
 
 The qualified x86-64 path now consumes the populated 503-frame static-image
-construction and seals its inactive leaf table with the approved W^X and RELRO
-plan. Checked source names only the opaque populated owner and
+construction and seals its inactive leaf table with the approved entry-stage
+W^X plan. Checked source names only the opaque populated owner and
 `bounded-static-elf-wx-relro` plan. Success yields one affine sealed owner and
 publishes `TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK` before the existing complete
 revocation and return protocol.
@@ -12,10 +12,11 @@ revocation and return protocol.
 The provider revalidates both extents, every initial leaf, the retained boot
 resource, all approved ELF metadata, all four copied intervals, and all four
 preserved-zero intervals. It then publishes and reads back the exact ordered
-roles: one header page RO/NX, 396 executable pages RO/X, 96 immutable and RELRO
-pages RO/NX, and ten writable/BSS pages RW/NX. The nine tail entries remain
-absent. Revocation independently authenticates those sealed roles before it
-clears and verifies the complete 512-entry table.
+roles: one header page RO/NX, 396 executable pages RO/X, 88 immutable-data pages
+RO/NX, and 18 writable/BSS pages RW/NX, including eight staged RELRO pages. The
+nine tail entries remain absent. Revocation independently authenticates the
+appropriate entry-stage or post-RELRO sealed roles before it clears and verifies
+the complete 512-entry table. `TK-DEC-193` supplies this later refinement.
 
 ## Validation boundary
 
@@ -52,7 +53,7 @@ Recorded hashes are:
 ## Risk and remaining boundary
 
 Risk is high because an incorrect role could create writable executable
-memory, leave RELRO mutable, substitute a frame, or make later revocation
+memory, leave RELRO mutable after its checked request, substitute a frame, or make later revocation
 accept a different layout. Review covered every interval boundary, exact role
 counts and flags, frame-order preservation, complete readback, inactive
 publication, sealed-state revocation, failure cleanup, structural machine-code
@@ -62,4 +63,4 @@ This increment deliberately revokes and returns the verified payload. It does
 not retain the sealed owner, construct upper translation levels, attach an
 address space, initialize TLS or a process stack, publish the static entry
 point, or execute the image. The next increment must attach the sealed image to
-an inactive process address space without weakening these final roles.
+an inactive process address space without weakening these entry-stage roles.

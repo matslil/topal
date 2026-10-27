@@ -1,7 +1,7 @@
 # Step 4 bounded static ELF initial empty robust list
 
 The bounded static process now performs exact
-`set_robust_list(0x005f7720, 24)` registration after its clear-child-TID hook.
+`set_robust_list(0x005f76e0, 24)` registration after its clear-child-TID hook.
 The clean-room payload builds the observed self-linked head with futex offset
 `-32` and null pending pointer. Registration retains the candidate without
 dereference and returns zero. Terminal handling validates all 24 bytes while

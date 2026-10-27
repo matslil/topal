@@ -543,10 +543,20 @@ The bounded static-ELF page-realization refinement shall consume only a
 successful immutable load plan. It shall reject nonadjacent load-page roles and
 derive one future affine frame request equal to the complete page count, one
 ordered virtual-page/frame-ordinal record per page, initial RW/NX construction,
-and exact final RO/NX, RO/X, or RW/NX permission. It shall make RELRO pages
-RO/NX inside the writable role, require complete-span zeroing before the four
-exact file copies, prove complete page coverage and no W+X final state, and
-retain no allocation, mapping, copy, permission-publication, or entry authority.
+and exact entry-stage RO/NX, RO/X, or RW/NX permission. It shall retain RELRO
+pages RW/NX inside the writable role until the exact checked process protection
+transition seals them RO/NX, require complete-span zeroing before the four exact
+file copies, prove complete page coverage and no W+X state, and retain no
+allocation, mapping, copy, permission-publication, or entry authority.
+
+The bounded external static-process qualification shall accept only the exact
+approved executable digest and coherent resident-header variant. X86-64 entry
+shall use the complete final Linux initial stack, establish a fresh x87/SSE
+context, preserve all non-result syscall registers and provider callee-saved
+registers, and restore or scrub every private register, stack, translation-
+status, and process-context value before rollback. Qualification shall execute
+the pinned BusyBox `true` applet without committing its bytes and shall not
+generalize acceptance to another executable, stack shape, or syscall sequence.
 
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident

@@ -190,6 +190,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF RELRO `mprotect`](bounded-static-elf-relro-mprotect.md)
 - [Bounded static ELF initial process-name query](bounded-static-elf-initial-process-name.md)
 - [Bounded static ELF initial `getuid`](bounded-static-elf-initial-getuid.md)
+- [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 

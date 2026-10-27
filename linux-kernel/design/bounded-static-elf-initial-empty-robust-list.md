@@ -4,7 +4,7 @@
 
 The bounded static process may extend its clear-child-TID registration with one
 exact empty robust-list registration. The pinned executable requests Linux
-`set_robust_list(0x005f7720, 24)`. The complete head lies in the live anonymous
+`set_robust_list(0x005f76e0, 24)`. The complete head lies in the live anonymous
 break reserve and initially contains a self-linked list pointer, futex offset
 `-32`, and null pending pointer.
 

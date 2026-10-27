@@ -666,9 +666,19 @@ The bounded page-realization refinement converts only those checked facts into
 one ordered record per declared page. It requires adjacent load-page roles,
 names a future single affine extent with one frame per page, zeroes that whole
 extent before four exact segment copies, and assigns RW/NX construction plus
-final RO/NX, RO/X, or RW/NX permissions. RELRO pages become RO/NX within the
-writable role. This remains an immutable compiler plan, not frame ownership,
+entry-stage RO/NX, RO/X, or RW/NX permissions. GNU RELRO pages remain RW/NX
+within the writable role until the exact checked process protection transition
+seals them RO/NX. This remains an immutable compiler plan, not frame ownership,
 mapping authority, executable selection, or a source-visible page-table API.
+
+The bounded external-process refinement may select one digest-pinned static
+executable without storing or redistributing its bytes. The provider still owns
+the native privilege boundary: it derives the complete initial stack, creates a
+fresh target SIMD context, preserves the Linux syscall register contract and
+its own calling convention, and restores all private state before returning the
+affine completed-process owner. The first x86-64 external qualification invokes
+the pinned BusyBox `true` applet; it is evidence for that exact executable and
+startup path, not a general ELF execution or userspace compatibility claim.
 
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
