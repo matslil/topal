@@ -337,7 +337,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 711] = bytes(
+    image[0xA_6580 : 0xA_6580 + 759] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -492,6 +492,15 @@ def static_user_fixture() -> bytes:
             0x31, 0xFF,
             0xB8, 0x69, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+            0xC6, 0x04, 0x24, 0x0A,
+            0xBF, 0x01, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xBA, 0x01, 0x00, 0x00, 0x00,
+            0xB8, 0x01, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+            0xC6, 0x04, 0x24, 0x00,
+            0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
@@ -738,7 +747,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/178",
+        "schema": "topal-kernel-toolchain-gate-qemu/179",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -771,6 +780,7 @@ def evidence_record(
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
+            "static_applet_newline_count": serial.count(b"\n"),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -819,6 +829,11 @@ def verify(
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
+        expected_newline_count = 0 if external_static_user_image is not None else 1
+        if serial.count(b"\n") != expected_newline_count:
+            raise GateError(
+                "static applet newline count did not match the selected qualification input"
+            )
         record = evidence_record(
             qemu_version,
             image,
