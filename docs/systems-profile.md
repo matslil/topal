@@ -680,6 +680,17 @@ affine completed-process owner. The first x86-64 external qualification invokes
 the pinned BusyBox `true` applet; it is evidence for that exact executable and
 startup path, not a general ELF execution or userspace compatibility claim.
 
+The bounded initial-configuration refinement may answer one optional
+configuration-file metadata probe for a sealed initial process. It recognizes
+the complete immutable path `/etc/busybox.conf`, requires a complete writable
+native metadata destination, and reports that the path is absent without
+publishing output or retaining either user pointer. Portable policy observes
+only an absent optional configuration object; the provider owns the native
+directory-relative selector, metadata layout, syscall number, registers, and
+address validation. This is one startup compatibility fact, not a filesystem,
+pathname resolver, descriptor namespace, metadata service, or general `stat`
+interface.
+
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized
 and before either mapping is unmapped. At that boundary one RO/X code mapping

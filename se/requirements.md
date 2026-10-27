@@ -558,6 +558,18 @@ status, and process-context value before rollback. Qualification shall execute
 the pinned BusyBox `true` applet without committing its bytes and shall not
 generalize acceptance to another executable, stack shape, or syscall sequence.
 
+The bounded initial-configuration adapter shall recognize exactly the sealed
+absolute path `/etc/busybox.conf` for the live initial process and report that
+the optional object is absent. Dispatch shall require an executable return
+continuation and a complete writable native metadata destination, shall publish
+no output on absence, and shall retain no pathname, destination, or lookup
+state. The provider shall own the native directory-relative selector, pathname
+encoding validation, metadata layout, syscall number, and register convention.
+Another path, directory selector, flag, incomplete destination, lifecycle
+phase, duplicate request, or success result shall fail closed. This requirement
+does not introduce a VFS, mount, inode, descriptor-allocation, pathname-
+resolution, or general metadata-query service.
+
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
 ownership invariants. The ELF data program header shall be `PF_R | PF_W`, and
