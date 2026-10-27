@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/158";
+    "topal.provider-object.x86_64-qemu-pc-q35/159";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9412,6 +9412,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x3d, number, 0, 0, 0]);
         code.jump_if(0x84, "static-process-initial-credential-tail");
     }
+    code.bytes(&[0x3d, 0x01, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-applet-newline-write");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -9427,10 +9429,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 12]);
     code.jump_if(0x84, "static-process-terminal-phase-ready");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]);
+    code.jump_if(0x84, "static-process-terminal-phase-ready");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 16]);
     code.jump_if(0x85, "fatal");
     code.jump("static-process-terminal-phase-ready");
     code.bind("static-process-clean-terminal-phase")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 16]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-terminal-phase-ready")?;
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
@@ -9900,6 +9904,77 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0, 0, 0, 0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 9]);
     code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-applet-newline-write")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xff, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+
+    // Revalidate the active hierarchy before touching either sealed candidate.
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[0x3c, 1]);
+    code.jump_if(0x85, "static-process-applet-newline-external-candidate");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fd60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0xf8, 0x4f, 0, 0, 0x48, 0x89, 0xc2]);
+    code.bytes(&[0x48, 0x83, 0xe2, 0x9f, 0x48, 0x0f, 0xba, 0xe2, 0x3f]);
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x89, 0xd7, 0x81, 0xe7, 0xff, 0x0f, 0, 0, 0x83, 0xff, 7]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-applet-newline-candidate-ready");
+
+    code.bind("static-process-applet-newline-external-candidate")?;
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005f_89d0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x8b, 0x82, 0xc0, 0x0f, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4d, 0x8d, 0x88, 0, 0x10, 0, 0, 0x49, 0x83, 0xc9, 7]);
+    code.bytes(&[0x49, 0x0f, 0xba, 0xe9, 0x3f, 0x4c, 0x39, 0xc8]);
+    code.jump_if(0x85, "fatal");
+
+    code.bind("static-process-applet-newline-candidate-ready")?;
+    code.bytes(&[0x44, 0x8a, 0x06, 0x41, 0x80, 0xf8, 0x0a]);
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-applet-newline-uart-ready")?;
+    code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
+    code.jump_if(0x84, "static-process-applet-newline-uart-ready");
+    code.bytes(&[0x66, 0xba, 0xf8, 0x03, 0x44, 0x88, 0xc0, 0xee]);
+    code.bytes(&[0x45, 0x31, 0xc0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 16]);
+    code.bytes(&[0xb8, 1, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-initial-process-name")?;
@@ -10448,7 +10523,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 15]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 16]);
     code.jump_if(0x87, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -13727,6 +13802,18 @@ assert bytes(output) == block[32:]
                 "clean process fixture must select only the sealed zero credential"
             );
         }
+        assert!(
+            process_fixture.windows(27).any(|window| window
+                == [
+                    0x48, 0x81, 0xec, 0x40, 0x02, 0, 0, 0xc6, 0x04, 0x24, 0x0a, 0xbf, 1, 0, 0, 0,
+                    0x48, 0x89, 0xe6, 0xba, 1, 0, 0, 0, 0xb8, 1, 0
+                ])
+                && process_fixture.windows(12).any(|window| window
+                    == [
+                        0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 1, 0x75, 0xfe, 0xc6, 0x04
+                    ]),
+            "clean process fixture must stage and require its exact one-byte stdout result"
+        );
         assert_eq!(
             process_enter
                 .windows(3)
@@ -13899,6 +13986,12 @@ assert bytes(output) == block[32:]
         }
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 1, 0, 0, 0]),
+            "the static dispatcher must select the applet newline write"
+        );
+        assert!(
+            process_enter
                 .windows(3)
                 .any(|window| window == [0x48, 0x85, 0xff]),
             "credential setters must require the sealed zero identity argument"
@@ -13931,8 +14024,32 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(9)
-                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 15]),
-            "clean process completion must require the credential-tail terminal state"
+                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 16]),
+            "clean process completion must require the newline-output terminal state"
+        );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x60, 0xfd, 0x7f, 0])
+                && process_enter
+                    .windows(7)
+                    .any(|window| window == [0x48, 0x81, 0xfe, 0xd0, 0x89, 0x5f, 0])
+                && process_enter
+                    .windows(7)
+                    .any(|window| window == [0x48, 0x8b, 0x82, 0xc0, 0x0f, 0, 0]),
+            "newline output must bind each profile to its exact readable candidate backing"
+        );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x44, 0x8a, 0x06, 0x41, 0x80, 0xf8, 0x0a])
+                && process_enter
+                    .windows(8)
+                    .any(|window| window == [0x66, 0xba, 0xf8, 0x03, 0x44, 0x88, 0xc0, 0xee])
+                && process_enter
+                    .windows(3)
+                    .any(|window| window == [0x45, 0x31, 0xc0]),
+            "newline output must stage, verify, publish, and clear exactly one line feed"
         );
         let alignment_start = process_enter
             .windows(7)

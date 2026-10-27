@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/176";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/165";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/177";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/166";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -974,6 +974,15 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x31, 0xff, // exact sealed user identity
         0xb8, 0x69, 0x00, 0x00, 0x00, // setuid
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
+        0x48, 0x81, 0xec, 0x40, 0x02, 0x00, 0x00, // disjoint stack-prefix scratch
+        0xc6, 0x04, 0x24, 0x0a, // line feed
+        0xbf, 0x01, 0x00, 0x00, 0x00, // stdout
+        0x48, 0x89, 0xe6, // candidate
+        0xba, 0x01, 0x00, 0x00, 0x00, // length one
+        0xb8, 0x01, 0x00, 0x00, 0x00, // write
+        0x0f, 0x05, 0x48, 0x83, 0xf8, 0x01, 0x75, 0xfe, // require one
+        0xc6, 0x04, 0x24, 0x00, // clear line feed
+        0x48, 0x81, 0xc4, 0x40, 0x02, 0x00, 0x00, // restore initial stack pointer
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall
