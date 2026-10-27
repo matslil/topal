@@ -3907,6 +3907,50 @@ invalid. This rule SHALL NOT add the remaining scalar identity family,
 credential mutation, supplementary groups, user namespaces, capabilities,
 multiple processes or threads, BusyBox redistribution, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001 — Static-process optional configuration absence
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss`
+and select policy `bounded-static-elf-initial-config-stat-miss`. After the exact
+real-user-identity witness, the process MAY query the sealed optional
+configuration object at `/etc/busybox.conf`.
+
+The provider SHALL require the live real-user-identity phase, sealed executable
+continuation, active checked address-space hierarchy, exact retained initial-
+stack leaf, complete immutable NUL-terminated pathname, exact current-directory
+selection, zero lookup flags, and a complete writable native metadata extent.
+It SHALL report absence without publishing any output byte, retain no pathname,
+destination, or lookup state, and advance only its private startup phase.
+Failure SHALL preserve the prior phase, destination bytes, and every process
+resource.
+
+The initial x86-64 qualification SHALL bind the request to native syscall 262
+(`newfstatat`), `AT_FDCWD` (`-100`), the complete 18-byte pathname, a complete
+144-byte writable `struct stat` extent inside the retained stack page, flags
+zero, and result `-ENOENT` (`-2`). The clean-room process SHALL place the path
+in its sealed executable role, reserve scratch below the initial vector, require
+the exact result, restore its stack pointer, and continue. The pinned external
+resident-header variant SHALL admit only the corresponding immutable path in
+the digest-verified executable; its currently selected `true` applet MAY
+terminate from the preceding real-user-identity phase without making the
+optional request. A clean-room terminal result SHALL require the absence phase;
+an external terminal result SHALL require either the preceding phase or the
+absence phase according to the provider-private header variant.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK`
+observation SHALL follow the real-user-identity observation and precede process
+exit. Together with the selected qualification input, it SHALL certify either
+the clean-room absence witness or the allowed external early-terminal profile.
+Another path, base directory, flag, metadata extent, phase, result, order,
+duplicate, output mutation, retained pointer or lookup state, source-visible
+native detail, or recoverable process-entry failure SHALL be invalid. This rule
+SHALL NOT add a VFS, mount or inode model, pathname traversal, symlinks,
+descriptor allocation, successful metadata publication, mutable filesystem,
+another process or thread, BusyBox redistribution, command output, shell, or a
+prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

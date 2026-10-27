@@ -1382,6 +1382,26 @@ continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001`,
 `TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-191`.
 
+The bounded static-ELF initial-configuration-stat increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss`
+and policy `bounded-static-elf-initial-config-stat-miss`. After the real-UID
+witness, the clean-room x86-64 payload shall reserve scratch below its initial
+vector, issue native syscall 262 with `AT_FDCWD`, an immutable
+`/etc/busybox.conf` path, a complete 144-byte stack destination and flags zero,
+require `-ENOENT`, restore its stack pointer, and continue. Lowering shall
+require the live real-UID phase, sealed executable continuation, active checked
+hierarchy, exact retained stack leaf, complete header-variant-bound immutable
+path, and complete writable destination. It shall publish no bytes, retain no
+argument or lookup state, and advance only the private startup phase. Clean-
+room terminal handling shall require that phase; the pinned external `true`
+profile may terminate from the preceding phase because it makes no optional
+probe. Negative, structural, full-workspace, clean-QEMU, and external-QEMU
+evidence shall enforce exact dispatch, complete path and range validation,
+absence result, nonmutation, nonretention, header-bound terminal choice,
+rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001` and `TK-DEC-196`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
