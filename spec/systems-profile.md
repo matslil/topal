@@ -3992,6 +3992,46 @@ be invalid. This rule SHALL NOT add arbitrary credential setters,
 supplementary groups, user namespaces, capabilities, multiple processes or
 threads, BusyBox redistribution, application output, shell, or a prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001 — Static-process applet newline output
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write`
+and select policy `bounded-static-elf-applet-newline-write`. After the exact
+credential-tail witness, the process MAY publish one line-feed byte to standard
+output.
+
+The provider SHALL require the exact preceding phase, descriptor one, length
+one, a sealed executable continuation, the active checked address-space
+hierarchy, and the header-profile-bound candidate byte in either the exact
+retained initial stack leaf or the pinned applet's anonymous program-break
+mapping. It SHALL revalidate the candidate's exact readable backing before dereference, copy the byte into
+private staging before any output effect, require line-feed value, publish the
+staged byte exactly once, return one, clear and discard the staging and user
+pointer, and advance only its private startup phase. Failure SHALL preserve the
+prior phase and every process resource and SHALL produce no output.
+
+The initial x86-64 qualification SHALL bind the operation to syscall 1
+(`write`) with descriptor, candidate, and length in the native Linux registers.
+The clean-room process SHALL construct one stack-local line feed, issue the
+exact request after `setuid(0)`, require result one, clear its byte, restore the
+initial stack pointer, and continue. Its terminal result SHALL require the
+newline-output phase. The pinned external resident-header variant MAY retain
+the earlier terminal phases already permitted for its qualified `true` applet;
+if it enters the output phase, it SHALL obey this complete contract.
+
+The existing credential-tail observation SHALL precede the request, and the
+existing process-exit observation SHALL follow its successful result. Together
+with the selected qualification input and captured serial byte, they SHALL
+certify either the clean-room newline witness or the allowed external early-
+terminal profile. Another descriptor, length, byte, candidate range, mapping,
+continuation, phase, result, order, duplicate, output before complete
+validation, retained pointer or staging state, source-visible native detail,
+or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+arbitrary payload output, descriptor tables, partial or blocking writes,
+files, pipes, sockets, signals, shell, prompt, or BusyBox redistribution.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

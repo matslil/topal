@@ -1424,6 +1424,26 @@ and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001`,
 `TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-197`.
 
+The bounded static-ELF applet-newline increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write`
+and policy `bounded-static-elf-applet-newline-write`. After the credential tail,
+the clean-room x86-64 payload shall construct a stack-local line feed, issue
+native `write(1, candidate, 1)`, require result one, clear the byte, restore its
+stack, and continue. Lowering shall require the exact phase, sealed executable
+continuation, active checked hierarchy, and the header-profile-bound byte in
+the retained stack leaf or pinned anonymous program-break mapping. It shall revalidate backing,
+stage before output, require line feed, publish once, return one, retain no
+pointer or staging, and advance only the private startup phase. Clean-room
+terminal handling shall require that phase; the pinned external `true` profile
+shall preserve its previously admitted header-bound early terminal path.
+Negative, structural, full-workspace, clean-QEMU, and external-QEMU evidence
+shall enforce dispatch, ordering, range and backing validation, staging,
+payload equality, exact output and result, nonretention, rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001`,
+`TOPAL-SYSTEMS-USER-WRITE-001`, and `TK-DEC-198`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
