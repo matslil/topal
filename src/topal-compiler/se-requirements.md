@@ -1485,6 +1485,18 @@ path, and a future external shell profile may bind the operation after
 ordering, state lifecycle, result, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001` and `TK-DEC-201`.
 
+The bounded static-process shell-getppid increment shall accept native x86-64
+syscall 110 once after the child-disposition phase, return the sealed no-parent
+value zero, retain no argument, lookup result, or mutable task state, and
+advance only its private startup phase. It shall require executable
+continuation, active checked hierarchy, retained stack, and the live child
+disposition. The clean fixture shall require result zero; the external echo
+profile may retain its newline terminal path, and a future external shell
+profile may bind the observation after disposition installation. Structural
+and QEMU evidence shall enforce exact dispatch, ordering, result,
+nonretention, disposition preservation, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` and `TK-DEC-202`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

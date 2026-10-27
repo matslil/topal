@@ -195,6 +195,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF applet newline write](bounded-static-elf-applet-newline-write.md)
 - [Bounded static-process shell `getpid`](bounded-static-elf-shell-getpid.md)
 - [Bounded static-process shell child disposition](bounded-static-elf-shell-sigchld-disposition.md)
+- [Bounded static-process shell `getppid`](bounded-static-elf-shell-getppid.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)

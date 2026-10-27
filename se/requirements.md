@@ -576,6 +576,14 @@ It shall expose no native layout in portable source and shall grant no signal
 generation, delivery, frame, handler-execution, restart, or general signal
 authority.
 
+The bounded static-process parent-identity adapter shall expose the sealed
+absence of a parent for one ordered observation after child-disposition
+installation. It shall require the exact live process, executable
+continuation, active checked address space, retained stack, live disposition,
+and predecessor phase; return zero without process lookup or retaining native
+arguments or mutable identity state; and preserve the disposition lifecycle
+and complete terminal rollback.
+
 The bounded initial-configuration adapter shall recognize exactly the sealed
 absolute path `/etc/busybox.conf` for the live initial process and report that
 the optional object is absent. Dispatch shall require an executable return
