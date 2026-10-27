@@ -10,8 +10,10 @@ the provider maps the reserve at the initial break, sets the byte-granular
 current break to the request, and returns that request. The qualification
 payload writes and reads the first admitted byte before terminal return.
 
-The reserve is a distinct artifact-provided process resource. It is not part
-of the 503-frame ELF image, the stack, bootstrap storage, entropy DMA storage,
+The reserve is a distinct artifact-provided process resource. A later approved
+[post-random growth](bounded-static-elf-post-random-brk-growth.md) may refine it
+into a larger opaque extent while preserving this first-page behavior. It is
+not part of the 503-frame ELF image, the stack, bootstrap storage, entropy DMA storage,
 or source-selected physical memory. Process entry owns it exclusively from
 pre-entry validation through terminal teardown. Exit removes the leaf, returns
 the current break to its initial value, clears and verifies the complete page,
@@ -62,9 +64,11 @@ The pinned provider shall:
 ## Scope
 
 This is a systems-profile refinement only and changes no core-language rule.
-It admits one exact one-page-backed growth after the initial query. The
-approved [post-random query](bounded-static-elf-post-random-brk-query.md) may
+It admits one exact one-page-backed growth after the initial query. A selected
+later profile may retain additional zeroed anonymous and provider-private
+translation backing without changing this result. The approved
+[post-random query](bounded-static-elf-post-random-brk-query.md) may
 observe its current result without mutation. It does not support another
-nonzero request, shrink, multiple pages, lazy faults, overcommit,
+nonzero request unless that later profile is selected, shrink, lazy faults, overcommit,
 `mmap`, `munmap`, `mprotect`, TLS initialization, BusyBox execution in the
 qualification fixture, a prompt, or general memory-management compatibility.

@@ -9,14 +9,14 @@ publication barriers, and invalidation mechanics.
 ## Decision
 
 `static image construction attach address space` shall consume the exact live
-`SealedStaticImageConstruction` and four-frame hierarchy extent and produce
+`SealedStaticImageConstruction` and five-frame hierarchy extent and produce
 one affine `AttachedStaticImageConstruction`. It shall accept only layout
 `bounded-static-elf-inactive-address-space`. The operation shall:
 
-- revalidate the 503-frame payload, final leaf table, four-frame hierarchy,
+- revalidate the 503-frame payload, final leaf table, five-frame hierarchy,
   their exact adjacency/disjointness, and the complete final leaf roles;
 - prove that the hierarchy root is not the active translation root;
-- zero and read back all four hierarchy frames before construction;
+- zero and read back all five hierarchy frames before construction;
 - construct the complete qualified supervisor bootstrap/MMIO hierarchy and
   link the existing leaf table at the static image's user virtual interval;
 - atomically publish and read back every present and absent hierarchy entry;
@@ -29,13 +29,13 @@ witness while the attached owner is live.
 
 `static image construction detach address space` shall consume only that exact
 attached owner. It shall revalidate the whole inactive hierarchy and final
-leaf table, again prove the root inactive, clear all four hierarchy frames,
+leaf table, again prove the root inactive, clear all five hierarchy frames,
 publish the removal, and verify every hierarchy byte zero before producing one
 affine `DetachedStaticImageConstruction`. Source shall emit exactly one
 `TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK` witness.
 
 The detached owner shall permit `static image construction reclaim` with
-resource `hierarchy` exactly once. The complete returned four-frame extent
+resource `hierarchy` exactly once. The complete returned five-frame extent
 shall be released before the existing metadata then payload revocation and
 release sequence, which shall name the detached owner. Failure at any attach
 or detach check is fatal; no partially constructed hierarchy or derived owner
@@ -43,8 +43,9 @@ may escape.
 
 ## Exact x86-64 inactive hierarchy
 
-The four adjacent hierarchy frames are, in order, PML4, PDPT, low-memory page
-directory, and qualified-MMIO page directory. The provider shall construct:
+The five adjacent hierarchy frames are, in order, PML4, PDPT, low-memory page
+directory, qualified-MMIO page directory, and high user leaf table. The
+provider shall construct:
 
 - PML4 entry zero referencing the PDPT with present/write/user traversal;
 - PDPT entry zero referencing the low-memory directory with
@@ -54,6 +55,9 @@ directory, and qualified-MMIO page directory. The provider shall construct:
 - 512 low-memory 2 MiB supervisor bootstrap leaves matching the approved
   identity policy, except directory entry two shall reference the existing
   static leaf table with present/write/user traversal;
+- low-memory directory entry three referencing the high user leaf table with
+  present/write/user traversal;
+- every high user leaf absent at attachment time;
 - qualified HPET and local-APIC 2 MiB mappings at MMIO directory entries 502
   and 503; and
 - every other PML4, PDPT, and MMIO-directory entry absent.

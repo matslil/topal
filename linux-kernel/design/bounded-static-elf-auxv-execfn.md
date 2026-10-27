@@ -41,7 +41,7 @@ activate the hierarchy, construct a user context, or enter the image.
 
 ## Exact x86-64 realization
 
-The provider shall encode native `AT_EXECFN` tag 31 with value `0x5fffe0`, the
+The provider shall encode native `AT_EXECFN` tag 31 with value `0x7fffe0`, the
 exact existing `busybox` string address, after `AT_PHNUM=(5,11)` and before
 `AT_NULL`. It shall prove equality with `argv[0]`, same-leaf containment, all
 eight `busybox\0` bytes, and separation from the `true` string.

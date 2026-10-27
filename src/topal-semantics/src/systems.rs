@@ -3477,7 +3477,12 @@ const INITIAL_MULTI_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
 };
 
 const STATIC_ELF_HIERARCHY_FRAME_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
-    frame_count: 4,
+    frame_count: 5,
+    alignment_frames: 1,
+};
+
+const POST_RANDOM_ANONYMOUS_EXTENT_REQUEST: PhysicalFrameRequest = PhysicalFrameRequest {
+    frame_count: 34,
     alignment_frames: 1,
 };
 
@@ -3555,6 +3560,7 @@ impl BootstrapAuthorityState {
                         request @ (INITIAL_SINGLE_FRAME_REQUEST
                         | INITIAL_TWO_FRAME_REQUEST
                         | INITIAL_MULTI_FRAME_REQUEST
+                        | POST_RANDOM_ANONYMOUS_EXTENT_REQUEST
                         | STATIC_ELF_FRAME_REQUEST),
                     ) => BootstrapMemoryOwnership::Frames(request),
                     (
@@ -3657,7 +3663,7 @@ impl BootstrapAuthorityState {
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-STATIC-IMAGE",
-                        "static-image address-space attachment requires one sealed construction and its live four-frame hierarchy",
+                        "static-image address-space attachment requires one sealed construction and its live five-frame hierarchy",
                     ));
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::StaticElfConstructionAttached;
@@ -5285,13 +5291,13 @@ impl BootstrapAuthorityState {
                     ));
                 };
                 if self.memory_ownership
-                    != BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST)
+                    != BootstrapMemoryOwnership::Frames(POST_RANDOM_ANONYMOUS_EXTENT_REQUEST)
                     || self.anonymous_user_mapping_reserved
                     || !self.critical_stack.is_empty()
                 {
                     return Err(SystemsModelError::new(
                         "E-SYSTEMS-USER-CONTEXT",
-                        "anonymous reservation requires one source-owned frame and no prior reservation",
+                        "anonymous reservation requires the exact source-owned growth extent and no prior reservation",
                     ));
                 }
                 self.memory_ownership = BootstrapMemoryOwnership::None;
@@ -6093,7 +6099,7 @@ impl BootstrapAuthorityState {
                 }
                 self.anonymous_user_mapping_reserved = false;
                 self.memory_ownership =
-                    BootstrapMemoryOwnership::Frames(INITIAL_SINGLE_FRAME_REQUEST);
+                    BootstrapMemoryOwnership::Frames(POST_RANDOM_ANONYMOUS_EXTENT_REQUEST);
             }
             SystemsOperation::EnterUserContext => {
                 let BootstrapUserExecutionState::PreparedWithResidentImage(backing) =
@@ -9554,7 +9560,7 @@ mod tests {
                         SystemsOperation::LoadUserMappingByte,
                         SystemsOperation::PermitUserMappingWritableData,
                         SystemsOperation::AllocatePhysicalFrames {
-                            request: INITIAL_SINGLE_FRAME_REQUEST,
+                            request: POST_RANDOM_ANONYMOUS_EXTENT_REQUEST,
                             failure_message: "anonymous frame allocation failed".into(),
                         },
                         SystemsOperation::ReserveAnonymousUserMapping,
@@ -10355,7 +10361,7 @@ mod tests {
                     mapping_identity: 2,
                 },
                 SystemsTransition::AllocatePhysicalFrames {
-                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    request: POST_RANDOM_ANONYMOUS_EXTENT_REQUEST,
                 },
                 SystemsTransition::ReserveAnonymousUserMapping {
                     address_space_identity: 1,

@@ -31,7 +31,7 @@ until released.
 ## Exact x86-64 realization
 
 The checked root shall retain the existing hierarchy identity while requesting
-one unit-aligned frame at or above the first frame after the exact four-frame
+one unit-aligned frame at or above the first frame after the exact five-frame
 hierarchy. The existing bounded E820 allocator shall validate the complete
 candidate interval and all boot reservations. This monotonic floor proves
 disjointness from the earlier payload, leaf metadata, and hierarchy extents

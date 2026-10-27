@@ -36,7 +36,7 @@ instruction from the static image.
 For the approved static ELF plan, the provider shall require:
 
 - inactive static and active bootstrap root identities;
-- the exact four-frame hierarchy and 503 final leaves from `TK-DEC-136`;
+- the exact five-frame hierarchy and 503 final leaves from `TK-DEC-136`;
 - ELF entry `0x004a6580` in the copied header;
 - entry-page ordinal 166 in the payload extent;
 - final entry leaf equal to the corresponding payload frame with user

@@ -352,11 +352,11 @@ fn parse_physical_frame_allocation(
             "physical-frame allocation requires `frame-count` and `alignment-frames`",
         ));
     };
-    if !matches!(frame_count, 1..=4 | 503) || alignment_frames != 1 {
+    if !matches!(frame_count, 1..=3 | 5 | 34 | 503) || alignment_frames != 1 {
         return Err(frame_diagnostic(
             source,
             *span,
-            "the executable frame-allocation slice admits only one, two, three, four, or exactly 503 frames with unit alignment",
+            "the executable frame-allocation slice admits only one, two, three, five, 34, or exactly 503 frames with unit alignment",
         ));
     }
     Ok(CompilerPhysicalFrameRequest {

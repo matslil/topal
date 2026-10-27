@@ -3392,14 +3392,14 @@ fn analyze_kernel_context_decision(
         parse_physical_frame_allocation(source, anonymous_subject, &completion_resumed)?;
     if anonymous_request
         != (CompilerPhysicalFrameRequest {
-            frame_count: 1,
+            frame_count: 34,
             alignment_frames: 1,
         })
     {
         return Err(user_context_diagnostic(
             source,
             anonymous_subject.span(),
-            "the bounded anonymous reservation requires exactly one frame aligned to one frame",
+            "the bounded anonymous reservation requires exactly 35 frames aligned to one frame",
         ));
     }
     let CompilerSystemsDisposition::Fatal {
@@ -5639,7 +5639,9 @@ fn parse_user_address_space_reserve_anonymous<'a>(
                 address_space = identifier_is(source, &field.value, address_space_name)
             }
             "backing" => backing = identifier_is(source, &field.value, backing_name),
-            "layout" => layout = identifier_is(source, &field.value, "initial-anonymous-page"),
+            "layout" => {
+                layout = identifier_is(source, &field.value, "post-random-anonymous-growth-extent")
+            }
             _ => {}
         }
     }
@@ -5647,7 +5649,7 @@ fn parse_user_address_space_reserve_anonymous<'a>(
         return Err(user_context_diagnostic(
             source,
             *span,
-            "anonymous reservation must consume the exact frame into `initial-anonymous-page`",
+            "anonymous reservation must consume the exact extent into `post-random-anonymous-growth-extent`",
         ));
     }
     Ok((source.slice(*name).to_owned(), declarations))
@@ -10130,7 +10132,7 @@ mod tests {
                 },
                 CompilerSystemsTransition::AllocatePhysicalFrames {
                     request: CompilerPhysicalFrameRequest {
-                        frame_count: 1,
+                        frame_count: 34,
                         alignment_frames: 1,
                     },
                 },
@@ -10517,7 +10519,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 415);
+        assert_eq!(program.bootstrap.handler.operations.len(), 416);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -12618,19 +12620,19 @@ mod tests {
                 "live memory-described context",
             ),
             (
-                SOURCE.replacen("frame-count is 1", "frame-count is 5", 1),
+                SOURCE.replacen("frame-count is 1", "frame-count is 4", 1),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, four, or exactly 503 frames",
+                "only one, two, three, five, 34, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 502"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, four, or exactly 503 frames",
+                "only one, two, three, five, 34, or exactly 503 frames",
             ),
             (
                 SOURCE.replace("frame-count is 503", "frame-count is 504"),
                 "E-SYSTEMS-FRAMES",
-                "only one, two, three, four, or exactly 503 frames",
+                "only one, two, three, five, 34, or exactly 503 frames",
             ),
             (
                 SOURCE.replacen("frame-count is 1", "frame-count is 3", 1),
@@ -12888,26 +12890,26 @@ mod tests {
         for (source, code, expected) in [
             (
                 SOURCE.replacen(
-                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4",
-                    "owner is populated-static-elf-construction,\n                                                                                frame-count is 4",
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 5",
+                    "owner is populated-static-elf-construction,\n                                                                                frame-count is 5",
                     1,
                 ),
                 "E-SYSTEMS-TRANSLATION-EDIT",
                 "exact sealed construction",
             ),
             (
-                SOURCE.replacen("frame-count is 4", "frame-count is 3", 1),
-                "E-SYSTEMS-TRANSLATION-EDIT",
-                "four unit-aligned frames",
+                SOURCE.replacen("frame-count is 5", "frame-count is 34", 1),
+                "E-SYSTEMS-FRAMES",
+                "frame-allocation slice",
             ),
             (
                 SOURCE.replacen(
-                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 1",
-                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 4,\n                                                                                alignment-frames is 2",
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 5,\n                                                                                alignment-frames is 1",
+                    "owner is sealed-static-elf-construction,\n                                                                                frame-count is 5,\n                                                                                alignment-frames is 2",
                     1,
                 ),
                 "E-SYSTEMS-TRANSLATION-EDIT",
-                "four unit-aligned frames",
+                "five unit-aligned frames",
             ),
             (
                 SOURCE.replace(
@@ -14573,11 +14575,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001,
         // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001,
         // TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14585,7 +14588,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-post-random-brk-query",
+                "policy is bounded-static-elf-post-random-brk-growth",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
@@ -14631,6 +14634,10 @@ mod tests {
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
+                "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",

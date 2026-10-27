@@ -185,6 +185,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static ELF initial `getrandom`](bounded-static-elf-initial-getrandom.md)
 - [Bounded static ELF reusable `getrandom`](bounded-static-elf-reusable-getrandom.md)
 - [Bounded static ELF post-random `brk(0)` query](bounded-static-elf-post-random-brk-query.md)
+- [Bounded static ELF post-random `brk` growth](bounded-static-elf-post-random-brk-growth.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
 
