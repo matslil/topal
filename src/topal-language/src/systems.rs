@@ -13340,14 +13340,14 @@ mod tests {
         for (source, expected) in [
             (
                 SOURCE.replace(
-                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
-                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-sh,",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-sh,",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",
             ),
             (
                 SOURCE.replace(
-                    "profile is bounded-static-elf-busybox-echo,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
+                    "profile is bounded-static-elf-busybox-sh,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                     "profile is unbounded-static-elf,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",
@@ -14586,11 +14586,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001,
         // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001,
         // TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-empty-read,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14598,7 +14599,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-shell-getppid",
+                "policy is bounded-static-elf-shell-empty-input",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(

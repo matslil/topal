@@ -3137,7 +3137,7 @@ fn parse_static_image_stack_entry_initialization(
     }
     if owner != Some(construction_name)
         || backing != Some(backing_name)
-        || profile != Some("bounded-static-elf-busybox-echo")
+        || profile != Some("bounded-static-elf-busybox-sh")
         || extent != Some("complete")
     {
         return Err(translation_edit_diagnostic(
@@ -4660,9 +4660,9 @@ fn parse_static_image_process_entry(
         vec![
             ("owner", owner_name),
             ("abi", "linux-x86-64-process"),
-            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid"),
+            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-empty-read"),
             ("terminal", "exit-group-zero"),
-            ("policy", "bounded-static-elf-shell-getppid"),
+            ("policy", "bounded-static-elf-shell-empty-input"),
         ]
     } else {
         vec![
