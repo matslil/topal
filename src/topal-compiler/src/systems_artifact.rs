@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/180";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/169";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/181";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/170";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -996,9 +996,10 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x41, 0xba, 0x08, 0, 0, 0, // native signal-set size
         0xb8, 0x0d, 0, 0, 0, // rt_sigaction
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
-        0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0xc7, 0x44, 0x24, 0x08, 0, 0, 0, 0, 0x48, 0xc7,
-        0x44, 0x24, 0x10, 0, 0, 0, 0, 0x48, 0xc7, 0x44, 0x24, 0x18, 0, 0, 0, 0, 0x48, 0x81, 0xc4,
-        0x40, 0x02, 0x00, 0x00, // clear request and restore stack
+        0x31, 0xc0, 0x48, 0x89, 0x04, 0x24, 0x48, 0x89, 0x44, 0x24, 0x08, 0x48, 0x89, 0x44, 0x24,
+        0x10, 0x48, 0x89, 0x44, 0x24, 0x18, 0x48, 0x81, 0xc4, 0x40, 0x02, 0x00, 0x00, // clear
+        0xb8, 0x6e, 0, 0, 0, // getppid
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require no parent
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall

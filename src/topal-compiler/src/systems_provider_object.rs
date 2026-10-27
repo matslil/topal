@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/162";
+    "topal.provider-object.x86_64-qemu-pc-q35/163";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9418,6 +9418,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-shell-getpid");
     code.bytes(&[0x3d, 0x0d, 0, 0, 0]);
     code.jump_if(0x84, "static-process-shell-sigchld");
+    code.bytes(&[0x3d, 0x6e, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-shell-getppid");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
@@ -9426,7 +9428,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-echo-terminal-phase");
     code.bytes(&[0x3c, 1]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 18]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 19]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25]);
     code.bytes(&168_u32.to_le_bytes());
@@ -9939,6 +9941,58 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&272_u32.to_le_bytes());
     code.bytes(&[0, 0, 0, 0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 9]);
+    code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-getppid")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 18]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25]);
+    code.bytes(&24_u32.to_le_bytes());
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x8b, 0x82, 0x18, 0x20, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[
+        0x4d, 0x8d, 0x82, 0, 0x40, 0, 0, 0x49, 0x83, 0xc8, 7, 0x4c, 0x39, 0xc0,
+    ]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25]);
+    code.bytes(&168_u32.to_le_bytes());
+    code.bytes(&[0x49, 0x81, 0xf8]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x49, 0x81, 0xf8]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+    code.bytes(&176_u32.to_le_bytes());
+    code.bytes(&0x0400_0000_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x1c, 0x25]);
+    code.bytes(&224_u32.to_le_bytes());
+    code.bytes(&[0x49, 0x81, 0xfb]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x49, 0x81, 0xfb]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0xffff_fffe_7fff_ffff_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&232_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 19]);
     code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
@@ -10670,7 +10724,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x41, 0x80, 0x7a, 0x68, 11]);
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 18]);
+    code.bytes(&[0x41, 0x80, 0x7a, 0x68, 19]);
     code.jump_if(0x87, "fatal");
     for offset in (168_u32..=272).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
@@ -13983,6 +14037,13 @@ assert bytes(output) == block[32:]
                     .any(|window| window == [0x48, 0xc7, 0x44, 0x24, 0x08, 0, 0, 0, 4]),
             "clean process fixture must install the exact child disposition"
         );
+        assert!(
+            process_fixture.windows(12).any(|window| window
+                == [
+                    0xb8, 0x6e, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe
+                ]),
+            "clean process fixture must require the sealed no-parent result"
+        );
         assert_eq!(
             process_enter
                 .windows(3)
@@ -14182,6 +14243,15 @@ assert bytes(output) == block[32:]
         );
         assert!(
             process_enter
+                .windows(5)
+                .any(|window| window == [0x3d, 110, 0, 0, 0])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 19]),
+            "the static dispatcher must return no parent and advance its phase"
+        );
+        assert!(
+            process_enter
                 .windows(3)
                 .any(|window| window == [0x48, 0x85, 0xff]),
             "credential setters must require the sealed zero identity argument"
@@ -14220,7 +14290,7 @@ assert bytes(output) == block[32:]
         assert!(
             process_enter
                 .windows(9)
-                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 18])
+                .any(|window| window == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 19])
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0x48, 0x39, 0x04, 0x25, 0xe8, 0, 0, 0]),
