@@ -3951,6 +3951,47 @@ descriptor allocation, successful metadata publication, mutable filesystem,
 another process or thread, BusyBox redistribution, command output, shell, or a
 prompt.
 
+### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001 — Static-process credential normalization tail
+
+The bounded static-process entry MAY replace startup
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss`
+with
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail`
+and select policy `bounded-static-elf-initial-credential-tail`. After the exact
+configuration-absence witness, the process MAY query its sealed real group,
+select that same sealed group identity, and select that same sealed user
+identity, in that order.
+
+For each operation, the provider SHALL require the exact preceding phase, sealed
+executable continuation, active checked address-space hierarchy, exact retained
+initial-stack leaf, and complete coherent `AT_UID`, `AT_EUID`, `AT_GID`, and
+`AT_EGID` fact group. The group and user selections SHALL require an argument
+equal to the corresponding real and effective sealed identities. It SHALL
+return zero for the approved PID-one root profile, retain no argument, pointer,
+mutable identity, or identity cache, leave the credential group unchanged, and
+advance only its private startup phase. Failure SHALL preserve the prior phase
+and every process resource.
+
+The initial x86-64 qualification SHALL bind the sequence to syscall 104
+(`getgid`), syscall 106 (`setgid`), and syscall 105 (`setuid`). The clean-room
+process SHALL supply zero to both setters, require zero after each call, and
+continue. Its terminal result SHALL require the same-user phase. The pinned
+external resident-header
+variant MAY retain the earlier terminal phases already permitted for its
+qualified `true` applet; if it enters the credential-tail sequence, its three
+operations and terminal phase SHALL obey the same exact ordering.
+
+Exactly one `TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK`
+observation SHALL follow the configuration-stat-profile observation and precede
+process exit. Together with the selected qualification input, it SHALL certify
+either the clean-room credential-tail witness or the allowed external early-
+terminal profile. Another query, credential fact, phase, result, order,
+duplicate, nonmatching setter argument, credential change, retained argument or
+state, source-visible native detail, or recoverable process-entry failure SHALL
+be invalid. This rule SHALL NOT add arbitrary credential setters,
+supplementary groups, user namespaces, capabilities, multiple processes or
+threads, BusyBox redistribution, application output, shell, or a prompt.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

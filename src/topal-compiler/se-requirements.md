@@ -1402,6 +1402,28 @@ absence result, nonmutation, nonretention, header-bound terminal choice,
 rollback, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001` and `TK-DEC-196`.
 
+The bounded static-ELF initial-credential-tail increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail`
+and policy `bounded-static-elf-initial-credential-tail`. After the configuration
+miss, the clean-room x86-64 payload shall issue native syscalls 104, 106, and
+105 in order, supply zero to the latter two, require zero after each, and
+continue. Lowering shall require the
+exact preceding phase, sealed executable continuation, active checked
+hierarchy, exact retained stack leaf, and complete zero-valued
+`AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` group for every operation. It shall ignore
+the `getgid` argument registers, require both setter arguments to equal the
+sealed zero identities, retain no argument or mutable identity state, leave the
+credential group unchanged, and advance only the exact private startup phase.
+Clean-room terminal handling shall require the same-user phase; the pinned
+external `true` profile shall preserve its previously admitted header-bound
+early terminal path. Negative, structural, full-workspace, clean-QEMU, and
+external-QEMU evidence shall enforce exact dispatch, ordering, credential
+coherence, same-value setter requests, zero results, nonretention, rollback,
+and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001`,
+`TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-197`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
