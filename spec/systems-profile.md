@@ -4123,6 +4123,36 @@ execution, restart execution, old-action publication, arbitrary dispositions,
 multiple processes or threads, child creation, wait, shell execution,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001 — Static-process shell parent observation
+
+The bounded static-process entry MAY extend its selected shell startup profile
+with one observation of the sealed absence of a parent after
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001`. The provider SHALL require the
+live process, sealed executable continuation, active checked address-space
+hierarchy, exact retained initial-stack leaf, live child disposition, and exact
+predecessor phase. It SHALL return zero, retain no argument, pointer, lookup
+result, identity cache, process table, or mutable task state, and advance only
+its private startup phase. Failure SHALL preserve the predecessor phase,
+disposition, and every process resource.
+
+For qualified x86-64 realization, the provider SHALL bind the operation to
+native syscall 110 (`getppid`). The clean-room fixture SHALL issue the call
+after installing its child disposition, require result zero, and continue. The
+pinned external `echo` profile MAY terminate at the newline phase. A future
+pinned external shell profile MAY bind the same transition after disposition
+installation. Only the exact predecessor SHALL be valid.
+
+The existing process-exit observation SHALL follow the successful result and
+validate the unchanged disposition lifecycle. Together with the selected
+qualification input, structural and physical evidence SHALL certify either the
+clean fixture's zero-parent witness or the external echo terminal boundary.
+Another selector, identity, phase, continuation, order, duplicate, disposition
+mutation, retained state, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add process lookup,
+a parent process, PID allocation, namespaces, a task table, child creation,
+wait, signal delivery, multiple processes or threads, shell execution,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
