@@ -14590,11 +14590,12 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001,
         // TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001,
         // TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14602,7 +14603,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-shell-console-fstat",
+                "policy is bounded-static-elf-shell-dev-tty-open-miss",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(

@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/167";
+    "topal.provider-object.x86_64-qemu-pc-q35/168";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9534,6 +9534,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-shell-sealed-echo-command-read");
     code.bytes(&[0x83, 0xf8, 0x05]);
     code.jump_if(0x84, "static-process-shell-console-fstat");
+    code.bytes(&[0x3d, 0x01, 0x01, 0, 0]);
+    code.jump_if(0x84, "static-process-shell-dev-tty-open-miss");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "static-process-shell-uname");
     code.bytes(&[0x83, 0xf8, 0x4f]);
@@ -9590,9 +9592,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&[1]);
+    code.bytes(&0x0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
@@ -10398,9 +10400,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&[1]);
+    code.bytes(&0x0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
@@ -10514,6 +10516,44 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[1]);
     code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-dev-tty-open-miss")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&1_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x004a_6912_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"/dev/tty").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x7e, 8, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&617_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-applet-newline-write")?;
@@ -14746,6 +14786,33 @@ assert bytes(output) == block[32:]
                 .windows(9)
                 .any(|window| { window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0x02, 0, 0, 1] }),
             "static shell console fstat must publish its private observation"
+        );
+        assert_eq!(
+            &process_fixture_image[0x0a_6912..0x0a_691b],
+            b"/dev/tty\0",
+            "clean process fixture must retain the exact immutable /dev/tty candidate"
+        );
+        assert!(
+            shell_continuation.windows(31).any(|window| window
+                == [
+                    0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x12, 0x69, 0x4a, 0, 0xba, 2, 0, 0, 0,
+                    0x45, 0x31, 0xd2, 0xb8, 1, 1, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xfe, 0x75,
+                    0xfe,
+                ]),
+            "clean process fixture must issue exact /dev/tty openat and require ENOENT"
+        );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x12, 0x69, 0x4a, 0])
+                && process_enter
+                    .windows(10)
+                    .any(|window| window
+                        == [0x48, 0xb8, b'/', b'd', b'e', b'v', b'/', b't', b't', b'y'])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x69, 0x02, 0, 0, 1]),
+            "static shell /dev/tty open miss must validate and publish the exact observation"
         );
         assert!(
             shell_continuation.windows(12).any(
