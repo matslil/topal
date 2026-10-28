@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_751D] = bytes.fromhex(
+    image[0xA_7000 : 0xA_7626] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -566,6 +566,15 @@ def static_user_fixture() -> bytes:
         "bf9cffffffbe20694a004889e24531d2b8060100000f054883f8fe75fe"
         "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
         "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
+        "48b80a0a42757379426f4889042448b8782076312e33372e488944240848b830"
+        "20284465626961488944241048b86e20313a312e3337488944241848b82e302d"
+        "362b623929488944242048b8206275696c742d69488944242848b86e20736865"
+        "6c6c20488944243048b828617368290a456e488944243848b874657220276865"
+        "6c488944244048b8702720666f722061488944244848b8206c697374206f6648"
+        "8944245048b8206275696c742d69488944245848b86e20636f6d6d616e488944"
+        "246048b864732e0a0a0000004889442468bf010000004889e6ba6d000000b801"
+        "0000000f054883f86d75fe31c0b90e0000004889e7fcf348ab31c0b90e000000"
+        "4889e7fcf348af75fe"
         "31ffbe608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
@@ -816,7 +825,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/191",
+        "schema": "topal-kernel-toolchain-gate-qemu/192",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -895,6 +904,11 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-root-mailpath-enoent-witness"
             ),
+            "static_shell_banner_profile": (
+                "external-optional-shell-banner-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-109-byte-shell-banner-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -946,7 +960,7 @@ def verify(
         expected_newline_count = (
             1
             if static_user_input == "pinned-external-static-busybox"
-            else 3
+            else 8
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
