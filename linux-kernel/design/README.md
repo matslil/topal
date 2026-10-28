@@ -200,6 +200,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static BusyBox shell exit-command profile](bounded-static-elf-shell-exit-command.md)
 - [Bounded static BusyBox shell echo-command profile](bounded-static-elf-shell-echo-command.md)
 - [Bounded static-process shell console `fstat`](bounded-static-elf-shell-console-fstat.md)
+- [Bounded static-process shell `/dev/tty` open miss](bounded-static-elf-shell-dev-tty-open-miss.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
