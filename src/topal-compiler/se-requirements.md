@@ -1861,6 +1861,28 @@ ownership transitions, prompt and output ordering, erasure, and unchanged
 external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` and `TK-DEC-223`.
 
+The bounded static-process shell-root-directory-condition increment shall
+replace the third command with exact
+`test -d / && echo root-directory\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall complete the qualified exact-root metadata
+request and consume its complete native value before issuing one x86-64
+syscall-1 standard-output request for a complete checked readable 15-byte
+candidate containing exact `root-directory\n`. The provider shall require the
+exact predecessor and metadata-observation state, stage and compare the entire
+candidate before output, publish only those bytes, return 15, erase staging,
+retain no user pointer or bytes, and publish one private conditional-output
+fact. The later profile-specific `pwd` sequence shall require that fact.
+Terminal handling shall require and erase the fifth publication, consume its
+owner, clear the directory generation, metadata and conditional-output
+observations, and all command-time facts, and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+predecessor state, complete metadata consumption, application-selected output,
+candidate extent and value, result, observation and ownership transitions,
+prompt and output ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001` and `TK-DEC-224`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

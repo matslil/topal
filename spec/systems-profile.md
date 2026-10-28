@@ -5049,6 +5049,51 @@ rollback. This rule SHALL NOT add arbitrary pathnames, relative lookup,
 traversal, directory enumeration, file contents, mutation, dynamic
 applications, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001 — Static-process root-directory condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` by replacing its
+third command publication with exact
+`test -d / && echo root-directory\n`. The five publications SHALL therefore
+be exact `echo topal\n`, `cd /\n`,
+`test -d / && echo root-directory\n`, `pwd\n`, and `exit\n`, with the same
+affine replacement, sealed-tail, pointer-retention, input-owner, prompt, and
+external prompt-absence obligations.
+
+Both applications SHALL issue and consume the complete exact-root metadata
+request and immutable root-directory value required by the predecessor rule.
+Only after deciding from that value that root is a directory, the application
+SHALL issue one standard-output write containing exact
+`root-directory\n`. The provider SHALL validate the live process, sealed
+continuation, active checked hierarchy, retained executable pathname and
+two-page stack, live dispositions, exact profile predecessor, current input
+owner, root-directory observation, output selector, and complete checked
+readable 15-byte candidate before publication. It SHALL stage and
+compare the complete candidate before output, publish exactly those 15 bytes,
+return 15, erase all staging, retain no user pointer or output byte, and
+publish one private conditional-output fact. A write on a failed or absent
+metadata observation, wrong, partial, unreadable, wrapping, cross-hole,
+duplicate, skipped, out-of-order, or non-exact candidate SHALL be invalid.
+
+The following `pwd\n` SHALL require the conditional-output fact and otherwise
+conform to the predecessor rule. Successful terminal handling SHALL require
+the fifth command publication live, erase and prove the complete command
+buffer empty, consume its owner, and clear the directory generation, metadata
+observation, conditional-output observation, and every command-time fact with
+unchanged affine rollback.
+
+For qualified x86-64 realization, the selected output SHALL bind to syscall 1
+on descriptor one with count and result 15. Input results SHALL be 11, 5, 33,
+4, and 5. The metadata request and complete 144-byte native value SHALL remain
+exactly as qualified by the predecessor rule. The stack SHALL remain the
+affine two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural
+and physical evidence SHALL certify profile distinction, complete metadata
+consumption, application-selected conditional output, exact output transfer,
+state and owner transitions, prompt ordering, later `pwd`, terminal erasure,
+and rollback. This rule SHALL NOT add failed conditions, arbitrary
+expressions, output, or pathnames, directory enumeration, file contents,
+mutation, dynamic applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
