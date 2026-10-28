@@ -217,6 +217,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell `pwd` command](bounded-static-elf-shell-pwd-command.md)
 - [Bounded static-process shell root `cd`](bounded-static-elf-shell-cd-root-command.md)
 - [Bounded static-process shell root-directory test](bounded-static-elf-shell-root-directory-test.md)
+- [Bounded static-process shell root-directory condition](bounded-static-elf-shell-root-directory-condition.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
