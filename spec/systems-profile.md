@@ -4950,6 +4950,55 @@ add directory enumeration, pathname lookup, mutable directories, arbitrary
 commands, a general loop, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001 — Static-process root `cd`
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` with exactly four ordered
+command publications through one checked process buffer: `echo topal\n`,
+`cd /\n`, `pwd\n`, and `exit\n`. Each later publication SHALL replace a
+consumed prior publication, zero and validate its sealed tail, retain no user
+pointer, and advance one exclusive private input-owner state. The clean profile
+SHALL publish a prompt conforming to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` before every command. The pinned
+external profile SHALL require those optional prompt observations absent.
+
+After `cd /\n`, the application SHALL issue one current-directory change. The
+provider SHALL validate the live process, sealed continuation, active checked
+hierarchy, retained executable pathname and two-page stack, live dispositions,
+exact profile predecessor, current input owner, and a complete checked readable
+candidate before observing exact `/\0`. Success SHALL replace the prior sealed
+current-directory fact with one new sealed-root generation and return zero
+without retaining a user pointer or pathname bytes. A wrong, incomplete,
+unreadable, unterminated, non-root, duplicate, skipped, or out-of-order request
+SHALL be invalid.
+
+The following `pwd\n` SHALL require the new sealed-root generation. The clean
+profile SHALL issue the qualified current-directory query; the pinned external
+profile SHALL complete its qualified stdout-metadata and terminal-absence
+sequence before using that new fact. Both profiles SHALL publish exact
+application-owned `/\n` under the output contract of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. Successful terminal handling
+SHALL require the fourth command publication live, erase and prove the complete
+command buffer empty, consume its owner, and clear every command-time and
+current-directory-generation fact with unchanged affine rollback.
+
+For qualified x86-64 realization, the directory change SHALL bind to syscall
+80, one exact two-byte `/\0` candidate wholly inside a checked readable process
+mapping, and result zero. Input results SHALL be 11, 5, 4, and 5. The clean
+`pwd` output candidate SHALL retain the binding of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. The pinned external `pwd`
+output SHALL instead require its complete two-byte candidate to lie inside the
+checked readable heap mapping `[0x005f_7000, 0x0061_9000)`, contain exact
+`/\n`, and have count and result two; this extension supersedes only that
+rule's single external output-candidate address. The stack SHALL remain the
+affine two-base-page RW/NX extent at
+`[0x007f_e000, 0x0080_0000)`. Structural and physical evidence SHALL certify
+profile distinction, dispatch, candidate validation, exact value, state
+replacement, input ownership, prompt ordering, later `pwd`, terminal erasure,
+and rollback. This rule SHALL NOT add arbitrary pathnames, directory traversal,
+file lookup, mutable filesystem objects, stack growth, dynamic applications,
+processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

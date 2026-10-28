@@ -1817,6 +1817,28 @@ results, ownership, prompt and output ordering, erasure, and unchanged external
 compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` and `TK-DEC-221`.
 
+The bounded static-process shell-root-`cd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`
+publications with results 11, 5, 4, and 5 and five distinct affine input-owner
+states. After the `cd /` publication, both profiles shall admit one native
+x86-64 syscall-80 current-directory change through a complete checked readable
+two-byte candidate containing exact `/\0`; success shall return zero and
+replace the prior private current-directory fact with a new sealed-root
+generation without retaining a pointer or bytes. The later profile-specific
+`pwd` sequence shall require that generation and preserve the exact clean
+`getcwd`, external stdout `fstat`/`TCGETS`, application-owned `/\n`, and prompt
+distinction of `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. Its clean
+output candidate shall remain exact; its pinned external output candidate may
+move within the checked readable heap mapping `[0x005f7000, 0x00619000)`, but
+shall retain a complete overflow-free two-byte extent, exact `/\n`, and count
+and result two. Terminal handling shall require and erase the fourth
+publication, consume its owner, clear all command-time and directory-generation
+facts, and preserve complete rollback of the affine two-page stack. Structural
+and QEMU evidence shall enforce exact predecessor state, requests, candidate
+extent and value, result, state replacement, ownership, prompt and output
+ordering, erasure, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` and `TK-DEC-222`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
