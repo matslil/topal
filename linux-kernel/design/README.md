@@ -211,6 +211,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell profile open](bounded-static-elf-shell-profile-open.md)
 - [Bounded static-process shell profile `fstat`](bounded-static-elf-shell-profile-fstat.md)
 - [Bounded static-process shell profile EOF read](bounded-static-elf-shell-profile-read.md)
+- [Bounded static-process shell profile close](bounded-static-elf-shell-profile-close.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
