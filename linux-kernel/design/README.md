@@ -203,6 +203,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell `/dev/tty` open miss](bounded-static-elf-shell-dev-tty-open-miss.md)
 - [Bounded static-process shell standard-terminal probes](bounded-static-elf-shell-standard-terminal-probes.md)
 - [Bounded static-process shell terminal warning](bounded-static-elf-shell-terminal-warning.md)
+- [Bounded static-process shell `MAILPATH` metadata miss](bounded-static-elf-shell-mailpath-stat-miss.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
