@@ -858,6 +858,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static-process shell `pwd`](step-4-bounded-static-elf-shell-pwd-command.md)
 - [Step 4 bounded static-process shell root `cd`](step-4-bounded-static-elf-shell-cd-root-command.md)
 - [Step 4 bounded static-process root-directory test](step-4-bounded-static-elf-shell-root-directory-test.md)
+- [Step 4 bounded static-process root-directory condition](step-4-bounded-static-elf-shell-root-directory-condition.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
