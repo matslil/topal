@@ -4484,6 +4484,49 @@ SHALL be invalid. This rule SHALL NOT add generic pathname lookup, mailbox
 contents, filesystems, banner or prompt output, mutable input, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001 — Static-process interactive banner
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` with exactly one
+standard-output write after the mailbox-absence fact and before later profile
+lookup, prompt output, or sealed command input. The user process SHALL supply
+the complete 109-byte sequence
+`\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n`
+in one operation. The operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, every completed prior interactive observation, descriptor
+one, exact length, and one complete checked readable candidate.
+
+The provider SHALL copy and validate all 109 bytes in private staging before
+any output, publish only the copied bytes to the existing console-output
+transport, return 109, erase and prove erasure of the complete staging extent,
+retain no pointer or payload, and leave process phase, dispositions, descriptor
+state, and other resources unchanged. One private fact SHALL publish only after
+complete output and SHALL reject a duplicate, skipped-predecessor, reordered,
+partial, or substituted banner. Later startup work, sealed input, and terminal
+rollback SHALL require the fact. Terminal handling SHALL clear it with all
+predecessor observations before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 1,
+descriptor 1, length and result 109, a checked initial-stack candidate, a fixed
+112-byte provider-private staging extent whose unused tail remains zero, and
+the established polled serial adapter. The clean fixture SHALL stage, issue,
+validate, erase, and prove erasure of the complete banner. The pinned external
+echo-command profile SHALL omit this optional observation and output and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+payload, length, phase, candidate extent, complete private staging before
+output, exact transport bytes and result, staging erasure, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+payload, length, order, duplicate, skipped predecessor, candidate extent,
+partial or provider-substituted output, retained pointer or payload, source-
+visible native detail, or recoverable process-entry failure SHALL be invalid.
+This rule SHALL NOT add general output formatting, banner variants, profile
+lookup, prompt output, mutable input, filesystems, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

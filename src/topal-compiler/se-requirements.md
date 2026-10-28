@@ -1621,6 +1621,23 @@ effect, result, nonallocation, lifecycle, profile distinction, and unchanged
 rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` and `TK-DEC-210`.
 
+The bounded static-process shell-banner increment shall accept exactly one
+native x86-64 syscall-1 request after the clean mailbox-absence fact and before
+later profile lookup, prompt output, or sealed input. It shall require
+descriptor one, the exact 109-byte BusyBox version and help banner, one complete
+checked readable initial-stack candidate, live dispositions and hierarchy,
+unchanged input-predecessor phase, and all prior observations. It shall copy
+and validate all bytes in a fixed 112-byte private extent before the existing
+serial adapter publishes them, return 109, erase and prove erasure of the whole
+extent, and retain no pointer or payload. One private fact shall publish only
+after complete output, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, length, candidate extent, staging-before-
+output, exact result and output, staging erasure, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` and `TK-DEC-211`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
