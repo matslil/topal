@@ -214,6 +214,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell profile close](bounded-static-elf-shell-profile-close.md)
 - [Bounded static-process shell prompt](bounded-static-elf-shell-prompt.md)
 - [Bounded static-process shell refill input](bounded-static-elf-shell-refill-input.md)
+- [Bounded static-process shell `pwd` command](bounded-static-elf-shell-pwd-command.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
