@@ -4288,6 +4288,45 @@ stream, arbitrary command or output authority, external program execution,
 pathname lookup, filesystem, process creation, job control, pipeline,
 container, or virtualization support.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001 — Static-process shell console metadata
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` with one ordered standard-
+output metadata observation after shell signal setup and before sealed command
+input. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained initial stack,
+live child and ignored-quit dispositions, exact input-predecessor phase,
+descriptor one, and one exact complete writable stack candidate. It SHALL be
+observed at most once and SHALL NOT advance that startup phase.
+
+The result SHALL be the immutable console value defined by
+`TOPAL-SYSTEMS-USER-FSTAT-001`. The provider SHALL construct the complete
+native value in private staging, validate the complete destination before user
+mutation, publish the complete value, clear and verify every staging byte,
+retain no user pointer or metadata copy, and return zero. The later sealed-
+input transition and terminal handling SHALL require the header-profile-
+specific observation state. Terminal handling SHALL clear that state before
+complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to native syscall 5
+with descriptor one and the clean fixture's exact continuation-stack
+candidate. It SHALL publish the complete 144-byte x86-64 `struct stat` with
+`st_dev=0`, `st_ino=1`, `st_nlink=1`, `st_mode=0x2180`, root UID/GID, zero
+padding, `st_rdev=0x4400`, zero size, `st_blksize=4096`, and zero blocks,
+timestamps, and unused fields. The clean fixture SHALL validate every byte
+before its existing sealed echo-command read. The pinned external echo-command
+profile SHALL omit the observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, arguments,
+phase, candidate, mapping, metadata, complete staging-before-publication,
+complete copy, staging erasure, observation lifecycle, profile distinction,
+and unchanged affine rollback. Another descriptor, candidate, metadata value,
+selector, order, duplicate, partial result, retained pointer or staging byte,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add arbitrary descriptor metadata, path lookup,
+`newfstatat`, a filesystem, terminal attributes, `/dev/tty`, an interactive
+banner or prompt, mutable input, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

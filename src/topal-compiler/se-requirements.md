@@ -1543,6 +1543,21 @@ ordering, complete copies, ownership, staging, publication, phase, terminal
 erasure, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` and `TK-DEC-205`.
 
+The bounded static-process shell console-fstat increment shall accept native
+x86-64 syscall 5 once for descriptor one and the exact checked clean-fixture
+stack candidate after signal setup and before sealed command input. It shall
+construct the complete approved 144-byte immutable console metadata in private
+process staging, validate the complete destination before mutation, copy every
+byte, clear and verify all staging, return zero, retain no user pointer, and
+record one private observation without advancing the input-predecessor phase.
+The later read and terminal paths shall require and clear the exact header-
+profile-specific observation state; the external echo-command profile shall
+require that it remains absent. The clean fixture shall validate every output
+byte before its existing command sequence. Structural and QEMU evidence shall
+enforce dispatch, arguments, phase, mapping, metadata, staging, publication,
+erasure, profile distinction, lifecycle, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` and `TK-DEC-206`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
