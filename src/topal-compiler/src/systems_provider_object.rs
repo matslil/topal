@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/170";
+    "topal.provider-object.x86_64-qemu-pc-q35/171";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9565,7 +9565,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x3d, 0x66, 0, 0, 0]);
     code.jump_if(0x84, "static-process-initial-getuid");
     code.bytes(&[0x3d, 0x06, 0x01, 0, 0]);
-    code.jump_if(0x84, "static-process-initial-config-stat-miss");
+    code.jump_if(0x84, "static-process-newfstatat");
     for number in [104_u8, 106, 105] {
         code.bytes(&[0x3d, number, 0, 0, 0]);
         code.jump_if(0x84, "static-process-initial-credential-tail");
@@ -9592,9 +9592,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
-    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&0x0303_0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
@@ -10451,9 +10452,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
-    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&0x0303_0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
@@ -11219,6 +11221,67 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 11]);
     code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-newfstatat")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 11]);
+    code.jump_if(0x84, "static-process-initial-config-stat-miss");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x84, "static-process-shell-mailpath-stat-miss");
+    code.jump("fatal");
+
+    code.bind("static-process-shell-mailpath-stat-miss")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&0x0303_0101_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x004a_6920_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"/var/spo").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"ol/mail/").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x46, 8]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0x7e, 16]);
+    code.bytes(&u32::from_le_bytes(*b"root").to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x7e, 20, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&620_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&620_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-initial-config-stat-miss")?;
@@ -15141,6 +15204,52 @@ assert bytes(output) == block[32:]
                 .windows(8)
                 .any(|window| window == [0x65, 0xfe, 0x04, 0x25, 0x6b, 0x02, 0, 0]),
             "static shell warning must publish its ordered private count"
+        );
+        assert_eq!(
+            &process_fixture_image[0x0a_6920..0x0a_6935],
+            b"/var/spool/mail/root\0",
+            "clean process fixture must retain the exact immutable MAILPATH candidate"
+        );
+        assert!(
+            shell_continuation.windows(31).any(|window| window
+                == [
+                    0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x20, 0x69, 0x4a, 0, 0x48, 0x89, 0xe2,
+                    0x45, 0x31, 0xd2, 0xb8, 0x06, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xfe,
+                    0x75, 0xfe, 0x48, 0xb8,
+                ])
+                && shell_continuation
+                    .windows(12)
+                    .filter(|window| {
+                        *window == [0xb9, 18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xaf]
+                    })
+                    .count()
+                    == 2,
+            "clean process fixture must issue exact MAILPATH newfstatat and prove its complete candidate"
+        );
+        assert!(
+            process_enter
+                .windows(7)
+                .any(|window| window == [0x48, 0x81, 0xfe, 0x20, 0x69, 0x4a, 0])
+                && process_enter
+                    .windows(10)
+                    .any(|window| window
+                        == [0x48, 0xb8, b'/', b'v', b'a', b'r', b'/', b's', b'p', b'o'])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x6c, 0x02, 0, 0, 1]),
+            "static shell MAILPATH miss must validate and publish the exact observation"
+        );
+        let complete_mailpath_observation = [
+            0x48, 0xb8, 0x01, 0x01, 0x03, 0x03, 0x01, 0, 0, 0, 0x65, 0x48, 0x39, 0x04, 0x25, 0x68,
+            0x02, 0, 0,
+        ];
+        assert_eq!(
+            process_enter
+                .windows(complete_mailpath_observation.len())
+                .filter(|window| *window == complete_mailpath_observation)
+                .count(),
+            2,
+            "sealed input and terminal rollback must require the complete MAILPATH observation"
         );
         assert!(
             shell_continuation.windows(12).any(
