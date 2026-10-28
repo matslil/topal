@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/172";
+    "topal.provider-object.x86_64-qemu-pc-q35/173";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9593,7 +9593,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0001_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -10253,6 +10253,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&416_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-post-banner-tcgets-miss");
     code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[0x48, 0x3d]);
@@ -10293,6 +10298,31 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0xfe, 0x04, 0x25]);
     code.bytes(&618_u32.to_le_bytes());
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-post-banner-tcgets-miss")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&622_u32.to_le_bytes());
+    code.bytes(&[1]);
     code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
     emit_static_process_sysret(&mut code);
 
@@ -10453,7 +10483,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0001_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -15399,7 +15429,35 @@ assert bytes(output) == block[32:]
                 .filter(|window| *window == complete_banner_observation)
                 .count(),
             2,
-            "sealed input and terminal rollback must require the complete banner observation"
+            "post-banner probe dispatch and handling must require the complete banner observation"
+        );
+        assert!(
+            shell_continuation.windows(43).any(|window| window
+                == [
+                    0xc6, 0x04, 0x24, 0x6d, 0x31, 0xff, 0xbe, 0x01, 0x54, 0, 0, 0x48, 0x89, 0xe2,
+                    0xb8, 0x10, 0, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xe7, 0x75, 0xfe, 0x80,
+                    0x3c, 0x24, 0x6d, 0x75, 0xfe, 0xc6, 0x04, 0x24, 0, 0x80, 0x3c, 0x24, 0, 0x75,
+                    0xfe,
+                ]),
+            "clean process fixture must issue and erase the exact post-banner stdin TCGETS miss"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x6e, 0x02, 0, 0, 1]),
+            "post-banner terminal probe must publish its private completion fact"
+        );
+        let complete_post_banner_probe_observation = [
+            0x48, 0xb8, 0x01, 0x01, 0x03, 0x03, 0x01, 0x01, 0x01, 0, 0x65, 0x48, 0x39, 0x04, 0x25,
+            0x68, 0x02, 0, 0,
+        ];
+        assert_eq!(
+            process_enter
+                .windows(complete_post_banner_probe_observation.len())
+                .filter(|window| *window == complete_post_banner_probe_observation)
+                .count(),
+            2,
+            "sealed input and terminal rollback must require the complete post-banner probe observation"
         );
         assert!(
             shell_continuation.windows(12).any(
