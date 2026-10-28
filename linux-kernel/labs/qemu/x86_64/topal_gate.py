@@ -615,9 +615,12 @@ def static_user_fixture() -> bytes:
         "66c7042560945f000000"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f054883f80a75fe"
+        "31ffbe608f5f00baff03000031c00f054883f82175fe"
         "48b874657374202d642048390425608f5f0075fe"
-        "48b82f0a00000000000048390425688f5f0075fe"
+        "48b82f2026262065636848390425688f5f0075fe"
+        "48b86f20726f6f742d6448390425708f5f0075fe"
+        "48b869726563746f727948390425788f5f0075fe"
+        "48b80a0000000000000048390425808f5f0075fe"
         "66c7042560945f002f00"
         "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
         "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
@@ -629,6 +632,10 @@ def static_user_fixture() -> bytes:
         "4883bc24800000000075fe4883bc24880000000075fe"
         "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
         "66c7042560945f000000"
+        "48b8726f6f742d64697248890424"
+        "48b86563746f72790a004889442408"
+        "bf010000004889e6ba0f000000b8010000000f054883f80f75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
         "31ffbe608f5f00baff03000031c00f054883f80475fe"
@@ -1109,9 +1116,9 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            2
+            3
             if static_user_input == "pinned-external-static-busybox"
-            else 9
+            else 10
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
