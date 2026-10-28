@@ -847,6 +847,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static-process shell `MAILPATH` metadata miss](step-4-bounded-static-elf-shell-mailpath-stat-miss.md)
 - [Step 4 bounded static-process shell banner](step-4-bounded-static-elf-shell-banner.md)
 - [Step 4 bounded static-process post-banner terminal probe](step-4-bounded-static-elf-shell-post-banner-terminal-probe.md)
+- [Step 4 bounded static-process post-banner current directory](step-4-bounded-static-elf-shell-post-banner-getcwd.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

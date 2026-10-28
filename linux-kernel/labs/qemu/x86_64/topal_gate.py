@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7651] = bytes.fromhex(
+    image[0xA_7000 : 0xA_7693] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -577,6 +577,8 @@ def static_user_fixture() -> bytes:
         "4889e7fcf348af75fe"
         "c604246d31ffbe015400004889e2b8100000000f054883f8e775fe803c246d75fe"
         "c6042400803c240075fe"
+        "66c7042560945f00a5a5bf60945f00be00100000b84f0000000f054883f80275fe"
+        "66813c2560945f002f0075fe66c7042560945f00000066833c2560945f000075fe"
         "31ffbe608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
@@ -827,7 +829,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/193",
+        "schema": "topal-kernel-toolchain-gate-qemu/194",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -915,6 +917,11 @@ def evidence_record(
                 "external-optional-post-banner-terminal-probe-absent"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-post-banner-stdin-enotty-witness"
+            ),
+            "static_shell_post_banner_getcwd_profile": (
+                "external-optional-post-banner-getcwd-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-post-banner-sealed-root-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
