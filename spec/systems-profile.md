@@ -4637,6 +4637,46 @@ failure SHALL be invalid. This rule SHALL NOT add credential mutation,
 namespaces, profile lookup, prompt output, mutable input, filesystems,
 processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001 — Static-process system-profile open
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001` with exactly one read-
+only open of the sealed system-profile file after the effective-identity fact
+and before profile metadata, input, close, prompt, or sealed-command work. The
+operation SHALL require the live process, sealed executable continuation,
+active checked address-space hierarchy, retained executable pathname, live
+child and ignored-quit dispositions, exact input-predecessor phase, every
+completed prior interactive observation, the unused next descriptor slot, and
+one immutable empty profile-file object owned by the launch profile.
+
+The provider SHALL validate the complete pathname before allocation, allocate
+exactly the lowest free descriptor, bind it to a process-owned read-only
+description for the immutable object, return the exact descriptor number, and
+retain neither the user pathname pointer nor lookup scratch. One private
+lifecycle fact SHALL publish only after complete validation and allocation and
+SHALL reject a duplicate, skipped-predecessor, reordered, differently flagged,
+or substituted-path operation. Later profile work and terminal rollback SHALL
+require the fact. Process teardown MAY revoke the still-open bounded
+description; a later explicit close SHALL consume it first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 257,
+`AT_FDCWD=-100`, immutable candidate `0x4a6938` containing exactly
+`"/etc/profile\0"`, flags `O_RDONLY=0`, mode zero, and result three. The
+pathname SHALL lie in the checked sealed executable role. The clean fixture
+SHALL issue the exact request and validate its result. The pinned external
+echo-command profile SHALL omit this optional observation and preserve its
+existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+directory base, complete pathname, flags, mode, free-slot check, immutable
+object identity, description allocation, result, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another path, access mode,
+descriptor, object, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add other paths, directories, creation, mutation,
+profile metadata or input, explicit close, prompt output, mutable input,
+general filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
