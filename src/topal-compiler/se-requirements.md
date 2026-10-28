@@ -1839,6 +1839,28 @@ extent and value, result, state replacement, ownership, prompt and output
 ordering, erasure, and unchanged external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` and `TK-DEC-222`.
 
+The bounded static-process shell-root-directory-test increment shall extend the
+checked command buffer to exact `echo topal\n`, `cd /\n`, `test -d /\n`,
+`pwd\n`, and `exit\n` publications with results 11, 5, 10, 4, and 5 and six
+distinct affine input-owner states. After the sealed-root generation has been
+replaced, both profiles shall admit one native x86-64 syscall-262 request with
+`AT_FDCWD`, flags zero, a complete checked readable two-byte pathname
+containing exact `/\0`, and a complete checked writable 144-byte native
+metadata candidate. Success shall publish a complete provider-sealed immutable
+root-directory value with mode `040755`, root ownership, no device-special
+identity, 4096-byte preferred I/O block, and coherent remaining fields; return
+zero; retain no user pointer or bytes; and publish one private observation
+fact. The application shall consume that value only for silent successful
+`test -d /`, and the later profile-specific `pwd` sequence shall require the
+fact. Terminal handling shall require and erase the fifth publication, consume
+its owner, clear the directory generation, metadata observation, and all
+command-time facts, and preserve complete rollback of the affine two-page
+stack. Structural and QEMU evidence shall enforce exact predecessor state,
+dispatch, complete transfers, pathname and metadata, result, observation and
+ownership transitions, prompt and output ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` and `TK-DEC-223`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

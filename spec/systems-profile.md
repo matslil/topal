@@ -4999,6 +4999,56 @@ and rollback. This rule SHALL NOT add arbitrary pathnames, directory traversal,
 file lookup, mutable filesystem objects, stack growth, dynamic applications,
 processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001 — Static-process root-directory test
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` with exactly five ordered
+command publications through one checked process buffer: `echo topal\n`,
+`cd /\n`, `test -d /\n`, `pwd\n`, and `exit\n`. Each later publication SHALL
+replace a consumed prior publication, zero and validate its sealed tail, retain
+no user pointer, and advance one exclusive private input-owner state. The clean
+profile SHALL publish a prompt conforming to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` before every command. The pinned
+external profile SHALL require those optional prompt observations absent.
+
+After the root-directory generation has been replaced, the application SHALL
+issue one metadata request for exact root. The provider SHALL validate the live
+process, sealed continuation, active checked hierarchy, retained executable
+pathname and two-page stack, live dispositions, exact profile predecessor,
+current input owner, lookup selector and flags, a complete checked readable
+pathname containing exact `/\0`, and a complete checked writable metadata
+candidate before publication. It SHALL publish one complete native value for
+the sealed immutable root-directory object and return zero without retaining a
+pathname, destination, or native bytes. The value SHALL identify a directory
+owned by the sealed root credentials with mode `040755`; every other native
+field SHALL be coherent with that object and the qualified provider profile. A
+wrong, incomplete, unreadable, unterminated, non-root, duplicate, skipped, or
+out-of-order request or an incomplete, nonwritable, wrapping, or cross-hole
+output SHALL be invalid.
+
+The application SHALL use the value only to decide that root is a directory,
+and `test -d /\n` SHALL produce no output. The following `pwd\n` SHALL require
+the root-directory observation fact and otherwise conform to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001`. Successful terminal
+handling SHALL require the fifth command publication live, erase and prove the
+complete command buffer empty, consume its owner, and clear the directory
+generation, metadata observation, and every command-time fact with unchanged
+affine rollback.
+
+For qualified x86-64 realization, the metadata request SHALL bind to syscall
+262, `AT_FDCWD=-100`, flags zero, exact `/\0`, one complete checked writable
+144-byte native `stat` candidate, and result zero. The published value SHALL
+have mode `040755`, UID and GID zero, no device-special identity, a 4096-byte
+preferred I/O block, and provider-sealed coherent remaining fields. Input
+results SHALL be 11, 5, 10, 4, and 5. The stack SHALL remain the affine
+two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural and
+physical evidence SHALL certify profile distinction, dispatch, complete
+transfers, exact pathname and metadata, silent command behavior, state and
+owner transitions, prompt ordering, later `pwd`, terminal erasure, and
+rollback. This rule SHALL NOT add arbitrary pathnames, relative lookup,
+traversal, directory enumeration, file contents, mutation, dynamic
+applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
