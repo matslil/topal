@@ -428,9 +428,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command,
+                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-shell-echo-command
+                                                                                policy is bounded-static-elf-shell-console-fstat
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"

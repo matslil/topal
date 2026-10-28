@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/166";
+    "topal.provider-object.x86_64-qemu-pc-q35/167";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9345,7 +9345,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0]);
         code.jump_if(0x85, "fail");
     }
-    for offset in (280_u32..=464).step_by(8) {
+    for offset in (280_u32..=616).step_by(8) {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0]);
@@ -9532,6 +9532,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x84, "static-process-shell-sealed-echo-command-read");
+    code.bytes(&[0x83, 0xf8, 0x05]);
+    code.jump_if(0x84, "static-process-shell-console-fstat");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "static-process-shell-uname");
     code.bytes(&[0x83, 0xf8, 0x4f]);
@@ -9579,8 +9581,25 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&416_u32.to_le_bytes());
     code.bytes(&[0x3c, 1]);
-    code.jump_if(0x84, "static-process-shell-terminal-header-ready");
+    code.jump_if(0x84, "static-process-shell-terminal-clean-fstat");
     code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-shell-terminal-header-ready");
+    code.bind("static-process-shell-terminal-clean-fstat")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-terminal-header-ready")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 28]);
@@ -10367,6 +10386,23 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[0x3c, 1]);
+    code.jump_if(0x84, "static-process-shell-read-clean-fstat");
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-shell-read-fstat-ready");
+    code.bind("static-process-shell-read-clean-fstat")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"echo top").to_le_bytes());
@@ -10393,6 +10429,91 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[2]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 27]);
     code.bytes(&[0xb8, 16, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-console-fstat")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xff, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+
+    // Build the complete native value in provider-private staging before the
+    // exact checked user candidate is changed.
+    for offset in (472_u32..616).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    for (offset, value) in [
+        (480_u32, 1_u32),
+        (488, 1),
+        (496, 0x2180),
+        (512, 0x4400),
+        (528, 4096),
+    ] {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&value.to_le_bytes());
+    }
+    for (index, staging_offset) in (472_u32..616).step_by(8).enumerate() {
+        let user_offset = u32::try_from(index * 8).expect("bounded native stat offset");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+        code.bytes(&staging_offset.to_le_bytes());
+        if user_offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else if user_offset <= 0x7f {
+            code.bytes(&[0x48, 0x89, 0x46, user_offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x86]);
+            code.bytes(&user_offset.to_le_bytes());
+        }
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    for (index, staging_offset) in (472_u32..616).step_by(8).enumerate() {
+        let user_offset = u32::try_from(index * 8).expect("bounded native stat offset");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+        code.bytes(&staging_offset.to_le_bytes());
+        if user_offset == 0 {
+            code.bytes(&[0x48, 0x39, 0x06]);
+        } else if user_offset <= 0x7f {
+            code.bytes(&[0x48, 0x39, 0x46, user_offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x39, 0x86]);
+            code.bytes(&user_offset.to_le_bytes());
+        }
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in (472_u32..616).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-applet-newline-write")?;
@@ -11233,6 +11354,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0]);
         code.jump_if(0x85, "fatal");
     }
+    for offset in (472_u32..=616).step_by(8) {
+        code.bytes(&[0x49, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x41, 0x80, 0xba]);
     code.bytes(&416_u32.to_le_bytes());
     code.bytes(&[1]);
@@ -11374,7 +11501,7 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0x48, 0x83, 0x7f, offset, 0]);
         code.jump_if(0x85, "fail");
     }
-    for offset in (112_u32..=464).step_by(8) {
+    for offset in (112_u32..=616).step_by(8) {
         if offset < 128 {
             code.bytes(&[0x48, 0x83, 0x7f, u8::try_from(offset).unwrap(), 0]);
         } else {
@@ -11384,7 +11511,7 @@ fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
         }
         code.jump_if(0x85, "fail");
     }
-    code.bytes(&[0x31, 0xc0, 0xb9, 59, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0x31, 0xc0, 0xb9, 78, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab]);
     code.bytes(&[0xb8, 1, 0, 0, 0, 0xc3]);
     code.bind("fail")?;
     code.bytes(&[0x31, 0xc0, 0xc3]);
@@ -14418,7 +14545,7 @@ assert bytes(output) == block[32:]
         );
         let process_fixture_image = qualified_x86_64_static_user_image_fixture();
         let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
-        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7300];
+        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7400];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -14574,6 +14701,52 @@ assert bytes(output) == block[32:]
                 "clean process fixture must query every exact default disposition"
             );
         }
+        assert!(
+            shell_continuation.windows(14).any(
+                |window| window == [0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xb8, 5, 0, 0, 0, 0x0f]
+            ) && shell_continuation
+                .windows(10)
+                .any(|window| window == [0x48, 0x81, 0x7c, 0x24, 24, 0x80, 0x21, 0, 0, 0x75])
+                && shell_continuation
+                    .windows(10)
+                    .any(|window| window == [0x48, 0x81, 0x7c, 0x24, 40, 0, 0x44, 0, 0, 0x75])
+                && shell_continuation
+                    .windows(10)
+                    .any(|window| window == [0x48, 0x81, 0x7c, 0x24, 56, 0, 0x10, 0, 0, 0x75]),
+            "clean process fixture must validate the complete bounded console stat"
+        );
+        for offset in (472_u32..616).step_by(8) {
+            assert!(
+                process_enter.windows(10).any(|window| {
+                    window[..5] == [0x65, 0x48, 0x83, 0x3c, 0x25]
+                        && window[5..9] == offset.to_le_bytes()
+                        && window[9] == 0
+                }),
+                "static shell console fstat must inspect every private staging qword"
+            );
+        }
+        for (offset, value) in [
+            (480_u32, 1_u32),
+            (488, 1),
+            (496, 0x2180),
+            (512, 0x4400),
+            (528, 4096),
+        ] {
+            assert!(
+                process_enter.windows(13).any(|window| {
+                    window[..5] == [0x65, 0x48, 0xc7, 0x04, 0x25]
+                        && window[5..9] == offset.to_le_bytes()
+                        && window[9..13] == value.to_le_bytes()
+                }),
+                "static shell console fstat must stage each nonzero native field"
+            );
+        }
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| { window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0x02, 0, 0, 1] }),
+            "static shell console fstat must publish its private observation"
+        );
         assert!(
             shell_continuation.windows(12).any(
                 |window| window == [0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 3, 0, 0]
@@ -15214,7 +15387,7 @@ assert bytes(output) == block[32:]
             process_restore
                 .windows(12)
                 .any(|window| window
-                    == [0x31, 0xc0, 0xb9, 59, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
+                    == [0x31, 0xc0, 0xb9, 78, 0, 0, 0, 0xfc, 0xf3, 0x48, 0xab, 0xb8]),
             "qualification restoration must clear the complete private context"
         );
 
