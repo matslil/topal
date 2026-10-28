@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_794F] = bytes.fromhex(
+    image[0xA_7000 : 0xA_79D9] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -605,6 +605,14 @@ def static_user_fixture() -> bytes:
         "48b8616c0a000000000048390425688f5f0075fe"
         "48b8746f70616c0a000048890424bf010000004889e6ba06000000b801000000"
         "0f054883f80675fe48c704240000000048833c240075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80575fe"
+        "48b86364202f0a00000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "66c7042560945f002f00"
+        "bf60945f00b8500000000f054885c075fe"
+        "66c7042560945f000000"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
         "31ffbe608f5f00baff03000031c00f054883f80475fe"
@@ -991,9 +999,14 @@ def evidence_record(
                 else "clean-exact-root-prompt-witness"
             ),
             "static_shell_refill_input_profile": (
-                "external-three-publication-command-refill-witness"
+                "external-four-publication-command-refill-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-three-publication-command-refill-witness"
+                else "clean-four-publication-command-refill-witness"
+            ),
+            "static_shell_cd_root_profile": (
+                "external-busybox-exact-root-chdir-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-chdir-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
