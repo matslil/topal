@@ -1605,6 +1605,22 @@ staging-before-output, exact result and output, staging erasure, lifecycle,
 profile distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` and `TK-DEC-209`.
 
+The bounded static-process mailbox-metadata increment shall accept exactly one
+native x86-64 syscall-262 request after clean warning count three and before
+banner output or sealed input. It shall require `AT_FDCWD`, immutable
+`/var/spool/mail/root`, flags zero, one complete checked writable 144-byte
+native-stat candidate in the retained initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, and all prior observations. It
+shall return `-ENOENT` without changing the candidate, allocating a descriptor,
+or retaining a pointer or path. One private fact shall publish only after
+complete validation, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, pathname, candidate extent, no-output
+effect, result, nonallocation, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` and `TK-DEC-210`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

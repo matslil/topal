@@ -4444,6 +4444,46 @@ NOT add general standard-error output, formatting, terminal attributes, startup
 lookup, banner or prompt output, mutable input, processes, filesystems,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001 — Static-process mailbox metadata absence
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` with exactly one metadata
+lookup after warning count three and before banner output or sealed command
+input. The user process SHALL supply the immutable absolute pathname
+`/var/spool/mail/root`, the current-working-directory selector, flags zero, and
+one complete checked writable native metadata candidate in the retained initial
+stack. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained initial stack,
+live child and ignored-quit dispositions, exact input-predecessor phase, and
+every completed prior interactive observation.
+
+The provider SHALL validate the complete argument and candidate extents, return
+exact absence, leave every candidate byte unchanged, allocate no descriptor,
+retain no pathname or candidate, and leave process phase, dispositions,
+descriptor state, and other resources unchanged. One private fact SHALL publish
+only after complete validation and SHALL reject a duplicate, skipped-
+predecessor, reordered, substituted-path, differently flagged, or differently
+sized operation. Later startup work, sealed input, and terminal rollback SHALL
+require the fact. Terminal handling SHALL clear it with all predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 262,
+`AT_FDCWD=-100`, pathname address `0x004a6920`, a checked 144-byte native
+`stat` candidate, flags zero, result `-ENOENT`, and the next private observation
+byte. The clean fixture SHALL prefill, issue, validate, erase, and prove erasure
+of the complete candidate. The pinned external echo-command profile SHALL omit
+this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, pathname,
+selector, flags, phase, candidate extent, no-output effect, result,
+nonallocation, observation lifecycle, profile distinction, and unchanged
+affine rollback. Another pathname, selector, flags value, order, duplicate,
+skipped predecessor, candidate extent, output mutation, result, retained
+pointer, source-visible native detail, or recoverable process-entry failure
+SHALL be invalid. This rule SHALL NOT add generic pathname lookup, mailbox
+contents, filesystems, banner or prompt output, mutable input, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
