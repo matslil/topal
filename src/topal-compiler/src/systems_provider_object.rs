@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/174";
+    "topal.provider-object.x86_64-qemu-pc-q35/175";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9568,6 +9568,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-initial-process-name");
     code.bytes(&[0x3d, 0x66, 0, 0, 0]);
     code.jump_if(0x84, "static-process-initial-getuid");
+    code.bytes(&[0x3d, 0x6b, 0, 0, 0]);
+    code.jump_if(0x84, "static-process-shell-post-banner-geteuid");
     code.bytes(&[0x3d, 0x06, 0x01, 0, 0]);
     code.jump_if(0x84, "static-process-newfstatat");
     for number in [104_u8, 106, 105] {
@@ -9594,6 +9596,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
@@ -9601,11 +9607,22 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[0, 0, 0, 0]);
     code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-terminal-header-ready")?;
@@ -10524,12 +10541,20 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
@@ -11390,6 +11415,47 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.jump_if(0x85, "fatal");
     }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 11]);
+    code.bytes(&[0x31, 0xc0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-post-banner-geteuid")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0xba]);
+    code.bytes(&0x007f_f000_u32.to_le_bytes());
+    for (offset, value) in [
+        (0x0f18_u32, 11_u8),
+        (0x0f20, 0),
+        (0x0f28, 12),
+        (0x0f30, 0),
+        (0x0f38, 13),
+        (0x0f40, 0),
+        (0x0f48, 14),
+        (0x0f50, 0),
+    ] {
+        code.bytes(&[0x48, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[value]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
     code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
@@ -15532,8 +15598,32 @@ assert bytes(output) == block[32:]
                 .windows(complete_post_banner_getcwd_observation.len())
                 .filter(|window| *window == complete_post_banner_getcwd_observation)
                 .count(),
-            2,
-            "sealed input and terminal rollback must require the complete post-banner getcwd observation"
+            3,
+            "effective identity, sealed input, and rollback must require the complete post-banner getcwd observation"
+        );
+        assert!(
+            shell_continuation.windows(12).any(|window| window
+                == [
+                    0xb8, 0x6b, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe
+                ])
+                && process_enter
+                    .windows(5)
+                    .any(|window| window == [0x3d, 0x6b, 0, 0, 0]),
+            "clean fixture and dispatcher must issue the exact post-banner geteuid"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe0, 0x02, 0, 0, 1])
+                && process_enter
+                    .windows(9)
+                    .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe0, 0x02, 0, 0, 1] })
+                    .count()
+                    == 2
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe0, 0x02, 0, 0, 0]),
+            "post-banner effective identity must publish, gate successors, and clear its private fact"
         );
         assert!(
             shell_continuation.windows(12).any(
