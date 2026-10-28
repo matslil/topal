@@ -4841,6 +4841,58 @@ source-visible native detail, or recoverable process-entry failure SHALL be
 invalid. This rule SHALL NOT add cursor queries, prompt editing, refillable
 input, arbitrary output, filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001 — Static-process input refill
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` with exactly two ordered command
+publications through one checked process buffer. The first publication SHALL
+contain exact `echo topal\n`. For the clean profile it SHALL follow the initial
+prompt, and after its exact output one second root-prompt operation conforming
+to the prompt copy, validation, publication, result, staging-erasure, and
+pointer-lifetime obligations SHALL occur. One second input publication SHALL
+then replace the consumed first command with exact `exit\n`. The pinned
+external echo-command profile SHALL request the same second publication after
+its output with the optional clean prompt observations absent.
+
+Each publication SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained executable
+pathname and stack, live child and ignored-quit dispositions, exact predecessor
+state, complete prior interactive observations, complete checked process
+buffer and bound, and exclusive input ownership. The provider SHALL publish
+only the exact prefix, zero the unused sealed tail, read back the complete
+published state, retain no user pointer, and advance one private input-owner
+state. The second prompt SHALL publish one distinct private completion fact. A
+duplicate, omitted, reordered, wrong-buffer, wrong-bound, stale-owner, partial,
+combined, appended, or different command SHALL fail closed.
+
+The clean fixture SHALL validate the first command unchanged before its
+replacement. The external application MAY mutate process-owned input after
+publication; its refill SHALL therefore rely on the affine consumed-owner
+state and SHALL overwrite and validate the complete second prefix and zero
+tail without treating prior user bytes as provider-owned state.
+
+Successful terminal handling SHALL require the second publication live,
+validate exact `exit\n` plus zero tail, erase and prove the complete command
+buffer empty and consume the input owner. The clean profile SHALL additionally
+clear the second-prompt fact with all predecessor observations; the external
+profile SHALL require every optional clean observation, including that fact,
+absent. For qualified x86-64 realization, both input
+operations SHALL bind to syscall 0, descriptor zero, the same checked anonymous
+buffer, requested count 1023, and results 11 then 5. The intervening prompt
+SHALL bind to syscall 1, descriptor two, count and result four, and exact `/ # `
+bytes for the clean profile. The pinned external echo-command profile SHALL
+omit only the optional prompt and preserve its existing output and teardown.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+buffer identity and extent, bound, command prefixes and zero tails, ownership
+transitions, intervening prompt, exact results, terminal validation and
+erasure, profile distinction, and unchanged affine rollback. Another buffer,
+bound, value, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add arbitrary input, partial reads, blocking or
+wakeup policy, a general command loop, dynamic applications, filesystems,
+processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

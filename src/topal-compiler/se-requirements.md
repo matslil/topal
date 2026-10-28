@@ -1769,6 +1769,27 @@ value, staging, output, result, erasure, lifecycle, profile distinction, and
 unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` and `TK-DEC-219`.
 
+The bounded static-process shell-refill increment shall replace the one
+combined clean command publication with two exact native x86-64 syscall-0
+requests through the same checked anonymous buffer. After the initial prompt,
+the first shall publish `echo topal\n` with zero sealed tail and return 11.
+After exact `topal\n` output, one exact syscall-1 standard-error `/ # ` prompt
+shall satisfy the existing complete checked-copy and staging-erasure contract
+and publish a distinct fact. The second read shall replace the consumed first
+command with `exit\n`, zero the sealed tail, and return 5. Both reads shall use
+descriptor zero, requested count 1023, complete buffer and hierarchy checks,
+live dispositions, exact predecessor state, and exclusive input-owner
+transitions without retaining pointers. Clean terminal handling shall require
+and validate the second publication, erase and prove the complete buffer,
+consume its owner, and clear the second-prompt fact. The external echo profile
+shall require the same second refill and terminal consumption while requiring
+the optional clean prompt fact and all other clean observations absent.
+Structural and QEMU evidence shall enforce dispatch, buffer and bound, exact
+prefixes and zero tails, ownership, clean prompt ordering, results, terminal
+erasure, profile distinction, and unchanged
+rollback. This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` and
+`TK-DEC-220`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
