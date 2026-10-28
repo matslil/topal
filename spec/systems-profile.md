@@ -4564,6 +4564,43 @@ attributes, successful terminal operations, arbitrary `ioctl`, later startup
 queries, profile lookup, prompt output, mutable input, filesystems, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001 — Static-process post-banner current directory
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` with exactly one
+current-directory query after the post-banner terminal fact and before later
+identity, profile, prompt, or sealed-input work. The operation SHALL require
+the live process, sealed executable continuation, active checked address-space
+hierarchy, retained anonymous heap, live child and ignored-quit dispositions,
+exact input-predecessor phase, and every completed prior interactive
+observation.
+
+The provider SHALL publish exactly the sealed root pathname and terminator into
+one complete checked writable candidate, return the exact published length,
+retain no pointer, and leave process phase and other resources unchanged. One
+private fact SHALL publish only after complete validation and publication and
+SHALL reject a duplicate, skipped-predecessor, reordered, differently
+addressed, or differently sized operation. Later startup work, sealed input,
+and terminal rollback SHALL require the fact and terminal handling SHALL clear
+it with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 79,
+candidate `0x5f9460`, count 4096, publication `"/\0"`, result two, and the final
+private byte of the interactive-observation qword. The candidate SHALL lie in
+the retained checked anonymous heap. The clean fixture SHALL prefill the exact
+two-byte output, issue the request, validate the result and exact publication,
+erase it, and prove erasure. The pinned external echo-command profile SHALL
+omit this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, candidate,
+count, phase, checked heap backing, complete output, result, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another candidate, count,
+directory, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add directory mutation or traversal, host path
+inheritance, identity queries, profile lookup, prompt output, mutable input,
+filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -1653,6 +1653,21 @@ extent, no-output effect, result, lifecycle, profile distinction, and unchanged
 rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` and `TK-DEC-212`.
 
+The bounded static-process post-banner-current-directory increment shall
+accept exactly one native x86-64 syscall-79 request after the clean post-banner
+terminal fact and before later startup work or sealed input. It shall require
+candidate `0x5f9460`, count 4096, complete checked anonymous-heap backing, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall publish exactly `"/\0"`, return two, retain no pointer,
+and leave process phase unchanged. One private fact shall publish only after
+complete validation and publication, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, checked heap,
+complete output, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` and `TK-DEC-213`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
