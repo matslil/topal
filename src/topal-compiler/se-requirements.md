@@ -1912,6 +1912,37 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` and
 `TK-DEC-225`.
 
+The bounded static-process shell-root-glob-enumeration increment shall replace
+the third command with exact `echo /*\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall open exact `/\0` relative to `AT_FDCWD` with
+read-only, nonblocking, close-on-exec, directory-only flags as lowest-free
+descriptor three. The provider shall retain one immutable sealed-root
+description with private position and no host-derived state.
+
+Both applications shall issue x86-64 syscall 217 on descriptor three through a
+complete checked writable clean-stack or external-heap candidate and request
+the qualified profile count. The provider shall stage and publish exact
+coherent 24-byte `.` and `..` directory records, return 48, erase staging, and
+advance the private position. A second exact request shall return EOF without
+output. The applications shall explicitly close descriptor three; the
+provider shall consume the description and free the slot while preserving
+private enumeration history.
+
+After consuming EOF and close, both applications shall retain the unmatched
+glob and issue one syscall-1 standard-output request for complete exact `/*\n`.
+The provider shall validate and stage the entire three-byte candidate before
+output, return three, erase staging, retain no user pointer or bytes, and
+publish one private glob-output fact. The later profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every enumeration,
+description, output, and command-time fact and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+open flags and pathname, checked candidates, native records, position, EOF,
+explicit close, application-selected output, observation and ownership
+transitions, prompt ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` and `TK-DEC-226`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

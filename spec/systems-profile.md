@@ -5152,6 +5152,83 @@ relative paths, traversal, successful non-root objects, directory enumeration,
 file contents, mutation, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001 — Static-process root-glob enumeration
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` by replacing
+its third command publication with exact `echo /*\n`. The five publications
+SHALL therefore be exact `echo topal\n`, `cd /\n`, `echo /*\n`, `pwd\n`, and
+`exit\n`, with the same affine replacement, sealed-tail, pointer-retention,
+input-owner, prompt, and external prompt-absence obligations.
+
+After consuming the third command, either application MAY repeat the qualified
+exact-root metadata request. It SHALL then issue one directory-only open for
+exact `/\0`, relative to its current namespace, read-only, nonblocking, and
+close-on-exec. The provider SHALL validate the live process, sealed
+continuation, checked hierarchy and stack, dispositions, exact predecessor,
+input owner, complete pathname, selectors, flags, and absence of any live
+nonstandard description before allocating lowest-free descriptor three. The
+description SHALL bind the immutable sealed root, position zero, directory
+read authority, and close-on-exec state. No host object or entry SHALL
+participate.
+
+Before enumeration, the application SHALL issue native descriptor metadata on
+descriptor three with one complete checked writable 144-byte stack candidate.
+The provider SHALL validate the live description and candidate, construct a
+complete deterministic sealed-root directory value in fixed private staging,
+copy and verify the complete value, return zero, erase staging, and retain no
+candidate pointer or byte. No host metadata SHALL participate. A missing,
+duplicate, post-enumeration, partial, unreadable, wrapping, or cross-hole
+request SHALL be invalid.
+
+The application SHALL issue one directory-entry read on descriptor three with
+a complete checked writable candidate and one profile-qualified maximum count.
+The provider SHALL validate the description and candidate, construct in fixed
+private staging exactly two coherent native directory records for `.` and `..`,
+bind both identities to the sealed root, mark both as directories, zero all
+record padding, copy exactly the complete record extent, advance the private
+position, return the extent, erase staging, and retain no candidate pointer or
+byte. A second request on the same description and candidate SHALL return zero,
+publish no byte, preserve the advanced position, and record end-of-directory.
+Partial, undersized, unreadable, wrapping, cross-hole, wrong-description,
+duplicate, skipped, out-of-order, or post-close requests SHALL be invalid.
+
+The application SHALL explicitly close descriptor three after EOF. Close SHALL
+consume the description, free the descriptor slot, preserve only private
+enumeration history, and return zero. Because no enumerated child matches `*`,
+the application SHALL retain its literal glob and issue one standard-output
+write containing exact `/*\n`. The provider SHALL require EOF and explicit
+close, validate and stage the complete readable three-byte candidate before
+publication, publish exactly those bytes, return three, erase staging, retain
+no user pointer or output byte, and record one private glob-output fact.
+
+The following `pwd\n` SHALL require the glob-output fact and otherwise conform
+to the predecessor rule. Successful terminal handling SHALL require the fifth
+publication live, erase the command buffer, consume its owner, and clear the
+directory generation, enumeration, EOF, closed-description, glob-output, and
+every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, open SHALL bind to syscall 257,
+`AT_FDCWD=-100`, exact `/\0`, flags `0x90800`, mode zero, and result three.
+Descriptor metadata SHALL bind to syscall 5 on descriptor three, one complete
+144-byte stack candidate, and result zero. Its 18 qwords SHALL be device zero,
+inode three, link count two, mode/UID `0x41ed`, GID/padding zero, device zero,
+size zero, block size 4,096, blocks zero, zero timestamps, and zero reserved
+words.
+Enumeration SHALL bind to syscall 217 on descriptor three, permit count 512
+for the clean stack candidate or 32,768 for the external heap candidate, return
+48 then zero, and publish two exact 24-byte `linux_dirent64` records with
+`DT_DIR`, names `.\0` and `..\0`, and zero padding. Close SHALL bind to syscall
+3 with result zero. Selected output SHALL bind to syscall 1 on descriptor one
+with count and result three. Input results SHALL be 11, 5, 8, 4, and 5. The
+stack SHALL remain the affine two-base-page RW/NX extent at
+`[0x007f_e000, 0x0080_0000)`. Structural and physical evidence SHALL certify
+profile distinction, exact open, records, position, EOF, explicit close,
+literal-glob selection, exact output, ownership transitions, prompt ordering,
+later `pwd`, terminal erasure, and rollback. This rule SHALL NOT add arbitrary
+paths or patterns, child objects, file contents, mutation, seeking, concurrent
+descriptions, dynamic applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
