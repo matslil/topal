@@ -4677,6 +4677,52 @@ invalid. This rule SHALL NOT add other paths, directories, creation, mutation,
 profile metadata or input, explicit close, prompt output, mutable input,
 general filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001 — Static-process system-profile metadata
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001` with exactly one metadata
+observation of the live system-profile description after its successful open
+and before profile input, close, prompt, or sealed-command work. The operation
+SHALL require the live process, sealed executable continuation, active checked
+address-space hierarchy, retained executable pathname, live child and ignored-
+quit dispositions, exact input-predecessor phase, every completed prior
+interactive observation, and the process-owned read-only description for the
+immutable empty launch-profile object.
+
+The provider SHALL derive the metadata from that retained object identity,
+construct the complete result in private staging, validate the complete
+destination before user mutation, publish the complete value, erase and verify
+all staging, retain no user pointer, and return zero. The portable value SHALL
+describe one stable launch-owned regular-file identity with link count one,
+root ownership, read-only permissions `0444`, zero length, no allocated blocks
+or timestamps, and preferred I/O size 4096. One private completion fact SHALL
+publish only after complete publication and staging erasure and SHALL reject a
+duplicate, skipped-predecessor, reordered, wrong-description, or substituted-
+destination operation. Later profile work and terminal rollback SHALL require
+the fact. Terminal handling SHALL clear the fact and MAY revoke the still-open
+bounded description; a later explicit close SHALL consume the description
+first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 5,
+descriptor three, and one exact complete writable 144-byte continuation-stack
+candidate. It SHALL publish native `struct stat` with `st_dev=0`, `st_ino=2`,
+`st_nlink=1`, `st_mode=0x8124`, UID/GID and padding zero, `st_rdev=0`,
+`st_size=0`, `st_blksize=4096`, blocks and all timestamp components zero, and
+three zero unused words. The clean fixture SHALL prefill the candidate, issue
+the request, validate the complete value, erase it, and prove erasure. The
+pinned external echo-command profile SHALL omit this optional observation and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity, destination extent, complete native publication, result,
+private staging erasure, fact lifecycle, profile distinction, and unchanged
+affine rollback. Another descriptor, object, layout, value, order, duplicate,
+skipped predecessor, partial copy, retained pointer, source-visible native
+detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
+NOT add profile input, explicit close, other files, arbitrary descriptor
+metadata, a prompt, mutable input, general filesystems, processes, containers,
+or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

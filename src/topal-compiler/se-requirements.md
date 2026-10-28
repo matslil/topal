@@ -1699,6 +1699,25 @@ dispatch, arguments, pathname, object identity, allocation, result, lifecycle,
 profile distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001` and `TK-DEC-215`.
 
+The bounded static-process shell-profile-metadata increment shall accept
+exactly one native x86-64 syscall-5 request after the clean profile-open fact
+and before profile input, close, or sealed input. It shall require descriptor
+three, the live process-owned read-only description for the immutable empty
+launch-owned profile, one exact complete writable 144-byte continuation-stack
+candidate, live dispositions and hierarchy, unchanged input-predecessor phase,
+and all prior observations. It shall construct the complete native regular-
+file metadata in private staging, validate before user mutation, publish it,
+erase and verify staging, return zero, retain no user pointer, and publish one
+private completion fact. The value shall have stable identity two, link count
+one, root ownership, mode `0100444`, zero size, blocks, timestamps, padding,
+and unused fields, and preferred I/O size 4096. Later clean profile work and
+terminal handling shall require the fact; teardown may revoke an unclosed
+description. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity, candidate extent, complete value, result, staging
+erasure, lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` and `TK-DEC-216`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
