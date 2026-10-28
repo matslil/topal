@@ -4527,6 +4527,43 @@ This rule SHALL NOT add general output formatting, banner variants, profile
 lookup, prompt output, mutable input, filesystems, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001 — Static-process post-banner terminal miss
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` with exactly one stdin terminal-
+attribute query after the banner fact and before later current-directory,
+identity, profile, prompt, or sealed-input work. The operation SHALL require
+the live process, sealed executable continuation, active checked address-space
+hierarchy, retained initial stack, live child and ignored-quit dispositions,
+exact input-predecessor phase, every completed prior interactive observation,
+standard input, the terminal-attribute request, and one complete checked
+writable candidate.
+
+The provider SHALL return exact non-terminal absence, leave every candidate
+byte and descriptor state unchanged, retain no pointer, and leave process phase
+and other resources unchanged. One private fact SHALL publish only after
+complete validation and SHALL reject a duplicate, skipped-predecessor,
+reordered, substituted-request, or differently addressed operation. Later
+startup work, sealed input, and terminal rollback SHALL require the fact and
+terminal handling SHALL clear it with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 16,
+descriptor zero, `TCGETS=0x5401`, a checked 36-byte initial-stack candidate,
+result `-ENOTTY`, and the next private observation byte. The clean fixture SHALL
+stage a sentinel, issue the request, validate the result and unchanged
+candidate, erase it, and prove erasure. The pinned external echo-command profile
+SHALL omit this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+request, phase, candidate extent, no-output effect, result, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+request, order, duplicate, skipped predecessor, candidate extent, output
+mutation, result, retained pointer, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add terminal
+attributes, successful terminal operations, arbitrary `ioctl`, later startup
+queries, profile lookup, prompt output, mutable input, filesystems, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

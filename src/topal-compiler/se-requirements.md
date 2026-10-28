@@ -1638,6 +1638,21 @@ output, exact result and output, staging erasure, lifecycle, profile
 distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` and `TK-DEC-211`.
 
+The bounded static-process post-banner-terminal increment shall accept exactly
+one native x86-64 syscall-16 request after the clean banner fact and before
+later startup work or sealed input. It shall require descriptor zero,
+`TCGETS`, one complete checked writable 36-byte initial-stack candidate, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall return `-ENOTTY` without reading or changing the
+candidate, descriptor state, or retaining a pointer. One private fact shall
+publish only after complete validation, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, candidate
+extent, no-output effect, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` and `TK-DEC-212`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
