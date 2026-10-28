@@ -4723,6 +4723,47 @@ NOT add profile input, explicit close, other files, arbitrary descriptor
 metadata, a prompt, mutable input, general filesystems, processes, containers,
 or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001 — Static-process system-profile EOF
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` with exactly one read from
+the live system-profile description after its metadata observation and before
+profile close, prompt, or sealed-command work. The operation SHALL require the
+live process, sealed executable continuation, active checked address-space
+hierarchy, retained executable pathname and stack, live child and ignored-quit
+dispositions, exact input-predecessor phase, every completed prior interactive
+observation, and the process-owned read-only description for the immutable
+empty launch-profile object.
+
+The provider SHALL validate the complete writable candidate and requested
+bound before observing the object. Because the sealed object length and current
+description position are both zero, it SHALL return zero without reading or
+changing any candidate byte, changing the description position, or retaining a
+user pointer. One private completion fact SHALL publish only after complete
+validation and SHALL reject a duplicate, skipped-predecessor, reordered, wrong-
+description, differently bounded, or substituted-candidate operation. Later
+profile close and terminal rollback SHALL require the fact. Terminal handling
+SHALL clear it and MAY revoke the still-open description; a later explicit
+close SHALL consume the description first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 0,
+descriptor three, the exact clean continuation-stack candidate, count 128, and
+result zero. The candidate SHALL lie completely in the checked retained stack
+leaf. The clean fixture SHALL prefill all 128 bytes, issue the request, prove
+the complete candidate unchanged, erase it, and prove erasure. The completion
+fact SHALL occupy one fresh private byte after the profile-metadata fact. The
+pinned external echo-command profile SHALL omit this optional observation and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity and position, candidate extent, bound, no-output effect,
+result, fact lifecycle, profile distinction, and unchanged affine rollback.
+Another descriptor, candidate, count, object, position, result, order,
+duplicate, skipped predecessor, retained pointer, source-visible native detail,
+or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+profile contents, explicit close, other files, general descriptor reads, a
+prompt, mutable input, filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

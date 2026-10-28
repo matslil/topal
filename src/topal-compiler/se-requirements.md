@@ -1718,6 +1718,24 @@ description identity, candidate extent, complete value, result, staging
 erasure, lifecycle, profile distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` and `TK-DEC-216`.
 
+The bounded static-process shell-profile-EOF increment shall accept exactly
+one native x86-64 syscall-0 request after the clean profile-metadata fact and
+before profile close or sealed input. It shall require descriptor three, the
+live process-owned read-only description for the immutable empty launch-owned
+profile at position zero, the exact complete writable 128-byte continuation-
+stack candidate, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall validate the complete candidate,
+return zero without reading or changing any candidate byte or description
+position, retain no user pointer, and publish one private completion fact.
+Later clean profile work and terminal handling shall require the fact; teardown
+may revoke an unclosed description. The clean fixture shall prove all 128 bytes
+unchanged and then erased. The external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, description identity and position, candidate extent, bound, no-
+output effect, result, lifecycle, profile distinction, and unchanged rollback.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` and
+`TK-DEC-217`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
