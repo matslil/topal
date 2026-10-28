@@ -197,6 +197,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell child disposition](bounded-static-elf-shell-sigchld-disposition.md)
 - [Bounded static-process shell `getppid`](bounded-static-elf-shell-getppid.md)
 - [Bounded static BusyBox shell empty-input profile](bounded-static-elf-shell-empty-input.md)
+- [Bounded static BusyBox shell exit-command profile](bounded-static-elf-shell-exit-command.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
