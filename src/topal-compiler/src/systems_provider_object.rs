@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/171";
+    "topal.provider-object.x86_64-qemu-pc-q35/172";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9593,7 +9593,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -10453,7 +10453,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0000_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -10611,7 +10611,14 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
 
     code.bind("static-process-applet-newline-write")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
-    code.jump_if(0x84, "static-process-shell-terminal-warning");
+    code.jump_if(0x85, "static-process-applet-write-after-interactive");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-banner");
+    code.jump("static-process-shell-terminal-warning");
+    code.bind("static-process-applet-write-after-interactive")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 27]);
     code.jump_if(0x84, "static-process-shell-echo-write");
     code.bytes(&[0x48, 0x83, 0xff, 1]);
@@ -10881,6 +10888,95 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xfe, 0x04, 0x25]);
     code.bytes(&619_u32.to_le_bytes());
     code.bytes(&[0xb8, 1, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-banner")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0001_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xff, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 109]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0040_1000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xf9]);
+    code.bytes(&0x0058_c285_u32.to_le_bytes());
+    code.jump_if(0x83, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+
+    const SHELL_BANNER: &[u8; 109] =
+        b"\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n";
+    let mut padded_shell_banner = [0_u8; 112];
+    padded_shell_banner[..SHELL_BANNER.len()].copy_from_slice(SHELL_BANNER);
+    for offset in (624_u32..736).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+
+    // Copy the complete user payload into provider-private staging before
+    // validating or publishing any byte.
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.bind("static-process-shell-banner-copy")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x16]);
+    code.bytes(&[0x65, 0x41, 0x88, 0x82]);
+    code.bytes(&624_u32.to_le_bytes());
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 109]);
+    code.jump_if(0x85, "static-process-shell-banner-copy");
+    for (index, chunk) in padded_shell_banner.chunks_exact(8).enumerate() {
+        let expected = u64::from_le_bytes(chunk.try_into().expect("eight-byte banner word"));
+        let offset = 624_u32 + u32::try_from(index * 8).expect("bounded banner offset");
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&expected.to_le_bytes());
+        code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
+
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.bind("static-process-shell-banner-output")?;
+    code.bind("static-process-shell-banner-uart-ready")?;
+    code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
+    code.jump_if(0x84, "static-process-shell-banner-uart-ready");
+    code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
+    code.bytes(&[0x65, 0x41, 0x8a, 0x82]);
+    code.bytes(&624_u32.to_le_bytes());
+    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 109]);
+    code.jump_if(0x85, "static-process-shell-banner-output");
+
+    code.bytes(&[0x31, 0xc0, 0x45, 0x31, 0xd2]);
+    code.bind("static-process-shell-banner-erase")?;
+    code.bytes(&[0x65, 0x41, 0x88, 0x82]);
+    code.bytes(&624_u32.to_le_bytes());
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 112]);
+    code.jump_if(0x85, "static-process-shell-banner-erase");
+    for offset in (624_u32..736).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&621_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0xb8, 109, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-echo-write")?;
@@ -14898,7 +14994,7 @@ assert bytes(output) == block[32:]
         );
         let process_fixture_image = qualified_x86_64_static_user_image_fixture();
         let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
-        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7600];
+        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7800];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -15249,7 +15345,61 @@ assert bytes(output) == block[32:]
                 .filter(|window| *window == complete_mailpath_observation)
                 .count(),
             2,
-            "sealed input and terminal rollback must require the complete MAILPATH observation"
+            "banner dispatch and handling must require the complete MAILPATH observation"
+        );
+        assert!(
+            shell_continuation.windows(26).any(|window| window
+                == [
+                    0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 109, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f,
+                    0x05, 0x48, 0x83, 0xf8, 109, 0x75, 0xfe,
+                ])
+                && shell_continuation.windows(10).any(|window| window
+                    == [0x48, 0xb8, b'\n', b'\n', b'B', b'u', b's', b'y', b'B', b'o'])
+                && shell_continuation.windows(15).any(|window| window
+                    == [
+                        0x48, 0xb8, b'd', b's', b'.', b'\n', b'\n', 0, 0, 0, 0x48, 0x89, 0x44,
+                        0x24, 0x68,
+                    ]),
+            "clean process fixture must stage and issue the exact 109-byte shell banner"
+        );
+        assert!(
+            process_enter.windows(20).any(|window| window
+                == [
+                    0x45, 0x31, 0xd2, 0x42, 0x8a, 0x04, 0x16, 0x65, 0x41, 0x88, 0x82, 0x70, 0x02,
+                    0, 0, 0x49, 0xff, 0xc2, 0x49, 0x83,
+                ])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x6d, 0x02, 0, 0, 1]),
+            "static shell banner must stage completely and publish its private completion fact"
+        );
+        const EXPECTED_SHELL_BANNER: &[u8; 109] =
+            b"\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n";
+        let mut padded_banner = [0_u8; 112];
+        padded_banner[..EXPECTED_SHELL_BANNER.len()].copy_from_slice(EXPECTED_SHELL_BANNER);
+        for (index, chunk) in padded_banner.chunks_exact(8).enumerate() {
+            let mut comparison = vec![0x48, 0xb8];
+            comparison.extend_from_slice(chunk);
+            comparison.extend_from_slice(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+            comparison.extend_from_slice(&(624_u32 + (index as u32 * 8)).to_le_bytes());
+            assert!(
+                process_enter
+                    .windows(comparison.len())
+                    .any(|window| window == comparison.as_slice()),
+                "static shell banner must validate every private staging word"
+            );
+        }
+        let complete_banner_observation = [
+            0x48, 0xb8, 0x01, 0x01, 0x03, 0x03, 0x01, 0x01, 0, 0, 0x65, 0x48, 0x39, 0x04, 0x25,
+            0x68, 0x02, 0, 0,
+        ];
+        assert_eq!(
+            process_enter
+                .windows(complete_banner_observation.len())
+                .filter(|window| *window == complete_banner_observation)
+                .count(),
+            2,
+            "sealed input and terminal rollback must require the complete banner observation"
         );
         assert!(
             shell_continuation.windows(12).any(
