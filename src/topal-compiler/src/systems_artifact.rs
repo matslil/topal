@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/197";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/186";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/198";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/187";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1191,6 +1191,11 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xfe, // erase and prove complete profile input candidate
         0xbf, 3, 0, 0, 0, 0xb8, 3, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
         0xfe, // explicitly close descriptor three and require zero
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, // exact standard-error prompt result
+        0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0, 0x75,
+        0xfe, // erase and prove prompt candidate
         0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
         0x48, 0x83, 0xf8, 16, 0x75, 0xfe, // complete sealed command
         0x48, 0xb8, 0x65, 0x63, 0x68, 0x6f, 0x20, 0x74, 0x6f, 0x70, 0x48, 0x39, 0x04, 0x25, 0x60,
