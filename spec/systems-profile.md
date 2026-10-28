@@ -4601,6 +4601,42 @@ invalid. This rule SHALL NOT add directory mutation or traversal, host path
 inheritance, identity queries, profile lookup, prompt output, mutable input,
 filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001 — Static-process post-banner effective identity
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` with exactly one
+effective-user query after the post-banner current-directory fact and before
+profile, prompt, or sealed-input work. The operation SHALL require the live
+process, sealed executable continuation, active checked address-space
+hierarchy, retained initial stack, live child and ignored-quit dispositions,
+exact input-predecessor phase, every completed prior interactive observation,
+and the complete coherent sealed real/effective user/group credential facts.
+
+The provider SHALL return the sealed effective-user identity, retain no
+argument or mutable credential state, and leave process phase and other
+resources unchanged. One private fact SHALL publish only after complete
+validation and SHALL reject a duplicate, skipped-predecessor, reordered, or
+substituted identity operation. Later startup work, sealed input, and terminal
+rollback SHALL require the fact and terminal handling SHALL clear it with all
+predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 107 and
+result zero after revalidating the retained initial-stack leaf and all eight
+tag/value words of the sealed credential group. The completion fact SHALL
+occupy one fresh private byte after the erased banner-staging extent. The clean
+fixture SHALL issue the query and validate its exact result. The pinned
+external echo-command profile SHALL omit this optional observation and preserve
+its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, phase,
+credential-group coherence, pointer-free result, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another selector, identity,
+result, order, duplicate, skipped predecessor, incomplete credential group,
+retained argument, source-visible native detail, or recoverable process-entry
+failure SHALL be invalid. This rule SHALL NOT add credential mutation,
+namespaces, profile lookup, prompt output, mutable input, filesystems,
+processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

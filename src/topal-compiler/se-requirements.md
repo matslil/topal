@@ -1668,6 +1668,21 @@ complete output, result, lifecycle, profile distinction, and unchanged
 rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` and `TK-DEC-213`.
 
+The bounded static-process post-banner-effective-identity increment shall
+accept exactly one native x86-64 syscall-107 request after the clean post-
+banner current-directory fact and before profile, prompt, or sealed input. It
+shall require the retained checked initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, all prior observations, and the
+complete eight-word sealed real/effective user/group credential set. It shall
+return zero, retain no argument or credential state, and leave process phase
+unchanged. One fresh private fact shall publish only after complete validation,
+and later clean input and terminal handling shall require it and clear it with
+all predecessor observations; the external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, phase, complete credential coherence, result, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001` and `TK-DEC-214`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
