@@ -208,6 +208,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell post-banner terminal probe](bounded-static-elf-shell-post-banner-terminal-probe.md)
 - [Bounded static-process shell post-banner current directory](bounded-static-elf-shell-post-banner-getcwd.md)
 - [Bounded static-process shell post-banner effective identity](bounded-static-elf-shell-post-banner-geteuid.md)
+- [Bounded static-process shell profile open](bounded-static-elf-shell-profile-open.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
