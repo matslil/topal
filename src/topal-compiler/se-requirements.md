@@ -1883,6 +1883,35 @@ prompt and output ordering, erasure, and unchanged external compatibility.
 This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001` and `TK-DEC-224`.
 
+The bounded static-process shell-missing-directory-condition increment shall
+replace the third command with exact
+`test -d /missing || echo missing\n`, preserving five publications, six affine
+input-owner states, the clean prompt profile, and external prompt absence. Both
+profiles shall issue one exact `AT_FDCWD` metadata request for `/missing\0`
+with flags zero and a complete checked writable 144-byte native candidate. The
+provider shall validate the exact predecessor, complete pathname, request
+selectors, candidate extent, and sealed-root absence before returning exact
+`-ENOENT`, leaving the entire candidate unchanged, retaining no user pointer or
+bytes, and publishing one private missing-path fact.
+
+After consuming that result, both applications shall select the false edge and
+issue one x86-64 syscall-1 standard-output request for a complete checked
+readable eight-byte candidate containing exact `missing\n`. The provider shall
+require the missing-path fact, stage and compare the entire candidate before
+output, publish only those bytes, return eight, erase staging, retain no user
+pointer or bytes, and publish one private failed-condition-output fact. The
+later profile-specific `pwd` sequence shall require that fact. Terminal
+handling shall require and erase the fifth publication, consume its owner,
+clear the directory generation, missing-path and failed-condition-output facts,
+and all command-time facts, and preserve complete rollback of the affine
+two-page stack. Structural and QEMU evidence shall enforce exact negative
+lookup, unchanged failed-call output memory, application-selected output,
+candidate extent and value, result, observation and ownership transitions,
+prompt and output ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` and
+`TK-DEC-225`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
