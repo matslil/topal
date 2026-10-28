@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7878] = bytes.fromhex(
+    image[0xA_7000 : 0xA_794F] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -605,6 +605,17 @@ def static_user_fixture() -> bytes:
         "48b8616c0a000000000048390425688f5f0075fe"
         "48b8746f70616c0a000048890424bf010000004889e6ba06000000b801000000"
         "0f054883f80675fe48c704240000000048833c240075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80475fe"
+        "48b87077640a0000000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "66c7042560945f00a5a5"
+        "bf60945f00be00100000b84f0000000f054883f80275fe"
+        "66813c2560945f002f0075fe"
+        "c6042561945f000a66813c2560945f002f0a75fe"
+        "bf01000000be60945f00ba02000000b8010000000f054883f80275fe"
+        "66c7042560945f00000066833c2560945f000075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
         "31ffbe608f5f00baff03000031c00f054883f80575fe"
@@ -980,9 +991,39 @@ def evidence_record(
                 else "clean-exact-root-prompt-witness"
             ),
             "static_shell_refill_input_profile": (
-                "external-two-publication-command-refill-witness"
+                "external-three-publication-command-refill-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-two-publication-command-refill-witness"
+                else "clean-three-publication-command-refill-witness"
+            ),
+            "static_shell_pwd_command_profile": (
+                "external-busybox-pwd-cached-root-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-output-witness"
+            ),
+            "static_shell_pwd_console_fstat_profile": (
+                "external-command-console-fstat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-console-fstat-absent"
+            ),
+            "static_shell_pwd_terminal_probe_profile": (
+                "external-command-stdout-enotty-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-stdout-terminal-probe-absent"
+            ),
+            "static_shell_pwd_getcwd_profile": (
+                "external-cached-sealed-root-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-witness"
+            ),
+            "static_shell_pwd_output_profile": (
+                "external-exact-application-root-line-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-application-root-line-witness"
+            ),
+            "static_shell_stack_profile": (
+                "external-affine-two-page-rw-nx-stack-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-affine-two-page-rw-nx-stack-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
@@ -1033,9 +1074,9 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            1
+            2
             if static_user_input == "pinned-external-static-busybox"
-            else 8
+            else 9
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(

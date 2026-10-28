@@ -267,8 +267,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_7878]
-        self.assertEqual(len(continuation), 2_168)
+        continuation = fixture[0xA_7000 : 0xA_794F]
+        self.assertEqual(len(continuation), 2_383)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -396,7 +396,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             continuation.count(bytes.fromhex("31ffbe608f5f00baff03000031c00f05")),
-            2,
+            3,
         )
         self.assertIn(bytes.fromhex("4883f80b75fe"), continuation)
         self.assertIn(bytes.fromhex("48b86563686f20746f70"), continuation)
@@ -409,7 +409,18 @@ class TopalToolchainGateTests(unittest.TestCase):
                     "4883f80475fe48c704240000000048833c240075fe"
                 )
             ),
-            2,
+            3,
+        )
+        self.assertIn(bytes.fromhex("4883f80475fe"), continuation)
+        self.assertIn(bytes.fromhex("48b87077640a00000000"), continuation)
+        self.assertIn(
+            bytes.fromhex(
+                "bf60945f00be00100000b84f0000000f054883f80275fe"
+                "66813c2560945f002f0075fe"
+                "c6042561945f000a66813c2560945f002f0a75fe"
+                "bf01000000be60945f00ba02000000b8010000000f054883f80275fe"
+            ),
+            continuation,
         )
         self.assertIn(bytes.fromhex("4883f80575fe"), continuation)
         self.assertIn(bytes.fromhex("48b8657869740a000000"), continuation)
@@ -424,14 +435,14 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.evidence
         self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/201")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/189")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/190")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/199",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/200",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/99",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/100",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -658,7 +669,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 8)
+        self.assertEqual(observations["static_applet_newline_count"], 9)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -731,7 +742,31 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             observations["static_shell_refill_input_profile"],
-            "clean-two-publication-command-refill-witness",
+            "clean-three-publication-command-refill-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_command_profile"],
+            "clean-command-getcwd-root-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_console_fstat_profile"],
+            "clean-command-console-fstat-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_terminal_probe_profile"],
+            "clean-command-stdout-terminal-probe-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_getcwd_profile"],
+            "clean-command-getcwd-root-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_output_profile"],
+            "clean-exact-application-root-line-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_stack_profile"],
+            "clean-affine-two-page-rw-nx-stack-witness",
         )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
@@ -744,6 +779,8 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "Enter 'help' for a list of built-in commands.\n\n"
             + "/ # "
             + "topal\n"
+            + "/ # "
+            + "/\n"
             + "/ # "
             + "".join(observations["markers_in_order"][newline_position:])
         )
@@ -768,7 +805,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
         observations = evidence["observations"]
-        self.assertEqual(observations["static_applet_newline_count"], 1)
+        self.assertEqual(observations["static_applet_newline_count"], 2)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "external-shell-echo-command"
         )
@@ -840,13 +877,39 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             observations["static_shell_refill_input_profile"],
-            "external-two-publication-command-refill-witness",
+            "external-three-publication-command-refill-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_command_profile"],
+            "external-busybox-pwd-cached-root-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_console_fstat_profile"],
+            "external-command-console-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_terminal_probe_profile"],
+            "external-command-stdout-enotty-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_getcwd_profile"],
+            "external-cached-sealed-root-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_pwd_output_profile"],
+            "external-exact-application-root-line-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_stack_profile"],
+            "external-affine-two-page-rw-nx-stack-witness",
         )
         marker_serial = "".join(observations["markers_in_order"])
         echo_position = marker_serial.index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
-        expected_serial = marker_serial[:echo_position] + "topal\n" + marker_serial[echo_position:]
+        expected_serial = (
+            marker_serial[:echo_position] + "topal\n/\n" + marker_serial[echo_position:]
+        )
         self.assertEqual(observations["serial_utf8"], expected_serial)
 
 
