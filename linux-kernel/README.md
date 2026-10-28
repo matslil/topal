@@ -843,6 +843,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static-process shell console `fstat`](step-4-bounded-static-elf-shell-console-fstat.md)
 - [Step 4 bounded static-process shell `/dev/tty` open miss](step-4-bounded-static-elf-shell-dev-tty-open-miss.md)
 - [Step 4 bounded static-process shell standard-terminal probes](step-4-bounded-static-elf-shell-standard-terminal-probes.md)
+- [Step 4 bounded static-process shell terminal warning](step-4-bounded-static-elf-shell-terminal-warning.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

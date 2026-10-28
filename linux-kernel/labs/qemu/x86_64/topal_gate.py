@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_73DC] = bytes.fromhex(
+    image[0xA_7000 : 0xA_74B4] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -553,6 +553,15 @@ def static_user_fixture() -> bytes:
         "803c246d75febf01000000be015400004889e2b8100000000f054883f8e775fe"
         "803c246d75fe31ffbe015400004889e2b8100000000f054883f8e775fe"
         "803c246d75fec6042400803c240075fe"
+        "c7042473683a20bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "c7042400000000833c240075fe"
+        "48b863616e27742061634889042448b863657373207474794889442408"
+        "48b83b206a6f6220636f488944241048b86e74726f6c2074754889442418"
+        "48b8726e6564206f66664889442420"
+        "bf020000004889e6ba28000000b8010000000f054883f82875fe"
+        "31c0b9050000004889e7fcf348ab31c0b9050000004889e7fcf348af75fe"
+        "c604240abf020000004889e6ba01000000b8010000000f054883f80175fe"
+        "c6042400803c240075fe"
         "31ffbe608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
@@ -802,7 +811,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/189",
+        "schema": "topal-kernel-toolchain-gate-qemu/190",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -871,6 +880,11 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-stderr-stdout-stdin-enotty-witness"
             ),
+            "static_shell_terminal_warning_profile": (
+                "external-optional-terminal-warning-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-three-segment-stderr-warning-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -922,7 +936,7 @@ def verify(
         expected_newline_count = (
             1
             if static_user_input == "pinned-external-static-busybox"
-            else 2
+            else 3
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
