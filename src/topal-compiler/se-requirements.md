@@ -1558,6 +1558,21 @@ enforce dispatch, arguments, phase, mapping, metadata, staging, publication,
 erasure, profile distinction, lifecycle, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` and `TK-DEC-206`.
 
+The bounded static-process `/dev/tty` open-miss increment shall accept native
+x86-64 syscall 257 once after the clean console-fstat observation and before
+sealed command input. It shall require `AT_FDCWD`, the exact immutable clean-
+fixture pathname candidate, `O_RDWR`, zero mode, complete `/dev/tty\0` bytes,
+the live dispositions and checked hierarchy, and the unchanged input-
+predecessor phase. It shall return `-ENOENT`, allocate no descriptor, retain no
+pointer or lookup state, and publish one additional private observation without
+advancing the phase. The read and terminal paths shall require the exact
+header-profile-specific observation pair and clear both together at terminal
+handling; the external echo-command profile shall require both absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, pathname,
+mapping, result, nonallocation, ordering, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` and `TK-DEC-207`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -4327,6 +4327,42 @@ invalid. This rule SHALL NOT add arbitrary descriptor metadata, path lookup,
 `newfstatat`, a filesystem, terminal attributes, `/dev/tty`, an interactive
 banner or prompt, mutable input, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001 — Static-process controlling-terminal absence
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` with one ordered open attempt
+for immutable pathname `/dev/tty` after the console-metadata observation and
+before sealed command input. The operation SHALL require the live process,
+sealed executable continuation, active checked address-space hierarchy,
+retained initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, completed console-metadata observation, `AT_FDCWD`, read/
+write intent, zero mode, and the complete pathname in its exact immutable
+mapping.
+
+The provider SHALL validate every argument and pathname byte, return `-ENOENT`,
+allocate no descriptor, access no user output, retain no pathname pointer or
+lookup state, and leave the startup phase and every process resource unchanged.
+One private at-most-once observation SHALL order the later sealed input and
+terminal rollback. Terminal handling SHALL clear it with the console-metadata
+observation before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 257 with
+`dirfd=-100`, exact clean-fixture pathname candidate `0x4a6912`, `flags=2`, and
+`mode=0`, and return native `-2`. The clean fixture SHALL require that result
+after validating and erasing its console stat. The pinned external echo-command
+profile SHALL omit both optional observations and preserve its existing
+execution.
+
+Structural and physical evidence SHALL certify exact dispatch, arguments,
+path bytes, immutable mapping, result, nonallocation, phase preservation,
+ordered observation lifecycle, profile distinction, and unchanged affine
+rollback. Another path, directory, intent, mode, result, order, duplicate,
+retained pointer or lookup, output mutation, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add a
+general `openat`, pathname traversal, descriptors, a VFS, filesystems, terminal
+attributes, a banner or prompt, mutable input, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
