@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7223] = bytes.fromhex(
+    image[0xA_7000 : 0xA_7282] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -542,9 +542,12 @@ def static_user_fixture() -> bytes:
         "4424084889442410488944241848b8a5a5a5a5a5a5a5a54889e7b904000000f3"
         "48abbf0f00000031f64889e241ba08000000b80d0000000f054885c075fe31c0"
         "b9040000004889e7fcf348af75fe31ffbe608f5f00baff03000031c00f054883"
-        "f80575fe813c25608f5f006578697475fe803c25648f5f000a75fe48c7042560"
-        "8f5f000000000048833c25608f5f000075fe4881c40004000031ffb8e7000000"
-        "0f050f0b"
+        "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
+        "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
+        "89e6ba06000000b8010000000f054883f80675fe48c704240000000048833c24"
+        "0075fe48c70425608f5f000000000048c70425688f5f000000000048833c2560"
+        "8f5f000075fe48833c25688f5f000075fe4881c40004000031ffb8e70000000f"
+        "050f0b"
     )
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     return bytes(image)
@@ -786,7 +789,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/185",
+        "schema": "topal-kernel-toolchain-gate-qemu/186",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -821,24 +824,24 @@ def evidence_record(
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
             "static_applet_newline_count": serial.count(b"\n"),
             "static_shell_getpid_profile": (
-                "external-shell-exit-command"
+                "external-shell-echo-command"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-pid-one-witness"
             ),
             "static_shell_sigchld_profile": (
-                "external-shell-exit-command"
+                "external-shell-echo-command"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-installed-cleared-witness"
             ),
             "static_shell_getppid_profile": (
-                "external-shell-exit-command"
+                "external-shell-echo-command"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-no-parent-witness"
             ),
-            "static_shell_exit_command_profile": (
-                "external-busybox-sh-exit-command-terminal"
+            "static_shell_echo_command_profile": (
+                "external-busybox-sh-echo-command-output-terminal"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-sealed-exit-command-witness"
+                else "clean-sealed-echo-command-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
@@ -889,9 +892,9 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            0
+            1
             if static_user_input == "pinned-external-static-busybox"
-            else 1
+            else 2
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
