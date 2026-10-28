@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/175";
+    "topal.provider-object.x86_64-qemu-pc-q35/176";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9600,6 +9600,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
@@ -9609,6 +9613,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
@@ -9621,8 +9629,15 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-terminal-header-ready")?;
@@ -10545,6 +10560,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
@@ -10554,6 +10573,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-read-fstat-ready")?;
@@ -10671,6 +10694,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-dev-tty-open-miss")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-profile-open");
+    code.bind("static-process-shell-dev-tty-open-miss-exact")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -10706,6 +10735,51 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&617_u32.to_le_bytes());
     code.bytes(&[1]);
     code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-profile-open")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&736_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x004a_6938_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"/etc/pro").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0x7e, 8]);
+    code.bytes(&u32::from_le_bytes(*b"file").to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x7e, 12, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0xb8, 3, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-applet-newline-write")?;
@@ -15598,8 +15672,8 @@ assert bytes(output) == block[32:]
                 .windows(complete_post_banner_getcwd_observation.len())
                 .filter(|window| *window == complete_post_banner_getcwd_observation)
                 .count(),
-            3,
-            "effective identity, sealed input, and rollback must require the complete post-banner getcwd observation"
+            4,
+            "effective identity, profile open, sealed input, and rollback must require the complete post-banner getcwd observation"
         );
         assert!(
             shell_continuation.windows(12).any(|window| window
@@ -15619,11 +15693,39 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe0, 0x02, 0, 0, 1] })
                     .count()
-                    == 2
+                    == 3
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe0, 0x02, 0, 0, 0]),
             "post-banner effective identity must publish, gate successors, and clear its private fact"
+        );
+        assert_eq!(
+            &process_fixture_image[0x0a_6938..0x0a_6945],
+            b"/etc/profile\0",
+            "clean process fixture must retain the exact immutable system-profile path"
+        );
+        assert!(
+            shell_continuation.windows(28).any(|window| window
+                == [
+                    0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x38, 0x69, 0x4a, 0, 0x31, 0xd2, 0x45,
+                    0x31, 0xd2, 0xb8, 0x01, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 3, 0x75,
+                    0xfe,
+                ]),
+            "clean process fixture must issue the exact read-only system-profile open"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 1])
+                && process_enter
+                    .windows(9)
+                    .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe1, 0x02, 0, 0, 1] })
+                    .count()
+                    == 2
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 0]),
+            "profile open must publish, gate successors, and revoke its private description"
         );
         assert!(
             shell_continuation.windows(12).any(

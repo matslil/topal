@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/193";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/182";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/194";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/183";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1156,6 +1156,9 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x5f, 0, 0, 0x75, 0xfe, // erase and prove complete output
         0xb8, 0x6b, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
         0xfe, // exact post-banner effective-user identity
+        0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x38, 0x69, 0x4a, 0, 0x31, 0xd2, 0x45, 0x31, 0xd2,
+        0xb8, 0x01, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 3, 0x75,
+        0xfe, // exact read-only /etc/profile open as descriptor three
         0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
         0x48, 0x83, 0xf8, 16, 0x75, 0xfe, // complete sealed command
         0x48, 0xb8, 0x65, 0x63, 0x68, 0x6f, 0x20, 0x74, 0x6f, 0x70, 0x48, 0x39, 0x04, 0x25, 0x60,
@@ -1180,6 +1183,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     image[0x0a_6900..0x0a_6912].copy_from_slice(b"/etc/busybox.conf\0");
     image[0x0a_6912..0x0a_691b].copy_from_slice(b"/dev/tty\0");
     image[0x0a_6920..0x0a_6935].copy_from_slice(b"/var/spool/mail/root\0");
+    image[0x0a_6938..0x0a_6945].copy_from_slice(b"/etc/profile\0");
     image
 }
 
