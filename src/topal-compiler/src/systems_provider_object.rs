@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/180";
+    "topal.provider-object.x86_64-qemu-pc-q35/181";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9622,6 +9622,23 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&741_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[3]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -9659,6 +9676,23 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&741_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[3]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -9690,6 +9724,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&741_u32.to_le_bytes());
     code.bytes(&[0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
+    code.bytes(&[0]);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
@@ -9712,6 +9749,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&741_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-terminal-header-ready")?;
@@ -9746,10 +9787,6 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
-    code.bytes(&418_u32.to_le_bytes());
-    code.bytes(&[2]);
     code.jump_if(0x85, "fatal");
     // Erase the process-visible command before releasing its consumed owner.
     code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
@@ -10601,6 +10638,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-sealed-echo-command-read")?;
     code.bytes(&[0x48, 0x83, 0xff, 3]);
     code.jump_if(0x84, "static-process-shell-profile-read");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 28]);
+    code.jump_if(0x84, "static-process-shell-refill-command-read");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x85, 0xff]);
@@ -10656,6 +10695,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&741_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -10693,6 +10736,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&741_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -10700,14 +10747,14 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.jump_if(0x85, "fatal");
     }
     code.bind("static-process-shell-read-fstat-ready")?;
-    // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
+    // Publish the exact first command and seal its unused tail.
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"echo top").to_le_bytes());
     code.bytes(&[0x48, 0xa3]);
     code.bytes(&0x005f_8f60_u32.to_le_bytes());
     code.bytes(&[0, 0, 0, 0]);
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&u64::from_le_bytes(*b"al\nexit\n").to_le_bytes());
+    code.bytes(&u64::from_le_bytes(*b"al\n\0\0\0\0\0").to_le_bytes());
     code.bytes(&[0x48, 0xa3]);
     code.bytes(&0x005f_8f68_u32.to_le_bytes());
     code.bytes(&[0, 0, 0, 0]);
@@ -10717,7 +10764,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&0x005f_8f60_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&u64::from_le_bytes(*b"al\nexit\n").to_le_bytes());
+    code.bytes(&u64::from_le_bytes(*b"al\n\0\0\0\0\0").to_le_bytes());
     code.bytes(&[0x48, 0x39, 0x04, 0x25]);
     code.bytes(&0x005f_8f68_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -10725,7 +10772,108 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[2]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 27]);
-    code.bytes(&[0xb8, 16, 0, 0, 0]);
+    code.bytes(&[0xb8, 11, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-refill-command-read")?;
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[0x3c, 1]);
+    code.jump_if(
+        0x84,
+        "static-process-shell-refill-command-read-variant-ready",
+    );
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-shell-refill-command-read-variant-ready")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-refill-command-read-clean-facts");
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    for offset in 736_u32..=742 {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.jump("static-process-shell-refill-command-read-facts-ready");
+    code.bind("static-process-shell-refill-command-read-clean-facts")?;
+    for (offset, expected) in [
+        (736_u32, 1_u8),
+        (737, 0),
+        (738, 1),
+        (739, 1),
+        (740, 1),
+        (741, 1),
+        (742, 1),
+    ] {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bind("static-process-shell-refill-command-read-facts-ready")?;
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&1023_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_command_buffer_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "static-process-shell-refill-command-read-publish");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"echo top").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"al\n\0\0\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-shell-refill-command-read-publish")?;
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0xa3]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[3]);
+    code.bytes(&[0xb8, 5, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-console-fstat")?;
@@ -11053,6 +11201,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         (739, 1),
         (740, 0),
         (741, 0),
+        (742, 0),
     ] {
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -11101,6 +11250,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "static-process-shell-banner");
     code.jump("static-process-shell-terminal-warning");
     code.bind("static-process-applet-write-after-interactive")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 28]);
+    code.jump_if(0x84, "static-process-shell-refill-prompt");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 27]);
     code.jump_if(0x84, "static-process-shell-echo-write");
     code.bytes(&[0x48, 0x83, 0xff, 1]);
@@ -11391,6 +11542,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         (739, 1),
         (740, 1),
         (741, 0),
+        (742, 0),
     ] {
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -11450,6 +11602,101 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&741_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0xb8, 4, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-refill-prompt")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    for (offset, expected) in [
+        (736_u32, 1_u8),
+        (737, 0),
+        (738, 1),
+        (739, 1),
+        (740, 1),
+        (741, 1),
+        (742, 0),
+    ] {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"echo top").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"al\n\0\0\0\0\0").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&0x005f_8f68_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xff, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 4]);
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x8b, 0x06]);
+    code.bytes(&[0x65, 0x89, 0x04, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0x65, 0x81, 0x3c, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&u32::from_le_bytes(*b"/ # ").to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    for (index, ready) in [
+        "static-process-shell-refill-prompt-uart-0",
+        "static-process-shell-refill-prompt-uart-1",
+        "static-process-shell-refill-prompt-uart-2",
+        "static-process-shell-refill-prompt-uart-3",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        code.bind(ready)?;
+        code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
+        code.jump_if(0x84, ready);
+        code.bytes(&[0x66, 0xba, 0xf8, 0x03, 0x65, 0x8a, 0x04, 0x25]);
+        code.bytes(
+            &(744_u32 + u32::try_from(index).expect("bounded refill prompt index")).to_le_bytes(),
+        );
+        code.bytes(&[0xee]);
+    }
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&742_u32.to_le_bytes());
     code.bytes(&[1]);
     code.bytes(&[0xb8, 4, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
@@ -15599,7 +15846,7 @@ assert bytes(output) == block[32:]
         );
         let process_fixture_image = qualified_x86_64_static_user_image_fixture();
         let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
-        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7841];
+        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7878];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -16063,8 +16310,8 @@ assert bytes(output) == block[32:]
                 .windows(complete_post_banner_getcwd_observation.len())
                 .filter(|window| *window == complete_post_banner_getcwd_observation)
                 .count(),
-            9,
-            "effective identity, profile open, profile metadata, profile EOF, profile close, prompt dispatch and handling, sealed input, and rollback must require the complete post-banner getcwd observation"
+            12,
+            "effective identity, profile open, profile metadata, profile EOF, profile close, both prompt dispatches and handlers, both sealed input publications including clean replacement validation, and rollback must require the complete post-banner getcwd observation"
         );
         assert!(
             shell_continuation.windows(12).any(|window| window
@@ -16084,7 +16331,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe0, 0x02, 0, 0, 1] })
                     .count()
-                    == 7
+                    == 9
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe0, 0x02, 0, 0, 0]),
@@ -16154,7 +16401,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe2, 0x02, 0, 0, 1] })
                     .count()
-                    == 5
+                    == 7
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe2, 0x02, 0, 0, 0]),
@@ -16176,7 +16423,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe3, 0x02, 0, 0, 1] })
                     .count()
-                    == 4
+                    == 6
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe3, 0x02, 0, 0, 0]),
@@ -16203,7 +16450,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe4, 0x02, 0, 0, 1] })
                     .count()
-                    == 3
+                    == 5
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe4, 0x02, 0, 0, 0]),
@@ -16227,7 +16474,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe5, 0x02, 0, 0, 1] })
                     .count()
-                    == 2
+                    == 4
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe5, 0x02, 0, 0, 0])
@@ -16237,25 +16484,39 @@ assert bytes(output) == block[32:]
                     ]),
             "prompt handling must validate private staging, publish completion, gate successors, and clear the fact"
         );
+        assert_eq!(
+            shell_continuation
+                .windows(12)
+                .filter(|window| {
+                    *window == [0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 3, 0, 0]
+                })
+                .count(),
+            2,
+            "clean process fixture must issue both reads into the same checked command buffer"
+        );
         assert!(
-            shell_continuation.windows(12).any(
-                |window| window == [0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 3, 0, 0]
-            ) && shell_continuation.windows(10).any(
+            shell_continuation.windows(10).any(
                 |window| window == [0x48, 0xb8, b'e', b'c', b'h', b'o', b' ', b't', b'o', b'p']
             ) && shell_continuation
                 .windows(10)
-                .any(|window| window
-                    == [0x48, 0xb8, b'a', b'l', b'\n', b'e', b'x', b'i', b't', b'\n'])
+                .any(|window| window == [0x48, 0xb8, b'a', b'l', b'\n', 0, 0, 0, 0, 0])
                 && shell_continuation.windows(19).any(|window| window
                     == [
                         0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 6, 0, 0, 0, 0xb8, 1, 0, 0, 0,
                         0x0f
                     ])
                 && shell_continuation
+                    .windows(10)
+                    .any(|window| window == [0x48, 0xb8, b'e', b'x', b'i', b't', b'\n', 0, 0, 0])
+                && shell_continuation
+                    .windows(11)
+                    .any(|window| window
+                        == [0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe])
+                && shell_continuation
                     .windows(11)
                     .any(|window| window
                         == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b]),
-            "clean process fixture must consume, verify, output, erase, and exit after sealed echo command"
+            "clean process fixture must consume, verify, output, prompt, refill, verify, and exit after two sealed commands"
         );
         assert_eq!(
             process_enter
@@ -16591,13 +16852,19 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(9)
                     .any(|window| { window == [0x65, 0xc6, 0x04, 0x25, 0xa2, 0x01, 0, 0, 2] })
+                && process_enter
+                    .windows(9)
+                    .any(|window| { window == [0x65, 0xc6, 0x04, 0x25, 0xa2, 0x01, 0, 0, 3] })
                 && process_enter.windows(10).any(|window| {
                     window == [0x48, 0xb8, b'e', b'c', b'h', b'o', b' ', b't', b'o', b'p']
                 })
+                && process_enter
+                    .windows(10)
+                    .any(|window| { window == [0x48, 0xb8, b'a', b'l', b'\n', 0, 0, 0, 0, 0] })
                 && process_enter.windows(10).any(|window| {
-                    window == [0x48, 0xb8, b'a', b'l', b'\n', b'e', b'x', b'i', b't', b'\n']
+                    window == [0x48, 0xb8, b'e', b'x', b'i', b't', b'\n', 0, 0, 0]
                 }),
-            "shell command read must require fresh input ownership, publish echo plus exit, and consume ownership"
+            "shell command reads must require fresh input ownership, publish echo then refill with exit, and advance ownership"
         );
         assert!(
             process_enter
