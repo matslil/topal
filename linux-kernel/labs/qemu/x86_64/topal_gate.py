@@ -891,7 +891,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/201",
+        "schema": "topal-kernel-toolchain-gate-qemu/202",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1016,14 +1016,19 @@ def evidence_record(
                 else "clean-exact-root-prompt-witness"
             ),
             "static_shell_refill_input_profile": (
-                "external-four-publication-command-refill-witness"
+                "external-five-publication-command-refill-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-four-publication-command-refill-witness"
+                else "clean-five-publication-command-refill-witness"
             ),
             "static_shell_cd_root_profile": (
                 "external-busybox-exact-root-chdir-witness"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-exact-root-chdir-witness"
+            ),
+            "static_shell_root_directory_test_profile": (
+                "external-busybox-exact-root-newfstatat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-root-directory-metadata-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
