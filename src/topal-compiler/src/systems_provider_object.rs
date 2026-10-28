@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/164";
+    "topal.provider-object.x86_64-qemu-pc-q35/165";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9260,6 +9260,25 @@ fn emit_static_process_heap_validation(code: &mut X86FunctionEncoder) -> Result<
     Ok(())
 }
 
+fn emit_static_process_command_buffer_validation(code: &mut X86FunctionEncoder) {
+    // The exact five-byte command lies wholly in the second anonymous heap
+    // leaf. Revalidate its affine frame identity and writable/NX permissions.
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x8b, 0x82, 0xc0, 0x0f, 0, 0, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4d, 0x8d, 0x88, 0, 0x10, 0, 0, 0x49, 0x83, 0xc9, 7]);
+    code.bytes(&[0x49, 0x0f, 0xba, 0xe9, 0x3f, 0x4c, 0x39, 0xc8]);
+    code.jump_if(0x85, "fatal");
+}
+
 fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -9435,6 +9454,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&416_u32.to_le_bytes());
     code.bytes(&[2]);
     code.bind("static-process-header-variant-ready")?;
+    // One fresh affine sealed-input owner is consumed by the sole command read.
+    code.bytes(&[0x41, 0xc6, 0x82]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[1]);
     emit_static_process_save_caller_registers(&mut code);
 
     // The bounded x86-64 process owns a fresh SIMD context. Preserve the
@@ -9471,7 +9494,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x85, 0xc0]);
-    code.jump_if(0x84, "static-process-shell-empty-read");
+    code.jump_if(0x84, "static-process-shell-sealed-exit-command-read");
     code.bytes(&[0x83, 0xf8, 0x3f]);
     code.jump_if(0x84, "static-process-shell-uname");
     code.bytes(&[0x83, 0xf8, 0x4f]);
@@ -9525,6 +9548,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-terminal-header-ready")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 27]);
     code.jump_if(0x85, "fatal");
+    emit_static_process_command_buffer_validation(&mut code);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25]);
     code.bytes(&168_u32.to_le_bytes());
     code.bytes(&[0x49, 0x81, 0xf8]);
@@ -9554,6 +9578,28 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[2]);
+    code.jump_if(0x85, "fatal");
+    // Erase the process-visible command before releasing its consumed owner.
+    code.bytes(&[0xc7, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.bytes(&0_u32.to_le_bytes());
+    code.bytes(&[0xc6, 0x04, 0x25]);
+    code.bytes(&0x005f_8f64_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.bytes(&[0x83, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f64_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[0]);
     for offset in [168_u32, 176, 224, 232] {
         code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -10262,7 +10308,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
-    code.bind("static-process-shell-empty-read")?;
+    code.bind("static-process-shell-sealed-exit-command-read")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x85, 0xff]);
@@ -10274,13 +10320,36 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&1023_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_command_buffer_validation(&mut code);
     emit_static_process_child_disposition_validation(&mut code);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    // Publish exactly `exit\n` after every argument and ownership check.
+    code.bytes(&[0xc7, 0x04, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.bytes(&u32::from_le_bytes(*b"exit").to_le_bytes());
+    code.bytes(&[0xc6, 0x04, 0x25]);
+    code.bytes(&0x005f_8f64_u32.to_le_bytes());
+    code.bytes(&[b'\n']);
+    code.bytes(&[0x81, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f60_u32.to_le_bytes());
+    code.bytes(&u32::from_le_bytes(*b"exit").to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x3c, 0x25]);
+    code.bytes(&0x005f_8f64_u32.to_le_bytes());
+    code.bytes(&[b'\n']);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&418_u32.to_le_bytes());
+    code.bytes(&[2]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 27]);
-    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb8, 5, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-applet-newline-write")?;
@@ -14371,10 +14440,19 @@ assert bytes(output) == block[32:]
         assert!(
             shell_continuation.windows(12).any(
                 |window| window == [0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 3, 0, 0]
-            ) && shell_continuation
-                .windows(11)
-                .any(|window| window == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b]),
-            "clean process fixture must observe sealed EOF and exit zero"
+            ) && shell_continuation.windows(13).any(|window| window
+                == [
+                    0x81, 0x3c, 0x25, 0x60, 0x8f, 0x5f, 0, b'e', b'x', b'i', b't', 0x75, 0xfe
+                ])
+                && shell_continuation
+                    .windows(10)
+                    .any(|window| window
+                        == [0x80, 0x3c, 0x25, 0x64, 0x8f, 0x5f, 0, b'\n', 0x75, 0xfe])
+                && shell_continuation
+                    .windows(11)
+                    .any(|window| window
+                        == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b]),
+            "clean process fixture must consume, verify, erase, and exit after sealed exit command"
         );
         assert_eq!(
             process_enter
@@ -14644,7 +14722,7 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(7)
                     .any(|window| window == [0x48, 0x81, 0xfa, 0xff, 0x03, 0, 0]),
-            "sealed EOF must require the exact input candidate and count"
+            "sealed command input must require the exact candidate and count"
         );
         assert!(
             process_enter
@@ -14699,7 +14777,23 @@ assert bytes(output) == block[32:]
                 && process_enter.windows(10).any(|window| {
                     window == [0x65, 0xc6, 0x04, 0x25, 0xa1, 0x01, 0, 0, 0, 0x65]
                 }),
-            "shell completion must require EOF phase and clear both retained dispositions"
+            "shell completion must require command-consumed phase and clear both retained dispositions"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| { window == [0x65, 0x80, 0x3c, 0x25, 0xa2, 0x01, 0, 0, 1] })
+                && process_enter
+                    .windows(9)
+                    .any(|window| { window == [0x65, 0xc6, 0x04, 0x25, 0xa2, 0x01, 0, 0, 2] })
+                && process_enter.windows(13).any(|window| {
+                    window
+                        == [
+                            0xc7, 0x04, 0x25, 0x60, 0x8f, 0x5f, 0, b'e', b'x', b'i', b't', 0xc6,
+                            0x04,
+                        ]
+                }),
+            "shell command read must require fresh input ownership, publish exit, and consume ownership"
         );
         assert!(
             process_enter

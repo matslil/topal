@@ -4660,9 +4660,9 @@ fn parse_static_image_process_entry(
         vec![
             ("owner", owner_name),
             ("abi", "linux-x86-64-process"),
-            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-empty-read"),
+            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-exit-command"),
             ("terminal", "exit-group-zero"),
-            ("policy", "bounded-static-elf-shell-empty-input"),
+            ("policy", "bounded-static-elf-shell-exit-command"),
         ]
     } else {
         vec![
