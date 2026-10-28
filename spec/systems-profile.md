@@ -4242,6 +4242,52 @@ interactive terminal, mutable or blocking stream, arbitrary command authority,
 command output, external program execution, pathname lookup, filesystem,
 process creation, job control, pipeline, container, or virtualization support.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001 — Static-process shell sealed echo command
+
+The bounded static-process entry MAY refine
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` with one sealed
+output-producing command sequence. The fresh input owner SHALL contain exactly
+the sixteen bytes `echo topal\nexit\n`, and one complete successful read SHALL
+consume it. The transition SHALL require the same exact predecessor phase,
+live process, active checked address-space hierarchy, retained initial stack,
+and live child and ignored-quit dispositions as the exit-command transition.
+
+The provider SHALL validate the complete writable read destination before
+mutation, copy all sixteen bytes, consume the input owner, return sixteen, and
+retain no user pointer or readable input copy. The only admitted nonterminal
+successor SHALL write exactly `topal\n` to descriptor one from a complete
+checked readable application extent. The provider SHALL stage and validate all
+six output bytes before publication, return six, advance the private process
+phase, and retain no user pointer or readable output copy. The process SHALL
+then bind to `exit_group(0)` without another syscall.
+
+Terminal handling SHALL require the completed output phase and consumed input
+state, erase and prove erasure of all sixteen process-visible command bytes,
+and preserve the existing disposition clearing and complete process rollback.
+Failure before output SHALL preserve the applicable predecessor state and all
+unpublished resources. Observed standard-output bytes SHALL remain observed if
+a later terminal validation fails.
+
+For qualified x86-64 realization, the read SHALL bind to
+`read(0, 0x5f8f60, 1023)`, publish bytes
+`65 63 68 6f 20 74 6f 70 61 6c 0a 65 78 69 74 0a`, and return sixteen. The
+digest-pinned BusyBox 1.37.0 shell SHALL issue one six-byte descriptor-one write
+of `74 6f 70 61 6c 0a` and then `exit_group(0)`. The clean-room fixture SHALL
+verify the same command, issue and verify the same output, erase and prove the
+complete command extent, and exit successfully.
+
+Structural and physical evidence SHALL certify exact input and output identity,
+dispatch, arguments, ordering, checked extents, complete staging and
+publication, results, ownership consumption, phase progression, terminal
+erasure, exit, and unchanged affine rollback for both qualification profiles.
+Another command, output, selector, descriptor, candidate, count, partial
+result, order, duplicate, retained pointer, refill, unsealed source,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add an interactive terminal or prompt, general
+stream, arbitrary command or output authority, external program execution,
+pathname lookup, filesystem, process creation, job control, pipeline,
+container, or virtualization support.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

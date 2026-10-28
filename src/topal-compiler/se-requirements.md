@@ -1527,6 +1527,22 @@ QEMU evidence shall enforce input identity, dispatch, arguments, ordering,
 complete copy, consumption, immediate exit, erasure, and rollback. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` and `TK-DEC-204`.
 
+The bounded static-process sealed echo-command increment shall replace the
+five-byte command with one exact sixteen-byte `echo topal\nexit\n` publication
+for `read(0, 0x5f8f60, 1023)`, consume the fresh private input owner, return
+sixteen, and accept only one exact six-byte descriptor-one `topal\n` write
+before `exit_group(0)`. It shall validate the complete writable input and
+readable output extents before access, stage and validate all output before
+publication, retain no user pointer or readable private copy, require an exact
+post-output phase at terminal handling, erase and prove erasure of every
+command byte, and preserve the existing disposition lifecycle and complete
+rollback. The clean fixture shall verify the same command, output, erasure, and
+exit sequence; the pinned external profile shall execute the built-in command.
+Structural and QEMU evidence shall enforce identity, dispatch, arguments,
+ordering, complete copies, ownership, staging, publication, phase, terminal
+erasure, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` and `TK-DEC-205`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
