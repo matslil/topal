@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/168";
+    "topal.provider-object.x86_64-qemu-pc-q35/169";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9594,7 +9594,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&0x0101_u32.to_le_bytes());
+    code.bytes(&0x0003_0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
@@ -10243,8 +10243,59 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-tcgets-miss")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 21]);
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25, 0x68, 0, 0, 0]);
+    code.bytes(&[0x3c, 21]);
+    code.jump_if(0x84, "static-process-shell-initial-tcgets-miss");
+    code.bytes(&[0x3c, 26]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0000_0101_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-stderr-tcgets-miss");
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0001_0101_u32.to_le_bytes());
+    code.jump_if(0x84, "static-process-shell-stdout-tcgets-miss");
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0002_0101_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-shell-standard-tcgets-candidate");
+    code.bind("static-process-shell-stderr-tcgets-miss")?;
+    code.bytes(&[0x48, 0x83, 0xff, 2]);
+    code.jump_if(0x85, "fatal");
+    code.jump("static-process-shell-standard-tcgets-candidate");
+    code.bind("static-process-shell-stdout-tcgets-miss")?;
+    code.bytes(&[0x48, 0x83, 0xff, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-shell-standard-tcgets-candidate")?;
+    code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x49, 0x89, 0xd0, 0x49, 0x83, 0xc0, 36]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfa]);
+    code.bytes(&0x007f_f000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x49, 0x81, 0xf8]);
+    code.bytes(&0x0080_0000_u32.to_le_bytes());
+    code.jump_if(0x87, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xfe, 0x04, 0x25]);
+    code.bytes(&618_u32.to_le_bytes());
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xe7, 0xff, 0xff, 0xff]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-initial-tcgets-miss")?;
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x81, 0xfe, 0x01, 0x54, 0, 0]);
@@ -10402,7 +10453,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
-    code.bytes(&0x0101_u32.to_le_bytes());
+    code.bytes(&0x0003_0101_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
@@ -14813,6 +14864,35 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x69, 0x02, 0, 0, 1]),
             "static shell /dev/tty open miss must validate and publish the exact observation"
+        );
+        let standard_terminal_probes = [
+            0xc6, 0x04, 0x24, 0x6d, 0xbf, 2, 0, 0, 0, 0xbe, 0x01, 0x54, 0, 0, 0x48, 0x89, 0xe2,
+            0xb8, 0x10, 0, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xe7, 0x75, 0xfe, 0x80, 0x3c, 0x24,
+            0x6d, 0x75, 0xfe, 0xbf, 1, 0, 0, 0, 0xbe, 0x01, 0x54, 0, 0, 0x48, 0x89, 0xe2, 0xb8,
+            0x10, 0, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 0xe7, 0x75, 0xfe, 0x80, 0x3c, 0x24, 0x6d,
+            0x75, 0xfe, 0x31, 0xff, 0xbe, 0x01, 0x54, 0, 0, 0x48, 0x89, 0xe2, 0xb8, 0x10, 0, 0, 0,
+            0x0f, 0x05, 0x48, 0x83, 0xf8, 0xe7, 0x75, 0xfe, 0x80, 0x3c, 0x24, 0x6d, 0x75, 0xfe,
+            0xc6, 0x04, 0x24, 0, 0x80, 0x3c, 0x24, 0, 0x75, 0xfe,
+        ];
+        assert!(
+            shell_continuation
+                .windows(standard_terminal_probes.len())
+                .any(|window| window == standard_terminal_probes),
+            "clean process fixture must prove ordered stderr, stdout, and stdin TCGETS misses"
+        );
+        for observation in [0x0000_0101_u32, 0x0001_0101, 0x0002_0101] {
+            assert!(
+                process_enter.windows(6).any(|window| {
+                    window[..2] == [0x48, 0x3d] && window[2..6] == observation.to_le_bytes()
+                }),
+                "static shell terminal probes must require every exact predecessor observation"
+            );
+        }
+        assert!(
+            process_enter
+                .windows(8)
+                .any(|window| window == [0x65, 0xfe, 0x04, 0x25, 0x6a, 0x02, 0, 0]),
+            "static shell terminal probes must publish their ordered private count"
         );
         assert!(
             shell_continuation.windows(12).any(
