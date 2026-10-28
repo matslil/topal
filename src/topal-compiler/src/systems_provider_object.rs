@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/173";
+    "topal.provider-object.x86_64-qemu-pc-q35/174";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9225,7 +9225,11 @@ fn emit_static_process_child_disposition_validation(code: &mut X86FunctionEncode
     code.jump_if(0x85, "fatal");
 }
 
-fn emit_static_process_heap_validation(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+fn emit_static_process_heap_validation(
+    code: &mut X86FunctionEncoder,
+    low_label: &'static str,
+    high_label: &'static str,
+) -> Result<(), CompileError> {
     code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
     code.bytes(&[0x48, 0x85, 0xd2]);
@@ -9238,7 +9242,7 @@ fn emit_static_process_heap_validation(code: &mut X86FunctionEncoder) -> Result<
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x4d, 0x89, 0xc1]);
     code.bytes(&[0x48, 0x8d, 0xba, 0xb8, 0x0f, 0, 0, 0xb9, 9, 0, 0, 0]);
-    code.bind("static-process-shell-getcwd-low-heap")?;
+    code.bind(low_label)?;
     code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
     code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 7]);
     code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
@@ -9246,9 +9250,9 @@ fn emit_static_process_heap_validation(code: &mut X86FunctionEncoder) -> Result<
     code.bytes(&[
         0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
     ]);
-    code.jump_if(0x85, "static-process-shell-getcwd-low-heap");
+    code.jump_if(0x85, low_label);
     code.bytes(&[0x49, 0x8d, 0xba, 0, 0x40, 0, 0, 0xb9, 25, 0, 0, 0]);
-    code.bind("static-process-shell-getcwd-high-heap")?;
+    code.bind(high_label)?;
     code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
     code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 7]);
     code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
@@ -9256,7 +9260,7 @@ fn emit_static_process_heap_validation(code: &mut X86FunctionEncoder) -> Result<
     code.bytes(&[
         0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
     ]);
-    code.jump_if(0x85, "static-process-shell-getcwd-high-heap");
+    code.jump_if(0x85, high_label);
     Ok(())
 }
 
@@ -9593,7 +9597,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0001_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -10224,7 +10228,19 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-getcwd")?;
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 20]);
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25, 0x68, 0, 0, 0]);
+    code.bytes(&[0x3c, 20]);
+    code.jump_if(0x84, "static-process-shell-initial-getcwd");
+    code.bytes(&[0x3c, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0001_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x81, 0xff]);
     code.bytes(&0x005f_9460_u32.to_le_bytes());
@@ -10234,7 +10250,35 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     emit_static_process_active_stack_validation(&mut code);
     emit_static_process_child_disposition_validation(&mut code);
-    emit_static_process_heap_validation(&mut code)?;
+    emit_static_process_heap_validation(
+        &mut code,
+        "static-process-shell-post-banner-getcwd-low-heap",
+        "static-process-shell-post-banner-getcwd-high-heap",
+    )?;
+    code.bytes(&[0x66, 0xc7, 0x04, 0x25]);
+    code.bytes(&0x005f_9460_u32.to_le_bytes());
+    code.bytes(&[0x2f, 0]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&623_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0xb8, 2, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-initial-getcwd")?;
+    code.bytes(&[0x48, 0x81, 0xff]);
+    code.bytes(&0x005f_9460_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&4096_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    emit_static_process_heap_validation(
+        &mut code,
+        "static-process-shell-getcwd-low-heap",
+        "static-process-shell-getcwd-high-heap",
+    )?;
     code.bytes(&[0x66, 0xc7, 0x04, 0x25]);
     code.bytes(&0x005f_9460_u32.to_le_bytes());
     code.bytes(&[0x2f, 0]);
@@ -10483,7 +10527,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0001_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -15456,8 +15500,40 @@ assert bytes(output) == block[32:]
                 .windows(complete_post_banner_probe_observation.len())
                 .filter(|window| *window == complete_post_banner_probe_observation)
                 .count(),
+            1,
+            "post-banner getcwd handling must require the complete terminal-probe observation"
+        );
+        assert!(
+            shell_continuation.windows(66).any(|window| window
+                == [
+                    0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0xa5, 0xa5, 0xbf, 0x60, 0x94,
+                    0x5f, 0, 0xbe, 0, 0x10, 0, 0, 0xb8, 0x4f, 0, 0, 0, 0x0f, 0x05, 0x48, 0x83,
+                    0xf8, 2, 0x75, 0xfe, 0x66, 0x81, 0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0,
+                    0x75, 0xfe, 0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, 0x66, 0x83,
+                    0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0x75, 0xfe,
+                ]),
+            "clean process fixture must issue, validate, erase, and prove the post-banner root getcwd"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x6f, 0x02, 0, 0, 1])
+                && process_enter
+                    .windows(10)
+                    .any(|window| window == [0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0]),
+            "post-banner getcwd must publish the sealed root and its private completion fact"
+        );
+        let complete_post_banner_getcwd_observation = [
+            0x48, 0xb8, 0x01, 0x01, 0x03, 0x03, 0x01, 0x01, 0x01, 0x01, 0x65, 0x48, 0x39, 0x04,
+            0x25, 0x68, 0x02, 0, 0,
+        ];
+        assert_eq!(
+            process_enter
+                .windows(complete_post_banner_getcwd_observation.len())
+                .filter(|window| *window == complete_post_banner_getcwd_observation)
+                .count(),
             2,
-            "sealed input and terminal rollback must require the complete post-banner probe observation"
+            "sealed input and terminal rollback must require the complete post-banner getcwd observation"
         );
         assert!(
             shell_continuation.windows(12).any(
