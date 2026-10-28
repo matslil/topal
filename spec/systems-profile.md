@@ -4363,6 +4363,44 @@ general `openat`, pathname traversal, descriptors, a VFS, filesystems, terminal
 attributes, a banner or prompt, mutable input, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001 — Static-process standard-description terminal misses
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` with exactly three
+ordered terminal-attribute probes after the `/dev/tty` absence result and
+before warning output or sealed command input. The probes SHALL name standard
+error, standard output, and standard input in that order. Every operation SHALL
+require the live process, sealed executable continuation, active checked
+address-space hierarchy, retained initial stack, live child and ignored-quit
+dispositions, exact input-predecessor phase, completed console-metadata and
+controlling-terminal-absence observations, next expected descriptor,
+terminal-attributes request, and one complete checked writable output extent.
+
+Every probe SHALL return the not-a-terminal result without reading or changing
+the output extent, descriptor state, phase, or any process resource. One
+private count SHALL advance from zero through three only after complete
+validation and SHALL reject a skipped, reordered, or duplicate descriptor.
+Later warning output, sealed input, and terminal rollback SHALL require count
+three. Terminal handling SHALL clear the count with both predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operations SHALL bind to syscall 16,
+`TCGETS=0x5401`, descriptors 2, 1, and 0, a complete 36-byte candidate in the
+retained initial stack, and native `-ENOTTY` (`-25`). The clean fixture SHALL
+issue all three calls from one checked stack candidate and require every exact
+result. The pinned external echo-command profile SHALL omit all optional
+interactive observations and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptors,
+request, order, phase, candidate extent, no-output effect, result, count
+lifecycle, profile distinction, and unchanged affine rollback. Another
+descriptor, request, order, duplicate, skipped count, candidate extent, result,
+output access or mutation, retained pointer, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+terminal attributes, successful terminal operations, arbitrary `ioctl`,
+warning or banner output, a prompt, mutable input, processes, filesystems,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

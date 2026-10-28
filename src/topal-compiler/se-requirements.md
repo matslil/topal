@@ -1573,6 +1573,21 @@ mapping, result, nonallocation, ordering, lifecycle, profile distinction, and
 unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` and `TK-DEC-207`.
 
+The bounded static-process standard-terminal-probe increment shall accept
+exactly three native x86-64 syscall-16 requests after the clean `/dev/tty`
+absence observation and before warning output or sealed input. It shall require
+`TCGETS`, descriptors two, one, and zero in order, one complete checked 36-byte
+initial-stack candidate, the live dispositions and checked hierarchy, the
+unchanged input-predecessor phase, and both predecessor observations. Every
+call shall return `-ENOTTY` without reading or changing the candidate or any
+descriptor state. One private count shall advance only after complete
+validation, and later clean input and terminal handling shall require count
+three and clear it with the predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, extent, ordering, no-output effect, result,
+count lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` and `TK-DEC-208`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
