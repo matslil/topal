@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/176";
+    "topal.provider-object.x86_64-qemu-pc-q35/177";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9604,6 +9604,16 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.jump("static-process-shell-terminal-header-ready");
     code.bind("static-process-shell-terminal-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
@@ -9619,6 +9629,16 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
     code.bytes(&616_u32.to_le_bytes());
     code.bytes(&[0, 0, 0, 0]);
@@ -9632,12 +9652,19 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[0]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[0]);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&736_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-terminal-header-ready")?;
@@ -10564,6 +10591,16 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.jump("static-process-shell-read-fstat-ready");
     code.bind("static-process-shell-read-clean-fstat")?;
     code.bytes(&[0x48, 0xb8]);
@@ -10579,6 +10616,16 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bind("static-process-shell-read-fstat-ready")?;
     // Publish exactly `echo topal\nexit\n` after every argument and ownership check.
     code.bytes(&[0x48, 0xb8]);
@@ -10609,6 +10656,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-console-fstat")?;
+    code.bytes(&[0x48, 0x83, 0xff, 3]);
+    code.jump_if(0x84, "static-process-shell-profile-fstat");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -10780,6 +10829,92 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
     code.bytes(&[0xb8, 3, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-profile-fstat")?;
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 26]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0101_0101_0303_0101_u64.to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&616_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    for (offset, expected) in [(736_u32, 1_u8), (737, 1), (738, 0)] {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x48, 0x83, 0xff, 3]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_fba0_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&417_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "fatal");
+
+    // Derive the complete native regular-file value from the retained
+    // description and stage it privately before changing user memory.
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    for (offset, value) in [(752_u32, 2_u32), (760, 1), (768, 0x8124), (800, 4096)] {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&value.to_le_bytes());
+    }
+    for (index, staging_offset) in (744_u32..888).step_by(8).enumerate() {
+        let user_offset = u32::try_from(index * 8).expect("bounded profile stat offset");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+        code.bytes(&staging_offset.to_le_bytes());
+        if user_offset == 0 {
+            code.bytes(&[0x48, 0x89, 0x06]);
+        } else if user_offset <= 0x7f {
+            code.bytes(&[0x48, 0x89, 0x46, user_offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x89, 0x86]);
+            code.bytes(&user_offset.to_le_bytes());
+        }
+    }
+    code.bytes(&[0x0f, 0xae, 0xf8]);
+    for (index, staging_offset) in (744_u32..888).step_by(8).enumerate() {
+        let user_offset = u32::try_from(index * 8).expect("bounded profile stat offset");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+        code.bytes(&staging_offset.to_le_bytes());
+        if user_offset == 0 {
+            code.bytes(&[0x48, 0x39, 0x06]);
+        } else if user_offset <= 0x7f {
+            code.bytes(&[0x48, 0x39, 0x46, user_offset as u8]);
+        } else {
+            code.bytes(&[0x48, 0x39, 0x86]);
+            code.bytes(&user_offset.to_le_bytes());
+        }
+        code.jump_if(0x85, "fatal");
+    }
+    for offset in (744_u32..888).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&738_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x31, 0xc0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-applet-newline-write")?;
@@ -15533,7 +15668,7 @@ assert bytes(output) == block[32:]
                         *window == [0xb9, 18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xaf]
                     })
                     .count()
-                    == 2,
+                    == 3,
             "clean process fixture must issue exact MAILPATH newfstatat and prove its complete candidate"
         );
         assert!(
@@ -15672,8 +15807,8 @@ assert bytes(output) == block[32:]
                 .windows(complete_post_banner_getcwd_observation.len())
                 .filter(|window| *window == complete_post_banner_getcwd_observation)
                 .count(),
-            4,
-            "effective identity, profile open, sealed input, and rollback must require the complete post-banner getcwd observation"
+            5,
+            "effective identity, profile open, profile metadata, sealed input, and rollback must require the complete post-banner getcwd observation"
         );
         assert!(
             shell_continuation.windows(12).any(|window| window
@@ -15693,7 +15828,7 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe0, 0x02, 0, 0, 1] })
                     .count()
-                    == 3
+                    == 4
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe0, 0x02, 0, 0, 0]),
@@ -15721,11 +15856,53 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe1, 0x02, 0, 0, 1] })
                     .count()
-                    == 2
+                    == 3
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 0]),
             "profile open must publish, gate successors, and revoke its private description"
+        );
+        assert!(
+            shell_continuation.windows(20).any(|window| window
+                == [
+                    0xbf, 3, 0, 0, 0, 0x48, 0x89, 0xe6, 0xb8, 5, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85,
+                    0xc0, 0x75, 0xfe,
+                ]),
+            "clean process fixture must issue and validate exact descriptor-three profile fstat"
+        );
+        assert!(
+            shell_continuation.windows(11).any(|window| window
+                == [0x48, 0x81, 0x7c, 0x24, 24, 0x24, 0x81, 0, 0, 0x75, 0xfe])
+                && shell_continuation.windows(11).any(|window| window
+                    == [0x48, 0x81, 0x7c, 0x24, 56, 0, 0x10, 0, 0, 0x75, 0xfe]),
+            "clean process fixture must validate exact immutable regular-file mode and block size"
+        );
+        assert!(
+            process_enter.windows(13).any(
+                |window| window == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xf0, 0x02, 0, 0, 2, 0, 0, 0]
+            ) && process_enter.windows(13).any(|window| window
+                == [
+                    0x65, 0x48, 0xc7, 0x04, 0x25, 0, 0x03, 0, 0, 0x24, 0x81, 0, 0
+                ])
+                && process_enter.windows(13).any(|window| window
+                    == [
+                        0x65, 0x48, 0xc7, 0x04, 0x25, 0x20, 0x03, 0, 0, 0, 0x10, 0, 0
+                    ]),
+            "profile fstat must privately stage exact identity, mode, and block size"
+        );
+        assert!(
+            process_enter
+                .windows(9)
+                .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe2, 0x02, 0, 0, 1])
+                && process_enter
+                    .windows(9)
+                    .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe2, 0x02, 0, 0, 1] })
+                    .count()
+                    == 2
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe2, 0x02, 0, 0, 0]),
+            "profile fstat must publish, gate successors, and clear its private completion fact"
         );
         assert!(
             shell_continuation.windows(12).any(
