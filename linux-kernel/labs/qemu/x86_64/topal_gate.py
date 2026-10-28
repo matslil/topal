@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7811] = bytes.fromhex(
+    image[0xA_7000 : 0xA_7841] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -598,6 +598,8 @@ def static_user_fixture() -> bytes:
         "31c0b9100000004889e7fcf348ab"
         "31c0b9100000004889e7fcf348af75fe"
         "bf03000000b8030000000f054885c075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
         "31ffbe608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
@@ -849,7 +851,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/199",
+        "schema": "topal-kernel-toolchain-gate-qemu/200",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -967,6 +969,11 @@ def evidence_record(
                 "external-optional-system-profile-close-absent"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-consumed-system-profile-description-witness"
+            ),
+            "static_shell_prompt_profile": (
+                "external-optional-root-prompt-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-prompt-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
