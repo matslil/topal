@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_74B4] = bytes.fromhex(
+    image[0xA_7000 : 0xA_751D] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -562,6 +562,10 @@ def static_user_fixture() -> bytes:
         "31c0b9050000004889e7fcf348ab31c0b9050000004889e7fcf348af75fe"
         "c604240abf020000004889e6ba01000000b8010000000f054883f80175fe"
         "c6042400803c240075fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe20694a004889e24531d2b8060100000f054883f8fe75fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
+        "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
         "31ffbe608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
@@ -572,6 +576,7 @@ def static_user_fixture() -> bytes:
     )
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
+    image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
     return bytes(image)
 
 
@@ -811,7 +816,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/190",
+        "schema": "topal-kernel-toolchain-gate-qemu/191",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -884,6 +889,11 @@ def evidence_record(
                 "external-optional-terminal-warning-absent"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-three-segment-stderr-warning-witness"
+            ),
+            "static_shell_mailpath_stat_profile": (
+                "external-optional-mailpath-stat-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-root-mailpath-enoent-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,

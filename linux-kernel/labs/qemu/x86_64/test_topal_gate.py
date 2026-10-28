@@ -267,8 +267,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_74B4]
-        self.assertEqual(len(continuation), 1_204)
+        continuation = fixture[0xA_7000 : 0xA_751D]
+        self.assertEqual(len(continuation), 1_309)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -283,6 +283,16 @@ class TopalToolchainGateTests(unittest.TestCase):
             bytes.fromhex(
                 "bf9cffffffbe12694a00ba020000004531d2"
                 "b8010100000f054883f8fe75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+                "bf9cffffffbe20694a004889e24531d2b8060100000f054883f8fe75fe"
+                "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
+                "31c0b9120000004889e7fcf348ab"
+                "31c0b9120000004889e7fcf348af75fe"
             ),
             continuation,
         )
@@ -321,19 +331,20 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertTrue(continuation.endswith(bytes.fromhex("31ffb8e70000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
         self.assertEqual(fixture[0xA_6912 : 0xA_691B], b"/dev/tty\0")
+        self.assertEqual(fixture[0xA_6920 : 0xA_6935], b"/var/spool/mail/root\0")
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/190")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/191")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/178")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/179")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/188",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/189",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/88",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/89",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -591,6 +602,10 @@ class TopalToolchainGateTests(unittest.TestCase):
             observations["static_shell_terminal_warning_profile"],
             "clean-three-segment-stderr-warning-witness",
         )
+        self.assertEqual(
+            observations["static_shell_mailpath_stat_profile"],
+            "clean-root-mailpath-enoent-witness",
+        )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
@@ -609,7 +624,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/190")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/191")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -651,6 +666,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(
             observations["static_shell_terminal_warning_profile"],
             "external-optional-terminal-warning-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_mailpath_stat_profile"],
+            "external-optional-mailpath-stat-absent",
         )
         marker_serial = "".join(observations["markers_in_order"])
         echo_position = marker_serial.index(
