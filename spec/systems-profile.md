@@ -4764,6 +4764,44 @@ or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
 profile contents, explicit close, other files, general descriptor reads, a
 prompt, mutable input, filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001 — Static-process system-profile close
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` with exactly one close of the
+live system-profile description after its EOF observation and before prompt or
+sealed-command work. The operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+executable pathname and stack, live child and ignored-quit dispositions, exact
+input-predecessor phase, every completed prior interactive observation, and
+the process-owned read-only description for the immutable empty launch-profile
+object at position zero.
+
+Success SHALL consume the description, free exactly its lowest nonstandard
+descriptor slot, return zero, retain no argument or object state, preserve the
+EOF completion as immutable history, and publish one distinct private closed-
+state fact. A duplicate, skipped-predecessor, reordered, wrong-description,
+already-closed, or aliased operation SHALL fail closed. Later startup work,
+sealed input, and terminal rollback SHALL require the live description absent
+and closed-state fact present. Terminal handling SHALL clear the closed-state
+fact with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 3,
+descriptor three, and result zero. The implementation SHALL clear and prove
+the prior live-description byte zero before returning and SHALL publish one
+fresh private byte after the EOF completion fact. The clean fixture SHALL issue
+the request and validate its exact result. The pinned external echo-command
+profile SHALL omit this optional transition and preserve its existing
+execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity and position, consumption, free-slot state, result,
+closed-fact lifecycle, profile distinction, and unchanged affine rollback.
+Another descriptor, object, position, result, order, duplicate, skipped
+predecessor, retained description, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add arbitrary
+close, descriptor aliases, reopen, profile contents, a prompt, mutable input,
+filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

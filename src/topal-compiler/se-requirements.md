@@ -1736,6 +1736,22 @@ output effect, result, lifecycle, profile distinction, and unchanged rollback.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` and
 `TK-DEC-217`.
 
+The bounded static-process shell-profile-close increment shall accept exactly
+one native x86-64 syscall-3 request after the clean profile-EOF fact and before
+prompt or sealed input. It shall require descriptor three, the live process-
+owned read-only description for the immutable empty launch-owned profile at
+position zero, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall consume the description, free the
+lowest nonstandard slot, preserve EOF history, return zero, retain no argument
+or object state, and publish one distinct private closed-state fact after
+proving the description absent. Later clean startup and terminal handling shall
+require the description absent and close fact present; terminal handling shall
+clear that fact. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity and position, consumption, free-slot state, result,
+lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` and `TK-DEC-218`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
