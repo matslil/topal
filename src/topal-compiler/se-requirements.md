@@ -1588,6 +1588,23 @@ shall enforce dispatch, arguments, extent, ordering, no-output effect, result,
 count lifecycle, profile distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` and `TK-DEC-208`.
 
+The bounded static-process terminal-warning increment shall accept exactly
+three native x86-64 syscall-1 requests after clean terminal-probe count three
+and before later startup work or sealed input. It shall require descriptor two,
+exact 4-, 40-, and 1-byte segments spelling `sh: can't access tty; job control
+turned off\n`, complete checked readable initial-stack candidates, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall stage and validate every complete segment before the
+existing serial adapter publishes it, return each length, clear staging, and
+retain no pointer or payload. One private count shall advance only after full
+publication, and later clean input and terminal handling shall require count
+three and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, lengths, ordering, candidate extents,
+staging-before-output, exact result and output, staging erasure, lifecycle,
+profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` and `TK-DEC-209`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -4401,6 +4401,49 @@ terminal attributes, successful terminal operations, arbitrary `ioctl`,
 warning or banner output, a prompt, mutable input, processes, filesystems,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001 — Static-process non-terminal warning
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` with exactly three
+ordered standard-error writes after terminal-probe count three and before later
+startup lookup, banner output, or sealed command input. The user process SHALL
+supply `sh: can't access tty; job control turned off\n` in segments of four,
+forty, and one byte. Every operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, completed prior observations, next expected warning segment,
+descriptor two, exact segment length, and one complete checked readable
+candidate.
+
+The provider SHALL copy and validate the complete segment before any output,
+publish only the copied bytes to the existing console-error transport, return
+the exact length, clear all staging, retain no pointer or payload, and leave
+descriptor state, process phase, and other resources unchanged. One private
+count SHALL advance from zero through three only after complete publication and
+SHALL reject a skipped, reordered, duplicated, partial, or substituted segment.
+Later startup work, sealed input, and terminal rollback SHALL require count
+three. Terminal handling SHALL clear the count with all predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operations SHALL bind to syscall 1,
+descriptor 2, lengths 4, 40, and 1, checked initial-stack candidates, exact
+length results, register staging of every complete segment, and the established
+polled serial adapter. The clean fixture SHALL stage, issue, validate, erase,
+and prove erasure of every segment. The pinned external echo-command profile
+SHALL omit all optional interactive observations and output and preserve its
+existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+segments, lengths, order, phase, candidate extents, complete staging before
+output, exact transport bytes and results, staging erasure, count lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+segment, length, order, duplicate, skipped count, candidate extent, partial or
+provider-substituted output, retained pointer or payload, source-visible native
+detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
+NOT add general standard-error output, formatting, terminal attributes, startup
+lookup, banner or prompt output, mutable input, processes, filesystems,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
