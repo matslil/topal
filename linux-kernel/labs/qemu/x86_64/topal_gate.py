@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7282] = bytes.fromhex(
+    image[0xA_7000 : 0xA_7352] = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -541,7 +541,14 @@ def static_user_fixture() -> bytes:
         "004889e631d241ba08000000b80d0000000f054885c075fe31c0488904244889"
         "4424084889442410488944241848b8a5a5a5a5a5a5a5a54889e7b904000000f3"
         "48abbf0f00000031f64889e241ba08000000b80d0000000f054885c075fe31c0"
-        "b9040000004889e7fcf348af75fe31ffbe608f5f00baff03000031c00f054883"
+        "b9040000004889e7fcf348af75febf010000004889e6b8050000000f054885c0"
+        "75fe48833c240075fe48837c24080175fe48837c24100175fe48817c24188021"
+        "000075fe48837c24200075fe48817c24280044000075fe48837c24300075fe48"
+        "817c24380010000075fe48837c24400075fe48837c24480075fe48837c245000"
+        "75fe48837c24580075fe48837c24600075fe48837c24680075fe48837c247000"
+        "75fe48837c24780075fe4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe31ff"
+        "be608f5f00baff03000031c00f054883"
         "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
         "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
         "89e6ba06000000b8010000000f054883f80675fe48c704240000000048833c24"
@@ -789,7 +796,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/186",
+        "schema": "topal-kernel-toolchain-gate-qemu/187",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -842,6 +849,11 @@ def evidence_record(
                 "external-busybox-sh-echo-command-output-terminal"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-sealed-echo-command-witness"
+            ),
+            "static_shell_console_fstat_profile": (
+                "external-optional-console-fstat-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-console-fstat-witness"
             ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,

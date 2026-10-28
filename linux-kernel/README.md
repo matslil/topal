@@ -840,6 +840,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static-process shell empty input](step-4-bounded-static-elf-shell-empty-input.md)
 - [Step 4 bounded static-process shell exit command](step-4-bounded-static-elf-shell-exit-command.md)
 - [Step 4 bounded static-process shell echo command](step-4-bounded-static-elf-shell-echo-command.md)
+- [Step 4 bounded static-process shell console `fstat`](step-4-bounded-static-elf-shell-console-fstat.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
