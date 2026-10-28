@@ -3573,7 +3573,7 @@ impl BootstrapAuthorityState {
                     ) => BootstrapMemoryOwnership::StaticElfConstructionSealedWithHierarchy,
                     (
                         BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorized,
-                        INITIAL_SINGLE_FRAME_REQUEST,
+                        INITIAL_TWO_FRAME_REQUEST,
                     ) => {
                         BootstrapMemoryOwnership::StaticElfConstructionStackSlotAuthorizedWithBacking
                     }
@@ -11868,7 +11868,7 @@ mod tests {
                 SystemsOperation::AuthorizeStaticImageEntry,
                 SystemsOperation::AuthorizeStaticImageStackSlot,
                 SystemsOperation::AllocatePhysicalFrames {
-                    request: INITIAL_SINGLE_FRAME_REQUEST,
+                    request: INITIAL_TWO_FRAME_REQUEST,
                     failure_message: "stack backing allocation failed".into(),
                 },
                 SystemsOperation::ZeroStaticImageStackBacking,

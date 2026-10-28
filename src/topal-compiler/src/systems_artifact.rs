@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/199";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/188";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/200";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/189";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1213,7 +1213,28 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
         0x75, 0xfe, // exact second prompt result and erasure
         0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
-        0x48, 0x83, 0xf8, 5, 0x75, 0xfe, // second sealed command publication
+        0x48, 0x83, 0xf8, 4, 0x75, 0xfe, // second sealed command publication
+        0x48, 0xb8, 0x70, 0x77, 0x64, 0x0a, 0, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x60, 0x8f, 0x5f,
+        0, 0x75, 0xfe, // "pwd\n" and sealed zero tail
+        0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // zero high word
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0xa5, 0xa5, // prefill cwd output
+        0xbf, 0x60, 0x94, 0x5f, 0, 0xbe, 0, 0x10, 0, 0, 0xb8, 0x4f, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 2, 0x75, 0xfe, // command-time sealed root getcwd
+        0x66, 0x81, 0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0, 0x75,
+        0xfe, // require exact root and terminator
+        0xc6, 0x04, 0x25, 0x61, 0x94, 0x5f, 0, 0x0a, // application newline
+        0x66, 0x81, 0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0x0a, 0x75,
+        0xfe, // exact application-owned output
+        0xbf, 1, 0, 0, 0, 0xbe, 0x60, 0x94, 0x5f, 0, 0xba, 2, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f,
+        0x05, 0x48, 0x83, 0xf8, 2, 0x75, 0xfe, // exact pwd output result
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, 0x66, 0x83, 0x3c, 0x25, 0x60, 0x94,
+        0x5f, 0, 0, 0x75, 0xfe, // erase and prove output
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact third "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, // exact third prompt result and erasure
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
+        0x48, 0x83, 0xf8, 5, 0x75, 0xfe, // third sealed command publication
         0x48, 0xb8, 0x65, 0x78, 0x69, 0x74, 0x0a, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x60, 0x8f,
         0x5f, 0, 0x75, 0xfe, // "exit\n" and sealed zero tail
         0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // zero high word
@@ -3523,7 +3544,7 @@ impl RootEncoder {
         let nested_static_elf_stack_backing = self.static_image
             == RootStaticImageState::StackSlotAuthorized
             && self.physical_frame_count.is_none()
-            && frame_count == 1
+            && frame_count == 2
             && !self.retained_static_elf_payload;
         let retained_static_process_work = self.static_image
             == RootStaticImageState::PreparedProcessRetained
@@ -3620,6 +3641,13 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
+        if nested_static_elf_stack_backing {
+            // The provider carries the upper-page anchor so all existing ABI
+            // entry offsets remain relative to the page containing RSP. The
+            // complete affine extent starts one base page below this anchor.
+            self.bytes
+                .extend_from_slice(&[0x48, 0x81, 0xc3, 0x00, 0x10, 0x00, 0x00]);
+        }
         self.physical_frame_count = Some(u64::from(frame_count));
         if nested_static_elf_metadata {
             self.retained_static_elf_payload = true;
@@ -3718,7 +3746,7 @@ impl RootEncoder {
             self.static_image = RootStaticImageState::Sealed;
             return Ok(());
         }
-        if self.static_image == RootStaticImageState::StackBackingZeroed && frame_count == 1 {
+        if self.static_image == RootStaticImageState::StackBackingZeroed && frame_count == 2 {
             self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear backing identity
             self.bytes.extend_from_slice(&[0x48, 0x89, 0xeb]); // restore hierarchy identity
             self.bytes.extend_from_slice(&[0x48, 0x31, 0xed]); // clear retained hierarchy copy
@@ -4020,12 +4048,12 @@ impl RootEncoder {
     fn zero_static_image_stack_backing(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackSlotAuthorized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
             return Err(CompileError::Tool(
-                "x86 static-image stack-backing zeroing requires one slot-authorized construction and its live one-frame backing"
+                "x86 static-image stack-backing zeroing requires one slot-authorized construction and its live two-frame backing"
                     .into(),
             ));
         }
@@ -4038,7 +4066,7 @@ impl RootEncoder {
     fn publish_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackBackingZeroed
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4062,7 +4090,7 @@ impl RootEncoder {
     fn initialize_static_image_stack_entry(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackLeafPublished
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4086,7 +4114,7 @@ impl RootEncoder {
     fn clear_static_image_stack_entry(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryInitialized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4110,7 +4138,7 @@ impl RootEncoder {
     fn add_static_image_stack_pagesz(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryInitialized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4134,7 +4162,7 @@ impl RootEncoder {
     fn add_static_image_stack_entry_fact(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackPageSizeAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4166,7 +4194,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4210,7 +4238,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4248,7 +4276,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4287,7 +4315,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4329,7 +4357,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4368,7 +4396,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4410,7 +4438,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4452,7 +4480,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4494,7 +4522,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4534,7 +4562,7 @@ impl RootEncoder {
         } else {
             RootStaticImageState::PreparedProcessRetained
         };
-        let required_frames = if retain { Some(1) } else { None };
+        let required_frames = if retain { Some(2) } else { None };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
             || self.physical_frame_count != required_frames
@@ -4557,7 +4585,7 @@ impl RootEncoder {
         } else {
             RootStaticImageState::StackRandomSlotAuthorized
         };
-        self.physical_frame_count = if retain { None } else { Some(1) };
+        self.physical_frame_count = if retain { None } else { Some(2) };
         Ok(())
     }
 
@@ -5887,7 +5915,7 @@ impl RootEncoder {
     fn remove_static_image_stack_entry_fact(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryFactAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -5911,7 +5939,7 @@ impl RootEncoder {
     fn remove_static_image_stack_pagesz(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackPageSizeAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -5935,7 +5963,7 @@ impl RootEncoder {
     fn revoke_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackLeafPublished
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -12084,7 +12112,7 @@ mod tests {
         assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[54],
-            "topal.systems.frames.allocate/1:frames=1:alignment=1"
+            "topal.systems.frames.allocate/1:frames=2:alignment=1"
         );
         assert!(decoded.semantic_trace[55].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(

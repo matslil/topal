@@ -140,7 +140,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK"
                                                                               static-elf-stack-backing is unmapped static image construction reserve stack backing (
                                                                                 owner is stack-slot-authorized-static-elf-construction,
-                                                                                frame-count is 1,
+                                                                                frame-count is 2,
                                                                                 alignment-frames is 1
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK"
@@ -428,9 +428,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd-post-banner-geteuid-profile-open-profile-fstat-profile-read-profile-close-prompt-refill-input,
+                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd-post-banner-geteuid-profile-open-profile-fstat-profile-read-profile-close-prompt-refill-input-pwd-command,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-shell-refill-input
+                                                                                policy is bounded-static-elf-shell-pwd-command
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"

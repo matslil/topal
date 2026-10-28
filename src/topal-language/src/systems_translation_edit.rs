@@ -1945,7 +1945,7 @@ fn analyze_static_elf_frame_sequence(
         stack_slot_marker,
         CompilerSystemsOperation::AllocatePhysicalFrames {
             request: CompilerPhysicalFrameRequest {
-                frame_count: 1,
+                frame_count: 2,
                 alignment_frames: 1,
             },
             failure_message: "static ELF stack-backing frame reservation failed".into(),
@@ -2692,7 +2692,7 @@ fn parse_static_image_stack_backing_reservation(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image stack-backing reservation requires its exact owner and one-frame shape",
+            "static-image stack-backing reservation requires its exact owner and two-frame shape",
         ));
     };
     if !identifier_is(source, receiver, context_name)
@@ -2707,7 +2707,7 @@ fn parse_static_image_stack_backing_reservation(
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image stack-backing reservation requires its exact owner and one-frame shape",
+            "static-image stack-backing reservation requires its exact owner and two-frame shape",
         ));
     }
     let mut owner = None;
@@ -2745,11 +2745,11 @@ fn parse_static_image_stack_backing_reservation(
             }
         }
     }
-    if owner != Some(construction_name) || frame_count != Some(1) || alignment_frames != Some(1) {
+    if owner != Some(construction_name) || frame_count != Some(2) || alignment_frames != Some(1) {
         return Err(translation_edit_diagnostic(
             source,
             span,
-            "static-image stack-backing reservation requires the exact slot-authorized construction and one unit-aligned frame",
+            "static-image stack-backing reservation requires the exact slot-authorized construction and two unit-aligned frames",
         ));
     }
     Ok(source.slice(name).to_owned())
@@ -4660,9 +4660,9 @@ fn parse_static_image_process_entry(
         vec![
             ("owner", owner_name),
             ("abi", "linux-x86-64-process"),
-            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd-post-banner-geteuid-profile-open-profile-fstat-profile-read-profile-close-prompt-refill-input"),
+            ("startup", "initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd-post-banner-geteuid-profile-open-profile-fstat-profile-read-profile-close-prompt-refill-input-pwd-command"),
             ("terminal", "exit-group-zero"),
-            ("policy", "bounded-static-elf-shell-refill-input"),
+            ("policy", "bounded-static-elf-shell-pwd-command"),
         ]
     } else {
         vec![
