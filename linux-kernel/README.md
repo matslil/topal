@@ -852,6 +852,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static-process system-profile open](step-4-bounded-static-elf-shell-profile-open.md)
 - [Step 4 bounded static-process system-profile metadata](step-4-bounded-static-elf-shell-profile-fstat.md)
 - [Step 4 bounded static-process system-profile EOF](step-4-bounded-static-elf-shell-profile-read.md)
+- [Step 4 bounded static-process system-profile close](step-4-bounded-static-elf-shell-profile-close.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)
