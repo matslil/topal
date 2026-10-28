@@ -1790,6 +1790,33 @@ erasure, profile distinction, and unchanged
 rollback. This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` and
 `TK-DEC-220`.
 
+The bounded static-process shell-`pwd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `pwd\n`, and `exit\n` publications with
+results 11, 4, and 5 and distinct affine input-owner states. After the `pwd`
+publication, the clean profile shall admit one exact command-time native
+x86-64 syscall-79 current-directory request through the complete checked
+anonymous 4096-byte candidate at `0x005f_9460`, publish exact `/\0`, and return
+two. The pinned external profile shall instead admit one syscall-5 descriptor-
+one console-metadata request through the complete 144-byte stack candidate at
+`0x007f_f370`, then one syscall-16 descriptor-one `TCGETS` request through the
+exact 36-byte stack candidate at `0x007f_f2d0`; it shall return `-ENOTTY`
+without mutating the terminal candidate and may then use its previously sealed
+root fact. One following descriptor-one write shall validate and privately
+stage exact `/\n`, publish two bytes, erase staging, and return two; its clean
+candidate shall be `0x005f_9460` and its pinned external candidate shall be
+`0x005f_9570`. The clean profile shall interpose an exact qualified prompt
+before each command; the external profile shall require those optional
+observations absent. Terminal handling shall require and erase the third
+publication, consume its owner, clear every command-time fact, and preserve
+complete rollback. Structural and QEMU evidence shall enforce one affine two-
+base-page stack extent with both pages reserved, zeroed, mapped adjacent RW/NX,
+verified, and released together; the initial ABI value shall remain in the
+upper page and no stack growth or demand paging is admitted. Evidence shall
+also enforce both profile variants, exact predecessor state, requests, values,
+results, ownership, prompt and output ordering, erasure, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` and `TK-DEC-221`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

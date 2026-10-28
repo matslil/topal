@@ -4893,6 +4893,63 @@ invalid. This rule SHALL NOT add arbitrary input, partial reads, blocking or
 wakeup policy, a general command loop, dynamic applications, filesystems,
 processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001 — Static-process `pwd` command
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` with exactly three ordered
+command publications through one checked process buffer: `echo topal\n`,
+`pwd\n`, and `exit\n`. Each later publication SHALL replace a consumed prior
+publication, zero and validate its sealed tail, retain no user pointer, and
+advance an exclusive private input-owner state. The clean profile SHALL
+publish a prompt conforming to `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001`
+before every command. The pinned external profile SHALL require the optional
+prompt observations absent.
+
+After `pwd\n`, the clean application SHALL issue one command-time current-
+directory request. The provider SHALL validate the live process, sealed
+continuation, active checked hierarchy, retained executable pathname and
+stack, live dispositions, exact profile predecessor, complete checked writable
+candidate, and bound before publishing exact `/\0` and result two. The pinned
+external application SHALL instead issue one complete descriptor-one console-
+metadata request and one descriptor-one terminal query that observes terminal
+absence without candidate mutation; it MAY then format from the already sealed
+root-directory fact. The provider SHALL validate the exact profile-specific
+sequence, candidate extents, results, and fact authority. One following
+descriptor-one write SHALL require a complete readable candidate containing
+exact `/\n`, count two, publish those bytes only after complete private staging
+and validation, erase staging, and return two. Unconditional reuse of startup
+bytes, provider-owned output substitution, a wrong candidate, value, count,
+result, order, duplicate, skipped predecessor, or retained pointer SHALL be
+invalid.
+
+The clean fixture SHALL validate prior process-owned bytes where it proves
+them immutable. The external application MAY parse or mutate its published
+input and current-directory output; subsequent operations SHALL rely on
+affine owner and observation state and SHALL NOT treat prior user bytes as
+provider state. Successful terminal handling SHALL require the third command
+publication live, erase and prove the complete command buffer empty, consume
+its owner, and clear every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, clean command-time current-directory
+observation SHALL bind to syscall 79, checked anonymous candidate
+`0x005f_9460`, a 4096-byte bound, exact `/\0`, and result two. Pinned external
+command-time revalidation SHALL bind to syscall 5, descriptor one, exact
+144-byte stack candidate `0x007f_f370`, and complete console metadata, followed
+by syscall 16, descriptor one, `TCGETS`, exact 36-byte stack candidate
+`0x007f_f2d0`, unchanged candidate bytes, and result `-ENOTTY`. Output SHALL
+bind to syscall 1, descriptor one, exact `/\n`, count and result two, with
+candidate `0x005f_9460` in the clean profile and `0x005f_9570` in the pinned
+external profile. Input results SHALL be 11, 4, and 5. The process stack SHALL
+be one affine two-base-page extent at `[0x007f_e000, 0x0080_0000)`, with the
+initial ABI value in its upper page; both adjacent leaves SHALL be reserved,
+zeroed, published RW/NX, verified, normalized, and released together, with no
+stack growth or demand paging. Structural and physical evidence SHALL certify
+profile distinction, dispatch, requests, exact values, owner transitions,
+prompt ordering, output, terminal erasure, and rollback. This rule SHALL NOT
+add directory enumeration, pathname lookup, mutable directories, arbitrary
+commands, a general loop, dynamic applications, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
