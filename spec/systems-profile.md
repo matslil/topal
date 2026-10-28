@@ -4206,6 +4206,42 @@ traversal or mutation, signal delivery, pending queues, signal frames, handler
 execution, mutable or blocking input, filesystem access, process creation, job
 control, command execution, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001 — Static-process shell sealed exit command
+
+The bounded static-process entry MAY refine the final input transition of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` with one sealed command-input
+publication. The input owner SHALL contain exactly the five bytes `exit\n`,
+SHALL be fresh for the process launch, and SHALL be consumed by one complete
+successful read. The transition SHALL require the same exact predecessor
+phase, live process, sealed executable continuation, active checked
+address-space hierarchy, retained initial stack, and live child and ignored
+quit dispositions as the empty-input transition.
+
+The provider SHALL validate the complete writable destination before mutation,
+copy all five bytes, consume the input owner, return five, and retain no user
+pointer or readable input copy. The process SHALL next exit successfully
+without another syscall. Terminal handling SHALL validate consumed input state
+and erase the process-visible command bytes before the existing complete
+process rollback. Failure SHALL preserve the predecessor phase, input owner,
+destination, and every process resource.
+
+For qualified x86-64 realization, the transition SHALL bind to
+`read(0, 0x5f8f60, 1023)`, publish bytes `65 78 69 74 0a`, and return five.
+The digest-pinned BusyBox 1.37.0 shell SHALL then bind directly to
+`exit_group(0)`. The clean-room fixture SHALL perform the same read, verify and
+erase every published byte, and exit with status zero.
+
+Structural and physical evidence SHALL certify exact input identity, dispatch,
+arguments, ordering, checked destination, complete publication, result,
+consumption, terminal erasure, immediate exit, and unchanged affine rollback
+for both qualification profiles. Another command, selector, descriptor,
+candidate, count, partial result, order, duplicate, retained pointer, refill,
+unsealed source, intervening syscall, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add an
+interactive terminal, mutable or blocking stream, arbitrary command authority,
+command output, external program execution, pathname lookup, filesystem,
+process creation, job control, pipeline, container, or virtualization support.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

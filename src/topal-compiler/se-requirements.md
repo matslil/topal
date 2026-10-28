@@ -1514,6 +1514,19 @@ dispatch, arguments, order, output, nonretention, disposition lifecycle,
 sealed identity, directory, end-of-input, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` and `TK-DEC-203`.
 
+The bounded static-process sealed exit-command increment shall replace the
+terminal empty-input result with one exact five-byte `exit\n` publication for
+`read(0, 0x5f8f60, 1023)`, consume one fresh private input owner, return five,
+and accept only immediate `exit_group(0)`. It shall validate the complete
+writable destination before mutation, retain no pointer or readable input copy,
+erase the process-visible bytes during terminal handling, and preserve the
+existing disposition lifecycle and complete rollback. The clean fixture shall
+verify and erase the same bytes before exit; the pinned external profile shall
+select exact `busybox sh` arguments and execute the command. Structural and
+QEMU evidence shall enforce input identity, dispatch, arguments, ordering,
+complete copy, consumption, immediate exit, erasure, and rollback. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` and `TK-DEC-204`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
