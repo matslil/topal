@@ -4802,6 +4802,45 @@ process-entry failure SHALL be invalid. This rule SHALL NOT add arbitrary
 close, descriptor aliases, reopen, profile contents, a prompt, mutable input,
 filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001 — Static-process root prompt
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` with exactly one root-prompt
+write after the system-profile description has been consumed and before any
+command input. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained executable
+pathname and stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, every completed prior interactive observation, absent
+profile description, live profile-closed history, and a fresh prompt fact.
+
+The application SHALL supply the exact four-byte `/ # ` segment through a
+complete readable user candidate. The provider SHALL copy the complete segment
+into private staging, validate it before publication, emit it in source order,
+erase and prove the staging empty, return four, retain no user pointer, and
+publish one private prompt-completion fact. A duplicate, skipped-predecessor,
+reordered, wrong-description-state, wrong-destination, wrong-length, aliased,
+partially readable, or different-byte operation SHALL fail closed. Later input
+and terminal rollback SHALL require the fact. Terminal handling SHALL clear it
+with the predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 1,
+descriptor two, count four, exact checked continuation-stack bytes `/ # `, and
+result four. One fresh private byte after the profile-closed fact SHALL record
+completion. Provider-private staging SHALL be empty before and after the
+operation. The clean fixture SHALL stage the exact segment, issue the request,
+validate the result, erase the candidate, and prove erasure. The pinned
+external echo-command profile SHALL omit this optional transition and preserve
+its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description and closed-history state, candidate extent and value, complete
+private staging, ordered publication, result, erasure, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another descriptor, candidate,
+count, value, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add cursor queries, prompt editing, refillable
+input, arbitrary output, filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

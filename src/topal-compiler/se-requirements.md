@@ -1752,6 +1752,23 @@ description identity and position, consumption, free-slot state, result,
 lifecycle, profile distinction, and unchanged rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` and `TK-DEC-218`.
 
+The bounded static-process shell-prompt increment shall accept exactly one
+native x86-64 syscall-1 request after explicit clean profile close and before
+command input. It shall require descriptor two, count four, the exact complete
+readable continuation-stack segment `/ # `, live dispositions and hierarchy,
+unchanged input-predecessor phase, absent profile description, live closed-
+state history, fresh prompt fact, and all prior observations. It shall copy the
+complete segment into empty private staging, validate before publication, emit
+it in source order, erase and prove staging empty, return four, retain no user
+pointer, and publish one private completion fact. Later clean input and
+terminal handling shall require that fact; terminal handling shall clear it.
+The clean fixture shall validate and erase its complete candidate. The external
+echo profile shall require every optional observation absent. Structural and
+QEMU evidence shall enforce dispatch, description state, candidate extent and
+value, staging, output, result, erasure, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` and `TK-DEC-219`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
