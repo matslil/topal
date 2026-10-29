@@ -615,7 +615,7 @@ def static_user_fixture() -> bytes:
         "66c7042560945f000000"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f05483dd800000075fe"
+        "31ffbe608f5f00baff03000031c00f05483d0701000075fe"
         "48b86563686f202f2a3b48390425608f5f0075fe"
         "48b82074657374202d6448390425688f5f0075fe"
         "48b8202f62696e20262648390425708f5f0075fe"
@@ -642,7 +642,13 @@ def static_user_fixture() -> bytes:
         "48b82f62696e2f6275734839042518905f0075fe"
         "48b879626f783b2065634839042520905f0075fe"
         "48b8686f2062757379624839042528905f0075fe"
-        "48b86f782d6f70656e0a4839042530905f0075fe"
+        "48b86f782d6f70656e3b4839042530905f0075fe"
+        "48b8204946533d2072654839042538905f0075fe"
+        "48b86164202d72202d6e4839042540905f0075fe"
+        "48b82034202d752033204839042548905f0075fe"
+        "48b85f202626206563684839042550905f0075fe"
+        "48b86f2062757379626f4839042558905f0075fe"
+        "48b8782d726561640a004839042560905f0075fe"
         "66c7042560945f002f00"
         "bf9cffffffbe60945f00ba000809004531d2b8010100000f054883f80375fe"
         "66c7042560945f000000"
@@ -781,6 +787,15 @@ def static_user_fixture() -> bytes:
         "48c7042560945f000000000048c7042568945f0000000000"
         "48b862757379626f782d48890424"
         "48b86f70656e0a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "bf03000000488d742400ba0100000031c00f054883f80175fe807c24007f75fe"
+        "bf03000000488d742401ba0100000031c00f054883f80175fe807c24014575fe"
+        "bf03000000488d742402ba0100000031c00f054883f80175fe807c24024c75fe"
+        "bf03000000488d742403ba0100000031c00f054883f80175fe807c24034675fe"
+        "c704240000000048833c240075fe"
+        "48b862757379626f782d48890424"
+        "48b8726561640a0000004889442408"
         "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
         "31c048890424488944240848833c240075fe48837c24080075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
@@ -1045,7 +1060,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/213",
+        "schema": "topal-kernel-toolchain-gate-qemu/214",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1294,6 +1309,31 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-exact-bin-busybox-open-output-witness"
             ),
+            "static_shell_bin_busybox_header_read_profile": (
+                "external-busybox-four-byte-elf-header-read-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-four-byte-elf-header-read-witness"
+            ),
+            "static_shell_bin_busybox_header_terminal_probe_profile": (
+                "external-busybox-ordered-five-regular-file-enotty-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-header-terminal-probes-not-issued"
+            ),
+            "static_shell_bin_busybox_header_poll_profile": (
+                "external-busybox-four-pollin-readiness-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-header-poll-not-issued"
+            ),
+            "static_shell_bin_busybox_header_read_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-read-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-read-output-witness"
+            ),
+            "static_shell_bin_busybox_header_read_terminal_revoke_profile": (
+                "external-busybox-terminal-revoked-header-read-state-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-terminal-revoked-header-read-state-witness"
+            ),
             "static_shell_bin_busybox_open_terminal_revoke_profile": (
                 "external-busybox-terminal-revoked-live-bin-busybox-description-witness"
                 if static_user_input == "pinned-external-static-busybox"
@@ -1378,14 +1418,16 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            8
+            9
             if static_user_input == "pinned-external-static-busybox"
-            else 15
+            else 16
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
             )
+        if b"busybox-open\nbusybox-read\n" not in serial:
+            raise GateError("static applet did not publish the exact BusyBox header-read output")
         record = evidence_record(
             qemu_version,
             image,

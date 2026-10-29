@@ -267,8 +267,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_873F]
-        self.assertEqual(len(continuation), 5_951)
+        continuation = fixture[0xA_7000 : 0xA_8896]
+        self.assertEqual(len(continuation), 6_294)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -280,6 +280,25 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn(bytes.fromhex("31c0b9120000004889e7fcf348af75fe"), continuation)
         self.assertIn(
             bytes.fromhex("bf03000000b8030000000f054885c075fe"), continuation
+        )
+        for offset, expected in enumerate(b"\x7fELF"):
+            self.assertIn(
+                bytes.fromhex(
+                    "bf03000000488d7424"
+                    + f"{offset:02x}"
+                    + "ba0100000031c00f054883f80175fe807c24"
+                    + f"{offset:02x}{expected:02x}"
+                    + "75fe"
+                ),
+                continuation,
+            )
+        self.assertIn(
+            bytes.fromhex(
+                "48b862757379626f782d48890424"
+                "48b8726561640a0000004889442408"
+                "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+            ),
+            continuation,
         )
         self.assertIn(
             bytes.fromhex(
@@ -448,8 +467,9 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn(bytes.fromhex("48b82f62696e2f627573"), continuation)
         self.assertIn(bytes.fromhex("48b879626f783b206563"), continuation)
         self.assertIn(bytes.fromhex("48b8686f206275737962"), continuation)
-        self.assertIn(bytes.fromhex("48b86f782d6f70656e0a"), continuation)
-        self.assertIn(bytes.fromhex("483dd800000075fe"), continuation)
+        self.assertIn(bytes.fromhex("48b86f782d6f70656e3b"), continuation)
+        self.assertIn(bytes.fromhex("48b8782d726561640a00"), continuation)
+        self.assertIn(bytes.fromhex("483d0701000075fe"), continuation)
         self.assertIn(
             bytes.fromhex(
                 "66c7042560945f002f00"
@@ -591,16 +611,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/213")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/214")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/203")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/204")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/213",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/214",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/113",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/114",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -827,7 +847,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 15)
+        self.assertEqual(observations["static_applet_newline_count"], 16)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -1005,6 +1025,32 @@ class TopalToolchainGateTests(unittest.TestCase):
             "clean-exact-bin-busybox-open-output-witness",
         )
         self.assertEqual(
+            observations["static_shell_bin_busybox_header_read_profile"],
+            "clean-four-byte-elf-header-read-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_terminal_probe_profile"
+            ],
+            "clean-header-terminal-probes-not-issued",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_poll_profile"],
+            "clean-header-poll-not-issued",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-read-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_terminal_revoke_profile"
+            ],
+            "clean-terminal-revoked-header-read-state-witness",
+        )
+        self.assertEqual(
             observations["static_shell_bin_busybox_open_terminal_revoke_profile"],
             "clean-terminal-revoked-live-bin-busybox-description-witness",
         )
@@ -1051,6 +1097,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "busybox-executable\n"
             + "busybox-nonempty\n"
             + "busybox-open\n"
+            + "busybox-read\n"
             + "/ # "
             + "/\n"
             + "/ # "
@@ -1064,7 +1111,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/213")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/214")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1077,7 +1124,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
         observations = evidence["observations"]
-        self.assertEqual(observations["static_applet_newline_count"], 8)
+        self.assertEqual(observations["static_applet_newline_count"], 9)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "external-shell-echo-command"
         )
@@ -1254,6 +1301,32 @@ class TopalToolchainGateTests(unittest.TestCase):
             "external-busybox-exact-bin-busybox-open-output-witness",
         )
         self.assertEqual(
+            observations["static_shell_bin_busybox_header_read_profile"],
+            "external-busybox-four-byte-elf-header-read-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_terminal_probe_profile"
+            ],
+            "external-busybox-ordered-five-regular-file-enotty-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_poll_profile"],
+            "external-busybox-four-pollin-readiness-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-read-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_terminal_revoke_profile"
+            ],
+            "external-busybox-terminal-revoked-header-read-state-witness",
+        )
+        self.assertEqual(
             observations["static_shell_bin_busybox_open_terminal_revoke_profile"],
             "external-busybox-terminal-revoked-live-bin-busybox-description-witness",
         )
@@ -1288,7 +1361,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         expected_serial = (
             marker_serial[:echo_position]
             + "topal\n/bin\n/bin/busybox\nbusybox-file\nbusybox-executable\n"
-            + "busybox-nonempty\nbusybox-open\n/\n"
+            + "busybox-nonempty\nbusybox-open\nbusybox-read\n/\n"
             + marker_serial[echo_position:]
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)
