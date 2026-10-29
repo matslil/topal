@@ -1969,6 +1969,32 @@ observation and ownership transitions, prompt ordering, erasure, and unchanged
 external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` and `TK-DEC-227`.
 
+The bounded static-process named-root-directory-condition increment shall
+replace the third publication with exact
+`echo /*; test -d /bin && echo bin-directory\n`. Both profiles shall first
+complete the qualified root enumeration, close, and `/bin\n` output. They shall
+then issue x86-64 syscall 262 for exact `/bin\0` relative to `AT_FDCWD`, zero
+flags, and a complete checked 144-byte clean-stack or external-heap candidate.
+
+The provider shall publish complete deterministic inode-four directory
+metadata with link count two, mode `0755`, root ownership, zero size and times,
+and 4,096-byte preferred transfer size. It shall verify the complete copy,
+return zero, erase staging, retain no pointer or bytes, and publish one private
+ordered metadata fact. After consuming it, both applications shall issue one
+syscall-1 request for exact `bin-directory\n`; the provider shall validate and
+stage all 14 bytes, publish them, return 14, erase staging, and record one
+private condition-output fact.
+
+The later prompt and profile-specific `pwd` shall require the named condition.
+Terminal handling shall clear every child-metadata, enumeration, description,
+output, and command-time fact and preserve complete rollback. Structural and
+QEMU evidence shall enforce the combined 44-byte command, predecessor match,
+exact lookup and metadata, application-selected output, ordered observations,
+candidate and staging erasure, prompt distinction, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` and
+`TK-DEC-228`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

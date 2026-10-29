@@ -5278,6 +5278,54 @@ rule SHALL NOT add arbitrary paths or patterns, child lookup or open, child
 contents, file contents, mutation, seeking, concurrent descriptions, dynamic
 applications, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001 — Static-process named-root directory condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo bin-directory\n`. The remaining publications
+SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`, with the same
+affine input-owner, prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's exact root open,
+metadata, three-record enumeration, EOF, explicit close, and exact `/bin\n`
+matched output. It MAY then issue one native metadata request for exact
+`/bin\0` relative to its current namespace, with zero flags and one complete
+checked writable candidate. The provider SHALL require the completed named
+match, validate the live process, sealed continuation, checked hierarchy,
+stack, dispositions, complete pathname and candidate, and construct one
+deterministic immutable directory value for the sealed child. That value SHALL
+bind inode four, link count two, directory mode `0755`, root ownership, zero
+size and times, and preferred transfer size 4,096. The provider SHALL copy and
+verify the complete value, return zero, erase fixed private staging, retain no
+candidate pointer or byte, and record one private child-metadata fact. A
+missing, duplicate, partial, unreadable, wrapping, cross-hole, wrong-path,
+wrong-flags, pre-match, or post-output request SHALL be invalid.
+
+After consuming the metadata, the application SHALL select the true edge and
+issue one standard-output write containing exact `bin-directory\n`. The
+provider SHALL require the child-metadata fact, validate and stage the complete
+readable 14-byte candidate before publication, publish exactly those bytes,
+return 14, erase staging, retain no user pointer or output byte, and record one
+private named-condition-output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear the child metadata,
+enumeration, descriptor, output, and every command-time fact with unchanged
+affine rollback.
+
+For qualified x86-64 realization, child lookup SHALL bind to syscall 262 with
+`AT_FDCWD=-100`, exact `/bin\0`, a complete 144-byte stack or heap candidate,
+flags zero, and result zero. Its 18 qwords SHALL be device zero, inode four,
+link count two, mode/UID `0x41ed`, GID/padding zero, device zero, size zero,
+block size 4,096, blocks zero, zero timestamps, and zero reserved words.
+Selected conditional output SHALL bind to syscall 1 on descriptor one with
+count and result 14. Input results SHALL be 11, 5, 44, 4, and 5. Structural and
+physical evidence SHALL certify predecessor enumeration and matching, exact
+lookup and metadata, selected condition flow and output, observation ordering,
+candidate and staging erasure, later `pwd`, prompt distinction, terminal
+cleanup, and rollback. This rule SHALL NOT add arbitrary traversal, child open
+or enumeration, contents, mutation, dynamic applications, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
