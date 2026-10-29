@@ -4,8 +4,8 @@
 
 The bounded static-process startup path now continues after its initial break
 query and growth through one exact thread-pointer install. The clean-room
-executable writes a known byte at `0x005f7440`, requests
-`arch_prctl(ARCH_SET_FS, 0x005f7440)`, checks the zero result, reloads that byte
+executable writes a known byte at `0x005f7400`, requests
+`arch_prctl(ARCH_SET_FS, 0x005f7400)`, checks the zero result, reloads that byte
 through FS-relative address zero, and only then requests `exit_group(0)`.
 
 The x86-64 provider admits syscall 158 and operation `0x1002` only in the exact

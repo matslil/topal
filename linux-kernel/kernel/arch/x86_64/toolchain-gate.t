@@ -160,7 +160,7 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               initialized-stack-entry-construction is unmapped static image construction initialize stack entry (
                                                                                 owner is published-stack-leaf-construction,
                                                                                 backing is static-elf-stack-backing,
-                                                                                profile is bounded-static-elf-busybox-true,
+                                                                                profile is bounded-static-elf-busybox-echo,
                                                                                 extent is complete
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK"
@@ -428,9 +428,9 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               completed-static-process-after-entry is unmapped static image process enter (
                                                                                 owner is randomized-static-process-after-initial-random-delivery,
                                                                                 abi is linux-x86-64-process,
-                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment,
+                                                                                startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid,
                                                                                 terminal is exit-group-zero,
-                                                                                policy is bounded-static-elf-post-random-brk-page-alignment
+                                                                                policy is bounded-static-elf-shell-getppid
                                                                               )
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK"
@@ -445,6 +445,11 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK"
+                                                                              unmapped console write "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK"
                                                                               unmapped console write "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK"
                                                                               randomized-static-process-after-entry-restoration is unmapped static image process restore entry (
                                                                                 owner is completed-static-process-after-entry,

@@ -666,9 +666,52 @@ The bounded page-realization refinement converts only those checked facts into
 one ordered record per declared page. It requires adjacent load-page roles,
 names a future single affine extent with one frame per page, zeroes that whole
 extent before four exact segment copies, and assigns RW/NX construction plus
-final RO/NX, RO/X, or RW/NX permissions. RELRO pages become RO/NX within the
-writable role. This remains an immutable compiler plan, not frame ownership,
+entry-stage RO/NX, RO/X, or RW/NX permissions. GNU RELRO pages remain RW/NX
+within the writable role until the exact checked process protection transition
+seals them RO/NX. This remains an immutable compiler plan, not frame ownership,
 mapping authority, executable selection, or a source-visible page-table API.
+
+The bounded external-process refinement may select one digest-pinned static
+executable without storing or redistributing its bytes. The provider still owns
+the native privilege boundary: it derives the complete initial stack, creates a
+fresh target SIMD context, preserves the Linux syscall register contract and
+its own calling convention, and restores all private state before returning the
+affine completed-process owner. The first x86-64 external qualification invokes
+the pinned BusyBox `true` applet; it is evidence for that exact executable and
+startup path, not a general ELF execution or userspace compatibility claim.
+
+The bounded initial-configuration refinement may answer one optional
+configuration-file metadata probe for a sealed initial process. It recognizes
+the complete immutable path `/etc/busybox.conf`, requires a complete writable
+native metadata destination, and reports that the path is absent without
+publishing output or retaining either user pointer. Portable policy observes
+only an absent optional configuration object; the provider owns the native
+directory-relative selector, metadata layout, syscall number, registers, and
+address validation. This is one startup compatibility fact, not a filesystem,
+pathname resolver, descriptor namespace, metadata service, or general `stat`
+interface.
+
+The bounded startup-credential-tail refinement completes the credential
+normalization needed after that optional lookup. It observes the sealed real
+group ID, then admits exact idempotent group-ID and user-ID selections only
+when the requested value equals the corresponding immutable root credential.
+Each operation is pointer-free, revalidates the complete initial credential
+group, retains no argument or mutable credential state, and leaves the group
+unchanged. Native syscall numbers, argument registers, and result registers
+remain provider-owned. This completes one ordered startup sequence; it does
+not introduce credential mutation, supplementary groups, namespaces,
+capabilities, a process table, or a reusable identity service.
+
+The bounded static-applet-output refinement publishes one line-feed byte after
+that credential normalization. It requires standard output, length one, an
+executable continuation, and the header-profile-bound byte in its proved
+readable stack or anonymous process mapping. The provider revalidates the
+active address space and exact backing, stages the byte privately before
+output, verifies the sealed line-feed value, returns one, and retains no
+pointer or staging state. Native
+syscall selectors, registers, page tables, and console mechanics remain
+provider-owned. This is one applet-startup effect, not a descriptor table,
+general write service, file, pipe, socket, or prompt.
 
 The resident-image readiness refinement emits the exact
 `TOPAL_KERNEL_USER_IMAGE_READY` qualification marker after data is finalized

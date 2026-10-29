@@ -3,8 +3,8 @@
 The bounded static process now supports the exact program-break growth issued
 by the pinned x86-64 BusyBox after its repeated `getrandom` startup work and
 post-random `brk(0)` query. The native syscall dispatcher admits only growth
-from `0x005f7dc0` to `0x00618dc0`, maps 34 zeroed anonymous pages, validates a
-write and read at the final admitted byte `0x00618dbf`, and updates the current
+from `0x005f7d80` to `0x00618d80`, maps 34 zeroed anonymous pages, validates a
+write and read at the final admitted byte `0x00618d7f`, and updates the current
 break only after every leaf is present.
 
 The growth crosses the 6 MiB leaf-table boundary. To keep target details out of

@@ -5,7 +5,7 @@
 After the first successful random request, the pinned static executable issues
 another Linux `brk(0)`. The bounded process profile shall answer this read-only
 query with the current byte-granular program break established by the earlier
-growth, `0x005f7dc0`. The mapped anonymous reserve, current-break state, random
+growth, `0x005f7d80`. The mapped anonymous reserve, current-break state, random
 service, and every other process resource remain unchanged.
 
 The query is admitted only while the exact initial startup sequence is live,
@@ -16,7 +16,7 @@ teardown remains responsible for revoking the heap leaf, resetting break state,
 and returning the zeroed reserve.
 
 The clean-room x86-64 payload issues `brk(0)` after the repeated-random witness,
-compares the complete result with `0x005f7dc0`, and only then invokes terminal
+compares the complete result with `0x005f7d80`, and only then invokes terminal
 dispatch. Source names a post-random current-break query service, not the
 address, syscall number, registers, page-table state, or instruction sequence.
 

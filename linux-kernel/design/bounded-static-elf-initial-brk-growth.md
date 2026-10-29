@@ -5,7 +5,7 @@
 The bounded static-process startup profile may extend the proven `brk(0)` query
 with one exact successful growth request. The profile owns one opaque, page-
 aligned, zero-initialized anonymous reserve for the live process. After the
-query returns the initial break, the same process may request `0x005f7dc0`;
+query returns the initial break, the same process may request `0x005f7d80`;
 the provider maps the reserve at the initial break, sets the byte-granular
 current break to the request, and returns that request. The qualification
 payload writes and reads the first admitted byte before terminal return.
@@ -39,7 +39,7 @@ The pinned provider shall:
 1. validate one distinct aligned 4 KiB zero reserve and an absent leaf for
    `0x005f7000` before entering the process;
 2. preserve the existing one-shot `brk(0)` query result;
-3. accept exactly one later syscall 12 request for `0x005f7dc0` from the sealed
+3. accept exactly one later syscall 12 request for `0x005f7d80` from the sealed
    executable mapping;
 4. publish one user RW/NX leaf backed by the opaque reserve and invalidate that
    virtual page before returning the requested break through `SYSRETQ`;

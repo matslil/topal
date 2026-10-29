@@ -543,10 +543,69 @@ The bounded static-ELF page-realization refinement shall consume only a
 successful immutable load plan. It shall reject nonadjacent load-page roles and
 derive one future affine frame request equal to the complete page count, one
 ordered virtual-page/frame-ordinal record per page, initial RW/NX construction,
-and exact final RO/NX, RO/X, or RW/NX permission. It shall make RELRO pages
-RO/NX inside the writable role, require complete-span zeroing before the four
-exact file copies, prove complete page coverage and no W+X final state, and
-retain no allocation, mapping, copy, permission-publication, or entry authority.
+and exact entry-stage RO/NX, RO/X, or RW/NX permission. It shall retain RELRO
+pages RW/NX inside the writable role until the exact checked process protection
+transition seals them RO/NX, require complete-span zeroing before the four exact
+file copies, prove complete page coverage and no W+X state, and retain no
+allocation, mapping, copy, permission-publication, or entry authority.
+
+The bounded external static-process qualification shall accept only the exact
+approved executable digest and coherent resident-header variant. X86-64 entry
+shall use the complete final Linux initial stack, establish a fresh x87/SSE
+context, preserve all non-result syscall registers and provider callee-saved
+registers, and restore or scrub every private register, stack, translation-
+status, and process-context value before rollback. Qualification shall execute
+the pinned BusyBox `echo` applet through its one-byte newline and zero exit
+without committing its bytes and shall not generalize acceptance to another
+executable, stack shape, argument vector, or syscall sequence.
+
+The bounded static-process identity adapter shall expose the existing sealed
+PID-one fact for one ordered `getpid` observation. It shall require the exact
+live process, executable continuation, active checked address space, retained
+stack, and header-selected predecessor; return one without retaining native
+arguments or mutable identity state; and preserve complete terminal rollback.
+
+The bounded static-process child-disposition adapter shall accept one complete
+readable request after the sealed process-identity observation. It shall
+require executable handler, return-trampoline, and continuation facts, the
+approved child-status policy and blocked set, active checked address space,
+retained stack, empty prior disposition, and exact predecessor phase. It shall
+copy and validate the complete request before retaining only private process
+state, return success, and validate and clear that state at terminal rollback.
+It shall expose no native layout in portable source and shall grant no signal
+generation, delivery, frame, handler-execution, restart, or general signal
+authority.
+
+The bounded static-process parent-identity adapter shall expose the sealed
+absence of a parent for one ordered observation after child-disposition
+installation. It shall require the exact live process, executable
+continuation, active checked address space, retained stack, live disposition,
+and predecessor phase; return zero without process lookup or retaining native
+arguments or mutable identity state; and preserve the disposition lifecycle
+and complete terminal rollback.
+
+The bounded initial-configuration adapter shall recognize exactly the sealed
+absolute path `/etc/busybox.conf` for the live initial process and report that
+the optional object is absent. Dispatch shall require an executable return
+continuation and a complete writable native metadata destination, shall publish
+no output on absence, and shall retain no pathname, destination, or lookup
+state. The provider shall own the native directory-relative selector, pathname
+encoding validation, metadata layout, syscall number, and register convention.
+Another path, directory selector, flag, incomplete destination, lifecycle
+phase, duplicate request, or success result shall fail closed. This requirement
+does not introduce a VFS, mount, inode, descriptor-allocation, pathname-
+resolution, or general metadata-query service.
+
+The bounded startup-credential-tail adapter shall expose sealed real GID,
+effective UID, and effective GID observations after the optional configuration
+lookup. Each pointer-free query shall require the live initial process and an
+executable continuation, return the matching immutable zero-valued credential
+fact, retain no argument or mutable identity state, and advance only the exact
+private startup phase. Results shall remain coherent with `AT_GID`, `AT_EUID`,
+and `AT_EGID`. A missing, duplicate, reordered, inconsistent, or post-terminal
+query shall fail closed. Native syscall selection and result placement shall
+remain provider-owned. This adds no credential mutation, supplementary groups,
+namespaces, capabilities, process table, or general identity service.
 
 For the initial writable ELF qualification, `WritableDataMapping` shall replace
 the immutable data role while preserving data-first teardown and all resident
@@ -895,6 +954,26 @@ Credential results shall agree with the corresponding initial auxiliary-vector
 facts. Dispatch shall retain no argument, pointer, or mutable identity state.
 A missing family member, wrong or inconsistent result, non-executable return,
 wrong lifecycle state, or result after terminal disposition shall fail closed.
+
+The bounded static-process credential tail shall, after the exact optional
+configuration absence, observe the sealed real group and then admit exact
+idempotent group and user selections. Both requested identities shall equal
+the corresponding zero-valued sealed auxiliary-vector facts, and all three
+operations shall revalidate the complete real/effective UID/GID group. The
+adapter shall return zero, retain no request or mutable credential state, and
+leave the credential group unchanged. Another value, order, continuation,
+lifecycle phase, incomplete group, or state mutation shall fail closed.
+
+The bounded static-process applet-output adapter shall, after the complete
+credential tail, accept exactly one standard-output line-feed request. It shall
+require descriptor one, length one, an executable continuation, and the
+header-profile-bound candidate byte in the exact retained stack leaf or
+anonymous program-break extent. The provider shall revalidate the active
+hierarchy and backing, copy
+the byte into private staging before output, require line-feed value, publish
+it once, return one, and retain no pointer or staging state. Another phase,
+range, mapping, byte, descriptor, length, continuation, result, or output before
+complete validation shall fail closed.
 
 The initial-process entry adapter shall publish a native zero-valued
 `AT_SECURE` auxiliary-vector fact after the existing program-header facts and

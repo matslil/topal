@@ -5,7 +5,7 @@
 The bounded static-process startup profile may extend its proven initial
 program-break query and growth with one exact initial-thread-pointer install.
 For the pinned x86-64 executable, the request is Linux
-`arch_prctl(ARCH_SET_FS, 0x005f7440)`. The candidate lies inside the live
+`arch_prctl(ARCH_SET_FS, 0x005f7400)`. The candidate lies inside the live
 artifact-owned anonymous break reserve, so the provider may retain it as
 private initial-thread state, install it for user return, and report success.
 
@@ -35,7 +35,7 @@ making the x86 control protocol portable language vocabulary.
 The pinned provider shall:
 
 1. admit syscall 158 only after the exact query and growth have completed;
-2. require operation `0x1002`, candidate `0x005f7440`, and an executable
+2. require operation `0x1002`, candidate `0x005f7400`, and an executable
    continuation inside the sealed text mapping;
 3. prove the complete candidate byte lies in the live readable anonymous break
    mapping and retain the exact selection in private process context;

@@ -3,7 +3,7 @@
 ## Outcome
 
 The bounded static process now continues after FS-base installation through
-one exact `set_tid_address(0x005f7710)` registration. The clean-room payload
+one exact `set_tid_address(0x005f76d0)` registration. The clean-room payload
 initializes that anonymous-heap word to one and verifies sealed TID one. On
 terminal `exit_group(0)`, the provider zeros and verifies the retained word
 while the process address space remains active, clears private registration,

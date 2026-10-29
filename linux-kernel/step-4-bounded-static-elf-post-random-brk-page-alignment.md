@@ -2,7 +2,7 @@
 
 The bounded static process now supports the exact `brk(0x00619000)` request
 issued by the pinned x86-64 BusyBox after its cross-boundary growth to
-`0x00618dc0`. The native dispatcher verifies the live 34-page anonymous
+`0x00618d80`. The native dispatcher verifies the live 34-page anonymous
 extent, every retained heap leaf, the disjoint stack leaf, sealed executable
 continuation, and reusable-random service. It then updates only the
 byte-granular current break and returns `0x00619000`; no storage allocation or

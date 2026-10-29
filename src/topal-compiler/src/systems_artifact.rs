@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/170";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/159";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/181";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/170";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -734,7 +734,7 @@ struct StaticElfPageRecord {
     frame_ordinal: u64,
     source_role: StaticElfLoadRole,
     initial_permission: StaticElfPagePermission,
-    final_permission: StaticElfPagePermission,
+    entry_permission: StaticElfPagePermission,
 }
 
 #[allow(dead_code)] // Retained for the following affine mapping increment.
@@ -823,23 +823,23 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         put_program_header(&mut image, index, row);
     }
     let entry_offset = 0x0a_6580;
-    image[entry_offset..entry_offset + 514].copy_from_slice(&[
+    let entry_code = [
         0xb8, 0x0c, 0, 0, 0, // brk
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
         0x48, 0x3d, 0x00, 0x70, 0x5f, 0x00, // derived initial break
         0x75, 0xfe, // fail closed on a different query result
-        0xbf, 0xc0, 0x7d, 0x5f, 0x00, // exact growth request
+        0xbf, 0x80, 0x7d, 0x5f, 0x00, // exact growth request
         0xb8, 0x0c, 0, 0, 0, // brk
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // admitted current break
+        0x48, 0x3d, 0x80, 0x7d, 0x5f, 0x00, // admitted current break
         0x75, 0xfe, // fail closed on a different growth result
         0xc6, 0x04, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // first admitted byte
         0x80, 0x3c, 0x25, 0x00, 0x70, 0x5f, 0x00, 0x5a, // read it back
         0x75, 0xfe, // fail closed on inaccessible or changed backing
-        0xc6, 0x04, 0x25, 0x40, 0x74, 0x5f, 0x00, 0x6b, // TLS-base byte
+        0xc6, 0x04, 0x25, 0x00, 0x74, 0x5f, 0x00, 0x6b, // TLS-base byte
         0xbf, 0x02, 0x10, 0x00, 0x00, // ARCH_SET_FS
-        0xbe, 0x40, 0x74, 0x5f, 0x00, // selected initial FS base
+        0xbe, 0x00, 0x74, 0x5f, 0x00, // selected initial FS base
         0xb8, 0x9e, 0, 0, 0, // arch_prctl
         0x0f, 0x05, // syscall
         0x48, 0x85, 0xc0, // exact zero result
@@ -847,21 +847,21 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x64, 0x8a, 0x04, 0x25, 0, 0, 0, 0, // load FS-relative byte zero
         0x3c, 0x6b, // installed base selects the known byte
         0x75, 0xfe, // fail closed on wrong physical FS base
-        0xc7, 0x04, 0x25, 0x10, 0x77, 0x5f, 0x00, 1, 0, 0, 0, // exit word
-        0xbf, 0x10, 0x77, 0x5f, 0x00, // exact candidate
+        0xc7, 0x04, 0x25, 0xd0, 0x76, 0x5f, 0x00, 1, 0, 0, 0, // exit word
+        0xbf, 0xd0, 0x76, 0x5f, 0x00, // exact candidate
         0xb8, 0xda, 0, 0, 0, // set_tid_address
         0x0f, 0x05, // syscall
         0x48, 0x83, 0xf8, 0x01, // sealed TID one
         0x75, 0xfe, // fail closed on a different result
-        0x48, 0xc7, 0x04, 0x25, 0x20, 0x77, 0x5f, 0x00, 0x20, 0x77, 0x5f, 0x00, 0x48, 0xc7, 0x04,
-        0x25, 0x28, 0x77, 0x5f, 0x00, 0xe0, 0xff, 0xff, 0xff, 0x48, 0xc7, 0x04, 0x25, 0x30, 0x77,
-        0x5f, 0x00, 0, 0, 0, 0, 0xbf, 0x20, 0x77, 0x5f, 0x00, // exact robust-list head
+        0x48, 0xc7, 0x04, 0x25, 0xe0, 0x76, 0x5f, 0x00, 0xe0, 0x76, 0x5f, 0x00, 0x48, 0xc7, 0x04,
+        0x25, 0xe8, 0x76, 0x5f, 0x00, 0xe0, 0xff, 0xff, 0xff, 0x48, 0xc7, 0x04, 0x25, 0xf0, 0x76,
+        0x5f, 0x00, 0, 0, 0, 0, 0xbf, 0xe0, 0x76, 0x5f, 0x00, // exact robust-list head
         0xbe, 0x18, 0, 0, 0, // native head size
         0xb8, 0x11, 0x01, 0, 0, // set_robust_list
         0x0f, 0x05, // syscall
         0x48, 0x85, 0xc0, // exact zero result
         0x75, 0xfe, // fail closed on rejected registration
-        0xbf, 0x40, 0x73, 0x5f, 0x00, // observed rseq candidate
+        0xbf, 0x00, 0x73, 0x5f, 0x00, // observed rseq candidate
         0xbe, 0x21, 0, 0, 0, // observed rseq length
         0x31, 0xd2, // flags = 0
         0x41, 0xba, 0x53, 0x30, 0x05, 0x53, // observed rseq signature
@@ -914,15 +914,15 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xb8, 0x0c, 0, 0, 0, // post-random brk query
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x7d, 0x5f, 0x00, // established current break
+        0x48, 0x3d, 0x80, 0x7d, 0x5f, 0x00, // established current break
         0x75, 0xfe, // fail closed on a different query result
-        0xbf, 0xc0, 0x8d, 0x61, 0x00, // exact post-random growth request
+        0xbf, 0x80, 0x8d, 0x61, 0x00, // exact post-random growth request
         0xb8, 0x0c, 0, 0, 0, // brk
         0x0f, 0x05, // syscall
-        0x48, 0x3d, 0xc0, 0x8d, 0x61, 0x00, // admitted current break
+        0x48, 0x3d, 0x80, 0x8d, 0x61, 0x00, // admitted current break
         0x75, 0xfe, // fail closed on a different growth result
-        0xc6, 0x04, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // final admitted byte
-        0x80, 0x3c, 0x25, 0xbf, 0x8d, 0x61, 0x00, 0x6d, // read it back
+        0xc6, 0x04, 0x25, 0x7f, 0x8d, 0x61, 0x00, 0x6d, // final admitted byte
+        0x80, 0x3c, 0x25, 0x7f, 0x8d, 0x61, 0x00, 0x6d, // read it back
         0x75, 0xfe, // fail closed on inaccessible or changed backing
         0xbf, 0x00, 0x90, 0x61, 0x00, // exact page-alignment growth request
         0xb8, 0x0c, 0, 0, 0, // brk
@@ -932,11 +932,81 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xc6, 0x04, 0x25, 0xff, 0x8f, 0x61, 0x00, 0x71, // final newly admitted byte
         0x80, 0x3c, 0x25, 0xff, 0x8f, 0x61, 0x00, 0x71, // read it back
         0x75, 0xfe, // fail closed on inaccessible or changed backing
+        0xbf, 0x00, 0x50, 0x5e, 0x00, // exact GNU RELRO start
+        0xbe, 0x00, 0x80, 0x00, 0x00, // exact eight-page length
+        0xba, 0x01, 0x00, 0x00, 0x00, // PROT_READ
+        0xb8, 0x0a, 0x00, 0x00, 0x00, // mprotect
+        0x0f, 0x05, // syscall
+        0x48, 0x85, 0xc0, // exact zero result
+        0x75, 0xfe, // fail closed on rejection
+        0x48, 0x81, 0xec, 0x40, 0x01, 0, 0, // qualified temporary stack area
+        0xbf, 0x10, 0x00, 0x00, 0x00, // PR_GET_NAME
+        0x48, 0x89, 0xe6, // exact output candidate
+        0xb8, 0x9d, 0x00, 0x00, 0x00, // prctl
+        0x0f, 0x05, // syscall
+        0x48, 0x85, 0xc0, // exact zero result
+        0x75, 0xfe, // fail closed on rejection
+        0x48, 0xb8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6f, 0x78, 0x00, // "busybox\0"
+        0x48, 0x39, 0x04, 0x24, // exact first word
+        0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 0x08, 0x00, // zero-padded second word
+        0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, // clear first scratch word
+        0x48, 0xc7, 0x44, 0x24, 0x08, 0, 0, 0, 0, // clear second scratch word
+        0x48, 0x81, 0xc4, 0x40, 0x01, 0, 0, // restore initial stack pointer
+        0xb8, 0x66, 0x00, 0x00, 0x00, // getuid
+        0x0f, 0x05, // syscall
+        0x48, 0x85, 0xc0, // exact zero result
+        0x75, 0xfe, // fail closed on another result
+        0x48, 0x81, 0xec, 0x20, 0x02, 0x00, 0x00, // scratch below initial vector
+        0xbf, 0x9c, 0xff, 0xff, 0xff, // AT_FDCWD
+        0xbe, 0x00, 0x69, 0x4a, 0x00, // immutable configuration path
+        0x48, 0x89, 0xe2, // complete native stat destination
+        0x45, 0x31, 0xd2, // flags = 0
+        0xb8, 0x06, 0x01, 0x00, 0x00, // newfstatat
+        0x0f, 0x05, // syscall
+        0x48, 0x83, 0xf8, 0xfe, // exact -ENOENT result
+        0x75, 0xfe, // fail closed on another result
+        0x48, 0x81, 0xc4, 0x20, 0x02, 0x00, 0x00, // restore initial stack pointer
+        0xb8, 0x68, 0x00, 0x00, 0x00, // getgid
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
+        0x31, 0xff, // exact sealed group identity
+        0xb8, 0x6a, 0x00, 0x00, 0x00, // setgid
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
+        0x31, 0xff, // exact sealed user identity
+        0xb8, 0x69, 0x00, 0x00, 0x00, // setuid
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
+        0x48, 0x81, 0xec, 0x40, 0x02, 0x00, 0x00, // disjoint stack-prefix scratch
+        0xc6, 0x04, 0x24, 0x0a, // line feed
+        0xbf, 0x01, 0x00, 0x00, 0x00, // stdout
+        0x48, 0x89, 0xe6, // candidate
+        0xba, 0x01, 0x00, 0x00, 0x00, // length one
+        0xb8, 0x01, 0x00, 0x00, 0x00, // write
+        0x0f, 0x05, 0x48, 0x83, 0xf8, 0x01, 0x75, 0xfe, // require one
+        0xc6, 0x04, 0x24, 0x00, // clear line feed
+        0x48, 0x81, 0xc4, 0x40, 0x02, 0x00, 0x00, // restore initial stack pointer
+        0xb8, 0x27, 0, 0, 0, // getpid
+        0x0f, 0x05, 0x48, 0x83, 0xf8, 0x01, 0x75, 0xfe, // require PID one
+        0x48, 0x81, 0xec, 0x40, 0x02, 0x00, 0x00, // disjoint native sigaction request
+        0x48, 0xc7, 0x04, 0x24, 0x80, 0x65, 0x4a, 0x00, // executable handler
+        0x48, 0xc7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x04, // SA_RESTORER
+        0x48, 0xc7, 0x44, 0x24, 0x10, 0x80, 0x65, 0x4a, 0x00, // trampoline
+        0x48, 0xb8, 0xff, 0xff, 0xff, 0x7f, 0xfe, 0xff, 0xff, 0xff, // child mask
+        0x48, 0x89, 0x44, 0x24, 0x18, 0xbf, 0x11, 0, 0, 0, // SIGCHLD
+        0x48, 0x89, 0xe6, // request
+        0x31, 0xd2, // no old action
+        0x41, 0xba, 0x08, 0, 0, 0, // native signal-set size
+        0xb8, 0x0d, 0, 0, 0, // rt_sigaction
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
+        0x31, 0xc0, 0x48, 0x89, 0x04, 0x24, 0x48, 0x89, 0x44, 0x24, 0x08, 0x48, 0x89, 0x44, 0x24,
+        0x10, 0x48, 0x89, 0x44, 0x24, 0x18, 0x48, 0x81, 0xc4, 0x40, 0x02, 0x00, 0x00, // clear
+        0xb8, 0x6e, 0, 0, 0, // getppid
+        0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require no parent
         0x31, 0xff, // status = 0
         0xb8, 0xe7, 0, 0, 0, // exit_group
         0x0f, 0x05, // syscall
         0x0f, 0x0b, // unreachable
-    ]);
+    ];
+    image[entry_offset..entry_offset + entry_code.len()].copy_from_slice(&entry_code);
+    image[0x0a_6900..0x0a_6912].copy_from_slice(b"/etc/busybox.conf\0");
     image
 }
 
@@ -1302,24 +1372,19 @@ fn derive_x86_64_static_elf_page_plan(
     for segment in &load.segments {
         let mut virtual_address = segment.pages.start;
         while virtual_address < segment.pages.end {
-            let relro = load.relro_pages.is_some_and(|interval| {
-                virtual_address >= interval.start && virtual_address < interval.end
-            });
-            let final_permission = match segment.role {
+            let entry_permission = match segment.role {
                 StaticElfLoadRole::Executable => StaticElfPagePermission::ReadOnlyExecute,
-                StaticElfLoadRole::WritableData if !relro => {
-                    StaticElfPagePermission::ReadWriteNoExecute
+                StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadWriteNoExecute,
+                StaticElfLoadRole::Headers | StaticElfLoadRole::ImmutableData => {
+                    StaticElfPagePermission::ReadOnlyNoExecute
                 }
-                StaticElfLoadRole::Headers
-                | StaticElfLoadRole::ImmutableData
-                | StaticElfLoadRole::WritableData => StaticElfPagePermission::ReadOnlyNoExecute,
             };
             pages.push(StaticElfPageRecord {
                 virtual_address,
                 frame_ordinal: (virtual_address - load.pages.start) / STATIC_ELF_PAGE_SIZE,
                 source_role: segment.role,
                 initial_permission: StaticElfPagePermission::ReadWriteNoExecute,
-                final_permission,
+                entry_permission,
             });
             virtual_address += STATIC_ELF_PAGE_SIZE;
         }
@@ -1481,10 +1546,26 @@ fn validate_x86_64_static_user_image(image: &[u8]) -> Result<(), CompileError> {
                 && image_u64(image, header + 48) == alignment
         },
     );
+    let section_header_shape = match (
+        image_u64(image, 40),
+        elf_u16(image, 58),
+        elf_u16(image, 60),
+        elf_u16(image, 62),
+    ) {
+        (0, 0, 0, 0) => true,
+        (0x1e_dea0, 64, 23, 22) => {
+            let directory_bytes = 64_usize.checked_mul(23);
+            let directory_end =
+                directory_bytes.and_then(|bytes| 0x1e_dea0_usize.checked_add(bytes));
+            directory_end == Some(image.len())
+        }
+        _ => false,
+    };
 
     if image.len() != EXPECTED_FILE_BYTES
         || image_u64(image, 32) != 64
         || elf_u16(image, 56) != 11
+        || !section_header_shape
         || !exact_program_headers
         || load.entry != EXPECTED_ENTRY
         || load.segments.as_slice() != expected_segments
@@ -10597,10 +10678,19 @@ mod tests {
 
     #[test]
     fn static_user_image_validation_requires_the_exact_approved_shape() {
-        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001, TOPAL-COMP-SYSTEMS-TEST-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-ARTIFACT-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-RESIDENT-HEADER-VARIANTS-001,
+        // TOPAL-COMP-SYSTEMS-TEST-001.
         let mut image = busybox_shaped_static_elf();
         image[0x1000] = 0xa5;
         validate_x86_64_static_user_image(&image).unwrap();
+
+        let mut external_header = image.clone();
+        put_u64(&mut external_header, 40, 0x1e_dea0);
+        put_u16(&mut external_header, 58, 64);
+        put_u16(&mut external_header, 60, 23);
+        put_u16(&mut external_header, 62, 22);
+        validate_x86_64_static_user_image(&external_header).unwrap();
 
         let rejected = |mutate: fn(&mut Vec<u8>)| {
             let mut malformed = image.clone();
@@ -10615,6 +10705,13 @@ mod tests {
         rejected(|candidate| put_u64(candidate, 64 + 2 * 56 + 32, 0x5_703f));
         rejected(|candidate| put_u64(candidate, 64 + 7 * 56 + 40, 0x81));
         rejected(|candidate| put_u64(candidate, 64 + 10 * 56 + 40, 0x799f));
+        rejected(|candidate| put_u64(candidate, 40, 0x1e_dea0));
+        rejected(|candidate| {
+            put_u64(candidate, 40, 0x1e_dea0);
+            put_u16(candidate, 58, 64);
+            put_u16(candidate, 60, 24);
+            put_u16(candidate, 62, 22);
+        });
     }
 
     #[test]
@@ -10635,7 +10732,7 @@ mod tests {
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadOnlyExecute
+                    page.entry_permission == StaticElfPagePermission::ReadOnlyExecute
                 })
                 .count(),
             396
@@ -10644,19 +10741,19 @@ mod tests {
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadOnlyNoExecute
+                    page.entry_permission == StaticElfPagePermission::ReadOnlyNoExecute
                 })
                 .count(),
-            97
+            89
         );
         assert_eq!(
             plan.pages
                 .iter()
                 .filter(|page| {
-                    page.final_permission == StaticElfPagePermission::ReadWriteNoExecute
+                    page.entry_permission == StaticElfPagePermission::ReadWriteNoExecute
                 })
                 .count(),
-            10
+            18
         );
         assert_eq!(
             plan.construction.first(),
@@ -10827,7 +10924,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 9241);
+        assert_eq!(relocation_targets.len(), 9482);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -11015,7 +11112,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_uart16550_write")
                 .count(),
-            6617
+            6858
         );
         assert_eq!(
             relocation_targets
@@ -11537,7 +11634,7 @@ mod tests {
         assert_eq!(decoded.placements.len(), 65);
         assert_eq!(decoded.bootstrap_storage_capacity, 65_536);
         assert_eq!(decoded.bootstrap_storage_alignment, 4096);
-        assert_eq!(decoded.semantic_trace.len(), 478);
+        assert_eq!(decoded.semantic_trace.len(), 483);
         assert!(
             decoded
                 .semantic_trace
@@ -11959,27 +12056,32 @@ mod tests {
         assert!(decoded.semantic_trace[136].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[137].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert!(decoded.semantic_trace[138].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[139].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[141].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[142].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[143].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[139],
+            decoded.semantic_trace[144],
             SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY
         );
-        assert!(decoded.semantic_trace[140].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[145].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[141],
+            decoded.semantic_trace[146],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM
         );
-        assert!(decoded.semantic_trace[142].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[147].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[143],
+            decoded.semantic_trace[148],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION
         );
-        assert!(decoded.semantic_trace[144].starts_with(SYSTEMS_CONSOLE_WRITE));
+        assert!(decoded.semantic_trace[149].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
-            decoded.semantic_trace[145],
+            decoded.semantic_trace[150],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF
         );
-        assert!(decoded.semantic_trace[146].starts_with(SYSTEMS_CONSOLE_WRITE));
-        decoded.semantic_trace.drain(88..147);
+        assert!(decoded.semantic_trace[151].starts_with(SYSTEMS_CONSOLE_WRITE));
+        decoded.semantic_trace.drain(88..152);
         assert_eq!(
             decoded.semantic_trace[88],
             SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS

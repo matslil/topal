@@ -20,23 +20,26 @@ The realization plan shall name:
 - one ordered page record for every virtual page, mapping its zero-based frame
   ordinal to that virtual page;
 - an initial RW/NX construction permission for every page;
-- an exact final permission of RO/NX, RO/X, or RW/NX for every page;
-- RELRO as RO/NX pages inside the original writable role;
+- an exact entry-stage permission of RO/NX, RO/X, or RW/NX for every page;
+- RELRO as staged RW/NX pages inside the original writable role until the
+  exact checked post-relocation protection transition;
 - one whole-frame zero operation preceding four exact file-copy operations;
   and
 - complete copy, zero, permission, entry, TLS, and RELRO facts inherited from
   the validated load plan without reparsing ELF bytes.
 
 The pinned shape therefore requests one indivisible 503-frame extent and emits
-503 ordered page records: 396 RO/X pages, 97 RO/NX pages including eight RELRO
-pages, and ten RW/NX pages. Zeroing the complete extent before segment copies
-constructs all padding and BSS deterministically. Final permission publication
-shall remain a later affine operation; no page may be executable during
-construction and no final page may combine W and X.
+503 ordered page records: 396 RO/X pages, 89 RO/NX pages, and 18 RW/NX pages
+including eight staged RELRO pages. Zeroing the complete extent before segment
+copies constructs all padding and BSS deterministically. Entry-stage permission
+publication shall remain a later affine operation; no page may be executable
+during construction and no entry-stage or final page may combine W and X.
+`TK-DEC-193` refines the later runtime lifecycle so the eight RELRO pages become
+RO/NX only at the exact checked protection request.
 
 ## Architecture pressure test
 
-Ordered page roles, zero-before-copy construction, and W^X finalization are
+Ordered page roles, zero-before-copy construction, staged RELRO, and W^X are
 portable policy. A single physically contiguous 503-frame extent and one
 x86-64 512-leaf table are qualification bounds, not general application-loader
 requirements. AArch64 or RISC-V may use different table levels and executable-

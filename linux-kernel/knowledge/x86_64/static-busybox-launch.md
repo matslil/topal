@@ -29,5 +29,17 @@ A root `busybox true` observation on Linux 7.2.9 performs, in order,
 Earlier differential injection established that `rseq`, `readlinkat`, and
 `prctl` may return `ENOSYS` without preventing the selected builtin command.
 
+An instruction-level trace of the same digest-pinned executable with arguments
+`busybox echo` and the host's nonzero identity extends that common sequence
+with the optional configuration probe, `getgid`, idempotent `setgid` and
+`setuid`, one `write(1, candidate, 1)` whose byte is line feed, and
+`exit_group(0)`. A differential trace forcing the `getuid` result to the
+qualified root identity zero instead skips the optional configuration and
+credential branch and proceeds directly to the same write and exit. For the
+host trace the output candidate is `0x5f89d0`; under the qualified sealed-root
+process and its controlled entropy input it is `0x5f8450`. Both lie in the
+already backed anonymous program-break extent. These addresses are provider
+facts, not part of the portable application profile.
+
 These facts size and shape the first real application gate. They do not make
 this one binary the definition of Linux compatibility.

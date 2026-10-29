@@ -551,7 +551,7 @@ The next systems-only compiler refinement adds a
 [bounded static ELF page realization](design/bounded-static-elf-page-realization.md).
 Its [implementation and qualification report](step-4-bounded-static-elf-page-realization.md)
 records one future affine 503-frame request, exact ordered page/frame facts,
-whole-span zeroing before four copies, W^X-safe final roles including RELRO,
+whole-span zeroing before four copies, W^X-safe entry roles with staged RELRO,
 malformed inherited-plan rejection, and two unchanged pinned-QEMU runs.
 
 The following systems-only physical refinement adds the
@@ -827,6 +827,16 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 bounded static ELF post-random `brk(0)` query](step-4-bounded-static-elf-post-random-brk-query.md)
 - [Step 4 bounded static ELF post-random `brk` growth](step-4-bounded-static-elf-post-random-brk-growth.md)
 - [Step 4 bounded static ELF post-random `brk` page alignment](step-4-bounded-static-elf-post-random-brk-page-alignment.md)
+- [Step 4 bounded static ELF RELRO `mprotect`](step-4-bounded-static-elf-relro-mprotect.md)
+- [Step 4 bounded static ELF initial process-name query](step-4-bounded-static-elf-initial-process-name.md)
+- [Step 4 bounded static ELF initial `getuid`](step-4-bounded-static-elf-initial-getuid.md)
+- [Step 4 bounded static ELF initial configuration-stat miss](step-4-bounded-static-elf-initial-config-stat-miss.md)
+- [Step 4 bounded static ELF startup credential normalization](step-4-bounded-static-elf-initial-credential-tail.md)
+- [Step 4 bounded static ELF applet newline output](step-4-bounded-static-elf-applet-newline-write.md)
+- [Step 4 pinned static BusyBox `echo`](step-4-pinned-static-busybox-echo.md)
+- [Step 4 bounded static-process shell `getpid`](step-4-bounded-static-elf-shell-getpid.md)
+- [Step 4 bounded static-process shell child disposition](step-4-bounded-static-elf-shell-sigchld-disposition.md)
+- [Step 4 bounded static-process shell `getppid`](step-4-bounded-static-elf-shell-getppid.md)
 - [Step 4 bounded static ELF leaf publication](step-4-bounded-static-elf-leaf-publication.md)
 - [Step 4 bounded static ELF payload zeroing](step-4-bounded-static-elf-payload-zeroing.md)
 - [Step 4 supplied static ELF artifact](step-4-supplied-static-elf-artifact.md)

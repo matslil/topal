@@ -4,7 +4,7 @@
 
 The bounded static-process startup profile may extend the proven x86-64 thread-
 pointer install with one exact initial-thread exit-word registration. The pinned
-executable requests Linux `set_tid_address(0x005f7710)`. The complete four-byte
+executable requests Linux `set_tid_address(0x005f76d0)`. The complete four-byte
 candidate lies in the live artifact-owned anonymous break reserve. The provider
 retains it without dereference and returns sealed TID one.
 

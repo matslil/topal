@@ -4,7 +4,7 @@
 
 The bounded static process may extend its empty robust-list startup profile with
 one exact optional `rseq` registration attempt. The pinned executable requests
-Linux `rseq(0x005f7340, 33, 0, 0x53053053)` immediately after robust-list
+Linux `rseq(0x005f7300, 33, 0, 0x53053053)` immediately after robust-list
 registration.
 
 The syscall remains outside the implemented dispatch set and therefore returns

@@ -19,11 +19,11 @@ The operation shall:
 
 - revalidate the exact 503-frame payload, disjoint metadata frame, populated
   bytes, 503 live initial RW/NX leaves, and nine absent entries;
-- replace all 503 inactive leaves with the exact final page roles from the
-  approved static-ELF page plan;
+- replace all 503 inactive leaves with the exact entry-stage page roles from
+  the approved static-ELF page plan;
 - ensure no leaf is simultaneously writable and executable;
 - publish the complete inactive permission update as one provider transaction;
-- read back all 503 leaves and verify their frame identity, order, final role,
+- read back all 503 leaves and verify their frame identity, order, entry role,
   and the nine absent entries; and
 - retain the sealed construction as the only authority able to revoke and
   return both extents.
@@ -44,13 +44,15 @@ The x86-64 provider shall realize these page-ordinal intervals relative to the
 | `[0, 1)` | 1 | headers | user RO/NX |
 | `[1, 397)` | 396 | executable | user RO/X |
 | `[397, 485)` | 88 | immutable data | user RO/NX |
-| `[485, 493)` | 8 | GNU RELRO | user RO/NX |
+| `[485, 493)` | 8 | GNU RELRO awaiting seal | user RW/NX |
 | `[493, 503)` | 10 | writable data and BSS | user RW/NX |
 
-The 97 RO/NX, 396 RO/X, and 10 RW/NX leaves shall retain their original
+The 89 RO/NX, 396 RO/X, and 18 RW/NX leaves shall retain their original
 payload-frame identities and order. All nine remaining entries shall stay
 absent. No active translation shall reference this leaf table during the
 transition, so this increment requires no active-address-space invalidation.
+The later exact bounded RELRO protection transition shall be the sole authority
+that changes the eight staged leaves to RO/NX after self-relocation.
 
 ## Affine lifecycle
 
@@ -64,8 +66,8 @@ provider failure during permission publication.
 
 ## Architecture pressure test
 
-Role separation, W^X, immutable RELRO, complete readback, inactive atomic
-publication, and affine refinement are portable policy. AArch64 providers may
+Role separation, W^X, staged then immutable RELRO, complete readback, inactive
+atomic publication, and affine refinement are portable policy. AArch64 providers may
 encode AP, PXN, and UXN and perform data-cache clean plus instruction-cache
 invalidation before future execution. RISC-V providers may encode R/W/X and
 perform `fence.i`. Capability systems may seal executable and writable
@@ -78,8 +80,10 @@ Source-visible page loops were rejected because they expose target ordinals
 and permission mechanics. Applying permissions during copy was rejected
 because byte verification and W^X publication need separate rollback states.
 Making every file-backed page executable was rejected because headers and
-immutable data are not code. Leaving RELRO writable was rejected because the
-approved ELF plan already identifies its immutable post-relocation interval.
+immutable data are not code. Sealing RELRO before entry was rejected because
+the pinned static executable performs self-relocation first. Leaving RELRO
+writable after its exact protection request was rejected because the approved
+ELF plan identifies its immutable post-relocation interval.
 Sampling leaves or checking only role counts was rejected because frame order
 and every permission matter. Activating the leaf table in the same operation
 was rejected because inactive construction and address-space attachment need
@@ -91,5 +95,5 @@ This increment seals, verifies, revokes, and returns the inactive payload. It
 does not retain the sealed owner across bootstrap phases, construct upper
 translation levels, attach an address space, initialize TLS or a process
 stack, publish an entry, or execute the image. General permission plans,
-relocations, interpreters, demand paging, shared mappings, and writable RELRO
-transitions remain out of scope.
+interpreters, demand paging, shared mappings, and RELRO ranges or transitions
+other than the exact checked startup seal remain out of scope.

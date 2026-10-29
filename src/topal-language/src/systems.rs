@@ -10519,7 +10519,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 417);
+        assert_eq!(program.bootstrap.handler.operations.len(), 422);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -13340,14 +13340,14 @@ mod tests {
         for (source, expected) in [
             (
                 SOURCE.replace(
-                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
-                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-true,",
+                    "owner is published-stack-leaf-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
+                    "owner is zeroed-stack-backing-construction,\n                                                                                backing is static-elf-stack-backing,\n                                                                                profile is bounded-static-elf-busybox-echo,",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",
             ),
             (
                 SOURCE.replace(
-                    "profile is bounded-static-elf-busybox-true,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
+                    "profile is bounded-static-elf-busybox-echo,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                     "profile is unbounded-static-elf,\n                                                                                extent is complete\n                                                                              )\n                                                                              unmapped console write \"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK\"",
                 ),
                 "exact owner, backing, sealed profile, and complete extent",
@@ -14577,11 +14577,20 @@ mod tests {
         // TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001,
         // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001,
         // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001,
-        // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001.
+        // TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001,
+        // TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001.
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14589,7 +14598,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-post-random-brk-page-alignment",
+                "policy is bounded-static-elf-shell-getppid",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(
@@ -14643,6 +14652,26 @@ mod tests {
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
                 "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+                "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_BAD",
+            ),
+            SOURCE.replace(
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
+                "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_BAD",
             ),
             SOURCE.replace(
                 "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",

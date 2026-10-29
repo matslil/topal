@@ -25,6 +25,12 @@ BUILD_ROOT = LINUX_KERNEL / "build" / "x86_64" / "topal-toolchain-gate"
 MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
+PINNED_STATIC_BUSYBOX_EVIDENCE_PATH = (
+    LAB / "results" / "topal-pinned-static-busybox-gate.json"
+)
+PINNED_STATIC_BUSYBOX_SHA256 = (
+    "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+)
 SERIAL_INPUT = b"read"
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
@@ -92,6 +98,11 @@ MARKERS = (
     b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
     b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
     b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
     b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
@@ -326,24 +337,24 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 514] = bytes(
+    image[0xA_6580 : 0xA_6580 + 888] = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
             0x0F, 0x05,
             0x48, 0x3D, 0x00, 0x70, 0x5F, 0x00,
             0x75, 0xFE,
-            0xBF, 0xC0, 0x7D, 0x5F, 0x00,
+            0xBF, 0x80, 0x7D, 0x5F, 0x00,
             0xB8, 0x0C, 0, 0, 0,
             0x0F, 0x05,
-            0x48, 0x3D, 0xC0, 0x7D, 0x5F, 0x00,
+            0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
             0x75, 0xFE,
             0xC6, 0x04, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
             0x80, 0x3C, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
             0x75, 0xFE,
-            0xC6, 0x04, 0x25, 0x40, 0x74, 0x5F, 0x00, 0x6B,
+            0xC6, 0x04, 0x25, 0x00, 0x74, 0x5F, 0x00, 0x6B,
             0xBF, 0x02, 0x10, 0x00, 0x00,
-            0xBE, 0x40, 0x74, 0x5F, 0x00,
+            0xBE, 0x00, 0x74, 0x5F, 0x00,
             0xB8, 0x9E, 0, 0, 0,
             0x0F, 0x05,
             0x48, 0x85, 0xC0,
@@ -351,22 +362,22 @@ def static_user_fixture() -> bytes:
             0x64, 0x8A, 0x04, 0x25, 0, 0, 0, 0,
             0x3C, 0x6B,
             0x75, 0xFE,
-            0xC7, 0x04, 0x25, 0x10, 0x77, 0x5F, 0x00, 1, 0, 0, 0,
-            0xBF, 0x10, 0x77, 0x5F, 0x00,
+            0xC7, 0x04, 0x25, 0xD0, 0x76, 0x5F, 0x00, 1, 0, 0, 0,
+            0xBF, 0xD0, 0x76, 0x5F, 0x00,
             0xB8, 0xDA, 0, 0, 0,
             0x0F, 0x05,
             0x48, 0x83, 0xF8, 1,
             0x75, 0xFE,
-            0x48, 0xC7, 0x04, 0x25, 0x20, 0x77, 0x5F, 0x00, 0x20, 0x77, 0x5F, 0x00,
-            0x48, 0xC7, 0x04, 0x25, 0x28, 0x77, 0x5F, 0x00, 0xE0, 0xFF, 0xFF, 0xFF,
-            0x48, 0xC7, 0x04, 0x25, 0x30, 0x77, 0x5F, 0x00, 0, 0, 0, 0,
-            0xBF, 0x20, 0x77, 0x5F, 0x00,
+            0x48, 0xC7, 0x04, 0x25, 0xE0, 0x76, 0x5F, 0x00, 0xE0, 0x76, 0x5F, 0x00,
+            0x48, 0xC7, 0x04, 0x25, 0xE8, 0x76, 0x5F, 0x00, 0xE0, 0xFF, 0xFF, 0xFF,
+            0x48, 0xC7, 0x04, 0x25, 0xF0, 0x76, 0x5F, 0x00, 0, 0, 0, 0,
+            0xBF, 0xE0, 0x76, 0x5F, 0x00,
             0xBE, 0x18, 0, 0, 0,
             0xB8, 0x11, 0x01, 0, 0,
             0x0F, 0x05,
             0x48, 0x85, 0xC0,
             0x75, 0xFE,
-            0xBF, 0x40, 0x73, 0x5F, 0x00,
+            0xBF, 0x00, 0x73, 0x5F, 0x00,
             0xBE, 0x21, 0, 0, 0,
             0x31, 0xD2,
             0x41, 0xBA, 0x53, 0x30, 0x05, 0x53,
@@ -419,15 +430,15 @@ def static_user_fixture() -> bytes:
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
             0x0F, 0x05,
-            0x48, 0x3D, 0xC0, 0x7D, 0x5F, 0x00,
+            0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
             0x75, 0xFE,
-            0xBF, 0xC0, 0x8D, 0x61, 0x00,
+            0xBF, 0x80, 0x8D, 0x61, 0x00,
             0xB8, 0x0C, 0, 0, 0,
             0x0F, 0x05,
-            0x48, 0x3D, 0xC0, 0x8D, 0x61, 0x00,
+            0x48, 0x3D, 0x80, 0x8D, 0x61, 0x00,
             0x75, 0xFE,
-            0xC6, 0x04, 0x25, 0xBF, 0x8D, 0x61, 0x00, 0x6D,
-            0x80, 0x3C, 0x25, 0xBF, 0x8D, 0x61, 0x00, 0x6D,
+            0xC6, 0x04, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
+            0x80, 0x3C, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
             0x75, 0xFE,
             0xBF, 0x00, 0x90, 0x61, 0x00,
             0xB8, 0x0C, 0, 0, 0,
@@ -437,16 +448,106 @@ def static_user_fixture() -> bytes:
             0xC6, 0x04, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
             0x80, 0x3C, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
             0x75, 0xFE,
+            0xBF, 0x00, 0x50, 0x5E, 0x00,
+            0xBE, 0x00, 0x80, 0x00, 0x00,
+            0xBA, 0x01, 0x00, 0x00, 0x00,
+            0xB8, 0x0A, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x01, 0x00, 0x00,
+            0xBF, 0x10, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xB8, 0x9D, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0xB8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6F, 0x78, 0x00,
+            0x48, 0x39, 0x04, 0x24,
+            0x75, 0xFE,
+            0x48, 0x83, 0x7C, 0x24, 0x08, 0x00,
+            0x75, 0xFE,
+            0x48, 0xC7, 0x04, 0x24, 0, 0, 0, 0,
+            0x48, 0xC7, 0x44, 0x24, 0x08, 0, 0, 0, 0,
+            0x48, 0x81, 0xC4, 0x40, 0x01, 0x00, 0x00,
+            0xB8, 0x66, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x20, 0x02, 0x00, 0x00,
+            0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
+            0xBE, 0x00, 0x69, 0x4A, 0x00,
+            0x48, 0x89, 0xE2,
+            0x45, 0x31, 0xD2,
+            0xB8, 0x06, 0x01, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0xFE,
+            0x75, 0xFE,
+            0x48, 0x81, 0xC4, 0x20, 0x02, 0x00, 0x00,
+            0xB8, 0x68, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xFF,
+            0xB8, 0x6A, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xFF,
+            0xB8, 0x69, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+            0xC6, 0x04, 0x24, 0x0A,
+            0xBF, 0x01, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xBA, 0x01, 0x00, 0x00, 0x00,
+            0xB8, 0x01, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+            0xC6, 0x04, 0x24, 0x00,
+            0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x27, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+            0x48, 0xC7, 0x04, 0x24, 0x80, 0x65, 0x4A, 0x00,
+            0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x04,
+            0x48, 0xC7, 0x44, 0x24, 0x10, 0x80, 0x65, 0x4A, 0x00,
+            0x48, 0xB8, 0xFF, 0xFF, 0xFF, 0x7F, 0xFE, 0xFF, 0xFF, 0xFF,
+            0x48, 0x89, 0x44, 0x24, 0x18,
+            0xBF, 0x11, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0x31, 0xD2,
+            0x41, 0xBA, 0x08, 0x00, 0x00, 0x00,
+            0xB8, 0x0D, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xC0,
+            0x48, 0x89, 0x04, 0x24,
+            0x48, 0x89, 0x44, 0x24, 0x08,
+            0x48, 0x89, 0x44, 0x24, 0x10,
+            0x48, 0x89, 0x44, 0x24, 0x18,
+            0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x6E, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
             0x31, 0xFF,
             0xB8, 0xE7, 0, 0, 0,
             0x0F, 0x05,
             0x0F, 0x0B,
         ]
     )
+    image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     return bytes(image)
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
+def checked_static_user_image(external: Path | None) -> tuple[bytes, str]:
+    if external is None:
+        return static_user_fixture(), "supplied-clean-room-fixture"
+    image = external.read_bytes()
+    actual = hashlib.sha256(image).hexdigest()
+    if actual != PINNED_STATIC_BUSYBOX_SHA256:
+        raise GateError(
+            "external static user image does not match the approved pinned SHA-256"
+        )
+    return image, "pinned-external-static-busybox"
+
+
+def build_image(
+    destination: Path, external_static_user_image: Path | None = None
+) -> tuple[Path, Path, Path, Path, Path, Path, str]:
     generated = destination / "generated"
     compile_systems_artifact(generated)
     generated_initial_user_image = generated / "initial-user.elf"
@@ -455,7 +556,10 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
     supplied[4097] = 0xA5
     supplied_initial_user_image.write_bytes(supplied)
     supplied_static_user_image = destination / "supplied-static-user.elf"
-    supplied_static_user_image.write_bytes(static_user_fixture())
+    static_user_bytes, static_user_input = checked_static_user_image(
+        external_static_user_image
+    )
+    supplied_static_user_image.write_bytes(static_user_bytes)
 
     linked = destination / "linked"
     compile_systems_artifact(
@@ -507,6 +611,7 @@ def build_image(destination: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
         artifact_provenance,
         generated_initial_user_image,
         published_static_user_image,
+        static_user_input,
     )
 
 
@@ -655,6 +760,7 @@ def evidence_record(
     artifact_provenance: Path,
     generated_initial_user_image: Path,
     static_user_image: Path,
+    static_user_input: str,
     serial: bytes,
 ) -> dict[str, Any]:
     data = manifest()
@@ -663,7 +769,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/172",
+        "schema": "topal-kernel-toolchain-gate-qemu/183",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -686,7 +792,7 @@ def evidence_record(
         "initial_user_image_input": "supplied",
         "static_user_image_bytes": boot["static_user_image_bytes"],
         "static_user_image_sha256": boot["static_user_image_sha256"],
-        "static_user_image_input": "supplied-clean-room-fixture",
+        "static_user_image_input": static_user_input,
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
@@ -696,6 +802,22 @@ def evidence_record(
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
+            "static_applet_newline_count": serial.count(b"\n"),
+            "static_shell_getpid_profile": (
+                "external-echo-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-pid-one-witness"
+            ),
+            "static_shell_sigchld_profile": (
+                "external-echo-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-installed-cleared-witness"
+            ),
+            "static_shell_getppid_profile": (
+                "external-echo-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-no-parent-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -703,7 +825,13 @@ def evidence_record(
     }
 
 
-def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
+def verify(
+    timeout: float,
+    write_evidence: bool,
+    external_static_user_image: Path | None = None,
+) -> dict[str, Any]:
+    # Reject an unapproved external image before invoking any build tool.
+    checked_static_user_image(external_static_user_image)
     qemu_version = verify_host()
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
@@ -715,7 +843,8 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             artifact_provenance,
             generated_initial_user_image,
             static_user_image,
-        ) = build_image(root / "artifact")
+            static_user_input,
+        ) = build_image(root / "artifact", external_static_user_image)
         boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
         if digest(boot_resource) != boot["boot_resource_sha256"]:
             raise GateError("published boot resource does not match boot provenance")
@@ -737,6 +866,10 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
+        if serial.count(b"\n") != 1:
+            raise GateError(
+                "static applet newline count did not match the selected qualification input"
+            )
         record = evidence_record(
             qemu_version,
             image,
@@ -745,14 +878,20 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             artifact_provenance,
             generated_initial_user_image,
             static_user_image,
+            static_user_input,
             serial,
         )
     if write_evidence:
-        EVIDENCE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        staged = EVIDENCE_PATH.with_suffix(".json.new")
+        evidence_path = (
+            PINNED_STATIC_BUSYBOX_EVIDENCE_PATH
+            if external_static_user_image is not None
+            else EVIDENCE_PATH
+        )
+        evidence_path.parent.mkdir(parents=True, exist_ok=True)
+        staged = evidence_path.with_suffix(".json.new")
         staged.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        staged.replace(EVIDENCE_PATH)
-        print(f"wrote {EVIDENCE_PATH}")
+        staged.replace(evidence_path)
+        print(f"wrote {evidence_path}")
     return record
 
 
@@ -760,13 +899,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--write-evidence", action="store_true")
+    parser.add_argument("--external-static-user-image", type=Path)
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        result = verify(args.timeout, args.write_evidence)
+        result = verify(
+            args.timeout,
+            args.write_evidence,
+            args.external_static_user_image,
+        )
         print(json.dumps(result, indent=2, sort_keys=True))
     except (GateError, OSError, subprocess.SubprocessError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

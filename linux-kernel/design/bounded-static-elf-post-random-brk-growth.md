@@ -3,7 +3,7 @@
 ## Decision
 
 After the post-random current-break query, the pinned x86-64 static executable
-requests program-break growth from `0x005f7dc0` to `0x00618dc0`. The bounded
+requests program-break growth from `0x005f7d80` to `0x00618d80`. The bounded
 static-process profile shall admit this one exact monotonic request, provide
 zero-filled anonymous backing for every newly admitted byte, update the
 byte-granular current break, and return the requested value. The qualification

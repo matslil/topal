@@ -2,7 +2,7 @@
 
 ## Decision
 
-After the cross-boundary growth to `0x00618dc0`, the pinned x86-64 static
+After the cross-boundary growth to `0x00618d80`, the pinned x86-64 static
 executable requests one further program-break growth to `0x00619000`. The
 bounded static-process profile shall admit this exact monotonic request, update
 the byte-granular current break, return the requested value, and permit a write
