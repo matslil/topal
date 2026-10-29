@@ -5380,6 +5380,53 @@ rule SHALL NOT add entries below `/bin`, file contents, execution, arbitrary
 traversal, mutation, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001 — Static-process bin-busybox glob match
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` without changing
+its five publications. Its third publication SHALL remain exact
+`echo /*; test -d /bin && echo /bin/*\n`, with the same affine input-owner,
+prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's root enumeration,
+explicit close, exact `/bin\n` output, complete named-child metadata lookup,
+exact `/bin/` open, and descriptor metadata query. The sealed inode-four
+directory SHALL additionally contain one immutable `busybox` child identity
+with inode five and regular-file type. This identity SHALL authorize only the
+directory record; it SHALL NOT authorize child lookup, metadata, contents,
+opening, or execution.
+
+For the predecessor's bounded directory-record request, the provider SHALL
+validate one complete writable candidate and privately stage coherent ordered
+24-byte `.` and `..` records followed by one aligned 32-byte `busybox` record.
+It SHALL copy and verify all 80 bytes, erase staging, advance the description
+position, and return 80. A following record request SHALL return zero without
+modifying its candidate. The application SHALL explicitly close descriptor
+three, after which every use of that description SHALL be invalid.
+
+After EOF and close, the application SHALL issue one standard-output write
+containing exact `/bin/busybox\n`. The provider SHALL validate and stage the
+complete readable thirteen-byte candidate before publication, publish exactly
+those bytes, return thirteen, erase staging, retain no user pointer or output
+byte, and record one private bin-busybox-glob output fact. The following prompt
+and `pwd\n` SHALL require that fact. Terminal handling SHALL clear child
+metadata, enumeration, descriptor, output, and every command-time fact with
+unchanged affine rollback.
+
+For qualified x86-64 realization, child enumeration SHALL bind to syscall 217
+with descriptor three and results 80 then zero. The third native
+`linux_dirent64` record SHALL contain inode five, next offset three, record
+length 32, `DT_REG=8`, exact `busybox\0`, and zero padding. Close SHALL bind to
+syscall 3 and result zero. Selected matched output SHALL bind to syscall 1 on
+descriptor one with count and result thirteen. Input results SHALL remain 11,
+5, 37, 4, and 5. Structural and physical evidence SHALL certify predecessor
+matching and metadata, exact child-directory open and description state,
+complete three-record transfer, EOF and close, selected matched output,
+candidate and staging erasure, later `pwd`, prompt distinction, terminal
+cleanup, and rollback. This rule SHALL NOT add file lookup, metadata, contents,
+opening, execution, arbitrary traversal, mutation, dynamic applications,
+processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

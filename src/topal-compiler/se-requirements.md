@@ -2025,6 +2025,35 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` and
 `TK-DEC-229`.
 
+The bounded static-process bin-busybox-glob-match increment shall retain the
+five qualified publications and exact third command
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, named-child metadata lookup,
+exact `/bin/` open, and descriptor metadata query.
+
+The provider shall add exactly one immutable inode-five regular-file `busybox`
+entry beneath inode four. For the qualified syscall-217 request it shall stage
+coherent ordered 24-byte `.` and `..` records followed by one aligned 32-byte
+`busybox` record with next offset three and `DT_REG=8`; copy and verify all 80
+bytes to the complete checked clean-stack or external-heap candidate; erase
+staging; advance position; and return 80. A following request shall return EOF
+with the candidate unchanged, and syscall 3 shall explicitly consume the
+description. The entry identity shall grant no lookup, metadata, content, open,
+or execution authority.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/busybox\n`; the provider shall validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+bin-busybox-glob output fact. The later prompt and profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every child-metadata,
+enumeration, description, output, and command-time fact and preserve complete
+rollback. Structural and QEMU evidence shall enforce the unchanged 37-byte
+command, predecessor match and metadata, exact child-directory open, coherent
+three-record transfer, EOF and close, application-selected matched output,
+ordered observations, candidate and staging erasure, prompt distinction, and
+unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001` and `TK-DEC-230`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
