@@ -220,6 +220,7 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell root-directory condition](bounded-static-elf-shell-root-directory-condition.md)
 - [Bounded static-process shell missing-directory condition](bounded-static-elf-shell-missing-directory-condition.md)
 - [Bounded static-process shell root-glob enumeration](bounded-static-elf-shell-root-glob-enumeration.md)
+- [Bounded static-process shell named-root glob match](bounded-static-elf-shell-named-root-glob-match.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
