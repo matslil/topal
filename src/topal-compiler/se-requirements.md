@@ -1995,6 +1995,36 @@ compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` and
 `TK-DEC-228`.
 
+The bounded static-process empty-bin-glob-enumeration increment shall replace
+the third publication with exact
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, and complete named-child
+metadata lookup. They shall then issue x86-64 syscall 257 for exact `/bin/\0`
+relative to `AT_FDCWD`, flags `0x90800`, mode zero, and result three.
+
+The provider shall bind descriptor three to one immutable inode-four directory
+description at position zero and publish its complete qualified metadata on
+syscall 5. It shall accept one syscall-217 request, stage coherent ordered
+24-byte `.` and `..` records for inode four and parent inode three, copy and
+verify all 48 bytes to a complete checked clean-stack or external-heap
+candidate, erase staging, advance position, and return 48. A following request
+shall return EOF with the candidate unchanged, and syscall 3 shall explicitly
+consume the description.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/*\n`; the provider shall validate and stage all seven bytes,
+publish them, return seven, erase staging, and record one private empty-bin-glob
+output fact. The later prompt and profile-specific `pwd` shall require that
+fact. Terminal handling shall clear every child-metadata, enumeration,
+description, output, and command-time fact and preserve complete rollback.
+Structural and QEMU evidence shall enforce the combined 37-byte command,
+predecessor match and metadata, exact child open, metadata, records, EOF and
+close, application-selected output, ordered observations, candidate and
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` and
+`TK-DEC-229`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

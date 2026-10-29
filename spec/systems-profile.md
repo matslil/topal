@@ -5326,6 +5326,60 @@ cleanup, and rollback. This rule SHALL NOT add arbitrary traversal, child open
 or enumeration, contents, mutation, dynamic applications, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001 — Static-process empty-bin glob enumeration
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*\n`. The remaining publications SHALL be
+exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`, with the same affine
+input-owner, prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's root enumeration,
+explicit close, exact `/bin\n` output, and complete named-child metadata
+lookup. It MAY then open exact `/bin/\0` read-only as a directory. The provider
+SHALL require the child-metadata fact, validate the live process, sealed
+continuation, checked hierarchy, stack, dispositions, complete pathname and
+flags, allocate the lowest free nonstandard descriptor, and bind it to one
+immutable inode-four directory description at position zero. A wrong,
+partial, unreadable, wrapping, pre-metadata, duplicate, or post-output request
+SHALL be invalid.
+
+The application MAY query descriptor-three metadata and issue one bounded
+directory-record read. The provider SHALL publish the same complete
+inode-four directory metadata as the predecessor, validate one complete
+writable candidate, and privately stage coherent ordered 24-byte `.` and `..`
+native records for inode four and parent inode three. It SHALL copy and verify
+all 48 bytes, erase staging, advance the description position, and return 48.
+A following record request SHALL return zero without modifying its candidate.
+The application SHALL explicitly close descriptor three, after which every
+use of that description SHALL be invalid.
+
+After EOF and close, the application SHALL issue one standard-output write
+containing exact `/bin/*\n`. The provider SHALL validate and stage the complete
+readable seven-byte candidate before publication, publish exactly those bytes,
+return seven, erase staging, retain no user pointer or output byte, and record
+one private empty-bin-glob output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear child metadata, enumeration,
+descriptor, output, and every command-time fact with unchanged affine
+rollback.
+
+For qualified x86-64 realization, child open SHALL bind to syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/\0`, flags `0x90800`, mode zero, and result three.
+Descriptor metadata SHALL bind to syscall 5 and the complete 144-byte
+inode-four layout. Enumeration SHALL bind to syscall 217 with descriptor three
+and results 48 then zero. Each 24-byte record SHALL contain native inode, next
+offset, record length, type, name, and zero padding fields. Close SHALL bind to
+syscall 3 and result zero. Selected literal output SHALL bind to syscall 1 on
+descriptor one with count and result seven. Input results SHALL be 11, 5, 37,
+4, and 5. Structural and physical evidence SHALL certify predecessor matching
+and metadata, exact child open and description state, complete metadata and
+record transfers, EOF and close, selected literal output, candidate and staging
+erasure, later `pwd`, prompt distinction, terminal cleanup, and rollback. This
+rule SHALL NOT add entries below `/bin`, file contents, execution, arbitrary
+traversal, mutation, dynamic applications, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
