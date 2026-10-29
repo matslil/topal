@@ -2105,6 +2105,33 @@ distinction, and unchanged external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` and
 `TK-DEC-232`.
 
+The bounded shell profile may extend the same third publication to the exact
+176-byte command ending in
+`test -s /bin/busybox && echo busybox-nonempty\n`. For this extended profile,
+every inode-five metadata publication shall replace the predecessor's zero
+size and blocks with size 2,024,544 and block count 3,955, bound to the complete
+digest-checked static-user boot resource. All other metadata and every ordered
+predecessor transition shall remain unchanged.
+
+After `busybox-executable\n`, both profiles shall repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero. The provider shall require the executable-condition output and
+all predecessor facts, republish the identical artifact-bound metadata, return
+zero, and record one private repeated nonempty-metadata fact.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-nonempty\n`; the provider shall validate and stage all
+seventeen bytes, publish them, return seventeen, erase staging, and record one
+private nonempty-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear both new facts and
+every predecessor fact with complete rollback. Structural and QEMU evidence
+shall enforce the complete 176-byte command, artifact-bound size, exact
+repeated metadata request, application-selected output, observation ordering,
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` and
+`TK-DEC-233`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

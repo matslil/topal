@@ -5516,6 +5516,54 @@ rule SHALL NOT add opening, contents, mapping, execution, arbitrary permission
 checks, mutation, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001 — Static-process bin-busybox nonempty condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` by
+replacing its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+Within this extended profile, every inode-five metadata publication SHALL
+report size 2,024,544 and block count 3,955 instead of the zero values in the
+predecessor profile. That size SHALL equal the complete static-user artifact
+selected, digest-checked, published, and transported by the boot resource.
+Every other metadata field and every predecessor transition SHALL remain
+identical. A different artifact size, digest identity, inode, mode, owner,
+link count, block size, or timestamp SHALL be invalid.
+
+The application SHALL first complete the executable-condition output. It MAY
+then repeat the complete metadata query for exact `/bin/busybox\0`. The
+provider SHALL require every predecessor fact, validate the live process,
+sealed continuation, checked hierarchy, stack, dispositions, complete readable
+pathname and writable metadata candidate, republish the identical artifact-
+bound inode-five metadata, return zero, and record one private ordered
+nonempty-metadata fact. A wrong, partial, unreadable, unwritable, wrapping,
+predecessor-incomplete, duplicate, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes. The application SHALL
+consume the positive size to issue one standard-output write containing exact
+`busybox-nonempty\n`. The provider SHALL validate and stage all seventeen
+bytes, publish them, return seventeen, erase staging, and record one private
+nonempty-condition output fact. The following prompt and `pwd\n` SHALL require
+that fact. Terminal handling SHALL clear all new and predecessor metadata,
+credential, output, enumeration, descriptor, and command-time facts with
+unchanged affine rollback.
+
+For qualified x86-64 realization, repeated metadata SHALL bind to syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or
+heap candidate, flags zero, and the extended artifact-bound result above.
+Selected output SHALL bind to syscall 1 on descriptor one with count and result
+seventeen. Input results SHALL be 11, 5, 176, 4, and 5. Structural and physical
+evidence SHALL certify every predecessor transition, exact artifact identity
+and size, exact repeated metadata query, selected condition flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This rule SHALL NOT add opening, contents,
+mapping, execution, arbitrary metadata, mutation, dynamic applications,
+processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
