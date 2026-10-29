@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/187";
+    "topal.provider-object.x86_64-qemu-pc-q35/188";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -11705,7 +11705,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0]);
         code.jump_if(0x85, "fatal");
     }
-    for (offset, value) in [(752_u32, 3_u32), (760, 2), (768, 0x41ed), (800, 4096)] {
+    for (offset, value) in [(752_u32, 3_u32), (760, 3), (768, 0x41ed), (800, 4096)] {
         code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&value.to_le_bytes());
@@ -11964,7 +11964,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-root-glob-getdents-first")?;
-    for offset in (744_u32..792).step_by(8) {
+    for offset in (744_u32..816).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0]);
@@ -11977,6 +11977,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         (768, 3),
         (776, 2),
         (784, 0x0000_002e_2e04_0018),
+        (792, 4),
+        (800, 3),
+        (808, 0x0000_6e69_6204_0018),
     ] {
         code.bytes(&[0x48, 0xb8]);
         code.bytes(&value.to_le_bytes());
@@ -11985,7 +11988,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     }
     code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
     code.bytes(&320_u32.to_le_bytes());
-    for (index, staging_offset) in (744_u32..792).step_by(8).enumerate() {
+    for (index, staging_offset) in (744_u32..816).step_by(8).enumerate() {
         let user_offset = u8::try_from(index * 8).expect("bounded root dirent offset");
         code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
         code.bytes(&staging_offset.to_le_bytes());
@@ -11996,7 +11999,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         }
     }
     code.bytes(&[0x0f, 0xae, 0xf8]);
-    for offset in (744_u32..792).step_by(8) {
+    for offset in (744_u32..816).step_by(8) {
         code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0, 0, 0, 0]);
@@ -12008,7 +12011,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[3]);
-    code.bytes(&[0xb8, 48, 0, 0, 0]);
+    code.bytes(&[0xb8, 72, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-close")?;
@@ -12613,7 +12616,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-root-condition-write")?;
     code.bytes(&[0x48, 0x83, 0xff, 1]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0xfa, 3]);
+    code.bytes(&[0x48, 0x83, 0xfa, 5]);
     code.jump_if(0x85, "fatal");
     emit_static_process_active_stack_validation(&mut code);
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
@@ -12625,7 +12628,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xfe]);
     code.bytes(&0x005f_7000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 3]);
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 5]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x48, 0x3d]);
     code.bytes(&0x0061_9000_u32.to_le_bytes());
@@ -12640,7 +12643,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xfe]);
     code.bytes(&0x007f_e000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 3]);
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 5]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x48, 0x3d]);
     code.bytes(&0x0080_0000_u32.to_le_bytes());
@@ -12670,16 +12673,16 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
     code.bytes(&320_u32.to_le_bytes());
-    // Stage all three application bytes before comparison or publication.
+    // Stage all five application bytes before comparison or publication.
     code.bytes(&[0x45, 0x31, 0xd2]);
     code.bind("static-process-shell-root-condition-write-copy")?;
     code.bytes(&[0x42, 0x8a, 0x04, 0x16]);
     code.bytes(&[0x65, 0x41, 0x88, 0x82]);
     code.bytes(&744_u32.to_le_bytes());
-    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 3]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 5]);
     code.jump_if(0x85, "static-process-shell-root-condition-write-copy");
     code.bytes(&[0x48, 0xb8]);
-    code.bytes(&u64::from_le_bytes(*b"/*\n\0\0\0\0\0").to_le_bytes());
+    code.bytes(&u64::from_le_bytes(*b"/bin\n\0\0\0").to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
     code.bytes(&744_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -12691,7 +12694,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
     code.bytes(&[0x65, 0x41, 0x8a, 0x82]);
     code.bytes(&744_u32.to_le_bytes());
-    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 3]);
+    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 5]);
     code.jump_if(0x85, "static-process-shell-root-condition-write-output");
 
     code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
@@ -12704,7 +12707,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[6]);
-    code.bytes(&[0xb8, 3, 0, 0, 0]);
+    code.bytes(&[0xb8, 5, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-pwd-write")?;
@@ -17233,7 +17236,7 @@ assert bytes(output) == block[32:]
         );
         let process_fixture_image = qualified_x86_64_static_user_image_fixture();
         let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
-        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7c5c];
+        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_7c90];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -17902,7 +17905,7 @@ assert bytes(output) == block[32:]
                     .any(|window| window == [0xb8, 0xd9, 0, 0, 0])
                 && shell_continuation.windows(19).any(|window| window
                     == [
-                        0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 3, 0, 0, 0, 0xb8, 1, 0, 0, 0,
+                        0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 5, 0, 0, 0, 0xb8, 1, 0, 0, 0,
                         0x0f,
                     ])
                 && shell_continuation
@@ -17928,7 +17931,7 @@ assert bytes(output) == block[32:]
                     .windows(11)
                     .any(|window| window
                         == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b]),
-            "clean process fixture must consume echo, chdir root, enumerate and close root, publish the unmatched glob, refill pwd, output root, refill exit, and terminate"
+            "clean process fixture must consume echo, chdir root, enumerate and close root, publish the named glob match, refill pwd, output root, refill exit, and terminate"
         );
         assert_eq!(
             process_enter
@@ -18287,6 +18290,12 @@ assert bytes(output) == block[32:]
                 && process_enter.windows(13).any(|window| {
                     window == [0x65, 0x48, 0xc7, 0x04, 0x25, 0, 3, 0, 0, 0xed, 0x41, 0, 0]
                 })
+                && process_enter.windows(13).any(|window| {
+                    window == [0x65, 0x48, 0xc7, 0x04, 0x25, 0xf8, 2, 0, 0, 3, 0, 0, 0]
+                })
+                && process_enter
+                    .windows(10)
+                    .any(|window| { window == [0x48, 0xb8, 0x18, 0, 4, b'b', b'i', b'n', 0, 0] })
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, 1])
@@ -18298,12 +18307,12 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 30]),
-            "root glob must publish the exact command, open and describe the exact root directory, dispatch getdents64, close it, and advance to selected output"
+            "root glob must publish the exact command, open and coherently describe the exact root directory, publish the named child record, close it, and advance to selected output"
         );
         assert!(
             process_enter
                 .windows(10)
-                .any(|window| { window == [0x48, 0xb8, b'/', b'*', b'\n', 0, 0, 0, 0, 0] })
+                .any(|window| { window == [0x48, 0xb8, b'/', b'b', b'i', b'n', b'\n', 0, 0, 0] })
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, 6])
@@ -18313,7 +18322,7 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, 0]),
-            "root-glob enumeration must publish exact literal output, gate pwd on its private observation, and terminally clear it"
+            "root-glob enumeration must publish the exact named match, gate pwd on its private observation, and terminally clear it"
         );
         assert!(
             process_enter
