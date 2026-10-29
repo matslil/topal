@@ -1032,7 +1032,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/211",
+        "schema": "topal-kernel-toolchain-gate-qemu/212",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1255,6 +1255,21 @@ def evidence_record(
                 "external-busybox-exact-bin-busybox-executable-condition-output-witness"
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-exact-bin-busybox-executable-condition-output-witness"
+            ),
+            "static_shell_bin_busybox_artifact_size_profile": (
+                "external-busybox-sealed-2024544-byte-bin-busybox-artifact-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-sealed-2024544-byte-bin-busybox-artifact-witness"
+            ),
+            "static_shell_bin_busybox_nonempty_metadata_profile": (
+                "external-busybox-third-complete-positive-bin-busybox-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-third-complete-positive-bin-busybox-metadata-witness"
+            ),
+            "static_shell_bin_busybox_nonempty_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-nonempty-condition-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-nonempty-condition-output-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
