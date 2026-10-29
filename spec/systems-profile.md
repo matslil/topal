@@ -5427,6 +5427,50 @@ cleanup, and rollback. This rule SHALL NOT add file lookup, metadata, contents,
 opening, execution, arbitrary traversal, mutation, dynamic applications,
 processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001 — Static-process bin-busybox file condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor root and child
+enumeration, metadata, close, and output transition. It MAY then query exact
+`/bin/busybox\0`. The provider SHALL require the nested-match fact, validate
+the live process, sealed continuation, checked hierarchy, stack, dispositions,
+complete pathname and complete writable native metadata candidate, and publish
+one immutable inode-five regular-file value. A wrong, partial, unreadable,
+unwritable, wrapping, pre-match, duplicate, or post-output request SHALL be
+invalid.
+
+The file value SHALL have device zero, inode five, link count one, mode `0555`,
+root ownership, zero size, blocks and times, and 4,096-byte preferred transfer
+size. The provider SHALL verify the complete copy, return zero, erase staging,
+retain no pointer or bytes, and record one private ordered file-metadata fact.
+The application SHALL consume that fact to issue one standard-output write
+containing exact `busybox-file\n`. The provider SHALL validate and stage all
+thirteen bytes, publish them, return thirteen, erase staging, and record one
+private file-condition output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear all file metadata, output,
+enumeration, descriptor, and command-time facts with unchanged affine rollback.
+
+For qualified x86-64 realization, file lookup SHALL bind to syscall 262 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or heap
+candidate, flags zero, and result zero. Its 18 qwords SHALL be device zero,
+inode five, link count one, mode/UID `0x816d`, GID/padding zero, device zero,
+size zero, block size 4,096, blocks zero, zero timestamps, and zero reserved
+words. Selected output SHALL bind to syscall 1 on descriptor one with count and
+result thirteen. Input results SHALL be 11, 5, 80, 4, and 5. Structural and
+physical evidence SHALL certify predecessor enumeration and matching, exact
+lookup and complete metadata, selected condition flow and output, observation
+ordering, candidate and staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This rule SHALL NOT add contents, opening,
+execution, arbitrary traversal, mutation, dynamic applications, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
