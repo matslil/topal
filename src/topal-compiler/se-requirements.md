@@ -1497,6 +1497,177 @@ and QEMU evidence shall enforce exact dispatch, ordering, result,
 nonretention, disposition preservation, and rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` and `TK-DEC-202`.
 
+The bounded static-process empty-input shell increment shall accept exactly
+native x86-64 `uname` into a checked stack extent, publish the established
+390-byte identity, accept `getcwd(0x5f9460, 4096)`, publish `"/\0"`, return
+two, then accept `ioctl(0, TCGETS, candidate)` with `-ENOTTY`, ordered
+`rt_sigaction` observations for signals 2, 3, and 15, one native ignored
+signal-3 installation, and `read(0, 0x5f8f60, 1023)` with result zero after
+the shell-getppid phase. It shall publish complete zeroed 32-byte old actions
+only to checked writable stack extents, validate and copy the ignored action,
+retain only a private ignored-disposition fact, and clear it with the existing
+child disposition at successful exit. The clean fixture shall continue in a
+sealed executable island and require every result. The pinned external
+profile shall select exact `busybox sh` arguments with an empty environment
+and reach the same terminal phase. Structural and QEMU evidence shall enforce
+dispatch, arguments, order, output, nonretention, disposition lifecycle,
+sealed identity, directory, end-of-input, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` and `TK-DEC-203`.
+
+The bounded static-process sealed exit-command increment shall replace the
+terminal empty-input result with one exact five-byte `exit\n` publication for
+`read(0, 0x5f8f60, 1023)`, consume one fresh private input owner, return five,
+and accept only immediate `exit_group(0)`. It shall validate the complete
+writable destination before mutation, retain no pointer or readable input copy,
+erase the process-visible bytes during terminal handling, and preserve the
+existing disposition lifecycle and complete rollback. The clean fixture shall
+verify and erase the same bytes before exit; the pinned external profile shall
+select exact `busybox sh` arguments and execute the command. Structural and
+QEMU evidence shall enforce input identity, dispatch, arguments, ordering,
+complete copy, consumption, immediate exit, erasure, and rollback. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` and `TK-DEC-204`.
+
+The bounded static-process sealed echo-command increment shall replace the
+five-byte command with one exact sixteen-byte `echo topal\nexit\n` publication
+for `read(0, 0x5f8f60, 1023)`, consume the fresh private input owner, return
+sixteen, and accept only one exact six-byte descriptor-one `topal\n` write
+before `exit_group(0)`. It shall validate the complete writable input and
+readable output extents before access, stage and validate all output before
+publication, retain no user pointer or readable private copy, require an exact
+post-output phase at terminal handling, erase and prove erasure of every
+command byte, and preserve the existing disposition lifecycle and complete
+rollback. The clean fixture shall verify the same command, output, erasure, and
+exit sequence; the pinned external profile shall execute the built-in command.
+Structural and QEMU evidence shall enforce identity, dispatch, arguments,
+ordering, complete copies, ownership, staging, publication, phase, terminal
+erasure, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` and `TK-DEC-205`.
+
+The bounded static-process shell console-fstat increment shall accept native
+x86-64 syscall 5 once for descriptor one and the exact checked clean-fixture
+stack candidate after signal setup and before sealed command input. It shall
+construct the complete approved 144-byte immutable console metadata in private
+process staging, validate the complete destination before mutation, copy every
+byte, clear and verify all staging, return zero, retain no user pointer, and
+record one private observation without advancing the input-predecessor phase.
+The later read and terminal paths shall require and clear the exact header-
+profile-specific observation state; the external echo-command profile shall
+require that it remains absent. The clean fixture shall validate every output
+byte before its existing command sequence. Structural and QEMU evidence shall
+enforce dispatch, arguments, phase, mapping, metadata, staging, publication,
+erasure, profile distinction, lifecycle, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` and `TK-DEC-206`.
+
+The bounded static-process `/dev/tty` open-miss increment shall accept native
+x86-64 syscall 257 once after the clean console-fstat observation and before
+sealed command input. It shall require `AT_FDCWD`, the exact immutable clean-
+fixture pathname candidate, `O_RDWR`, zero mode, complete `/dev/tty\0` bytes,
+the live dispositions and checked hierarchy, and the unchanged input-
+predecessor phase. It shall return `-ENOENT`, allocate no descriptor, retain no
+pointer or lookup state, and publish one additional private observation without
+advancing the phase. The read and terminal paths shall require the exact
+header-profile-specific observation pair and clear both together at terminal
+handling; the external echo-command profile shall require both absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, pathname,
+mapping, result, nonallocation, ordering, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` and `TK-DEC-207`.
+
+The bounded static-process standard-terminal-probe increment shall accept
+exactly three native x86-64 syscall-16 requests after the clean `/dev/tty`
+absence observation and before warning output or sealed input. It shall require
+`TCGETS`, descriptors two, one, and zero in order, one complete checked 36-byte
+initial-stack candidate, the live dispositions and checked hierarchy, the
+unchanged input-predecessor phase, and both predecessor observations. Every
+call shall return `-ENOTTY` without reading or changing the candidate or any
+descriptor state. One private count shall advance only after complete
+validation, and later clean input and terminal handling shall require count
+three and clear it with the predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, extent, ordering, no-output effect, result,
+count lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` and `TK-DEC-208`.
+
+The bounded static-process terminal-warning increment shall accept exactly
+three native x86-64 syscall-1 requests after clean terminal-probe count three
+and before later startup work or sealed input. It shall require descriptor two,
+exact 4-, 40-, and 1-byte segments spelling `sh: can't access tty; job control
+turned off\n`, complete checked readable initial-stack candidates, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall stage and validate every complete segment before the
+existing serial adapter publishes it, return each length, clear staging, and
+retain no pointer or payload. One private count shall advance only after full
+publication, and later clean input and terminal handling shall require count
+three and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, lengths, ordering, candidate extents,
+staging-before-output, exact result and output, staging erasure, lifecycle,
+profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` and `TK-DEC-209`.
+
+The bounded static-process mailbox-metadata increment shall accept exactly one
+native x86-64 syscall-262 request after clean warning count three and before
+banner output or sealed input. It shall require `AT_FDCWD`, immutable
+`/var/spool/mail/root`, flags zero, one complete checked writable 144-byte
+native-stat candidate in the retained initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, and all prior observations. It
+shall return `-ENOENT` without changing the candidate, allocating a descriptor,
+or retaining a pointer or path. One private fact shall publish only after
+complete validation, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, pathname, candidate extent, no-output
+effect, result, nonallocation, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` and `TK-DEC-210`.
+
+The bounded static-process shell-banner increment shall accept exactly one
+native x86-64 syscall-1 request after the clean mailbox-absence fact and before
+later profile lookup, prompt output, or sealed input. It shall require
+descriptor one, the exact 109-byte BusyBox version and help banner, one complete
+checked readable initial-stack candidate, live dispositions and hierarchy,
+unchanged input-predecessor phase, and all prior observations. It shall copy
+and validate all bytes in a fixed 112-byte private extent before the existing
+serial adapter publishes them, return 109, erase and prove erasure of the whole
+extent, and retain no pointer or payload. One private fact shall publish only
+after complete output, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, length, candidate extent, staging-before-
+output, exact result and output, staging erasure, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` and `TK-DEC-211`.
+
+The bounded static-process post-banner-terminal increment shall accept exactly
+one native x86-64 syscall-16 request after the clean banner fact and before
+later startup work or sealed input. It shall require descriptor zero,
+`TCGETS`, one complete checked writable 36-byte initial-stack candidate, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall return `-ENOTTY` without reading or changing the
+candidate, descriptor state, or retaining a pointer. One private fact shall
+publish only after complete validation, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, candidate
+extent, no-output effect, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` and `TK-DEC-212`.
+
+The bounded static-process post-banner-current-directory increment shall
+accept exactly one native x86-64 syscall-79 request after the clean post-banner
+terminal fact and before later startup work or sealed input. It shall require
+candidate `0x5f9460`, count 4096, complete checked anonymous-heap backing, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall publish exactly `"/\0"`, return two, retain no pointer,
+and leave process phase unchanged. One private fact shall publish only after
+complete validation and publication, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, checked heap,
+complete output, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` and `TK-DEC-213`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

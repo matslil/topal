@@ -584,6 +584,16 @@ and predecessor phase; return zero without process lookup or retaining native
 arguments or mutable identity state; and preserve the disposition lifecycle
 and complete terminal rollback.
 
+The bounded static-process empty-input shell adapter shall admit one ordered
+publication of the established system identity, one sealed root current-
+directory publication, one terminal-capability miss, default observations for
+interrupt, quit, and termination dispositions, installation of one ignored
+quit disposition, and one sealed end-of-input read. It shall validate complete
+writable outputs, copy and retain no user request pointer, preserve process-
+owned dispositions until terminal clearing, mutate no input destination on the
+zero result, and require the exact live process, predecessor phase, executable
+continuation, active hierarchy, retained mappings, and complete rollback.
+
 The bounded initial-configuration adapter shall recognize exactly the sealed
 absolute path `/etc/busybox.conf` for the live initial process and report that
 the optional object is absent. Dispatch shall require an executable return

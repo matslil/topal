@@ -76,7 +76,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 888],
+            fixture[0xA_6580 : 0xA_6580 + 882],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
@@ -263,27 +263,119 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
                     0xB8, 0x6E, 0x00, 0x00, 0x00,
                     0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x31, 0xFF,
-                    0xB8, 0xE7, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x0F, 0x0B,
+                    0xE9, 0x0E, 0x07, 0x00, 0x00,
                 ]
             ),
         )
+        continuation = fixture[0xA_7000 : 0xA_7693]
+        self.assertEqual(len(continuation), 1_683)
+        self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
+        self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
+        self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
+        self.assertIn(bytes.fromhex("bf010000004889e6b8050000000f05"), continuation)
+        self.assertIn(bytes.fromhex("48817c24188021000075fe"), continuation)
+        self.assertIn(bytes.fromhex("48817c24280044000075fe"), continuation)
+        self.assertIn(bytes.fromhex("48817c24380010000075fe"), continuation)
+        self.assertIn(bytes.fromhex("31c0b9120000004889e7fcf348ab"), continuation)
+        self.assertIn(bytes.fromhex("31c0b9120000004889e7fcf348af75fe"), continuation)
+        self.assertIn(bytes.fromhex("4883f81075fe"), continuation)
+        self.assertIn(
+            bytes.fromhex(
+                "bf9cffffffbe12694a00ba020000004531d2"
+                "b8010100000f054883f8fe75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+                "bf9cffffffbe20694a004889e24531d2b8060100000f054883f8fe75fe"
+                "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
+                "31c0b9120000004889e7fcf348ab"
+                "31c0b9120000004889e7fcf348af75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48b80a0a42757379426f48890424"
+                "48b8782076312e33372e4889442408"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48b864732e0a0a0000004889442468"
+                "bf010000004889e6ba6d000000b8010000000f054883f86d75fe"
+                "31c0b90e0000004889e7fcf348ab"
+                "31c0b90e0000004889e7fcf348af75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "c604246d31ffbe015400004889e2b8100000000f054883f8e775fe"
+                "803c246d75fec6042400803c240075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "66c7042560945f00a5a5bf60945f00be00100000b84f0000000f05"
+                "4883f80275fe66813c2560945f002f0075fe66c7042560945f000000"
+                "66833c2560945f000075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "c604246d"
+                "bf02000000be015400004889e2b8100000000f054883f8e775fe803c246d75fe"
+                "bf01000000be015400004889e2b8100000000f054883f8e775fe803c246d75fe"
+                "31ffbe015400004889e2b8100000000f054883f8e775fe803c246d75fe"
+                "c6042400803c240075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "c7042473683a20bf020000004889e6ba04000000b8010000000f05"
+                "4883f80475fec7042400000000833c240075fe"
+                "48b863616e277420616348890424"
+                "48b863657373207474794889442408"
+                "48b83b206a6f6220636f4889442410"
+                "48b86e74726f6c2074754889442418"
+                "48b8726e6564206f66664889442420"
+                "bf020000004889e6ba28000000b8010000000f054883f82875fe"
+                "31c0b9050000004889e7fcf348ab"
+                "31c0b9050000004889e7fcf348af75fe"
+                "c604240abf020000004889e6ba01000000b8010000000f05"
+                "4883f80175fec6042400803c240075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b86563686f20746f70"), continuation)
+        self.assertIn(bytes.fromhex("48b8616c0a657869740a"), continuation)
+        self.assertIn(bytes.fromhex("bf010000004889e6ba06000000b8010000000f05"), continuation)
+        self.assertIn(bytes.fromhex("48c70425608f5f0000000000"), continuation)
+        self.assertIn(bytes.fromhex("48c70425688f5f0000000000"), continuation)
+        self.assertTrue(continuation.endswith(bytes.fromhex("31ffb8e70000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
+        self.assertEqual(fixture[0xA_6912 : 0xA_691B], b"/dev/tty\0")
+        self.assertEqual(fixture[0xA_6920 : 0xA_6935], b"/var/spool/mail/root\0")
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/183")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/194")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/171")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/182")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/181",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/192",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/81",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/92",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -510,7 +602,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 1)
+        self.assertEqual(observations["static_applet_newline_count"], 8)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -521,12 +613,52 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(
             observations["static_shell_getppid_profile"], "clean-no-parent-witness"
         )
+        self.assertEqual(
+            observations["static_shell_echo_command_profile"],
+            "clean-sealed-echo-command-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_console_fstat_profile"],
+            "clean-complete-console-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_dev_tty_open_profile"],
+            "clean-dev-tty-open-enoent-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_standard_terminal_probe_profile"],
+            "clean-stderr-stdout-stdin-enotty-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_terminal_warning_profile"],
+            "clean-three-segment-stderr-warning-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_mailpath_stat_profile"],
+            "clean-root-mailpath-enoent-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_banner_profile"],
+            "clean-exact-109-byte-shell-banner-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_post_banner_terminal_probe_profile"],
+            "clean-post-banner-stdin-enotty-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_post_banner_getcwd_profile"],
+            "clean-post-banner-sealed-root-witness",
+        )
         newline_position = observations["markers_in_order"].index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
         expected_serial = (
             "".join(observations["markers_in_order"][:newline_position])
             + "\n"
+            + "sh: can't access tty; job control turned off\n"
+            + "\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\n"
+            + "Enter 'help' for a list of built-in commands.\n\n"
+            + "topal\n"
             + "".join(observations["markers_in_order"][newline_position:])
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)
@@ -537,7 +669,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/183")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/194")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -552,22 +684,55 @@ class TopalToolchainGateTests(unittest.TestCase):
         observations = evidence["observations"]
         self.assertEqual(observations["static_applet_newline_count"], 1)
         self.assertEqual(
-            observations["static_shell_getpid_profile"], "external-echo-terminal"
+            observations["static_shell_getpid_profile"], "external-shell-echo-command"
         )
         self.assertEqual(
-            observations["static_shell_sigchld_profile"], "external-echo-terminal"
+            observations["static_shell_sigchld_profile"], "external-shell-echo-command"
         )
         self.assertEqual(
-            observations["static_shell_getppid_profile"], "external-echo-terminal"
+            observations["static_shell_getppid_profile"], "external-shell-echo-command"
         )
-        newline_position = observations["markers_in_order"].index(
+        self.assertEqual(
+            observations["static_shell_echo_command_profile"],
+            "external-busybox-sh-echo-command-output-terminal",
+        )
+        self.assertEqual(
+            observations["static_shell_console_fstat_profile"],
+            "external-optional-console-fstat-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_dev_tty_open_profile"],
+            "external-optional-dev-tty-open-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_standard_terminal_probe_profile"],
+            "external-optional-standard-terminal-probes-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_terminal_warning_profile"],
+            "external-optional-terminal-warning-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_mailpath_stat_profile"],
+            "external-optional-mailpath-stat-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_banner_profile"],
+            "external-optional-shell-banner-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_post_banner_terminal_probe_profile"],
+            "external-optional-post-banner-terminal-probe-absent",
+        )
+        self.assertEqual(
+            observations["static_shell_post_banner_getcwd_profile"],
+            "external-optional-post-banner-getcwd-absent",
+        )
+        marker_serial = "".join(observations["markers_in_order"])
+        echo_position = marker_serial.index(
             "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK"
         )
-        expected_serial = (
-            "".join(observations["markers_in_order"][:newline_position])
-            + "\n"
-            + "".join(observations["markers_in_order"][newline_position:])
-        )
+        expected_serial = marker_serial[:echo_position] + "topal\n" + marker_serial[echo_position:]
         self.assertEqual(observations["serial_utf8"], expected_serial)
 
 

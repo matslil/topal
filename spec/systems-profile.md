@@ -4153,6 +4153,454 @@ a parent process, PID allocation, namespaces, a task table, child creation,
 wait, signal delivery, multiple processes or threads, shell execution,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001 — Static-process shell empty-input suffix
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` with one ordered empty-input shell
+suffix. The suffix SHALL publish the existing deterministic system identity;
+publish the sealed root current directory; observe that standard input has no
+terminal settings without modifying its output candidate; publish complete
+default dispositions for interrupt and quit; install one copied and validated
+ignored quit disposition; publish the complete default termination
+disposition; return end-of-input without modifying its input candidate; and
+accept process exit with status zero. Every transition SHALL require the exact
+predecessor phase, live process, sealed executable continuation, active checked
+address-space hierarchy, applicable retained output mapping, exact retained
+initial-stack leaf, and live child disposition.
+
+Disposition output SHALL replace exactly one complete checked writable action
+extent with the portable default value and SHALL retain no user pointer. The
+ignored quit request SHALL be copied from one complete checked readable action
+extent, SHALL name the ignored disposition with the qualified restorer and
+mask policy, and SHALL retain only process-owned disposition state. The
+end-of-input transition SHALL be authorized only by the sealed empty-input
+launch and SHALL retain no candidate, count, byte, or stream state. Successful
+exit SHALL validate and clear both retained dispositions before rollback.
+
+For qualified x86-64 realization, system identity SHALL bind to syscall 63
+(`uname`) and publish the established six 65-byte-field `new_utsname` into one
+checked 390-byte stack extent. Current directory SHALL bind to syscall 79
+(`getcwd`) with exact candidate `0x5f9460` and count 4096, publish exactly
+`"/\0"`, and return two. The terminal observation SHALL then bind to
+`ioctl(0, TCGETS, candidate)` and return `-ENOTTY` without output.
+Disposition operations SHALL bind to `rt_sigaction` with signal-set size eight
+in this order: query signal 2, query signal 3, install `SIG_IGN` for signal 3,
+and query signal 15. Each query SHALL publish the complete zero-valued native
+32-byte action. The installation SHALL require handler one, `SA_RESTORER`, an
+executable restorer, and mask `0xfffffffe7fffffff`. The input observation SHALL
+bind to `read(0, 0x5f8f60, 1023)` and return zero without output.
+
+The clean-room fixture MAY transfer from its original executable interval to
+one sealed disjoint executable island and SHALL require each exact result. The
+digest-pinned external profile SHALL select exact `busybox sh` arguments, an
+empty environment, and the same terminal phase. Structural and physical
+evidence SHALL certify the complete order, native bindings, checked extents,
+identity and directory outputs, private disposition lifecycle, sealed input
+result, terminal phase, and rollback. Another selector, identity, directory,
+descriptor, request, signal, action, mask, extent, count, result, order,
+duplicate, environment, retained pointer, unsealed input source,
+source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add terminal
+configuration, general ioctl, mutable UTS state, namespace selection, directory
+traversal or mutation, signal delivery, pending queues, signal frames, handler
+execution, mutable or blocking input, filesystem access, process creation, job
+control, command execution, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001 — Static-process shell sealed exit command
+
+The bounded static-process entry MAY refine the final input transition of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` with one sealed command-input
+publication. The input owner SHALL contain exactly the five bytes `exit\n`,
+SHALL be fresh for the process launch, and SHALL be consumed by one complete
+successful read. The transition SHALL require the same exact predecessor
+phase, live process, sealed executable continuation, active checked
+address-space hierarchy, retained initial stack, and live child and ignored
+quit dispositions as the empty-input transition.
+
+The provider SHALL validate the complete writable destination before mutation,
+copy all five bytes, consume the input owner, return five, and retain no user
+pointer or readable input copy. The process SHALL next exit successfully
+without another syscall. Terminal handling SHALL validate consumed input state
+and erase the process-visible command bytes before the existing complete
+process rollback. Failure SHALL preserve the predecessor phase, input owner,
+destination, and every process resource.
+
+For qualified x86-64 realization, the transition SHALL bind to
+`read(0, 0x5f8f60, 1023)`, publish bytes `65 78 69 74 0a`, and return five.
+The digest-pinned BusyBox 1.37.0 shell SHALL then bind directly to
+`exit_group(0)`. The clean-room fixture SHALL perform the same read, verify and
+erase every published byte, and exit with status zero.
+
+Structural and physical evidence SHALL certify exact input identity, dispatch,
+arguments, ordering, checked destination, complete publication, result,
+consumption, terminal erasure, immediate exit, and unchanged affine rollback
+for both qualification profiles. Another command, selector, descriptor,
+candidate, count, partial result, order, duplicate, retained pointer, refill,
+unsealed source, intervening syscall, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add an
+interactive terminal, mutable or blocking stream, arbitrary command authority,
+command output, external program execution, pathname lookup, filesystem,
+process creation, job control, pipeline, container, or virtualization support.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001 — Static-process shell sealed echo command
+
+The bounded static-process entry MAY refine
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` with one sealed
+output-producing command sequence. The fresh input owner SHALL contain exactly
+the sixteen bytes `echo topal\nexit\n`, and one complete successful read SHALL
+consume it. The transition SHALL require the same exact predecessor phase,
+live process, active checked address-space hierarchy, retained initial stack,
+and live child and ignored-quit dispositions as the exit-command transition.
+
+The provider SHALL validate the complete writable read destination before
+mutation, copy all sixteen bytes, consume the input owner, return sixteen, and
+retain no user pointer or readable input copy. The only admitted nonterminal
+successor SHALL write exactly `topal\n` to descriptor one from a complete
+checked readable application extent. The provider SHALL stage and validate all
+six output bytes before publication, return six, advance the private process
+phase, and retain no user pointer or readable output copy. The process SHALL
+then bind to `exit_group(0)` without another syscall.
+
+Terminal handling SHALL require the completed output phase and consumed input
+state, erase and prove erasure of all sixteen process-visible command bytes,
+and preserve the existing disposition clearing and complete process rollback.
+Failure before output SHALL preserve the applicable predecessor state and all
+unpublished resources. Observed standard-output bytes SHALL remain observed if
+a later terminal validation fails.
+
+For qualified x86-64 realization, the read SHALL bind to
+`read(0, 0x5f8f60, 1023)`, publish bytes
+`65 63 68 6f 20 74 6f 70 61 6c 0a 65 78 69 74 0a`, and return sixteen. The
+digest-pinned BusyBox 1.37.0 shell SHALL issue one six-byte descriptor-one write
+of `74 6f 70 61 6c 0a` and then `exit_group(0)`. The clean-room fixture SHALL
+verify the same command, issue and verify the same output, erase and prove the
+complete command extent, and exit successfully.
+
+Structural and physical evidence SHALL certify exact input and output identity,
+dispatch, arguments, ordering, checked extents, complete staging and
+publication, results, ownership consumption, phase progression, terminal
+erasure, exit, and unchanged affine rollback for both qualification profiles.
+Another command, output, selector, descriptor, candidate, count, partial
+result, order, duplicate, retained pointer, refill, unsealed source,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add an interactive terminal or prompt, general
+stream, arbitrary command or output authority, external program execution,
+pathname lookup, filesystem, process creation, job control, pipeline,
+container, or virtualization support.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001 — Static-process shell console metadata
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` with one ordered standard-
+output metadata observation after shell signal setup and before sealed command
+input. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained initial stack,
+live child and ignored-quit dispositions, exact input-predecessor phase,
+descriptor one, and one exact complete writable stack candidate. It SHALL be
+observed at most once and SHALL NOT advance that startup phase.
+
+The result SHALL be the immutable console value defined by
+`TOPAL-SYSTEMS-USER-FSTAT-001`. The provider SHALL construct the complete
+native value in private staging, validate the complete destination before user
+mutation, publish the complete value, clear and verify every staging byte,
+retain no user pointer or metadata copy, and return zero. The later sealed-
+input transition and terminal handling SHALL require the header-profile-
+specific observation state. Terminal handling SHALL clear that state before
+complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to native syscall 5
+with descriptor one and the clean fixture's exact continuation-stack
+candidate. It SHALL publish the complete 144-byte x86-64 `struct stat` with
+`st_dev=0`, `st_ino=1`, `st_nlink=1`, `st_mode=0x2180`, root UID/GID, zero
+padding, `st_rdev=0x4400`, zero size, `st_blksize=4096`, and zero blocks,
+timestamps, and unused fields. The clean fixture SHALL validate every byte
+before its existing sealed echo-command read. The pinned external echo-command
+profile SHALL omit the observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, arguments,
+phase, candidate, mapping, metadata, complete staging-before-publication,
+complete copy, staging erasure, observation lifecycle, profile distinction,
+and unchanged affine rollback. Another descriptor, candidate, metadata value,
+selector, order, duplicate, partial result, retained pointer or staging byte,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add arbitrary descriptor metadata, path lookup,
+`newfstatat`, a filesystem, terminal attributes, `/dev/tty`, an interactive
+banner or prompt, mutable input, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001 — Static-process controlling-terminal absence
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` with one ordered open attempt
+for immutable pathname `/dev/tty` after the console-metadata observation and
+before sealed command input. The operation SHALL require the live process,
+sealed executable continuation, active checked address-space hierarchy,
+retained initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, completed console-metadata observation, `AT_FDCWD`, read/
+write intent, zero mode, and the complete pathname in its exact immutable
+mapping.
+
+The provider SHALL validate every argument and pathname byte, return `-ENOENT`,
+allocate no descriptor, access no user output, retain no pathname pointer or
+lookup state, and leave the startup phase and every process resource unchanged.
+One private at-most-once observation SHALL order the later sealed input and
+terminal rollback. Terminal handling SHALL clear it with the console-metadata
+observation before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 257 with
+`dirfd=-100`, exact clean-fixture pathname candidate `0x4a6912`, `flags=2`, and
+`mode=0`, and return native `-2`. The clean fixture SHALL require that result
+after validating and erasing its console stat. The pinned external echo-command
+profile SHALL omit both optional observations and preserve its existing
+execution.
+
+Structural and physical evidence SHALL certify exact dispatch, arguments,
+path bytes, immutable mapping, result, nonallocation, phase preservation,
+ordered observation lifecycle, profile distinction, and unchanged affine
+rollback. Another path, directory, intent, mode, result, order, duplicate,
+retained pointer or lookup, output mutation, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add a
+general `openat`, pathname traversal, descriptors, a VFS, filesystems, terminal
+attributes, a banner or prompt, mutable input, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001 — Static-process standard-description terminal misses
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` with exactly three
+ordered terminal-attribute probes after the `/dev/tty` absence result and
+before warning output or sealed command input. The probes SHALL name standard
+error, standard output, and standard input in that order. Every operation SHALL
+require the live process, sealed executable continuation, active checked
+address-space hierarchy, retained initial stack, live child and ignored-quit
+dispositions, exact input-predecessor phase, completed console-metadata and
+controlling-terminal-absence observations, next expected descriptor,
+terminal-attributes request, and one complete checked writable output extent.
+
+Every probe SHALL return the not-a-terminal result without reading or changing
+the output extent, descriptor state, phase, or any process resource. One
+private count SHALL advance from zero through three only after complete
+validation and SHALL reject a skipped, reordered, or duplicate descriptor.
+Later warning output, sealed input, and terminal rollback SHALL require count
+three. Terminal handling SHALL clear the count with both predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operations SHALL bind to syscall 16,
+`TCGETS=0x5401`, descriptors 2, 1, and 0, a complete 36-byte candidate in the
+retained initial stack, and native `-ENOTTY` (`-25`). The clean fixture SHALL
+issue all three calls from one checked stack candidate and require every exact
+result. The pinned external echo-command profile SHALL omit all optional
+interactive observations and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptors,
+request, order, phase, candidate extent, no-output effect, result, count
+lifecycle, profile distinction, and unchanged affine rollback. Another
+descriptor, request, order, duplicate, skipped count, candidate extent, result,
+output access or mutation, retained pointer, source-visible native detail, or
+recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+terminal attributes, successful terminal operations, arbitrary `ioctl`,
+warning or banner output, a prompt, mutable input, processes, filesystems,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001 — Static-process non-terminal warning
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` with exactly three
+ordered standard-error writes after terminal-probe count three and before later
+startup lookup, banner output, or sealed command input. The user process SHALL
+supply `sh: can't access tty; job control turned off\n` in segments of four,
+forty, and one byte. Every operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, completed prior observations, next expected warning segment,
+descriptor two, exact segment length, and one complete checked readable
+candidate.
+
+The provider SHALL copy and validate the complete segment before any output,
+publish only the copied bytes to the existing console-error transport, return
+the exact length, clear all staging, retain no pointer or payload, and leave
+descriptor state, process phase, and other resources unchanged. One private
+count SHALL advance from zero through three only after complete publication and
+SHALL reject a skipped, reordered, duplicated, partial, or substituted segment.
+Later startup work, sealed input, and terminal rollback SHALL require count
+three. Terminal handling SHALL clear the count with all predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operations SHALL bind to syscall 1,
+descriptor 2, lengths 4, 40, and 1, checked initial-stack candidates, exact
+length results, register staging of every complete segment, and the established
+polled serial adapter. The clean fixture SHALL stage, issue, validate, erase,
+and prove erasure of every segment. The pinned external echo-command profile
+SHALL omit all optional interactive observations and output and preserve its
+existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+segments, lengths, order, phase, candidate extents, complete staging before
+output, exact transport bytes and results, staging erasure, count lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+segment, length, order, duplicate, skipped count, candidate extent, partial or
+provider-substituted output, retained pointer or payload, source-visible native
+detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
+NOT add general standard-error output, formatting, terminal attributes, startup
+lookup, banner or prompt output, mutable input, processes, filesystems,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001 — Static-process mailbox metadata absence
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` with exactly one metadata
+lookup after warning count three and before banner output or sealed command
+input. The user process SHALL supply the immutable absolute pathname
+`/var/spool/mail/root`, the current-working-directory selector, flags zero, and
+one complete checked writable native metadata candidate in the retained initial
+stack. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained initial stack,
+live child and ignored-quit dispositions, exact input-predecessor phase, and
+every completed prior interactive observation.
+
+The provider SHALL validate the complete argument and candidate extents, return
+exact absence, leave every candidate byte unchanged, allocate no descriptor,
+retain no pathname or candidate, and leave process phase, dispositions,
+descriptor state, and other resources unchanged. One private fact SHALL publish
+only after complete validation and SHALL reject a duplicate, skipped-
+predecessor, reordered, substituted-path, differently flagged, or differently
+sized operation. Later startup work, sealed input, and terminal rollback SHALL
+require the fact. Terminal handling SHALL clear it with all predecessor
+observations before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 262,
+`AT_FDCWD=-100`, pathname address `0x004a6920`, a checked 144-byte native
+`stat` candidate, flags zero, result `-ENOENT`, and the next private observation
+byte. The clean fixture SHALL prefill, issue, validate, erase, and prove erasure
+of the complete candidate. The pinned external echo-command profile SHALL omit
+this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, pathname,
+selector, flags, phase, candidate extent, no-output effect, result,
+nonallocation, observation lifecycle, profile distinction, and unchanged
+affine rollback. Another pathname, selector, flags value, order, duplicate,
+skipped predecessor, candidate extent, output mutation, result, retained
+pointer, source-visible native detail, or recoverable process-entry failure
+SHALL be invalid. This rule SHALL NOT add generic pathname lookup, mailbox
+contents, filesystems, banner or prompt output, mutable input, processes,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001 — Static-process interactive banner
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` with exactly one
+standard-output write after the mailbox-absence fact and before later profile
+lookup, prompt output, or sealed command input. The user process SHALL supply
+the complete 109-byte sequence
+`\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n`
+in one operation. The operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+initial stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, every completed prior interactive observation, descriptor
+one, exact length, and one complete checked readable candidate.
+
+The provider SHALL copy and validate all 109 bytes in private staging before
+any output, publish only the copied bytes to the existing console-output
+transport, return 109, erase and prove erasure of the complete staging extent,
+retain no pointer or payload, and leave process phase, dispositions, descriptor
+state, and other resources unchanged. One private fact SHALL publish only after
+complete output and SHALL reject a duplicate, skipped-predecessor, reordered,
+partial, or substituted banner. Later startup work, sealed input, and terminal
+rollback SHALL require the fact. Terminal handling SHALL clear it with all
+predecessor observations before complete process rollback.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 1,
+descriptor 1, length and result 109, a checked initial-stack candidate, a fixed
+112-byte provider-private staging extent whose unused tail remains zero, and
+the established polled serial adapter. The clean fixture SHALL stage, issue,
+validate, erase, and prove erasure of the complete banner. The pinned external
+echo-command profile SHALL omit this optional observation and output and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+payload, length, phase, candidate extent, complete private staging before
+output, exact transport bytes and result, staging erasure, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+payload, length, order, duplicate, skipped predecessor, candidate extent,
+partial or provider-substituted output, retained pointer or payload, source-
+visible native detail, or recoverable process-entry failure SHALL be invalid.
+This rule SHALL NOT add general output formatting, banner variants, profile
+lookup, prompt output, mutable input, filesystems, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001 — Static-process post-banner terminal miss
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` with exactly one stdin terminal-
+attribute query after the banner fact and before later current-directory,
+identity, profile, prompt, or sealed-input work. The operation SHALL require
+the live process, sealed executable continuation, active checked address-space
+hierarchy, retained initial stack, live child and ignored-quit dispositions,
+exact input-predecessor phase, every completed prior interactive observation,
+standard input, the terminal-attribute request, and one complete checked
+writable candidate.
+
+The provider SHALL return exact non-terminal absence, leave every candidate
+byte and descriptor state unchanged, retain no pointer, and leave process phase
+and other resources unchanged. One private fact SHALL publish only after
+complete validation and SHALL reject a duplicate, skipped-predecessor,
+reordered, substituted-request, or differently addressed operation. Later
+startup work, sealed input, and terminal rollback SHALL require the fact and
+terminal handling SHALL clear it with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 16,
+descriptor zero, `TCGETS=0x5401`, a checked 36-byte initial-stack candidate,
+result `-ENOTTY`, and the next private observation byte. The clean fixture SHALL
+stage a sentinel, issue the request, validate the result and unchanged
+candidate, erase it, and prove erasure. The pinned external echo-command profile
+SHALL omit this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, descriptor,
+request, phase, candidate extent, no-output effect, result, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another descriptor,
+request, order, duplicate, skipped predecessor, candidate extent, output
+mutation, result, retained pointer, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add terminal
+attributes, successful terminal operations, arbitrary `ioctl`, later startup
+queries, profile lookup, prompt output, mutable input, filesystems, processes,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001 — Static-process post-banner current directory
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` with exactly one
+current-directory query after the post-banner terminal fact and before later
+identity, profile, prompt, or sealed-input work. The operation SHALL require
+the live process, sealed executable continuation, active checked address-space
+hierarchy, retained anonymous heap, live child and ignored-quit dispositions,
+exact input-predecessor phase, and every completed prior interactive
+observation.
+
+The provider SHALL publish exactly the sealed root pathname and terminator into
+one complete checked writable candidate, return the exact published length,
+retain no pointer, and leave process phase and other resources unchanged. One
+private fact SHALL publish only after complete validation and publication and
+SHALL reject a duplicate, skipped-predecessor, reordered, differently
+addressed, or differently sized operation. Later startup work, sealed input,
+and terminal rollback SHALL require the fact and terminal handling SHALL clear
+it with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 79,
+candidate `0x5f9460`, count 4096, publication `"/\0"`, result two, and the final
+private byte of the interactive-observation qword. The candidate SHALL lie in
+the retained checked anonymous heap. The clean fixture SHALL prefill the exact
+two-byte output, issue the request, validate the result and exact publication,
+erase it, and prove erasure. The pinned external echo-command profile SHALL
+omit this optional observation and preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, candidate,
+count, phase, checked heap backing, complete output, result, fact lifecycle,
+profile distinction, and unchanged affine rollback. Another candidate, count,
+directory, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add directory mutation or traversal, host path
+inheritance, identity queries, profile lookup, prompt output, mutable input,
+filesystems, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
