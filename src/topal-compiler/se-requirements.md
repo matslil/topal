@@ -1943,6 +1943,32 @@ transitions, prompt ordering, erasure, and unchanged external compatibility.
 This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` and `TK-DEC-226`.
 
+The bounded static-process named-root-glob-match increment shall retain the
+five exact commands and the complete qualified root-description lifecycle. It
+shall refine sealed root with one immutable `bin` directory child at inode
+four and update root's coherent link count to three without granting child
+lookup, open, metadata, or enumeration authority.
+
+Both profiles shall receive three exact ordered 24-byte native directory
+records for `.`, `..`, and `bin`, with root inode three, child inode four,
+offsets one through three, directory type, exact terminated names, and zero
+padding. The provider shall return 72, erase private staging, advance the
+description, return EOF on the second qualified request, and require explicit
+close exactly as in the predecessor.
+
+After EOF and close, both applications shall issue one syscall-1
+standard-output request for complete exact `/bin\n`. The provider shall
+validate and stage the entire five-byte candidate before output, return five,
+erase staging, retain no user pointer or bytes, and publish one private
+matched-glob fact. The later profile-specific `pwd` shall require that fact.
+Terminal handling shall clear every enumeration, description, output, and
+command-time fact and preserve complete rollback of the affine two-page stack.
+Structural and QEMU evidence shall enforce coherent parent metadata, exact
+child identity and records, position, EOF, close, application-selected output,
+observation and ownership transitions, prompt ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` and `TK-DEC-227`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -5229,6 +5229,55 @@ later `pwd`, terminal erasure, and rollback. This rule SHALL NOT add arbitrary
 paths or patterns, child objects, file contents, mutation, seeking, concurrent
 descriptions, dynamic applications, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001 — Static-process named-root glob match
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` while retaining its
+five exact command publications, affine input-owner states, complete open,
+metadata, enumeration, EOF, close, prompt, `pwd`, terminal, and rollback
+obligations.
+
+The sealed filesystem SHALL refine root with exactly one immutable child named
+`bin`, inode four, and directory type. Root SHALL remain inode three and its
+link count SHALL become three. This rule SHALL expose the child only through
+root enumeration; it SHALL NOT grant lookup, open, metadata, or enumeration
+authority for the child.
+
+The first directory-entry read SHALL construct in fixed private staging three
+coherent native records in exact order for `.`, `..`, and `bin`. Their inode
+and next-position pairs SHALL be `(3,1)`, `(3,2)`, and `(4,3)`. Every record
+SHALL have directory type, exact complete name including terminator, and zero
+padding. The provider SHALL copy the complete record extent, advance the
+private description position, return the exact extent, erase staging, and
+retain no candidate pointer or byte. The second qualified request SHALL return
+zero without output and record end-of-directory. Every predecessor invalidity
+condition SHALL remain invalid.
+
+After explicit close, the application SHALL select the one non-dot entry
+matching `*` and issue one standard-output write containing exact `/bin\n`.
+The provider SHALL require EOF and close, validate and stage the complete
+readable five-byte candidate before publication, publish exactly those bytes,
+return five, erase staging, retain no user pointer or output byte, and record
+one private matched-glob fact. The following `pwd\n` SHALL require that fact.
+Terminal handling SHALL clear the child-enumeration, descriptor, output, and
+every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, root metadata's 18-qword value SHALL differ
+from the predecessor only in link count three. Syscall 217 SHALL retain
+descriptor three, count 512 for the clean stack candidate or 32,768 for the
+external heap candidate, return 72 then zero, and publish three exact 24-byte
+`linux_dirent64` records with the identities, offsets, names, `DT_DIR` types,
+and zero padding above. Syscall 3 SHALL close with result zero. Syscall 1 SHALL
+publish exact `/bin\n` on descriptor one with count and result five. Input
+results SHALL remain 11, 5, 8, 4, and 5. The stack SHALL remain the affine
+two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural and
+physical evidence SHALL certify coherent root and child identity, exact
+records, application-selected matching, EOF, close, output, lifecycle,
+erasure, later `pwd`, terminal cleanup, prompt distinction, and rollback. This
+rule SHALL NOT add arbitrary paths or patterns, child lookup or open, child
+contents, file contents, mutation, seeking, concurrent descriptions, dynamic
+applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
