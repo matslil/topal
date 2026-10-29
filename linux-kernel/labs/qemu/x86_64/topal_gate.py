@@ -615,7 +615,7 @@ def static_user_fixture() -> bytes:
         "66c7042560945f000000"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f05483db000000075fe"
+        "31ffbe608f5f00baff03000031c00f05483dd800000075fe"
         "48b86563686f202f2a3b48390425608f5f0075fe"
         "48b82074657374202d6448390425688f5f0075fe"
         "48b8202f62696e20262648390425708f5f0075fe"
@@ -637,7 +637,12 @@ def static_user_fixture() -> bytes:
         "48b8757379626f78202648390425f08f5f0075fe"
         "48b826206563686f206248390425f88f5f0075fe"
         "48b8757379626f782d6e4839042500905f0075fe"
-        "48b86f6e656d7074790a4839042508905f0075fe"
+        "48b86f6e656d7074793b4839042508905f0075fe"
+        "48b8206578656320333c4839042510905f0075fe"
+        "48b82f62696e2f6275734839042518905f0075fe"
+        "48b879626f783b2065634839042520905f0075fe"
+        "48b8686f2062757379624839042528905f0075fe"
+        "48b86f782d6f70656e0a4839042530905f0075fe"
         "66c7042560945f002f00"
         "bf9cffffffbe60945f00ba000809004531d2b8010100000f054883f80375fe"
         "66c7042560945f000000"
@@ -770,6 +775,14 @@ def static_user_fixture() -> bytes:
         "bf010000004889e6ba11000000b8010000000f054883f81175fe"
         "31c04889042448894424084889442410"
         "48833c240075fe48837c24080075fe48837c24100075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "bf9cffffffbe60945f0031d24531d2b8010100000f054883f80375fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "48b862757379626f782d48890424"
+        "48b86f70656e0a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
         "31ffbe608f5f00baff03000031c00f054883f80475fe"
@@ -1032,7 +1045,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/212",
+        "schema": "topal-kernel-toolchain-gate-qemu/213",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1271,6 +1284,21 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-exact-bin-busybox-nonempty-condition-output-witness"
             ),
+            "static_shell_bin_busybox_read_only_open_profile": (
+                "external-busybox-exact-bin-busybox-read-only-open-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-read-only-open-witness"
+            ),
+            "static_shell_bin_busybox_open_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-open-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-open-output-witness"
+            ),
+            "static_shell_bin_busybox_open_terminal_revoke_profile": (
+                "external-busybox-terminal-revoked-live-bin-busybox-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-terminal-revoked-live-bin-busybox-description-witness"
+            ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
                 if static_user_input == "pinned-external-static-busybox"
@@ -1350,9 +1378,9 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            7
+            8
             if static_user_input == "pinned-external-static-busybox"
-            else 14
+            else 15
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(

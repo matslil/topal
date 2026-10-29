@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/194";
+    "topal.provider-object.x86_64-qemu-pc-q35/195";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9277,6 +9277,34 @@ fn emit_static_process_heap_validation(
     Ok(())
 }
 
+fn emit_static_process_low_heap_validation(
+    code: &mut X86FunctionEncoder,
+    low_label: &'static str,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
+    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25, 0x78, 0, 0, 0]);
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fatal");
+    code.bytes(&[0xf7, 0xc2, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x89, 0xc1]);
+    code.bytes(&[0x48, 0x8d, 0xba, 0xb8, 0x0f, 0, 0, 0xb9, 9, 0, 0, 0]);
+    code.bind(low_label)?;
+    code.bytes(&[0x48, 0x8b, 0x07, 0x48, 0x83, 0xe0, 0x9f]);
+    code.bytes(&[0x4c, 0x89, 0xce, 0x48, 0x83, 0xce, 7]);
+    code.bytes(&[0x48, 0x0f, 0xba, 0xee, 0x3f, 0x48, 0x39, 0xf0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[
+        0x49, 0x81, 0xc1, 0, 0x10, 0, 0, 0x48, 0x83, 0xc7, 8, 0xff, 0xc9,
+    ]);
+    code.jump_if(0x85, low_label);
+    Ok(())
+}
+
 fn emit_static_process_command_buffer_validation(code: &mut X86FunctionEncoder) {
     // The bounded command extent lies wholly in the second anonymous heap leaf.
     // Revalidate its affine frame identity and writable/NX permissions.
@@ -9621,7 +9649,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
-    code.bytes(&[0]);
+    code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&738_u32.to_le_bytes());
@@ -9668,7 +9696,14 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     }
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
-    code.bytes(&[20]);
+    code.bytes(&[22]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
     code.jump("static-process-shell-root-condition-terminal-clear");
     code.bind("static-process-shell-terminal-clean-fstat")?;
@@ -9683,7 +9718,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
-    code.bytes(&[0]);
+    code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&738_u32.to_le_bytes());
@@ -9793,7 +9828,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
-    code.bytes(&[20]);
+    code.bytes(&[22]);
     code.jump_if(0x85, "fatal");
     code.bind("static-process-shell-root-condition-terminal-clear")?;
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
@@ -11213,7 +11248,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         *b"usybox &",
         *b"& echo b",
         *b"usybox-n",
-        *b"onempty\n",
+        *b"onempty;",
+        *b" exec 3<",
+        *b"/bin/bus",
+        *b"ybox; ec",
+        *b"ho busyb",
+        *b"ox-open\n",
     ]
     .into_iter()
     .enumerate()
@@ -11248,7 +11288,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         *b"usybox &",
         *b"& echo b",
         *b"usybox-n",
-        *b"onempty\n",
+        *b"onempty;",
+        *b" exec 3<",
+        *b"/bin/bus",
+        *b"ybox; ec",
+        *b"ho busyb",
+        *b"ox-open\n",
     ]
     .into_iter()
     .enumerate()
@@ -11267,7 +11312,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[4]);
-    code.bytes(&[0xb8, 176, 0, 0, 0]);
+    code.bytes(&[0xb8, 216, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-pwd-command-read")?;
@@ -11326,7 +11371,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         *b"usybox &",
         *b"& echo b",
         *b"usybox-n",
-        *b"onempty\n",
+        *b"onempty;",
+        *b" exec 3<",
+        *b"/bin/bus",
+        *b"ybox; ec",
+        *b"ho busyb",
+        *b"ox-open\n",
     ]
     .into_iter()
     .enumerate()
@@ -11342,7 +11392,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-pwd-command-read-profile-ready")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
-    code.bytes(&[20]);
+    code.bytes(&[22]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fatal");
@@ -11590,6 +11640,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-dev-tty-open-miss")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
+    code.bytes(&[20]);
+    code.jump_if(0x84, "static-process-shell-bin-busybox-open");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[7]);
     code.jump_if(0x84, "static-process-shell-empty-bin-glob-open");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 29]);
@@ -11679,6 +11733,66 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
     code.bytes(&[1]);
+    code.bytes(&[0xb8, 3, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
+    code.bind("static-process-shell-bin-busybox-open")?;
+    for (offset, expected) in [(417_u32, 1_u8), (418, 4), (737, 0), (743, 4), (888, 20)] {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x4d, 0x85, 0xd2]);
+    code.jump_if(0x85, "fatal");
+    emit_static_process_active_stack_validation(&mut code);
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[0x3c, 1]);
+    code.jump_if(0x84, "static-process-shell-bin-busybox-open-clean");
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005f_7000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0060_0000_u32.to_le_bytes());
+    code.jump_if(0x87, "fatal");
+    emit_static_process_low_heap_validation(
+        &mut code,
+        "static-process-shell-bin-busybox-open-low-heap",
+    )?;
+    code.jump("static-process-shell-bin-busybox-open-profile-ready");
+    code.bind("static-process-shell-bin-busybox-open-clean")?;
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005f_9460_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bind("static-process-shell-bin-busybox-open-profile-ready")?;
+    emit_static_process_command_buffer_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
+    code.bytes(&320_u32.to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"/bin/bus").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x06]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x81, 0x7e, 8]);
+    code.bytes(&u32::from_le_bytes(*b"ybox").to_le_bytes());
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x80, 0x7e, 12, 0]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&737_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&888_u32.to_le_bytes());
+    code.bytes(&[21]);
     code.bytes(&[0xb8, 3, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
@@ -12855,6 +12969,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-phase-30-write")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
+    code.bytes(&[21]);
+    code.jump_if(0x84, "static-process-shell-bin-busybox-open-write");
+    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[12]);
     code.jump_if(0x84, "static-process-shell-empty-bin-glob-write");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -13424,6 +13542,102 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0xb8, 17, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
+    code.bind("static-process-shell-bin-busybox-open-write")?;
+    code.bytes(&[0x48, 0x83, 0xff, 1]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x83, 0xfa, 13]);
+    code.jump_if(0x85, "fatal");
+    for (offset, expected) in [(417_u32, 1_u8), (418, 4), (737, 1), (743, 4), (888, 21)] {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[expected]);
+        code.jump_if(0x85, "fatal");
+    }
+    emit_static_process_active_stack_validation(&mut code);
+    code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
+    code.bytes(&416_u32.to_le_bytes());
+    code.bytes(&[0x3c, 1]);
+    code.jump_if(0x84, "static-process-shell-bin-busybox-open-write-clean");
+    code.bytes(&[0x3c, 2]);
+    code.jump_if(0x85, "fatal");
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x005f_7000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0060_0000_u32.to_le_bytes());
+    code.jump_if(0x87, "fatal");
+    emit_static_process_low_heap_validation(
+        &mut code,
+        "static-process-shell-bin-busybox-open-write-low-heap",
+    )?;
+    code.jump("static-process-shell-bin-busybox-open-write-profile-ready");
+    code.bind("static-process-shell-bin-busybox-open-write-clean")?;
+    code.bytes(&[0x48, 0x81, 0xfe]);
+    code.bytes(&0x007f_e000_u32.to_le_bytes());
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
+    code.jump_if(0x82, "fatal");
+    code.bytes(&[0x48, 0x3d]);
+    code.bytes(&0x0080_0000_u32.to_le_bytes());
+    code.jump_if(0x87, "fatal");
+    code.bind("static-process-shell-bin-busybox-open-write-profile-ready")?;
+    emit_static_process_command_buffer_validation(&mut code);
+    emit_static_process_child_disposition_validation(&mut code);
+    for offset in (744_u32..760).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
+    code.bytes(&320_u32.to_le_bytes());
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.bind("static-process-shell-bin-busybox-open-write-copy")?;
+    code.bytes(&[0x42, 0x8a, 0x04, 0x16]);
+    code.bytes(&[0x65, 0x41, 0x88, 0x82]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 13]);
+    code.jump_if(0x85, "static-process-shell-bin-busybox-open-write-copy");
+    for (offset, expected) in [
+        (744_u32, u64::from_le_bytes(*b"busybox-")),
+        (752, u64::from_le_bytes(*b"open\n\0\0\0")),
+    ] {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&expected.to_le_bytes());
+        code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x45, 0x31, 0xd2]);
+    code.bind("static-process-shell-bin-busybox-open-write-output")?;
+    code.bind("static-process-shell-bin-busybox-open-write-uart-ready")?;
+    code.bytes(&[0x66, 0xba, 0xfd, 0x03, 0xec, 0xa8, 0x20]);
+    code.jump_if(
+        0x84,
+        "static-process-shell-bin-busybox-open-write-uart-ready",
+    );
+    code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
+    code.bytes(&[0x65, 0x41, 0x8a, 0x82]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 13]);
+    code.jump_if(0x85, "static-process-shell-bin-busybox-open-write-output");
+    for offset in (744_u32..760).step_by(8) {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
+    code.bytes(&888_u32.to_le_bytes());
+    code.bytes(&[22]);
+    code.bytes(&[0xb8, 13, 0, 0, 0]);
+    emit_static_process_sysret(&mut code);
+
     code.bind("static-process-shell-named-root-condition-write")?;
     code.bytes(&[0x48, 0x83, 0xff, 1]);
     code.jump_if(0x85, "fatal");
@@ -13697,7 +13911,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-fourth-prompt")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
-    code.bytes(&[20]);
+    code.bytes(&[22]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&416_u32.to_le_bytes());
@@ -18297,7 +18511,7 @@ assert bytes(output) == block[32:]
         );
         let process_fixture_image = qualified_x86_64_static_user_image_fixture();
         let process_fixture = &process_fixture_image[0x0a_6580..0x0a_6900];
-        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_8632];
+        let shell_continuation = &process_fixture_image[0x0a_7000..0x0a_873f];
         for sequence in [
             &[0xb8, 0x0c, 0, 0, 0, 0x31, 0xff, 0x0f, 0x05][..],
             &[
@@ -18810,11 +19024,11 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe1, 0x02, 0, 0, 1] })
                     .count()
-                    == 3
+                    == 6
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 0]),
-            "profile open must publish, gate successors, and revoke its private description"
+            "profile and busybox opens must publish, gate successors, and revoke their private descriptions"
         );
         assert!(
             shell_continuation.windows(20).any(|window| window
@@ -19443,11 +19657,21 @@ assert bytes(output) == block[32:]
             }) && process_enter.windows(10).any(|window| {
                 window == [0x48, 0xb8, b'u', b's', b'y', b'b', b'o', b'x', b'-', b'n']
             }) && process_enter.windows(10).any(|window| {
-                window == [0x48, 0xb8, b'o', b'n', b'e', b'm', b'p', b't', b'y', b'\n']
+                window == [0x48, 0xb8, b'o', b'n', b'e', b'm', b'p', b't', b'y', b';']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b' ', b'e', b'x', b'e', b'c', b' ', b'3', b'<']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'/', b'b', b'i', b'n', b'/', b'b', b'u', b's']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'y', b'b', b'o', b'x', b';', b' ', b'e', b'c']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'h', b'o', b' ', b'b', b'u', b's', b'y', b'b']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'o', b'x', b'-', b'o', b'p', b'e', b'n', b'\n']
             }) && process_enter
                 .windows(5)
-                .any(|window| window == [0xb8, 176, 0, 0, 0]),
-            "bin-busybox nonempty condition must publish every byte of the exact 176-byte compound command"
+                .any(|window| window == [0xb8, 216, 0, 0, 0]),
+            "bin-busybox read-only open must publish every byte of the exact 216-byte compound command"
         );
         assert!(
             process_enter
@@ -19572,6 +19796,37 @@ assert bytes(output) == block[32:]
                 .windows(4)
                 .any(|window| window == [0x48, 0x83, 0xfa, 17]),
             "bin-busybox nonempty condition must repeat complete positive-size metadata, emit all seventeen selected bytes, and advance through lifecycle state twenty"
+        );
+        assert!(
+            [21_u8, 22].into_iter().all(|state| {
+                process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, state])
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'/', b'b', b'i', b'n', b'/', b'b', b'u', b's']
+            }) && process_enter.windows(10).any(|window| {
+                window == [0x48, 0xb8, b'b', b'u', b's', b'y', b'b', b'o', b'x', b'-']
+            }) && process_enter
+                .windows(10)
+                .any(|window| { window == [0x48, 0xb8, b'o', b'p', b'e', b'n', b'\n', 0, 0, 0] })
+                && process_enter
+                    .windows(6)
+                    .filter(|window| **window == [0x48, 0x3d, 0, 0, 0x60, 0])
+                    .count()
+                    >= 2
+                && shell_continuation.windows(28).any(|window| window
+                    == [
+                        0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x60, 0x94, 0x5f, 0, 0x31, 0xd2, 0x45,
+                        0x31, 0xd2, 0xb8, 0x01, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 3, 0x75,
+                        0xfe,
+                    ])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 1])
+                && process_enter
+                    .windows(9)
+                    .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 0]),
+            "bin-busybox read-only open must validate the exact pathname and arguments, bind descriptor three, emit all thirteen selected bytes, retain it through pwd, and revoke it at teardown"
         );
         assert!(
             !shell_continuation
