@@ -267,8 +267,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_7E2D]
-        self.assertEqual(len(continuation), 3_629)
+        continuation = fixture[0xA_7000 : 0xA_7FEA]
+        self.assertEqual(len(continuation), 4_074)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -421,13 +421,12 @@ class TopalToolchainGateTests(unittest.TestCase):
             ),
             continuation,
         )
-        self.assertIn(bytes.fromhex("4883f82c75fe"), continuation)
+        self.assertIn(bytes.fromhex("4883f82575fe"), continuation)
         self.assertIn(bytes.fromhex("48b86563686f202f2a3b"), continuation)
         self.assertIn(bytes.fromhex("48b82074657374202d64"), continuation)
         self.assertIn(bytes.fromhex("48b8202f62696e202626"), continuation)
-        self.assertIn(bytes.fromhex("48b8206563686f206269"), continuation)
-        self.assertIn(bytes.fromhex("48b86e2d646972656374"), continuation)
-        self.assertIn(bytes.fromhex("48b86f72790a00000000"), continuation)
+        self.assertIn(bytes.fromhex("48b8206563686f202f62"), continuation)
+        self.assertIn(bytes.fromhex("48b8696e2f2a0a000000"), continuation)
         self.assertIn(
             bytes.fromhex(
                 "66c7042560945f002f00"
@@ -476,10 +475,17 @@ class TopalToolchainGateTests(unittest.TestCase):
             ),
             continuation,
         )
-        self.assertIn(bytes.fromhex("48b862696e2d64697265"), continuation)
-        self.assertIn(bytes.fromhex("48b863746f72790a0000"), continuation)
+        self.assertIn(bytes.fromhex("48b82f62696e2f000000"), continuation)
         self.assertIn(
-            bytes.fromhex("bf010000004889e6ba0e000000b8010000000f054883f80e75fe"),
+            bytes.fromhex(
+                "bf030000004889e6ba00020000b8d90000000f054883f83075fe"
+                "48833c240475fe48837c24080175fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b82f62696e2f2a0a00"), continuation)
+        self.assertIn(
+            bytes.fromhex("bf010000004889e6ba07000000b8010000000f054883f80775fe"),
             continuation,
         )
         self.assertIn(bytes.fromhex("4883f80475fe"), continuation)
@@ -504,16 +510,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/207")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/208")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/197")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/198")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/207",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/208",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/107",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/108",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -845,7 +851,27 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             observations["static_shell_named_root_condition_profile"],
-            "clean-selected-bin-directory-condition-witness",
+            "clean-selected-empty-bin-glob-condition-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_open_profile"],
+            "clean-exact-bin-directory-open-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_fstat_profile"],
+            "clean-complete-bin-directory-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_enumeration_profile"],
+            "clean-two-record-empty-bin-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_close_profile"],
+            "clean-explicit-bin-directory-close-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_output_profile"],
+            "clean-exact-empty-bin-glob-literal-witness",
         )
         self.assertEqual(
             observations["static_shell_pwd_command_profile"],
@@ -885,7 +911,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "/ # "
             + "/ # "
             + "/bin\n"
-            + "bin-directory\n"
+            + "/bin/*\n"
             + "/ # "
             + "/\n"
             + "/ # "
@@ -899,7 +925,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/207")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/208")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1016,7 +1042,27 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             observations["static_shell_named_root_condition_profile"],
-            "external-busybox-selected-bin-directory-condition-witness",
+            "external-busybox-selected-empty-bin-glob-condition-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_open_profile"],
+            "external-busybox-exact-bin-directory-open-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_fstat_profile"],
+            "external-busybox-complete-bin-directory-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_enumeration_profile"],
+            "external-busybox-two-record-empty-bin-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_close_profile"],
+            "external-busybox-explicit-bin-directory-close-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_output_profile"],
+            "external-busybox-exact-empty-bin-glob-literal-witness",
         )
         self.assertEqual(
             observations["static_shell_pwd_command_profile"],
@@ -1048,7 +1094,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         expected_serial = (
             marker_serial[:echo_position]
-            + "topal\n/bin\nbin-directory\n/\n"
+            + "topal\n/bin\n/bin/*\n/\n"
             + marker_serial[echo_position:]
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)

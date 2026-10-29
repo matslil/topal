@@ -953,7 +953,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/207",
+        "schema": "topal-kernel-toolchain-gate-qemu/208",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1118,9 +1118,34 @@ def evidence_record(
                 else "clean-complete-bin-directory-metadata-witness"
             ),
             "static_shell_named_root_condition_profile": (
-                "external-busybox-selected-bin-directory-condition-witness"
+                "external-busybox-selected-empty-bin-glob-condition-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-selected-bin-directory-condition-witness"
+                else "clean-selected-empty-bin-glob-condition-witness"
+            ),
+            "static_shell_empty_bin_open_profile": (
+                "external-busybox-exact-bin-directory-open-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-directory-open-witness"
+            ),
+            "static_shell_empty_bin_fstat_profile": (
+                "external-busybox-complete-bin-directory-fstat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-bin-directory-fstat-witness"
+            ),
+            "static_shell_empty_bin_enumeration_profile": (
+                "external-busybox-two-record-empty-bin-enumeration-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-two-record-empty-bin-enumeration-witness"
+            ),
+            "static_shell_empty_bin_close_profile": (
+                "external-busybox-explicit-bin-directory-close-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-explicit-bin-directory-close-witness"
+            ),
+            "static_shell_empty_bin_output_profile": (
+                "external-busybox-exact-empty-bin-glob-literal-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-empty-bin-glob-literal-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
