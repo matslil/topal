@@ -2132,6 +2132,30 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` and
 `TK-DEC-233`.
 
+The bounded shell profile may extend the same third publication to the exact
+216-byte command ending in
+`exec 3</bin/busybox; echo busybox-open\n`. After every predecessor fact and
+`busybox-nonempty\n`, both profiles shall issue x86-64 syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, flags zero, and mode zero. The
+provider shall validate the complete readable pathname, artifact-bound
+inode-five identity, command owner, live process, and absence of a live
+nonstandard description before binding lowest-free descriptor three to one
+immutable read-only description at offset zero and returning three.
+
+After the successful open, both applications shall issue one syscall-1
+request for exact `busybox-open\n`; the provider shall validate and stage all
+thirteen bytes, publish them, return thirteen, erase staging, and record one
+private read-only-open output fact. The later prompt and profile-specific
+`pwd` shall require that fact while descriptor three remains live. Terminal
+handling shall prove and revoke the description, clear the new output fact
+and every predecessor fact, and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 216-byte command, exact open
+arguments and result, artifact identity, application-selected output,
+description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` and
+`TK-DEC-234`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

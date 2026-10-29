@@ -5564,6 +5564,49 @@ terminal cleanup, and rollback. This rule SHALL NOT add opening, contents,
 mapping, execution, arbitrary metadata, mutation, dynamic applications,
 processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001 — Static-process bin-busybox read-only open
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` by
+replacing its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor transition through
+the nonempty-condition output. It MAY then open exact `/bin/busybox\0`
+relative to `AT_FDCWD` with read-only flags and mode zero. The provider SHALL
+validate the live process, sealed continuation, checked hierarchy, stack,
+dispositions, command owner, complete readable pathname, artifact-bound
+inode-five identity, and absence of a live nonstandard description. It SHALL
+bind the lowest-free descriptor, three, to one process-owned immutable
+read-only description at offset zero and return three. A wrong, partial,
+unreadable, wrapping, predecessor-incomplete, duplicate, non-read-only,
+nonzero-mode, wrong-object, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes. The application SHALL
+consume the successful open to issue one standard-output write containing
+exact `busybox-open\n`. The provider SHALL validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+read-only-open output fact. The following prompt and `pwd\n` SHALL require
+that fact while the description remains live. Terminal handling SHALL prove
+and revoke the description, clear all new and predecessor output,
+enumeration, descriptor, metadata, credential, and command-time facts, and
+preserve unchanged affine rollback.
+
+For qualified x86-64 realization, open SHALL bind to syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, flags zero, mode zero, and result
+three. Selected output SHALL bind to syscall 1 on descriptor one with count
+and result thirteen. Input results SHALL be 11, 5, 216, 4, and 5. Structural
+and physical evidence SHALL certify every predecessor transition, exact
+artifact identity, open arguments and result, immutable read-only description
+lifetime, selected success flow and output, observation ordering, staging
+erasure, later `pwd`, prompt distinction, terminal revocation, cleanup, and
+rollback. This rule SHALL NOT add content reads, seeks, mapping, execution,
+arbitrary opens, mutation, dynamic applications, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
