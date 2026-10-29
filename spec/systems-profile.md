@@ -4601,6 +4601,499 @@ invalid. This rule SHALL NOT add directory mutation or traversal, host path
 inheritance, identity queries, profile lookup, prompt output, mutable input,
 filesystems, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001 — Static-process post-banner effective identity
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` with exactly one
+effective-user query after the post-banner current-directory fact and before
+profile, prompt, or sealed-input work. The operation SHALL require the live
+process, sealed executable continuation, active checked address-space
+hierarchy, retained initial stack, live child and ignored-quit dispositions,
+exact input-predecessor phase, every completed prior interactive observation,
+and the complete coherent sealed real/effective user/group credential facts.
+
+The provider SHALL return the sealed effective-user identity, retain no
+argument or mutable credential state, and leave process phase and other
+resources unchanged. One private fact SHALL publish only after complete
+validation and SHALL reject a duplicate, skipped-predecessor, reordered, or
+substituted identity operation. Later startup work, sealed input, and terminal
+rollback SHALL require the fact and terminal handling SHALL clear it with all
+predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 107 and
+result zero after revalidating the retained initial-stack leaf and all eight
+tag/value words of the sealed credential group. The completion fact SHALL
+occupy one fresh private byte after the erased banner-staging extent. The clean
+fixture SHALL issue the query and validate its exact result. The pinned
+external echo-command profile SHALL omit this optional observation and preserve
+its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, phase,
+credential-group coherence, pointer-free result, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another selector, identity,
+result, order, duplicate, skipped predecessor, incomplete credential group,
+retained argument, source-visible native detail, or recoverable process-entry
+failure SHALL be invalid. This rule SHALL NOT add credential mutation,
+namespaces, profile lookup, prompt output, mutable input, filesystems,
+processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001 — Static-process system-profile open
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001` with exactly one read-
+only open of the sealed system-profile file after the effective-identity fact
+and before profile metadata, input, close, prompt, or sealed-command work. The
+operation SHALL require the live process, sealed executable continuation,
+active checked address-space hierarchy, retained executable pathname, live
+child and ignored-quit dispositions, exact input-predecessor phase, every
+completed prior interactive observation, the unused next descriptor slot, and
+one immutable empty profile-file object owned by the launch profile.
+
+The provider SHALL validate the complete pathname before allocation, allocate
+exactly the lowest free descriptor, bind it to a process-owned read-only
+description for the immutable object, return the exact descriptor number, and
+retain neither the user pathname pointer nor lookup scratch. One private
+lifecycle fact SHALL publish only after complete validation and allocation and
+SHALL reject a duplicate, skipped-predecessor, reordered, differently flagged,
+or substituted-path operation. Later profile work and terminal rollback SHALL
+require the fact. Process teardown MAY revoke the still-open bounded
+description; a later explicit close SHALL consume it first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 257,
+`AT_FDCWD=-100`, immutable candidate `0x4a6938` containing exactly
+`"/etc/profile\0"`, flags `O_RDONLY=0`, mode zero, and result three. The
+pathname SHALL lie in the checked sealed executable role. The clean fixture
+SHALL issue the exact request and validate its result. The pinned external
+echo-command profile SHALL omit this optional observation and preserve its
+existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+directory base, complete pathname, flags, mode, free-slot check, immutable
+object identity, description allocation, result, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another path, access mode,
+descriptor, object, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add other paths, directories, creation, mutation,
+profile metadata or input, explicit close, prompt output, mutable input,
+general filesystems, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001 — Static-process system-profile metadata
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001` with exactly one metadata
+observation of the live system-profile description after its successful open
+and before profile input, close, prompt, or sealed-command work. The operation
+SHALL require the live process, sealed executable continuation, active checked
+address-space hierarchy, retained executable pathname, live child and ignored-
+quit dispositions, exact input-predecessor phase, every completed prior
+interactive observation, and the process-owned read-only description for the
+immutable empty launch-profile object.
+
+The provider SHALL derive the metadata from that retained object identity,
+construct the complete result in private staging, validate the complete
+destination before user mutation, publish the complete value, erase and verify
+all staging, retain no user pointer, and return zero. The portable value SHALL
+describe one stable launch-owned regular-file identity with link count one,
+root ownership, read-only permissions `0444`, zero length, no allocated blocks
+or timestamps, and preferred I/O size 4096. One private completion fact SHALL
+publish only after complete publication and staging erasure and SHALL reject a
+duplicate, skipped-predecessor, reordered, wrong-description, or substituted-
+destination operation. Later profile work and terminal rollback SHALL require
+the fact. Terminal handling SHALL clear the fact and MAY revoke the still-open
+bounded description; a later explicit close SHALL consume the description
+first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 5,
+descriptor three, and one exact complete writable 144-byte continuation-stack
+candidate. It SHALL publish native `struct stat` with `st_dev=0`, `st_ino=2`,
+`st_nlink=1`, `st_mode=0x8124`, UID/GID and padding zero, `st_rdev=0`,
+`st_size=0`, `st_blksize=4096`, blocks and all timestamp components zero, and
+three zero unused words. The clean fixture SHALL prefill the candidate, issue
+the request, validate the complete value, erase it, and prove erasure. The
+pinned external echo-command profile SHALL omit this optional observation and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity, destination extent, complete native publication, result,
+private staging erasure, fact lifecycle, profile distinction, and unchanged
+affine rollback. Another descriptor, object, layout, value, order, duplicate,
+skipped predecessor, partial copy, retained pointer, source-visible native
+detail, or recoverable process-entry failure SHALL be invalid. This rule SHALL
+NOT add profile input, explicit close, other files, arbitrary descriptor
+metadata, a prompt, mutable input, general filesystems, processes, containers,
+or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001 — Static-process system-profile EOF
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` with exactly one read from
+the live system-profile description after its metadata observation and before
+profile close, prompt, or sealed-command work. The operation SHALL require the
+live process, sealed executable continuation, active checked address-space
+hierarchy, retained executable pathname and stack, live child and ignored-quit
+dispositions, exact input-predecessor phase, every completed prior interactive
+observation, and the process-owned read-only description for the immutable
+empty launch-profile object.
+
+The provider SHALL validate the complete writable candidate and requested
+bound before observing the object. Because the sealed object length and current
+description position are both zero, it SHALL return zero without reading or
+changing any candidate byte, changing the description position, or retaining a
+user pointer. One private completion fact SHALL publish only after complete
+validation and SHALL reject a duplicate, skipped-predecessor, reordered, wrong-
+description, differently bounded, or substituted-candidate operation. Later
+profile close and terminal rollback SHALL require the fact. Terminal handling
+SHALL clear it and MAY revoke the still-open description; a later explicit
+close SHALL consume the description first.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 0,
+descriptor three, the exact clean continuation-stack candidate, count 128, and
+result zero. The candidate SHALL lie completely in the checked retained stack
+leaf. The clean fixture SHALL prefill all 128 bytes, issue the request, prove
+the complete candidate unchanged, erase it, and prove erasure. The completion
+fact SHALL occupy one fresh private byte after the profile-metadata fact. The
+pinned external echo-command profile SHALL omit this optional observation and
+preserve its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity and position, candidate extent, bound, no-output effect,
+result, fact lifecycle, profile distinction, and unchanged affine rollback.
+Another descriptor, candidate, count, object, position, result, order,
+duplicate, skipped predecessor, retained pointer, source-visible native detail,
+or recoverable process-entry failure SHALL be invalid. This rule SHALL NOT add
+profile contents, explicit close, other files, general descriptor reads, a
+prompt, mutable input, filesystems, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001 — Static-process system-profile close
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` with exactly one close of the
+live system-profile description after its EOF observation and before prompt or
+sealed-command work. The operation SHALL require the live process, sealed
+executable continuation, active checked address-space hierarchy, retained
+executable pathname and stack, live child and ignored-quit dispositions, exact
+input-predecessor phase, every completed prior interactive observation, and
+the process-owned read-only description for the immutable empty launch-profile
+object at position zero.
+
+Success SHALL consume the description, free exactly its lowest nonstandard
+descriptor slot, return zero, retain no argument or object state, preserve the
+EOF completion as immutable history, and publish one distinct private closed-
+state fact. A duplicate, skipped-predecessor, reordered, wrong-description,
+already-closed, or aliased operation SHALL fail closed. Later startup work,
+sealed input, and terminal rollback SHALL require the live description absent
+and closed-state fact present. Terminal handling SHALL clear the closed-state
+fact with all predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 3,
+descriptor three, and result zero. The implementation SHALL clear and prove
+the prior live-description byte zero before returning and SHALL publish one
+fresh private byte after the EOF completion fact. The clean fixture SHALL issue
+the request and validate its exact result. The pinned external echo-command
+profile SHALL omit this optional transition and preserve its existing
+execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description identity and position, consumption, free-slot state, result,
+closed-fact lifecycle, profile distinction, and unchanged affine rollback.
+Another descriptor, object, position, result, order, duplicate, skipped
+predecessor, retained description, source-visible native detail, or recoverable
+process-entry failure SHALL be invalid. This rule SHALL NOT add arbitrary
+close, descriptor aliases, reopen, profile contents, a prompt, mutable input,
+filesystems, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001 — Static-process root prompt
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` with exactly one root-prompt
+write after the system-profile description has been consumed and before any
+command input. The operation SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained executable
+pathname and stack, live child and ignored-quit dispositions, exact input-
+predecessor phase, every completed prior interactive observation, absent
+profile description, live profile-closed history, and a fresh prompt fact.
+
+The application SHALL supply the exact four-byte `/ # ` segment through a
+complete readable user candidate. The provider SHALL copy the complete segment
+into private staging, validate it before publication, emit it in source order,
+erase and prove the staging empty, return four, retain no user pointer, and
+publish one private prompt-completion fact. A duplicate, skipped-predecessor,
+reordered, wrong-description-state, wrong-destination, wrong-length, aliased,
+partially readable, or different-byte operation SHALL fail closed. Later input
+and terminal rollback SHALL require the fact. Terminal handling SHALL clear it
+with the predecessor observations.
+
+For qualified x86-64 realization, the operation SHALL bind to syscall 1,
+descriptor two, count four, exact checked continuation-stack bytes `/ # `, and
+result four. One fresh private byte after the profile-closed fact SHALL record
+completion. Provider-private staging SHALL be empty before and after the
+operation. The clean fixture SHALL stage the exact segment, issue the request,
+validate the result, erase the candidate, and prove erasure. The pinned
+external echo-command profile SHALL omit this optional transition and preserve
+its existing execution.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+description and closed-history state, candidate extent and value, complete
+private staging, ordered publication, result, erasure, fact lifecycle, profile
+distinction, and unchanged affine rollback. Another descriptor, candidate,
+count, value, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add cursor queries, prompt editing, refillable
+input, arbitrary output, filesystems, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001 — Static-process input refill
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` with exactly two ordered command
+publications through one checked process buffer. The first publication SHALL
+contain exact `echo topal\n`. For the clean profile it SHALL follow the initial
+prompt, and after its exact output one second root-prompt operation conforming
+to the prompt copy, validation, publication, result, staging-erasure, and
+pointer-lifetime obligations SHALL occur. One second input publication SHALL
+then replace the consumed first command with exact `exit\n`. The pinned
+external echo-command profile SHALL request the same second publication after
+its output with the optional clean prompt observations absent.
+
+Each publication SHALL require the live process, sealed executable
+continuation, active checked address-space hierarchy, retained executable
+pathname and stack, live child and ignored-quit dispositions, exact predecessor
+state, complete prior interactive observations, complete checked process
+buffer and bound, and exclusive input ownership. The provider SHALL publish
+only the exact prefix, zero the unused sealed tail, read back the complete
+published state, retain no user pointer, and advance one private input-owner
+state. The second prompt SHALL publish one distinct private completion fact. A
+duplicate, omitted, reordered, wrong-buffer, wrong-bound, stale-owner, partial,
+combined, appended, or different command SHALL fail closed.
+
+The clean fixture SHALL validate the first command unchanged before its
+replacement. The external application MAY mutate process-owned input after
+publication; its refill SHALL therefore rely on the affine consumed-owner
+state and SHALL overwrite and validate the complete second prefix and zero
+tail without treating prior user bytes as provider-owned state.
+
+Successful terminal handling SHALL require the second publication live,
+validate exact `exit\n` plus zero tail, erase and prove the complete command
+buffer empty and consume the input owner. The clean profile SHALL additionally
+clear the second-prompt fact with all predecessor observations; the external
+profile SHALL require every optional clean observation, including that fact,
+absent. For qualified x86-64 realization, both input
+operations SHALL bind to syscall 0, descriptor zero, the same checked anonymous
+buffer, requested count 1023, and results 11 then 5. The intervening prompt
+SHALL bind to syscall 1, descriptor two, count and result four, and exact `/ # `
+bytes for the clean profile. The pinned external echo-command profile SHALL
+omit only the optional prompt and preserve its existing output and teardown.
+
+Structural and physical evidence SHALL certify exact dispatch, predecessor,
+buffer identity and extent, bound, command prefixes and zero tails, ownership
+transitions, intervening prompt, exact results, terminal validation and
+erasure, profile distinction, and unchanged affine rollback. Another buffer,
+bound, value, result, order, duplicate, skipped predecessor, retained pointer,
+source-visible native detail, or recoverable process-entry failure SHALL be
+invalid. This rule SHALL NOT add arbitrary input, partial reads, blocking or
+wakeup policy, a general command loop, dynamic applications, filesystems,
+processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001 — Static-process `pwd` command
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` with exactly three ordered
+command publications through one checked process buffer: `echo topal\n`,
+`pwd\n`, and `exit\n`. Each later publication SHALL replace a consumed prior
+publication, zero and validate its sealed tail, retain no user pointer, and
+advance an exclusive private input-owner state. The clean profile SHALL
+publish a prompt conforming to `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001`
+before every command. The pinned external profile SHALL require the optional
+prompt observations absent.
+
+After `pwd\n`, the clean application SHALL issue one command-time current-
+directory request. The provider SHALL validate the live process, sealed
+continuation, active checked hierarchy, retained executable pathname and
+stack, live dispositions, exact profile predecessor, complete checked writable
+candidate, and bound before publishing exact `/\0` and result two. The pinned
+external application SHALL instead issue one complete descriptor-one console-
+metadata request and one descriptor-one terminal query that observes terminal
+absence without candidate mutation; it MAY then format from the already sealed
+root-directory fact. The provider SHALL validate the exact profile-specific
+sequence, candidate extents, results, and fact authority. One following
+descriptor-one write SHALL require a complete readable candidate containing
+exact `/\n`, count two, publish those bytes only after complete private staging
+and validation, erase staging, and return two. Unconditional reuse of startup
+bytes, provider-owned output substitution, a wrong candidate, value, count,
+result, order, duplicate, skipped predecessor, or retained pointer SHALL be
+invalid.
+
+The clean fixture SHALL validate prior process-owned bytes where it proves
+them immutable. The external application MAY parse or mutate its published
+input and current-directory output; subsequent operations SHALL rely on
+affine owner and observation state and SHALL NOT treat prior user bytes as
+provider state. Successful terminal handling SHALL require the third command
+publication live, erase and prove the complete command buffer empty, consume
+its owner, and clear every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, clean command-time current-directory
+observation SHALL bind to syscall 79, checked anonymous candidate
+`0x005f_9460`, a 4096-byte bound, exact `/\0`, and result two. Pinned external
+command-time revalidation SHALL bind to syscall 5, descriptor one, exact
+144-byte stack candidate `0x007f_f370`, and complete console metadata, followed
+by syscall 16, descriptor one, `TCGETS`, exact 36-byte stack candidate
+`0x007f_f2d0`, unchanged candidate bytes, and result `-ENOTTY`. Output SHALL
+bind to syscall 1, descriptor one, exact `/\n`, count and result two, with
+candidate `0x005f_9460` in the clean profile and `0x005f_9570` in the pinned
+external profile. Input results SHALL be 11, 4, and 5. The process stack SHALL
+be one affine two-base-page extent at `[0x007f_e000, 0x0080_0000)`, with the
+initial ABI value in its upper page; both adjacent leaves SHALL be reserved,
+zeroed, published RW/NX, verified, normalized, and released together, with no
+stack growth or demand paging. Structural and physical evidence SHALL certify
+profile distinction, dispatch, requests, exact values, owner transitions,
+prompt ordering, output, terminal erasure, and rollback. This rule SHALL NOT
+add directory enumeration, pathname lookup, mutable directories, arbitrary
+commands, a general loop, dynamic applications, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001 — Static-process root `cd`
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` with exactly four ordered
+command publications through one checked process buffer: `echo topal\n`,
+`cd /\n`, `pwd\n`, and `exit\n`. Each later publication SHALL replace a
+consumed prior publication, zero and validate its sealed tail, retain no user
+pointer, and advance one exclusive private input-owner state. The clean profile
+SHALL publish a prompt conforming to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` before every command. The pinned
+external profile SHALL require those optional prompt observations absent.
+
+After `cd /\n`, the application SHALL issue one current-directory change. The
+provider SHALL validate the live process, sealed continuation, active checked
+hierarchy, retained executable pathname and two-page stack, live dispositions,
+exact profile predecessor, current input owner, and a complete checked readable
+candidate before observing exact `/\0`. Success SHALL replace the prior sealed
+current-directory fact with one new sealed-root generation and return zero
+without retaining a user pointer or pathname bytes. A wrong, incomplete,
+unreadable, unterminated, non-root, duplicate, skipped, or out-of-order request
+SHALL be invalid.
+
+The following `pwd\n` SHALL require the new sealed-root generation. The clean
+profile SHALL issue the qualified current-directory query; the pinned external
+profile SHALL complete its qualified stdout-metadata and terminal-absence
+sequence before using that new fact. Both profiles SHALL publish exact
+application-owned `/\n` under the output contract of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. Successful terminal handling
+SHALL require the fourth command publication live, erase and prove the complete
+command buffer empty, consume its owner, and clear every command-time and
+current-directory-generation fact with unchanged affine rollback.
+
+For qualified x86-64 realization, the directory change SHALL bind to syscall
+80, one exact two-byte `/\0` candidate wholly inside a checked readable process
+mapping, and result zero. Input results SHALL be 11, 5, 4, and 5. The clean
+`pwd` output candidate SHALL retain the binding of
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. The pinned external `pwd`
+output SHALL instead require its complete two-byte candidate to lie inside the
+checked readable heap mapping `[0x005f_7000, 0x0061_9000)`, contain exact
+`/\n`, and have count and result two; this extension supersedes only that
+rule's single external output-candidate address. The stack SHALL remain the
+affine two-base-page RW/NX extent at
+`[0x007f_e000, 0x0080_0000)`. Structural and physical evidence SHALL certify
+profile distinction, dispatch, candidate validation, exact value, state
+replacement, input ownership, prompt ordering, later `pwd`, terminal erasure,
+and rollback. This rule SHALL NOT add arbitrary pathnames, directory traversal,
+file lookup, mutable filesystem objects, stack growth, dynamic applications,
+processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001 — Static-process root-directory test
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` with exactly five ordered
+command publications through one checked process buffer: `echo topal\n`,
+`cd /\n`, `test -d /\n`, `pwd\n`, and `exit\n`. Each later publication SHALL
+replace a consumed prior publication, zero and validate its sealed tail, retain
+no user pointer, and advance one exclusive private input-owner state. The clean
+profile SHALL publish a prompt conforming to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` before every command. The pinned
+external profile SHALL require those optional prompt observations absent.
+
+After the root-directory generation has been replaced, the application SHALL
+issue one metadata request for exact root. The provider SHALL validate the live
+process, sealed continuation, active checked hierarchy, retained executable
+pathname and two-page stack, live dispositions, exact profile predecessor,
+current input owner, lookup selector and flags, a complete checked readable
+pathname containing exact `/\0`, and a complete checked writable metadata
+candidate before publication. It SHALL publish one complete native value for
+the sealed immutable root-directory object and return zero without retaining a
+pathname, destination, or native bytes. The value SHALL identify a directory
+owned by the sealed root credentials with mode `040755`; every other native
+field SHALL be coherent with that object and the qualified provider profile. A
+wrong, incomplete, unreadable, unterminated, non-root, duplicate, skipped, or
+out-of-order request or an incomplete, nonwritable, wrapping, or cross-hole
+output SHALL be invalid.
+
+The application SHALL use the value only to decide that root is a directory,
+and `test -d /\n` SHALL produce no output. The following `pwd\n` SHALL require
+the root-directory observation fact and otherwise conform to
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001`. Successful terminal
+handling SHALL require the fifth command publication live, erase and prove the
+complete command buffer empty, consume its owner, and clear the directory
+generation, metadata observation, and every command-time fact with unchanged
+affine rollback.
+
+For qualified x86-64 realization, the metadata request SHALL bind to syscall
+262, `AT_FDCWD=-100`, flags zero, exact `/\0`, one complete checked writable
+144-byte native `stat` candidate, and result zero. The published value SHALL
+have mode `040755`, UID and GID zero, no device-special identity, a 4096-byte
+preferred I/O block, and provider-sealed coherent remaining fields. Input
+results SHALL be 11, 5, 10, 4, and 5. The stack SHALL remain the affine
+two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural and
+physical evidence SHALL certify profile distinction, dispatch, complete
+transfers, exact pathname and metadata, silent command behavior, state and
+owner transitions, prompt ordering, later `pwd`, terminal erasure, and
+rollback. This rule SHALL NOT add arbitrary pathnames, relative lookup,
+traversal, directory enumeration, file contents, mutation, dynamic
+applications, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001 — Static-process root-directory condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` by replacing its
+third command publication with exact
+`test -d / && echo root-directory\n`. The five publications SHALL therefore
+be exact `echo topal\n`, `cd /\n`,
+`test -d / && echo root-directory\n`, `pwd\n`, and `exit\n`, with the same
+affine replacement, sealed-tail, pointer-retention, input-owner, prompt, and
+external prompt-absence obligations.
+
+Both applications SHALL issue and consume the complete exact-root metadata
+request and immutable root-directory value required by the predecessor rule.
+Only after deciding from that value that root is a directory, the application
+SHALL issue one standard-output write containing exact
+`root-directory\n`. The provider SHALL validate the live process, sealed
+continuation, active checked hierarchy, retained executable pathname and
+two-page stack, live dispositions, exact profile predecessor, current input
+owner, root-directory observation, output selector, and complete checked
+readable 15-byte candidate before publication. It SHALL stage and
+compare the complete candidate before output, publish exactly those 15 bytes,
+return 15, erase all staging, retain no user pointer or output byte, and
+publish one private conditional-output fact. A write on a failed or absent
+metadata observation, wrong, partial, unreadable, wrapping, cross-hole,
+duplicate, skipped, out-of-order, or non-exact candidate SHALL be invalid.
+
+The following `pwd\n` SHALL require the conditional-output fact and otherwise
+conform to the predecessor rule. Successful terminal handling SHALL require
+the fifth command publication live, erase and prove the complete command
+buffer empty, consume its owner, and clear the directory generation, metadata
+observation, conditional-output observation, and every command-time fact with
+unchanged affine rollback.
+
+For qualified x86-64 realization, the selected output SHALL bind to syscall 1
+on descriptor one with count and result 15. Input results SHALL be 11, 5, 33,
+4, and 5. The metadata request and complete 144-byte native value SHALL remain
+exactly as qualified by the predecessor rule. The stack SHALL remain the
+affine two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural
+and physical evidence SHALL certify profile distinction, complete metadata
+consumption, application-selected conditional output, exact output transfer,
+state and owner transitions, prompt ordering, later `pwd`, terminal erasure,
+and rollback. This rule SHALL NOT add failed conditions, arbitrary
+expressions, output, or pathnames, directory enumeration, file contents,
+mutation, dynamic applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

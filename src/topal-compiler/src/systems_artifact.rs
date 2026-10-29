@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/192";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/181";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/203";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/192";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1154,22 +1154,151 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xfe, // require exact root and terminator
         0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, 0x66, 0x83, 0x3c, 0x25, 0x60, 0x94,
         0x5f, 0, 0, 0x75, 0xfe, // erase and prove complete output
+        0xb8, 0x6b, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
+        0xfe, // exact post-banner effective-user identity
+        0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x38, 0x69, 0x4a, 0, 0x31, 0xd2, 0x45, 0x31, 0xd2,
+        0xb8, 0x01, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x83, 0xf8, 3, 0x75,
+        0xfe, // exact read-only /etc/profile open as descriptor three
+        0x48, 0xb8, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0x48, 0x89, 0xe7, 0xb9, 18, 0,
+        0, 0, 0xfc, 0xf3, 0x48, 0xab, // prefill complete profile stat candidate
+        0xbf, 3, 0, 0, 0, 0x48, 0x89, 0xe6, 0xb8, 5, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
+        0xfe, // exact descriptor-three fstat
+        0x48, 0x83, 0x3c, 0x24, 0, 0x75, 0xfe, // st_dev
+        0x48, 0x83, 0x7c, 0x24, 8, 2, 0x75, 0xfe, // st_ino
+        0x48, 0x83, 0x7c, 0x24, 16, 1, 0x75, 0xfe, // st_nlink
+        0x48, 0x81, 0x7c, 0x24, 24, 0x24, 0x81, 0, 0, 0x75, 0xfe, // mode/uid
+        0x48, 0x83, 0x7c, 0x24, 32, 0, 0x75, 0xfe, // gid/padding
+        0x48, 0x83, 0x7c, 0x24, 40, 0, 0x75, 0xfe, // st_rdev
+        0x48, 0x83, 0x7c, 0x24, 48, 0, 0x75, 0xfe, // st_size
+        0x48, 0x81, 0x7c, 0x24, 56, 0, 0x10, 0, 0, 0x75, 0xfe, // st_blksize
+        0x48, 0x83, 0x7c, 0x24, 64, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 72, 0, 0x75, 0xfe, 0x48,
+        0x83, 0x7c, 0x24, 80, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 88, 0, 0x75, 0xfe, 0x48, 0x83,
+        0x7c, 0x24, 96, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 104, 0, 0x75, 0xfe, 0x48, 0x83,
+        0x7c, 0x24, 112, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 120, 0, 0x75, 0xfe, 0x48, 0x83,
+        0xbc, 0x24, 128, 0, 0, 0, 0, 0x75, 0xfe, 0x48, 0x83, 0xbc, 0x24, 136, 0, 0, 0, 0, 0x75,
+        0xfe, // tail zeros
+        0x31, 0xc0, 0xb9, 18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xab, 0x31, 0xc0, 0xb9,
+        18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xaf, 0x75,
+        0xfe, // erase and prove complete profile stat
+        0x48, 0xb8, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0x48, 0x89, 0xe7, 0xb9, 16, 0,
+        0, 0, 0xfc, 0xf3, 0x48, 0xab, // prefill complete profile input candidate
+        0xbf, 3, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 128, 0, 0, 0, 0x31, 0xc0, 0x0f, 0x05, 0x48, 0x85,
+        0xc0, 0x75, 0xfe, // exact descriptor-three EOF read
+        0x48, 0xb8, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0x48, 0x89, 0xe7, 0xb9, 16, 0,
+        0, 0, 0xfc, 0xf3, 0x48, 0xaf, 0x75, 0xfe, // prove complete candidate unchanged
+        0x31, 0xc0, 0xb9, 16, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xab, 0x31, 0xc0, 0xb9,
+        16, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xaf, 0x75,
+        0xfe, // erase and prove complete profile input candidate
+        0xbf, 3, 0, 0, 0, 0xb8, 3, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
+        0xfe, // explicitly close descriptor three and require zero
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, // exact standard-error prompt result
+        0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0, 0x75,
+        0xfe, // erase and prove prompt candidate
         0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
-        0x48, 0x83, 0xf8, 16, 0x75, 0xfe, // complete sealed command
+        0x48, 0x83, 0xf8, 11, 0x75, 0xfe, // first sealed command publication
         0x48, 0xb8, 0x65, 0x63, 0x68, 0x6f, 0x20, 0x74, 0x6f, 0x70, 0x48, 0x39, 0x04, 0x25, 0x60,
         0x8f, 0x5f, 0, 0x75, 0xfe, // "echo top"
-        0x48, 0xb8, 0x61, 0x6c, 0x0a, 0x65, 0x78, 0x69, 0x74, 0x0a, 0x48, 0x39, 0x04, 0x25, 0x68,
-        0x8f, 0x5f, 0, 0x75, 0xfe, // "al\nexit\n"
+        0x48, 0xb8, 0x61, 0x6c, 0x0a, 0, 0, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x68, 0x8f, 0x5f, 0,
+        0x75, 0xfe, // "al\n" and sealed zero tail
         0x48, 0xb8, 0x74, 0x6f, 0x70, 0x61, 0x6c, 0x0a, 0, 0, 0x48, 0x89, 0x04,
         0x24, // output
         0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 6, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
         0x83, 0xf8, 6, 0x75, 0xfe, // exact standard-output result
         0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0, 0x75,
         0xfe, // erase and prove output scratch
-        0x48, 0xc7, 0x04, 0x25, 0x60, 0x8f, 0x5f, 0, 0, 0, 0, 0, // erase command low
-        0x48, 0xc7, 0x04, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0, 0, 0, // erase command high
-        0x48, 0x83, 0x3c, 0x25, 0x60, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // prove low erase
-        0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // prove high erase
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact second "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, // exact second prompt result and erasure
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
+        0x48, 0x83, 0xf8, 5, 0x75, 0xfe, // second sealed command publication
+        0x48, 0xb8, 0x63, 0x64, 0x20, 0x2f, 0x0a, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x60, 0x8f,
+        0x5f, 0, 0x75, 0xfe, // "cd /\n" and sealed zero tail
+        0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // zero high word
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0, // exact root pathname
+        0xbf, 0x60, 0x94, 0x5f, 0, 0xb8, 0x50, 0, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
+        0xfe, // exact root chdir result
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, // erase pathname candidate
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact third "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, // exact third prompt result and erasure
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
+        0x48, 0x83, 0xf8, 33, 0x75, 0xfe, // third sealed command publication
+        0x48, 0xb8, 0x74, 0x65, 0x73, 0x74, 0x20, 0x2d, 0x64, 0x20, 0x48, 0x39, 0x04, 0x25, 0x60,
+        0x8f, 0x5f, 0, 0x75, 0xfe, // "test -d "
+        0x48, 0xb8, 0x2f, 0x20, 0x26, 0x26, 0x20, 0x65, 0x63, 0x68, 0x48, 0x39, 0x04, 0x25, 0x68,
+        0x8f, 0x5f, 0, 0x75, 0xfe, // "/ && ech"
+        0x48, 0xb8, 0x6f, 0x20, 0x72, 0x6f, 0x6f, 0x74, 0x2d, 0x64, 0x48, 0x39, 0x04, 0x25, 0x70,
+        0x8f, 0x5f, 0, 0x75, 0xfe, // "o root-d"
+        0x48, 0xb8, 0x69, 0x72, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x79, 0x48, 0x39, 0x04, 0x25, 0x78,
+        0x8f, 0x5f, 0, 0x75, 0xfe, // "irectory"
+        0x48, 0xb8, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x80, 0x8f, 0x5f, 0, 0x75,
+        0xfe, // newline and sealed zero tail
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0, // exact root pathname
+        0x48, 0xb8, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0xa5, 0x48, 0x89, 0xe7, 0xb9, 18, 0,
+        0, 0, 0xfc, 0xf3, 0x48, 0xab, // prefill complete root stat candidate
+        0xbf, 0x9c, 0xff, 0xff, 0xff, 0xbe, 0x60, 0x94, 0x5f, 0, 0x48, 0x89, 0xe2, 0x45, 0x31,
+        0xd2, 0xb8, 0x06, 0x01, 0, 0, 0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75,
+        0xfe, // exact root newfstatat result
+        0x48, 0x83, 0x3c, 0x24, 0, 0x75, 0xfe, // st_dev
+        0x48, 0x83, 0x7c, 0x24, 8, 3, 0x75, 0xfe, // st_ino
+        0x48, 0x83, 0x7c, 0x24, 16, 2, 0x75, 0xfe, // st_nlink
+        0x48, 0x81, 0x7c, 0x24, 24, 0xed, 0x41, 0, 0, 0x75, 0xfe, // mode/uid
+        0x48, 0x83, 0x7c, 0x24, 32, 0, 0x75, 0xfe, // gid/padding
+        0x48, 0x83, 0x7c, 0x24, 40, 0, 0x75, 0xfe, // st_rdev
+        0x48, 0x83, 0x7c, 0x24, 48, 0, 0x75, 0xfe, // st_size
+        0x48, 0x81, 0x7c, 0x24, 56, 0, 0x10, 0, 0, 0x75, 0xfe, // st_blksize
+        0x48, 0x83, 0x7c, 0x24, 64, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 72, 0, 0x75, 0xfe, 0x48,
+        0x83, 0x7c, 0x24, 80, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 88, 0, 0x75, 0xfe, 0x48, 0x83,
+        0x7c, 0x24, 96, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 104, 0, 0x75, 0xfe, 0x48, 0x83,
+        0x7c, 0x24, 112, 0, 0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 120, 0, 0x75, 0xfe, 0x48, 0x83,
+        0xbc, 0x24, 128, 0, 0, 0, 0, 0x75, 0xfe, 0x48, 0x83, 0xbc, 0x24, 136, 0, 0, 0, 0, 0x75,
+        0xfe, // tail zeros
+        0x31, 0xc0, 0xb9, 18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xab, 0x31, 0xc0, 0xb9,
+        18, 0, 0, 0, 0x48, 0x89, 0xe7, 0xfc, 0xf3, 0x48, 0xaf, 0x75,
+        0xfe, // erase and prove complete root stat
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, // erase pathname candidate
+        0x48, 0xb8, 0x72, 0x6f, 0x6f, 0x74, 0x2d, 0x64, 0x69, 0x72, 0x48, 0x89, 0x04,
+        0x24, // "root-dir"
+        0x48, 0xb8, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x79, 0x0a, 0, 0x48, 0x89, 0x44, 0x24,
+        8, // "ectory\n" and scratch tail
+        0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 15, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 15, 0x75, 0xfe, // selected condition output
+        0x31, 0xc0, 0x48, 0x89, 0x04, 0x24, 0x48, 0x89, 0x44, 0x24, 8, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 8, 0, 0x75, 0xfe, // erase output scratch
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact fourth "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, // exact fourth prompt result and erasure
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
+        0x48, 0x83, 0xf8, 4, 0x75, 0xfe, // fourth sealed command publication
+        0x48, 0xb8, 0x70, 0x77, 0x64, 0x0a, 0, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x60, 0x8f, 0x5f,
+        0, 0x75, 0xfe, // "pwd\n" and sealed zero tail
+        0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // zero high word
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0xa5, 0xa5, // prefill cwd output
+        0xbf, 0x60, 0x94, 0x5f, 0, 0xbe, 0, 0x10, 0, 0, 0xb8, 0x4f, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 2, 0x75, 0xfe, // command-time sealed root getcwd
+        0x66, 0x81, 0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0, 0x75,
+        0xfe, // require exact root and terminator
+        0xc6, 0x04, 0x25, 0x61, 0x94, 0x5f, 0, 0x0a, // application newline
+        0x66, 0x81, 0x3c, 0x25, 0x60, 0x94, 0x5f, 0, 0x2f, 0x0a, 0x75,
+        0xfe, // exact application-owned output
+        0xbf, 1, 0, 0, 0, 0xbe, 0x60, 0x94, 0x5f, 0, 0xba, 2, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f,
+        0x05, 0x48, 0x83, 0xf8, 2, 0x75, 0xfe, // exact pwd output result
+        0x66, 0xc7, 0x04, 0x25, 0x60, 0x94, 0x5f, 0, 0, 0, 0x66, 0x83, 0x3c, 0x25, 0x60, 0x94,
+        0x5f, 0, 0, 0x75, 0xfe, // erase and prove output
+        0xc7, 0x04, 0x24, 0x2f, 0x20, 0x23, 0x20, // exact fifth "/ # " prompt
+        0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
+        0x75, 0xfe, // exact fifth prompt result and erasure
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
+        0x48, 0x83, 0xf8, 5, 0x75, 0xfe, // fifth sealed command publication
+        0x48, 0xb8, 0x65, 0x78, 0x69, 0x74, 0x0a, 0, 0, 0, 0x48, 0x39, 0x04, 0x25, 0x60, 0x8f,
+        0x5f, 0, 0x75, 0xfe, // "exit\n" and sealed zero tail
+        0x48, 0x83, 0x3c, 0x25, 0x68, 0x8f, 0x5f, 0, 0, 0x75, 0xfe, // zero high word
         0x48, 0x81, 0xc4, 0x00, 0x04, 0, 0, // restore initial stack
         0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b,
     ];
@@ -1178,6 +1307,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     image[0x0a_6900..0x0a_6912].copy_from_slice(b"/etc/busybox.conf\0");
     image[0x0a_6912..0x0a_691b].copy_from_slice(b"/dev/tty\0");
     image[0x0a_6920..0x0a_6935].copy_from_slice(b"/var/spool/mail/root\0");
+    image[0x0a_6938..0x0a_6945].copy_from_slice(b"/etc/profile\0");
     image
 }
 
@@ -3475,7 +3605,7 @@ impl RootEncoder {
         let nested_static_elf_stack_backing = self.static_image
             == RootStaticImageState::StackSlotAuthorized
             && self.physical_frame_count.is_none()
-            && frame_count == 1
+            && frame_count == 2
             && !self.retained_static_elf_payload;
         let retained_static_process_work = self.static_image
             == RootStaticImageState::PreparedProcessRetained
@@ -3572,6 +3702,13 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
+        if nested_static_elf_stack_backing {
+            // The provider carries the upper-page anchor so all existing ABI
+            // entry offsets remain relative to the page containing RSP. The
+            // complete affine extent starts one base page below this anchor.
+            self.bytes
+                .extend_from_slice(&[0x48, 0x81, 0xc3, 0x00, 0x10, 0x00, 0x00]);
+        }
         self.physical_frame_count = Some(u64::from(frame_count));
         if nested_static_elf_metadata {
             self.retained_static_elf_payload = true;
@@ -3670,7 +3807,7 @@ impl RootEncoder {
             self.static_image = RootStaticImageState::Sealed;
             return Ok(());
         }
-        if self.static_image == RootStaticImageState::StackBackingZeroed && frame_count == 1 {
+        if self.static_image == RootStaticImageState::StackBackingZeroed && frame_count == 2 {
             self.bytes.extend_from_slice(&[0x48, 0x31, 0xdb]); // clear backing identity
             self.bytes.extend_from_slice(&[0x48, 0x89, 0xeb]); // restore hierarchy identity
             self.bytes.extend_from_slice(&[0x48, 0x31, 0xed]); // clear retained hierarchy copy
@@ -3972,12 +4109,12 @@ impl RootEncoder {
     fn zero_static_image_stack_backing(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackSlotAuthorized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
             return Err(CompileError::Tool(
-                "x86 static-image stack-backing zeroing requires one slot-authorized construction and its live one-frame backing"
+                "x86 static-image stack-backing zeroing requires one slot-authorized construction and its live two-frame backing"
                     .into(),
             ));
         }
@@ -3990,7 +4127,7 @@ impl RootEncoder {
     fn publish_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackBackingZeroed
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4014,7 +4151,7 @@ impl RootEncoder {
     fn initialize_static_image_stack_entry(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackLeafPublished
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4038,7 +4175,7 @@ impl RootEncoder {
     fn clear_static_image_stack_entry(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryInitialized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4062,7 +4199,7 @@ impl RootEncoder {
     fn add_static_image_stack_pagesz(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryInitialized
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4086,7 +4223,7 @@ impl RootEncoder {
     fn add_static_image_stack_entry_fact(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackPageSizeAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4118,7 +4255,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4162,7 +4299,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4200,7 +4337,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4239,7 +4376,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4281,7 +4418,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4320,7 +4457,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4362,7 +4499,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4404,7 +4541,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4446,7 +4583,7 @@ impl RootEncoder {
         };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -4486,7 +4623,7 @@ impl RootEncoder {
         } else {
             RootStaticImageState::PreparedProcessRetained
         };
-        let required_frames = if retain { Some(1) } else { None };
+        let required_frames = if retain { Some(2) } else { None };
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != required
             || self.physical_frame_count != required_frames
@@ -4509,7 +4646,7 @@ impl RootEncoder {
         } else {
             RootStaticImageState::StackRandomSlotAuthorized
         };
-        self.physical_frame_count = if retain { None } else { Some(1) };
+        self.physical_frame_count = if retain { None } else { Some(2) };
         Ok(())
     }
 
@@ -5839,7 +5976,7 @@ impl RootEncoder {
     fn remove_static_image_stack_entry_fact(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackEntryFactAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -5863,7 +6000,7 @@ impl RootEncoder {
     fn remove_static_image_stack_pagesz(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackPageSizeAdded
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -5887,7 +6024,7 @@ impl RootEncoder {
     fn revoke_static_image_stack_leaf(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.static_image != RootStaticImageState::StackLeafPublished
-            || self.physical_frame_count != Some(1)
+            || self.physical_frame_count != Some(2)
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
         {
@@ -12036,7 +12173,7 @@ mod tests {
         assert!(decoded.semantic_trace[53].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(
             decoded.semantic_trace[54],
-            "topal.systems.frames.allocate/1:frames=1:alignment=1"
+            "topal.systems.frames.allocate/1:frames=2:alignment=1"
         );
         assert!(decoded.semantic_trace[55].starts_with(SYSTEMS_CONSOLE_WRITE));
         assert_eq!(

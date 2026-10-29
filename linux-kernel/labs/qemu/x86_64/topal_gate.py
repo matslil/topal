@@ -526,7 +526,7 @@ def static_user_fixture() -> bytes:
             0xE9, 0x0E, 0x07, 0x00, 0x00,
         ]
     )
-    image[0xA_7000 : 0xA_7693] = bytes.fromhex(
+    continuation = bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -579,17 +579,86 @@ def static_user_fixture() -> bytes:
         "c6042400803c240075fe"
         "66c7042560945f00a5a5bf60945f00be00100000b84f0000000f054883f80275fe"
         "66813c2560945f002f0075fe66c7042560945f00000066833c2560945f000075fe"
-        "31ffbe608f5f00baff03000031c00f054883"
-        "f81075fe48b86563686f20746f7048390425608f5f0075fe48b8616c0a657869"
-        "740a48390425688f5f0075fe48b8746f70616c0a000048890424bf0100000048"
-        "89e6ba06000000b8010000000f054883f80675fe48c704240000000048833c24"
-        "0075fe48c70425608f5f000000000048c70425688f5f000000000048833c2560"
-        "8f5f000075fe48833c25688f5f000075fe4881c40004000031ffb8e70000000f"
-        "050f0b"
+        "b86b0000000f054885c075fe"
+        "bf9cffffffbe38694a0031d24531d2b8010100000f054883f80375fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf030000004889e6b8050000000f054885c075fe"
+        "48833c240075fe48837c24080275fe48837c24100175fe"
+        "48817c24182481000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b910000000fcf348ab"
+        "bf030000004889e6ba8000000031c00f054885c075fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b910000000fcf348af75fe"
+        "31c0b9100000004889e7fcf348ab"
+        "31c0b9100000004889e7fcf348af75fe"
+        "bf03000000b8030000000f054885c075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80b75fe"
+        "48b86563686f20746f7048390425608f5f0075fe"
+        "48b8616c0a000000000048390425688f5f0075fe"
+        "48b8746f70616c0a000048890424bf010000004889e6ba06000000b801000000"
+        "0f054883f80675fe48c704240000000048833c240075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80575fe"
+        "48b86364202f0a00000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "66c7042560945f002f00"
+        "bf60945f00b8500000000f054885c075fe"
+        "66c7042560945f000000"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f82175fe"
+        "48b874657374202d642048390425608f5f0075fe"
+        "48b82f2026262065636848390425688f5f0075fe"
+        "48b86f20726f6f742d6448390425708f5f0075fe"
+        "48b869726563746f727948390425788f5f0075fe"
+        "48b80a0000000000000048390425808f5f0075fe"
+        "66c7042560945f002f00"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+        "48833c240075fe48837c24080375fe48837c24100275fe"
+        "48817c2418ed41000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe48837c24580075fe"
+        "48837c24600075fe48837c24680075fe48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
+        "66c7042560945f000000"
+        "48b8726f6f742d64697248890424"
+        "48b86563746f72790a004889442408"
+        "bf010000004889e6ba0f000000b8010000000f054883f80f75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80475fe"
+        "48b87077640a0000000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "66c7042560945f00a5a5"
+        "bf60945f00be00100000b84f0000000f054883f80275fe"
+        "66813c2560945f002f0075fe"
+        "c6042561945f000a66813c2560945f002f0a75fe"
+        "bf01000000be60945f00ba02000000b8010000000f054883f80275fe"
+        "66c7042560945f00000066833c2560945f000075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80575fe"
+        "48b8657869740a00000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "4881c40004000031ffb8e70000000f050f0b"
     )
+    image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
+    image[0xA_6938 : 0xA_6945] = b"/etc/profile\0"
     return bytes(image)
 
 
@@ -829,7 +898,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/194",
+        "schema": "topal-kernel-toolchain-gate-qemu/203",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -923,6 +992,86 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-post-banner-sealed-root-witness"
             ),
+            "static_shell_post_banner_geteuid_profile": (
+                "external-optional-post-banner-geteuid-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-post-banner-effective-root-witness"
+            ),
+            "static_shell_profile_open_profile": (
+                "external-optional-system-profile-open-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-read-only-system-profile-descriptor-three-witness"
+            ),
+            "static_shell_profile_fstat_profile": (
+                "external-optional-system-profile-metadata-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-system-profile-metadata-witness"
+            ),
+            "static_shell_profile_read_profile": (
+                "external-optional-system-profile-read-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-empty-system-profile-eof-witness"
+            ),
+            "static_shell_profile_close_profile": (
+                "external-optional-system-profile-close-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-consumed-system-profile-description-witness"
+            ),
+            "static_shell_prompt_profile": (
+                "external-optional-root-prompt-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-prompt-witness"
+            ),
+            "static_shell_refill_input_profile": (
+                "external-five-publication-command-refill-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-five-publication-command-refill-witness"
+            ),
+            "static_shell_cd_root_profile": (
+                "external-busybox-exact-root-chdir-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-chdir-witness"
+            ),
+            "static_shell_root_directory_test_profile": (
+                "external-busybox-exact-root-newfstatat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-root-directory-metadata-witness"
+            ),
+            "static_shell_root_directory_condition_profile": (
+                "external-busybox-selected-root-directory-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-selected-root-directory-output-witness"
+            ),
+            "static_shell_pwd_command_profile": (
+                "external-busybox-pwd-cached-root-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-output-witness"
+            ),
+            "static_shell_pwd_console_fstat_profile": (
+                "external-command-console-fstat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-console-fstat-absent"
+            ),
+            "static_shell_pwd_terminal_probe_profile": (
+                "external-command-stdout-enotty-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-stdout-terminal-probe-absent"
+            ),
+            "static_shell_pwd_getcwd_profile": (
+                "external-cached-sealed-root-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-witness"
+            ),
+            "static_shell_pwd_output_profile": (
+                "external-exact-application-root-line-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-application-root-line-witness"
+            ),
+            "static_shell_stack_profile": (
+                "external-affine-two-page-rw-nx-stack-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-affine-two-page-rw-nx-stack-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -972,9 +1121,9 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            1
+            3
             if static_user_input == "pinned-external-static-busybox"
-            else 8
+            else 10
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(

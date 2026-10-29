@@ -13186,17 +13186,17 @@ mod tests {
         for (source, expected) in [
             (
                 SOURCE.replace(
-                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
-                    "owner is entry-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
+                    "owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 2,",
+                    "owner is entry-authorized-static-elf-construction,\n                                                                                frame-count is 2,",
                 ),
                 "exact slot-authorized construction",
             ),
             (
                 SOURCE.replace(
-                    "static-elf-stack-backing is unmapped static image construction reserve stack backing (\n                                                                                owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
                     "static-elf-stack-backing is unmapped static image construction reserve stack backing (\n                                                                                owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 2,",
+                    "static-elf-stack-backing is unmapped static image construction reserve stack backing (\n                                                                                owner is stack-slot-authorized-static-elf-construction,\n                                                                                frame-count is 1,",
                 ),
-                "one unit-aligned frame",
+                "two unit-aligned frames",
             ),
             (
                 SOURCE.replace(
@@ -14600,7 +14600,7 @@ mod tests {
         for source in [
             SOURCE.replace("abi is linux-x86-64-process,", "abi is synthetic-process,"),
             SOURCE.replace(
-                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd,",
+                "startup is initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write-shell-getpid-sigchld-disposition-getppid-uname-root-getcwd-tcgets-miss-signal-defaults-quit-ignore-sealed-echo-command-console-fstat-dev-tty-open-miss-standard-terminal-probes-terminal-warning-mailpath-stat-miss-banner-post-banner-terminal-probe-post-banner-root-getcwd-post-banner-geteuid-profile-open-profile-fstat-profile-read-profile-close-prompt-refill-input-pwd-command-cd-root,",
                 "startup is synthetic-startup,",
             ),
             SOURCE.replace(
@@ -14608,7 +14608,7 @@ mod tests {
                 "terminal is exit-group-one,",
             ),
             SOURCE.replace(
-                "policy is bounded-static-elf-shell-post-banner-root-getcwd",
+                "policy is bounded-static-elf-shell-cd-root-command",
                 "policy is synthetic-process-entry",
             ),
             SOURCE.replace(

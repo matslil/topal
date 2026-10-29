@@ -1668,6 +1668,221 @@ complete output, result, lifecycle, profile distinction, and unchanged
 rollback. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` and `TK-DEC-213`.
 
+The bounded static-process post-banner-effective-identity increment shall
+accept exactly one native x86-64 syscall-107 request after the clean post-
+banner current-directory fact and before profile, prompt, or sealed input. It
+shall require the retained checked initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, all prior observations, and the
+complete eight-word sealed real/effective user/group credential set. It shall
+return zero, retain no argument or credential state, and leave process phase
+unchanged. One fresh private fact shall publish only after complete validation,
+and later clean input and terminal handling shall require it and clear it with
+all predecessor observations; the external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, phase, complete credential coherence, result, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001` and `TK-DEC-214`.
+
+The bounded static-process shell-profile-open increment shall accept exactly
+one native x86-64 syscall-257 request after the clean post-banner effective-
+identity fact and before later profile work or sealed input. It shall require
+`AT_FDCWD`, exact sealed executable pathname `"/etc/profile\0"` at `0x4a6938`,
+read-only flags, mode zero, the unused descriptor-three slot, an immutable
+empty launch-owned file object, live dispositions and hierarchy, unchanged
+input-predecessor phase, and all prior observations. It shall allocate one
+process-owned read-only description, return three, retain no user pointer or
+lookup scratch, and publish one private lifecycle fact. Later clean profile
+work and terminal handling shall require the fact; teardown may revoke an
+unclosed bounded description. The external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, arguments, pathname, object identity, allocation, result, lifecycle,
+profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001` and `TK-DEC-215`.
+
+The bounded static-process shell-profile-metadata increment shall accept
+exactly one native x86-64 syscall-5 request after the clean profile-open fact
+and before profile input, close, or sealed input. It shall require descriptor
+three, the live process-owned read-only description for the immutable empty
+launch-owned profile, one exact complete writable 144-byte continuation-stack
+candidate, live dispositions and hierarchy, unchanged input-predecessor phase,
+and all prior observations. It shall construct the complete native regular-
+file metadata in private staging, validate before user mutation, publish it,
+erase and verify staging, return zero, retain no user pointer, and publish one
+private completion fact. The value shall have stable identity two, link count
+one, root ownership, mode `0100444`, zero size, blocks, timestamps, padding,
+and unused fields, and preferred I/O size 4096. Later clean profile work and
+terminal handling shall require the fact; teardown may revoke an unclosed
+description. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity, candidate extent, complete value, result, staging
+erasure, lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` and `TK-DEC-216`.
+
+The bounded static-process shell-profile-EOF increment shall accept exactly
+one native x86-64 syscall-0 request after the clean profile-metadata fact and
+before profile close or sealed input. It shall require descriptor three, the
+live process-owned read-only description for the immutable empty launch-owned
+profile at position zero, the exact complete writable 128-byte continuation-
+stack candidate, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall validate the complete candidate,
+return zero without reading or changing any candidate byte or description
+position, retain no user pointer, and publish one private completion fact.
+Later clean profile work and terminal handling shall require the fact; teardown
+may revoke an unclosed description. The clean fixture shall prove all 128 bytes
+unchanged and then erased. The external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, description identity and position, candidate extent, bound, no-
+output effect, result, lifecycle, profile distinction, and unchanged rollback.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` and
+`TK-DEC-217`.
+
+The bounded static-process shell-profile-close increment shall accept exactly
+one native x86-64 syscall-3 request after the clean profile-EOF fact and before
+prompt or sealed input. It shall require descriptor three, the live process-
+owned read-only description for the immutable empty launch-owned profile at
+position zero, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall consume the description, free the
+lowest nonstandard slot, preserve EOF history, return zero, retain no argument
+or object state, and publish one distinct private closed-state fact after
+proving the description absent. Later clean startup and terminal handling shall
+require the description absent and close fact present; terminal handling shall
+clear that fact. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity and position, consumption, free-slot state, result,
+lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` and `TK-DEC-218`.
+
+The bounded static-process shell-prompt increment shall accept exactly one
+native x86-64 syscall-1 request after explicit clean profile close and before
+command input. It shall require descriptor two, count four, the exact complete
+readable continuation-stack segment `/ # `, live dispositions and hierarchy,
+unchanged input-predecessor phase, absent profile description, live closed-
+state history, fresh prompt fact, and all prior observations. It shall copy the
+complete segment into empty private staging, validate before publication, emit
+it in source order, erase and prove staging empty, return four, retain no user
+pointer, and publish one private completion fact. Later clean input and
+terminal handling shall require that fact; terminal handling shall clear it.
+The clean fixture shall validate and erase its complete candidate. The external
+echo profile shall require every optional observation absent. Structural and
+QEMU evidence shall enforce dispatch, description state, candidate extent and
+value, staging, output, result, erasure, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` and `TK-DEC-219`.
+
+The bounded static-process shell-refill increment shall replace the one
+combined clean command publication with two exact native x86-64 syscall-0
+requests through the same checked anonymous buffer. After the initial prompt,
+the first shall publish `echo topal\n` with zero sealed tail and return 11.
+After exact `topal\n` output, one exact syscall-1 standard-error `/ # ` prompt
+shall satisfy the existing complete checked-copy and staging-erasure contract
+and publish a distinct fact. The second read shall replace the consumed first
+command with `exit\n`, zero the sealed tail, and return 5. Both reads shall use
+descriptor zero, requested count 1023, complete buffer and hierarchy checks,
+live dispositions, exact predecessor state, and exclusive input-owner
+transitions without retaining pointers. Clean terminal handling shall require
+and validate the second publication, erase and prove the complete buffer,
+consume its owner, and clear the second-prompt fact. The external echo profile
+shall require the same second refill and terminal consumption while requiring
+the optional clean prompt fact and all other clean observations absent.
+Structural and QEMU evidence shall enforce dispatch, buffer and bound, exact
+prefixes and zero tails, ownership, clean prompt ordering, results, terminal
+erasure, profile distinction, and unchanged
+rollback. This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` and
+`TK-DEC-220`.
+
+The bounded static-process shell-`pwd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `pwd\n`, and `exit\n` publications with
+results 11, 4, and 5 and distinct affine input-owner states. After the `pwd`
+publication, the clean profile shall admit one exact command-time native
+x86-64 syscall-79 current-directory request through the complete checked
+anonymous 4096-byte candidate at `0x005f_9460`, publish exact `/\0`, and return
+two. The pinned external profile shall instead admit one syscall-5 descriptor-
+one console-metadata request through the complete 144-byte stack candidate at
+`0x007f_f370`, then one syscall-16 descriptor-one `TCGETS` request through the
+exact 36-byte stack candidate at `0x007f_f2d0`; it shall return `-ENOTTY`
+without mutating the terminal candidate and may then use its previously sealed
+root fact. One following descriptor-one write shall validate and privately
+stage exact `/\n`, publish two bytes, erase staging, and return two; its clean
+candidate shall be `0x005f_9460` and its pinned external candidate shall be
+`0x005f_9570`. The clean profile shall interpose an exact qualified prompt
+before each command; the external profile shall require those optional
+observations absent. Terminal handling shall require and erase the third
+publication, consume its owner, clear every command-time fact, and preserve
+complete rollback. Structural and QEMU evidence shall enforce one affine two-
+base-page stack extent with both pages reserved, zeroed, mapped adjacent RW/NX,
+verified, and released together; the initial ABI value shall remain in the
+upper page and no stack growth or demand paging is admitted. Evidence shall
+also enforce both profile variants, exact predecessor state, requests, values,
+results, ownership, prompt and output ordering, erasure, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` and `TK-DEC-221`.
+
+The bounded static-process shell-root-`cd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`
+publications with results 11, 5, 4, and 5 and five distinct affine input-owner
+states. After the `cd /` publication, both profiles shall admit one native
+x86-64 syscall-80 current-directory change through a complete checked readable
+two-byte candidate containing exact `/\0`; success shall return zero and
+replace the prior private current-directory fact with a new sealed-root
+generation without retaining a pointer or bytes. The later profile-specific
+`pwd` sequence shall require that generation and preserve the exact clean
+`getcwd`, external stdout `fstat`/`TCGETS`, application-owned `/\n`, and prompt
+distinction of `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. Its clean
+output candidate shall remain exact; its pinned external output candidate may
+move within the checked readable heap mapping `[0x005f7000, 0x00619000)`, but
+shall retain a complete overflow-free two-byte extent, exact `/\n`, and count
+and result two. Terminal handling shall require and erase the fourth
+publication, consume its owner, clear all command-time and directory-generation
+facts, and preserve complete rollback of the affine two-page stack. Structural
+and QEMU evidence shall enforce exact predecessor state, requests, candidate
+extent and value, result, state replacement, ownership, prompt and output
+ordering, erasure, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` and `TK-DEC-222`.
+
+The bounded static-process shell-root-directory-test increment shall extend the
+checked command buffer to exact `echo topal\n`, `cd /\n`, `test -d /\n`,
+`pwd\n`, and `exit\n` publications with results 11, 5, 10, 4, and 5 and six
+distinct affine input-owner states. After the sealed-root generation has been
+replaced, both profiles shall admit one native x86-64 syscall-262 request with
+`AT_FDCWD`, flags zero, a complete checked readable two-byte pathname
+containing exact `/\0`, and a complete checked writable 144-byte native
+metadata candidate. Success shall publish a complete provider-sealed immutable
+root-directory value with mode `040755`, root ownership, no device-special
+identity, 4096-byte preferred I/O block, and coherent remaining fields; return
+zero; retain no user pointer or bytes; and publish one private observation
+fact. The application shall consume that value only for silent successful
+`test -d /`, and the later profile-specific `pwd` sequence shall require the
+fact. Terminal handling shall require and erase the fifth publication, consume
+its owner, clear the directory generation, metadata observation, and all
+command-time facts, and preserve complete rollback of the affine two-page
+stack. Structural and QEMU evidence shall enforce exact predecessor state,
+dispatch, complete transfers, pathname and metadata, result, observation and
+ownership transitions, prompt and output ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` and `TK-DEC-223`.
+
+The bounded static-process shell-root-directory-condition increment shall
+replace the third command with exact
+`test -d / && echo root-directory\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall complete the qualified exact-root metadata
+request and consume its complete native value before issuing one x86-64
+syscall-1 standard-output request for a complete checked readable 15-byte
+candidate containing exact `root-directory\n`. The provider shall require the
+exact predecessor and metadata-observation state, stage and compare the entire
+candidate before output, publish only those bytes, return 15, erase staging,
+retain no user pointer or bytes, and publish one private conditional-output
+fact. The later profile-specific `pwd` sequence shall require that fact.
+Terminal handling shall require and erase the fifth publication, consume its
+owner, clear the directory generation, metadata and conditional-output
+observations, and all command-time facts, and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+predecessor state, complete metadata consumption, application-selected output,
+candidate extent and value, result, observation and ownership transitions,
+prompt and output ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001` and `TK-DEC-224`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
