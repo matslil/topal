@@ -5094,6 +5094,64 @@ and rollback. This rule SHALL NOT add failed conditions, arbitrary
 expressions, output, or pathnames, directory enumeration, file contents,
 mutation, dynamic applications, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001 — Static-process missing-directory condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001` by replacing its
+third command publication with exact
+`test -d /missing || echo missing\n`. The five publications SHALL therefore
+be exact `echo topal\n`, `cd /\n`,
+`test -d /missing || echo missing\n`, `pwd\n`, and `exit\n`, with the same
+affine replacement, sealed-tail, pointer-retention, input-owner, prompt, and
+external prompt-absence obligations.
+
+Both applications SHALL issue one metadata request for exact absolute pathname
+`/missing\0`, relative to the process current-directory namespace with no
+symbolic-link or alternate-root substitution, flags zero, and one complete
+checked writable native metadata candidate. The sealed root SHALL contain no
+entry named `missing`. The provider SHALL validate the live process, sealed
+continuation, active checked hierarchy, retained executable pathname and
+two-page stack, live dispositions, exact profile predecessor, current input
+owner, complete pathname, request selectors, and complete candidate before
+returning exact pathname-absence. It SHALL leave every candidate byte
+unchanged, retain no pathname or candidate pointer or byte, and publish one
+private missing-path observation. A partial, unterminated, unreadable,
+wrapping, cross-hole, relative, aliased, duplicate, skipped, out-of-order, or
+non-exact request SHALL be invalid.
+
+Only after consuming that failure and deciding the directory test is false,
+the application SHALL issue one standard-output write containing exact
+`missing\n`. The provider SHALL require the missing-path observation and
+validate the output selector and complete checked readable eight-byte
+candidate before publication. It SHALL stage and compare the complete
+candidate before output, publish exactly those eight bytes, return eight,
+erase all staging, retain no user pointer or output byte, and publish one
+private failed-condition-output fact. Output after a successful, absent, or
+wrong metadata observation, or from a partial, unreadable, wrapping,
+cross-hole, duplicate, skipped, out-of-order, or non-exact candidate SHALL be
+invalid.
+
+The following `pwd\n` SHALL require the failed-condition-output fact and
+otherwise conform to the predecessor rule. Successful terminal handling SHALL
+require the fifth command publication live, erase and prove the complete
+command buffer empty, consume its owner, and clear the directory generation,
+missing-path observation, failed-condition-output observation, and every
+command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, the metadata request SHALL bind to syscall
+262, `AT_FDCWD=-100`, flags zero, exact `/missing\0`, one complete checked
+writable 144-byte native `stat` candidate, and result `-ENOENT`. The selected
+output SHALL bind to syscall 1 on descriptor one with count and result eight.
+Input results SHALL be 11, 5, 33, 4, and 5. The stack SHALL remain the affine
+two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural and
+physical evidence SHALL certify profile distinction, exact negative lookup,
+unchanged failed-call candidate, application-selected false-edge output, exact
+output transfer, state and owner transitions, prompt ordering, later `pwd`,
+terminal erasure, and rollback. This rule SHALL NOT add arbitrary conditions,
+relative paths, traversal, successful non-root objects, directory enumeration,
+file contents, mutation, dynamic applications, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

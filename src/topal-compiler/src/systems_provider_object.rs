@@ -19,7 +19,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/185";
+    "topal.provider-object.x86_64-qemu-pc-q35/186";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -11191,9 +11191,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     for (index, chunk) in [
         *b"test -d ",
-        *b"/ && ech",
-        *b"o root-d",
-        *b"irectory",
+        *b"/missing",
+        *b" || echo",
+        *b" missing",
         *b"\n\0\0\0\0\0\0\0",
     ]
     .into_iter()
@@ -11209,9 +11209,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     }
     for (index, chunk) in [
         *b"test -d ",
-        *b"/ && ech",
-        *b"o root-d",
-        *b"irectory",
+        *b"/missing",
+        *b" || echo",
+        *b" missing",
         *b"\n\0\0\0\0\0\0\0",
     ]
     .into_iter()
@@ -11270,9 +11270,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     for (index, chunk) in [
         *b"test -d ",
-        *b"/ && ech",
-        *b"o root-d",
-        *b"irectory",
+        *b"/missing",
+        *b" || echo",
+        *b" missing",
         *b"\n\0\0\0\0\0\0\0",
     ]
     .into_iter()
@@ -12315,7 +12315,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-root-condition-write")?;
     code.bytes(&[0x48, 0x83, 0xff, 1]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0xfa, 15]);
+    code.bytes(&[0x48, 0x83, 0xfa, 8]);
     code.jump_if(0x85, "fatal");
     emit_static_process_active_stack_validation(&mut code);
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
@@ -12327,7 +12327,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xfe]);
     code.bytes(&0x005f_7000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 15]);
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 8]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x48, 0x3d]);
     code.bytes(&0x0061_9000_u32.to_le_bytes());
@@ -12342,7 +12342,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xfe]);
     code.bytes(&0x007f_e000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 15]);
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 8]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x48, 0x3d]);
     code.bytes(&0x0080_0000_u32.to_le_bytes());
@@ -12366,32 +12366,25 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[0]);
     code.jump_if(0x85, "fatal");
-    for offset in [744_u32, 752] {
-        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0]);
-        code.jump_if(0x85, "fatal");
-    }
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
     code.bytes(&320_u32.to_le_bytes());
-    // Stage all fifteen application bytes before comparison or publication.
+    // Stage all eight application bytes before comparison or publication.
     code.bytes(&[0x45, 0x31, 0xd2]);
     code.bind("static-process-shell-root-condition-write-copy")?;
     code.bytes(&[0x42, 0x8a, 0x04, 0x16]);
     code.bytes(&[0x65, 0x41, 0x88, 0x82]);
     code.bytes(&744_u32.to_le_bytes());
-    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 15]);
+    code.bytes(&[0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 8]);
     code.jump_if(0x85, "static-process-shell-root-condition-write-copy");
-    for (offset, expected) in [
-        (744_u32, u64::from_le_bytes(*b"root-dir")),
-        (752, u64::from_le_bytes(*b"ectory\n\0")),
-    ] {
-        code.bytes(&[0x48, 0xb8]);
-        code.bytes(&expected.to_le_bytes());
-        code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-        code.jump_if(0x85, "fatal");
-    }
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"missing\n").to_le_bytes());
+    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.jump_if(0x85, "fatal");
     code.bytes(&[0x45, 0x31, 0xd2]);
     code.bind("static-process-shell-root-condition-write-output")?;
     code.bind("static-process-shell-root-condition-write-uart-ready")?;
@@ -12400,22 +12393,20 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x66, 0xba, 0xf8, 0x03]);
     code.bytes(&[0x65, 0x41, 0x8a, 0x82]);
     code.bytes(&744_u32.to_le_bytes());
-    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 15]);
+    code.bytes(&[0xee, 0x49, 0xff, 0xc2, 0x49, 0x83, 0xfa, 8]);
     code.jump_if(0x85, "static-process-shell-root-condition-write-output");
 
-    for offset in [744_u32, 752] {
-        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0, 0, 0, 0]);
-        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0]);
-        code.jump_if(0x85, "fatal");
-    }
+    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0, 0, 0, 0]);
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&744_u32.to_le_bytes());
+    code.bytes(&[0]);
+    code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
     code.bytes(&[1]);
-    code.bytes(&[0xb8, 15, 0, 0, 0]);
+    code.bytes(&[0xb8, 8, 0, 0, 0]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-pwd-write")?;
@@ -13191,7 +13182,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x81, 0xfe]);
     code.bytes(&0x005f_7000_u32.to_le_bytes());
     code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 2]);
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 9]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x48, 0x3d]);
     code.bytes(&0x0061_9000_u32.to_le_bytes());
@@ -13215,54 +13206,15 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     )?;
     code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
     code.bytes(&320_u32.to_le_bytes());
-    code.bytes(&[0x66, 0x81, 0x3e]);
-    code.bytes(&u16::from_le_bytes(*b"/\0").to_le_bytes());
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&u64::from_le_bytes(*b"/missing").to_le_bytes());
+    code.bytes(&[0x48, 0x39, 0x06]);
     code.jump_if(0x85, "fatal");
-    for (offset, value) in [
-        (744_u32, 0_u64),
-        (752, 3),
-        (760, 2),
-        (768, 0x41ed),
-        (776, 0),
-        (784, 0),
-        (792, 0),
-        (800, 4096),
-        (808, 0),
-        (816, 0),
-        (824, 0),
-        (832, 0),
-        (840, 0),
-        (848, 0),
-        (856, 0),
-        (864, 0),
-        (872, 0),
-        (880, 0),
-    ] {
-        code.bytes(&[0x48, 0xb8]);
-        code.bytes(&value.to_le_bytes());
-        code.bytes(&[0x65, 0x48, 0x89, 0x04, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-    }
-    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25]);
-    code.bytes(&328_u32.to_le_bytes());
-    for (index, staging_offset) in (744_u32..888).step_by(8).enumerate() {
-        let user_offset = u32::try_from(index * 8).expect("bounded root stat offset");
-        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
-        code.bytes(&staging_offset.to_le_bytes());
-        if user_offset == 0 {
-            code.bytes(&[0x48, 0x89, 0x02]);
-        } else if user_offset <= 0x7f {
-            code.bytes(&[0x48, 0x89, 0x42, user_offset as u8]);
-        } else {
-            code.bytes(&[0x48, 0x89, 0x82]);
-            code.bytes(&user_offset.to_le_bytes());
-        }
-    }
-    code.bytes(&[0x0f, 0xae, 0xf8]);
+    code.bytes(&[0x80, 0x7e, 8, 0]);
+    code.jump_if(0x85, "fatal");
+    // Negative lookup publishes no metadata: prove all private transfer
+    // staging remains empty before recording the missing-path observation.
     for offset in (744_u32..888).step_by(8) {
-        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0, 0, 0, 0]);
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0]);
@@ -13272,7 +13224,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&743_u32.to_le_bytes());
     code.bytes(&[4]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 30]);
-    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff]);
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-shell-mailpath-stat-miss")?;
@@ -17648,22 +17600,20 @@ assert bytes(output) == block[32:]
                 && shell_continuation
                     .windows(10)
                     .any(|window| window
-                        == [0x48, 0xb8, b'/', b' ', b'&', b'&', b' ', b'e', b'c', b'h'])
+                        == [0x48, 0xb8, b'/', b'm', b'i', b's', b's', b'i', b'n', b'g'])
                 && shell_continuation
                     .windows(10)
                     .any(|window| window
-                        == [0x48, 0xb8, b'o', b' ', b'r', b'o', b'o', b't', b'-', b'd'])
+                        == [0x48, 0xb8, b' ', b'|', b'|', b' ', b'e', b'c', b'h', b'o'])
                 && shell_continuation
                     .windows(10)
                     .any(|window| window
-                        == [0x48, 0xb8, b'i', b'r', b'e', b'c', b't', b'o', b'r', b'y'])
-                && shell_continuation
-                    .windows(10)
-                    .any(|window| window
-                        == [0x48, 0xb8, b'r', b'o', b'o', b't', b'-', b'd', b'i', b'r'])
+                        == [0x48, 0xb8, b' ', b'm', b'i', b's', b's', b'i', b'n', b'g'])
+                && shell_continuation.windows(10).any(|window| window
+                    == [0x48, 0xb8, b'm', b'i', b's', b's', b'i', b'n', b'g', b'\n'])
                 && shell_continuation.windows(19).any(|window| window
                     == [
-                        0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 15, 0, 0, 0, 0xb8, 1, 0, 0, 0,
+                        0xbf, 1, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 8, 0, 0, 0, 0xb8, 1, 0, 0, 0,
                         0x0f,
                     ])
                 && shell_continuation
@@ -17689,7 +17639,7 @@ assert bytes(output) == block[32:]
                     .windows(11)
                     .any(|window| window
                         == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b]),
-            "clean process fixture must consume echo, chdir root, evaluate and publish the root condition, refill pwd, output root, refill exit, and terminate"
+            "clean process fixture must consume echo, chdir root, evaluate and publish the missing-directory condition, refill pwd, output root, refill exit, and terminate"
         );
         assert_eq!(
             process_enter
@@ -18044,26 +17994,29 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(6)
                     .any(|window| window == [0x81, 0xff, 0x9c, 0xff, 0xff, 0xff])
+                && process_enter.windows(10).any(|window| {
+                    window == [0x48, 0xb8, b'/', b'm', b'i', b's', b's', b'i', b'n', b'g']
+                })
                 && process_enter
-                    .windows(5)
-                    .any(|window| window == [0x66, 0x81, 0x3e, b'/', 0])
+                    .windows(7)
+                    .any(|window| window == [0x48, 0xc7, 0xc0, 0xfe, 0xff, 0xff, 0xff])
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe7, 0x02, 0, 0, 4])
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 30]),
-            "root directory test must publish the exact command, dispatch newfstatat for slash, publish complete metadata, and advance to pwd"
+            "missing-directory test must publish the exact command, dispatch newfstatat for the absent path, preserve output memory, and advance to selected output"
         );
         assert!(
             process_enter.windows(10).any(|window| {
-                window == [0x48, 0xb8, b'/', b' ', b'&', b'&', b' ', b'e', b'c', b'h']
+                window == [0x48, 0xb8, b'/', b'm', b'i', b's', b's', b'i', b'n', b'g']
             }) && process_enter.windows(10).any(|window| {
-                window == [0x48, 0xb8, b'o', b' ', b'r', b'o', b'o', b't', b'-', b'd']
+                window == [0x48, 0xb8, b' ', b'|', b'|', b' ', b'e', b'c', b'h', b'o']
             }) && process_enter.windows(10).any(|window| {
-                window == [0x48, 0xb8, b'i', b'r', b'e', b'c', b't', b'o', b'r', b'y']
+                window == [0x48, 0xb8, b' ', b'm', b'i', b's', b's', b'i', b'n', b'g']
             }) && process_enter.windows(10).any(|window| {
-                window == [0x48, 0xb8, b'r', b'o', b'o', b't', b'-', b'd', b'i', b'r']
+                window == [0x48, 0xb8, b'm', b'i', b's', b's', b'i', b'n', b'g', b'\n']
             }) && process_enter
                 .windows(9)
                 .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, 1])
@@ -18073,7 +18026,7 @@ assert bytes(output) == block[32:]
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x78, 0x03, 0, 0, 0]),
-            "root directory condition must publish the complete command and exact output, gate pwd on its private observation, and terminally clear it"
+            "missing-directory condition must publish the complete command and exact false-edge output, gate pwd on its private observation, and terminally clear it"
         );
         assert!(
             process_enter
