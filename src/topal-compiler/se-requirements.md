@@ -2156,6 +2156,46 @@ distinction, and unchanged external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` and
 `TK-DEC-234`.
 
+The bounded shell profile may extend the same third publication to the exact
+263-byte command ending in
+`echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read\n`.
+After every predecessor fact and `busybox-open\n`, the clean profile shall
+issue four direct x86-64 syscall-0 requests. The external profile shall first
+issue syscall 16 twice with `TCGETS=0x5401` and once with `TCSETS=0x5402` on
+descriptor three and its complete observed stack candidate; each shall return
+`-ENOTTY`. Before every external read, syscall 7 shall receive one exact
+eight-byte descriptor-three `POLLIN` entry, `nfds=1`, and timeout `-1`; shall
+validate first-use zero or retained `POLLIN` in `revents`; shall publish
+`POLLIN`; shall return one; and shall authorize only the next read.
+
+Both profiles shall issue four ordered syscall-0 requests on descriptor three,
+each with count one and the next byte of one complete writable candidate. The
+provider shall validate the live immutable artifact-bound description,
+current offset, sealed continuation, complete candidate, hierarchy, stack,
+dispositions, command owner, exact profile-specific terminal-probe count, and
+readiness state before returning exact bytes `0x7f`, `E`, `L`, and `F` through
+private kernel staging, reading back each publication, erasing staging,
+consuming any external readiness fact, and advancing the description from
+offset zero to four. It shall retain no user pointer.
+
+After the fourth successful read, the external profile shall issue one
+`TCGETS` and one `TCSETS` request with the same checked `-ENOTTY` result.
+Both applications shall then issue one syscall-1 request for exact
+`busybox-read\n`; the provider shall validate and stage all thirteen bytes,
+publish them, return thirteen, erase staging, and record one private
+header-read output fact. The later prompt and profile-specific `pwd` shall
+require that fact while descriptor three remains live at offset four.
+Terminal handling shall prove and revoke the description, offset,
+terminal-probe counter, and pending-readiness fact; clear the new output fact
+and every predecessor fact; and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 263-byte command, exact
+profile-specific terminal probes and readiness calls, four exact read arguments,
+results and bytes, artifact identity, offset progression, application-selected
+output, description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` and
+`TK-DEC-235`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

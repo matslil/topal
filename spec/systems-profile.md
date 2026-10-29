@@ -5607,6 +5607,73 @@ rollback. This rule SHALL NOT add content reads, seeks, mapping, execution,
 arbitrary opens, mutation, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001 — Static-process bin-busybox header read
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor transition through
+the read-only-open output. The clean application MAY then issue four ordered
+reads directly. The pinned external application MAY instead issue two
+`TCGETS` requests and one `TCSETS` request against descriptor three before
+the reads. Each request SHALL use its qualified complete stack candidate and
+return `ENOTTY`. Before each external read, the application SHALL issue one
+`poll` containing descriptor three, `POLLIN`, `nfds=1`, and timeout `-1`. The
+first poll entry SHALL have zero `revents`; each later entry MAY retain the
+preceding `POLLIN`. The provider SHALL validate the exact complete poll entry,
+publish only `POLLIN` to `revents`, return one, and record one readiness fact
+consumable only by the immediately following read.
+
+Each of the four ordered reads SHALL request one byte into the next byte of
+one complete writable candidate. Before each transfer, the provider SHALL
+validate the live process, sealed continuation, checked hierarchy, stack,
+dispositions, command owner, immutable artifact-bound description and rights,
+current offset, complete nonwrapping candidate, profile-specific terminal-probe
+count, and readiness state. It SHALL transfer exact bytes `0x7f`, `E`,
+`L`, and `F` in order, return one for every call, consume any external
+readiness fact, and advance the description from offset zero to four. A wrong
+descriptor, count, candidate, order, offset, content source, partial extent,
+unreadable or unwritable extent, duplicate, predecessor-incomplete, missing
+or duplicate readiness, or post-output request SHALL be invalid.
+
+Every byte SHALL cross fixed private kernel staging before publication. The
+provider SHALL read back the published byte, erase staging, and retain no
+pointer. After its fourth read, the pinned external application SHALL issue
+one `TCGETS` request followed by one `TCSETS` request on descriptor three;
+both SHALL use the qualified complete stack candidate and return `ENOTTY`.
+The application SHALL then consume the successful reads to issue one
+standard-output write containing exact `busybox-read\n`. The provider SHALL
+validate and stage all thirteen bytes, publish them, return thirteen, erase
+staging, and record one private header-read output fact. The following prompt
+and `pwd\n` SHALL require that fact while the description remains live at
+offset four. Terminal handling SHALL prove and revoke the description,
+offset, terminal-probe counter, and pending-readiness fact; clear all new and
+predecessor output, enumeration, descriptor, metadata, credential, and
+command-time facts; and preserve unchanged affine rollback.
+
+For qualified x86-64 realization, each content transfer SHALL bind to syscall
+0 on descriptor three with count and result one and consecutive writable
+candidates. The external profile's terminal requests SHALL bind to syscall 16
+with descriptor three, request `0x5401` or `0x5402`, the qualified stack
+candidate, and result `-25`. Its readiness requests SHALL bind to syscall 7
+with one exact eight-byte `pollfd`, `nfds=1`, timeout `-1`, result one, and
+returned `POLLIN`. Selected output SHALL bind to syscall 1 on descriptor one
+with count and result thirteen. Input results SHALL be 11, 5, 263, 4, and 5.
+Structural and physical evidence SHALL certify every predecessor transition,
+exact artifact identity and ELF prefix, the profile-specific terminal-probe
+and readiness sequence, all four read arguments, results and bytes, immutable
+read-only description lifetime and offset, selected success flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal revocation, cleanup, and rollback. This rule SHALL NOT add general
+terminal control or polling, seeking, later contents, EOF, mapping, execution,
+arbitrary reads or opens, mutation, dynamic applications, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
