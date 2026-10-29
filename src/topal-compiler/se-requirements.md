@@ -2081,6 +2081,30 @@ erasure, prompt distinction, and unchanged external compatibility. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001` and
 `TK-DEC-231`.
 
+The bounded shell profile may extend the same third publication to the exact
+129-byte command ending in
+`test -x /bin/busybox && echo busybox-executable\n`. Both clean and pinned
+external profiles shall first complete the qualified regular-file metadata and
+`busybox-file\n` output transitions. They shall then repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero, followed by syscall 107 with no arguments. The provider shall
+republish the identical immutable inode-five mode `0555`, require all ordered
+predecessor facts, return effective UID zero, and record private repeated-
+metadata and credential facts.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-executable\n`; the provider shall validate and stage all
+nineteen bytes, publish them, return nineteen, erase staging, and record one
+private executable-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear every access,
+metadata, enumeration, description, output, and command-time fact and preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+129-byte command, exact repeated metadata and credential requests,
+application-selected output, ordered observations, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` and
+`TK-DEC-232`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

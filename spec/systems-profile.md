@@ -5471,6 +5471,51 @@ terminal cleanup, and rollback. This rule SHALL NOT add contents, opening,
 execution, arbitrary traversal, mutation, dynamic applications, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001 — Static-process bin-busybox executable condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor enumeration, metadata,
+close, and output transition. It MAY then repeat the complete metadata query
+for exact `/bin/busybox\0` and query its effective UID. The provider SHALL
+require the regular-file condition fact, validate the live process, sealed
+continuation, checked hierarchy, stack, dispositions, complete readable
+pathname and writable metadata candidate, republish the identical immutable
+inode-five mode `0555`, and return effective UID zero. A wrong, partial,
+unreadable, unwritable, wrapping, pre-metadata, duplicate, wrong-mode,
+differently credentialed, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes and record private
+ordered repeated-metadata and credential facts. The application SHALL consume
+those facts to derive execute access and issue one standard-output write
+containing exact `busybox-executable\n`. The provider SHALL validate and stage
+all nineteen bytes, publish them, return nineteen, erase staging, and record
+one private executable-condition output fact. The following prompt and
+`pwd\n` SHALL require that fact. Terminal handling SHALL clear all repeated-
+metadata, credential, output, enumeration, descriptor, and command-time facts
+with unchanged affine rollback.
+
+For qualified x86-64 realization, repeated metadata SHALL bind to syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or
+heap candidate, flags zero, and the identical result defined by
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001`. Effective UID
+SHALL bind to syscall 107 with result zero. Selected output SHALL bind to
+syscall 1 on descriptor one with count and result nineteen. Input results
+SHALL be 11, 5, 129, 4, and 5. Structural and physical evidence SHALL certify
+every predecessor transition, exact repeated metadata and credential queries,
+credential and mode derivation, selected condition flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This
+rule SHALL NOT add opening, contents, mapping, execution, arbitrary permission
+checks, mutation, dynamic applications, processes, containers, or
+virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
