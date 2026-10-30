@@ -5819,6 +5819,109 @@ failure after consumption SHALL be terminal. This rule SHALL NOT add arbitrary
 executables, dynamic interpreters, scripts, general vector bounds, process
 creation, waiting, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ARGUMENTS-001 — Runtime exec argument transfer
+
+A separately selected reusable static-process profile MAY refine
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001` for the same sealed
+executable. It SHALL transport runtime values rather than compare later
+arguments with applet or payload constants. Selection SHALL NOT grant another
+executable, interpreter, credential, mapping or process authority.
+
+Before consuming the old image, the adapter SHALL copy the complete pathname,
+argument vector, argument strings and retained four-entry environment into
+kernel-private storage. Each native vector entry and byte SHALL be checked
+against the current readable mapping set with overflow-free arithmetic before
+access. Native pointers SHALL NOT become Topal references. The copied pathname
+SHALL be `/bin/busybox`; argv SHALL contain one through eight non-null strings
+followed by a null pointer, argv[0] SHALL equal that pathname, and the strings
+SHALL occupy at most 256 bytes including every terminator. Empty later strings
+SHALL be valid. The environment SHALL be the four entries defined by
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001`.
+
+Null or inaccessible candidates SHALL return `EFAULT`. A pathname lacking a
+terminator in 256 bytes SHALL return `ENAMETOOLONG`. A complete unsupported
+pathname SHALL return `ENOENT`. An empty vector, invalid argv[0] or unsupported
+environment SHALL return `EINVAL`. A ninth non-null argument entry or strings
+exceeding the aggregate bound SHALL return `E2BIG`. The adapter SHALL read only
+the next checked vector entry when deciding termination or count overflow;
+it SHALL NOT dereference a ninth argument string. Address overflow SHALL be
+an inaccessible candidate. Errors SHALL erase private staging and return to
+the original continuation with all non-result syscall registers preserved.
+They SHALL NOT alter the old image, descriptor lifetime/offset, TLS, signal
+state, random generator or command ownership. Qualification SHALL test failure
+after a nonempty copied prefix followed by successful exec on that owner.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-STACK-001 — Value-derived replacement stack
+
+Only successful complete argument validation SHALL authorize the destructive
+image transition. It SHALL retain the same process identity, credentials, cwd
+and eligible descriptions, restore the sealed image bytes, clear and verify
+BSS/anonymous storage, revoke old mappings, and reset image/thread/register
+state as required by the predecessor replacement rule. A failure after that
+commit point SHALL be terminal and SHALL NOT resume the old image.
+
+The new initial stack SHALL contain the copied argc, arguments in input order,
+their independent new-image addresses, one argv terminator, the retained
+environment and its terminator, the complete ABI auxiliary vector, a fresh
+`AT_RANDOM` object and exactly one `AT_NULL`. Alignment and all extents SHALL
+be derived with checked arithmetic. Staged payload bytes SHALL be preserved
+exactly, including empty arguments; old user pointers SHALL NOT be installed
+in the new vector. Staging SHALL be erased before the new image is entered.
+Startup destinations SHALL be admitted by complete writable stack extents and
+the active mapping identity; variable argc SHALL NOT require a different
+hard-coded output address. Credential observations SHALL remain coherent with
+the auxiliary-vector identity constructed for that generation.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001 — Request-selected console bytes
+
+For a live replacement process in its admitted application phase, console
+write SHALL accept descriptor one or two and a requested length from zero
+through 256. It SHALL check the descriptor first, the length bound second,
+and a nonempty complete readable candidate third. Invalid descriptors SHALL
+return `EBADF`, excessive length SHALL return `EINVAL`, and inaccessible or
+overflowing nonempty extents SHALL return `EFAULT`. Zero-length writes to live
+standard descriptions SHALL return zero without inspecting the candidate.
+
+For nonempty success, the entire extent SHALL be copied into private kernel
+staging before any byte is published. The service SHALL publish exactly those
+bytes in order, return the requested count, erase staging and preserve the
+syscall continuation/register contract. It SHALL NOT substitute, validate or
+select output using an applet name, expected payload or single return-site
+oracle. Errors SHALL publish no bytes and SHALL preserve process and descriptor
+state. This rule SHALL NOT grant file, pipe, socket or arbitrary descriptor
+write authority.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXIT-STATUS-001 — Status-preserving terminal cleanup
+
+Terminal handling SHALL retain the low eight bits of the native exit-status
+integer as the observable process status. Every status SHALL use the same
+image, mapping, random, thread and descriptor reclamation protocol; nonzero
+status SHALL NOT be treated as a kernel invariant failure. Qualification MAY
+emit one clearly kernel-owned status witness after application output and
+before returning the completed-image owner. That witness SHALL encode the
+status derived from the actual exit request and SHALL NOT stand in for an
+application output or waiting-parent implementation. Physical evidence SHALL
+distinguish at least statuses zero and one and verify complete rollback for
+both.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-COMMAND-INPUT-001 — Runtime final command input
+
+The reusable static-process profile SHALL retain the preceding shell corpus
+and receive its final command through the declared serial-input capability.
+The final refill SHALL validate the writable candidate before polling, stage
+at most the lesser of its requested count and 256 bytes, and finish on newline
+or that bound. It SHALL publish and return exactly the received prefix and
+erase staging. The provider SHALL NOT construct or compare that command with
+a compiled command string. This observation SHALL precede the existing later
+probe-input observation without consuming any of that later input.
+
+Qualification SHALL supply controlled `true`, `false` and multi-argument
+`echo` commands and varied payload bytes to the pinned external executable,
+verify actual application output and exit status, and retain complete positive
+and negative argument-transfer evidence from the clean fixture. This command
+source SHALL NOT imply that unsupported shell operations or syscalls are
+implemented. Ordinary Topal nondeterminism and effects SHALL remain unchanged.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

@@ -2288,6 +2288,34 @@ descriptor inheritance, startup, termination, cleanup, and rollback. This
 realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001` and
 `TK-DEC-238`.
 
+The reusable static-process realization shall replace exact later-argument
+comparison with checked runtime transport of one through eight arguments and
+at most 256 aggregate bytes including terminators. It shall enforce complete
+path/vector/string/environment bounds and the declared Linux input errors,
+erase private staging on every rejected prefix, preserve the original owner
+until commit, and construct a fresh aligned ABI stack from the copied values.
+Startup stack destinations and credential facts shall derive from complete
+mapping extents and the new auxiliary-vector identity. Console write shall
+stage caller-selected standard-output/error bytes with zero-length, descriptor,
+size and access behavior matching the formal rule; it shall not compare output
+with qualification payloads. Terminal cleanup shall retain the low eight status
+bits and reclaim the same resources for every application status. Final shell
+refill shall observe bounded serial input rather than fabricate a compiled exec
+command, with the later probe input remaining a distinct observation.
+
+Compiler and physical qualification shall cover runtime payload variation,
+empty and maximum-sized arguments, count/aggregate overflow, inaccessible and
+unterminated candidates, nonempty failed prefixes and retry on the unchanged
+owner, fresh image state, descriptor inheritance, staged output/error atomicity,
+register restoration, statuses zero/one, and full rollback. The external corpus
+shall execute pinned BusyBox `true`, `false` and multi-argument `echo` through
+the same services. This realizes `TK-DEC-239` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ARGUMENTS-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-STACK-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXIT-STATUS-001`, and
+`TOPAL-SYSTEMS-STATIC-PROCESS-COMMAND-INPUT-001`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
