@@ -557,7 +557,27 @@ registers, and restore or scrub every private register, stack, translation-
 status, and process-context value before rollback. Qualification shall execute
 the pinned BusyBox `echo` applet through its one-byte newline and zero exit
 without committing its bytes and shall not generalize acceptance to another
-executable, stack shape, argument vector, or syscall sequence.
+executable, stack shape, argument vector, or syscall sequence merely from that
+evidence. Separately specified systems refinements may extend those bounds
+only with their own checked contracts, error cases and physical qualification.
+
+The reusable static-process refinement shall accept one through eight copied
+arguments occupying at most 256 bytes including terminators for the sealed
+executable. It shall preserve runtime payload bytes, reject inaccessible and
+oversized inputs before image consumption, erase staging on rejection, and
+return the original image owner and its state unchanged. Committed replacement
+shall construct an ABI-aligned stack from the checked aggregate, reset image
+and thread state, preserve process identity and eligible descriptions, and
+reclaim all resources after termination. Startup outputs shall be validated by
+mapping identity and complete extents rather than argument-dependent numeric
+addresses. Console writes shall stage zero through 256 request-selected bytes
+for standard output/error, return declared descriptor/range/size errors without
+partial publication, and preserve the syscall register contract. Termination
+shall retain the low eight bits of the native status and perform the same
+cleanup for successful and nonzero application results. Qualification shall
+cover positive and negative transfers, multiple applets and payload values,
+observable status, and complete rollback. Native vectors, registers and stack
+mechanics shall remain provider-private.
 
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact

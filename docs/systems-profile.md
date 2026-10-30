@@ -680,6 +680,18 @@ affine completed-process owner. The first x86-64 external qualification invokes
 the pinned BusyBox `true` applet; it is evidence for that exact executable and
 startup path, not a general ELF execution or userspace compatibility claim.
 
+A separately qualified reusable static-process refinement may transport
+runtime argument values for that same executable. It copies a bounded
+argument aggregate under the process user-transfer authority before consuming
+the old image, returns declared input errors with the original owner unchanged,
+and builds a fresh ABI stack from the copied values. Its console adapter may
+publish bounded caller-owned bytes through live standard descriptions and its
+terminal adapter retains the observable process status. These remain systems
+services with provider-owned ABI layout and entry mechanisms; they do not add
+source pointers, assembly, a general executable namespace, dynamic linking or
+ordinary Topal effects. Payload-specific qualification cases do not authorize
+the provider to substitute constant arguments or output for runtime values.
+
 The bounded initial-configuration refinement may answer one optional
 configuration-file metadata probe for a sealed initial process. It recognizes
 the complete immutable path `/etc/busybox.conf`, requires a complete writable
