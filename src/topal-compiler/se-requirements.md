@@ -2196,6 +2196,39 @@ distinction, and unchanged external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` and
 `TK-DEC-235`.
 
+The bounded shell profile may extend the same third publication to the exact
+294-byte command ending in
+`echo busybox-read; exec 3<&-; echo busybox-close\n`. After every predecessor
+fact and `busybox-read\n`, both profiles shall issue syscall 72 with descriptor
+three, `F_DUPFD_CLOEXEC=0x406`, and minimum ten. The provider shall validate
+the live artifact-bound description at offset four, exact command and minimum,
+absence of a saved mapping, sealed continuation, hierarchy, stack,
+dispositions, and command owner before binding lowest-available descriptor ten
+to the same description, marking only that mapping close-on-exec, and returning
+ten.
+
+Both profiles shall then issue syscall 3 on descriptor three and syscall 3 on
+descriptor ten. The first shall return zero, remove descriptor three, and
+retain the immutable description and offset through descriptor ten. The second
+shall return zero, remove descriptor ten, destroy the last description
+reference, and revoke the offset, ordered terminal-probe counter, and readiness
+state. After the second close, both applications shall issue one syscall-1
+request for exact `busybox-close\n`; the provider shall validate and stage all
+fourteen bytes, publish them, return fourteen, erase staging, and record one
+private explicit-close output fact.
+
+The later prompt and profile-specific `pwd` shall require the output fact and
+absence of both nonstandard mappings and their description. Terminal handling
+shall prove and clear the redirection and output facts with every predecessor
+fact without revoking the destroyed description again, and shall preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+294-byte command, exact duplicate arguments and result, shared-description
+identity and offset, ordered closes and results, last-close destruction,
+application-selected output, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001` and
+`TK-DEC-236`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

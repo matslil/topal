@@ -5674,6 +5674,60 @@ terminal control or polling, seeking, later contents, EOF, mapping, execution,
 arbitrary reads or opens, mutation, dynamic applications, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001 — Static-process bin-busybox explicit close
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read; exec 3<&-; echo busybox-close\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+After every predecessor transition through the header-read output, the
+application SHALL issue one descriptor-control request on descriptor three
+that selects a close-on-exec duplicate with minimum descriptor ten. The
+provider SHALL validate the live process, sealed continuation, checked
+hierarchy, stack, dispositions, command owner, immutable artifact-bound
+description and rights, current offset four, absence of a saved mapping, exact
+command and minimum, and lowest-available result. It SHALL bind exact
+descriptor ten to the same description and offset, mark only that mapping
+close-on-exec, return ten, and preserve one affine description shared by both
+mappings. A wrong source, command, minimum, result, lifecycle, owner,
+description, rights, offset, or duplicate request SHALL be invalid.
+
+The application SHALL next close descriptor three and then descriptor ten.
+The first close SHALL return zero, remove only descriptor three, and retain the
+description unchanged through descriptor ten. The second close SHALL return
+zero, remove descriptor ten, destroy the last description reference, and
+revoke the offset, ordered terminal-probe counter, and readiness state. A wrong
+descriptor, order, duplicate close, or later use of a removed mapping SHALL be
+invalid.
+
+After the last close, the application SHALL issue one standard-output write
+containing exact `busybox-close\n`. The provider SHALL validate and stage all
+fourteen bytes, publish them, return fourteen, erase staging, and record one
+private explicit-close output fact. The following prompt and `pwd\n` SHALL
+require that fact and SHALL require descriptor three, descriptor ten, and the
+shared description to be absent. Terminal handling SHALL prove and clear the
+bounded redirection and output facts with all predecessor facts, SHALL NOT
+revoke the already destroyed description again, and SHALL preserve unchanged
+affine rollback.
+
+For qualified x86-64 realization, duplication SHALL bind to syscall 72 with
+descriptor three, command `0x406`, minimum ten, and result ten. Mapping removal
+SHALL bind to syscall 3 first on descriptor three and then on descriptor ten,
+each with result zero. Selected output SHALL bind to syscall 1 on descriptor
+one with count and result fourteen. Input results SHALL be 11, 5, 294, 4, and
+5. Structural and physical evidence SHALL certify every predecessor
+transition, exact shared-description identity and offset, close-on-exec
+metadata, lowest-result selection, ordered mapping removal, last-close
+destruction, selected success flow and output, observation ordering, staging
+erasure, later `pwd`, prompt distinction, terminal proof, cleanup, and
+rollback. This rule SHALL NOT add general descriptor control or allocation,
+exec-time close processing, arbitrary close, seeking, mapping, execution,
+mutation, dynamic applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
