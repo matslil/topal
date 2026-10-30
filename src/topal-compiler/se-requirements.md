@@ -1912,6 +1912,323 @@ This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` and
 `TK-DEC-225`.
 
+The bounded static-process shell-root-glob-enumeration increment shall replace
+the third command with exact `echo /*\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall open exact `/\0` relative to `AT_FDCWD` with
+read-only, nonblocking, close-on-exec, directory-only flags as lowest-free
+descriptor three. The provider shall retain one immutable sealed-root
+description with private position and no host-derived state.
+
+Both applications shall issue x86-64 syscall 217 on descriptor three through a
+complete checked writable clean-stack or external-heap candidate and request
+the qualified profile count. The provider shall stage and publish exact
+coherent 24-byte `.` and `..` directory records, return 48, erase staging, and
+advance the private position. A second exact request shall return EOF without
+output. The applications shall explicitly close descriptor three; the
+provider shall consume the description and free the slot while preserving
+private enumeration history.
+
+After consuming EOF and close, both applications shall retain the unmatched
+glob and issue one syscall-1 standard-output request for complete exact `/*\n`.
+The provider shall validate and stage the entire three-byte candidate before
+output, return three, erase staging, retain no user pointer or bytes, and
+publish one private glob-output fact. The later profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every enumeration,
+description, output, and command-time fact and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+open flags and pathname, checked candidates, native records, position, EOF,
+explicit close, application-selected output, observation and ownership
+transitions, prompt ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` and `TK-DEC-226`.
+
+The bounded static-process named-root-glob-match increment shall retain the
+five exact commands and the complete qualified root-description lifecycle. It
+shall refine sealed root with one immutable `bin` directory child at inode
+four and update root's coherent link count to three without granting child
+lookup, open, metadata, or enumeration authority.
+
+Both profiles shall receive three exact ordered 24-byte native directory
+records for `.`, `..`, and `bin`, with root inode three, child inode four,
+offsets one through three, directory type, exact terminated names, and zero
+padding. The provider shall return 72, erase private staging, advance the
+description, return EOF on the second qualified request, and require explicit
+close exactly as in the predecessor.
+
+After EOF and close, both applications shall issue one syscall-1
+standard-output request for complete exact `/bin\n`. The provider shall
+validate and stage the entire five-byte candidate before output, return five,
+erase staging, retain no user pointer or bytes, and publish one private
+matched-glob fact. The later profile-specific `pwd` shall require that fact.
+Terminal handling shall clear every enumeration, description, output, and
+command-time fact and preserve complete rollback of the affine two-page stack.
+Structural and QEMU evidence shall enforce coherent parent metadata, exact
+child identity and records, position, EOF, close, application-selected output,
+observation and ownership transitions, prompt ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` and `TK-DEC-227`.
+
+The bounded static-process named-root-directory-condition increment shall
+replace the third publication with exact
+`echo /*; test -d /bin && echo bin-directory\n`. Both profiles shall first
+complete the qualified root enumeration, close, and `/bin\n` output. They shall
+then issue x86-64 syscall 262 for exact `/bin\0` relative to `AT_FDCWD`, zero
+flags, and a complete checked 144-byte clean-stack or external-heap candidate.
+
+The provider shall publish complete deterministic inode-four directory
+metadata with link count two, mode `0755`, root ownership, zero size and times,
+and 4,096-byte preferred transfer size. It shall verify the complete copy,
+return zero, erase staging, retain no pointer or bytes, and publish one private
+ordered metadata fact. After consuming it, both applications shall issue one
+syscall-1 request for exact `bin-directory\n`; the provider shall validate and
+stage all 14 bytes, publish them, return 14, erase staging, and record one
+private condition-output fact.
+
+The later prompt and profile-specific `pwd` shall require the named condition.
+Terminal handling shall clear every child-metadata, enumeration, description,
+output, and command-time fact and preserve complete rollback. Structural and
+QEMU evidence shall enforce the combined 44-byte command, predecessor match,
+exact lookup and metadata, application-selected output, ordered observations,
+candidate and staging erasure, prompt distinction, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` and
+`TK-DEC-228`.
+
+The bounded static-process empty-bin-glob-enumeration increment shall replace
+the third publication with exact
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, and complete named-child
+metadata lookup. They shall then issue x86-64 syscall 257 for exact `/bin/\0`
+relative to `AT_FDCWD`, flags `0x90800`, mode zero, and result three.
+
+The provider shall bind descriptor three to one immutable inode-four directory
+description at position zero and publish its complete qualified metadata on
+syscall 5. It shall accept one syscall-217 request, stage coherent ordered
+24-byte `.` and `..` records for inode four and parent inode three, copy and
+verify all 48 bytes to a complete checked clean-stack or external-heap
+candidate, erase staging, advance position, and return 48. A following request
+shall return EOF with the candidate unchanged, and syscall 3 shall explicitly
+consume the description.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/*\n`; the provider shall validate and stage all seven bytes,
+publish them, return seven, erase staging, and record one private empty-bin-glob
+output fact. The later prompt and profile-specific `pwd` shall require that
+fact. Terminal handling shall clear every child-metadata, enumeration,
+description, output, and command-time fact and preserve complete rollback.
+Structural and QEMU evidence shall enforce the combined 37-byte command,
+predecessor match and metadata, exact child open, metadata, records, EOF and
+close, application-selected output, ordered observations, candidate and
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` and
+`TK-DEC-229`.
+
+The bounded static-process bin-busybox-glob-match increment shall retain the
+five qualified publications and exact third command
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, named-child metadata lookup,
+exact `/bin/` open, and descriptor metadata query.
+
+The provider shall add exactly one immutable inode-five regular-file `busybox`
+entry beneath inode four. For the qualified syscall-217 request it shall stage
+coherent ordered 24-byte `.` and `..` records followed by one aligned 32-byte
+`busybox` record with next offset three and `DT_REG=8`; copy and verify all 80
+bytes to the complete checked clean-stack or external-heap candidate; erase
+staging; advance position; and return 80. A following request shall return EOF
+with the candidate unchanged, and syscall 3 shall explicitly consume the
+description. The entry identity shall grant no lookup, metadata, content, open,
+or execution authority.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/busybox\n`; the provider shall validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+bin-busybox-glob output fact. The later prompt and profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every child-metadata,
+enumeration, description, output, and command-time fact and preserve complete
+rollback. Structural and QEMU evidence shall enforce the unchanged 37-byte
+command, predecessor match and metadata, exact child-directory open, coherent
+three-record transfer, EOF and close, application-selected matched output,
+ordered observations, candidate and staging erasure, prompt distinction, and
+unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001` and `TK-DEC-230`.
+
+The bounded static-process bin-busybox-file-condition increment shall replace
+the third publication with the exact 80-byte command
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file\n`.
+Both profiles shall first complete all qualified root and child enumeration,
+metadata, close, and output transitions.
+
+They shall then issue x86-64 syscall 262 for exact `/bin/busybox\0` relative
+to `AT_FDCWD`, flags zero, and a complete checked 144-byte clean-stack or
+external-heap candidate. The provider shall publish immutable inode-five
+regular-file metadata with link count one, mode `0555`, root ownership, zero
+size, blocks and times, and 4,096-byte preferred transfer size. It shall verify
+the complete copy, return zero, erase staging, and record one private ordered
+file-metadata fact.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-file\n`; the provider shall validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+file-condition output fact. The later prompt and profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every file-metadata,
+enumeration, description, output, and command-time fact and preserve complete
+rollback. Structural and QEMU evidence shall enforce the complete 80-byte
+command, predecessor enumeration and output, exact lookup and metadata,
+application-selected output, ordered observations, candidate and staging
+erasure, prompt distinction, and unchanged external compatibility. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001` and
+`TK-DEC-231`.
+
+The bounded shell profile may extend the same third publication to the exact
+129-byte command ending in
+`test -x /bin/busybox && echo busybox-executable\n`. Both clean and pinned
+external profiles shall first complete the qualified regular-file metadata and
+`busybox-file\n` output transitions. They shall then repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero, followed by syscall 107 with no arguments. The provider shall
+republish the identical immutable inode-five mode `0555`, require all ordered
+predecessor facts, return effective UID zero, and record private repeated-
+metadata and credential facts.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-executable\n`; the provider shall validate and stage all
+nineteen bytes, publish them, return nineteen, erase staging, and record one
+private executable-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear every access,
+metadata, enumeration, description, output, and command-time fact and preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+129-byte command, exact repeated metadata and credential requests,
+application-selected output, ordered observations, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` and
+`TK-DEC-232`.
+
+The bounded shell profile may extend the same third publication to the exact
+176-byte command ending in
+`test -s /bin/busybox && echo busybox-nonempty\n`. For this extended profile,
+every inode-five metadata publication shall replace the predecessor's zero
+size and blocks with size 2,024,544 and block count 3,955, bound to the complete
+digest-checked static-user boot resource. All other metadata and every ordered
+predecessor transition shall remain unchanged.
+
+After `busybox-executable\n`, both profiles shall repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero. The provider shall require the executable-condition output and
+all predecessor facts, republish the identical artifact-bound metadata, return
+zero, and record one private repeated nonempty-metadata fact.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-nonempty\n`; the provider shall validate and stage all
+seventeen bytes, publish them, return seventeen, erase staging, and record one
+private nonempty-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear both new facts and
+every predecessor fact with complete rollback. Structural and QEMU evidence
+shall enforce the complete 176-byte command, artifact-bound size, exact
+repeated metadata request, application-selected output, observation ordering,
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` and
+`TK-DEC-233`.
+
+The bounded shell profile may extend the same third publication to the exact
+216-byte command ending in
+`exec 3</bin/busybox; echo busybox-open\n`. After every predecessor fact and
+`busybox-nonempty\n`, both profiles shall issue x86-64 syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, flags zero, and mode zero. The
+provider shall validate the complete readable pathname, artifact-bound
+inode-five identity, command owner, live process, and absence of a live
+nonstandard description before binding lowest-free descriptor three to one
+immutable read-only description at offset zero and returning three.
+
+After the successful open, both applications shall issue one syscall-1
+request for exact `busybox-open\n`; the provider shall validate and stage all
+thirteen bytes, publish them, return thirteen, erase staging, and record one
+private read-only-open output fact. The later prompt and profile-specific
+`pwd` shall require that fact while descriptor three remains live. Terminal
+handling shall prove and revoke the description, clear the new output fact
+and every predecessor fact, and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 216-byte command, exact open
+arguments and result, artifact identity, application-selected output,
+description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` and
+`TK-DEC-234`.
+
+The bounded shell profile may extend the same third publication to the exact
+263-byte command ending in
+`echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read\n`.
+After every predecessor fact and `busybox-open\n`, the clean profile shall
+issue four direct x86-64 syscall-0 requests. The external profile shall first
+issue syscall 16 twice with `TCGETS=0x5401` and once with `TCSETS=0x5402` on
+descriptor three and its complete observed stack candidate; each shall return
+`-ENOTTY`. Before every external read, syscall 7 shall receive one exact
+eight-byte descriptor-three `POLLIN` entry, `nfds=1`, and timeout `-1`; shall
+validate first-use zero or retained `POLLIN` in `revents`; shall publish
+`POLLIN`; shall return one; and shall authorize only the next read.
+
+Both profiles shall issue four ordered syscall-0 requests on descriptor three,
+each with count one and the next byte of one complete writable candidate. The
+provider shall validate the live immutable artifact-bound description,
+current offset, sealed continuation, complete candidate, hierarchy, stack,
+dispositions, command owner, exact profile-specific terminal-probe count, and
+readiness state before returning exact bytes `0x7f`, `E`, `L`, and `F` through
+private kernel staging, reading back each publication, erasing staging,
+consuming any external readiness fact, and advancing the description from
+offset zero to four. It shall retain no user pointer.
+
+After the fourth successful read, the external profile shall issue one
+`TCGETS` and one `TCSETS` request with the same checked `-ENOTTY` result.
+Both applications shall then issue one syscall-1 request for exact
+`busybox-read\n`; the provider shall validate and stage all thirteen bytes,
+publish them, return thirteen, erase staging, and record one private
+header-read output fact. The later prompt and profile-specific `pwd` shall
+require that fact while descriptor three remains live at offset four.
+Terminal handling shall prove and revoke the description, offset,
+terminal-probe counter, and pending-readiness fact; clear the new output fact
+and every predecessor fact; and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 263-byte command, exact
+profile-specific terminal probes and readiness calls, four exact read arguments,
+results and bytes, artifact identity, offset progression, application-selected
+output, description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` and
+`TK-DEC-235`.
+
+The bounded shell profile may extend the same third publication to the exact
+294-byte command ending in
+`echo busybox-read; exec 3<&-; echo busybox-close\n`. After every predecessor
+fact and `busybox-read\n`, both profiles shall issue syscall 72 with descriptor
+three, `F_DUPFD_CLOEXEC=0x406`, and minimum ten. The provider shall validate
+the live artifact-bound description at offset four, exact command and minimum,
+absence of a saved mapping, sealed continuation, hierarchy, stack,
+dispositions, and command owner before binding lowest-available descriptor ten
+to the same description, marking only that mapping close-on-exec, and returning
+ten.
+
+Both profiles shall then issue syscall 3 on descriptor three and syscall 3 on
+descriptor ten. The first shall return zero, remove descriptor three, and
+retain the immutable description and offset through descriptor ten. The second
+shall return zero, remove descriptor ten, destroy the last description
+reference, and revoke the offset, ordered terminal-probe counter, and readiness
+state. After the second close, both applications shall issue one syscall-1
+request for exact `busybox-close\n`; the provider shall validate and stage all
+fourteen bytes, publish them, return fourteen, erase staging, and record one
+private explicit-close output fact.
+
+The later prompt and profile-specific `pwd` shall require the output fact and
+absence of both nonstandard mappings and their description. Terminal handling
+shall prove and clear the redirection and output facts with every predecessor
+fact without revoking the destroyed description again, and shall preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+294-byte command, exact duplicate arguments and result, shared-description
+identity and offset, ordered closes and results, last-close destruction,
+application-selected output, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001` and
+`TK-DEC-236`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

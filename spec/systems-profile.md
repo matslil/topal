@@ -5152,6 +5152,582 @@ relative paths, traversal, successful non-root objects, directory enumeration,
 file contents, mutation, dynamic applications, processes, containers, or
 virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001 — Static-process root-glob enumeration
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` by replacing
+its third command publication with exact `echo /*\n`. The five publications
+SHALL therefore be exact `echo topal\n`, `cd /\n`, `echo /*\n`, `pwd\n`, and
+`exit\n`, with the same affine replacement, sealed-tail, pointer-retention,
+input-owner, prompt, and external prompt-absence obligations.
+
+After consuming the third command, either application MAY repeat the qualified
+exact-root metadata request. It SHALL then issue one directory-only open for
+exact `/\0`, relative to its current namespace, read-only, nonblocking, and
+close-on-exec. The provider SHALL validate the live process, sealed
+continuation, checked hierarchy and stack, dispositions, exact predecessor,
+input owner, complete pathname, selectors, flags, and absence of any live
+nonstandard description before allocating lowest-free descriptor three. The
+description SHALL bind the immutable sealed root, position zero, directory
+read authority, and close-on-exec state. No host object or entry SHALL
+participate.
+
+Before enumeration, the application SHALL issue native descriptor metadata on
+descriptor three with one complete checked writable 144-byte stack candidate.
+The provider SHALL validate the live description and candidate, construct a
+complete deterministic sealed-root directory value in fixed private staging,
+copy and verify the complete value, return zero, erase staging, and retain no
+candidate pointer or byte. No host metadata SHALL participate. A missing,
+duplicate, post-enumeration, partial, unreadable, wrapping, or cross-hole
+request SHALL be invalid.
+
+The application SHALL issue one directory-entry read on descriptor three with
+a complete checked writable candidate and one profile-qualified maximum count.
+The provider SHALL validate the description and candidate, construct in fixed
+private staging exactly two coherent native directory records for `.` and `..`,
+bind both identities to the sealed root, mark both as directories, zero all
+record padding, copy exactly the complete record extent, advance the private
+position, return the extent, erase staging, and retain no candidate pointer or
+byte. A second request on the same description and candidate SHALL return zero,
+publish no byte, preserve the advanced position, and record end-of-directory.
+Partial, undersized, unreadable, wrapping, cross-hole, wrong-description,
+duplicate, skipped, out-of-order, or post-close requests SHALL be invalid.
+
+The application SHALL explicitly close descriptor three after EOF. Close SHALL
+consume the description, free the descriptor slot, preserve only private
+enumeration history, and return zero. Because no enumerated child matches `*`,
+the application SHALL retain its literal glob and issue one standard-output
+write containing exact `/*\n`. The provider SHALL require EOF and explicit
+close, validate and stage the complete readable three-byte candidate before
+publication, publish exactly those bytes, return three, erase staging, retain
+no user pointer or output byte, and record one private glob-output fact.
+
+The following `pwd\n` SHALL require the glob-output fact and otherwise conform
+to the predecessor rule. Successful terminal handling SHALL require the fifth
+publication live, erase the command buffer, consume its owner, and clear the
+directory generation, enumeration, EOF, closed-description, glob-output, and
+every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, open SHALL bind to syscall 257,
+`AT_FDCWD=-100`, exact `/\0`, flags `0x90800`, mode zero, and result three.
+Descriptor metadata SHALL bind to syscall 5 on descriptor three, one complete
+144-byte stack candidate, and result zero. Its 18 qwords SHALL be device zero,
+inode three, link count two, mode/UID `0x41ed`, GID/padding zero, device zero,
+size zero, block size 4,096, blocks zero, zero timestamps, and zero reserved
+words.
+Enumeration SHALL bind to syscall 217 on descriptor three, permit count 512
+for the clean stack candidate or 32,768 for the external heap candidate, return
+48 then zero, and publish two exact 24-byte `linux_dirent64` records with
+`DT_DIR`, names `.\0` and `..\0`, and zero padding. Close SHALL bind to syscall
+3 with result zero. Selected output SHALL bind to syscall 1 on descriptor one
+with count and result three. Input results SHALL be 11, 5, 8, 4, and 5. The
+stack SHALL remain the affine two-base-page RW/NX extent at
+`[0x007f_e000, 0x0080_0000)`. Structural and physical evidence SHALL certify
+profile distinction, exact open, records, position, EOF, explicit close,
+literal-glob selection, exact output, ownership transitions, prompt ordering,
+later `pwd`, terminal erasure, and rollback. This rule SHALL NOT add arbitrary
+paths or patterns, child objects, file contents, mutation, seeking, concurrent
+descriptions, dynamic applications, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001 — Static-process named-root glob match
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` while retaining its
+five exact command publications, affine input-owner states, complete open,
+metadata, enumeration, EOF, close, prompt, `pwd`, terminal, and rollback
+obligations.
+
+The sealed filesystem SHALL refine root with exactly one immutable child named
+`bin`, inode four, and directory type. Root SHALL remain inode three and its
+link count SHALL become three. This rule SHALL expose the child only through
+root enumeration; it SHALL NOT grant lookup, open, metadata, or enumeration
+authority for the child.
+
+The first directory-entry read SHALL construct in fixed private staging three
+coherent native records in exact order for `.`, `..`, and `bin`. Their inode
+and next-position pairs SHALL be `(3,1)`, `(3,2)`, and `(4,3)`. Every record
+SHALL have directory type, exact complete name including terminator, and zero
+padding. The provider SHALL copy the complete record extent, advance the
+private description position, return the exact extent, erase staging, and
+retain no candidate pointer or byte. The second qualified request SHALL return
+zero without output and record end-of-directory. Every predecessor invalidity
+condition SHALL remain invalid.
+
+After explicit close, the application SHALL select the one non-dot entry
+matching `*` and issue one standard-output write containing exact `/bin\n`.
+The provider SHALL require EOF and close, validate and stage the complete
+readable five-byte candidate before publication, publish exactly those bytes,
+return five, erase staging, retain no user pointer or output byte, and record
+one private matched-glob fact. The following `pwd\n` SHALL require that fact.
+Terminal handling SHALL clear the child-enumeration, descriptor, output, and
+every command-time fact with unchanged affine rollback.
+
+For qualified x86-64 realization, root metadata's 18-qword value SHALL differ
+from the predecessor only in link count three. Syscall 217 SHALL retain
+descriptor three, count 512 for the clean stack candidate or 32,768 for the
+external heap candidate, return 72 then zero, and publish three exact 24-byte
+`linux_dirent64` records with the identities, offsets, names, `DT_DIR` types,
+and zero padding above. Syscall 3 SHALL close with result zero. Syscall 1 SHALL
+publish exact `/bin\n` on descriptor one with count and result five. Input
+results SHALL remain 11, 5, 8, 4, and 5. The stack SHALL remain the affine
+two-base-page RW/NX extent at `[0x007f_e000, 0x0080_0000)`. Structural and
+physical evidence SHALL certify coherent root and child identity, exact
+records, application-selected matching, EOF, close, output, lifecycle,
+erasure, later `pwd`, terminal cleanup, prompt distinction, and rollback. This
+rule SHALL NOT add arbitrary paths or patterns, child lookup or open, child
+contents, file contents, mutation, seeking, concurrent descriptions, dynamic
+applications, processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001 — Static-process named-root directory condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo bin-directory\n`. The remaining publications
+SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`, with the same
+affine input-owner, prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's exact root open,
+metadata, three-record enumeration, EOF, explicit close, and exact `/bin\n`
+matched output. It MAY then issue one native metadata request for exact
+`/bin\0` relative to its current namespace, with zero flags and one complete
+checked writable candidate. The provider SHALL require the completed named
+match, validate the live process, sealed continuation, checked hierarchy,
+stack, dispositions, complete pathname and candidate, and construct one
+deterministic immutable directory value for the sealed child. That value SHALL
+bind inode four, link count two, directory mode `0755`, root ownership, zero
+size and times, and preferred transfer size 4,096. The provider SHALL copy and
+verify the complete value, return zero, erase fixed private staging, retain no
+candidate pointer or byte, and record one private child-metadata fact. A
+missing, duplicate, partial, unreadable, wrapping, cross-hole, wrong-path,
+wrong-flags, pre-match, or post-output request SHALL be invalid.
+
+After consuming the metadata, the application SHALL select the true edge and
+issue one standard-output write containing exact `bin-directory\n`. The
+provider SHALL require the child-metadata fact, validate and stage the complete
+readable 14-byte candidate before publication, publish exactly those bytes,
+return 14, erase staging, retain no user pointer or output byte, and record one
+private named-condition-output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear the child metadata,
+enumeration, descriptor, output, and every command-time fact with unchanged
+affine rollback.
+
+For qualified x86-64 realization, child lookup SHALL bind to syscall 262 with
+`AT_FDCWD=-100`, exact `/bin\0`, a complete 144-byte stack or heap candidate,
+flags zero, and result zero. Its 18 qwords SHALL be device zero, inode four,
+link count two, mode/UID `0x41ed`, GID/padding zero, device zero, size zero,
+block size 4,096, blocks zero, zero timestamps, and zero reserved words.
+Selected conditional output SHALL bind to syscall 1 on descriptor one with
+count and result 14. Input results SHALL be 11, 5, 44, 4, and 5. Structural and
+physical evidence SHALL certify predecessor enumeration and matching, exact
+lookup and metadata, selected condition flow and output, observation ordering,
+candidate and staging erasure, later `pwd`, prompt distinction, terminal
+cleanup, and rollback. This rule SHALL NOT add arbitrary traversal, child open
+or enumeration, contents, mutation, dynamic applications, processes,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001 — Static-process empty-bin glob enumeration
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*\n`. The remaining publications SHALL be
+exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`, with the same affine
+input-owner, prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's root enumeration,
+explicit close, exact `/bin\n` output, and complete named-child metadata
+lookup. It MAY then open exact `/bin/\0` read-only as a directory. The provider
+SHALL require the child-metadata fact, validate the live process, sealed
+continuation, checked hierarchy, stack, dispositions, complete pathname and
+flags, allocate the lowest free nonstandard descriptor, and bind it to one
+immutable inode-four directory description at position zero. A wrong,
+partial, unreadable, wrapping, pre-metadata, duplicate, or post-output request
+SHALL be invalid.
+
+The application MAY query descriptor-three metadata and issue one bounded
+directory-record read. The provider SHALL publish the same complete
+inode-four directory metadata as the predecessor, validate one complete
+writable candidate, and privately stage coherent ordered 24-byte `.` and `..`
+native records for inode four and parent inode three. It SHALL copy and verify
+all 48 bytes, erase staging, advance the description position, and return 48.
+A following record request SHALL return zero without modifying its candidate.
+The application SHALL explicitly close descriptor three, after which every
+use of that description SHALL be invalid.
+
+After EOF and close, the application SHALL issue one standard-output write
+containing exact `/bin/*\n`. The provider SHALL validate and stage the complete
+readable seven-byte candidate before publication, publish exactly those bytes,
+return seven, erase staging, retain no user pointer or output byte, and record
+one private empty-bin-glob output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear child metadata, enumeration,
+descriptor, output, and every command-time fact with unchanged affine
+rollback.
+
+For qualified x86-64 realization, child open SHALL bind to syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/\0`, flags `0x90800`, mode zero, and result three.
+Descriptor metadata SHALL bind to syscall 5 and the complete 144-byte
+inode-four layout. Enumeration SHALL bind to syscall 217 with descriptor three
+and results 48 then zero. Each 24-byte record SHALL contain native inode, next
+offset, record length, type, name, and zero padding fields. Close SHALL bind to
+syscall 3 and result zero. Selected literal output SHALL bind to syscall 1 on
+descriptor one with count and result seven. Input results SHALL be 11, 5, 37,
+4, and 5. Structural and physical evidence SHALL certify predecessor matching
+and metadata, exact child open and description state, complete metadata and
+record transfers, EOF and close, selected literal output, candidate and staging
+erasure, later `pwd`, prompt distinction, terminal cleanup, and rollback. This
+rule SHALL NOT add entries below `/bin`, file contents, execution, arbitrary
+traversal, mutation, dynamic applications, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001 — Static-process bin-busybox glob match
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` without changing
+its five publications. Its third publication SHALL remain exact
+`echo /*; test -d /bin && echo /bin/*\n`, with the same affine input-owner,
+prompt, mapping, and rollback obligations.
+
+The application SHALL first complete the predecessor's root enumeration,
+explicit close, exact `/bin\n` output, complete named-child metadata lookup,
+exact `/bin/` open, and descriptor metadata query. The sealed inode-four
+directory SHALL additionally contain one immutable `busybox` child identity
+with inode five and regular-file type. This identity SHALL authorize only the
+directory record; it SHALL NOT authorize child lookup, metadata, contents,
+opening, or execution.
+
+For the predecessor's bounded directory-record request, the provider SHALL
+validate one complete writable candidate and privately stage coherent ordered
+24-byte `.` and `..` records followed by one aligned 32-byte `busybox` record.
+It SHALL copy and verify all 80 bytes, erase staging, advance the description
+position, and return 80. A following record request SHALL return zero without
+modifying its candidate. The application SHALL explicitly close descriptor
+three, after which every use of that description SHALL be invalid.
+
+After EOF and close, the application SHALL issue one standard-output write
+containing exact `/bin/busybox\n`. The provider SHALL validate and stage the
+complete readable thirteen-byte candidate before publication, publish exactly
+those bytes, return thirteen, erase staging, retain no user pointer or output
+byte, and record one private bin-busybox-glob output fact. The following prompt
+and `pwd\n` SHALL require that fact. Terminal handling SHALL clear child
+metadata, enumeration, descriptor, output, and every command-time fact with
+unchanged affine rollback.
+
+For qualified x86-64 realization, child enumeration SHALL bind to syscall 217
+with descriptor three and results 80 then zero. The third native
+`linux_dirent64` record SHALL contain inode five, next offset three, record
+length 32, `DT_REG=8`, exact `busybox\0`, and zero padding. Close SHALL bind to
+syscall 3 and result zero. Selected matched output SHALL bind to syscall 1 on
+descriptor one with count and result thirteen. Input results SHALL remain 11,
+5, 37, 4, and 5. Structural and physical evidence SHALL certify predecessor
+matching and metadata, exact child-directory open and description state,
+complete three-record transfer, EOF and close, selected matched output,
+candidate and staging erasure, later `pwd`, prompt distinction, terminal
+cleanup, and rollback. This rule SHALL NOT add file lookup, metadata, contents,
+opening, execution, arbitrary traversal, mutation, dynamic applications,
+processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001 — Static-process bin-busybox file condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor root and child
+enumeration, metadata, close, and output transition. It MAY then query exact
+`/bin/busybox\0`. The provider SHALL require the nested-match fact, validate
+the live process, sealed continuation, checked hierarchy, stack, dispositions,
+complete pathname and complete writable native metadata candidate, and publish
+one immutable inode-five regular-file value. A wrong, partial, unreadable,
+unwritable, wrapping, pre-match, duplicate, or post-output request SHALL be
+invalid.
+
+The file value SHALL have device zero, inode five, link count one, mode `0555`,
+root ownership, zero size, blocks and times, and 4,096-byte preferred transfer
+size. The provider SHALL verify the complete copy, return zero, erase staging,
+retain no pointer or bytes, and record one private ordered file-metadata fact.
+The application SHALL consume that fact to issue one standard-output write
+containing exact `busybox-file\n`. The provider SHALL validate and stage all
+thirteen bytes, publish them, return thirteen, erase staging, and record one
+private file-condition output fact. The following prompt and `pwd\n` SHALL
+require that fact. Terminal handling SHALL clear all file metadata, output,
+enumeration, descriptor, and command-time facts with unchanged affine rollback.
+
+For qualified x86-64 realization, file lookup SHALL bind to syscall 262 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or heap
+candidate, flags zero, and result zero. Its 18 qwords SHALL be device zero,
+inode five, link count one, mode/UID `0x816d`, GID/padding zero, device zero,
+size zero, block size 4,096, blocks zero, zero timestamps, and zero reserved
+words. Selected output SHALL bind to syscall 1 on descriptor one with count and
+result thirteen. Input results SHALL be 11, 5, 80, 4, and 5. Structural and
+physical evidence SHALL certify predecessor enumeration and matching, exact
+lookup and complete metadata, selected condition flow and output, observation
+ordering, candidate and staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This rule SHALL NOT add contents, opening,
+execution, arbitrary traversal, mutation, dynamic applications, processes,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001 — Static-process bin-busybox executable condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor enumeration, metadata,
+close, and output transition. It MAY then repeat the complete metadata query
+for exact `/bin/busybox\0` and query its effective UID. The provider SHALL
+require the regular-file condition fact, validate the live process, sealed
+continuation, checked hierarchy, stack, dispositions, complete readable
+pathname and writable metadata candidate, republish the identical immutable
+inode-five mode `0555`, and return effective UID zero. A wrong, partial,
+unreadable, unwritable, wrapping, pre-metadata, duplicate, wrong-mode,
+differently credentialed, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes and record private
+ordered repeated-metadata and credential facts. The application SHALL consume
+those facts to derive execute access and issue one standard-output write
+containing exact `busybox-executable\n`. The provider SHALL validate and stage
+all nineteen bytes, publish them, return nineteen, erase staging, and record
+one private executable-condition output fact. The following prompt and
+`pwd\n` SHALL require that fact. Terminal handling SHALL clear all repeated-
+metadata, credential, output, enumeration, descriptor, and command-time facts
+with unchanged affine rollback.
+
+For qualified x86-64 realization, repeated metadata SHALL bind to syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or
+heap candidate, flags zero, and the identical result defined by
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001`. Effective UID
+SHALL bind to syscall 107 with result zero. Selected output SHALL bind to
+syscall 1 on descriptor one with count and result nineteen. Input results
+SHALL be 11, 5, 129, 4, and 5. Structural and physical evidence SHALL certify
+every predecessor transition, exact repeated metadata and credential queries,
+credential and mode derivation, selected condition flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This
+rule SHALL NOT add opening, contents, mapping, execution, arbitrary permission
+checks, mutation, dynamic applications, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001 — Static-process bin-busybox nonempty condition
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` by
+replacing its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+Within this extended profile, every inode-five metadata publication SHALL
+report size 2,024,544 and block count 3,955 instead of the zero values in the
+predecessor profile. That size SHALL equal the complete static-user artifact
+selected, digest-checked, published, and transported by the boot resource.
+Every other metadata field and every predecessor transition SHALL remain
+identical. A different artifact size, digest identity, inode, mode, owner,
+link count, block size, or timestamp SHALL be invalid.
+
+The application SHALL first complete the executable-condition output. It MAY
+then repeat the complete metadata query for exact `/bin/busybox\0`. The
+provider SHALL require every predecessor fact, validate the live process,
+sealed continuation, checked hierarchy, stack, dispositions, complete readable
+pathname and writable metadata candidate, republish the identical artifact-
+bound inode-five metadata, return zero, and record one private ordered
+nonempty-metadata fact. A wrong, partial, unreadable, unwritable, wrapping,
+predecessor-incomplete, duplicate, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes. The application SHALL
+consume the positive size to issue one standard-output write containing exact
+`busybox-nonempty\n`. The provider SHALL validate and stage all seventeen
+bytes, publish them, return seventeen, erase staging, and record one private
+nonempty-condition output fact. The following prompt and `pwd\n` SHALL require
+that fact. Terminal handling SHALL clear all new and predecessor metadata,
+credential, output, enumeration, descriptor, and command-time facts with
+unchanged affine rollback.
+
+For qualified x86-64 realization, repeated metadata SHALL bind to syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, a complete 144-byte stack or
+heap candidate, flags zero, and the extended artifact-bound result above.
+Selected output SHALL bind to syscall 1 on descriptor one with count and result
+seventeen. Input results SHALL be 11, 5, 176, 4, and 5. Structural and physical
+evidence SHALL certify every predecessor transition, exact artifact identity
+and size, exact repeated metadata query, selected condition flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal cleanup, and rollback. This rule SHALL NOT add opening, contents,
+mapping, execution, arbitrary metadata, mutation, dynamic applications,
+processes, containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001 — Static-process bin-busybox read-only open
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` by
+replacing its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor transition through
+the nonempty-condition output. It MAY then open exact `/bin/busybox\0`
+relative to `AT_FDCWD` with read-only flags and mode zero. The provider SHALL
+validate the live process, sealed continuation, checked hierarchy, stack,
+dispositions, command owner, complete readable pathname, artifact-bound
+inode-five identity, and absence of a live nonstandard description. It SHALL
+bind the lowest-free descriptor, three, to one process-owned immutable
+read-only description at offset zero and return three. A wrong, partial,
+unreadable, wrapping, predecessor-incomplete, duplicate, non-read-only,
+nonzero-mode, wrong-object, or post-output request SHALL be invalid.
+
+The provider SHALL retain no pointer or pathname bytes. The application SHALL
+consume the successful open to issue one standard-output write containing
+exact `busybox-open\n`. The provider SHALL validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+read-only-open output fact. The following prompt and `pwd\n` SHALL require
+that fact while the description remains live. Terminal handling SHALL prove
+and revoke the description, clear all new and predecessor output,
+enumeration, descriptor, metadata, credential, and command-time facts, and
+preserve unchanged affine rollback.
+
+For qualified x86-64 realization, open SHALL bind to syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, flags zero, mode zero, and result
+three. Selected output SHALL bind to syscall 1 on descriptor one with count
+and result thirteen. Input results SHALL be 11, 5, 216, 4, and 5. Structural
+and physical evidence SHALL certify every predecessor transition, exact
+artifact identity, open arguments and result, immutable read-only description
+lifetime, selected success flow and output, observation ordering, staging
+erasure, later `pwd`, prompt distinction, terminal revocation, cleanup, and
+rollback. This rule SHALL NOT add content reads, seeks, mapping, execution,
+arbitrary opens, mutation, dynamic applications, processes, containers, or
+virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001 — Static-process bin-busybox header read
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` by replacing
+its third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+The application SHALL first complete every predecessor transition through
+the read-only-open output. The clean application MAY then issue four ordered
+reads directly. The pinned external application MAY instead issue two
+`TCGETS` requests and one `TCSETS` request against descriptor three before
+the reads. Each request SHALL use its qualified complete stack candidate and
+return `ENOTTY`. Before each external read, the application SHALL issue one
+`poll` containing descriptor three, `POLLIN`, `nfds=1`, and timeout `-1`. The
+first poll entry SHALL have zero `revents`; each later entry MAY retain the
+preceding `POLLIN`. The provider SHALL validate the exact complete poll entry,
+publish only `POLLIN` to `revents`, return one, and record one readiness fact
+consumable only by the immediately following read.
+
+Each of the four ordered reads SHALL request one byte into the next byte of
+one complete writable candidate. Before each transfer, the provider SHALL
+validate the live process, sealed continuation, checked hierarchy, stack,
+dispositions, command owner, immutable artifact-bound description and rights,
+current offset, complete nonwrapping candidate, profile-specific terminal-probe
+count, and readiness state. It SHALL transfer exact bytes `0x7f`, `E`,
+`L`, and `F` in order, return one for every call, consume any external
+readiness fact, and advance the description from offset zero to four. A wrong
+descriptor, count, candidate, order, offset, content source, partial extent,
+unreadable or unwritable extent, duplicate, predecessor-incomplete, missing
+or duplicate readiness, or post-output request SHALL be invalid.
+
+Every byte SHALL cross fixed private kernel staging before publication. The
+provider SHALL read back the published byte, erase staging, and retain no
+pointer. After its fourth read, the pinned external application SHALL issue
+one `TCGETS` request followed by one `TCSETS` request on descriptor three;
+both SHALL use the qualified complete stack candidate and return `ENOTTY`.
+The application SHALL then consume the successful reads to issue one
+standard-output write containing exact `busybox-read\n`. The provider SHALL
+validate and stage all thirteen bytes, publish them, return thirteen, erase
+staging, and record one private header-read output fact. The following prompt
+and `pwd\n` SHALL require that fact while the description remains live at
+offset four. Terminal handling SHALL prove and revoke the description,
+offset, terminal-probe counter, and pending-readiness fact; clear all new and
+predecessor output, enumeration, descriptor, metadata, credential, and
+command-time facts; and preserve unchanged affine rollback.
+
+For qualified x86-64 realization, each content transfer SHALL bind to syscall
+0 on descriptor three with count and result one and consecutive writable
+candidates. The external profile's terminal requests SHALL bind to syscall 16
+with descriptor three, request `0x5401` or `0x5402`, the qualified stack
+candidate, and result `-25`. Its readiness requests SHALL bind to syscall 7
+with one exact eight-byte `pollfd`, `nfds=1`, timeout `-1`, result one, and
+returned `POLLIN`. Selected output SHALL bind to syscall 1 on descriptor one
+with count and result thirteen. Input results SHALL be 11, 5, 263, 4, and 5.
+Structural and physical evidence SHALL certify every predecessor transition,
+exact artifact identity and ELF prefix, the profile-specific terminal-probe
+and readiness sequence, all four read arguments, results and bytes, immutable
+read-only description lifetime and offset, selected success flow and output,
+observation ordering, staging erasure, later `pwd`, prompt distinction,
+terminal revocation, cleanup, and rollback. This rule SHALL NOT add general
+terminal control or polling, seeking, later contents, EOF, mapping, execution,
+arbitrary reads or opens, mutation, dynamic applications, processes,
+containers, or virtualization.
+
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001 — Static-process bin-busybox explicit close
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` by replacing its
+third publication with exact
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file; test -x /bin/busybox && echo busybox-executable; test -s /bin/busybox && echo busybox-nonempty; exec 3</bin/busybox; echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read; exec 3<&-; echo busybox-close\n`.
+The remaining publications SHALL be exact `echo topal\n`, `cd /\n`, `pwd\n`,
+and `exit\n`, with unchanged affine input-owner, prompt, mapping, and rollback
+obligations.
+
+After every predecessor transition through the header-read output, the
+application SHALL issue one descriptor-control request on descriptor three
+that selects a close-on-exec duplicate with minimum descriptor ten. The
+provider SHALL validate the live process, sealed continuation, checked
+hierarchy, stack, dispositions, command owner, immutable artifact-bound
+description and rights, current offset four, absence of a saved mapping, exact
+command and minimum, and lowest-available result. It SHALL bind exact
+descriptor ten to the same description and offset, mark only that mapping
+close-on-exec, return ten, and preserve one affine description shared by both
+mappings. A wrong source, command, minimum, result, lifecycle, owner,
+description, rights, offset, or duplicate request SHALL be invalid.
+
+The application SHALL next close descriptor three and then descriptor ten.
+The first close SHALL return zero, remove only descriptor three, and retain the
+description unchanged through descriptor ten. The second close SHALL return
+zero, remove descriptor ten, destroy the last description reference, and
+revoke the offset, ordered terminal-probe counter, and readiness state. A wrong
+descriptor, order, duplicate close, or later use of a removed mapping SHALL be
+invalid.
+
+After the last close, the application SHALL issue one standard-output write
+containing exact `busybox-close\n`. The provider SHALL validate and stage all
+fourteen bytes, publish them, return fourteen, erase staging, and record one
+private explicit-close output fact. The following prompt and `pwd\n` SHALL
+require that fact and SHALL require descriptor three, descriptor ten, and the
+shared description to be absent. Terminal handling SHALL prove and clear the
+bounded redirection and output facts with all predecessor facts, SHALL NOT
+revoke the already destroyed description again, and SHALL preserve unchanged
+affine rollback.
+
+For qualified x86-64 realization, duplication SHALL bind to syscall 72 with
+descriptor three, command `0x406`, minimum ten, and result ten. Mapping removal
+SHALL bind to syscall 3 first on descriptor three and then on descriptor ten,
+each with result zero. Selected output SHALL bind to syscall 1 on descriptor
+one with count and result fourteen. Input results SHALL be 11, 5, 294, 4, and
+5. Structural and physical evidence SHALL certify every predecessor
+transition, exact shared-description identity and offset, close-on-exec
+metadata, lowest-result selection, ordered mapping removal, last-close
+destruction, selected success flow and output, observation ordering, staging
+erasure, later `pwd`, prompt distinction, terminal proof, cleanup, and
+rollback. This rule SHALL NOT add general descriptor control or allocation,
+exec-time close processing, arbitrary close, seeking, mapping, execution,
+mutation, dynamic applications, processes, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

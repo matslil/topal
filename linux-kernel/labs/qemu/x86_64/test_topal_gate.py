@@ -267,8 +267,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_7B51]
-        self.assertEqual(len(continuation), 2_897)
+        continuation = fixture[0xA_7000 : 0xA_8975]
+        self.assertEqual(len(continuation), 6_517)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -280,6 +280,41 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn(bytes.fromhex("31c0b9120000004889e7fcf348af75fe"), continuation)
         self.assertIn(
             bytes.fromhex("bf03000000b8030000000f054885c075fe"), continuation
+        )
+        for offset, expected in enumerate(b"\x7fELF"):
+            self.assertIn(
+                bytes.fromhex(
+                    "bf03000000488d7424"
+                    + f"{offset:02x}"
+                    + "ba0100000031c00f054883f80175fe807c24"
+                    + f"{offset:02x}{expected:02x}"
+                    + "75fe"
+                ),
+                continuation,
+            )
+        self.assertIn(
+            bytes.fromhex(
+                "48b862757379626f782d48890424"
+                "48b8726561640a0000004889442408"
+                "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "bf03000000be06040000ba0a000000b8480000000f054883f80a75fe"
+                "bf03000000b8030000000f054885c075fe"
+                "bf0a000000b8030000000f054885c075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48b862757379626f782d48890424"
+                "48b8636c6f73650a00004889442408"
+                "bf010000004889e6ba0e000000b8010000000f054883f80e75fe"
+            ),
+            continuation,
         )
         self.assertIn(
             bytes.fromhex(
@@ -421,24 +456,157 @@ class TopalToolchainGateTests(unittest.TestCase):
             ),
             continuation,
         )
-        self.assertIn(bytes.fromhex("4883f82175fe"), continuation)
-        self.assertIn(bytes.fromhex("48b874657374202d6420"), continuation)
-        self.assertIn(bytes.fromhex("48b82f6d697373696e67"), continuation)
-        self.assertIn(bytes.fromhex("48b8207c7c206563686f"), continuation)
-        self.assertIn(bytes.fromhex("48b8206d697373696e67"), continuation)
-        self.assertIn(bytes.fromhex("48b80a00000000000000"), continuation)
+        self.assertIn(bytes.fromhex("4883f85075fe"), continuation)
+        self.assertIn(bytes.fromhex("48b86563686f202f2a3b"), continuation)
+        self.assertIn(bytes.fromhex("48b82074657374202d64"), continuation)
+        self.assertIn(bytes.fromhex("48b8202f62696e202626"), continuation)
+        self.assertIn(bytes.fromhex("48b8206563686f202f62"), continuation)
+        self.assertIn(bytes.fromhex("48b8696e2f2a3b207465"), continuation)
+        self.assertIn(bytes.fromhex("48b87374202d66202f62"), continuation)
+        self.assertIn(bytes.fromhex("48b8696e2f6275737962"), continuation)
+        self.assertIn(bytes.fromhex("48b86f78202626206563"), continuation)
+        self.assertIn(bytes.fromhex("48b8686f206275737962"), continuation)
+        self.assertIn(bytes.fromhex("48b86f782d66696c653b"), continuation)
+        self.assertIn(bytes.fromhex("48b82074657374202d78"), continuation)
+        self.assertIn(bytes.fromhex("48b8202f62696e2f6275"), continuation)
+        self.assertIn(bytes.fromhex("48b87379626f78202626"), continuation)
+        self.assertIn(bytes.fromhex("48b8206563686f206275"), continuation)
+        self.assertIn(bytes.fromhex("48b87379626f782d6578"), continuation)
+        self.assertIn(bytes.fromhex("48b86563757461626c65"), continuation)
+        self.assertIn(bytes.fromhex("48b83b2074657374202d"), continuation)
+        self.assertIn(bytes.fromhex("48b873202f62696e2f62"), continuation)
+        self.assertIn(bytes.fromhex("48b8757379626f782026"), continuation)
+        self.assertIn(bytes.fromhex("48b826206563686f2062"), continuation)
+        self.assertIn(bytes.fromhex("48b8757379626f782d6e"), continuation)
+        self.assertIn(bytes.fromhex("48b86f6e656d7074793b"), continuation)
+        self.assertIn(bytes.fromhex("48b8206578656320333c"), continuation)
+        self.assertIn(bytes.fromhex("48b82f62696e2f627573"), continuation)
+        self.assertIn(bytes.fromhex("48b879626f783b206563"), continuation)
+        self.assertIn(bytes.fromhex("48b8686f206275737962"), continuation)
+        self.assertIn(bytes.fromhex("48b86f782d6f70656e3b"), continuation)
+        self.assertIn(bytes.fromhex("48b8782d726561643b20"), continuation)
+        self.assertIn(bytes.fromhex("48b86578656320333c26"), continuation)
+        self.assertIn(bytes.fromhex("48b82d3b206563686f20"), continuation)
+        self.assertIn(bytes.fromhex("48b862757379626f782d"), continuation)
+        self.assertIn(bytes.fromhex("48b8636c6f73650a0000"), continuation)
+        self.assertIn(bytes.fromhex("483d2601000075fe"), continuation)
         self.assertIn(
             bytes.fromhex(
-                "48b82f6d697373696e6748a360945f0000000000c6042568945f0000"
+                "66c7042560945f002f00"
+                "bf9cffffffbe60945f00ba000809004531d2b8010100000f05"
+                "4883f80375fe66c7042560945f000000"
                 "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
-                "bf9cffffffbe60945f004889e24531d2b8060100000f054883f8fe75fe"
-                "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
+                "bf030000004889e6b8050000000f054885c075fe"
             ),
             continuation,
         )
-        self.assertIn(bytes.fromhex("48b86d697373696e670a"), continuation)
         self.assertIn(
-            bytes.fromhex("bf010000004889e6ba08000000b8010000000f054883f80875fe"),
+            bytes.fromhex(
+                "48833c240075fe48837c24080375fe48837c24100375fe"
+                "48817c2418ed41000075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48817c24380010000075fe"), continuation)
+        self.assertIn(
+            bytes.fromhex(
+                "bf030000004889e6ba00020000b8d90000000f054883f84875fe"
+                "48833c240375fe48837c24080175fe"
+                "66837c24101875fe807c24120475fe807c24132e75fe"
+                "48837c24180375fe48837c24200275fe"
+                "66837c24281875fe807c242a0475fe807c242b2e75fe807c242c2e75fe"
+                "48837c24300475fe48837c24380375fe"
+                "66837c24401875fe807c24420475fe"
+                "807c24436275fe807c24446975fe807c24456e75fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "bf030000004889e6ba00020000b8d90000000f054885c075fe"
+                "bf03000000b8030000000f054885c075fe"
+                "48b82f62696e0a00000048890424"
+                "bf010000004889e6ba05000000b8010000000f054883f80575fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+                "48833c240075fe48837c24080475fe48837c24100275fe"
+                "48817c2418ed41000075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b82f62696e2f000000"), continuation)
+        self.assertIn(
+            bytes.fromhex(
+                "bf030000004889e6ba00020000b8d90000000f054883f85075fe"
+                "48833c240475fe48837c24080175fe"
+            ),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "48837c24300575fe48837c24380375fe"
+                "66837c24402075fe807c24420875fe"
+                "48b862757379626f7800483944244375fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b82f62696e2f627573"), continuation)
+        self.assertIn(bytes.fromhex("48b879626f780a000000"), continuation)
+        self.assertIn(
+            bytes.fromhex("bf010000004889e6ba0d000000b8010000000f054883f80d75fe"),
+            continuation,
+        )
+        repeated_file_metadata = bytes.fromhex(
+            "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+            "48833c240075fe48837c24080575fe48837c24100175fe"
+            "48817c24186d81000075fe"
+        )
+        self.assertEqual(continuation.count(repeated_file_metadata), 3)
+        self.assertEqual(
+            continuation.count(bytes.fromhex("48817c243060e41e0075fe")), 3
+        )
+        self.assertEqual(
+            continuation.count(bytes.fromhex("48817c2440730f000075fe")), 3
+        )
+        self.assertIn(bytes.fromhex("b86b0000000f054885c075fe"), continuation)
+        self.assertIn(bytes.fromhex("48b862757379626f782d"), continuation)
+        self.assertIn(bytes.fromhex("48b86578656375746162"), continuation)
+        self.assertIn(bytes.fromhex("c74424106c650a00"), continuation)
+        self.assertIn(
+            bytes.fromhex("bf010000004889e6ba13000000b8010000000f054883f81375fe"),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b86e6f6e656d707479"), continuation)
+        self.assertIn(bytes.fromhex("48c74424100a000000"), continuation)
+        self.assertIn(
+            bytes.fromhex("bf010000004889e6ba11000000b8010000000f054883f81175fe"),
+            continuation,
+        )
+        self.assertIn(
+            bytes.fromhex(
+                "bf9cffffffbe60945f0031d24531d2b8010100000f054883f80375fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b86f70656e0a000000"), continuation)
+        self.assertNotIn(bytes.fromhex("b8b70100000f05"), continuation)
+        self.assertIn(bytes.fromhex("48b82f62696e2f627573"), continuation)
+        self.assertIn(
+            bytes.fromhex(
+                "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+                "48833c240075fe48837c24080575fe48837c24100175fe"
+                "48817c24186d81000075fe"
+            ),
+            continuation,
+        )
+        self.assertIn(bytes.fromhex("48b862757379626f782d"), continuation)
+        self.assertIn(bytes.fromhex("48b866696c650a000000"), continuation)
+        self.assertIn(
+            bytes.fromhex("bf010000004889e6ba0d000000b8010000000f054883f80d75fe"),
             continuation,
         )
         self.assertIn(bytes.fromhex("4883f80475fe"), continuation)
@@ -463,16 +631,16 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/204")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/215")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/194")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/205")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/204",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/215",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/104",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/115",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -699,7 +867,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 10)
+        self.assertEqual(observations["static_applet_newline_count"], 17)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -779,12 +947,154 @@ class TopalToolchainGateTests(unittest.TestCase):
             "clean-exact-root-chdir-witness",
         )
         self.assertEqual(
-            observations["static_shell_missing_directory_test_profile"],
-            "clean-missing-newfstatat-enoent-unchanged-output-witness",
+            observations["static_shell_root_glob_open_profile"],
+            "clean-exact-root-directory-open-witness",
         )
         self.assertEqual(
-            observations["static_shell_missing_directory_condition_profile"],
-            "clean-selected-missing-directory-output-witness",
+            observations["static_shell_root_glob_fstat_profile"],
+            "clean-complete-root-directory-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_root_glob_enumeration_profile"],
+            "clean-three-record-root-directory-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_root_glob_output_profile"],
+            "clean-exact-named-root-glob-match-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_entry_profile"],
+            "clean-sealed-bin-directory-entry-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_metadata_profile"],
+            "clean-complete-bin-directory-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_condition_profile"],
+            "clean-selected-bin-busybox-glob-condition-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_open_profile"],
+            "clean-exact-bin-directory-open-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_fstat_profile"],
+            "clean-complete-bin-directory-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_enumeration_profile"],
+            "clean-three-record-bin-busybox-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_close_profile"],
+            "clean-explicit-bin-directory-close-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_output_profile"],
+            "clean-exact-bin-busybox-glob-match-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_entry_profile"],
+            "clean-sealed-bin-busybox-dirent-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_metadata_profile"],
+            "clean-complete-bin-busybox-file-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_condition_output_profile"],
+            "clean-exact-bin-busybox-file-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_executable_metadata_profile"],
+            "clean-repeated-complete-bin-busybox-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_executable_credential_profile"],
+            "clean-effective-root-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_executable_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-executable-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_artifact_size_profile"],
+            "clean-sealed-2024544-byte-bin-busybox-artifact-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_nonempty_metadata_profile"],
+            "clean-third-complete-positive-bin-busybox-metadata-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_nonempty_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-nonempty-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_read_only_open_profile"],
+            "clean-exact-bin-busybox-read-only-open-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_open_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-open-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_read_profile"],
+            "clean-four-byte-elf-header-read-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_terminal_probe_profile"
+            ],
+            "clean-header-terminal-probes-not-issued",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_poll_profile"],
+            "clean-header-poll-not-issued",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-read-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_duplicate_profile"
+            ],
+            "clean-exact-f-dupfd-cloexec-ten-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_explicit_close_profile"],
+            "clean-ordered-three-then-ten-close-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_condition_output_profile"
+            ],
+            "clean-exact-bin-busybox-close-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_terminal_absence_profile"
+            ],
+            "clean-terminal-proved-closed-description-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_terminal_revoke_profile"
+            ],
+            "clean-explicit-close-revoked-header-read-state-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_open_terminal_revoke_profile"],
+            "clean-explicit-close-revoked-live-bin-busybox-description-witness",
         )
         self.assertEqual(
             observations["static_shell_pwd_command_profile"],
@@ -823,7 +1133,14 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "topal\n"
             + "/ # "
             + "/ # "
-            + "missing\n"
+            + "/bin\n"
+            + "/bin/busybox\n"
+            + "busybox-file\n"
+            + "busybox-executable\n"
+            + "busybox-nonempty\n"
+            + "busybox-open\n"
+            + "busybox-read\n"
+            + "busybox-close\n"
             + "/ # "
             + "/\n"
             + "/ # "
@@ -837,7 +1154,7 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/204")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/215")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -850,7 +1167,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
         observations = evidence["observations"]
-        self.assertEqual(observations["static_applet_newline_count"], 3)
+        self.assertEqual(observations["static_applet_newline_count"], 10)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "external-shell-echo-command"
         )
@@ -929,12 +1246,154 @@ class TopalToolchainGateTests(unittest.TestCase):
             "external-busybox-exact-root-chdir-witness",
         )
         self.assertEqual(
-            observations["static_shell_missing_directory_test_profile"],
-            "external-busybox-exact-missing-newfstatat-enoent-witness",
+            observations["static_shell_root_glob_open_profile"],
+            "external-busybox-exact-root-directory-open-witness",
         )
         self.assertEqual(
-            observations["static_shell_missing_directory_condition_profile"],
-            "external-busybox-selected-missing-directory-output-witness",
+            observations["static_shell_root_glob_fstat_profile"],
+            "external-busybox-complete-root-directory-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_root_glob_enumeration_profile"],
+            "external-busybox-three-record-root-directory-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_root_glob_output_profile"],
+            "external-busybox-exact-named-root-glob-match-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_entry_profile"],
+            "external-busybox-sealed-bin-directory-entry-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_metadata_profile"],
+            "external-busybox-complete-bin-directory-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_named_root_condition_profile"],
+            "external-busybox-selected-bin-busybox-glob-condition-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_open_profile"],
+            "external-busybox-exact-bin-directory-open-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_fstat_profile"],
+            "external-busybox-complete-bin-directory-fstat-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_enumeration_profile"],
+            "external-busybox-three-record-bin-busybox-enumeration-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_close_profile"],
+            "external-busybox-explicit-bin-directory-close-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_empty_bin_output_profile"],
+            "external-busybox-exact-bin-busybox-glob-match-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_entry_profile"],
+            "external-busybox-sealed-bin-busybox-dirent-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_metadata_profile"],
+            "external-busybox-complete-bin-busybox-file-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_condition_output_profile"],
+            "external-busybox-exact-bin-busybox-file-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_executable_metadata_profile"],
+            "external-busybox-repeated-complete-bin-busybox-metadata-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_executable_credential_profile"],
+            "external-busybox-effective-root-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_executable_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-executable-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_artifact_size_profile"],
+            "external-busybox-sealed-2024544-byte-bin-busybox-artifact-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_nonempty_metadata_profile"],
+            "external-busybox-third-complete-positive-bin-busybox-metadata-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_nonempty_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-nonempty-condition-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_read_only_open_profile"],
+            "external-busybox-exact-bin-busybox-read-only-open-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_open_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-open-output-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_read_profile"],
+            "external-busybox-four-byte-elf-header-read-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_terminal_probe_profile"
+            ],
+            "external-busybox-ordered-five-regular-file-enotty-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_header_poll_profile"],
+            "external-busybox-four-pollin-readiness-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-read-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_duplicate_profile"
+            ],
+            "external-busybox-exact-f-dupfd-cloexec-ten-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_explicit_close_profile"],
+            "external-busybox-ordered-three-then-ten-close-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_condition_output_profile"
+            ],
+            "external-busybox-exact-bin-busybox-close-output-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_explicit_close_terminal_absence_profile"
+            ],
+            "external-busybox-terminal-proved-closed-description-witness",
+        )
+        self.assertEqual(
+            observations[
+                "static_shell_bin_busybox_header_read_terminal_revoke_profile"
+            ],
+            "external-busybox-explicit-close-revoked-header-read-state-witness",
+        )
+        self.assertEqual(
+            observations["static_shell_bin_busybox_open_terminal_revoke_profile"],
+            "external-busybox-explicit-close-revoked-live-bin-busybox-description-witness",
         )
         self.assertEqual(
             observations["static_shell_pwd_command_profile"],
@@ -966,7 +1425,8 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         expected_serial = (
             marker_serial[:echo_position]
-            + "topal\nmissing\n/\n"
+            + "topal\n/bin\n/bin/busybox\nbusybox-file\nbusybox-executable\n"
+            + "busybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/\n"
             + marker_serial[echo_position:]
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)
