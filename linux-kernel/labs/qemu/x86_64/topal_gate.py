@@ -811,9 +811,15 @@ def static_user_fixture() -> bytes:
         "31c048890424488944240848833c240075fe48837c24080075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f054883f80475fe"
-        "48b87077640a0000000048390425608f5f0075fe"
-        "48833c25688f5f000075fe"
+        "31ffbe608f5f00baff03000031c00f054883f81875fe"
+        "48b86578656320333c2f48390425608f5f0075fe"
+        "48b862696e2f6275737948390425688f5f0075fe"
+        "48b8626f783b7077640a48390425708f5f0075fe"
+        "48833c25788f5f000075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "bf9cffffffbe60945f0031d24531d2b8010100000f054883f80375fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
         "66c7042560945f00a5a5"
         "bf60945f00be00100000b84f0000000f054883f80275fe"
         "66813c2560945f002f0075fe"
@@ -1071,7 +1077,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/215",
+        "schema": "topal-kernel-toolchain-gate-qemu/216",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1356,9 +1362,19 @@ def evidence_record(
                 else "clean-exact-bin-busybox-close-output-witness"
             ),
             "static_shell_bin_busybox_explicit_close_terminal_absence_profile": (
-                "external-busybox-terminal-proved-closed-description-witness"
+                "external-busybox-pre-reopen-proved-closed-description-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-terminal-proved-closed-description-witness"
+                else "clean-pre-reopen-proved-closed-description-witness"
+            ),
+            "static_shell_bin_busybox_reopen_profile": (
+                "external-busybox-fresh-generation-descriptor-three-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-fresh-generation-descriptor-three-witness"
+            ),
+            "static_shell_bin_busybox_reopen_terminal_revoke_profile": (
+                "external-busybox-terminal-revoked-reopened-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-terminal-revoked-reopened-description-witness"
             ),
             "static_shell_bin_busybox_header_read_terminal_revoke_profile": (
                 "external-busybox-explicit-close-revoked-header-read-state-witness"
@@ -1366,9 +1382,9 @@ def evidence_record(
                 else "clean-explicit-close-revoked-header-read-state-witness"
             ),
             "static_shell_bin_busybox_open_terminal_revoke_profile": (
-                "external-busybox-explicit-close-revoked-live-bin-busybox-description-witness"
+                "external-busybox-reopen-terminal-revoked-live-bin-busybox-description-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-explicit-close-revoked-live-bin-busybox-description-witness"
+                else "clean-reopen-terminal-revoked-live-bin-busybox-description-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
@@ -1459,7 +1475,7 @@ def verify(
             )
         if b"busybox-open\nbusybox-read\nbusybox-close\n" not in serial:
             raise GateError(
-                "static applet did not publish the exact BusyBox header-read and close output"
+                "static applet did not publish the exact BusyBox read and close output"
             )
         record = evidence_record(
             qemu_version,
