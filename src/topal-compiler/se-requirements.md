@@ -2229,6 +2229,37 @@ distinction, and unchanged external compatibility. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001` and
 `TK-DEC-236`.
 
+The bounded shell profile may retain the exact 294-byte third publication and
+replace the fourth publication with exact `exec 3</bin/busybox;pwd\n`. After
+every predecessor fact, `busybox-close\n`, and the profile-specific
+following-prompt observation, both profiles shall issue syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox`, flags zero, and mode zero. The provider
+shall require the old descriptor-three and descriptor-ten mappings
+and their description to be absent; validate the live process, sealed
+continuation, hierarchy, stack, dispositions, command owner, full immutable
+pathname, and artifact identity; then reuse lowest descriptor three for a
+distinct immutable read-only description generation at offset zero and return
+three. No old offset, mapping, close-on-exec flag, terminal-probe counter,
+readiness fact, or description identity may survive into the new generation.
+
+After the reopen, both applications shall execute the `pwd` segment in the
+same publication. Its profile-specific pathname and output flow and the later
+prompt shall require exactly the new descriptor-three description at offset
+zero; no synthetic reopen-confirmation output shall be added.
+Terminal handling shall prove and revoke the reopened mapping and description
+exactly once, clear its generation, rights, offset, command-time facts, and every
+predecessor fact without reviving or revoking the destroyed generation again,
+and preserve complete rollback. Structural and QEMU evidence shall enforce the
+exact 294-byte third and 24-byte fourth publications, old-generation absence,
+exact second-open arguments and result, lowest-slot reuse, distinct description
+generation, fresh offset and clean auxiliary state, the external profile's
+resulting complete 144-byte console-stat candidate at exact `0x007f_f240` and
+following complete 36-byte `TCGETS` candidate at exact `0x007f_f1a0`,
+application-selected continuation into `pwd`,
+observation ordering, prompt distinction, and unchanged external compatibility.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-REOPEN-001` and
+`TK-DEC-237`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

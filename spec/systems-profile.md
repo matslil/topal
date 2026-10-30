@@ -5728,6 +5728,50 @@ rollback. This rule SHALL NOT add general descriptor control or allocation,
 exec-time close processing, arbitrary close, seeking, mapping, execution,
 mutation, dynamic applications, processes, containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-REOPEN-001 — Static-process bin-busybox reopen
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001` by retaining
+its exact 294-byte third publication and replacing its fourth publication with
+exact `exec 3</bin/busybox;pwd\n`. The remaining publications SHALL be exact
+`echo topal\n`, `cd /\n`, and `exit\n`, with unchanged affine input-owner,
+prompt, mapping, and rollback obligations.
+
+After every predecessor transition through the explicit-close output and the
+profile-specific following-prompt observation, the application SHALL issue a
+second read-only open for exact `/bin/busybox`. The
+provider SHALL first require descriptor three, descriptor ten, and their prior
+description to be absent. It SHALL validate the live process, sealed
+continuation, checked hierarchy, stack, dispositions, command owner, complete
+immutable pathname, artifact identity, exact directory anchor, flags, and
+mode. It SHALL allocate lowest-available descriptor three and bind it to a new
+immutable description generation with read-only rights and offset zero. The
+new generation SHALL NOT inherit the destroyed generation's offset, mapping,
+close-on-exec flag, terminal-probe count, readiness fact, or identity.
+
+After the reopen, the application SHALL execute the `pwd` segment in the same
+publication. Its profile-specific pathname and output flow and the following
+prompt SHALL require exactly descriptor three and the new offset-zero
+description to remain live. No synthetic reopen-confirmation output SHALL be
+added. Terminal handling SHALL prove and revoke the new mapping and description
+exactly once, clear their generation, rights, offset, and command-time facts
+with all predecessor facts, and preserve unchanged affine rollback without
+reviving or revoking the destroyed predecessor again.
+
+For qualified x86-64 realization, the reopen SHALL bind to syscall 257 with
+`AT_FDCWD=-100`, the complete exact pathname, flags zero, mode zero, and result
+three. Input results SHALL be 11, 5, 294, 24, and 5. Structural and
+physical evidence SHALL certify every predecessor transition, prior-generation
+absence, exact second-open arguments and result, lowest-slot reuse, distinct
+description generation, fresh offset and clean auxiliary state, the external
+profile's complete 144-byte console-stat candidate at exact `0x007f_f240` and
+following complete 36-byte `TCGETS` candidate at exact `0x007f_f1a0`,
+application-selected continuation into `pwd`, observation ordering, later
+`pwd`, prompt distinction, terminal revocation, cleanup, and rollback. This rule
+SHALL NOT add arbitrary paths or flags, general descriptor allocation, seeking,
+later reads, mapping, execution, mutation, dynamic applications, processes,
+containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
