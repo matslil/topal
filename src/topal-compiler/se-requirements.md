@@ -2260,6 +2260,34 @@ observation ordering, prompt distinction, and unchanged external compatibility.
 This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-REOPEN-001` and
 `TK-DEC-237`.
 
+The bounded static-process shell may preserve the first four reopen-profile
+publications and replace its terminal publication with exact
+`exec /bin/busybox true\n`, returning 23 from the final input read. Both
+profiles shall then admit exactly one syscall-59 process-image replacement for
+the same sealed `/bin/busybox` artifact. The provider shall completely validate
+the exact pathname, argument vector `[/bin/busybox, true]`, ordered environment
+strings `SHLVL=1`, `OLDPWD=/`, `PATH=/sbin:/usr/sbin:/bin:/usr/bin`, and `PWD=/`, all null
+terminators and extents, live process state, artifact identity, hierarchy,
+stack, dispositions, command owner, and replacement resources without retaining
+user pointers.
+
+Success shall not return. It shall consume the shell image generation while
+preserving PID one, root credentials, sealed root current directory, standard
+descriptions, and the reopened non-close-on-exec descriptor three. It shall
+reset caught dispositions, FS/thread registrations, command state, old random
+delivery, stack, heap, mutable image state, and replacement-sensitive mapping
+permissions; restore the exact sealed ELF file bytes and zero-fill; construct a
+fresh exact initial stack, auxiliary vector, and random generation; and enter
+the same artifact at its validated entry as BusyBox `true`. The replacement
+application shall traverse its ordinary startup sequence and terminate with
+`exit_group(0)`. Terminal handling shall revoke the inherited description and
+all fresh image resources exactly once and complete the existing affine
+rollback. Structural and clean plus pinned-external QEMU evidence shall enforce
+validation-before-consumption, nonreturn, generation distinction, reset state,
+descriptor inheritance, startup, termination, cleanup, and rollback. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001` and
+`TK-DEC-238`.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -5772,6 +5772,53 @@ SHALL NOT add arbitrary paths or flags, general descriptor allocation, seeking,
 later reads, mapping, execution, mutation, dynamic applications, processes,
 containers, or virtualization.
 
+### TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001 — Static-process BusyBox `true` image replacement
+
+The bounded static-process entry MAY extend
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-REOPEN-001` by preserving its
+first four publications and replacing its terminal publication with exact
+`exec /bin/busybox true\n`. After the reopened description, profile-specific
+`pwd` flow, and following prompt observation, the application SHALL issue one
+successful process-image replacement for the same sealed `/bin/busybox`
+artifact. The pathname SHALL be complete and exact. The argument vector SHALL
+contain exact `/bin/busybox`, exact `true`, and a null terminator. The
+environment vector SHALL contain complete exact `SHLVL=1`, `OLDPWD=/`,
+`PATH=/sbin:/usr/sbin:/bin:/usr/bin`, and `PWD=/` strings followed by a null
+terminator. Every vector and string extent SHALL be checked without retaining a
+user pointer.
+
+Successful replacement SHALL consume the old image owner and SHALL NOT return
+to its syscall continuation. It SHALL preserve PID one, credentials, sealed
+root current directory, standard descriptions, and the reopened descriptor
+three because that mapping lacks close-on-exec. It SHALL reset caught signal
+dispositions, thread-pointer state, clear-child-TID and robust-list
+registrations, command and prompt ownership, prior random delivery, the old
+stack and heap, and every mutable user-image byte not preserved by Linux
+process-image replacement.
+
+Replacement SHALL instantiate a fresh generation of the same digest-bound
+static ELF load plan. It SHALL restore every loadable file byte, zero BSS and
+anonymous storage, restore initial mapping permissions, construct a fresh
+Linux initial stack with the exact argument and environment vectors, publish a
+fresh auxiliary vector and `AT_RANDOM` generation, and enter the sealed ELF
+entry point. The replacement `true` application SHALL execute its ordinary
+qualified startup sequence and terminate through `exit_group(0)`. Terminal
+handling SHALL revoke the inherited descriptor-three mapping and description
+exactly once, destroy every replacement-image resource, and restore all affine
+kernel owners.
+
+For qualified x86-64 realization, the application request SHALL bind to syscall
+59 and the final shell input result SHALL be 23. Structural and physical
+evidence SHALL certify the exact command, pathname, vectors, environment,
+nonreturning transition, old-generation destruction, same-artifact fresh
+generation, clean data/BSS/heap/stack and thread state, initial permissions,
+fresh random delivery, descriptor inheritance, entry, ordinary startup,
+terminal result, revocation, and complete rollback for both clean and pinned
+external profiles. Failure before consumption SHALL preserve the old owner;
+failure after consumption SHALL be terminal. This rule SHALL NOT add arbitrary
+executables, dynamic interpreters, scripts, general vector bounds, process
+creation, waiting, containers, or virtualization.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
