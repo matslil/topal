@@ -615,7 +615,7 @@ def static_user_fixture() -> bytes:
         "66c7042560945f000000"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f05483d0701000075fe"
+        "31ffbe608f5f00baff03000031c00f05483d2601000075fe"
         "48b86563686f202f2a3b48390425608f5f0075fe"
         "48b82074657374202d6448390425688f5f0075fe"
         "48b8202f62696e20262648390425708f5f0075fe"
@@ -648,7 +648,11 @@ def static_user_fixture() -> bytes:
         "48b82034202d752033204839042548905f0075fe"
         "48b85f202626206563684839042550905f0075fe"
         "48b86f2062757379626f4839042558905f0075fe"
-        "48b8782d726561640a004839042560905f0075fe"
+        "48b8782d726561643b204839042560905f0075fe"
+        "48b86578656320333c264839042568905f0075fe"
+        "48b82d3b206563686f204839042570905f0075fe"
+        "48b862757379626f782d4839042578905f0075fe"
+        "48b8636c6f73650a00004839042580905f0075fe"
         "66c7042560945f002f00"
         "bf9cffffffbe60945f00ba000809004531d2b8010100000f054883f80375fe"
         "66c7042560945f000000"
@@ -797,6 +801,13 @@ def static_user_fixture() -> bytes:
         "48b862757379626f782d48890424"
         "48b8726561640a0000004889442408"
         "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "bf03000000be06040000ba0a000000b8480000000f054883f80a75fe"
+        "bf03000000b8030000000f054885c075fe"
+        "bf0a000000b8030000000f054885c075fe"
+        "48b862757379626f782d48890424"
+        "48b8636c6f73650a00004889442408"
+        "bf010000004889e6ba0e000000b8010000000f054883f80e75fe"
         "31c048890424488944240848833c240075fe48837c24080075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
@@ -1060,7 +1071,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/214",
+        "schema": "topal-kernel-toolchain-gate-qemu/215",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1329,15 +1340,35 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-exact-bin-busybox-read-output-witness"
             ),
-            "static_shell_bin_busybox_header_read_terminal_revoke_profile": (
-                "external-busybox-terminal-revoked-header-read-state-witness"
+            "static_shell_bin_busybox_explicit_close_duplicate_profile": (
+                "external-busybox-exact-f-dupfd-cloexec-ten-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-terminal-revoked-header-read-state-witness"
+                else "clean-exact-f-dupfd-cloexec-ten-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_profile": (
+                "external-busybox-ordered-three-then-ten-close-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-ordered-three-then-ten-close-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-close-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-close-output-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_terminal_absence_profile": (
+                "external-busybox-terminal-proved-closed-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-terminal-proved-closed-description-witness"
+            ),
+            "static_shell_bin_busybox_header_read_terminal_revoke_profile": (
+                "external-busybox-explicit-close-revoked-header-read-state-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-explicit-close-revoked-header-read-state-witness"
             ),
             "static_shell_bin_busybox_open_terminal_revoke_profile": (
-                "external-busybox-terminal-revoked-live-bin-busybox-description-witness"
+                "external-busybox-explicit-close-revoked-live-bin-busybox-description-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-terminal-revoked-live-bin-busybox-description-witness"
+                else "clean-explicit-close-revoked-live-bin-busybox-description-witness"
             ),
             "static_shell_pwd_command_profile": (
                 "external-busybox-pwd-cached-root-output-witness"
@@ -1418,16 +1449,18 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            9
+            10
             if static_user_input == "pinned-external-static-busybox"
-            else 16
+            else 17
         )
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
             )
-        if b"busybox-open\nbusybox-read\n" not in serial:
-            raise GateError("static applet did not publish the exact BusyBox header-read output")
+        if b"busybox-open\nbusybox-read\nbusybox-close\n" not in serial:
+            raise GateError(
+                "static applet did not publish the exact BusyBox header-read and close output"
+            )
         record = evidence_record(
             qemu_version,
             image,
