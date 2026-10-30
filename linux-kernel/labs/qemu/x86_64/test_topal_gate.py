@@ -76,7 +76,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
         self.assertEqual(
-            fixture[0xA_6580 : 0xA_6580 + 882],
+            fixture[0xA_6100 : 0xA_6100 + 902],
             bytes(
                 [
                     0xB8, 0x0C, 0, 0, 0,
@@ -232,6 +232,8 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0x31, 0xFF,
                     0xB8, 0x69, 0x00, 0x00, 0x00,
                     0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+                    0x48, 0x81, 0xFC, 0x90, 0xFE, 0x7F, 0x00,
+                    0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
                     0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
                     0xC6, 0x04, 0x24, 0x0A,
                     0xBF, 0x01, 0x00, 0x00, 0x00,
@@ -263,12 +265,12 @@ class TopalToolchainGateTests(unittest.TestCase):
                     0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
                     0xB8, 0x6E, 0x00, 0x00, 0x00,
                     0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0xE9, 0x0E, 0x07, 0x00, 0x00,
+                    0xE9, 0x7A, 0x0B, 0x00, 0x00,
                 ]
             ),
         )
-        continuation = fixture[0xA_7000 : 0xA_89F5]
-        self.assertEqual(len(continuation), 6_645)
+        continuation = fixture[0xA_7000 : 0xA_8BB3]
+        self.assertEqual(len(continuation), 7_091)
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -635,10 +637,10 @@ class TopalToolchainGateTests(unittest.TestCase):
             ),
             continuation,
         )
-        self.assertIn(bytes.fromhex("4883f80575fe"), continuation)
-        self.assertIn(bytes.fromhex("48b8657869740a000000"), continuation)
-        self.assertIn(bytes.fromhex("48833c25688f5f000075fe"), continuation)
-        self.assertTrue(continuation.endswith(bytes.fromhex("31ffb8e70000000f050f0b")))
+        self.assertIn(bytes.fromhex("4883f81775fe"), continuation)
+        self.assertIn(bytes.fromhex("48b865786563202f6269"), continuation)
+        self.assertIn(bytes.fromhex("48833c25788f5f000075fe"), continuation)
+        self.assertTrue(continuation.endswith(bytes.fromhex("bf00905f00be80905f00baa0905f00b83b0000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
         self.assertEqual(fixture[0xA_6912 : 0xA_691B], b"/dev/tty\0")
         self.assertEqual(fixture[0xA_6920 : 0xA_6935], b"/var/spool/mail/root\0")
@@ -646,16 +648,28 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/216")
+        self.assertEqual(
+            evidence["observations"]["static_execve_busybox_true_profile"],
+            "clean-same-image-execve-true-startup-exit-witness",
+        )
+        for bound in (self.evidence, self.external_evidence):
+            self.assertEqual(bound["observations"]["static_execve_environment"], [
+                "SHLVL=1", "OLDPWD=/", "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "PWD=/"
+            ])
+            self.assertEqual(bound["observations"]["static_execve_descriptor_inheritance"],
+                             "reopened-non-cloexec-fd-three")
+            self.assertEqual(bound["observations"]["static_execve_random_profile"],
+                             "fresh-generator-extraction-before-reentry")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/217")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/206")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/207")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/216",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/217",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/116",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/117",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1177,7 +1191,9 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/216")
+        self.assertEqual(evidence["observations"]["static_execve_busybox_true_profile"],
+                         "external-busybox-same-image-execve-true-startup-exit-witness")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/217")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

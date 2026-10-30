@@ -337,7 +337,7 @@ def static_user_fixture() -> bytes:
             alignment,
         )
     image[0x1000] = 0xA5
-    image[0xA_6580 : 0xA_6580 + 882] = bytes(
+    entry = bytes(
         [
             0xB8, 0x0C, 0, 0, 0,
             0x31, 0xFF,
@@ -492,6 +492,8 @@ def static_user_fixture() -> bytes:
             0x31, 0xFF,
             0xB8, 0x69, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x48, 0x81, 0xFC, 0x90, 0xFE, 0x7F, 0x00,
+            0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
             0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
             0xC6, 0x04, 0x24, 0x0A,
             0xBF, 0x01, 0x00, 0x00, 0x00,
@@ -523,10 +525,14 @@ def static_user_fixture() -> bytes:
             0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
             0xB8, 0x6E, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-            0xE9, 0x0E, 0x07, 0x00, 0x00,
+            0xE9, 0x7A, 0x0B, 0x00, 0x00,
         ]
     )
-    continuation = bytes.fromhex(
+    image[0xA_6100 : 0xA_6100 + len(entry)] = entry
+    image[0xA_6580 : 0xA_6585] = bytes.fromhex(
+        "e97bfbffff"
+    )
+    continuation = bytearray(bytes.fromhex(
         "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
         "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
         "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
@@ -828,11 +834,41 @@ def static_user_fixture() -> bytes:
         "66c7042560945f00000066833c2560945f000075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f054883f80575fe"
-        "48b8657869740a00000048390425608f5f0075fe"
-        "48833c25688f5f000075fe"
-        "4881c40004000031ffb8e70000000f050f0b"
-    )
+        "31ffbe608f5f00baff03000031c00f054883f81775fe"
+        "48b865786563202f626948390425608f5f0075fe"
+        "48b86e2f62757379626f48390425688f5f0075fe"
+        "48b87820747275650a0048390425708f5f0075fe"
+        "48833c25788f5f000075fe"
+    ))
+    for address, value in (
+        (0x005F_9000, b"/bin/bus"),
+        (0x005F_9008, b"ybox\0\0\0\0"),
+        (0x005F_9010, b"true\0\0\0\0"),
+        (0x005F_9020, b"SHLVL=1\0"),
+        (0x005F_9030, b"OLDPWD=/"),
+        (0x005F_9038, bytes(8)),
+        (0x005F_9040, b"PATH=/sb"),
+        (0x005F_9048, b"in:/usr/"),
+        (0x005F_9050, b"sbin:/bi"),
+        (0x005F_9058, b"n:/usr/b"),
+        (0x005F_9060, b"in\0\0\0\0\0\0"),
+        (0x005F_9070, b"PWD=/\0\0\0"),
+    ):
+        continuation.extend(b"\x48\xb8" + value + b"\x48\xa3" + struct.pack("<Q", address))
+    for address, value in (
+        (0x005F_9080, 0x005F_9000),
+        (0x005F_9088, 0x005F_9010),
+        (0x005F_9090, 0),
+        (0x005F_90A0, 0x005F_9020),
+        (0x005F_90A8, 0x005F_9030),
+        (0x005F_90B0, 0x005F_9040),
+        (0x005F_90B8, 0x005F_9070),
+        (0x005F_90C0, 0),
+    ):
+        continuation.extend(
+            b"\x48\xb8" + struct.pack("<Q", value) + b"\x48\xa3" + struct.pack("<Q", address)
+        )
+    continuation.extend(bytes.fromhex("bf00905f00be80905f00baa0905f00b83b0000000f050f0b"))
     image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
@@ -1077,7 +1113,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/216",
+        "schema": "topal-kernel-toolchain-gate-qemu/217",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1371,6 +1407,16 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-fresh-generation-descriptor-three-witness"
             ),
+            "static_execve_busybox_true_profile": (
+                "external-busybox-same-image-execve-true-startup-exit-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-same-image-execve-true-startup-exit-witness"
+            ),
+            "static_execve_environment": [
+                "SHLVL=1", "OLDPWD=/", "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "PWD=/"
+            ],
+            "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
+            "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
             "static_shell_bin_busybox_reopen_terminal_revoke_profile": (
                 "external-busybox-terminal-revoked-reopened-description-witness"
                 if static_user_input == "pinned-external-static-busybox"
