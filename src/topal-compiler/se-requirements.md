@@ -2598,6 +2598,15 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The static-process provider shall realize `TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001`: exclusive child/snapshot
+storage, complete private parent restoration, copied slots/shared descriptions,
+fork-like native creation, reusable opaque thread registrations, child exec/exit
+and once-only checked wait publication. Actual mapping/backing, native register,
+TLS/extended-state, boundary/failure and unmodified shell evidence shall qualify
+the serialized finite-child profile without claiming general scheduling.
+
 The systems publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
 `TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` through ordinary declared-type export
 selection, shared numeric algorithms, qualified kernel allocation/fatal hooks,

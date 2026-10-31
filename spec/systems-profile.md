@@ -3368,6 +3368,101 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001 — Owned serialized child creation
+
+The qualified static-process service MAY reserve one additional process slot
+under its retained outer owner. It SHALL retain an independently owned inactive
+parent snapshot while a newly created child occupies the active mapping window.
+The initial schedule SHALL select the finite child until exit, then restore the
+parent before its pending creation return. This SHALL NOT implement shared-mm
+vfork, imply preemptive fairness or promise parent/child IPC progress.
+
+The admitted native x86-64 entry SHALL be `fork` (57), ignoring unused arguments,
+or fork-like `clone` (56) with a zero alternate stack and low-32-bit flags equal
+to SIGCHLD (17), optionally CHILD_SETTID (0x1000000) and CHILD_CLEARTID (0x200000).
+Other shapes SHALL return ENOSYS without publication or retained-state mutation.
+An occupied child/unreaped slot SHALL return EAGAIN without consuming a PID.
+Child-TID publication SHALL use a checked native 32-bit write in the child
+generation; an inaccessible candidate SHALL be ignored, matching the baseline's
+best-effort publication rather than rejecting a created process.
+
+Creation SHALL assign distinct child PID/TID and parent identity, preserve every
+parent register, TLS/extended-state value, image/backing byte, mapping permission,
+thread registration, signal state and process-local observation, and independently
+copy descriptor slots/flags and cwd. Inherited slots SHALL retain the same open
+descriptions and shared positions/status with an additional reference per slot.
+Both sixteen-slot tables, including the parked parent's slots, SHALL contribute
+to those counts. The owned store SHALL accommodate thirty-two distinct live
+descriptions, so a free child slot cannot be mistaken for proof of capacity in
+only the original single-process bank. Child-only description cells SHALL be
+released and verified empty before snapshot storage reclamation.
+No caller number or pointer SHALL grant process, backing or description authority.
+Child writes, close/dup, cwd changes and exec SHALL NOT mutate corresponding
+private parent state. Child exec SHALL retain its PID and relationship.
+Clock/entropy-service history SHALL remain with its shared owner; parent
+restoration SHALL NOT reactivate an old random-generator key or counter.
+
+Child exit SHALL release only child slots/image/thread state, retain the low eight
+status bits in one waitable relationship, restore the entire parent snapshot and
+return the child PID at the parent's original fork continuation. It SHALL NOT
+release the outer owner or publish the parent's terminal status. The initial
+child has a private, singly owned mm: dropping its clear-TID registration SHALL
+NOT invent a shared-mm write/wake. Snapshot storage, retained user candidates
+and private extended-state copies SHALL be erased/read back after restoration.
+Parent exit SHALL erase any unreaped relationship and all child storage before
+the outer owner returns. A stale, overlapping, incomplete or wrong-owner snapshot
+or failed restoration SHALL fail closed.
+
+Qualification SHALL execute both returns, private memory and stack preservation,
+child identity, copied slots/shared descriptions, child exec/exit, rejected creation,
+capacity, TLS/extended-state retention, application continuation and full teardown.
+Other targets SHALL provide their own ABI, context, mapping/backing and restoration
+evidence. This rule SHALL NOT qualify general cloning, threads, delivery of SIGCHLD,
+dynamic ELF, stopped/continued children or unbounded process creation.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001 — Once-only child reaping
+
+The initial `wait4` (61) profile SHALL admit native low-32-bit child selectors
+-1, zero or the retained child PID; options zero or WNOHANG (1); and null rusage.
+The sole admitted child retains the parent's process group. No matching child,
+including a second reap or an unrelated selector, SHALL return ECHILD.
+Unsupported options SHALL return EINVAL; non-null rusage SHALL return ENOSYS
+without consuming the relationship. Wider accounting/wait profiles remain
+unqualified, rather than receiving fabricated accounting.
+
+For an exited matching child, a null status pointer SHALL be valid. Otherwise
+the complete four-byte writable destination SHALL be checked before publishing
+`(status & 255) << 8`. Invalid output SHALL return EFAULT and retain the child
+for retry. Successful publication SHALL precede relationship destruction and
+return the child's PID. A retained relationship SHALL prevent child-slot reuse
+until successful reap or parent termination. No call SHALL fabricate a live
+child, status, completion or waiter. Native register preservation and retained
+outer-resource ownership SHALL apply to success and every error path.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001 — Reusable thread registration and local base
+
+After qualified startup, `set_tid_address` (218) SHALL retain the caller's opaque
+native pointer value without dereferencing it and return the current TID.
+`set_robust_list` (273) SHALL require the native 24-byte length, returning EINVAL
+unchanged otherwise; a valid length SHALL retain the opaque head value without
+dereferencing it. Registration SHALL NOT grant user-storage authority. These
+values SHALL belong to the current thread generation, be reset for child/exec
+as required by the baseline, survive unrelated operations and be erased at exit.
+Child registration SHALL NOT replace the parent's retained registration.
+Owner-death traversal, shared-mm clear/wake, futex waiters and other robust-list
+interfaces SHALL remain separately qualified.
+
+The reusable x86-64 native thread-local subset SHALL admit ARCH_SET_FS and
+ARCH_GET_FS through `arch_prctl` (158), using the native low-32-bit operation
+selector. Setting a base below the qualified
+four-level user-address limit 2^47 SHALL update the owned thread's native FS
+base without dereferencing it; a larger value SHALL return EPERM unchanged.
+Getting the base SHALL require a complete writable eight-byte destination and
+return EFAULT unchanged otherwise. Child creation SHALL inherit this state,
+child exec SHALL reset it before startup, and parent restoration SHALL restore
+the exact saved base. Other architecture-control selectors remain unqualified.
+This SHALL NOT expose native bases or address authority to Topal source.
+
 ### TOPAL-SYSTEMS-NUMERIC-RUNTIME-001 — Owned temporary numeric runtime
 
 An artifact MAY declare one `time-library` using `lang systems source-library`

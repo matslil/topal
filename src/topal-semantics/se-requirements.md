@@ -244,6 +244,15 @@ to explicit publisher inputs and owned process binding. This metadata shall
 not reinterpret core function syntax, grant numeric code authority or imply
 unqualified general-library support.
 
+The systems child-process model shall realize
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001` through explicit process,
+snapshot, shared-description and waitable-status lifetimes. Negative tests shall
+cover missing/mismatched ownership, capacity, failed publication/retry, private
+state restoration and once-only reaping. Modeled values shall grant no native
+address/context authority or general scheduling guarantee.
+
 The systems reference model shall retain the explicit numeric-library interface,
 4096-byte stack and 65536-byte temporary-storage obligations, invocation owner
 and exclusive activity, result bounds, exec-retained binding and terminal erasure
