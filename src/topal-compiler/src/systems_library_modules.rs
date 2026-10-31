@@ -332,6 +332,13 @@ pub(crate) fn check_isolation(
     let mut exports = Vec::new();
     let mut serial = 0;
     fn argument(kind: &T, client: &mut String, serial: &mut usize) -> Result<String, CompileError> {
+        if let T::Record(fields) = kind {
+            let fields = fields
+                .iter()
+                .map(|(label, kind)| Ok(format!("{label} is {}", argument(kind, client, serial)?)))
+                .collect::<Result<Vec<_>, CompileError>>()?;
+            return Ok(format!("({})", fields.join(", ")));
+        }
         if let T::Tuple(fields) = kind {
             let fields = fields
                 .iter()
@@ -576,9 +583,16 @@ mod tests {
         };
         let text =
             include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t").into();
-        let input=SystemsSourceLibraryInput {source:requirement.source.clone(),source_name:requirement.source.clone(),text,modules:vec![SystemsSourceModuleInput {
-            source:"support/clock.t".into(),identity:vec!["support".into(),"clock".into()],text:"use language (version is v0.1)\nfirst-quotient is fn (quotient : Int, remainder : Int) -> Int\n  quotient\npub rounded is fn (target : Nat) -> Int\n  ten : Nat is 10\n  nine : Nat is 9\n  first-quotient ((target + nine) /% ten)\n".into()
-        }]};
+        let input = SystemsSourceLibraryInput {
+            source: requirement.source.clone(),
+            source_name: requirement.source.clone(),
+            text,
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/clock.t".into(),
+                identity: vec!["support".into(), "clock".into()],
+                text: include_str!("../../../linux-kernel/kernel/support/clock.t").into(),
+            }],
+        };
         let checked =
             crate::systems_numeric_library::check_numeric_library(&requirement, &input).unwrap();
         assert_eq!(checked.program.dependencies.len(), 1);

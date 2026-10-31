@@ -242,7 +242,7 @@ pub(crate) fn build_numeric_library(
         platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
         object_sha256: digest(&bytes),
         llvm_version: tools.version.clone(),
-        machine_profile: "x86_64-owned-numeric-gpr-only/1".into(),
+        machine_profile: "x86_64-owned-numeric-gpr-only/2".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
         native_alignment_reserve_bytes: ALIGNMENT_RESERVE,
         native_leaf_return_bytes: 8,
@@ -383,8 +383,9 @@ pub(crate) fn inspect_linked_numeric_library(
         || record.allocation.limit_bytes != 65536
         || record.allocation.maximum_bytes > 65536
         || record.allocation.header_bytes != 32
+        || record.allocation.certificate != super::ALLOCATION_CERTIFICATE
         || record.allocation.runtime_sha256 != super::CERTIFIED_RUNTIME_SHA256
-        || record.machine_profile != "x86_64-owned-numeric-gpr-only/1"
+        || record.machine_profile != "x86_64-owned-numeric-gpr-only/2"
         || !record.functions.iter().any(|f| f.symbol == EXPORT_SYMBOL)
     {
         return Err(invalid(

@@ -25,6 +25,38 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_numeric_records_preserve_actual_fields_order_and_owned_runtime_bounds(self) -> None:
+        # TOPAL-SYSTEMS-NUMERIC-RECORDS-001, TOPAL-TYPE-RECONSTRUCT-001
+        proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
+        library=proof["library"]
+        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/2")
+        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/2")
+        self.assertLessEqual(library["maximum_stack_bytes"],4096)
+        self.assertEqual(library["allocation"]["maximum_bytes"],41544)
+        variant=proof["order_variant"]
+        self.assertEqual(variant["result"],"pass")
+        self.assertTrue(variant["root_and_provider_unchanged"] and variant["module_source_unchanged"])
+        self.assertEqual(variant["library"]["modules"],library["modules"])
+        self.assertEqual(variant["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertEqual(variant["library"]["allocation"],library["allocation"])
+        self.assertNotEqual(variant["library"]["source_sha256"],library["source_sha256"])
+        self.assertNotEqual(variant["runtime"]["linked_kernel_sha256"],proof["runtime"]["linked_kernel_sha256"])
+        for observation,order in [(proof["observation"],[1,0]),(variant["observation"],[0,1])]:
+            frame=observation["record_frames"][0]
+            self.assertTrue(frame["actual_fields_match_native_inputs"])
+            self.assertEqual(frame["field_order"],order)
+            self.assertEqual(frame["record_bytes"],24)
+            self.assertGreater(frame["stack_relative_offset"],0)
+            self.assertLessEqual(frame["stack_relative_offset"],library["maximum_stack_bytes"])
+            expected=next(c for c in observation["calls"] if c["wrapped"]==0)
+            self.assertEqual((frame["seconds"],frame["nanoseconds"]),(expected["seconds"],expected["nanoseconds"]))
+            self.assertIn("support/clock.t",frame["trace"])
+            self.assertIn("relative-sleep-deadline.t",frame["trace"])
+            for call in observation["calls"]:
+                self.assertEqual(call["observed_deadline"],call["expected_deadline"])
+                self.assertTrue(call["arena_erased"] and call["retired_stack_erased"])
+        self.assertEqual(variant["runtime"]["observations"]["result"],"pass")
+
     def test_source_modules_bind_exact_snapshots_real_frames_and_changed_helper(self) -> None:
         # TOPAL-SYSTEMS-SOURCE-MODULES-001
         for filename,expected in [("topal-kernel-source-library-gate.json",["support/boot.t","support/logic.t"]),
@@ -681,16 +713,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/233")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/234")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/222")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/233",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/234",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/133",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/134",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1216,7 +1248,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/233")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/234")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

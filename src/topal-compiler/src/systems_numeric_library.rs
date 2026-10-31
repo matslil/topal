@@ -1,6 +1,9 @@
 //! Checked ordinary numeric source and conservative temporary-allocation bounds.
 #[path = "systems_numeric_object.rs"]
 mod native_object;
+#[cfg(test)]
+#[path = "systems_numeric_record_tests.rs"]
+mod record_tests;
 use crate::{CompileError, SystemsSourceLibraryInput};
 pub use native_object::SystemsNumericLibraryArtifact;
 pub(crate) use native_object::{
@@ -24,6 +27,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/2";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -71,6 +75,7 @@ enum Value {
     Boolean,
     Number(Range),
     Pair(Box<Value>, Box<Value>),
+    Record(BTreeMap<String, Value>),
 }
 impl Value {
     fn number(&self) -> Result<&Range, CompileError> {
@@ -87,6 +92,11 @@ impl Value {
             (Self::Pair(a, b), Self::Pair(c, d)) => {
                 Ok(Self::Pair(Box::new(a.union(c)?), Box::new(b.union(d)?)))
             }
+            (Self::Record(a), Self::Record(b)) if a.keys().eq(b.keys()) => Ok(Self::Record(
+                a.iter()
+                    .map(|(label, value)| Ok((label.clone(), value.union(&b[label])?)))
+                    .collect::<Result<_, CompileError>>()?,
+            )),
             _ => Err(invalid("incompatible branch bounds")),
         }
     }
@@ -118,6 +128,7 @@ fn numeric_type(ty: &CompilerType) -> bool {
         ty,
         CompilerType::Boolean | CompilerType::Nat | CompilerType::Int
     ) || matches!(ty,CompilerType::Tuple(fields) if fields.as_slice()==[CompilerType::Int,CompilerType::Int])
+        || matches!(ty,CompilerType::Record(fields) if fields.iter().all(|(_,field)|numeric_type(field)))
 }
 impl Bounds<'_> {
     fn function(
@@ -209,6 +220,49 @@ impl Bounds<'_> {
                     .clone(),
                 0,
             ),
+            K::Record(fields) => {
+                let mut values = BTreeMap::new();
+                let mut bytes = 0;
+                for (label, field) in fields {
+                    let field = self.expression(field, env)?;
+                    bytes = cost_add(bytes, field.bytes)?;
+                    if values.insert(label.clone(), field.value).is_some() {
+                        return Err(invalid("duplicate checked Record label"));
+                    }
+                }
+                (Value::Record(values), bytes)
+            }
+            K::RecordField { record, label } => {
+                let receiver = self.expression(record, env)?;
+                let Value::Record(mut fields) = receiver.value else {
+                    return Err(invalid("Record projection without a bounded receiver"));
+                };
+                (
+                    fields
+                        .remove(label)
+                        .ok_or_else(|| invalid("missing checked Record field"))?,
+                    receiver.bytes,
+                )
+            }
+            K::RecordReconstruct { base, replacements } => {
+                let base = self.expression(base, env)?;
+                let Value::Record(mut fields) = base.value else {
+                    return Err(invalid("Record reconstruction without a bounded base"));
+                };
+                let mut bytes = base.bytes;
+                let mut replaced = BTreeSet::new();
+                for (label, expression) in replacements {
+                    if !replaced.insert(label) {
+                        return Err(invalid("duplicate checked replacement"));
+                    }
+                    let value = self.expression(expression, env)?;
+                    bytes = cost_add(bytes, value.bytes)?;
+                    *fields
+                        .get_mut(label)
+                        .ok_or_else(|| invalid("missing checked replacement field"))? = value.value;
+                }
+                (Value::Record(fields), bytes)
+            }
             K::Block(block) => {
                 return self.block(block, &mut env.clone());
             }
@@ -435,7 +489,7 @@ pub(crate) fn check_numeric_library(
     let bridge_bytes = 3 * 24; // three normal unsigned native-word input objects
     let maximum_bytes = cost_add(cost_add(result.bytes, bridge_bytes)?, HEADER_BYTES)?;
     let allocation = SystemsNumericAllocationBound {
-        certificate: "topal.numeric-allocation/1".into(),
+        certificate: ALLOCATION_CERTIFICATE.into(),
         runtime_sha256,
         maximum_operand_bits: bounds.maximum_bits,
         source_evaluation_bytes: result.bytes,
@@ -496,8 +550,8 @@ mod tests {
             (
                 "cycle",
                 text.replace(
-                    "false then ordinary-deadline (seconds, nanoseconds, ticks)",
-                    "false then sleep-deadline (seconds, nanoseconds, ticks, wrapped)",
+                    "  support clock sleep-deadline request",
+                    "  sleep-deadline (seconds, nanoseconds, ticks, wrapped)",
                 ),
             ),
         ];
@@ -557,7 +611,7 @@ mod tests {
         assert!(library.allocation.maximum_operand_bits >= 64);
         assert!(library.program.functions.len() > 3);
         let mut excessive = source.clone();
-        excessive.text = excessive.text.replace(
+        excessive.modules[0].text = excessive.modules[0].text.replace(
             "ticks * ten + duration",
             "ticks * ticks * ticks * ticks * ticks + duration",
         );

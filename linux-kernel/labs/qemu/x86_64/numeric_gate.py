@@ -21,12 +21,15 @@ GATE=module("topal_gate")
 TIMING=module("time_gate")
 LIBRARY=module("library_gate")
 
-def commands(elf,debug,result,target,bound):
+def commands(elf,debug,result,target,bound,record_order=(1,0)):
+    source=(GATE.LINUX_KERNEL/'kernel/support/clock.t').read_text().splitlines()
+    record_line=source.index('  seconds is interval seconds')+1
     setup=f'''
 import gdb,json
 from pathlib import Path
 calls=[]
 frames=[]
+records=[]
 active=None
 context=None
 arena=None
@@ -103,19 +106,74 @@ class Runtime(gdb.Breakpoint):
             assert "topal_kernel_sleep_deadline_policy_v1" in trace,trace
             frames.append(trace)
         return False
+class Record(gdb.Breakpoint):
+    def stop(self):
+        assert active is not None
+        value=gdb.selected_frame().read_var("interval")
+        assert value.type.sizeof==24 and value.address is not None
+        address=int(value.address)
+        assert active["caller_stack"]-4096<=address and address+24<=active["caller_stack"]
+        def number(pointer):
+            pointer=int(pointer)
+            sign,length=word(pointer),word(pointer+8)
+            assert sign==0 and length<=2
+            return sum(int.from_bytes(memory(pointer+16+i*4,4),"little")<<(32*i) for i in range(length))
+        seconds,nanos=number(value["seconds"]),number(value["nanoseconds"])
+        order=[int.from_bytes(memory(address+offset,4),"little") for offset in (16,20)]
+        assert seconds==active["seconds"] and nanos==active["nanoseconds"]
+        assert order=={list(record_order)!r},order
+        records.append(dict(seconds=seconds,nanoseconds=nanos,field_order=order,
+            stack_relative_offset=active["caller_stack"]-address,record_bytes=24,
+            trace=gdb.execute("bt",to_string=True),actual_fields_match_native_inputs=True))
+        self.delete()
+        Runtime("*"+hex(symbol("topal.runtime.int.divmod.absolute")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
+        return False
 class Released(gdb.Breakpoint):
     def stop(self):
-        assert active is None and calls and frames
+        assert active is None and calls and frames and records
         assert word(context+960)==0 and word(context+968)==0
         assert memory(arena,65536)==bytes(65536)
         Path({str(result)!r}).write_text(json.dumps(dict(calls=calls,source_runtime_frames=frames,
+            record_frames=records,
             binding_erased=True,terminal_arena_erased=True,result="pass"),indent=2,sort_keys=True)+"\\n")
         return True
 Enter("*"+hex(symbol("topal_kernel_sleep_deadline_policy_v1")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
-Runtime("*"+hex(symbol("topal.runtime.int.divmod.absolute")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
+Record("support/clock.t:{record_line}",type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
 Released("*"+hex(symbol("topal_x86_systems_static_image_process_restore_entry")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
 '''
     return (f"set pagination off\nfile {elf}\ntarget remote {debug}\npython\n{setup}\nend\ncontinue\ndetach\n")
+
+def observe(root,values,artifact,timeout,record_order=(1,0)):
+    original_build,original_command=GATE.build_image,GATE.qemu_command
+    library=artifact["time_library"]
+    _,target=TIMING.points(values[3].parent/"kernel.elf")
+    debug,result=root/"debug.sock",root/"numeric.json"
+    script=root/"numeric.gdb"
+    script.write_text(commands(values[3].parent/"kernel.elf",debug,result,target,
+                               library["allocation"]["maximum_bytes"],record_order))
+    outcome=[]
+    def inspect():
+        try:
+            until=time.monotonic()+5
+            while not debug.exists() and time.monotonic()<until:time.sleep(.02)
+            run=subprocess.run(["gdb","-q","-batch","-x",str(script)],stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,timeout=timeout+5)
+            (root/"debug.log").write_bytes(run.stdout)
+            outcome.append(run.returncode)
+        except BaseException as error:outcome.append(str(error))
+    def command(*args):
+        threading.Thread(target=inspect,daemon=True).start()
+        return original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
+    GATE.build_image=lambda *_args,**_kwargs:values
+    GATE.qemu_command=command
+    try:runtime=GATE.verify(timeout,False)
+    except GATE.GateError as error:
+        log=(root/"debug.log").read_text() if (root/"debug.log").exists() else repr(outcome)
+        raise GATE.GateError(str(error)+"\nNumeric debugger:\n"+log) from error
+    finally:GATE.build_image,GATE.qemu_command=original_build,original_command
+    if outcome!=[0] or not result.exists():
+        raise GATE.GateError("numeric debugger did not finish: "+repr(outcome)+"\n"+(root/"debug.log").read_text())
+    return runtime,json.loads(result.read_text())
 
 def verify(timeout=30,write_evidence=False):
     original_build,original_command=GATE.build_image,GATE.qemu_command
@@ -124,42 +182,41 @@ def verify(timeout=30,write_evidence=False):
         values=original_build(root/"artifact")
         artifact=json.loads(values[3].read_text())
         library=artifact["time_library"]
-        _,target=TIMING.points(root/"artifact/linked/kernel.elf")
-        debug,result=root/"debug.sock",root/"numeric.json"
-        script=root/"numeric.gdb"
-        script.write_text(commands(root/"artifact/linked/kernel.elf",debug,result,target,
-                                   library["allocation"]["maximum_bytes"]))
-        outcome=[]
-        def inspect():
-            try:
-                until=time.monotonic()+5
-                while not debug.exists() and time.monotonic()<until:time.sleep(.02)
-                run=subprocess.run(["gdb","-q","-batch","-x",str(script)],stdout=subprocess.PIPE,
-                                   stderr=subprocess.STDOUT,timeout=timeout+5)
-                (root/"debug.log").write_bytes(run.stdout)
-                outcome.append(run.returncode)
-            except BaseException as error:outcome.append(str(error))
-        def command(*args):
-            threading.Thread(target=inspect,daemon=True).start()
-            return original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
-        GATE.build_image=lambda *_args,**_kwargs:values
-        GATE.qemu_command=command
-        try:runtime=GATE.verify(timeout,False)
-        except GATE.GateError as error:
-            log=(root/"debug.log").read_text() if (root/"debug.log").exists() else repr(outcome)
-            raise GATE.GateError(str(error)+"\nNumeric debugger:\n"+log) from error
-        finally:GATE.build_image,GATE.qemu_command=original_build,original_command
-        if outcome!=[0] or not result.exists():
-            raise GATE.GateError("numeric debugger did not finish: "+repr(outcome)+"\n"+(root/"debug.log").read_text())
+        runtime,observation=observe(root,values,artifact,timeout)
         record=dict(schema="topal-owned-numeric-runtime-qemu/1",harness_sha256=GATE.digest(Path(__file__)),
-                    library=library,observation=json.loads(result.read_text()),runtime=runtime)
+                    library=library,observation=observation,runtime=runtime)
         record["module_publication"]=LIBRARY.module_publication(values[3].parent,artifact,"time_library","kernel-time-source-module:")
         record["counterexample"]=wrong_policy(root,artifact,timeout)
         record["module_counterexample"]=wrong_policy(root,artifact,timeout,module_body=True)
+        record["order_variant"]=order_variant(root,artifact,timeout)
     if write_evidence:
         (LAB/"results/topal-owned-numeric-runtime-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     print("PASS ordinary numeric source/runtime frames, ABI, arena/stack erasure and binding release",flush=True)
     return record
+
+def order_variant(root,primary,timeout):
+    case=root/"record-fields-reordered"
+    (case/"policy").mkdir(parents=True)
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
+    original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
+    changed=original.replace(
+        "    interval is (seconds is seconds, nanoseconds is nanoseconds),\n    clock is (ticks is ticks, wrapped is wrapped)",
+        "    clock is (wrapped is wrapped, ticks is ticks),\n    interval is (nanoseconds is nanoseconds, seconds is seconds)")
+    if changed==original:raise GATE.GateError("Record order variant did not change the constructor")
+    (case/"policy/relative-sleep-deadline.t").write_text(changed)
+    (case/"policy/boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
+    values=GATE.build_image(case/"artifact",library_root=case)
+    artifact=json.loads(values[3].read_text())
+    for prefix in ("topal.systems-root-object","topal.provider-object"):
+        before=[v for v in primary["inputs"] if v["identity"].startswith(prefix)]
+        after=[v for v in artifact["inputs"] if v["identity"].startswith(prefix)]
+        if len(before)!=1 or before!=after:raise GATE.GateError("Record order changed native root/provider objects")
+    library=artifact["time_library"]
+    if library["modules"]!=primary["time_library"]["modules"]:
+        raise GATE.GateError("Record order variant changed imported module source")
+    runtime,observation=observe(case,values,artifact,timeout,record_order=(0,1))
+    return dict(result="pass",case="record-fields-reordered",library=library,runtime=runtime,
+                observation=observation,root_and_provider_unchanged=True,module_source_unchanged=True)
 
 def wrong_policy(root,primary,timeout,module_body=False):
     """Reject a changed scalar at the independent deadline oracle, before completion."""
@@ -167,7 +224,7 @@ def wrong_policy(root,primary,timeout,module_body=False):
     policy=case/"policy"
     policy.mkdir(parents=True)
     original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
-    changed=original.replace("false then ordinary-deadline (seconds, nanoseconds, ticks)","false then 0")
+    changed=original.replace("  support clock sleep-deadline request","  computed is support clock sleep-deadline request\n  0")
     if module_body: changed=original
     elif changed==original:raise GATE.GateError("counterexample did not alter the source policy")
     (policy/"relative-sleep-deadline.t").write_text(changed)
