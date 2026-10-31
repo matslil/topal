@@ -902,6 +902,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 ordinary finite kernel policy library](step-4-kernel-policy-library.md)
 - [Step 4 owned numeric kernel runtime](step-4-owned-numeric-runtime.md)
 - [Step 4 independently owned static child processes](step-4-static-process-children.md)
+- [Step 4 resumable parent and child](step-4-resumable-static-process-pair.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

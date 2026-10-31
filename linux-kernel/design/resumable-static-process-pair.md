@@ -1,7 +1,8 @@
 # Resumable static-process pair
 
 Status: systems-only refinement adopted under standing chat authorization,
-`TK-DEC-255`; implementation and qualification pending.
+`TK-DEC-255`; implemented and physically qualified in the
+[Step 4 report](../step-4-resumable-static-process-pair.md).
 
 ## Purpose and alternatives
 
