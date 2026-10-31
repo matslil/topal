@@ -1,7 +1,8 @@
 # Completed deadline notification filtering
 
 Status: systems-provider correction adopted under standing authorization;
-implementation and qualification pending (`TK-DEC-248`).
+implemented and physically qualified (`TK-DEC-248`); see the
+[qualification report](../step-4-deadline-entry-filter.md).
 
 A raw target interrupt is not itself a typed deadline context. The provider
 must bind accepted delivery to the current armed event and must not construct a

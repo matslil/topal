@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/222")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/223")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/212")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/213")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/222",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/223",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/122",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/123",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/222")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/223")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1397,6 +1397,35 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
             hashes.add(expected)
         self.assertEqual(len(hashes),3)
+
+    def test_completed_deadline_notification_preserves_the_interrupted_frame(self) -> None:
+        # TOPAL-SYSTEMS-DEADLINE-EVENT-001
+        evidence=json.loads((LAB/"results/topal-deadline-entry-filter-gate.json").read_text())
+        self.assertEqual(evidence["schema"],"topal-deadline-completed-notification-qemu/1")
+        self.assertEqual(evidence["harness_sha256"],GATE.digest(LAB/"deadline_gate.py"))
+        current=evidence["current"]
+        self.assertEqual(current["result"],"pass")
+        self.assertEqual(current["completed_event_state"],3)
+        self.assertEqual(current["raw_vector"],242)
+        self.assertTrue(current["filtered_entry_observed"])
+        self.assertTrue(current["setup_registers_unchanged"])
+        self.assertTrue(current["setup_frame_unchanged"])
+        self.assertEqual(current["filtered_frame_sha256"],current["interrupted_frame_sha256"])
+        self.assertEqual(current["temporary_helper_vector"],{"original":241,"injected":242,"restored":241})
+        self.assertEqual(current["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        serial=current["serial_utf8"]
+        for marker in ("TOPAL_KERNEL_DEADLINE_PREEMPTED","TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+                       "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED"):
+            self.assertEqual(serial.count(marker),1)
+        self.assertEqual(current["runtime"]["observations"]["result"],"pass")
+        self.assertTrue(current["runtime"]["observations"]["qemu_running_after_markers"])
+        self.assertTrue(current["runtime"]["observations"]["serial_quiescent_after_fatal_disposition"])
+        previous=evidence["predecessor"]
+        self.assertEqual(previous["result"],"expected-predecessor-rejection")
+        self.assertFalse(previous["filtered_entry_observed"])
+        self.assertEqual(previous["completed_event_state"],3)
+        self.assertIn("TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",previous["serial_utf8"])
+        self.assertNotIn("TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",previous["serial_utf8"])
 
     def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001

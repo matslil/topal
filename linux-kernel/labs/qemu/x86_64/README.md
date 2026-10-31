@@ -460,6 +460,14 @@ status. Records retain `process_exec_commits` and the complete raw serial
 transcript. Only the declared private commit markers are removed for exact
 application-output comparison; their expected counts are checked separately.
 
+The [deadline-entry correction](../../../step-4-deadline-entry-filter.md) uses
+`deadline_gate.py --external-static-user-image PATH --write-evidence` to inject
+a completed event's raw notification at suspended-worker resumption. It records
+actual filter entry, exact saved-frame equality, restored test instrumentation
+and full kernel rollback. An optional `--predecessor-artifact PATH` points to a
+previous build's `artifact` directory and records its expected rejection of the
+same injection separately. Run the harness through `scripts/run_bounded.py`.
+
 Realtime calendar and representation cases use a separate harness:
 
 ```sh
