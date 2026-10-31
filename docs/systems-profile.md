@@ -437,9 +437,18 @@ The invocation owns every nested numeric value until scalar result extraction
 and full erasure. This introduces no new allocator, persistent state, native
 layout, resource authority or core-language meaning; see `TK-DEC-258`.
 
+The numeric profile may separately qualify finite ordinary `List Int`
+construction, fixed `Array (N, Int)` collection and checked constant-index
+access with `Optional Int` decisions. Exact sequence lengths and per-entry
+bounds must prove traversal and allocation costs for the shared collection
+runtime; unsupported forms remain profile diagnostics. Every node, header,
+wrapper and payload belongs to the existing exclusive invocation and its
+complete erasure. This adds no native-memory access or core-language meaning;
+see `TK-DEC-259`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
-container, concurrent invocation or module support.
+general-container, concurrent invocation or general module support.
 
 ### One-shot deadline event
 

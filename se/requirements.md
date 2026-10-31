@@ -1565,6 +1565,16 @@ escape beyond the numeric invocation. The native scalar interface and existing
 Record execution, independent arithmetic, order variants, malformed inputs,
 resource bounds and complete reclamation shall qualify the extension.
 
+Under `TK-DEC-259`, the numeric profile may qualify finite `List Int`
+construction, fixed integer Arrays and checked constant-index access with
+ordinary Optional decisions. Publication shall prove exact bounded sequence
+lengths, per-entry ranges, complete source/runtime allocation, branch costs,
+actual native stack and the retained shared collection closure. Existing arena,
+stack, module-isolation and erasure obligations shall remain. Actual imported
+Array arguments, independent entry/length inspection, empty/out-of-bounds cases,
+resource rejection and unchanged external arithmetic shall qualify this subset;
+it shall not imply general containers or native-memory authority.
+
 The initial static-process child refinement shall realize `TK-DEC-254` under
 `TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
 shared inherited open descriptions, checked native creation/wait boundaries,
