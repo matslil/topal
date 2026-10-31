@@ -1,7 +1,7 @@
 # Recoverable unknown syscalls in static processes
 
-Status: systems-only direction adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-250`).
+Status: implemented and physically qualified under standing systems-only chat
+authorization (`TK-DEC-250`); see the [report](../step-4-static-syscall-fallback.md).
 
 The prepared static process uses the same kernel dispatch policy as the initial
 process: a selector with no implemented arm returns native Linux ENOSYS through
@@ -31,6 +31,6 @@ and saved-register clearing, unchanged state, exec lifetime and full rollback.
 AArch64 and RISC-V must use their own native selector and continuation adapters.
 
 Primary evidence is pinned Linux `kernel/sys_ni.c` (`sys_ni_syscall`) and the
-native x86 syscall dispatch in `arch/x86/entry/common.c`. See the
+native x86 syscall dispatch in `arch/x86/entry/syscall_64.c`. See the
 [initial-process policy](bounded-unsupported-syscall-enosys.md) and
 [baseline](../baseline.md). Broader Linux compatibility remains open.

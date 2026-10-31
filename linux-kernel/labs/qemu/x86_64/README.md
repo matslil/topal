@@ -496,3 +496,10 @@ unmodified replacement shell through successive serial prompt/read/builtin
 cycles, cwd changes and statuses 7/9. Caller environments select the prompt;
 expected transcripts remain harness evidence. Process creation, a controlling
 terminal and job control remain separately qualified.
+
+The [static-process fallback qualification](../../../step-4-static-syscall-fallback.md)
+adds repeated unknown native-selector probes before and after exec. Independent
+fixture encoders check ENOSYS with invalid unused pointers, six preserved
+argument registers, unchanged user canaries and a subsequent implemented call
+whose selector has upper bits set. This retains recoverable failure without
+claiming implementation of the requested interface.

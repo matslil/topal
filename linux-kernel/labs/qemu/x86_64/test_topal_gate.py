@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/225")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/226")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/215")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/216")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/225",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/226",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/125",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/126",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/225")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/226")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1429,6 +1429,9 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_prepared_process_observations_bind_queries_and_replacement_shells(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-{IDENTITY,UNAME}-001
+        # TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001
+        self.assertEqual(self.evidence["observations"]["static_unknown_syscall_profile"],
+                         "normalized-selector-enosys-without-argument-or-state-access")
         self.assertEqual(self.evidence["static_user_image_sha256"],
                          hashlib.sha256(GATE.static_user_fixture()).hexdigest())
         expected={"replacement-shell-pid":("1\n",0,2),
