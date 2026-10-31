@@ -2400,6 +2400,15 @@ state witnesses shall cover later-generation failed retries and full rollback.
 The complete backing precondition shall remain explicit until independently
 broadened; no fixed replacement count shall authorize execution.
 
+The deadline-entry correction shall implement `TK-DEC-248` and
+`TOPAL-SYSTEMS-DEADLINE-EVENT-001` by filtering a completed event's raw target
+notification before source dispatch. It shall acknowledge that notification
+without repeating completion/preemption, restore the exact interrupted register
+and frame image, and close the source/controller route on accepted completion.
+Qualification shall inject a queued completed-event notification at worker
+resumption, reject the predecessor behavior and complete ordinary context and
+application/resource regressions. Native vectors and MMIO remain private.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

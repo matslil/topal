@@ -255,6 +255,15 @@ Resume before completion, completion outside the matching entry, duplicate
 completion, an early observation, or ordinary completion with a live deadline
 authority SHALL be rejected.
 
+A queued raw target notification for an already completed event SHALL NOT
+construct another typed deadline context. The target adapter SHALL acknowledge
+and filter that notification before source-handler dispatch, preserving the
+interrupted frame and registers and performing no second completion or context
+preemption. Completion SHALL close the event's target source and route; a
+notification already queued in a controller SHALL still be filtered on entry.
+Qualification SHALL inject such delivery at suspended-worker resumption and
+prove exactly-once typed completion and complete context/resource reclamation.
+
 The initial executable slice SHALL admit exactly one deadline constructed from
 the second qualified monotonic observation and `1[ms]`, one arm/wait lifecycle,
 and one declared handler. Comparator, timer, route, vector, controller,
