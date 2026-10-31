@@ -3368,6 +3368,90 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-SOURCE-LIBRARY-001 — Checked freestanding source-library import
+
+An artifact MAY declare one `kernel-library` using
+`lang systems source-library (source is PATH, export is NAME, interface is
+boot-open-decision-v1, stack-limit-bytes is 1024)`. PATH SHALL identify a
+relative `.t` source unit within the explicitly selected library root. NAME
+SHALL be one structural identifier naming a public ordinary function in that
+unit. Duplicate fields, missing/unknown interface fields, escaping paths or
+unselected inputs SHALL be invalid. An in-memory publisher SHALL receive the
+matching source snapshot explicitly. A declared import SHALL NOT fall back to
+another implementation when source loading, checking or qualification fails.
+Artifacts without this import SHALL retain their existing closed-profile
+contracts.
+
+The ordinary shared language frontend SHALL check the selected export and its
+complete reachable helper graph. The first profile SHALL admit only Boolean
+and nominal Enum data, ordinary local bindings, finite decisions and direct
+acyclic calls. Effects, resource/address values, allocation, foreign calls,
+dynamic callable values, recursion, imports and other unqualified forms SHALL
+produce a profile diagnostic. This admission boundary SHALL NOT change valid
+core-language meaning, overload selection, type identity, exhaustiveness,
+visibility or termination rules. Unchecked source-body reinterpretation SHALL
+be invalid.
+
+Native lowering SHALL reuse ordinary checked function lowering, retain source
+names and ordinary helper calls, and emit a separate freestanding library
+object with a generated private interface adapter. No hosted entry/runtime,
+allocator, foreign dependency, TLS, writable library data or unchecked object
+input SHALL be admitted. The x86-64 profile SHALL disable red-zone and implicit
+floating-point use and preserve its caller's native non-result state.
+
+Publication SHALL inspect the actual target object and LLVM stack-size evidence.
+The closed acyclic call graph, adapter and return-address costs SHALL prove a
+maximum additional stack requirement of at most 1024 bytes. Missing, dynamic,
+inconsistent or excessive stack evidence SHALL be invalid. The initial native
+caller SHALL own that reserve in its validated bootstrap stack. Another target
+SHALL provide its own ABI, frame and caller-reserve evidence.
+
+Atomic publication SHALL bind the exact source snapshot, public export,
+semantic interface, checked instantiation, private representation adaptation,
+LLVM tool identity, object digests and stack evidence. Qualification SHALL
+execute the complete finite input domain, source/helper frames, source-body and
+Enum-order variants, malformed/escape inputs and full artifact/runtime rollback.
+This rule SHALL NOT establish arbitrary-type, allocating or general module
+support merely from the first profile.
+
+### TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001 — Owned pure boot-open policy binding
+
+The initial `boot-open-decision-v1` interface SHALL select a public ordinary
+function with three Boolean semantic facts: write intent, directory object and
+directory-only requirement. Its result SHALL be the checked nominal
+`BootOpenDecision` Enum with exactly `ReadDescription`, `NotDirectory`,
+`DirectoryWrite` and `ReadOnlyView`. Source declaration order SHALL NOT become
+a native ABI. The private adapter SHALL translate the checked source
+representation to versioned semantic choices and reject impossible results.
+The kernel source unit SHALL implement the existing
+`TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-ACCESS-001` policy. No native flag,
+selector, errno or numeric address SHALL be required in that source policy.
+
+The artifact SHALL own the immutable code/interface binding. Source-bound
+static process entry SHALL borrow it from the root, retain its identity across
+exec and erase/read back the private witness before terminal return. Numeric
+application data SHALL NOT select privileged code or grant binding authority.
+The native caller SHALL complete normal flag/name/free-slot/lookup processing
+before invoking policy, translate semantic choices at the ABI boundary, and
+preserve the existing publication/error ordering and erasure. An allowed policy
+result SHALL NOT grant rights absent from the owned filesystem/object view;
+this immutable namespace SHALL publish no writable description.
+
+The source function SHALL receive no privileged context, resource, pointer or
+ambient machine authority and SHALL perform only its qualified pure call graph.
+The target adapter SHALL preserve caller ABI/alignment and enforce its checked
+stack reserve. Invalid binding, lifetime, result, resource right or incomplete
+terminal erasure SHALL fail closed.
+
+Tests SHALL execute all eight Boolean combinations, actual native policy/helper
+calls, existing access/error/copy boundaries, exec retention and complete
+reclamation. Reordered Enum declarations SHALL preserve semantic behavior.
+A deliberately changed denial SHALL change library execution while root/provider
+objects remain independent of that body, and the Linux behavior witness SHALL
+reject the wrong result. Such counterexamples SHALL remain separate from
+successful qualification. Core-language semantics and source assembly SHALL
+remain unchanged.
+
 ### TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001 — Borrowed clock observations
 
 A qualified prepared static process SHALL borrow the bootstrap owner's initial

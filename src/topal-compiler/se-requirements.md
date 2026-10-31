@@ -2598,6 +2598,29 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The systems publisher shall realize `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` and
+`TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`. It shall load an explicitly selected
+relative source-library unit under `--library-root`, or consume an explicit
+matching in-memory snapshot, and use the ordinary shared frontend for the public
+export and complete reachable helper graph. The first profile shall admit only
+Boolean/nominal-Enum pure acyclic direct calls and their local/decision forms,
+rejecting unqualified values, effects, allocation, foreign dependencies and
+imports before publication. Ordinary function lowering shall emit a separate
+freestanding object with source/helper debug information and a private native
+interface adapter. No hosted runtime, source assembly, TLS or writable library
+data shall be linked. Red-zone/implicit floating-point use shall be disabled,
+actual object/stack-size evidence shall prove the complete call-path cost fits
+the 1024-byte caller reserve, and missing/dynamic/excess evidence shall fail.
+The bound semantic open-policy interface shall normalize private Enum order,
+receive only owned-view facts, preserve native ABI/state, retain its scoped
+binding across exec and erase it at terminal return. A source choice shall not
+grant missing resource rights. Publication shall bind exact source/interface,
+instantiation, LLVM/object and stack evidence. Exhaustive finite inputs, guest
+source/helper frames, Enum reordering, changed-source counterexamples, missing/
+malformed inputs, native boundaries and complete rollback shall qualify it.
+A declared import shall never use a fallback on failure; older roots without
+this refinement retain their own declared contracts.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private

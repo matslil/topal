@@ -234,6 +234,16 @@ address, reject out-of-bounds access and use after release, and distinguish
 plain storage from volatile, atomic, device, DMA, firmware, and user-memory
 protocols.
 
+The qualified systems source-library refinement shall retain a typed optional
+artifact import requirement under `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` and
+`TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`. It shall identify the relative source
+unit, public export, selected semantic interface and 1024-byte caller-stack
+limit, reject missing/duplicate/unknown or escaping fields through shared
+checking, preserve existing entry/lifetime validation and connect the import
+to explicit publisher inputs and owned process binding. This metadata shall
+not reinterpret core function syntax, grant numeric code authority or imply
+unqualified general-library support.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but
