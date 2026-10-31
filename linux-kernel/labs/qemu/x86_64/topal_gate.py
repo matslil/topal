@@ -34,6 +34,7 @@ PINNED_STATIC_BUSYBOX_SHA256 = (
 )
 SERIAL_INPUT = b"read"
 PROCESS_COMMAND = b"exec /bin/busybox true\n"
+EXEC_COMMIT_MARKER = b"\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n"
 PROCESS_WORKLOADS = {
     "true": (PROCESS_COMMAND, b"", 0),
     "false": (b"exec /bin/busybox false\n", b"", 1),
@@ -51,6 +52,13 @@ PROCESS_WORKLOADS = {
     "wc-file": (b"exec /bin/busybox wc -c /bin/busybox\n", b"2024544 /bin/busybox\n", 0),
     "ls-bin": (b"exec /bin/busybox ls -1 /bin\n", b"busybox\n", 0),
     "pwd-bin": (b"cd /bin; exec /bin/busybox pwd\n", b"/bin\n", 0),
+    "exec-chain": (
+        b"exec /bin/busybox env /bin/busybox env /bin/busybox echo chain\n", b"chain\n", 0
+    ),
+    "exec-chain-false": (b"exec /bin/busybox env /bin/busybox false\n", b"", 1),
+    "exec-chain-cwd": (
+        b"cd /bin; exec /bin/busybox env /bin/busybox env /bin/busybox pwd\n", b"/bin\n", 0
+    ),
     "export-token": (
         b"export TOPAL_TOKEN=alpha; exec /bin/busybox env\n",
         b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=alpha\nPWD=/\n", 0
@@ -1258,8 +1266,9 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/221",
+        "schema": "topal-kernel-toolchain-gate-qemu/222",
         "publication": "topalc-target-interface/1",
+        "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
         "qemu": qemu_version,
@@ -1297,7 +1306,7 @@ def evidence_record(
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
-            "static_applet_newline_count": serial.count(b"\n"),
+            "static_applet_newline_count": serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n"),
             "static_shell_getpid_profile": (
                 "external-shell-echo-command"
                 if static_user_input == "pinned-external-static-busybox"
@@ -1674,7 +1683,7 @@ def verify(
             if static_user_input == "pinned-external-static-busybox"
             else 19
         ) + process_output.count(b"\n")
-        if serial.count(b"\n") != expected_newline_count:
+        if serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n") != expected_newline_count:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
             )
@@ -1684,8 +1693,13 @@ def verify(
             )
         status_witness = f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={process_status:02x}\n".encode()
         final_prompt = b"/\n" if external_static_user_image is not None else b"/ # "
-        if final_prompt + process_output + status_witness not in serial:
+        if final_prompt + process_output + status_witness not in serial.replace(EXEC_COMMIT_MARKER, b""):
             raise GateError("runtime process output or observed exit status differed")
+        expected_commits = 3 if external_static_user_image is None and clean_environment_mode == "maximum" else 1
+        if external_static_user_image is not None:
+            expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3}.get(process_workload, 1)
+        if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
+            raise GateError("unexpected successful image-replacement count")
         record = evidence_record(
             qemu_version,
             image,

@@ -120,6 +120,15 @@ pub(in super::super) fn post_code(mode: &str) -> Vec<u8> {
     let mut w = Witness::default();
     let count = if mode == "maximum" { 16 } else { 0 };
     if count != 0 {
+        // A caller-owned nonzero byte transports progress across destroyed
+        // images. The kernel never interprets it or controls this user loop.
+        w.0.extend_from_slice(&[0x44, 0x0f, 0xb6, 0x3c, 0x25]);
+        w.0.extend_from_slice(&((ENVIRONMENT + 1022) as u32).to_le_bytes());
+        w.0.extend_from_slice(&[0x49, 0x83, 0xff, b'x', 0x73, 0x02, 0xeb, 0xfe]);
+        w.0.extend_from_slice(&[0x49, 0x83, 0xff, b'z', 0x76, 0x02, 0xeb, 0xfe]);
+        w.0.extend_from_slice(&[0xc6, 0x04, 0x25]);
+        w.0.extend_from_slice(&((ENVIRONMENT + 1022) as u32).to_le_bytes());
+        w.0.push(b'x');
         let mut offset = 0;
         for (i, value) in entries().into_iter().enumerate() {
             w.memory(ENTRY + 80 + i as u64 * 8, ENVIRONMENT + offset);
@@ -134,5 +143,56 @@ pub(in super::super) fn post_code(mode: &str) -> Vec<u8> {
         0xf3, 0xaa, 0x48, 0x81, 0xc4, 0, 0x10, 0, 0,
     ]);
     payloads(&mut w, count);
+    if count != 0 {
+        repeated_generation(&mut w);
+    }
     w.finish()
+}
+
+fn repeated_generation(w: &mut Witness) {
+    const ACTION: u64 = 0x7fe900;
+    const OLD: u64 = 0x7fe940;
+    w.call(72, &[10, 1, 0], -9);
+    w.call(8, &[4, 0, 1], 7);
+    w.store(0x7fe400, 0);
+    w.call(79, &[0x7fe400, 64], 5);
+    w.memory(0x7fe400, u64::from_le_bytes(*b"/bin\0\0\0\0"));
+    for (signal, handler) in [(10, 0), (12, 1)] {
+        w.call(13, &[signal, 0, OLD, 8], 0);
+        for (offset, value) in [(0, handler), (8, 0), (16, 0), (24, 0)] {
+            w.memory(OLD + offset, value);
+        }
+    }
+    w.call(14, &[99, 0, OLD, 8], 0);
+    w.memory(OLD, 64);
+    // A copied argv prefix followed by a bad env pointer must preserve this
+    // generation, and must not emit a successful-commit observation.
+    w.call(59, &[0x7fff40, ENTRY + 8, u64::MAX], -14);
+    w.call(8, &[4, 0, 1], 7);
+    w.0.extend_from_slice(&[0x49, 0x83, 0xff, b'z', 0x0f, 0x84]);
+    let skip = w.0.len();
+    w.0.extend_from_slice(&[0; 4]);
+    w.call(72, &[4, 1030, 10], 10);
+    for (offset, value) in [
+        (0, 0x12345000),
+        (8, u64::MAX),
+        (16, 0xdecafbad),
+        (24, u64::MAX),
+    ] {
+        w.store(ACTION + offset, value);
+    }
+    w.call(13, &[10, ACTION, 0, 8], 0);
+    w.0.extend_from_slice(&[0x41, 0xff, 0xc7, 0x44, 0x88, 0x3c, 0x25]);
+    w.0.extend_from_slice(&((ENVIRONMENT + 1022) as u32).to_le_bytes());
+    for (prefix, value) in [
+        (&[0x48, 0xbf][..], 0x7fff40),
+        (&[0x48, 0xbe], ENTRY + 8),
+        (&[0x48, 0xba], ENTRY + 80),
+    ] {
+        w.imm(prefix, value);
+    }
+    w.imm(&[0x48, 0xb8], 59);
+    w.0.extend_from_slice(&[0x0f, 0x05, 0x0f, 0x0b]);
+    let displacement = i32::try_from(w.0.len() - skip - 4).unwrap();
+    w.0[skip..skip + 4].copy_from_slice(&displacement.to_le_bytes());
 }

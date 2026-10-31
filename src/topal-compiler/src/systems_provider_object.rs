@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/203";
+    "topal.provider-object.x86_64-qemu-pc-q35/204";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -12070,7 +12070,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         "static-process-execve-high-heap",
     )?;
     code.bytes(&[0x59, 0x5a, 0x5e, 0x5f]);
-    for (offset, expected) in [(418_u32, 6_u8), (104, 32), (737, 0), (892, 5)] {
+    process_runtime::emit_exec_generation_validation(&mut code)?;
+    for (offset, expected) in [(737_u32, 0_u8), (892, 5)] {
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[expected]);
@@ -12231,6 +12232,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&((process_runtime::ENTRY as u32 - 0x007f_e000) / 8).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
+    process_runtime::emit_exec_commit_witness(&mut code);
     code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25]);
     code.bytes(&256_u32.to_le_bytes());
     emit_static_process_clean_simd_state(&mut code);

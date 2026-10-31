@@ -90,7 +90,10 @@ def verify(external: Path,timeout: float,write_evidence: bool) -> dict:
                                          timeout,COMMAND,setup)
             finally:
                 GATE.qemu_command=original
-            match=re.search(rb'/\n([0-9]+)\n\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n',serial)
+            if serial.count(GATE.EXEC_COMMIT_MARKER)!=1:
+                raise GATE.GateError(f'{name}: expected one committed exec')
+            match=re.search(rb'/\n([0-9]+)\n\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n',
+                            serial.replace(GATE.EXEC_COMMIT_MARKER,b''))
             if not match:
                 raise GATE.GateError(f'{name}: date output/status did not match')
             minimum=int(datetime.datetime.fromisoformat(date).replace(tzinfo=datetime.timezone.utc).timestamp())

@@ -279,6 +279,44 @@ pub(super) fn emit_exec_stack(code: &mut X86FunctionEncoder) -> Result<(), Compi
     environment::emit_stack(code)
 }
 
+/// The first command hands over to a process lifetime; later image generations
+/// validate their own completed startup, not the consumed shell command.
+pub(super) fn emit_exec_generation_validation(
+    code: &mut X86FunctionEncoder,
+) -> Result<(), CompileError> {
+    let mut e = E(code);
+    e.gs(0x8b, A, 896);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "runtime-exec-first-generation");
+    e.cmp(A, 1);
+    e.0.jump_if(0x85, "fatal");
+    e.gs(0x8b, A, 104);
+    e.cmp(A, 11);
+    e.0.jump_if(0x82, "fatal");
+    e.cmp(A, 15);
+    e.0.jump_if(0x87, "fatal");
+    e.0.jump("runtime-exec-generation-ready");
+    e.0.bind("runtime-exec-first-generation")?;
+    // These are predecessor qualification facts, not a later-generation token.
+    e.gs(0x8b, A, 104);
+    e.cmp(A, 32);
+    e.0.jump_if(0x85, "fatal");
+    e.0.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+    e.0.bytes(&418_u32.to_le_bytes());
+    e.0.bytes(&[6]);
+    e.0.jump_if(0x85, "fatal");
+    e.0.bind("runtime-exec-generation-ready")?;
+    Ok(())
+}
+
+pub(super) fn emit_exec_commit_witness(code: &mut X86FunctionEncoder) {
+    let mut e = E(code);
+    for byte in b"\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n" {
+        e.imm(A, u64::from(*byte));
+        e.0.call("runtime-uart-byte");
+    }
+}
+
 pub(super) fn emit_stack_output_extent(code: &mut X86FunctionEncoder, register_r10: bool) {
     let mut e = E(code);
     let reg = if register_r10 { R10 } else { Si };

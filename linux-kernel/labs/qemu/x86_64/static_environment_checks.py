@@ -99,6 +99,11 @@ def post_code(witness_type,mode):
     w=witness_type()
     count=16 if mode=='maximum' else 0
     if count:
+        w.raw('440fb63c25')
+        w.code.extend((ENVIRONMENT+1022).to_bytes(4,'little'))
+        w.raw('4983ff787302ebfe4983ff7a7602ebfec60425')
+        w.code.extend((ENVIRONMENT+1022).to_bytes(4,'little'))
+        w.raw('78')
         offset=0
         for index,value in enumerate(entries()):
             w.memory(ENTRY+80+index*8,ENVIRONMENT+offset)
@@ -106,4 +111,36 @@ def post_code(witness_type,mode):
     payloads(w,count)
     w.raw('4881ec001000004889e7b900100000b05afcf3aa4881c400100000')
     payloads(w,count)
+    if count:
+        repeated_generation(w)
     return w.finish()
+
+
+def repeated_generation(w):
+    action,old=0x7FE900,0x7FE940
+    w.call(72,(10,1,0),-9)
+    w.call(8,(4,0,1),7)
+    w.store(0x7FE400,0)
+    w.call(79,(0x7FE400,64),5)
+    w.memory(0x7FE400,int.from_bytes(b'/bin\0\0\0\0','little'))
+    for signal,handler in ((10,0),(12,1)):
+        w.call(13,(signal,0,old,8),0)
+        for offset,value in ((0,handler),(8,0),(16,0),(24,0)):
+            w.memory(old+offset,value)
+    w.call(14,(99,0,old,8),0)
+    w.memory(old,64)
+    w.call(59,(0x7FFF40,ENTRY+8,MAX),-14)
+    w.call(8,(4,0,1),7)
+    w.raw('4983ff7a0f84')
+    skip=len(w.code)
+    w.raw('00000000')
+    w.call(72,(4,1030,10),10)
+    for offset,value in ((0,0x12345000),(8,MAX),(16,0xDECAFBAD),(24,MAX)):
+        w.store(action+offset,value)
+    w.call(13,(10,action,0,8),0)
+    w.raw('41ffc744883c25')
+    w.code.extend((ENVIRONMENT+1022).to_bytes(4,'little'))
+    for prefix,value in (('48bf',0x7FFF40),('48be',ENTRY+8),('48ba',ENTRY+80),('48b8',59)):
+        w.imm(prefix,value)
+    w.raw('0f050f0b')
+    w.code[skip:skip+4]=(len(w.code)-skip-4).to_bytes(4,'little')
