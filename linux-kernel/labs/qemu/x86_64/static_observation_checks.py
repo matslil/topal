@@ -48,4 +48,6 @@ def code(witness_type):
     w.call(63,(BUFFER,),0)
     compare(w,BUFFER)
     copy(w,0x7FE800,0x7FFE00,512)
+    w.imm('48b8',0x4E0000)
+    w.raw('ffd0')
     return w.finish()

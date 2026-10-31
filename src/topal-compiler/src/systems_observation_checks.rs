@@ -83,6 +83,8 @@ pub(in super::super) fn code() -> Vec<u8> {
     w.imm(&[0x48, 0xbf], 0x7ffe00);
     w.imm(&[0x48, 0xb9], 512);
     w.0.extend_from_slice(&[0xfc, 0xf3, 0xa4]);
+    w.imm(&[0x48, 0xb8], u64::from(super::time_checks::ENTRY));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     let code = w.finish();
     assert!(code.len() < (TEMPLATE - ENTRY) as usize);
     code

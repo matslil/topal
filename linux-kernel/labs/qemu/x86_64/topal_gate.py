@@ -90,6 +90,8 @@ PROCESS_WORKLOADS = {
         b"export PS1='next> '; exec /bin/busybox sh -i\necho two\ncd /bin\npwd\ncd /\npwd\nexit 9\n",
         INTERACTIVE_BANNER + b"next> two\nnext> next> /bin\nnext> next> /\nnext> ", 9
     ),
+    "sleep-short": (b"exec /bin/busybox sleep 0.001\n", b"", 0),
+    "sleep-changed": (b"exec /bin/busybox sleep 0.002\n", b"", 0),
     "dd-seek": (
         b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
         b"ELF\x02", 0,
@@ -1036,6 +1038,10 @@ def static_user_fixture(environment_mode: str = "maximum") -> bytes:
     observation_code = observation_encoder["code"](checks["Witness"])
     image[0xD_0000:0xD_0000+len(observation_code)] = observation_code
     image[0xD_8000:0xD_8000+390] = observation_encoder["system_bytes"]()
+    time_encoder = runpy.run_path(str(LAB / "static_time_checks.py"))
+    time_code = time_encoder["code"](checks["Witness"])
+    image[0xE_0000:0xE_0000+len(time_code)] = time_code
+    image[0xE_8000:0xE_8010] = struct.pack("<QQ", 0, 1)
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1293,7 +1299,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/226",
+        "schema": "topal-kernel-toolchain-gate-qemu/227",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1602,6 +1608,7 @@ def evidence_record(
             ),
             "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
             "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+            "static_process_time_profile": "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines",
             "static_unknown_syscall_profile": "normalized-selector-enosys-without-argument-or-state-access",
             "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
             "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",

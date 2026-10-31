@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/226";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/215";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/227";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/216";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1794,6 +1794,14 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         (
             process_fixture::environment_checks::TEMPLATE,
             process_fixture::environment_checks::bytes(),
+        ),
+        (
+            process_fixture::time_checks::ENTRY,
+            process_fixture::time_checks::code(),
+        ),
+        (
+            process_fixture::time_checks::TEMPLATE,
+            [0_u64.to_le_bytes(), 1_u64.to_le_bytes()].concat(),
         ),
         (
             process_fixture::observation_checks::ENTRY,
@@ -5676,11 +5684,19 @@ impl RootEncoder {
             || self.physical_frame_count.is_some()
             || self.retained_static_elf_payload
             || self.translation != RootTranslationState::RemovedActive
+            || self.monotonic_observations != 0
+            || self.deadline != RootDeadlineState::Fresh
         {
             return Err(CompileError::Tool(
                 "x86 static-image process entry requires the exact randomized owner".into(),
             ));
         }
+        // Retain ABI stack alignment with one pad above the twelfth argument.
+        // The process borrows the root's existing clock; it owns no new timeline.
+        self.bytes
+            .extend_from_slice(&[0x48, 0x83, 0xec, 8, 0x48, 0x8d, 0x05]);
+        self.rip_relative_storage(24, 0)?;
+        self.bytes.push(0x50); // twelfth argument: borrowed clock view
         self.bytes
             .extend_from_slice(&[0x41, 0x55, 0x48, 0x8d, 0x05]);
         // Eleventh argument: retained boot handoff; tenth: private descriptor table.
@@ -5708,7 +5724,7 @@ impl RootEncoder {
         self.rip_relative_storage(512, 0)?;
         self.bytes.push(0x50); // seventh System V argument
         self.call_checked_bool(ProviderSymbol::EnterStaticImageProcess)?;
-        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x28]);
+        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x38]);
         self.static_image = RootStaticImageState::CompletedProcess;
         Ok(())
     }
@@ -11792,9 +11808,9 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        // Completed-event admission adds one private-state reference and one
-        // checked interrupt-return target, without another source operation.
-        assert_eq!(relocation_targets.len(), 9486);
+        // Process time adds one borrow of the root's private clock state;
+        // ordinary source clock/deadline operation counts stay unchanged.
+        assert_eq!(relocation_targets.len(), 9487);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -12136,7 +12152,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            61
+            62
         );
         assert_eq!(
             relocation_targets

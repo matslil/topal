@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/208";
+    "topal.provider-object.x86_64-qemu-pc-q35/209";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9448,6 +9448,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         process_runtime::AUX_CONTEXT,
         process_files::TABLE_CONTEXT,
         process_files::ARCHIVE_CONTEXT,
+        process_runtime::time::CLOCK_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9455,6 +9456,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.jump_if(0x85, "fail");
     }
     process_files::emit_entry_validation(&mut code)?;
+    process_runtime::time::emit_entry_validation(&mut code)?;
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
     code.bytes(&[0x4c, 0x39, 0xd0]);
@@ -9680,6 +9682,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_runtime::realtime::emit_dispatch(&mut code)?;
     process_runtime::credentials::emit_dispatch(&mut code)?;
     process_runtime::observations::emit_dispatch(&mut code)?;
+    process_runtime::time::emit_dispatch(&mut code)?;
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x85, "static-process-non-read-syscall");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -16569,6 +16572,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         process_runtime::AUX_CONTEXT,
         process_files::TABLE_CONTEXT,
         process_files::ARCHIVE_CONTEXT,
+        process_runtime::time::CLOCK_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
@@ -16751,6 +16755,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
+    process_runtime::time::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }

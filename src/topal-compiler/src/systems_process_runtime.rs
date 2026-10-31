@@ -18,6 +18,8 @@ pub(super) mod observations;
 pub(super) mod realtime;
 #[path = "systems_process_signals.rs"]
 pub(super) mod signals;
+#[path = "systems_process_time.rs"]
+pub(super) mod time;
 
 // The pristine segment ends at 0x9728; the rollback stack starts at 0xa000.
 // Strings [0,256), pointer offsets [256,320), argc at 320, size at 328.
