@@ -244,6 +244,15 @@ to explicit publisher inputs and owned process binding. This metadata shall
 not reinterpret core function syntax, grant numeric code authority or imply
 unqualified general-library support.
 
+The systems reference model shall retain the explicit numeric-library interface,
+4096-byte stack and 65536-byte temporary-storage obligations, invocation owner
+and exclusive activity, result bounds, exec-retained binding and terminal erasure
+required by `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
+`TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001`. It shall model arbitrary-precision
+deadline arithmetic independently and reject missing, conflicting or out-of-scope
+metadata. Machine allocation/frame bounds remain mandatory publisher/provider
+evidence rather than invented numeric authority in the reference model.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

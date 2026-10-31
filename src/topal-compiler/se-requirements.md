@@ -2598,6 +2598,16 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The systems publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
+`TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` through ordinary declared-type export
+selection, shared numeric algorithms, qualified kernel allocation/fatal hooks,
+conservative complete stack/allocation proofs, explicitly borrowed invocation
+storage, result conversion, exec retention and complete storage/binding erasure.
+It shall reject unsupported or unbounded closure/resource inputs before atomic
+publication. Source/runtime frames, arithmetic boundaries, high-water observations,
+invalid bounds, wrong-policy rejection and full kernel rollback shall qualify
+this profile; measurements alone shall not establish the required bounds.
+
 The systems publisher shall realize `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` and
 `TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`. It shall load an explicitly selected
 relative source-library unit under `--library-root`, or consume an explicit

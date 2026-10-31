@@ -3368,6 +3368,95 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-NUMERIC-RUNTIME-001 — Owned temporary numeric runtime
+
+An artifact MAY declare one `time-library` using `lang systems source-library`
+with contained source path, public export, `relative-sleep-deadline-v1`
+interface, `stack-limit-bytes is 4096` and `runtime-limit-bytes is 65536`.
+Duplicate, missing, unknown, escaping or mismatched inputs SHALL be invalid.
+An in-memory publisher SHALL receive its matching immutable source snapshot.
+An admitted import SHALL NOT fall back to another implementation when source,
+checking, bounds, machine qualification or publication fails. Existing finite
+library declarations SHALL retain their contracts.
+
+Ordinary shared analysis SHALL select the export at its declared parameter
+types, without inheriting artificial literal refinements from a selection
+client. Its complete reachable helper graph SHALL use ordinary language
+semantics. The initial profile SHALL admit only Boolean, `Nat`/`Int`, the
+Euclidean integer pair, local bindings, finite decisions, direct acyclic calls,
+addition, multiplication, comparison and proven-nonzero-divisor Euclidean
+operations. Unqualified forms, effects, foreign calls, imports, recursion,
+dynamic callables and source resource/address authority SHALL be invalid.
+Admission SHALL NOT redefine arithmetic, errors, types, purity or overloads.
+
+Publication SHALL bind the exact source/client/runtime closure, native adapters,
+LLVM identity, code/dependency digests and checked resource bounds. The object
+SHALL reuse ordinary function lowering and shared numeric algorithms, with
+qualified kernel allocation/fatal services and no hosted dependency. It SHALL
+own no writable allocated global or TLS state. Its target SHALL prohibit red
+zone and implicit floating point, preserve caller ABI/extended state, and
+inspect actual emitted code, mappings, relocations and dependencies.
+
+The root SHALL exclusively own the declared temporary storage and lend its
+identity with the code binding to the prepared process. Each invocation SHALL
+validate owner, extent, alignment, capacity, disjointness and inactive state,
+activate one exclusive lending interval, construct ordinary private numeric
+representations, execute policy and copy out only a validated scalar result.
+No allocated value SHALL escape. The complete storage and allocation/activity
+state SHALL be erased and read back before normal return. Binding identity
+SHALL survive exec and be erased/read back before terminal process return.
+Invalid ownership, reentrant activation, exhaustion, representation, result or
+erasure SHALL fail closed. Numeric equality SHALL NOT grant storage authority.
+
+The complete native/source/runtime call graph and actual LLVM frame metadata
+SHALL prove additional stack use at most 4096 bytes, including return addresses
+and alignment. Conservative source/helper value bounds SHALL prove finite
+operand bit widths from all admitted interface inputs. Runtime operation,
+iteration, allocation-size/count and alignment costs SHALL then prove total
+temporary storage at most 65536 bytes. Branch bounds SHALL cover every reachable
+branch; sequential/call costs SHALL compose without dropping repeated calls;
+loop costs SHALL include their maximum iterations and nested costs. Missing,
+cyclic, unknown, overflowing or excessive evidence SHALL prevent publication.
+Measured high-water marks alone SHALL NOT establish either bound.
+
+Qualification SHALL execute boundary and ordinary inputs, real source/runtime
+frames, resource activation/use/erasure, ABI preservation, exec retention,
+invalid/missing inputs and bounds, deliberately wrong source behavior, and
+complete normal runtime reclamation. Another target SHALL supply its own ABI,
+frame, storage, mapping and owner evidence. This rule SHALL NOT establish a
+general allocator, container/module or concurrent-invocation profile.
+
+### TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001 — Source-defined relative deadline
+
+The initial numeric interface SHALL select a public ordinary function with
+three `Nat` parameters, in order: seconds `s`, nanoseconds `n`, raw monotonic
+ticks `t`; and one Boolean parameter `w` indicating a nonzero extended epoch.
+Its result SHALL be `Int`. The native boundary SHALL provide only validated
+`0 <= s <= M`, `0 <= n < 1000000000`, `0 <= t < 2^64` and Boolean `w`, where
+`M = 9223372036854775807`. The boundary SHALL validate a nonnegative returned
+integer at most `ceil(M / 10)` before using it as a native tick target.
+
+Using ordinary unbounded arithmetic, the source policy SHALL compute:
+
+```text
+d = M                         if s >= 9223372036
+    s * 1000000000 + n        otherwise
+a = M                         if w
+    min(t * 10 + d, M)        otherwise
+deadline = floor((a + 9) / 10)
+```
+
+Source declaration, local bindings, decisions and helper calls SHALL determine
+this result; native code SHALL NOT substitute a duplicate policy calculation.
+User interval copying/validation, clock borrowing and sampling, native waiting,
+remaining-pointer behavior and error ordering SHALL retain
+`TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. Source/runtime storage work
+SHALL occur inside the checked invocation lifetime. A changed source body SHALL
+change library behavior while root/provider object code remains independent of
+that body. Independent arithmetic and controlled hardware-input qualification
+SHALL detect wrong results. Counterexamples SHALL remain separate from passing
+kernel evidence.
+
 ### TOPAL-SYSTEMS-SOURCE-LIBRARY-001 — Checked freestanding source-library import
 
 An artifact MAY declare one `kernel-library` using
