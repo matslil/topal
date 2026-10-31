@@ -887,6 +887,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 reusable static-process file descriptions and signal setup](step-4-reusable-static-file-descriptions.md)
 - [Step 4 reusable read-only namespace, realtime and root observations](step-4-reusable-readonly-namespace.md)
 - [Step 4 caller-owned exec environments and startup payload isolation](step-4-runtime-environments.md)
+- [Step 4 successive static image replacements](step-4-repeated-static-exec.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

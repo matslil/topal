@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/221")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/222")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/211")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/212")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/221",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/222",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/121",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/122",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -997,7 +997,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\n"
             + "".join(observations["markers_in_order"][newline_position:])
         )
-        self.assertEqual(observations["serial_utf8"], expected_serial)
+        self.assertEqual(observations["serial_utf8"].replace(GATE.EXEC_COMMIT_MARKER.decode(), ""), expected_serial)
         self.assertEqual(
             observations["serial_sha256"],
             hashlib.sha256(observations["serial_utf8"].encode()).hexdigest(),
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/221")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/222")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1291,7 +1291,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n"
             + marker_serial[echo_position:]
         )
-        self.assertEqual(observations["serial_utf8"], expected_serial)
+        self.assertEqual(observations["serial_utf8"].replace(GATE.EXEC_COMMIT_MARKER.decode(), ""), expected_serial)
 
     def test_external_runtime_corpus_uses_shared_services_and_one_kernel(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-{EXEC-ARGUMENTS,CONSOLE-WRITE,EXIT-STATUS}-001
@@ -1304,7 +1304,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(record["process_output_utf8"].encode(), output)
             self.assertEqual(record["process_exit_status"], status)
             self.assertEqual(record["static_user_image_sha256"], GATE.PINNED_STATIC_BUSYBOX_SHA256)
-            serial = record["observations"]["serial_utf8"].encode()
+            serial = record["observations"]["serial_utf8"].encode().replace(GATE.EXEC_COMMIT_MARKER, b"")
             self.assertIn(b"/\n" + output + f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={status:02x}\n".encode(), serial)
             self.assertTrue(record["observations"]["qemu_running_after_markers"])
             self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
@@ -1370,7 +1370,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(record["static_user_image_sha256"], GATE.PINNED_STATIC_BUSYBOX_SHA256)
             observations = record["observations"]
             self.assertIn(f"/\n{record['observed_epoch']}\n\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n",
-                          observations["serial_utf8"])
+                          observations["serial_utf8"].replace(GATE.EXEC_COMMIT_MARKER.decode(), ""))
             self.assertEqual(observations["result"], "pass")
             self.assertTrue(observations["qemu_running_after_markers"])
             self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
@@ -1397,6 +1397,25 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
             hashes.add(expected)
         self.assertEqual(len(hashes),3)
+
+    def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001
+        records=[(self.evidence,3)]
+        for workload in GATE.PROCESS_WORKLOADS:
+            record=self.external_evidence if workload=="true" else json.loads(
+                (LAB/"results"/f"topal-runtime-{workload}-gate.json").read_text())
+            records.append((record,{"exec-chain":3,"exec-chain-false":2,"exec-chain-cwd":3}.get(workload,1)))
+        for record,count in records:
+            serial=record["observations"]["serial_utf8"]
+            marker=GATE.EXEC_COMMIT_MARKER.decode()
+            self.assertEqual(record["process_exec_commits"],count)
+            self.assertEqual(serial.count(marker),count)
+            self.assertEqual(serial.count("TOPAL_KERNEL_PROCESS_EXIT_STATUS="),1)
+            self.assertLess(serial.rindex(marker),serial.index("TOPAL_KERNEL_PROCESS_EXIT_STATUS="))
+            self.assertEqual(record["observations"]["result"],"pass")
+            self.assertEqual(record["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+            self.assertTrue(record["observations"]["qemu_running_after_markers"])
+            self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
 
 
 if __name__ == "__main__":

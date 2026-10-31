@@ -428,11 +428,12 @@ console bounds and nonzero status described in the
 The external runtime corpus uses `--external-static-user-image PATH` with
 `--process-workload true`, `false`, `echo`, `echo-changed`, `head-stdin`,
 `head-alias`, `wc-stdin`, `dd-seek`, `head-file`, `head-normalized`, `wc-file`,
-`ls-bin`, `pwd-bin`, `export-token`, or `export-token-changed`. The harness sends
+`ls-bin`, `pwd-bin`, `export-token`, `export-token-changed`, `exec-chain`,
+`exec-chain-false`, or `exec-chain-cwd`. The harness sends
 the selected final command over serial after the static entry marker; later
 probe input is sent at its existing resource marker. `--write-evidence` records
 the exact command, application output, observed status, linked kernel identity
-and full rollback. All fifteen external cases must use the same kernel executable.
+and full rollback. All eighteen external cases must use the same kernel executable.
 The [file-description and signal qualification](../../../step-4-reusable-static-file-descriptions.md)
 adds a clean executed boundary corpus, shared file offsets and immutable backing,
 exec filtering, and retained native signal registration/mask semantics.
@@ -450,6 +451,14 @@ or `--clean-environment-mode null` for the two empty-environment forms; add
 `--write-evidence` to retain the corresponding result. These modes apply to the
 clean fixture. External export cases observe two distinct values through the
 pinned BusyBox `env` applet, and `pwd-bin` observes inherited cwd.
+
+The [successive-exec qualification](../../../step-4-repeated-static-exec.md)
+extends the maximum clean fixture to three replacements with inherited-resource
+checks and failed retries on later generations. External chains use BusyBox
+`env` to exec another image and finish with output, changed cwd or nonzero
+status. Records retain `process_exec_commits` and the complete raw serial
+transcript. Only the declared private commit markers are removed for exact
+application-output comparison; their expected counts are checked separately.
 
 Realtime calendar and representation cases use a separate harness:
 

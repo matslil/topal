@@ -1,7 +1,8 @@
 # Repeated replacement of the retained static executable
 
 Status: systems-only refinement adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-246`).
+implemented and physically qualified (`TK-DEC-246`); see the
+[qualification report](../step-4-repeated-static-exec.md).
 
 The retained immutable executable and pristine writable snapshot belong to the
 process lifetime. Successful exec consumes an image generation, not that retained
