@@ -332,6 +332,35 @@ pub(crate) fn check_isolation(
     let mut exports = Vec::new();
     let mut serial = 0;
     fn argument(kind: &T, client: &mut String, serial: &mut usize) -> Result<String, CompileError> {
+        if let T::Array { count, element } = kind {
+            if *count > 256 || element.as_ref() != &T::Int {
+                return Err(invalid("unqualified isolated Array argument"));
+            }
+            let name = format!("module-probe-arg{}", *serial);
+            *serial += 1;
+            client.push_str(&format!("{name}-list0 : List Int is Empty\n"));
+            for i in 1..=*count {
+                client.push_str(&format!(
+                    "{name}-list{i} : List Int is Entry (0, {name}-list{})\n",
+                    i - 1
+                ));
+            }
+            client.push_str(&format!(
+                "{name} : Array ({count}, Int) is {name}-list{count} collect Array\n"
+            ));
+            return Ok(name);
+        }
+        if matches!(kind,T::List(element) | T::Optional(element) if element.as_ref()==&T::Int) {
+            let name = format!("module-probe-arg{}", *serial);
+            *serial += 1;
+            let (classifier, value) = if matches!(kind, T::List(_)) {
+                ("List Int", "Empty")
+            } else {
+                ("Optional Int", "None Int")
+            };
+            client.push_str(&format!("{name} : {classifier} is {value}\n"));
+            return Ok(name);
+        }
         if let T::Record(fields) = kind {
             let fields = fields
                 .iter()

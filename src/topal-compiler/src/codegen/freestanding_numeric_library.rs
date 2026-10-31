@@ -8,13 +8,16 @@ pub(crate) fn emit_numeric_kernel_library(unit:&crate::systems_numeric_library::
     generator.kernel_function_prefix=crate::systems_numeric_library::FUNCTION_PREFIX;
     for function in &unit.program.functions { generator.emit_function(function); }
     if !generator.foreign_declarations.is_empty() || !generator.scalar_list_runtime_fragments.is_empty()
-        || !generator.list_int_runtime_fragments.is_empty() || generator.needs_infinity_result_runtime {
+        || generator.list_int_runtime_fragments.iter().any(|fragment|
+            !matches!(fragment,ListIntRuntimeFragment::FundamentalContainers))
+        || generator.needs_infinity_result_runtime {
         return Err(crate::CompileError::Tool("E-SYSTEMS-NUMERIC-LIBRARY: unqualified runtime fragment".into()));
     }
     let mut module=format!("; checked Topal numeric kernel library\nsource_filename = \"{}\"\ntarget datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n\n",
         llvm_string(generator.debug.filename()),crate::X86_SYSTEMS_DATA_LAYOUT);
     module.push_str("@llvm.used = appending global [1 x ptr] [ptr @memset], section \"llvm.metadata\"\n");
-    for runtime in [VALUE_RUNTIME,include_str!("../runtime/kernel_numeric_platform.ll")] {
+    for runtime in [VALUE_RUNTIME,include_str!("../runtime/list_int_layout.ll"),
+        FUNDAMENTAL_CONTAINERS_RUNTIME,include_str!("../runtime/kernel_numeric_platform.ll")] {
         for line in runtime.lines() {
             if line.starts_with("define ") && line.ends_with(" {") {
                 let _=writeln!(module,"{} noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {{",line.strip_suffix(" {").unwrap());

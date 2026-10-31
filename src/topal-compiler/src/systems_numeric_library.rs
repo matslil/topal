@@ -1,4 +1,9 @@
 //! Checked ordinary numeric source and conservative temporary-allocation bounds.
+#[cfg(test)]
+#[path = "systems_numeric_array_tests.rs"]
+mod array_tests;
+#[path = "systems_numeric_collections.rs"]
+mod collections;
 #[path = "systems_numeric_object.rs"]
 mod native_object;
 #[cfg(test)]
@@ -27,7 +32,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/2";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/3";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -39,6 +44,8 @@ fn invalid(message: impl Into<String>) -> CompileError {
 pub struct SystemsNumericAllocationBound {
     pub certificate: String,
     pub runtime_sha256: String,
+    pub collection_runtime_sha256: String,
+    pub collection_layout_sha256: String,
     pub maximum_operand_bits: u64,
     pub source_evaluation_bytes: u64,
     pub bridge_bytes: u64,
@@ -76,6 +83,12 @@ enum Value {
     Number(Range),
     Pair(Box<Value>, Box<Value>),
     Record(BTreeMap<String, Value>),
+    List(Vec<Value>),
+    Array(Vec<Value>),
+    Optional {
+        some: Option<Box<Value>>,
+        none: bool,
+    },
 }
 impl Value {
     fn number(&self) -> Result<&Range, CompileError> {
@@ -97,6 +110,30 @@ impl Value {
                     .map(|(label, value)| Ok((label.clone(), value.union(&b[label])?)))
                     .collect::<Result<_, CompileError>>()?,
             )),
+            (Self::List(a), Self::List(b)) | (Self::Array(a), Self::Array(b))
+                if a.len() == b.len() =>
+            {
+                let entries = a
+                    .iter()
+                    .zip(b)
+                    .map(|(a, b)| a.union(b))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(if matches!(self, Self::Array(_)) {
+                    Self::Array(entries)
+                } else {
+                    Self::List(entries)
+                })
+            }
+            (Self::Optional { some: a, none: b }, Self::Optional { some: c, none: d }) => {
+                Ok(Self::Optional {
+                    some: match (a, c) {
+                        (Some(a), Some(c)) => Some(Box::new(a.union(c)?)),
+                        (Some(a), None) | (None, Some(a)) => Some(a.clone()),
+                        (None, None) => None,
+                    },
+                    none: *b || *d,
+                })
+            }
             _ => Err(invalid("incompatible branch bounds")),
         }
     }
@@ -129,6 +166,10 @@ fn numeric_type(ty: &CompilerType) -> bool {
         CompilerType::Boolean | CompilerType::Nat | CompilerType::Int
     ) || matches!(ty,CompilerType::Tuple(fields) if fields.as_slice()==[CompilerType::Int,CompilerType::Int])
         || matches!(ty,CompilerType::Record(fields) if fields.iter().all(|(_,field)|numeric_type(field)))
+        || matches!(ty,CompilerType::List(element) | CompilerType::Optional(element)
+            if element.as_ref()==&CompilerType::Int)
+        || matches!(ty,CompilerType::Array {count,element}
+            if *count<=collections::MAX_ENTRIES && element.as_ref()==&CompilerType::Int)
 }
 impl Bounds<'_> {
     fn function(
@@ -365,11 +406,7 @@ impl Bounds<'_> {
                     _ => return Err(invalid("unqualified numeric operation")),
                 }
             }
-            other => {
-                return Err(invalid(format!(
-                    "unqualified numeric source expression {other:?}"
-                )));
-            }
+            _ => self.collection_expression(expr, env)?,
         };
         if let Value::Number(range) = &value {
             self.maximum_bits = self.maximum_bits.max(range.bits());
@@ -419,6 +456,7 @@ pub(crate) fn check_numeric_library(
             "shared runtime allocation certificate requires review",
         ));
     }
+    let (collection_runtime_sha256, collection_layout_sha256) = collections::runtime_digests()?;
     let client = format!(
         "{}\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\n{} (seconds, nanoseconds, ticks, false)\n",
         input.text, requirement.export
@@ -491,6 +529,8 @@ pub(crate) fn check_numeric_library(
     let allocation = SystemsNumericAllocationBound {
         certificate: ALLOCATION_CERTIFICATE.into(),
         runtime_sha256,
+        collection_runtime_sha256,
+        collection_layout_sha256,
         maximum_operand_bits: bounds.maximum_bits,
         source_evaluation_bytes: result.bytes,
         bridge_bytes,

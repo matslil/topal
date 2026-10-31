@@ -24,12 +24,14 @@ LIBRARY=module("library_gate")
 def commands(elf,debug,result,target,bound,record_order=(1,0)):
     source=(GATE.LINUX_KERNEL/'kernel/support/clock.t').read_text().splitlines()
     record_line=source.index('  seconds is interval seconds')+1
+    array_line=source.index('  seconds is interval-seconds parts')+1
     setup=f'''
 import gdb,json
 from pathlib import Path
 calls=[]
 frames=[]
 records=[]
+arrays=[]
 active=None
 context=None
 arena=None
@@ -126,15 +128,53 @@ class Record(gdb.Breakpoint):
             stack_relative_offset=active["caller_stack"]-address,record_bytes=24,
             trace=gdb.execute("bt",to_string=True),actual_fields_match_native_inputs=True))
         self.delete()
+        Array("support/clock.t:{array_line}",type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
+        return False
+class Array(gdb.Breakpoint):
+    def stop(self):
+        assert active is not None
+        value=gdb.selected_frame().read_var("parts")
+        address=int(value)
+        cursor=word(arena+8)
+        def owned(pointer,size):
+            assert arena+32<=pointer and pointer+size<=arena+cursor
+        owned(address,16)
+        count,node=word(address),word(address+8)
+        assert count==2 and int(value.dereference()["entry_count"])==2
+        entries=[]
+        nodes=[]
+        static_zero_payloads=0
+        for index in range(count):
+            owned(node,16)
+            assert node not in nodes
+            nodes.append(node)
+            pointer=word(node)
+            if pointer==symbol("topal.runtime.int.zero"):
+                assert memory(pointer,16)==bytes(16)
+                static_zero_payloads+=1
+            else:
+                owned(pointer,16)
+            sign,length=word(pointer),word(pointer+8)
+            assert sign==0 and length<=2
+            if pointer!=symbol("topal.runtime.int.zero"):owned(pointer,16+4*length)
+            entries.append(sum(int.from_bytes(memory(pointer+16+i*4,4),"little")<<(32*i) for i in range(length)))
+            node=word(node+8)
+        assert node==0 and entries==[active["seconds"],active["nanoseconds"]]
+        arrays.append(dict(entry_count=count,entries=entries,
+            actual_entries_match_native_inputs=True,all_allocated_storage_invocation_owned=True,
+            immutable_canonical_zero_payloads=static_zero_payloads,
+            header_arena_offset=address-arena,node_arena_offsets=[n-arena for n in nodes],
+            trace=gdb.execute("bt",to_string=True)))
+        self.delete()
         Runtime("*"+hex(symbol("topal.runtime.int.divmod.absolute")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)
         return False
 class Released(gdb.Breakpoint):
     def stop(self):
-        assert active is None and calls and frames and records
+        assert active is None and calls and frames and records and arrays
         assert word(context+960)==0 and word(context+968)==0
         assert memory(arena,65536)==bytes(65536)
         Path({str(result)!r}).write_text(json.dumps(dict(calls=calls,source_runtime_frames=frames,
-            record_frames=records,
+            record_frames=records,array_frames=arrays,
             binding_erased=True,terminal_arena_erased=True,result="pass"),indent=2,sort_keys=True)+"\\n")
         return True
 Enter("*"+hex(symbol("topal_kernel_sleep_deadline_policy_v1")),type=gdb.BP_HARDWARE_BREAKPOINT,internal=True)

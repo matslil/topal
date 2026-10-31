@@ -27,7 +27,7 @@ fn compiled_numeric_policy_uses_owned_arena_and_general_native_inputs() {
     std::fs::create_dir_all(&directory).unwrap();
     let library = build_numeric_library(&requirement, &source, &tools, &directory).unwrap();
     assert!(library.record.maximum_stack_bytes <= 4096);
-    assert_eq!(library.record.allocation.maximum_bytes, 41544);
+    assert_eq!(library.record.allocation.maximum_bytes, 41624);
     let driver = directory.join("driver.c");
     std::fs::write(
         &driver,
@@ -57,7 +57,7 @@ static int check(uint64_t s,uint64_t n,uint64_t t,uint64_t w) {
   uint64_t expected=(uint64_t)((a+9)/10);
   memset(arena,0,sizeof(arena));cursor=32;
   uint64_t actual=topal_kernel_sleep_deadline_policy_v1(s,n,t,w);
-  if(actual!=expected || cursor>41544) return 1;
+  if(actual!=expected || cursor>41624) return 1;
   return 0;
 }
 int main(int argc,char **argv) {
@@ -115,7 +115,7 @@ int main(int argc,char **argv) {
         .trim()
         .parse::<u64>()
         .unwrap();
-    assert!(highwater > 32 && highwater <= 41544);
+    assert!(highwater > 32 && highwater <= 41624);
     eprintln!(
         "numeric native maximum stack={} bytes; measured highwater={highwater}; conservative allocation bound={}",
         library.record.maximum_stack_bytes, library.record.allocation.maximum_bytes

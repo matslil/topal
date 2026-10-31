@@ -143,6 +143,18 @@ pub(crate) fn build_numeric_library(
                 && !expected_source.contains(name)
                 && !name.starts_with("topal.runtime.int.")
                 && ![
+                    "topal.runtime.container.list.count",
+                    "topal.runtime.container.array.int.collect",
+                    "topal.runtime.container.array.int.at",
+                    "topal.runtime.container.entry.count",
+                    "topal.runtime.container.empty",
+                    "topal.runtime.optional.some",
+                    "topal.runtime.optional.none",
+                    "topal.runtime.optional.is.some",
+                    "topal.runtime.optional.payload",
+                ]
+                .contains(&name)
+                && ![
                     "topal.platform.allocate",
                     "topal.platform.exit",
                     "topal.platform.write",
@@ -227,7 +239,7 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/2".into(),
+        schema: "topal.kernel-numeric-source-library/3".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
@@ -242,7 +254,7 @@ pub(crate) fn build_numeric_library(
         platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
         object_sha256: digest(&bytes),
         llvm_version: tools.version.clone(),
-        machine_profile: "x86_64-owned-numeric-gpr-only/2".into(),
+        machine_profile: "x86_64-owned-numeric-gpr-only/3".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
         native_alignment_reserve_bytes: ALIGNMENT_RESERVE,
         native_leaf_return_bytes: 8,
@@ -373,7 +385,8 @@ pub(crate) fn inspect_linked_numeric_library(
     record: &SystemsNumericLibraryArtifact,
 ) -> Result<(), CompileError> {
     let file = object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
-    if record.schema != "topal.kernel-numeric-source-library/2"
+    let (collection_runtime, collection_layout) = super::collections::runtime_digests()?;
+    if record.schema != "topal.kernel-numeric-source-library/3"
         || record.interface != "relative-sleep-deadline-v1"
         || record.native_export != EXPORT_SYMBOL
         || record.stack_limit_bytes != 4096
@@ -385,7 +398,9 @@ pub(crate) fn inspect_linked_numeric_library(
         || record.allocation.header_bytes != 32
         || record.allocation.certificate != super::ALLOCATION_CERTIFICATE
         || record.allocation.runtime_sha256 != super::CERTIFIED_RUNTIME_SHA256
-        || record.machine_profile != "x86_64-owned-numeric-gpr-only/2"
+        || record.allocation.collection_runtime_sha256 != collection_runtime
+        || record.allocation.collection_layout_sha256 != collection_layout
+        || record.machine_profile != "x86_64-owned-numeric-gpr-only/3"
         || !record.functions.iter().any(|f| f.symbol == EXPORT_SYMBOL)
     {
         return Err(invalid(

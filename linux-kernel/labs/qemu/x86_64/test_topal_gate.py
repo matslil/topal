@@ -25,14 +25,43 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_numeric_arrays_retain_actual_owned_entries_and_reviewed_runtime_closure(self) -> None:
+        # TOPAL-SYSTEMS-NUMERIC-ARRAYS-001
+        proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
+        library=proof["library"]
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/3")
+        runtime=GATE.REPOSITORY/"src/topal-compiler/src/runtime"
+        allocation=library["allocation"]
+        self.assertEqual(allocation["collection_runtime_sha256"],sha256(runtime/"fundamental_containers.ll"))
+        self.assertEqual(allocation["collection_layout_sha256"],sha256(runtime/"list_int_layout.ll"))
+        names={f["symbol"] for f in library["functions"]}
+        self.assertIn("topal.runtime.container.array.int.collect",names)
+        self.assertIn("topal.runtime.container.array.int.at",names)
+        self.assertIn("topal.runtime.optional.some",names)
+        self.assertIn("topal.runtime.optional.none",names)
+        self.assertFalse(any(n.startswith(("topal.runtime.container.set.","topal.runtime.container.map.",
+                                          "topal.runtime.container.bag.","topal.runtime.container.array.function.")) for n in names))
+        for observation in (proof["observation"],proof["order_variant"]["observation"]):
+            array=observation["array_frames"][0]
+            self.assertEqual(array["entry_count"],2)
+            self.assertTrue(array["actual_entries_match_native_inputs"] and array["all_allocated_storage_invocation_owned"])
+            call=next(c for c in observation["calls"] if c["wrapped"]==0)
+            self.assertEqual(array["entries"],[call["seconds"],call["nanoseconds"]])
+            self.assertEqual(len(set(array["node_arena_offsets"])),2)
+            for offset in array["node_arena_offsets"]+[array["header_arena_offset"]]:
+                self.assertGreaterEqual(offset,32)
+                self.assertLess(offset,allocation["maximum_bytes"])
+            self.assertIn("support/clock.t",array["trace"])
+            self.assertIn("relative-sleep-deadline.t",array["trace"])
+
     def test_numeric_records_preserve_actual_fields_order_and_owned_runtime_bounds(self) -> None:
         # TOPAL-SYSTEMS-NUMERIC-RECORDS-001, TOPAL-TYPE-RECONSTRUCT-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/2")
-        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/2")
+        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/3")
+        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/3")
         self.assertLessEqual(library["maximum_stack_bytes"],4096)
-        self.assertEqual(library["allocation"]["maximum_bytes"],41544)
+        self.assertEqual(library["allocation"]["maximum_bytes"],41624)
         variant=proof["order_variant"]
         self.assertEqual(variant["result"],"pass")
         self.assertTrue(variant["root_and_provider_unchanged"] and variant["module_source_unchanged"])
@@ -713,7 +742,7 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/234")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/235")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
         self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/222")
         self.assertEqual(
@@ -722,7 +751,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/134",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/135",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1248,7 +1277,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/234")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/235")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1761,7 +1790,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(library["allocation"]["runtime_sha256"],sha256(GATE.REPOSITORY/"src/topal-compiler/src/runtime/value_core.ll"))
         allocation=library["allocation"]
         self.assertEqual(allocation["maximum_bytes"],allocation["source_evaluation_bytes"]+allocation["bridge_bytes"]+allocation["header_bytes"])
-        self.assertEqual(allocation["maximum_bytes"],41544)
+        self.assertEqual(allocation["maximum_bytes"],41624)
         self.assertEqual(allocation["limit_bytes"],65536)
         costs={"topal_kernel_numeric_allocate_v1":8,"topal_kernel_numeric_abort_v1":8}
         for function in library["functions"]:
