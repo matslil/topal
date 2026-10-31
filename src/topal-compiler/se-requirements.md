@@ -2608,7 +2608,8 @@ TLS/extended-state, boundary/failure and unmodified shell evidence shall qualify
 the serialized finite-child profile without claiming general scheduling.
 
 The resumable static pair shall implement owned native yield/handoff and
-blocking child wait under `TK-DEC-255`. It shall exchange complete private
+blocking child wait under `TK-DEC-255` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PAIR-001`. It shall exchange complete private
 process state without suspending a live kernel continuation, preserve shared
 service histories, retain either process's descriptions across snapshot release,
 exclude a waiting parent from runnable selection, validate status publication

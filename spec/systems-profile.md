@@ -3373,7 +3373,8 @@ seccomp, audit, tracing, or a general Topal error mechanism.
 The qualified static-process service MAY reserve one additional process slot
 under its retained outer owner. It SHALL retain an independently owned inactive
 parent snapshot while a newly created child occupies the active mapping window.
-The initial schedule SHALL select the finite child until exit, then restore the
+Unless the resumable-pair refinement below is qualified, the initial schedule
+SHALL select the finite child until exit, then restore the
 parent before its pending creation return. This SHALL NOT implement shared-mm
 vfork, imply preemptive fairness or promise parent/child IPC progress.
 
@@ -3438,6 +3439,61 @@ return the child's PID. A retained relationship SHALL prevent child-slot reuse
 until successful reap or parent termination. No call SHALL fabricate a live
 child, status, completion or waiter. Native register preservation and retained
 outer-resource ownership SHALL apply to success and every error path.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PAIR-001 — Owned cooperative handoff and blocking wait
+
+A separately qualified static-process pair MAY replace the child-until-exit
+schedule while retaining one additional child and the preceding native creation,
+identity, exec, registration and wait-publication contracts. The pair owner
+SHALL retain exact active/inactive process identities and the inactive native
+return value. Creation SHALL initially run the child with return zero and park
+the parent with its pending child-PID return. No PID SHALL construct authority.
+
+Native `sched_yield` (24) SHALL ignore unused arguments and hand execution to
+the owned inactive counterpart if it is runnable. The yielded continuation
+SHALL return zero when resumed. With no runnable counterpart it SHALL return
+zero locally without mutating other process state. A complete exchange SHALL
+preserve and read back private mutable image/reserved heap/stack backing,
+mapping permissions, native return frame, TLS/extended state, descriptor slots/
+flags, cwd, signal state and thread registrations. Stale translations SHALL be
+invalidated before user return; scratch copies SHALL be erased/read back.
+An exchange SHALL NOT suspend a live kernel continuation or partial transfer.
+
+Shared descriptions and clock/entropy histories SHALL remain with their owners.
+No inactive entropy key or counter SHALL be restored. Either process MAY own
+any of the thirty-two descriptions. Snapshot release SHALL NOT erase a cell
+retained by the other process. A sole parent MAY retain second-bank cells across
+child exit/reap and the next creation. Capacity SHALL follow the two sixteen-slot
+tables, rather than assuming the parent owns only the original bank.
+
+For a matching live child, WNOHANG SHALL return zero without consuming the
+relationship. A blocking parent wait SHALL atomically bind to that relationship,
+park its retry continuation and select the runnable child. The waiting parent
+SHALL NOT be eligible at child yield. An active child SHALL receive ECHILD for
+wait, since it owns no child relationship. Existing selector/options/rusage
+validation SHALL precede parking. Status-output validity SHALL be checked in
+the restored parent generation before publication and reaping; a failed
+publication SHALL retain the exited relationship for retry.
+
+Child exit SHALL release child references/private state and restore the parent
+with its exact pending fork, yield or wait-retry continuation. A wait retry
+SHALL observe the retained exited child, never fabricated status or completion.
+The native x86-64 provider MAY adapt retry by restoring the admitted SYSCALL
+instruction and native wait selector; instruction width/register choices SHALL
+remain provider details. Child exit SHALL NOT publish outer terminal status.
+Parent termination SHALL release inactive child references and all snapshot/
+wait/return state before active parent descriptions and the outer owner return.
+Wrong-owner, absent-counterpart, incomplete exchange or stale-state activation
+SHALL fail closed. This SHALL NOT qualify general orphan reparenting.
+
+Qualification SHALL execute repeated handoffs while both processes live,
+WNOHANG and blocking wait before exit, failed publication/retry, child exec after
+handoff, private/native/TLS/SIMD preservation, shared histories and both-bank
+lifetimes, parent termination with a live inactive child, and a precise corrupted
+inactive-state rejection. Other targets SHALL provide their own native return,
+retry, extended-state and translation evidence. This rule SHALL NOT establish
+user preemption, general fairness, blocking I/O, threads or ordinary Topal
+scheduler-module qualification.
 
 ### TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001 — Reusable thread registration and local base
 
