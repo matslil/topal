@@ -1539,6 +1539,13 @@ failures shall fail closed. Qualification shall cover boundary arithmetic,
 source/runtime execution, bounds, ABI preservation, retained ownership and full
 reclamation; measured resource use alone shall not establish the bound.
 
+The initial static-process child refinement shall realize `TK-DEC-254` under
+`TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
+shared inherited open descriptions, checked native creation/wait boundaries,
+parent restoration, once-only child reaping and complete private snapshot
+erasure. Serialized finite-child evidence shall not imply general scheduling,
+shared-VM cloning, signal delivery or distribution/container qualification.
+
 ## TOPAL-REQ-SYSTEMS-QUALIFY-001 — Cross-architecture and target evidence
 
 Every systems element shall have architecture-independent semantic and

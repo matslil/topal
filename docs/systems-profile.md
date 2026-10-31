@@ -773,6 +773,18 @@ publication requires a complete checked destination; exec retains process and
 system views, and terminal reclamation erases their private witness. Broader
 process creation and mutable namespace identities remain separately qualified.
 
+A separately qualified child-process refinement may create a distinct process
+with private image/thread state, copied descriptor slots retaining shared open
+descriptions, and an owned parent/child relationship. The initial serialized
+schedule may park the parent while a finite child runs, provided an inactive
+owned snapshot preserves all parent state and restoration precedes its return.
+Child exec consumes only child image state; child exit retains a waitable status
+without releasing the outer owner. Checked wait publication consumes that
+relationship once, and rejected output preserves it. Every snapshot and retained
+thread value has an explicit erasure path. This qualifies no vfork/shared-VM,
+preemptive fairness, signal delivery, arbitrary process count or core-language
+Task behavior; other architectures need their own context/backing evidence.
+
 A separately qualified prepared-process timing refinement may borrow the
 bootstrap owner's initial monotonic clock view for the complete process
 lifetime. Native monotonic observations and resolution queries use that same
