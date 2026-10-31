@@ -1,7 +1,8 @@
 # Initial static-process children and wait ownership
 
 Status: systems-only direction adopted under standing authorization
-(`TK-DEC-254`); implementation and qualification pending.
+(`TK-DEC-254`); implemented and physically qualified in the
+[Step 4 report](../step-4-static-process-children.md).
 
 ## Purpose and selected realization
 
