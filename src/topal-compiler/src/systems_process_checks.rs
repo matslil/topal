@@ -92,6 +92,11 @@ pub(in super::super) fn pre_exec() -> Vec<u8> {
     w.query_action(12, 1, 0xdc000807, 0xdecafbad, MASK);
     w.call(14, &[99, 0, OLD, 8], 0);
     w.memory(OLD, 64);
+    w.imm(
+        &[0x48, 0xb8],
+        u64::from(super::environment_checks::PRE_ENTRY),
+    );
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     w.finish()
 }
 

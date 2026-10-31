@@ -77,6 +77,8 @@ def pre_exec():
     w.query(12,1,0xDC000807,0xDECAFBAD,MASK)
     w.call(14, (99,0,OLD,8), 0)
     w.memory(OLD,64)
+    w.imm('48b8',0x4C4000)
+    w.raw('ffd0')
     return w.finish()
 
 
@@ -184,3 +186,8 @@ def signal_checks(w):
 def namespace_code(stage):
     encoder = runpy.run_path(str(Path(__file__).parent / 'static_namespace_checks.py'))
     return encoder['code'](stage, Witness)
+
+
+def environment_code(stage,mode):
+    encoder=runpy.run_path(str(Path(__file__).parent/'static_environment_checks.py'))
+    return encoder[stage](Witness,mode)

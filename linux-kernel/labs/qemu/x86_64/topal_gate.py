@@ -50,6 +50,15 @@ PROCESS_WORKLOADS = {
     ),
     "wc-file": (b"exec /bin/busybox wc -c /bin/busybox\n", b"2024544 /bin/busybox\n", 0),
     "ls-bin": (b"exec /bin/busybox ls -1 /bin\n", b"busybox\n", 0),
+    "pwd-bin": (b"cd /bin; exec /bin/busybox pwd\n", b"/bin\n", 0),
+    "export-token": (
+        b"export TOPAL_TOKEN=alpha; exec /bin/busybox env\n",
+        b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=alpha\nPWD=/\n", 0
+    ),
+    "export-token-changed": (
+        b"export TOPAL_TOKEN=omega; exec /bin/busybox env\n",
+        b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=omega\nPWD=/\n", 0
+    ),
     "dd-seek": (
         b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
         b"ELF\x02", 0,
@@ -308,7 +317,9 @@ def compile_systems_artifact(
     subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
 
 
-def static_user_fixture() -> bytes:
+def static_user_fixture(environment_mode: str = "maximum") -> bytes:
+    if environment_mode not in ("maximum", "empty", "null"):
+        raise GateError("unknown clean environment mode")
     """Create approved ELF metadata with clean-room payload bytes."""
     image = bytearray(2_024_544)
     image[:16] = bytes(
@@ -515,7 +526,7 @@ def static_user_fixture() -> bytes:
             0x31, 0xFF,
             0xB8, 0x69, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-            0x48, 0x81, 0xFC, 0x40, 0xFE, 0x7F, 0x00,
+            0x48, 0x81, 0xFC, 0x00, 0xF8, 0x7F, 0x00,
             0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
             0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
             0xC6, 0x04, 0x24, 0x0A,
@@ -920,16 +931,13 @@ def static_user_fixture() -> bytes:
         (0x5F9000, 0x7FFFFC, 0x5F90A0, 14),
         (0x5F9000, 2**64-4, 0x5F90A0, 14),
         (0x5F9000, 0x5F9300, 0x5F90A0, 22),
-        (0x5F9000, 0x5F9080, 0, 14),
+        (0x5F9000, 0x5F9080, 2**64-1, 14),
     ):
         exec_error(path, argv, env, errno)
     for pointer, errno in ((0x619000, 14), (0x5F9200, 7)):
         store(0x5F9088, pointer)
         exec_error(0x5F9000, 0x5F9080, 0x5F90A0, errno)
     store(0x5F9088, 0x5F9010)
-    store(0x5F9080, 0x4A6912)
-    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 22)
-    store(0x5F9080, 0x5F9000)
     for index in range(9):
         store(0x5F9300 + 8 * index, 2**64-1 if index == 8 else 0x5F9000)
     exec_error(0x5F9000, 0x5F9300, 0x5F90A0, 7)
@@ -937,10 +945,10 @@ def static_user_fixture() -> bytes:
     exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 14)
     store(0x5F90B0, 0x5F9040)
     store(0x5F90C0, 1)
-    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 22)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 14)
     store(0x5F90C0, 0)
     continuation.extend(bytes.fromhex("bf00925f00b900010000b061fcf3ae75fe"))
-    argument_bytes = b"/bin/busybox\0true\0\0" + b"x" * 232 + bytes(5)
+    argument_bytes = b"/alias/argv0\0true\0\0" + b"x" * 232 + bytes(5)
     assert len(argument_bytes) == 256
     for index in range(0, 256, 8):
         store(0x5F9200 + index, int.from_bytes(argument_bytes[index:index+8], "little"))
@@ -949,15 +957,19 @@ def static_user_fixture() -> bytes:
     store(0x5F9340, 0)
     checks = runpy.run_path(str(LAB / "static_process_checks.py"))
     continuation.extend(b"\xb8" + struct.pack("<I", checks["PRE_EXEC"]) + b"\xff\xd0")
-    continuation.extend(bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b"))
+    environment_pointer = 0 if environment_mode == "null" else 0x607400
+    continuation.extend(bytes.fromhex("bf00905f00be00935f00ba")
+                        + struct.pack("<I", environment_pointer)
+                        + bytes.fromhex("b83b0000000f050f0b"))
     image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
     runtime = bytearray()
-    for offset, expected in ((0,8), (8,0x7FE000), (16,0x7FE00D),
-                             (24,0x7FE012), (32,0x7FE013), (40,0x7FE0FC),
-                             (48,0x7FE0FD), (56,0x7FE0FE), (64,0x7FE0FF), (72,0)):
+    for offset, expected in ((0,8), (8,0x7FFA20), (16,0x7FFA2D),
+                             (24,0x7FFA32), (32,0x7FFA33), (40,0x7FFB1C),
+                             (48,0x7FFB1D), (56,0x7FFB1E), (64,0x7FFB1F), (72,0)):
         runtime.extend(bytes((0x48,0x81,0x7C,0x24,offset))
                        + struct.pack("<I", expected) + bytes.fromhex("75fe"))
-    runtime.extend(bytes.fromhex("be00e07f00bf00b04a00b900010000fcf3a675fe"))
+    runtime.extend(bytes.fromhex("be20fa7f00bf00b04a00b900010000fcf3a675fe"))
+    runtime.extend(bytes.fromhex("b800804c00ffd0"))
     runtime.extend(b"\xb8" + struct.pack("<I", checks["ENTRY"]) + b"\xff\xd0")
 
     def write_call(fd: int, pointer: int, count: int) -> None:
@@ -982,9 +994,13 @@ def static_user_fixture() -> bytes:
     for address, payload in ((checks["ENTRY"], checks["code"]()),
                              (checks["PRE_EXEC"], checks["pre_exec"]()),
                              (0x4B4000, checks["namespace_code"]("after_exec")),
-                             (0x4C0000, checks["namespace_code"]("pre_exec"))):
+                             (0x4C0000, checks["namespace_code"]("pre_exec")),
+                             (0x4C4000, checks["environment_code"]("pre_code",environment_mode)),
+                             (0x4C8000, checks["environment_code"]("post_code",environment_mode))):
         offset = address - 0x400000
         image[offset:offset+len(payload)] = payload
+    environment_encoder = runpy.run_path(str(LAB / "static_environment_checks.py"))
+    image[0xC_C000:0xC_C400] = environment_encoder["environment_bytes"]()
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -992,9 +1008,11 @@ def static_user_fixture() -> bytes:
     return bytes(image)
 
 
-def checked_static_user_image(external: Path | None) -> tuple[bytes, str]:
+def checked_static_user_image(external: Path | None, environment_mode: str = "maximum") -> tuple[bytes, str]:
     if external is None:
-        return static_user_fixture(), "supplied-clean-room-fixture"
+        return static_user_fixture(environment_mode), "supplied-clean-room-fixture"
+    if environment_mode != "maximum":
+        raise GateError("clean environment modes apply only to the clean ABI fixture")
     image = external.read_bytes()
     actual = hashlib.sha256(image).hexdigest()
     if actual != PINNED_STATIC_BUSYBOX_SHA256:
@@ -1005,7 +1023,8 @@ def checked_static_user_image(external: Path | None) -> tuple[bytes, str]:
 
 
 def build_image(
-    destination: Path, external_static_user_image: Path | None = None
+    destination: Path, external_static_user_image: Path | None = None,
+    clean_environment_mode: str = "maximum",
 ) -> tuple[Path, Path, Path, Path, Path, Path, str]:
     generated = destination / "generated"
     compile_systems_artifact(generated)
@@ -1016,7 +1035,7 @@ def build_image(
     supplied_initial_user_image.write_bytes(supplied)
     supplied_static_user_image = destination / "supplied-static-user.elf"
     static_user_bytes, static_user_input = checked_static_user_image(
-        external_static_user_image
+        external_static_user_image, clean_environment_mode
     )
     supplied_static_user_image.write_bytes(static_user_bytes)
 
@@ -1239,7 +1258,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/220",
+        "schema": "topal-kernel-toolchain-gate-qemu/221",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1544,9 +1563,8 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-negative-retry-maximum-aggregate-console-status-witness"
             ),
-            "static_execve_environment": [
-                "SHLVL=1", "OLDPWD=/", "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "PWD=/"
-            ],
+            "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
+            "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
             "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
             "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
             "static_shell_bin_busybox_reopen_terminal_revoke_profile": (
@@ -1606,6 +1624,7 @@ def verify(
     write_evidence: bool,
     external_static_user_image: Path | None = None,
     process_workload: str = "true",
+    clean_environment_mode: str = "maximum",
 ) -> dict[str, Any]:
     process_command, process_output, process_status = PROCESS_WORKLOADS[process_workload]
     if external_static_user_image is None:
@@ -1613,7 +1632,7 @@ def verify(
     if external_static_user_image is None and process_workload != "true":
         raise GateError("the standard clean fixture uses the true workload")
     # Reject an unapproved external image before invoking any build tool.
-    checked_static_user_image(external_static_user_image)
+    checked_static_user_image(external_static_user_image, clean_environment_mode)
     qemu_version = verify_host()
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
@@ -1626,7 +1645,7 @@ def verify(
             generated_initial_user_image,
             static_user_image,
             static_user_input,
-        ) = build_image(root / "artifact", external_static_user_image)
+        ) = build_image(root / "artifact", external_static_user_image, clean_environment_mode)
         boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
         if digest(boot_resource) != boot["boot_resource_sha256"]:
             raise GateError("published boot resource does not match boot provenance")
@@ -1679,6 +1698,7 @@ def verify(
             serial,
         )
         record["process_workload"] = process_workload
+        record["clean_environment_mode"] = clean_environment_mode if external_static_user_image is None else None
         record["process_command_utf8"] = process_command.decode("ascii")
         record["process_command_sha256"] = hashlib.sha256(process_command).hexdigest()
         record["process_output_utf8"] = process_output.decode("ascii")
@@ -1691,6 +1711,8 @@ def verify(
         )
         if process_workload != "true":
             evidence_path = evidence_path.with_name(f"topal-runtime-{process_workload}-gate.json")
+        if external_static_user_image is None and clean_environment_mode != "maximum":
+            evidence_path = evidence_path.with_name(f"topal-runtime-env-{clean_environment_mode}-gate.json")
         evidence_path.parent.mkdir(parents=True, exist_ok=True)
         staged = evidence_path.with_suffix(".json.new")
         staged.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1705,6 +1727,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--write-evidence", action="store_true")
     parser.add_argument("--external-static-user-image", type=Path)
     parser.add_argument("--process-workload", choices=PROCESS_WORKLOADS, default="true")
+    parser.add_argument("--clean-environment-mode", choices=("maximum", "empty", "null"), default="maximum")
     return parser.parse_args()
 
 
@@ -1716,6 +1739,7 @@ def main() -> int:
             args.write_evidence,
             args.external_static_user_image,
             args.process_workload,
+            args.clean_environment_mode,
         )
         print(json.dumps(result, indent=2, sort_keys=True))
     except (GateError, OSError, subprocess.SubprocessError, ValueError) as error:

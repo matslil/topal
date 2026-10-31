@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/220";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/209";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/221";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/210";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1024,7 +1024,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x31, 0xff, // exact sealed user identity
         0xb8, 0x69, 0x00, 0x00, 0x00, // setuid
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
-        0x48, 0x81, 0xfc, 0x40, 0xfe, 0x7f, 0x00, // replacement startup completed
+        0x48, 0x81, 0xfc, 0x00, 0xf8, 0x7f, 0x00, // replacement startup completed
         0x75, 0x0b, 0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b, 0x48, 0x81, 0xec,
         0x40, 0x02, 0x00, 0x00, // disjoint stack-prefix scratch
         0xc6, 0x04, 0x24, 0x0a, // line feed
@@ -1702,7 +1702,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         (0x5f9000, 0x7ffffc, 0x5f90a0, 14),
         (0x5f9000, u64::MAX - 3, 0x5f90a0, 14),
         (0x5f9000, 0x5f9300, 0x5f90a0, 22), // empty vector
-        (0x5f9000, 0x5f9080, 0, 14),
+        (0x5f9000, 0x5f9080, u64::MAX, 14),
     ] {
         exec_error(&mut continuation_code, path, argv, env, errno);
     }
@@ -1711,9 +1711,6 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, errno);
     }
     emit_store_qword(&mut continuation_code, 0x5f9088, 0x5f9010_u64.to_le_bytes());
-    emit_store_qword(&mut continuation_code, 0x5f9080, 0x4a6912_u64.to_le_bytes());
-    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 22);
-    emit_store_qword(&mut continuation_code, 0x5f9080, 0x5f9000_u64.to_le_bytes());
     for index in 0..9 {
         let pointer = if index == 8 { u64::MAX } else { 0x5f9000 };
         emit_store_qword(
@@ -1727,7 +1724,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 14);
     emit_store_qword(&mut continuation_code, 0x5f90b0, 0x5f9040_u64.to_le_bytes());
     emit_store_qword(&mut continuation_code, 0x5f90c0, 1_u64.to_le_bytes());
-    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 22);
+    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 14);
     emit_store_qword(&mut continuation_code, 0x5f90c0, [0; 8]);
     // Prove rejected copies have not modified the nonempty source.
     continuation_code.extend_from_slice(&[
@@ -1758,7 +1755,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     continuation_code.extend_from_slice(&[
         0xbf, 0x00, 0x90, 0x5f, 0x00, // selected path
         0xbe, 0x00, 0x93, 0x5f, 0x00, // maximum argc/aggregate fixture
-        0xba, 0xa0, 0x90, 0x5f, 0x00, // exact inherited environment
+        0xba, 0x00, 0x74, 0x60, 0x00, // caller-built maximum environment
         0xb8, 0x3b, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b, // successful execve cannot return
     ]);
     image[continuation_offset..continuation_offset + continuation_code.len()]
@@ -1785,6 +1782,18 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         (
             process_fixture::namespace_checks::PRE_EXEC,
             process_fixture::namespace_checks::code("pre_exec"),
+        ),
+        (
+            process_fixture::environment_checks::PRE_ENTRY,
+            process_fixture::environment_checks::pre_code("maximum"),
+        ),
+        (
+            process_fixture::environment_checks::POST_ENTRY,
+            process_fixture::environment_checks::post_code("maximum"),
+        ),
+        (
+            process_fixture::environment_checks::TEMPLATE,
+            process_fixture::environment_checks::bytes(),
         ),
     ] {
         let offset = address as usize - 0x400000;

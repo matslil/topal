@@ -20,15 +20,15 @@ pub(super) mod signals;
 // The pristine segment ends at 0x9728; the rollback stack starts at 0xa000.
 // Strings [0,256), pointer offsets [256,320), argc at 320, size at 328.
 const STAGING: i32 = 0x9800;
-const STAGING_SIZE: i32 = 0x200;
-const ENVIRONMENT: [&[u8]; 4] = [
-    b"SHLVL=1",
-    b"OLDPWD=/",
-    b"PATH=/sbin:/usr/sbin:/bin:/usr/bin",
-    b"PWD=/",
-];
-const ENVIRONMENT_OFFSET: i32 = 336;
-pub(super) const ENTRY: u64 = 0x007f_fe40;
+const STAGING_SIZE: i32 = 0x800;
+#[path = "systems_exec_environment.rs"]
+pub(super) mod environment;
+pub(super) const ENTRY: u64 = 0x007f_f800;
+pub(super) const ARGUMENT_BASE: u64 = 0x007f_fa20;
+pub(super) const ENVIRONMENT_BASE: u64 = 0x007f_fb20;
+pub(super) const PLATFORM_BASE: u64 = 0x007f_ff20;
+pub(super) const RANDOM_BASE: u64 = 0x007f_ff30;
+pub(super) const EXECUTION_NAME: u64 = 0x007f_ff40;
 pub(super) const AUX_CONTEXT: u32 = 920;
 
 #[derive(Clone, Copy)]
@@ -254,46 +254,9 @@ pub(super) fn emit_exec_arguments(code: &mut X86FunctionEncoder) -> Result<(), C
     e.0.bind("runtime-exec-vector-copied")?;
     e.cmp(R14, 0);
     e.0.jump_if(0x84, "runtime-exec-einval");
-    for (i, byte) in b"/bin/busybox\0".iter().enumerate() {
-        e.0.bytes(&[0x41, 0x80, 0xbc, 0x24]);
-        e.0.bytes(&(i as u32).to_le_bytes());
-        e.0.bytes(&[*byte]);
-        e.0.jump_if(0x85, "runtime-exec-einval");
-    }
     e.store(R12, 320, R14);
     e.store(R12, 328, R15);
-    // The retained environment is checked using the same extent discipline.
-    e.gs(0x8b, R13, 328);
-    let mut environment_offset = ENVIRONMENT_OFFSET;
-    for value in ENVIRONMENT {
-        e.mov(R8, R13);
-        e.imm(R9, 8);
-        e.0.call("runtime-readable-extent");
-        e.0.jump_if(0x82, "runtime-exec-efault");
-        e.load(B, R13, 0);
-        for byte in value.iter().chain(std::iter::once(&0)) {
-            e.mov(R8, B);
-            e.imm(R9, 1);
-            e.0.call("runtime-readable-extent");
-            e.0.jump_if(0x82, "runtime-exec-efault");
-            e.0.bytes(&[0x8a, 0x03, 0x3c, *byte]);
-            e.0.jump_if(0x85, "runtime-exec-einval");
-            e.0.bytes(&[0x41, 0x88, 0x84, 0x24]);
-            e.0.bytes(&environment_offset.to_le_bytes());
-            environment_offset += 1;
-            e.add(B, 1);
-            e.0.jump_if(0x82, "runtime-exec-efault");
-        }
-        e.add(R13, 8);
-        e.0.jump_if(0x82, "runtime-exec-efault");
-    }
-    e.mov(R8, R13);
-    e.imm(R9, 8);
-    e.0.call("runtime-readable-extent");
-    e.0.jump_if(0x82, "runtime-exec-efault");
-    e.load(A, R13, 0);
-    e.cmp(A, 0);
-    e.0.jump_if(0x85, "runtime-exec-einval");
+    e.0.call("runtime-exec-copy-environment");
     e.0.jump("runtime-exec-arguments-ready");
     for (label, errno) in [
         ("runtime-exec-efault", 14),
@@ -311,79 +274,9 @@ pub(super) fn emit_exec_arguments(code: &mut X86FunctionEncoder) -> Result<(), C
     Ok(())
 }
 
-/// Populate argc/argv/envp and compute this generation's auxiliary-vector
-/// identity. The fixed aligned entry reserves room for the maximum vector.
+/// Construct this generation's vectors and protected above-entry payloads.
 pub(super) fn emit_exec_stack(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
-    let mut e = E(code);
-    e.staging();
-    e.load(R14, R12, 320);
-    e.load(C, R12, 328);
-    e.mov(Si, R12);
-    e.imm(Di, 0x7fe000);
-    e.0.bytes(&[0xfc, 0xf3, 0xa4]);
-    let mut environment_offset = ENVIRONMENT_OFFSET;
-    for (value, address) in ENVIRONMENT
-        .into_iter()
-        .zip([0x7fe100, 0x7fe110, 0x7fe120, 0x7fe150])
-    {
-        e.mov(Si, R12);
-        e.add(Si, environment_offset);
-        e.imm(Di, address);
-        e.imm(C, value.len() as u64 + 1);
-        e.0.bytes(&[0xf3, 0xa4]);
-        environment_offset += value.len() as i32 + 1;
-    }
-    e.imm(Di, ENTRY);
-    e.store(Di, 0, R14);
-    e.add(Di, 8);
-    e.mov(B, R12);
-    e.add(B, 256);
-    e.mov(C, R14);
-    e.0.bind("runtime-exec-stack-argv")?;
-    e.load(A, B, 0);
-    e.add(A, 0x7fe000);
-    e.store(Di, 0, A);
-    e.add(B, 8);
-    e.add(Di, 8);
-    e.add(C, -1);
-    e.0.jump_if(0x85, "runtime-exec-stack-argv");
-    e.add(Di, 8); // argv terminator is already zero
-    for address in [0x7fe100, 0x7fe110, 0x7fe120, 0x7fe150] {
-        e.imm(A, address);
-        e.store(Di, 0, A);
-        e.add(Di, 8);
-    }
-    e.add(Di, 8);
-    e.gs(0x89, Di, AUX_CONTEXT);
-    for (tag, value) in [
-        (6, 4096),
-        (9, 0x4a6580),
-        (3, 0x400040),
-        (4, 56),
-        (5, 11),
-        (31, 0x7fe000),
-        (11, 0),
-        (12, 0),
-        (13, 0),
-        (14, 0),
-        (23, 0),
-        (17, 100),
-        (15, 0x7fe180),
-        (16, 0x178bfbfd),
-        (26, 0),
-        (7, 0),
-        (8, 0),
-        (25, 0x7fe190),
-        (0, 0),
-    ] {
-        e.imm(A, tag);
-        e.store(Di, 0, A);
-        e.imm(A, value);
-        e.store(Di, 8, A);
-        e.add(Di, 16);
-    }
-    e.wipe();
-    Ok(())
+    environment::emit_stack(code)
 }
 
 pub(super) fn emit_stack_output_extent(code: &mut X86FunctionEncoder, register_r10: bool) {

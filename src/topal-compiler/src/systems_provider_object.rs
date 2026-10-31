@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/202";
+    "topal.provider-object.x86_64-qemu-pc-q35/203";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -12162,7 +12162,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"x86_64\0\0").to_le_bytes());
     code.bytes(&[0x48, 0xa3]);
-    code.bytes(&0x007f_e180_u64.to_le_bytes());
+    code.bytes(&process_runtime::PLATFORM_BASE.to_le_bytes());
     code.bytes(&[0x65, 0x48, 0x8b, 0x3c, 0x25]);
     code.bytes(&256_u32.to_le_bytes());
     code.bytes(&[0x48, 0x8d, 0xb7]);
@@ -12174,7 +12174,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x84, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
     code.bytes(&256_u32.to_le_bytes());
-    for (source_offset, destination) in [(224_u32, 0x007f_e190_u32), (232, 0x007f_e198)] {
+    for (source_offset, destination) in [
+        (224_u32, process_runtime::RANDOM_BASE),
+        (232, process_runtime::RANDOM_BASE + 8),
+    ] {
         code.bytes(&[0x48, 0x8b, 0x86]);
         code.bytes(&source_offset.to_le_bytes());
         code.bytes(&[0x48, 0xa3]);
@@ -12223,9 +12226,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     // The unused new-image stack prefix must still be zero: in particular no
     // kernel return address or random-generator scratch may have landed there.
     code.bytes(&[0x48, 0xbf]);
-    code.bytes(&0x007f_e1a0_u64.to_le_bytes());
+    code.bytes(&0x007f_e000_u64.to_le_bytes());
     code.bytes(&[0x31, 0xc0, 0xb9]);
-    code.bytes(&((process_runtime::ENTRY as u32 - 0x007f_e1a0) / 8).to_le_bytes());
+    code.bytes(&((process_runtime::ENTRY as u32 - 0x007f_e000) / 8).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x4c, 0x8b, 0x14, 0x25]);
@@ -16729,6 +16732,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_runtime::namespace::emit_services(&mut code)?;
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
+    process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }
 
