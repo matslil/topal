@@ -887,6 +887,13 @@ and single-address-space and shall not imply cancellation, rearming, periodic
 timeslices, priority, blocking, wakeup, nested preemption, migration, SMP, user
 contexts, or extended-state switching.
 
+Completed deadline events shall not acquire another typed entry from a queued
+raw target notification. The provider shall filter/acknowledge such delivery
+before source dispatch, preserve the interrupted frame/registers and avoid
+duplicate completion/preemption. Completion shall close its target route and
+source. Qualification shall inject a completed event notification at suspended
+worker resumption and retain full context/resource rollback evidence.
+
 ## TOPAL-REQ-SYSTEMS-CONTEXT-005 — One-shot affine kernel completion
 
 Scheduler source shall be able to create one completion with matching affine

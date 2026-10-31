@@ -1641,6 +1641,13 @@ separates execution name from argument zero. Failures preserve the original
 process owner and erase staging; committed entry consumes the copied aggregate.
 Declared count/byte bounds and native layout remain provider-qualified details.
 
+A raw target deadline notification does not itself construct a source deadline
+context. The provider binds accepted delivery to the armed event and filters
+queued notifications for a completed event before source entry, preserving the
+interrupted frame. Completion closes target delivery resources; filtering
+cannot re-complete an event or repeat its scheduler transition. Controller and
+notification mechanics remain target-owned.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
