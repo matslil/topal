@@ -262,6 +262,16 @@ deadline arithmetic independently and reject missing, conflicting or out-of-scop
 metadata. Machine allocation/frame bounds remain mandatory publisher/provider
 evidence rather than invented numeric authority in the reference model.
 
+Under `TK-DEC-260`, the model shall retain the exact image-library interface,
+64-byte semantic snapshot and bounded machine/count facts from
+`TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001`, and compute header admission through
+independent protocol decoding without assigning storage authority. The numeric
+owner model shall bind the complete selected policy set, permit either policy
+alone and reject overlapping, unbound or wrong-owner activations. Refusal/normal
+return shall require clean invocation state; terminal return shall require every
+selected binding erased. Machine copy, namespace, native ABI and complete resource
+proofs remain publisher/provider obligations.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

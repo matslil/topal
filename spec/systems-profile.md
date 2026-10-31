@@ -3845,6 +3845,66 @@ changed-helper rejection, native-state preservation and complete reclamation.
 This rule SHALL NOT qualify general containers, native-memory views, persistent
 state or additional public Linux interfaces.
 
+### TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001 — Source policy over owned header bytes
+
+An artifact MAY declare one `image-library` through `lang systems source-library`
+with interface `static-elf64-header-v1`, a contained source path/public export,
+`stack-limit-bytes is 4096` and `runtime-limit-bytes is 65536`. It SHALL select
+an ordinary declared-type `(Array (64, Int), Nat, Nat) -> Boolean` export.
+Duplicate, missing, escaping, unknown or mismatched declarations/snapshots SHALL
+be invalid; a declared policy SHALL NOT silently fall back on failure. Previous
+roots without this declaration SHALL retain their contracts.
+
+The Array SHALL contain the 64 input bytes in file order as integers in 0..255.
+The two facts SHALL be expected machine identity `m` and maximum program-header
+count `p`, each in 1..65535. A private adapter SHALL validate exact input length,
+non-null/non-overflowing byte extent and bounded facts before byte access. Its
+caller SHALL establish complete readable immutable resource ownership and retain
+it throughout the copy/invocation. The adapter SHALL construct ordinary owned
+representations through shared integer/collection algorithms. Source SHALL
+receive no native address, layout, resource, context or allocator authority.
+This SHALL NOT grant user-memory or MMIO access or general executable loading.
+
+Let `u16(k) = b[k] + 256*b[k+1]` and
+`u32(k) = sum(b[k+i] * 256^i, i=0..3)` over the copied bytes. Source SHALL return
+true exactly when `b[0..4] = [127,69,76,70]`, `b[4]=2`, `b[5]=1`, `b[6]=1`,
+`u16(16)=2`, `u16(18)=m`, `u32(20)=1`, `u16(52)=64`, `u16(54)=56` and
+`1 <= u16(56) <= p`. Other bytes SHALL NOT introduce additional admission
+conditions. Complete load-plan/file/mapping/ownership validation SHALL retain
+its existing preparation boundary. Native code SHALL NOT replace this source
+decision with a duplicate policy calculation.
+
+Same-image exec SHALL invoke the policy after successful pathname, argument and
+environment staging and before close-on-exec filtering or destructive image,
+signal or generation changes. False SHALL produce native ENOEXEC, erase staging
+and preserve retained process resources/state. Both acceptance and refusal SHALL
+erase all invocation allocations, active state and retired stack before return.
+Invalid private binding/ownership, reentry, exhaustion, result or erasure SHALL
+fail closed. Only the validated Boolean scalar SHALL leave the invocation.
+
+Header and deadline policies SHALL work independently or together. They MAY
+share one root-owned arena only through exclusive non-overlapping invocations,
+with the complete selected policy set bound to the owner and active policy.
+They SHALL NOT exchange retained source values. Distinct private source/runtime
+symbol namespaces SHALL preserve unambiguous linked code/frame inspection;
+mechanical namespace adaptation SHALL preserve shared runtime algorithms.
+Terminal return SHALL erase/read back every selected binding and clean storage.
+
+Complete allocation and actual stack/call proofs SHALL include input boxes,
+List nodes, Array header, native-fact boxes, source work, bridge work, owner
+header, returns and alignment, including rejected headers. Existing numeric
+purity, source-module isolation/provenance, 4096-byte stack and 65536-byte arena
+obligations SHALL apply unchanged. Missing or excessive proof SHALL prevent
+publication. Another target SHALL qualify its own native realization.
+
+Qualification SHALL compare actual source bytes/facts with owned input and
+independent protocol decoding, observe source helper frames and full erasure,
+exercise valid/mutated headers and malformed private inputs, prove refusal
+before commit with retained state unchanged, execute header-only numeric
+operation and reject a changed helper at an independent header oracle. Controlled
+copied-byte faults SHALL be identified as such and SHALL leave the original
+immutable file unchanged. Previous runtime regressions SHALL remain required.
+
 ### TOPAL-SYSTEMS-SOURCE-MODULES-001 — Closed ordinary module snapshots
 
 The finite and numeric source-library profiles MAY include ordinary source

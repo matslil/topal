@@ -2704,6 +2704,20 @@ arguments, independently decoded entries, empty/out-of-bounds and exhaustion
 cases, unchanged native arithmetic/state and full erasure shall qualify this
 subset without granting persistent storage or native-memory authority.
 
+Under `TK-DEC-260`, the publisher and process adapter shall realize
+`TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001`: an explicit image-policy source snapshot,
+declared Array/Nat/Nat-to-Boolean export, caller-owned immutable input copying,
+bounded native facts and checked scalar output. Shared lowering/algorithms,
+distinct private symbol namespaces, complete bridge/source resource bounds,
+source isolation and exact provenance shall remain required. Header/deadline
+policies shall initialize and operate independently or share the exclusive arena
+without retaining values across invocations. Exec refusal shall precede
+close-on-exec/image/signal/generation commits, erase staging and preserve retained
+state. All selected code/arena bindings shall be erased at termination. Actual
+source bytes/frames, independent header decoding, controlled copied-byte refusal,
+header-only operation, malformed inputs and changed-helper rejection shall
+qualify the boundary alongside previous regressions.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private
