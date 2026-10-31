@@ -3770,12 +3770,51 @@ Enum-order variants, malformed/escape inputs and full artifact/runtime rollback.
 This rule SHALL NOT establish arbitrary-type, allocating or general module
 support merely from the first profile.
 
+### TOPAL-SYSTEMS-NUMERIC-RECORDS-001 — Immutable structured numeric policy
+
+The numeric source-library profile MAY admit closed ordinary Records composed
+recursively from its qualified Boolean, Nat, Int and Euclidean-pair values.
+Construction, static field selection, immutable reconstruction, local values,
+decisions and acyclic helper parameter/result transport SHALL retain the
+meanings of `TOPAL-TYPE-PRODUCT-001`, `TOPAL-TYPE-RECONSTRUCT-001` and
+`TOPAL-COMPILER-RECONSTRUCT-001`. Ordinary lowering SHALL preserve actual field
+order metadata, precise classifiers, unchanged base values and evaluation order.
+Reflection, dynamic field selection, unqualified payloads/forms/effects and
+cross-unit nominal values SHALL remain profile errors.
+
+The conservative allocation evaluator SHALL retain a bound for every field by
+semantic label. It SHALL charge each constructed field once in source order,
+each projected receiver once, and each reconstruction base once followed by each
+replacement once in source order. Untouched field bounds SHALL remain; branch
+joins SHALL conservatively combine matching checked shapes. A cache abstraction
+MAY omit presentation order only while admitted operations cannot observe that
+order. Source values and ordinary lowering SHALL NOT omit that metadata.
+Record aggregation SHALL introduce no new allocation algorithm or unchecked
+runtime dependency. Complete object inspection SHALL verify the actual closure.
+
+Complete stack evidence SHALL include aggregate argument/result transport,
+spills, all source/runtime callees, return addresses and native alignment.
+Numeric subvalues SHALL retain arbitrary-precision meaning and their complete
+existing runtime allocation bounds. All aggregate/subvalue storage SHALL belong
+to the one exclusive invocation, SHALL NOT escape scalar result extraction and
+SHALL be erased under `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001`. The 4096-byte stack,
+65536-byte temporary reserve and native scalar semantic interface SHALL remain
+unchanged. Missing or excessive evidence SHALL reject publication.
+
+Qualification SHALL execute nested named-field helpers and reconstruction,
+independent native arithmetic, real aggregate source frames, unchanged native
+state and full reclamation. It SHALL cover field/order variants, unchanged
+bases, complete evaluation charges, branch bounds, malformed labels/shapes/types,
+resource exhaustion, isolated module checking, exact source provenance and the
+existing independent changed-helper rejection.
+
 ### TOPAL-SYSTEMS-SOURCE-MODULES-001 — Closed ordinary module snapshots
 
 The finite and numeric source-library profiles MAY include ordinary source
 module dependencies. Initial imported units SHALL contain functions over the selected profile's
-Boolean/numeric values. Imported type declarations and cross-unit nominal values
-SHALL remain unqualified; nominal Enum adaptation SHALL remain at the finite
+Boolean/numeric values, including Record shapes qualified through
+`TOPAL-SYSTEMS-NUMERIC-RECORDS-001`. Imported type declarations and cross-unit
+nominal values SHALL remain unqualified; nominal Enum adaptation SHALL remain at the finite
 root. Filesystem discovery SHALL start at the selected root unit and resolve
 declared libraries and qualified references to a fixed point
 under the shared ordinary selection rules. The frozen input SHALL include each
