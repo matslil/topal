@@ -2409,6 +2409,17 @@ Qualification shall inject a queued completed-event notification at worker
 resumption, reject the predecessor behavior and complete ordinary context and
 application/resource regressions. Native vectors and MMIO remain private.
 
+The reusable process-observation adapter shall implement `TK-DEC-247`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-IDENTITY-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-UNAME-001`. It shall import the prepared process
+identity privately, observe PID/TID/parent repeatedly without altering call
+phase, and publish the selected immutable guest system record only after a
+complete checked writable extent. It shall preserve non-result registers,
+ignore unused arguments, retain no caller pointer and preserve identity across
+exec and complete terminal erasure. Executed cases shall cover native bytes,
+reordering, faults, replacement shells and full rollback. Native record and
+selector details shall remain provider-owned.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

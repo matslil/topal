@@ -6293,6 +6293,42 @@ observations SHALL supply qualification evidence and SHALL NOT grant runtime
 authority. Other architectures SHALL bind the same generation lifetime to
 their own entry/reset/mapping/ABI contracts.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-IDENTITY-001 — Retained process observations
+
+A separately qualified prepared-process refinement SHALL observe its retained
+PID, TID and parent PID repeatedly and independently of native query order after
+qualified startup. Its private process owner SHALL import the prepared identity
+witness; writable user memory or known integer bits SHALL NOT grant authority.
+The initial single-threaded PID-one binding SHALL return PID one, TID one and
+parent PID zero. Unused native argument registers SHALL be ignored.
+
+Queries SHALL preserve all non-result registers and SHALL NOT mutate startup,
+descriptors/positions, cwd, signals, image or prepared identity. Exec SHALL
+retain this identity independently of old user storage. Terminal reclamation
+SHALL erase its private witness. Executed qualification SHALL cover repeated
+and reordered calls before/after exec, unused arguments, replacement-shell
+observations, inherited resource state and full terminal rollback. This SHALL
+NOT imply process creation, thread groups or broader PID namespace policy.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-UNAME-001 — Reusable immutable system view
+
+The prepared-process refinement SHALL expose the selected artifact's immutable
+system-information view through repeated native uname queries after qualified
+startup. It SHALL publish the same six ordered 65-byte fields admitted by the
+predecessor system view, with complete terminators and zero padding. The native
+x86 binding SHALL check the entire overflow-free writable 390-byte destination
+against live mappings before publishing any byte. Inaccessible candidates
+SHALL return `EFAULT` without publishing output or mutating process state.
+Complete success SHALL return zero and preserve non-result registers.
+
+The adapter SHALL use immutable guest view data, SHALL NOT substitute host
+identity or select data using an application/return site, and SHALL retain no
+caller pointer. Exec SHALL preserve that system view. Qualification SHALL
+compare the complete native record, repeat/reorder calls across exec, exercise
+destination boundaries/faults, execute an unmodified external consumer and
+complete terminal rollback. This complete-transfer profile SHALL NOT establish
+partial fault-copy behavior or mutable UTS namespace interfaces.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,
