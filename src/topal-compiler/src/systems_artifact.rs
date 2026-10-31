@@ -264,8 +264,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/217";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/206";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/218";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/207";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -763,9 +763,12 @@ struct StaticElfPagePlan {
     relro_pages: Option<StaticElfInterval>,
 }
 
+#[path = "systems_process_fixture.rs"]
+mod process_fixture;
+
 /// Construct deterministic clean-room bytes with the qualified static-ELF metadata shape.
 ///
-/// The payload is not an application and exists only for structural qualification.
+/// The payload is not an application and exists only for ABI qualification.
 #[must_use]
 pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     fn emit_store_qword(code: &mut Vec<u8>, address: u32, value: [u8; 8]) {
@@ -773,6 +776,44 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         code.extend_from_slice(&value);
         code.extend_from_slice(&[0x48, 0xa3]);
         code.extend_from_slice(&u64::from(address).to_le_bytes());
+    }
+
+    fn exec_error(code: &mut Vec<u8>, path: u64, argv: u64, env: u64, errno: u8) {
+        for (opcode, value) in [(0xbf, path), (0xbe, argv), (0xba, env)] {
+            code.extend_from_slice(&[0x48, opcode]);
+            code.extend_from_slice(&value.to_le_bytes());
+        }
+        code.extend_from_slice(&[
+            0x49,
+            0xc7,
+            0xc4,
+            0xab,
+            0x51,
+            0,
+            0, // register sentinel
+            0xb8,
+            59,
+            0,
+            0,
+            0,
+            0x0f,
+            0x05,
+            0x48,
+            0x83,
+            0xf8,
+            0_u8.wrapping_sub(errno),
+            0x75,
+            0xfe,
+            0x49,
+            0x81,
+            0xfc,
+            0xab,
+            0x51,
+            0,
+            0,
+            0x75,
+            0xfe,
+        ]);
     }
 
     fn put_u16(image: &mut [u8], offset: usize, value: u16) {
@@ -981,7 +1022,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x31, 0xff, // exact sealed user identity
         0xb8, 0x69, 0x00, 0x00, 0x00, // setuid
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require zero
-        0x48, 0x81, 0xfc, 0x90, 0xfe, 0x7f, 0x00, // replacement startup completed
+        0x48, 0x81, 0xfc, 0x40, 0xfe, 0x7f, 0x00, // replacement startup completed
         0x75, 0x0b, 0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b, 0x48, 0x81, 0xec,
         0x40, 0x02, 0x00, 0x00, // disjoint stack-prefix scratch
         0xc6, 0x04, 0x24, 0x0a, // line feed
@@ -1011,6 +1052,15 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require no parent
         0xe9, 0x7a, 0x0b, 0x00, 0x00, // sealed continuation island at 0x4a7000
     ];
+    let mut entry_code = entry_code;
+    let exit = entry_code
+        .windows(11)
+        .position(|bytes| bytes == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b])
+        .expect("replacement startup terminal witness");
+    entry_code[exit] = 0xe9;
+    let displacement = i64::from(process_fixture::RUNTIME_ENTRY) - (0x004a_6100 + exit as i64 + 5);
+    entry_code[exit + 1..exit + 5].copy_from_slice(&(displacement as i32).to_le_bytes());
+    entry_code[exit + 5..exit + 11].fill(0x90);
     image[entry_offset..entry_offset + entry_code.len()].copy_from_slice(&entry_code);
     image[0x0a_6580..0x0a_6585].copy_from_slice(&[
         0xe9, 0x7b, 0xfb, 0xff, 0xff, // ordinary fixture body at 0x4a6100
@@ -1602,8 +1652,9 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         0xbf, 2, 0, 0, 0, 0x48, 0x89, 0xe6, 0xba, 4, 0, 0, 0, 0xb8, 1, 0, 0, 0, 0x0f, 0x05, 0x48,
         0x83, 0xf8, 4, 0x75, 0xfe, 0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0x3c, 0x24, 0,
         0x75, 0xfe, // exact fifth prompt result and erasure
-        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 0xff, 0x03, 0, 0, 0x31, 0xc0, 0x0f, 0x05,
-        0x48, 0x83, 0xf8, 23, 0x75, 0xfe, // fifth sealed command publication
+        0x31, 0xff, 0xbe, 0x60, 0x8f, 0x5f, 0, 0xba, 23, 0, 0, 0, 0x31, 0xc0, 0x0f, 0x05, 0x48,
+        0x83, 0xf8, 23, 0x75, 0xfe, // fifth serial command publication
+        0xc6, 0x04, 0x25, 0x77, 0x8f, 0x5f, 0, 0, // terminate the received prefix
         0x48, 0xb8, b'e', b'x', b'e', b'c', b' ', b'/', b'b', b'i', 0x48, 0x39, 0x04, 0x25, 0x60,
         0x8f, 0x5f, 0, 0x75, 0xfe, 0x48, 0xb8, b'n', b'/', b'b', b'u', b's', b'y', b'b', b'o',
         0x48, 0x39, 0x04, 0x25, 0x68, 0x8f, 0x5f, 0, 0x75, 0xfe, 0x48, 0xb8, b'x', b' ', b't',
@@ -1635,14 +1686,89 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
     ] {
         emit_store_qword(&mut continuation_code, address, value);
     }
+    // TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ARGUMENTS-001: every rejection
+    // precedes a successful reuse of the same image, heap, and descriptor.
+    for address in (0x005f_9200..0x005f_9300).step_by(8) {
+        emit_store_qword(&mut continuation_code, address, [b'a'; 8]);
+    }
+    for (path, argv, env, errno) in [
+        (0, 0x5f9080, 0x5f90a0, 14),
+        (u64::MAX, 0x5f9080, 0x5f90a0, 14),
+        (0x4a6912, 0x5f9080, 0x5f90a0, 2),
+        (0x5f9200, 0x5f9080, 0x5f90a0, 36),
+        (0x5f9000, 0, 0x5f90a0, 14),
+        (0x5f9000, 0x7ffffc, 0x5f90a0, 14),
+        (0x5f9000, u64::MAX - 3, 0x5f90a0, 14),
+        (0x5f9000, 0x5f9300, 0x5f90a0, 22), // empty vector
+        (0x5f9000, 0x5f9080, 0, 14),
+    ] {
+        exec_error(&mut continuation_code, path, argv, env, errno);
+    }
+    for (pointer, errno) in [(0x619000_u64, 14), (0x5f9200, 7)] {
+        emit_store_qword(&mut continuation_code, 0x5f9088, pointer.to_le_bytes());
+        exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, errno);
+    }
+    emit_store_qword(&mut continuation_code, 0x5f9088, 0x5f9010_u64.to_le_bytes());
+    emit_store_qword(&mut continuation_code, 0x5f9080, 0x4a6912_u64.to_le_bytes());
+    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 22);
+    emit_store_qword(&mut continuation_code, 0x5f9080, 0x5f9000_u64.to_le_bytes());
+    for index in 0..9 {
+        let pointer = if index == 8 { u64::MAX } else { 0x5f9000 };
+        emit_store_qword(
+            &mut continuation_code,
+            0x5f9300 + index * 8,
+            pointer.to_le_bytes(),
+        );
+    }
+    exec_error(&mut continuation_code, 0x5f9000, 0x5f9300, 0x5f90a0, 7);
+    emit_store_qword(&mut continuation_code, 0x5f90b0, 0x619000_u64.to_le_bytes());
+    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 14);
+    emit_store_qword(&mut continuation_code, 0x5f90b0, 0x5f9040_u64.to_le_bytes());
+    emit_store_qword(&mut continuation_code, 0x5f90c0, 1_u64.to_le_bytes());
+    exec_error(&mut continuation_code, 0x5f9000, 0x5f9080, 0x5f90a0, 22);
+    emit_store_qword(&mut continuation_code, 0x5f90c0, [0; 8]);
+    // Prove rejected copies have not modified the nonempty source.
     continuation_code.extend_from_slice(&[
-        0xbf, 0x00, 0x90, 0x5f, 0x00, // exact path
-        0xbe, 0x80, 0x90, 0x5f, 0x00, // exact argv
+        0xbf, 0, 0x92, 0x5f, 0, 0xb9, 0, 1, 0, 0, 0xb0, b'a', 0xfc, 0xf3, 0xae, 0x75, 0xfe,
+    ]);
+    // Commit a distinct positive boundary request after all failed prefixes.
+    for (index, chunk) in process_fixture::arguments().chunks_exact(8).enumerate() {
+        emit_store_qword(
+            &mut continuation_code,
+            0x5f9200 + index as u32 * 8,
+            chunk.try_into().unwrap(),
+        );
+    }
+    for (index, offset) in [0_u64, 13, 18, 19, 252, 253, 254, 255]
+        .into_iter()
+        .enumerate()
+    {
+        emit_store_qword(
+            &mut continuation_code,
+            0x5f9300 + index as u32 * 8,
+            (0x5f9200 + offset).to_le_bytes(),
+        );
+    }
+    emit_store_qword(&mut continuation_code, 0x5f9340, [0; 8]);
+    continuation_code.extend_from_slice(&[
+        0xbf, 0x00, 0x90, 0x5f, 0x00, // selected path
+        0xbe, 0x00, 0x93, 0x5f, 0x00, // maximum argc/aggregate fixture
         0xba, 0xa0, 0x90, 0x5f, 0x00, // exact inherited environment
         0xb8, 0x3b, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b, // successful execve cannot return
     ]);
     image[continuation_offset..continuation_offset + continuation_code.len()]
         .copy_from_slice(&continuation_code);
+    for (address, bytes) in [
+        (process_fixture::RUNTIME_ENTRY, process_fixture::code()),
+        (
+            process_fixture::ARGUMENT_BYTES,
+            process_fixture::arguments(),
+        ),
+        (process_fixture::OUTPUT_BYTES, process_fixture::output()),
+    ] {
+        let offset = address as usize - 0x400000;
+        image[offset..offset + bytes.len()].copy_from_slice(&bytes);
+    }
     image[0x0a_6900..0x0a_6912].copy_from_slice(b"/etc/busybox.conf\0");
     image[0x0a_6912..0x0a_691b].copy_from_slice(b"/dev/tty\0");
     image[0x0a_6920..0x0a_6935].copy_from_slice(b"/var/spool/mail/root\0");

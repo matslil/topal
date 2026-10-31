@@ -32,6 +32,15 @@ PINNED_STATIC_BUSYBOX_SHA256 = (
     "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
 )
 SERIAL_INPUT = b"read"
+PROCESS_COMMAND = b"exec /bin/busybox true\n"
+PROCESS_WORKLOADS = {
+    "true": (PROCESS_COMMAND, b"", 0),
+    "false": (b"exec /bin/busybox false\n", b"", 1),
+    "echo": (b"exec /bin/busybox echo alpha beta\n", b"alpha beta\n", 0),
+    "echo-changed": (
+        b"exec /bin/busybox echo omega '' gamma\n", b"omega  gamma\n", 0
+    ),
+}
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
     b"TOPAL_KERNEL_FRAME_MAPPED",
@@ -492,7 +501,7 @@ def static_user_fixture() -> bytes:
             0x31, 0xFF,
             0xB8, 0x69, 0x00, 0x00, 0x00,
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-            0x48, 0x81, 0xFC, 0x90, 0xFE, 0x7F, 0x00,
+            0x48, 0x81, 0xFC, 0x40, 0xFE, 0x7F, 0x00,
             0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
             0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
             0xC6, 0x04, 0x24, 0x0A,
@@ -527,6 +536,12 @@ def static_user_fixture() -> bytes:
             0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
             0xE9, 0x7A, 0x0B, 0x00, 0x00,
         ]
+    )
+    entry = bytearray(entry)
+    replacement_exit = entry.index(bytes.fromhex("31ffb8e70000000f050f0b"))
+    entry[replacement_exit:replacement_exit + 11] = (
+        b"\xe9" + struct.pack("<i", 0x4AA000 - (0x4A6100 + replacement_exit + 5))
+        + b"\x90" * 6
     )
     image[0xA_6100 : 0xA_6100 + len(entry)] = entry
     image[0xA_6580 : 0xA_6585] = bytes.fromhex(
@@ -834,7 +849,8 @@ def static_user_fixture() -> bytes:
         "66c7042560945f00000066833c2560945f000075fe"
         "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
         "48c704240000000048833c240075fe"
-        "31ffbe608f5f00baff03000031c00f054883f81775fe"
+        "31ffbe608f5f00ba1700000031c00f054883f81775fe"
+        "c60425778f5f0000"
         "48b865786563202f626948390425608f5f0075fe"
         "48b86e2f62757379626f48390425688f5f0075fe"
         "48b87820747275650a0048390425708f5f0075fe"
@@ -868,8 +884,84 @@ def static_user_fixture() -> bytes:
         continuation.extend(
             b"\x48\xb8" + struct.pack("<Q", value) + b"\x48\xa3" + struct.pack("<Q", address)
         )
-    continuation.extend(bytes.fromhex("bf00905f00be80905f00baa0905f00b83b0000000f050f0b"))
+    def store(address: int, value: int) -> None:
+        continuation.extend(b"\x48\xb8" + struct.pack("<Q", value)
+                            + b"\x48\xa3" + struct.pack("<Q", address))
+
+    def exec_error(path: int, argv: int, env: int, errno: int) -> None:
+        for opcode, value in ((0xBF, path), (0xBE, argv), (0xBA, env)):
+            continuation.extend(bytes((0x48, opcode)) + struct.pack("<Q", value))
+        continuation.extend(bytes.fromhex("49c7c4ab510000b83b0000000f054883f8")
+                            + bytes(((-errno) & 255,))
+                            + bytes.fromhex("75fe4981fcab51000075fe"))
+
+    for address in range(0x5F9200, 0x5F9300, 8):
+        store(address, int.from_bytes(b"a" * 8, "little"))
+    for path, argv, env, errno in (
+        (0, 0x5F9080, 0x5F90A0, 14),
+        (2**64-1, 0x5F9080, 0x5F90A0, 14),
+        (0x4A6912, 0x5F9080, 0x5F90A0, 2),
+        (0x5F9200, 0x5F9080, 0x5F90A0, 36),
+        (0x5F9000, 0, 0x5F90A0, 14),
+        (0x5F9000, 0x7FFFFC, 0x5F90A0, 14),
+        (0x5F9000, 2**64-4, 0x5F90A0, 14),
+        (0x5F9000, 0x5F9300, 0x5F90A0, 22),
+        (0x5F9000, 0x5F9080, 0, 14),
+    ):
+        exec_error(path, argv, env, errno)
+    for pointer, errno in ((0x619000, 14), (0x5F9200, 7)):
+        store(0x5F9088, pointer)
+        exec_error(0x5F9000, 0x5F9080, 0x5F90A0, errno)
+    store(0x5F9088, 0x5F9010)
+    store(0x5F9080, 0x4A6912)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 22)
+    store(0x5F9080, 0x5F9000)
+    for index in range(9):
+        store(0x5F9300 + 8 * index, 2**64-1 if index == 8 else 0x5F9000)
+    exec_error(0x5F9000, 0x5F9300, 0x5F90A0, 7)
+    store(0x5F90B0, 0x619000)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 14)
+    store(0x5F90B0, 0x5F9040)
+    store(0x5F90C0, 1)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 22)
+    store(0x5F90C0, 0)
+    continuation.extend(bytes.fromhex("bf00925f00b900010000b061fcf3ae75fe"))
+    argument_bytes = b"/bin/busybox\0true\0\0" + b"x" * 232 + bytes(5)
+    assert len(argument_bytes) == 256
+    for index in range(0, 256, 8):
+        store(0x5F9200 + index, int.from_bytes(argument_bytes[index:index+8], "little"))
+    for index, offset in enumerate((0, 13, 18, 19, 252, 253, 254, 255)):
+        store(0x5F9300 + index * 8, 0x5F9200 + offset)
+    store(0x5F9340, 0)
+    continuation.extend(bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b"))
     image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
+    runtime = bytearray()
+    for offset, expected in ((0,8), (8,0x7FE000), (16,0x7FE00D),
+                             (24,0x7FE012), (32,0x7FE013), (40,0x7FE0FC),
+                             (48,0x7FE0FD), (56,0x7FE0FE), (64,0x7FE0FF), (72,0)):
+        runtime.extend(bytes((0x48,0x81,0x7C,0x24,offset))
+                       + struct.pack("<I", expected) + bytes.fromhex("75fe"))
+    runtime.extend(bytes.fromhex("be00e07f00bf00b04a00b900010000fcf3a675fe"))
+
+    def write_call(fd: int, pointer: int, count: int) -> None:
+        runtime.extend(b"\xbf" + struct.pack("<I", fd) + b"\x48\xbe"
+                       + struct.pack("<Q", pointer) + b"\xba" + struct.pack("<I", count)
+                       + bytes.fromhex("b8010000000f05"))
+
+    for fd, pointer, count, expected in ((0,2**64-1,0,-9), (1,2**64-1,257,-22),
+                                       (1,2**64-1,1,-14), (1,0x7FFFFF,2,-14),
+                                       (2,2**64-1,0,0)):
+        write_call(fd,pointer,count)
+        runtime.extend(bytes.fromhex("4883f8") + bytes((expected & 255,)) + bytes.fromhex("75fe"))
+    write_call(1,0x4AB200,14)
+    runtime.extend(bytes.fromhex("4883f80e75fe"))
+    write_call(2,0x4AB20E,256)
+    runtime.extend(bytes.fromhex("483d0001000075fe"))
+    runtime.extend(bytes.fromhex("bf23010000b83c0000000f050f0b"))
+    image[0xA_A000:0xA_A000+len(runtime)] = runtime
+    image[0xA_B000:0xA_B100] = argument_bytes
+    output_bytes = b"runtime-clean\n" + b"z" * 256
+    image[0xA_B200:0xA_B200+len(output_bytes)] = output_bytes
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1024,13 +1116,15 @@ def qemu_command(
 
 
 def observe_gate(
-    image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float
+    image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float,
+    process_command: bytes = PROCESS_COMMAND,
 ) -> bytes:
     master_fd, slave_fd = pty.openpty()
     os.set_blocking(master_fd, False)
     command = qemu_command(image, boot_resource, serial, os.ttyname(slave_fd))
     print("+", " ".join(map(str, command)), flush=True)
     injected = False
+    command_injected = False
     received = bytearray()
 
     def drain_client() -> None:
@@ -1065,6 +1159,12 @@ def observe_gate(
                 ):
                     os.write(master_fd, SERIAL_INPUT)
                     injected = True
+                if (
+                    not command_injected
+                    and b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK" in observed
+                ):
+                    os.write(master_fd, process_command)
+                    command_injected = True
                 positions = [observed.find(marker) for marker in MARKERS]
                 if positions[0] >= 0 and all(
                     later > earlier for earlier, later in zip(positions, positions[1:])
@@ -1113,7 +1213,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/217",
+        "schema": "topal-kernel-toolchain-gate-qemu/218",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1407,10 +1507,10 @@ def evidence_record(
                 if static_user_input == "pinned-external-static-busybox"
                 else "clean-fresh-generation-descriptor-three-witness"
             ),
-            "static_execve_busybox_true_profile": (
-                "external-busybox-same-image-execve-true-startup-exit-witness"
+            "static_process_runtime_profile": (
+                "external-busybox-runtime-arguments-console-exit-witness"
                 if static_user_input == "pinned-external-static-busybox"
-                else "clean-same-image-execve-true-startup-exit-witness"
+                else "clean-negative-retry-maximum-aggregate-console-status-witness"
             ),
             "static_execve_environment": [
                 "SHLVL=1", "OLDPWD=/", "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "PWD=/"
@@ -1473,7 +1573,13 @@ def verify(
     timeout: float,
     write_evidence: bool,
     external_static_user_image: Path | None = None,
+    process_workload: str = "true",
 ) -> dict[str, Any]:
+    process_command, process_output, process_status = PROCESS_WORKLOADS[process_workload]
+    if external_static_user_image is None:
+        process_output, process_status = b"runtime-clean\n" + b"z" * 256, 0x23
+    if external_static_user_image is None and process_workload != "true":
+        raise GateError("the standard clean fixture uses the true workload")
     # Reject an unapproved external image before invoking any build tool.
     checked_static_user_image(external_static_user_image)
     qemu_version = verify_host()
@@ -1495,7 +1601,9 @@ def verify(
         serial_path = root / "serial.log"
         qemu_log = root / "qemu.log"
         try:
-            serial = observe_gate(image, boot_resource, serial_path, qemu_log, timeout)
+            serial = observe_gate(
+                image, boot_resource, serial_path, qemu_log, timeout, process_command
+            )
         except GateError as error:
             serial_text = (
                 serial_path.read_text(encoding="utf-8", errors="replace")
@@ -1511,10 +1619,10 @@ def verify(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
         expected_newline_count = (
-            10
+            12
             if static_user_input == "pinned-external-static-busybox"
-            else 17
-        )
+            else 19
+        ) + process_output.count(b"\n")
         if serial.count(b"\n") != expected_newline_count:
             raise GateError(
                 "static applet newline count did not match the selected qualification input"
@@ -1523,6 +1631,10 @@ def verify(
             raise GateError(
                 "static applet did not publish the exact BusyBox read and close output"
             )
+        status_witness = f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={process_status:02x}\n".encode()
+        final_prompt = b"/\n" if external_static_user_image is not None else b"/ # "
+        if final_prompt + process_output + status_witness not in serial:
+            raise GateError("runtime process output or observed exit status differed")
         record = evidence_record(
             qemu_version,
             image,
@@ -1534,12 +1646,19 @@ def verify(
             static_user_input,
             serial,
         )
+        record["process_workload"] = process_workload
+        record["process_command_utf8"] = process_command.decode("ascii")
+        record["process_command_sha256"] = hashlib.sha256(process_command).hexdigest()
+        record["process_output_utf8"] = process_output.decode("ascii")
+        record["process_exit_status"] = process_status
     if write_evidence:
         evidence_path = (
             PINNED_STATIC_BUSYBOX_EVIDENCE_PATH
             if external_static_user_image is not None
             else EVIDENCE_PATH
         )
+        if process_workload != "true":
+            evidence_path = evidence_path.with_name(f"topal-runtime-{process_workload}-gate.json")
         evidence_path.parent.mkdir(parents=True, exist_ok=True)
         staged = evidence_path.with_suffix(".json.new")
         staged.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -1553,6 +1672,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--write-evidence", action="store_true")
     parser.add_argument("--external-static-user-image", type=Path)
+    parser.add_argument("--process-workload", choices=PROCESS_WORKLOADS, default="true")
     return parser.parse_args()
 
 
@@ -1563,6 +1683,7 @@ def main() -> int:
             args.timeout,
             args.write_evidence,
             args.external_static_user_image,
+            args.process_workload,
         )
         print(json.dumps(result, indent=2, sort_keys=True))
     except (GateError, OSError, subprocess.SubprocessError, ValueError) as error:
