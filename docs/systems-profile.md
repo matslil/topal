@@ -446,6 +446,17 @@ wrapper and payload belongs to the existing exclusive invocation and its
 complete erasure. This adds no native-memory access or core-language meaning;
 see `TK-DEC-259`.
 
+A further qualification may supply a pure ELF64 header policy with an ordinary
+`(Array (64, Int), Nat, Nat) -> Boolean` interface. A qualified adapter copies
+64 bytes from a caller-owned immutable file extent; the source sees integer
+byte values and bounded machine/count facts, never the address or resource.
+Refusal precedes destructive exec changes and preserves retained state.
+Header and deadline policies may execute independently or share one exclusively
+borrowed arena, with distinct private code bindings and complete invocation/
+terminal erasure. Every copied input and generated bridge must enter the
+allocation/stack proof. This is not general addressed-storage access or a new
+core buffer type; see `TK-DEC-260`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.

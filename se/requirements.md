@@ -1575,6 +1575,17 @@ Array arguments, independent entry/length inspection, empty/out-of-bounds cases,
 resource rejection and unchanged external arithmetic shall qualify this subset;
 it shall not imply general containers or native-memory authority.
 
+Under `TK-DEC-260`, executable-header interpretation may move to a pure source
+policy over an immutable copied 64-byte integer Array and bounded machine/count
+facts. The caller shall retain and validate complete input-resource authority;
+source shall receive no native address or resource. Header/deadline policies
+shall work independently or share an exclusive arena with distinct bindings,
+complete copy/source/bridge bounds and full erasure. Refusal shall precede
+destructive exec transitions and preserve retained state. Independent byte
+decoding, source-frame execution, refusal atomicity, header-only operation,
+changed-helper rejection and previous regressions shall qualify the boundary;
+it shall not claim general executable/mapping support or core-language changes.
+
 The initial static-process child refinement shall realize `TK-DEC-254` under
 `TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
 shared inherited open descriptions, checked native creation/wait boundaries,
