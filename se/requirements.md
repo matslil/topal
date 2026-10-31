@@ -1225,7 +1225,11 @@ use the ordinary executable return continuation without reading unused
 arguments, copying user memory, or changing kernel or process state. Evidence
 shall prove the exact result and successful continuation into a subsequent
 implemented syscall. Success, process termination, or provider-owned syscall
-selection shall fail closed.
+selection shall fail closed. Separately qualified static processes shall retain
+this behavior before and after exec, with unchanged startup phase, descriptors,
+positions, cwd, signals and image authority. Native unknown-selector width,
+invalid unused arguments, unchanged user-memory canaries and continued
+implemented dispatch shall be physically qualified across replacement.
 
 The adapter shall implement Linux `sched_yield` for the sole runnable initial
 thread. It shall return zero through the executable continuation while

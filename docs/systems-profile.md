@@ -986,7 +986,11 @@ dispatch set. Failure follows the ordinary syscall return continuation without
 reading unused arguments or mutating process or kernel state, so userspace may
 continue after a capability probe. This is kernel dispatch policy rather than
 a machine-provider operation and does not make an unsupported interface
-available.
+available. A separately qualified static-process refinement applies the same
+recoverable fallback before and after image replacement. Unknown selectors do
+not consume startup phase, process resources or execution authority. Implemented
+selectors retain their own validated contracts; fallback does not turn an
+unqualified argument profile into a supported interface.
 
 The bounded user-yield refinement permits Linux-compatible `sched_yield` for
 the sole runnable initial thread. With no eligible peer, the kernel preserves
