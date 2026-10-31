@@ -1586,6 +1586,18 @@ decoding, source-frame execution, refusal atomicity, header-only operation,
 changed-helper rejection and previous regressions shall qualify the boundary;
 it shall not claim general executable/mapping support or core-language changes.
 
+Under `TK-DEC-261`, ordinary source shall select each existing static Linux
+operation from an ABI-normalized untrusted selector through a nominal payload-free
+Enum. Target normalization and checked operation adaptation shall preserve the
+existing handlers' admission/errors and unknown-selector ENOSYS behavior. Source
+shall receive no arguments or execution/resource authority. Selection shall
+complete with full cleanup before a handler runs, with no redispatch of the
+original selector or silent fallback for a declared policy. Dispatch/header/time
+policies shall work independently or share exclusive storage with distinct
+bindings and complete bounds/erasure. Independent selector/representation,
+argument/state preservation, changed-source and full regression evidence shall
+qualify the boundary without changing core-language meaning.
+
 The initial static-process child refinement shall realize `TK-DEC-254` under
 `TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
 shared inherited open descriptions, checked native creation/wait boundaries,

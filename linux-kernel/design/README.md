@@ -265,3 +265,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Immutable Records in numeric kernel modules](freestanding-numeric-records.md)
 - [Bounded immutable numeric Arrays](freestanding-numeric-arrays.md)
 - [Source ELF64 header policy over owned snapshots](source-elf64-header-policy.md)
+- [Ordinary source selection of Linux syscall operations](source-linux-syscall-selection.md)

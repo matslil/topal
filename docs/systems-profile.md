@@ -457,6 +457,21 @@ terminal erasure. Every copied input and generated bridge must enter the
 allocation/stack proof. This is not general addressed-storage access or a new
 core buffer type; see `TK-DEC-260`.
 
+A systems qualification may move syscall operation selection into an ordinary
+`Nat -> StaticLinuxOperation` source export over one ABI-normalized untrusted
+selector. The payload-free nominal Enum names semantic operations; declaration
+order and native handler encodings do not define their identity. Source sees
+no argument pointers or execution authority. A qualified scalar adapter selects
+the native handler only after complete invocation cleanup; it may not redispatch
+the original selector or silently replace a declared source policy. Unsupported
+selectors retain the existing native ENOSYS behavior. Dispatch, header and time
+policies work independently or share an exclusively borrowed arena with distinct
+bindings and complete bounds/erasure. Architecture-specific Linux number mappings
+belong in source ABI modules; target entry/normalization remains a qualified
+mechanism. Existing handler constraints and errors remain unchanged. This extends
+only systems qualification of ordinary nominal Enum values, not core type,
+effect, authority or error meaning; see `TK-DEC-261`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.
