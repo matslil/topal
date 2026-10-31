@@ -35,12 +35,36 @@ fn leap(year: u64) -> bool {
 pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
     e.0.bind("realtime-seconds")?;
+    e.0.call("realtime-observe");
+    e.0.jump_if(0x82, "realtime-eio");
+    // Native time samples before attempting its optional user publication.
+    e.gs(0x8b, R8, 312);
+    e.cmp(R8, 0);
+    e.0.jump_if(0x84, "realtime-success");
+    e.imm(R9, 8);
+    e.0.call("runtime-writable-extent");
+    e.0.jump_if(0x82, "realtime-efault");
+    e.store(R8, 0, R15);
+    e.0.bind("realtime-success")?;
+    wipe_staging(&mut e);
+    e.mov(A, R15);
+    emit_static_process_sysret(e.0);
+    for (label, errno) in [("realtime-eio", 5), ("realtime-efault", 14)] {
+        e.0.bind(label)?;
+        wipe_staging(&mut e);
+        e.imm(A, (-errno as i64) as u64);
+        emit_static_process_sysret(e.0);
+    }
+    // Shared internal clock observation, with no user publication. Callers
+    // receive epoch seconds in RAX/R15, table in R12 and CF on provider error.
+    // Other scratch registers and private staging are not retained.
+    e.0.bind("realtime-observe")?;
     e.gs(0x8b, R12, TABLE_CONTEXT);
     wipe_staging(&mut e);
     e.imm(R15, 1024);
     e.0.bind("realtime-sample-retry")?;
     e.cmp(R15, 0);
-    e.0.jump_if(0x84, "realtime-eio");
+    e.0.jump_if(0x84, "realtime-observe-eio");
     e.add(R15, -1);
     rtc(&mut e, 0x0a);
     e.arith(4, A, 128);
@@ -69,7 +93,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.mov(A, B);
     e.arith(4, A, 0x82);
     e.cmp(A, 2);
-    e.0.jump_if(0x85, "realtime-eio"); // require running 24-hour representation
+    e.0.jump_if(0x85, "realtime-observe-eio"); // require running 24-hour representation
     e.mov(A, B);
     e.arith(4, A, 4);
     e.cmp(A, 0);
@@ -82,10 +106,10 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.mov(R10, A);
     e.arith(4, R10, 15);
     e.cmp(R10, 9);
-    e.0.jump_if(0x87, "realtime-eio");
+    e.0.jump_if(0x87, "realtime-observe-eio");
     e.0.bytes(&[0x48, 0xc1, 0xe8, 4]);
     e.cmp(A, 9);
-    e.0.jump_if(0x87, "realtime-eio");
+    e.0.jump_if(0x87, "realtime-observe-eio");
     multiply(&mut e, A, 10);
     e.rr(0x01, A, R10);
     e.store(R13, 0, A);
@@ -105,18 +129,18 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     ] {
         e.load(A, R12, STAGING + offset);
         e.cmp(A, min);
-        e.0.jump_if(0x82, "realtime-eio");
+        e.0.jump_if(0x82, "realtime-observe-eio");
         e.cmp(A, max);
-        e.0.jump_if(0x87, "realtime-eio");
+        e.0.jump_if(0x87, "realtime-observe-eio");
     }
     e.load(A, R12, STAGING + 48);
     multiply(&mut e, A, 100);
     e.load(B, R12, STAGING + 40);
     e.rr(0x01, A, B);
     e.cmp(A, 1970);
-    e.0.jump_if(0x82, "realtime-eio");
+    e.0.jump_if(0x82, "realtime-observe-eio");
     e.cmp(A, 2261);
-    e.0.jump_if(0x87, "realtime-eio");
+    e.0.jump_if(0x87, "realtime-observe-eio");
     e.add(A, -1970);
     e.0.bytes(&[0x48, 0xc1, 0xe0, 4]);
     e.0.rip_lea(&[0x4c, 0x8d, 0x2d], "realtime-year-table");
@@ -143,7 +167,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.bind("realtime-month-ready")?;
     e.load(B, R12, STAGING + 24);
     e.rr(0x39, B, C);
-    e.0.jump_if(0x87, "realtime-eio");
+    e.0.jump_if(0x87, "realtime-observe-eio");
     e.add(B, -1);
     e.rr(0x01, R15, A);
     e.rr(0x01, R15, B);
@@ -153,24 +177,13 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
         multiply(&mut e, A, factor);
         e.rr(0x01, R15, A);
     }
-    // Native time samples before attempting its optional user publication.
-    e.gs(0x8b, R8, 312);
-    e.cmp(R8, 0);
-    e.0.jump_if(0x84, "realtime-success");
-    e.imm(R9, 8);
-    e.0.call("runtime-writable-extent");
-    e.0.jump_if(0x82, "realtime-efault");
-    e.store(R8, 0, R15);
-    e.0.bind("realtime-success")?;
     wipe_staging(&mut e);
     e.mov(A, R15);
-    emit_static_process_sysret(e.0);
-    for (label, errno) in [("realtime-eio", 5), ("realtime-efault", 14)] {
-        e.0.bind(label)?;
-        wipe_staging(&mut e);
-        e.imm(A, (-errno as i64) as u64);
-        emit_static_process_sysret(e.0);
-    }
+    e.0.bytes(&[0xf8, 0xc3]);
+    e.0.bind("realtime-observe-eio")?;
+    wipe_staging(&mut e);
+    e.imm(A, (-5_i64) as u64);
+    e.0.bytes(&[0xf9, 0xc3]);
     // Calendar constants are private immutable provider data, never a chosen
     // timestamp. The runtime RTC year/month select their corresponding entries.
     e.0.bind("realtime-year-table")?;

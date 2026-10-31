@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/131";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/132";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -1037,9 +1037,10 @@ mod tests {
             .file_range()
             .unwrap();
         let entry = start as usize + symbol.index().0 * 24;
-        assert_eq!(symbol.size(), 0x3e000);
+        assert_eq!(symbol.size(), 0x43000);
         for (field, value) in [
             (16, 8192_u64),
+            (16, 0x3e000),
             (16, u64::MAX),
             (8, 0x3ff000),
             (8, 0x400000),

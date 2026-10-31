@@ -54,3 +54,5 @@ mod tests {
 }
 mod systems_children;
 pub use systems_children::*;
+mod systems_pipes;
+pub use systems_pipes::*;

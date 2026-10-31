@@ -230,6 +230,15 @@ fn emit_lookup_and_release(e: &mut E<'_>) -> Result<(), CompileError> {
     e.store(R14, 8, A);
     e.cmp(A, 0);
     e.0.jump_if(0x85, "fd-drop-slot");
+    e.load(A, R14, 0);
+    e.cmp(A, 5);
+    e.0.jump_if(0x84, "fd-drop-pipe");
+    e.cmp(A, 6);
+    e.0.jump_if(0x85, "fd-drop-description");
+    e.0.bind("fd-drop-pipe")?;
+    e.0.call("pipe-last-endpoint");
+    e.0.bind("fd-drop-description")?;
+    e.imm(A, 0);
     for offset in (0..64).step_by(8) {
         e.store(R14, offset, A);
     }
@@ -264,6 +273,7 @@ fn emit_duplication(e: &mut E<'_>) -> Result<(), CompileError> {
         (1, "fd-getfd"),
         (2, "fd-setfd"),
         (3, "fd-getfl"),
+        (1032, "pipe-capacity"),
     ] {
         e.cmp(Si, command);
         e.0.jump_if(0x84, label);
@@ -402,6 +412,8 @@ pub(in super::super) fn emit_transfer_services(
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
     e.load(A, R14, 0);
+    e.cmp(A, 6);
+    e.0.jump_if(0x84, "pipe-write");
     e.cmp(A, 2);
     e.0.jump_if(0x85, "fd-ebadf");
     e.0.jump("runtime-console-payload");
@@ -410,6 +422,10 @@ pub(in super::super) fn emit_transfer_services(
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
     e.load(B, R14, 0);
+    e.cmp(B, 6);
+    e.0.jump_if(0x84, "fd-ebadf");
+    e.cmp(B, 5);
+    e.0.jump_if(0x84, "pipe-read");
     e.cmp(B, 2);
     e.0.jump_if(0x84, "fd-ebadf");
     e.mov(R8, Si);
@@ -495,13 +511,17 @@ pub(in super::super) fn emit_transfer_services(
     e.0.bind("fd-seek")?;
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
+    // Native mode admission precedes object dispatch, including nonseekable
+    // endpoints. SEEK_DATA/HOLE are valid modes even when the object rejects seek.
+    e.0.bytes(&[0x89, 0xd2]);
+    e.cmp(D, 4);
+    e.0.jump_if(0x87, "fd-einval");
     e.load(A, R14, 0);
     e.cmp(A, 3);
     e.0.jump_if(0x84, "fd-seek-kind-ready");
     e.cmp(A, 4);
     e.0.jump_if(0x85, "fd-espipe");
     e.0.bind("fd-seek-kind-ready")?;
-    e.0.bytes(&[0x89, 0xd2]);
     e.cmp(D, 0);
     e.0.jump_if(0x84, "fd-seek-set");
     e.cmp(D, 1);
@@ -545,6 +565,10 @@ pub(in super::super) fn emit_transfer_services(
     e.0.jump_if(0x84, "fd-stat-file");
     e.cmp(A, 4);
     e.0.jump_if(0x84, "fd-stat-file");
+    e.cmp(A, 5);
+    e.0.jump_if(0x84, "pipe-stat");
+    e.cmp(A, 6);
+    e.0.jump_if(0x84, "pipe-stat");
     e.imm(A, 0x2180);
     e.store(R12, STAGING + 24, A);
     e.imm(A, 0x4400);
@@ -567,6 +591,11 @@ pub(in super::super) fn emit_transfer_services(
     e.0.bind("fd-ioctl")?;
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
+    e.load(A, R14, 0);
+    e.cmp(A, 5);
+    e.0.jump_if(0x84, "pipe-ioctl");
+    e.cmp(A, 6);
+    e.0.jump_if(0x84, "pipe-ioctl");
     e.0.jump("fd-enotty");
 
     e.0.bind("fd-prlimit-query")?;
@@ -659,6 +688,7 @@ pub(in super::super) fn emit_reclamation(
     e.imm(C, 4096 / 8);
     e.0.bytes(&[0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
+    e.0.call("pipe-terminal-release");
     e.mov(Di, R12);
     e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xf3, 0x48, 0xab]);

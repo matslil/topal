@@ -162,10 +162,10 @@ class Released(Checked):
     def inspect(self):
         assert active is None and records
         assert len(records)=={1 if external else 4}
-        assert memory(table,0x3e000)==bytes(0x3e000)
+        assert memory(table,0x43000)==bytes(0x43000)
         assert word(context+152)==0 and word(context+160)==0
         assert word(context+952)==0 and word(context+960)==0 and word(context+968)==0
-        Path({str(result)!r}).write_text(json.dumps(dict(calls=records,process_backing_bytes=0x3e000,
+        Path({str(result)!r}).write_text(json.dumps(dict(calls=records,process_backing_bytes=0x43000,
             terminal_storage_erased=True,terminal_thread_registrations_erased=True,
             terminal_library_bindings_erased=True,result="pass"),indent=2,sort_keys=True))
         return True
@@ -175,7 +175,8 @@ Released("*"+hex(symbol("topal_x86_systems_static_image_process_restore_entry"))
     return f"set pagination off\nset confirm off\nfile {elf}\ntarget remote {debug}\npython\n{setup}\nend\ncontinue\ndetach\n"
 
 
-def observe(root, values, external_image, corrupt, timeout):
+def observe(root, values, external_image, corrupt, timeout, workload=None,
+            rejection="independent parent restoration oracle rejected the injected snapshot"):
     root.mkdir()
     debug, result, failed = root / "debug.sock", root / "result.json", root / "failed.txt"
     elf = values[3].parent / "kernel.elf"
@@ -208,7 +209,7 @@ def observe(root, values, external_image, corrupt, timeout):
         if failed.exists():
             return "child debugger assertion failed: " + failed.read_text()
         if corrupt and result.exists():
-            return "independent parent restoration oracle rejected the injected snapshot"
+            return rejection
         return None
 
     GATE.build_image = lambda *_args, **_kwargs: values
@@ -216,10 +217,11 @@ def observe(root, values, external_image, corrupt, timeout):
     GATE.observe_gate = lambda *args, **kwargs: original_observe(*args, **kwargs, failure_check=failure)
     try:
         try:
-            runtime = GATE.verify(timeout, False, external_image, "child-echo" if external_image else "true")
+            runtime = GATE.verify(timeout, False, external_image,
+                                  workload or ("child-echo" if external_image else "true"))
         except GATE.GateError as error:
             thread.join(timeout=5)
-            if not corrupt or "independent parent restoration oracle rejected" not in str(error):
+            if not corrupt or rejection not in str(error):
                 log = (root / "debug.log").read_text() if (root / "debug.log").exists() else repr(outcome)
                 raise GATE.GateError(str(error) + "\nChild debugger:\n" + log) from error
             runtime = None

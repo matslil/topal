@@ -5,7 +5,7 @@ use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysre
 #[path = "systems_process_pair.rs"]
 mod pair;
 
-pub(in super::super) const STORAGE_BYTES: u64 = 0x3e000;
+pub(in super::super) const STORAGE_BYTES: u64 = super::pipes::BASE as u64 + super::pipes::BYTES;
 const HEADER: i32 = 0x2000;
 const CONTEXT: i32 = 0x2100;
 const SIMD: i32 = 0x2800;
@@ -427,6 +427,15 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.jump_if(0x85, "fatal");
     e.cmp(A, 1);
     e.0.jump_if(0x85, "pair-parent-no-inactive-child");
+    // Outer-owner teardown cancels the inactive child's condition before its
+    // last endpoint can publish peer closure or invalidate a retained slot.
+    for offset in [HEADER + 96, HEADER + 120] {
+        e.imm(A, 0);
+        e.store(R15, offset, A);
+        e.load(R11, R15, offset);
+        e.cmp(R11, 0);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.0.call("pair-release-inactive-slots");
     e.0.bind("pair-parent-no-inactive-child")?;
     erase(

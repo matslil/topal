@@ -121,6 +121,8 @@ def post_code(witness_type,mode):
     w.raw("ffd0")
     w.imm("48b8",0x4F8000)
     w.raw("ffd0")
+    w.imm("48b8",0x500000)
+    w.raw("ffd0")
     return w.finish()
 
 

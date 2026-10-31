@@ -49,11 +49,16 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
     e.0.jump_if(0x85, "pair-local-zero");
     e.load(A, R15, 56);
     e.cmp(A, 1);
-    e.0.jump_if(0x84, "pair-yield-switch");
+    e.0.jump_if(0x84, "pair-yield-parent");
     e.load(R11, R15, HEADER + 16);
     e.rr(0x39, A, R11);
     e.0.jump_if(0x85, "fatal");
     e.load(A, R15, HEADER + 80); // parent waiting for this child
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "pair-local-zero");
+    e.0.jump("pair-yield-switch");
+    e.0.bind("pair-yield-parent")?;
+    e.load(A, R15, HEADER + 96); // inactive child may be waiting for pipe readiness
     e.cmp(A, 0);
     e.0.jump_if(0x85, "pair-local-zero");
     e.0.bind("pair-yield-switch")?;
@@ -78,6 +83,9 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
     e.imm(A, 1);
     e.store(R15, HEADER + 80, A);
     e.imm(R8, 61);
+    e.load(A, R15, HEADER + 96);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "pipe-no-eligible-process");
     e.0.bind("pair-switch")?;
     // Both private records must still belong to this exact pair and hierarchy.
     e.load(A, R15, TABLE);
@@ -86,10 +94,22 @@ pub(super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), Compile
     e.load(A, R15, 56);
     e.load(R11, R15, HEADER + 16);
     e.cmp(A, 1);
-    e.0.jump_if(0x84, "pair-switch-target-identity");
+    e.0.jump_if(0x84, "pair-switch-target-child");
     e.rr(0x39, A, R11);
     e.0.jump_if(0x85, "fatal");
     e.imm(R11, 1);
+    for offset in [HEADER + 80, HEADER + 104] {
+        e.load(A, R15, offset);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fatal");
+    }
+    e.0.jump("pair-switch-target-identity");
+    e.0.bind("pair-switch-target-child")?;
+    for offset in [HEADER + 96, HEADER + 120] {
+        e.load(A, R15, offset);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.0.bind("pair-switch-target-identity")?;
     e.load(A, R15, TABLE + 56);
     e.rr(0x39, A, R11);

@@ -116,6 +116,18 @@ PROCESS_WORKLOADS = {
         b"exec /bin/busybox sh -c '/bin/busybox head -c1 <&3; /bin/busybox head -c1 <&3; echo done'\n",
         b"\x7fEdone\n", 0,
     ),
+    "pipe-substitution": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox echo pipe-child); echo \"$value\"'\n",
+        b"pipe-child\n", 0,
+    ),
+    "pipe-substitution-changed": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox printf changed); echo \"[$value]\"'\n",
+        b"[changed]\n", 0,
+    ),
+    "pipe-substitution-large": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox seq 1 2000); echo ${#value}'\n",
+        b"8892\n", 0,
+    ),
 }
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
@@ -1071,6 +1083,9 @@ def static_user_fixture(environment_mode: str = "maximum") -> bytes:
     pair_encoder = runpy.run_path(str(LAB / "static_pair_checks.py"))
     pair_code = pair_encoder["code"](checks["Witness"])
     image[0xF_8000:0xF_8000+len(pair_code)] = pair_code
+    pipe_encoder = runpy.run_path(str(LAB / "static_pipe_checks.py"))
+    pipe_code = pipe_encoder["code"](checks["Witness"])
+    image[0x10_0000:0x10_0000+len(pipe_code)] = pipe_code
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1333,7 +1348,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/231",
+        "schema": "topal-kernel-toolchain-gate-qemu/232",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1771,7 +1786,9 @@ def verify(
             expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
                                 "replacement-shell-pid": 2, "replacement-shell-cwd": 2,
                                 "child-echo": 2, "child-status": 2, "child-repeated": 3,
-                                "child-cwd": 2, "child-offset": 3}.get(process_workload, 1)
+                                "child-cwd": 2, "child-offset": 3,
+                                "pipe-substitution":2,"pipe-substitution-changed":2,
+                                "pipe-substitution-large":2}.get(process_workload, 1)
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

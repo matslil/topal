@@ -8,6 +8,8 @@
 pub(super) mod children;
 #[path = "systems_process_numeric.rs"]
 pub(super) mod numeric;
+#[path = "systems_process_pipes.rs"]
+pub(super) mod pipes;
 #[path = "systems_process_policy.rs"]
 pub(super) mod policy;
 use super::{CompileError, X86FunctionEncoder, emit_static_process_sysret};
