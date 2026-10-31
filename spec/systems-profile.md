@@ -6098,6 +6098,117 @@ blocked set. Terminal reclamation SHALL wipe and verify it. Tests SHALL cover
 selector/error precedence, overlap, normalization, output-fault commit and
 exec preservation. Pending signals and delivery remain unqualified.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-COPY-001 — Owned native pathname bytes
+
+The separately selected read-only namespace profile SHALL copy native names to
+disjoint private storage before lookup/allocation. Each byte SHALL pass checked
+arithmetic and live readable user-leaf validation before access. X86-64 SHALL
+require a zero terminator within 4096 bytes; an unterminated 4096-byte prefix
+SHALL return `ENAMETOOLONG`, an inaccessible next byte `EFAULT`, and a complete
+empty name `ENOENT` except for explicitly admitted empty-path observation.
+Every return and terminal reclamation SHALL erase/verify private name storage.
+No partial name or user pointer SHALL survive return; native bytes SHALL NOT
+become ordinary Topal references or imply language string semantics.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-LOOKUP-001 — Immutable component resolution
+
+The initial namespace SHALL contain root inode three, its `bin` directory inode
+four, and `bin`'s `busybox` regular file inode five with immutable member backing.
+Absolute paths SHALL start at root and ignore dirfd. Relative paths SHALL use
+cwd for `AT_FDCWD` or a live directory description; invalid relative descriptors
+SHALL return `EBADF`. Non-directory starting/traversed objects SHALL return
+`ENOTDIR`, including before a trailing slash. Repeated separators and dot
+components SHALL preserve directory identity; parent components SHALL select
+the parent, with root's parent equal to root. Missing components SHALL return
+`ENOENT`; a component longer than native `NAME_MAX` SHALL return
+`ENAMETOOLONG` (255 bytes in the initial binding). Rejection SHALL preserve all
+process resources. The walker SHALL NOT
+depend on application identity, command text, fixed return sites or host paths.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-001 — Independent read-only opens
+
+For admitted read-only flags, `open`/`openat` SHALL normalize native-width flags,
+copy the name, find the lowest free slot, and resolve the object in that order.
+Exhaustion SHALL return `EMFILE` before walking. Directory-only selection of a
+regular file SHALL return `ENOTDIR`. Success SHALL atomically install one fresh
+description with selected object, read rights/status and position zero, and one
+slot with separate close-on-exec state. Separate opens SHALL have independent
+positions; aliases SHALL share them. Failure SHALL consume neither resource.
+Existing close/dup/exec/reclamation semantics SHALL apply. Unqualified writable,
+creation, path-only and other modes SHALL fail closed without granting authority
+or implying Linux conformance for those requests.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-METADATA-001 — Coherent object observation
+
+Path and descriptor metadata SHALL agree on inode, type, size, mode, ownership
+and backing. Root/bin SHALL have directory read/search mode and link counts
+three/two respectively. The executable SHALL expose its full immutable size
+and existing mode. `newfstatat` SHALL admit its declared no-follow/no-automount/
+empty-path flags, including live-descriptor or cwd observation for empty paths.
+Copy, flag and lookup error precedence SHALL follow the baseline. Successful
+observation SHALL precede complete writable stat publication. Lookup/copy
+failures SHALL publish no bytes and preserve state. Staging SHALL be erased.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-DIRECTORY-READ-001 — Shared directory cookies
+
+`getdents64` SHALL validate liveness/type first, returning `EBADF`/`ENOTDIR`.
+Root SHALL enumerate `.`, `..`, `bin`; bin SHALL enumerate `.`, `..`, `busybox`.
+Inode, type, terminated name, aligned length, zero padding and next cookies
+one/two/three SHALL be coherent. The cookie SHALL belong to the shared
+description. Each call SHALL publish the largest complete record prefix allowed
+by native-width count and private capacity. A too-small first record SHALL
+return `EINVAL` unchanged; EOF SHALL return zero. Complete writable permissions
+SHALL precede publication. Failed complete copies SHALL preserve the cookie;
+success SHALL advance only for returned records and erase staging. Partial
+user-copy behavior remains unqualified. Independent opens SHALL start at zero.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-CWD-001 — Process current-directory identity
+
+Initial cwd SHALL be root. `chdir` SHALL copy/resolve a pathname and require a
+directory; `fchdir` SHALL require a live directory description. Only success
+SHALL replace cwd. `getcwd` SHALL derive a terminated absolute name, return
+`ERANGE` for insufficient native capacity before output access, otherwise check
+a complete writable extent and return the length including terminator. Bad
+output SHALL return `EFAULT` without partial publication. Cwd SHALL survive
+failed/successful exec independently of user memory and be erased at terminal
+reclamation. Qualification SHALL cover name/copy boundaries, relative authority,
+errors, allocation/reuse, independent/alias positions and cookies, coherent
+metadata, cwd/exec lifetime, external consumers and complete erasure.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001 — Qualified epoch observation
+
+The selected realtime-seconds adapter SHALL obtain signed Unix-epoch seconds
+from a declared platform realtime resource, distinct from monotonic uptime.
+It SHALL admit a validated coherent sample and checked Gregorian conversion
+before publication. A nonnull native `time` destination SHALL pass complete
+writable user validation and receive exactly the returned value. Null output
+SHALL be a pure query. Bad output SHALL return `EFAULT` without partial
+publication. Native register preservation SHALL hold and acquisition/conversion
+staging SHALL be erased/verified on all returns and terminal reclamation.
+Malformed, unsupported or unavailable source data SHALL NOT fabricate success.
+The initial Q35 provider SHALL admit coherent BCD/binary 24-hour UTC samples
+for years 1970 through 2261, preserving RTC date/control contents. Tests SHALL
+cover epoch/leap/century conversion, declared physical RTC dates, output equality,
+null query, copy faults, saved registers, external setup and complete rollback.
+Clock setting, timezone, synchronization and subsecond interfaces remain
+unqualified. Portable source SHALL NOT acquire native calendar-register access.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-ROOT-CREDENTIALS-001 — Prepared-root observations
+
+After image identity preparation, a selected reusable credential adapter SHALL
+return the process's retained real/effective root user/group values for repeated
+native identity queries independently of preceding metadata or query order.
+The authority SHALL be an imported kernel-owned prepared-root witness, never
+user-writable auxiliary values. Native-width idempotent setuid(0)/setgid(0)
+SHALL return success while preserving identity and all other process resources.
+Other identity changes SHALL remain unqualified and fail closed. Exec SHALL
+preserve the prepared identity; terminal reclamation SHALL erase its witness.
+Saved native registers SHALL be preserved. Private compatibility observations
+MAY record actual credential calls but SHALL NOT require their order or
+fabricate another syscall observation. Tests SHALL cover repetition/reordering,
+native width, metadata independence, exec lifetime and erasure. This SHALL NOT
+imply arbitrary identity, capability or multi-user permission policy.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

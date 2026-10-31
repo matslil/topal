@@ -2349,6 +2349,34 @@ state. Clean tests shall cover these boundaries before external application
 qualification. Registration shall treat handler/restorer values as opaque ABI
 data and shall not establish delivery, frames or return semantics.
 
+The read-only namespace realization shall implement `TK-DEC-242` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PATH-{COPY,LOOKUP,OPEN,METADATA}-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-DIRECTORY-READ-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-CWD-001`. It shall retain immutable object and cwd
+identities, use disjoint checked/erased pathname storage, enforce native copy/
+allocation/lookup ordering, publish independent open descriptions atomically,
+and make metadata, records and reads coherent. Clean executed cases shall cover
+name boundaries, relative authority, errors, exhaustion, aliases/independent
+positions and cookies, cwd/exec lifetime and erasure. External named-file and
+directory consumers shall share these services; the existing corpus remains a
+regression. Unqualified modes shall fail closed. Native encodings stay private.
+
+The realtime-seconds realization shall implement `TK-DEC-243` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001` with exclusive platform
+acquisition, coherent/validated calendar samples, checked epoch conversion,
+optional complete native output and erased staging. It shall qualify calendar
+boundaries, actual declared RTC dates, return/output equality, null/bad outputs,
+native registers, external directory-consumer setup and complete rollback.
+Hardware ports and representations shall remain closed provider details.
+
+The reusable prepared-root adapter shall realize `TK-DEC-244` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-ROOT-CREDENTIALS-001` using an imported private
+identity witness, independent queries and idempotent root selections, preserved
+native registers and exec identity, and complete terminal erasure. It shall
+qualify repeated/reordered calls, native widths and metadata independence,
+without using user-writable auxiliary data as authority or admitting other
+identity changes.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
