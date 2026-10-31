@@ -119,6 +119,8 @@ def post_code(witness_type,mode):
         repeated_generation(w)
     w.imm("48b8",0x4F0000)
     w.raw("ffd0")
+    w.imm("48b8",0x4F8000)
+    w.raw("ffd0")
     return w.finish()
 
 

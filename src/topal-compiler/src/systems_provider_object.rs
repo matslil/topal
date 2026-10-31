@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/212";
+    "topal.provider-object.x86_64-qemu-pc-q35/213";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -20734,8 +20734,8 @@ assert bytes(output) == block[32:]
                 .windows(3)
                 .filter(|window| *window == [0x0f, 0x22, 0xd8])
                 .count(),
-            3,
-            "entry, child parent-restoration invalidation and terminal return each reload CR3 once"
+            4,
+            "entry, private pair exchange, child parent restoration and terminal return each reload CR3 once"
         );
         assert!(
             process_enter

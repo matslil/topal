@@ -25,6 +25,49 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_resumable_pair_evidence_covers_handoff_wait_exec_and_live_teardown(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-PAIR-001
+        proof=json.loads((LAB/"results/topal-static-process-pair-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-static-process-pair-qemu/1")
+        self.assertEqual(proof["harness_sha256"],GATE.digest(LAB/"pair_gate.py"))
+        self.assertEqual(proof["fixture_sha256"],GATE.digest(LAB/"static_pair_checks.py"))
+        for name in ("clean","external","termination"):
+            case=proof[name]
+            self.assertEqual(case["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+            self.assertEqual(case["runtime"]["observations"]["result"],"pass")
+            self.assertEqual(case["observation"]["result"],"pass")
+            for key in ("terminal_storage_erased","terminal_thread_registrations_erased",
+                        "terminal_library_bindings_erased"):
+                self.assertTrue(case["observation"][key])
+            for returned in case["observation"]["returns"]:
+                for key in ("registers_preserved","extended_state_preserved","tls_preserved",
+                            "private_backings_preserved","private_table_preserved",
+                            "mapping_permissions_preserved","thread_registrations_preserved",
+                            "shared_history_preserved","description_references_preserved"):
+                    self.assertTrue(returned[key])
+        clean=proof["clean"]["observation"]
+        self.assertEqual([r["pid"] for r in clean["returns"]],[1,6,1,6,1,6,1,1,7,1,1,8,1])
+        self.assertEqual(clean["blocking_waits"],2)
+        self.assertEqual(clean["local_yields_while_parent_waits"],2)
+        self.assertTrue(clean["second_bank_retained"])
+        self.assertEqual(sum(r["retired_snapshot_erased"] for r in clean["returns"]),3)
+        external=proof["external"]["observation"]
+        self.assertTrue(external["explicit_child_yield_injected"])
+        self.assertTrue(external["external_exec_after_handoff"])
+        self.assertTrue(external["entropy_history_advanced_across_child_exec"])
+        self.assertEqual(external["blocking_waits"],1)
+        termination=proof["termination"]["observation"]
+        self.assertTrue(termination["explicit_live_parent_exit_injected"])
+        self.assertEqual(len(termination["returns"]),11)
+        self.assertTrue(termination["second_bank_retained"])
+        counter=proof["counterexample"]
+        self.assertEqual(counter["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        self.assertNotIn("runtime",counter)
+        self.assertEqual(counter["observation"]["result"],"expected-pair-restoration-rejection")
+        self.assertEqual(counter["observation"]["observed"],0x12345679)
+        self.assertEqual(counter["observation"]["expected"],0x12345678)
+        self.assertTrue(counter["observation"]["exact_user_comparison"])
+
     def test_child_evidence_binds_private_restoration_shared_history_and_erasure(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001, TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001
         # TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001
@@ -556,16 +599,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/230")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/231")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/220")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/221")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/230",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/231",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/130",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/131",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1091,7 +1134,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/230")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/231")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

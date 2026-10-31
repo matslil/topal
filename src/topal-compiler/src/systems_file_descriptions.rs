@@ -13,8 +13,8 @@ pub(in super::super) const ARCHIVE_CONTEXT: u32 = 936;
 pub(super) const SLOTS: i32 = 64;
 pub(super) const DESCRIPTIONS: i32 = 320;
 // A parked parent can retain sixteen distinct descriptions while its child
-// independently opens sixteen more. The additional cells occupy the reserved
-// final process-backing page; parent-only execution always fits the first bank.
+// independently opens sixteen more. Either process can retain cells in either
+// bank after handoff. This shared bank outlives inactive private snapshots.
 pub(super) const CHILD_DESCRIPTIONS: i32 = 0x3d000;
 pub(in super::super) const TABLE_BYTES: u64 = 8192;
 pub(super) const STAGING: i32 = 1408;
@@ -653,6 +653,11 @@ pub(in super::super) fn emit_reclamation(
     e.imm(A, 0);
     e.imm(C, ((DESCRIPTIONS + 16 * 64 - SLOTS) / 8) as u64);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    e.0.jump_if(0x85, "fatal");
+    e.mov(Di, R12);
+    e.add(Di, CHILD_DESCRIPTIONS);
+    e.imm(C, 4096 / 8);
+    e.0.bytes(&[0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.mov(Di, R12);
     e.imm(C, TABLE_BYTES / 8);

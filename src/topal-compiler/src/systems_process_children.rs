@@ -2,6 +2,8 @@
 //! All offsets are private ABI/backing details, never source-visible addresses.
 use super::file_descriptions::{DESCRIPTIONS, TABLE_CONTEXT};
 use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysret};
+#[path = "systems_process_pair.rs"]
+mod pair;
 
 pub(in super::super) const STORAGE_BYTES: u64 = 0x3e000;
 const HEADER: i32 = 0x2000;
@@ -48,14 +50,6 @@ fn erase(e: &mut E<'_>, from: i32, bytes: u64) {
     }
 }
 
-fn verify_child_descriptions_released(e: &mut E<'_>) {
-    e.mov(Di, R15);
-    e.add(Di, super::file_descriptions::CHILD_DESCRIPTIONS);
-    e.imm(A, 0);
-    e.imm(C, 16 * 64 / 8);
-    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
-    e.0.jump_if(0x85, "fatal");
-}
 fn read_msr(e: &mut E<'_>, msr: u32) {
     e.imm(C, u64::from(msr));
     e.0.bytes(&[0x0f, 0x32, 0x48, 0xc1, 0xe2, 0x20]);
@@ -79,6 +73,7 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
         (218, "child-register-tid"),
         (273, "child-register-robust"),
         (158, "child-thread-local"),
+        (24, "pair-yield"),
     ] {
         e.cmp(A, number);
         e.0.jump_if(0x84, label);
@@ -187,7 +182,10 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.mov(Di, R15);
     e.add(Di, CONTEXT);
     e.imm(A, 0);
-    e.imm(C, (STORAGE_BYTES - CONTEXT as u64) / 8);
+    e.imm(
+        C,
+        (super::file_descriptions::CHILD_DESCRIPTIONS as u64 - CONTEXT as u64) / 8,
+    );
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.store(R15, HEADER + 32, R8);
@@ -202,6 +200,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.cmp(R14, i32::MAX);
     e.0.jump_if(0x87, "fatal");
     e.store(R15, HEADER + 16, R14);
+    e.store(R15, HEADER + 88, R14); // inactive parent's pending fork result
     e.mov(A, R14);
     e.add(A, 1);
     e.cmp(R14, i32::MAX);
@@ -212,7 +211,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.gs(0x8b, R11, 256);
     copy(&mut e, R11, 0, R15, CONTEXT, 1024);
     // The entropy service is shared history, never a restorable old key.
-    for offset in [192, 200, 208, 216] {
+    for offset in [184, 192, 200, 208, 216, 264] {
         e.imm(A, 0);
         e.store(R15, CONTEXT + offset, A);
     }
@@ -250,13 +249,26 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.load(A, R13, 0);
     e.cmp(A, 0);
     e.0.jump_if(0x84, "child-retain-next");
-    e.cmp(A, 16);
+    e.cmp(A, 32);
     e.0.jump_if(0x87, "fatal");
+    e.mov(R11, R15);
+    e.add(R11, DESCRIPTIONS);
+    e.cmp(A, 16);
+    e.0.jump_if(0x86, "child-retain-description-base");
+    e.add(
+        R11,
+        super::file_descriptions::CHILD_DESCRIPTIONS - DESCRIPTIONS - 16 * 64,
+    );
+    e.0.bind("child-retain-description-base")?;
     e.add(A, -1);
     e.0.bytes(&[0x48, 0xc1, 0xe0, 6]);
-    e.rr(0x01, A, R15);
-    e.add(A, DESCRIPTIONS);
+    e.rr(0x01, A, R11);
+    e.load(R11, A, 0);
+    e.cmp(R11, 0);
+    e.0.jump_if(0x84, "fatal");
     e.load(R11, A, 8);
+    e.cmp(R11, 0);
+    e.0.jump_if(0x84, "fatal");
     e.add(R11, 1);
     e.cmp(R11, 32);
     e.0.jump_if(0x87, "fatal");
@@ -305,7 +317,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.store(R15, HEADER + 24, A);
     e.0.call("child-release-slots");
     e.gs(0x8b, R15, TABLE_CONTEXT);
-    verify_child_descriptions_released(&mut e);
+    e.load(R14, R15, HEADER + 88); // parent's pending fork/yield/wait retry
     // Evolved entropy state/accounting is shared with the root and must survive.
     for offset in [184_u32, 192, 200, 208, 216, 264] {
         e.gs(0x8b, A, offset);
@@ -340,10 +352,14 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.bytes(&[0x0f, 0x30]);
     e.0.bytes(&[0x49, 0x0f, 0xae, 0x8f]);
     e.0.bytes(&SIMD.to_le_bytes()); // fxrstor64
-    erase(&mut e, HEADER + 32, STORAGE_BYTES - (HEADER + 32) as u64);
+    erase(
+        &mut e,
+        HEADER + 32,
+        super::file_descriptions::CHILD_DESCRIPTIONS as u64 - (HEADER + 32) as u64,
+    );
     e.imm(A, 2);
     e.store(R15, HEADER, A);
-    e.load(A, R15, HEADER + 16);
+    e.mov(A, R14);
     emit_static_process_sysret(e.0);
 
     e.0.bind("child-wait")?;
@@ -354,9 +370,14 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.cmp(A, 0);
     e.0.jump_if(0x85, "child-enosys");
     e.gs(0x8b, R15, TABLE_CONTEXT);
-    e.load(A, R15, HEADER);
-    e.cmp(A, 2);
+    e.load(A, R15, 56);
+    e.cmp(A, 1);
     e.0.jump_if(0x85, "child-echild");
+    e.load(A, R15, HEADER);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "child-echild");
+    e.cmp(A, 2);
+    e.0.jump_if(0x87, "fatal");
     for selector in [-1, 0] {
         e.cmp(Di, selector);
         e.0.jump_if(0x84, "child-wait-matched");
@@ -365,6 +386,9 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.rr(0x39, Di, A);
     e.0.jump_if(0x85, "child-echild");
     e.0.bind("child-wait-matched")?;
+    e.load(A, R15, HEADER);
+    e.cmp(A, 1);
+    e.0.jump_if(0x84, "pair-wait-live");
     e.cmp(Si, 0);
     e.0.jump_if(0x84, "child-wait-published");
     e.mov(R8, Si);
@@ -396,13 +420,22 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.bind("child-parent-release")?;
     e.gs(0x8b, R15, TABLE_CONTEXT);
     e.load(A, R15, HEADER);
-    e.cmp(A, 1);
-    e.0.jump_if(0x84, "fatal");
     e.cmp(A, 2);
     e.0.jump_if(0x87, "fatal");
-    verify_child_descriptions_released(&mut e);
-    erase(&mut e, HEADER, STORAGE_BYTES - HEADER as u64);
+    e.load(R11, R15, 56);
+    e.cmp(R11, 1);
+    e.0.jump_if(0x85, "fatal");
+    e.cmp(A, 1);
+    e.0.jump_if(0x85, "pair-parent-no-inactive-child");
+    e.0.call("pair-release-inactive-slots");
+    e.0.bind("pair-parent-no-inactive-child")?;
+    erase(
+        &mut e,
+        HEADER,
+        super::file_descriptions::CHILD_DESCRIPTIONS as u64 - HEADER as u64,
+    );
     e.0.bytes(&[0xc3]);
+    pair::emit_services(e.0)?;
     Ok(())
 }
 
@@ -413,6 +446,11 @@ pub(in super::super) fn emit_exit_dispatch(
     e.gs(0x8b, R11, TABLE_CONTEXT);
     e.load(R11, R11, HEADER);
     e.cmp(R11, 1);
-    e.0.jump_if(0x84, "child-exit");
+    e.0.jump_if(0x85, "pair-exit-parent");
+    e.gs(0x8b, R11, TABLE_CONTEXT);
+    e.load(R11, R11, 56);
+    e.cmp(R11, 1);
+    e.0.jump_if(0x85, "child-exit");
+    e.0.bind("pair-exit-parent")?;
     Ok(())
 }

@@ -127,6 +127,7 @@ class Incoming(Checked):
         global active,context,table
         number=reg("rax")&0xffffffff
         if number in (56,57) and active is None:
+            if not {external!r} and not 0x4f0000<=reg("rcx")<0x4f8000:return False
             context=reg("k_gs_base")
             table=word(context+928)
             if word(table+0x2000)!=0:return False

@@ -31,7 +31,11 @@ def points(elf):
             raise GATE.GateError("missing timing instruction address")
         return int(match[1],16)
     samples=[address(line) for line in lines if re.search(r"%gs:0x3b0,\s*%rdi",line)]
-    starts=[i for i,line in enumerate(lines) if re.search(r"%gs:0x3c0,\s*%rax",line)]
+    # A context-identity check may read the same binding. The invocation alone
+    # immediately tests it for null before calling the owned library bridge.
+    starts=[i for i,line in enumerate(lines[:-1])
+            if re.search(r"%gs:0x3c0,\s*%rax",line)
+            and re.search(r"\bcmp\s+\$0x0,\s*%rax",lines[i+1])]
     if len(samples)!=1 or len(starts)!=1:
         raise GATE.GateError("cannot identify unique private clock binding/target")
     targets=[address(line) for line in lines[starts[0]+1:] if "pause" in line]
