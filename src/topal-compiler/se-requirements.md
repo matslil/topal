@@ -2663,6 +2663,22 @@ malformed inputs, native boundaries and complete rollback shall qualify it.
 A declared import shall never use a fallback on failure; older roots without
 this refinement retain their own declared contracts.
 
+Under `TK-DEC-257`, the finite and numeric source-library publishers shall
+validate a closed frozen ordinary module snapshot using
+`TOPAL-SYSTEMS-SOURCE-MODULES-001`. They shall preserve shared selection,
+visibility, overload/type identity and declared numeric export types; reject
+imported type declarations and cross-unit nominal values in the initial module
+profile; retain nominal adaptation at the finite root; reject
+runtime initializers, profile escapes and missing/conflicting/extra dependencies;
+include imported calls in existing native, stack and allocation qualification;
+and publish exact module bytes plus identity/path/digest provenance. Filesystem
+loading shall enforce contained non-symlink dependency trees and the 64-unit,
+1-MiB-source and 4096-entry budgets, applying the byte budget to all scanned
+source files as well. In-memory publication shall require all
+dependency bytes explicitly and perform no ambient discovery. Changed-helper
+execution, actual imported frames, malformed snapshots and complete kernel
+rollback shall be tested.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private

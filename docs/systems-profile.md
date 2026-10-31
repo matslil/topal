@@ -394,6 +394,19 @@ calls remain represented in debug information. This adds systems artifact
 linking and qualification, without changing core-language function, Enum,
 publication, effect or termination meaning.
 
+A further systems qualification may freeze a closed set of ordinary imported
+source modules for these policy interfaces. Selection and checking retain the
+existing library/version, visibility, type identity and direct-call meanings.
+Both filesystem and explicit in-memory inputs must bind exact dependency
+identities, relative paths and bytes; no ambient source or unchecked object may
+enter publication. Initial imported units contain functions
+over the qualified Boolean/numeric values, with nominal Enum adaptation retained
+at the finite root. Imported type declarations and cross-unit nominal values
+remain unqualified. Complete cross-module closure, initializer/effect rejection,
+native restrictions and stack/allocation proofs still apply. Discovery budgets
+and dependency-tree restrictions belong to the systems profile and do not limit
+otherwise valid core programs. See the kernel's `TK-DEC-257` design.
+
 ### Owned runtime for pure numeric libraries
 
 A further systems profile may execute ordinary numeric policy over a root-owned,

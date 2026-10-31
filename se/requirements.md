@@ -1525,6 +1525,22 @@ source-body changes and Enum reordering, malformed/escape inputs, native syscall
 boundaries and full rollback. Kernel policy shall reside in the kernel source
 tree; native adapters shall translate semantic choices and enforce authority.
 
+The qualified source-module refinement (`TK-DEC-257`) shall admit closed ordinary
+dependencies for the finite and numeric policy interfaces, freeze exact logical
+identities/relative paths/source bytes and bind every dependency in provenance
+and a digested snapshot output. Inputs shall admit imported functions over the
+qualified Boolean/numeric values;
+imported type declarations and cross-unit nominal values remain unqualified.
+Filesystem discovery and explicit in-memory publication shall validate the same
+closure, reject missing/conflicting/extra/
+escaping/cyclic or effectful inputs and preserve shared module semantics.
+Initial budgets shall be 64 selected dependencies, 1 MiB of total source and
+4096 filesystem entries; the same byte budget bounds scanned source files and
+symlinked dependency trees remain unqualified. Stack and numeric allocation
+proofs shall include imported helpers. Actual module
+frames, changed-dependency behavior, native-state preservation and full rollback
+shall qualify this refinement without broadening core-language meaning.
+
 A separately qualified pure numeric source-library profile may use an explicitly
 root-owned temporary arena and the shared ordinary numeric runtime. It shall
 preserve arbitrary-precision semantics, bind only qualified kernel allocation
