@@ -420,5 +420,14 @@ it through `--static-user-image`, and verifies exact-byte `static-user.elf`
 artifact and boot provenance. The deterministic initramfs contains `init`
 followed by `static-user.elf`; the provider validates both archive records and
 the static ELF metadata while excluding the complete resource from allocation.
-This file is not BusyBox, remains provider-private, and is not selected or
-copied into the inactive construction yet.
+This file is a clean ABI fixture. It is loaded and executed in the static-process
+profile, including the rejected exec requests, maximum argument aggregate,
+console bounds and nonzero status described in the
+[reusable process qualification](../../../step-4-reusable-static-process-execution.md).
+
+The external runtime corpus uses `--external-static-user-image PATH` with
+`--process-workload true`, `false`, `echo`, or `echo-changed`. The harness sends
+the selected final command over serial after the static entry marker; later
+probe input is sent at its existing resource marker. `--write-evidence` records
+the exact command, application output, observed status, linked kernel identity
+and full rollback. All four external cases must use the same kernel executable.

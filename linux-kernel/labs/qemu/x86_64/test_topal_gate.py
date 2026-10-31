@@ -75,202 +75,15 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(int.from_bytes(fixture[24:32], "little"), 0x004A_6580)
         self.assertEqual(int.from_bytes(fixture[56:58], "little"), 11)
         self.assertEqual(fixture[0x1000], 0xA5)
-        self.assertEqual(
-            fixture[0xA_6100 : 0xA_6100 + 902],
-            bytes(
-                [
-                    0xB8, 0x0C, 0, 0, 0,
-                    0x31, 0xFF,
-                    0x0F, 0x05,
-                    0x48, 0x3D, 0x00, 0x70, 0x5F, 0x00,
-                    0x75, 0xFE,
-                    0xBF, 0x80, 0x7D, 0x5F, 0x00,
-                    0xB8, 0x0C, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
-                    0x75, 0xFE,
-                    0xC6, 0x04, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
-                    0x80, 0x3C, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
-                    0x75, 0xFE,
-                    0xC6, 0x04, 0x25, 0x00, 0x74, 0x5F, 0x00, 0x6B,
-                    0xBF, 0x02, 0x10, 0x00, 0x00,
-                    0xBE, 0x00, 0x74, 0x5F, 0x00,
-                    0xB8, 0x9E, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0x64, 0x8A, 0x04, 0x25, 0, 0, 0, 0,
-                    0x3C, 0x6B,
-                    0x75, 0xFE,
-                    0xC7, 0x04, 0x25, 0xD0, 0x76, 0x5F, 0x00, 1, 0, 0, 0,
-                    0xBF, 0xD0, 0x76, 0x5F, 0x00,
-                    0xB8, 0xDA, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 1,
-                    0x75, 0xFE,
-                    0x48, 0xC7, 0x04, 0x25, 0xE0, 0x76, 0x5F, 0x00, 0xE0, 0x76, 0x5F, 0x00,
-                    0x48, 0xC7, 0x04, 0x25, 0xE8, 0x76, 0x5F, 0x00, 0xE0, 0xFF, 0xFF, 0xFF,
-                    0x48, 0xC7, 0x04, 0x25, 0xF0, 0x76, 0x5F, 0x00, 0, 0, 0, 0,
-                    0xBF, 0xE0, 0x76, 0x5F, 0x00,
-                    0xBE, 0x18, 0, 0, 0,
-                    0xB8, 0x11, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0xBF, 0x00, 0x73, 0x5F, 0x00,
-                    0xBE, 0x21, 0, 0, 0,
-                    0x31, 0xD2,
-                    0x41, 0xBA, 0x53, 0x30, 0x05, 0x53,
-                    0xB8, 0x4E, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 0xDA,
-                    0x75, 0xFE,
-                    0x48, 0x81, 0xEC, 0x40, 0x01, 0, 0,
-                    0x31, 0xFF,
-                    0xBE, 0x03, 0, 0, 0,
-                    0x31, 0xD2,
-                    0x49, 0x89, 0xE2,
-                    0xB8, 0x2E, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0x48, 0x81, 0x3C, 0x24, 0x00, 0x00, 0x80, 0x00,
-                    0x75, 0xFE,
-                    0x48, 0x83, 0x7C, 0x24, 0x08, 0xFF,
-                    0x75, 0xFE,
-                    0x48, 0x89, 0x04, 0x24,
-                    0x48, 0x89, 0x44, 0x24, 0x08,
-                    0x48, 0x81, 0xC4, 0x40, 0x01, 0, 0,
-                    0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
-                    0xBE, 0xDA, 0xFD, 0x5B, 0x00,
-                    0xBA, 0x00, 0xE0, 0x5F, 0x00,
-                    0x41, 0xBA, 0x00, 0x10, 0, 0,
-                    0xB8, 0x0B, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 0xDA,
-                    0x75, 0xFE,
-                    0xBF, 0x68, 0x5E, 0x5F, 0x00,
-                    0xBE, 0x08, 0, 0, 0,
-                    0xBA, 0x01, 0, 0, 0,
-                    0xB8, 0x3E, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 0x08,
-                    0x75, 0xFE,
-                    0x4C, 0x8B, 0x14, 0x25, 0x68, 0x5E, 0x5F, 0x00,
-                    0x48, 0xC7, 0x04, 0x25, 0x68, 0x5E, 0x5F, 0x00, 0, 0, 0, 0,
-                    0xBF, 0x70, 0x5E, 0x5F, 0x00,
-                    0xBE, 0x08, 0, 0, 0,
-                    0xBA, 0x01, 0, 0, 0,
-                    0xB8, 0x3E, 0x01, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 0x08,
-                    0x75, 0xFE,
-                    0x4C, 0x8B, 0x14, 0x25, 0x70, 0x5E, 0x5F, 0x00,
-                    0x48, 0xC7, 0x04, 0x25, 0x70, 0x5E, 0x5F, 0x00, 0, 0, 0, 0,
-                    0xB8, 0x0C, 0, 0, 0,
-                    0x31, 0xFF,
-                    0x0F, 0x05,
-                    0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
-                    0x75, 0xFE,
-                    0xBF, 0x80, 0x8D, 0x61, 0x00,
-                    0xB8, 0x0C, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x3D, 0x80, 0x8D, 0x61, 0x00,
-                    0x75, 0xFE,
-                    0xC6, 0x04, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
-                    0x80, 0x3C, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
-                    0x75, 0xFE,
-                    0xBF, 0x00, 0x90, 0x61, 0x00,
-                    0xB8, 0x0C, 0, 0, 0,
-                    0x0F, 0x05,
-                    0x48, 0x3D, 0x00, 0x90, 0x61, 0x00,
-                    0x75, 0xFE,
-                    0xC6, 0x04, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
-                    0x80, 0x3C, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
-                    0x75, 0xFE,
-                    0xBF, 0x00, 0x50, 0x5E, 0x00,
-                    0xBE, 0x00, 0x80, 0x00, 0x00,
-                    0xBA, 0x01, 0x00, 0x00, 0x00,
-                    0xB8, 0x0A, 0x00, 0x00, 0x00,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0x48, 0x81, 0xEC, 0x40, 0x01, 0x00, 0x00,
-                    0xBF, 0x10, 0x00, 0x00, 0x00,
-                    0x48, 0x89, 0xE6,
-                    0xB8, 0x9D, 0x00, 0x00, 0x00,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0x48, 0xB8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6F, 0x78, 0x00,
-                    0x48, 0x39, 0x04, 0x24,
-                    0x75, 0xFE,
-                    0x48, 0x83, 0x7C, 0x24, 0x08, 0x00,
-                    0x75, 0xFE,
-                    0x48, 0xC7, 0x04, 0x24, 0, 0, 0, 0,
-                    0x48, 0xC7, 0x44, 0x24, 0x08, 0, 0, 0, 0,
-                    0x48, 0x81, 0xC4, 0x40, 0x01, 0x00, 0x00,
-                    0xB8, 0x66, 0x00, 0x00, 0x00,
-                    0x0F, 0x05,
-                    0x48, 0x85, 0xC0,
-                    0x75, 0xFE,
-                    0x48, 0x81, 0xEC, 0x20, 0x02, 0x00, 0x00,
-                    0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
-                    0xBE, 0x00, 0x69, 0x4A, 0x00,
-                    0x48, 0x89, 0xE2,
-                    0x45, 0x31, 0xD2,
-                    0xB8, 0x06, 0x01, 0x00, 0x00,
-                    0x0F, 0x05,
-                    0x48, 0x83, 0xF8, 0xFE,
-                    0x75, 0xFE,
-                    0x48, 0x81, 0xC4, 0x20, 0x02, 0x00, 0x00,
-                    0xB8, 0x68, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x31, 0xFF,
-                    0xB8, 0x6A, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x31, 0xFF,
-                    0xB8, 0x69, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x48, 0x81, 0xFC, 0x90, 0xFE, 0x7F, 0x00,
-                    0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
-                    0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
-                    0xC6, 0x04, 0x24, 0x0A,
-                    0xBF, 0x01, 0x00, 0x00, 0x00,
-                    0x48, 0x89, 0xE6,
-                    0xBA, 0x01, 0x00, 0x00, 0x00,
-                    0xB8, 0x01, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
-                    0xC6, 0x04, 0x24, 0x00,
-                    0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
-                    0xB8, 0x27, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
-                    0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
-                    0x48, 0xC7, 0x04, 0x24, 0x80, 0x65, 0x4A, 0x00,
-                    0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x04,
-                    0x48, 0xC7, 0x44, 0x24, 0x10, 0x80, 0x65, 0x4A, 0x00,
-                    0x48, 0xB8, 0xFF, 0xFF, 0xFF, 0x7F, 0xFE, 0xFF, 0xFF, 0xFF,
-                    0x48, 0x89, 0x44, 0x24, 0x18,
-                    0xBF, 0x11, 0x00, 0x00, 0x00,
-                    0x48, 0x89, 0xE6,
-                    0x31, 0xD2,
-                    0x41, 0xBA, 0x08, 0x00, 0x00, 0x00,
-                    0xB8, 0x0D, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0x31, 0xC0,
-                    0x48, 0x89, 0x04, 0x24,
-                    0x48, 0x89, 0x44, 0x24, 0x08,
-                    0x48, 0x89, 0x44, 0x24, 0x10,
-                    0x48, 0x89, 0x44, 0x24, 0x18,
-                    0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
-                    0xB8, 0x6E, 0x00, 0x00, 0x00,
-                    0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
-                    0xE9, 0x7A, 0x0B, 0x00, 0x00,
-                ]
-            ),
-        )
-        continuation = fixture[0xA_7000 : 0xA_8BB3]
-        self.assertEqual(len(continuation), 7_091)
+        # Physical checks cover the dynamic stack and recoverable failures.
+        entry = fixture[0xA_6100:0xA_6580]
+        self.assertIn(bytes.fromhex("4881fc40fe7f00"), entry)
+        self.assertEqual(fixture[0xA_B000:0xA_B100],
+                         b"/bin/busybox\0true\0\0" + b"x" * 232 + bytes(5))
+        terminal = bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b")
+        continuation_end = fixture.index(terminal, 0xA_7000) + len(terminal)
+        continuation = fixture[0xA_7000 : continuation_end]
+        self.assertLessEqual(len(continuation), 0x3000)  # disjoint runtime island
         self.assertIn(bytes.fromhex("b83f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("bf60945f00be00100000b84f0000000f05"), continuation)
         self.assertIn(bytes.fromhex("31ffbe608f5f00baff03000031c00f05"), continuation)
@@ -441,7 +254,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             continuation,
         )
         self.assertEqual(
-            continuation.count(bytes.fromhex("31ffbe608f5f00baff03000031c00f05")),
+            continuation.count(bytes.fromhex("31ffbe608f5f00ba")),
             5,
         )
         self.assertIn(bytes.fromhex("4883f80b75fe"), continuation)
@@ -640,7 +453,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn(bytes.fromhex("4883f81775fe"), continuation)
         self.assertIn(bytes.fromhex("48b865786563202f6269"), continuation)
         self.assertIn(bytes.fromhex("48833c25788f5f000075fe"), continuation)
-        self.assertTrue(continuation.endswith(bytes.fromhex("bf00905f00be80905f00baa0905f00b83b0000000f050f0b")))
+        self.assertTrue(continuation.endswith(bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
         self.assertEqual(fixture[0xA_6912 : 0xA_691B], b"/dev/tty\0")
         self.assertEqual(fixture[0xA_6920 : 0xA_6935], b"/var/spool/mail/root\0")
@@ -649,8 +462,8 @@ class TopalToolchainGateTests(unittest.TestCase):
     def test_evidence_binds_inputs_artifacts_and_runtime_observations(self) -> None:
         evidence = self.evidence
         self.assertEqual(
-            evidence["observations"]["static_execve_busybox_true_profile"],
-            "clean-same-image-execve-true-startup-exit-witness",
+            evidence["observations"]["static_process_runtime_profile"],
+            "clean-negative-retry-maximum-aggregate-console-status-witness",
         )
         for bound in (self.evidence, self.external_evidence):
             self.assertEqual(bound["observations"]["static_execve_environment"], [
@@ -660,16 +473,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/217")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/218")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/207")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/208")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/217",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/218",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/117",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/118",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -896,7 +709,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 17)
+        self.assertEqual(observations["static_applet_newline_count"], 20)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -1181,6 +994,8 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "/ # "
             + "/\n"
             + "/ # "
+            + "runtime-clean\n" + "z" * 256
+            + "\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\n"
             + "".join(observations["markers_in_order"][newline_position:])
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)
@@ -1191,9 +1006,9 @@ class TopalToolchainGateTests(unittest.TestCase):
 
     def test_external_evidence_binds_the_pinned_busybox_without_a_host_path(self) -> None:
         evidence = self.external_evidence
-        self.assertEqual(evidence["observations"]["static_execve_busybox_true_profile"],
-                         "external-busybox-same-image-execve-true-startup-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/217")
+        self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
+                         "external-busybox-runtime-arguments-console-exit-witness")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/218")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1206,7 +1021,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertNotIn("external_static_user_image", evidence)
         self.assertEqual(evidence["observations"]["result"], "pass")
         observations = evidence["observations"]
-        self.assertEqual(observations["static_applet_newline_count"], 10)
+        self.assertEqual(observations["static_applet_newline_count"], 12)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "external-shell-echo-command"
         )
@@ -1474,9 +1289,28 @@ class TopalToolchainGateTests(unittest.TestCase):
             marker_serial[:echo_position]
             + "topal\n/bin\n/bin/busybox\nbusybox-file\nbusybox-executable\n"
             + "busybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/\n"
+            + "\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n"
             + marker_serial[echo_position:]
         )
         self.assertEqual(observations["serial_utf8"], expected_serial)
+
+    def test_external_runtime_corpus_uses_shared_services_and_one_kernel(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-{EXEC-ARGUMENTS,CONSOLE-WRITE,EXIT-STATUS}-001
+        identities = set()
+        for workload, (command, output, status) in GATE.PROCESS_WORKLOADS.items():
+            path = (LAB / "results" / f"topal-runtime-{workload}-gate.json")
+            record = self.external_evidence if workload == "true" else json.loads(path.read_text())
+            self.assertEqual(record["process_command_utf8"].encode(), command)
+            self.assertEqual(record["process_command_sha256"], hashlib.sha256(command).hexdigest())
+            self.assertEqual(record["process_output_utf8"].encode(), output)
+            self.assertEqual(record["process_exit_status"], status)
+            self.assertEqual(record["static_user_image_sha256"], GATE.PINNED_STATIC_BUSYBOX_SHA256)
+            serial = record["observations"]["serial_utf8"].encode()
+            self.assertIn(b"/\n" + output + f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={status:02x}\n".encode(), serial)
+            self.assertTrue(record["observations"]["qemu_running_after_markers"])
+            self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
+            identities.add(record["linked_kernel_sha256"])
+        self.assertEqual(len(identities), 1)
 
 
 if __name__ == "__main__":

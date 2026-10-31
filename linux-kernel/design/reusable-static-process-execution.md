@@ -1,7 +1,7 @@
 # Reusable bounded static-process execution
 
-Status: approved systems-feature direction under the standing authorization;
-implementation and qualification pending (`TK-DEC-239`).
+Status: implemented and qualified (`TK-DEC-239`); see the
+[Step 4 evidence report](../step-4-reusable-static-process-execution.md).
 
 ## Purpose
 
