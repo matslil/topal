@@ -5922,6 +5922,182 @@ and negative argument-transfer evidence from the clean fixture. This command
 source SHALL NOT imply that unsupported shell operations or syscalls are
 implemented. Ordinary Topal nondeterminism and effects SHALL remain unchanged.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-TABLE-001 — Owned descriptor and description state
+
+A separately selected reusable file-description profile MAY refine the final
+command/exec profile. After completing the final serial refill, it SHALL
+transfer the live standard descriptions and reopened descriptor three into an
+owned table of sixteen native descriptor slots. Native descriptor arguments
+SHALL be decoded with their ABI-declared integer width before lookup. Every
+live slot SHALL retain exactly one live open description and its own descriptor
+flags. For each description, the retained reference count SHALL equal the
+number of live slots referring to it. A free slot SHALL retain neither rights
+nor a description reference. Lowest-slot allocation SHALL observe that table,
+and the admitted native `RLIMIT_NOFILE` query SHALL report soft/hard limits of
+sixteen. Invalid descriptor lookup SHALL return `EBADF` before user-memory
+access or mutation. All returned syscalls SHALL preserve the non-result native
+register contract.
+
+The immutable executable description SHALL refer to the complete validated
+`static-user.elf` boot-resource member, with stable inode identity, read-only
+rights, file size and current offset. Its backing SHALL remain reserved,
+immutable and disjoint from writable process storage throughout borrowing.
+Construction SHALL verify the handoff, archive/member extent and retained
+resource identity before use. A file read SHALL NOT source bytes from a mutated
+loaded segment, BSS, synthesized header or application-specific constant.
+Construction SHALL consume predecessor private single-description authority;
+it SHALL NOT leave two independent owners of the same description reference.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-READ-001 — Position-derived immutable file reads
+
+For a live readable immutable-file description, read SHALL first validate the
+descriptor and rights, then the overflow-free native candidate/count extent.
+Invalid rights SHALL return `EBADF`; inaccessible native candidate arithmetic
+SHALL return `EFAULT`. The transfer count SHALL be the minimum of requested
+bytes, remaining bytes at the shared position and the 256-byte quantum. A
+position at or beyond EOF SHALL have zero remaining bytes. Larger requests
+MAY return short progress; qualification SHALL NOT infer unrestricted read
+counts or complete serial/tty semantics from this quantum.
+
+Before any nonempty transfer, every byte of the selected destination extent
+SHALL belong to the live writable user mapping set. A rejected candidate SHALL
+publish no bytes, leave the position unchanged and erase private staging. A
+successful read SHALL copy exactly the selected original file bytes through
+private staging, publish that complete prefix, advance the shared position by
+the returned count and erase staging. A zero result SHALL not read backing
+bytes or change position. No user pointer SHALL survive the return. Reads
+through aliases SHALL observe and advance the same description position.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-SEEK-001 — Checked shared file positions
+
+For the admitted immutable regular file, native `SEEK_SET`, `SEEK_CUR` and
+`SEEK_END` SHALL select origins zero, current shared position and immutable
+file size respectively. The signed native offset SHALL be added with checked
+arithmetic. A resulting negative or nonrepresentable position SHALL return
+`EINVAL` without changing any alias. An admitted nonnegative position beyond
+EOF SHALL be valid up to the declared signed file-offset limit. Success SHALL
+return and retain that position in the shared description. Unsupported native
+selectors SHALL return `EINVAL` without mutation. A live nonseekable endpoint
+SHALL return `ESPIPE`; an invalid descriptor SHALL return `EBADF` first.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-METADATA-001 — Description-derived native metadata
+
+Metadata observation SHALL validate a live descriptor, then a complete writable
+native destination, before publishing any bytes. Invalid descriptors SHALL
+return `EBADF`; an inaccessible destination SHALL return `EFAULT` without
+partial output. A complete native value SHALL be constructed from the retained
+object's identity, mode, ownership, size and declared attributes in private
+staging. Aliases SHALL observe identical inode/size/attribute facts. Standard
+console/serial descriptions SHALL retain their declared character-device view.
+Successful transfer SHALL copy the entire value, erase staging and return zero
+without changing description position or descriptor flags. The native stat
+encoding SHALL remain architecture-provider detail.
+
+For admitted native terminal probes on the immutable file or declared
+non-terminal console/serial descriptions, the adapter SHALL validate descriptor
+liveness and return `ENOTTY` without dereferencing or modifying the candidate.
+This absence behavior SHALL NOT imply a general ioctl implementation.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-DUPLICATION-001 — Alias allocation and replacement
+
+`dup` SHALL validate its source and select the lowest free descriptor slot.
+`F_DUPFD` and `F_DUPFD_CLOEXEC` SHALL validate the source, decode their native
+integer lower bound and select the lowest free slot at or above it. An invalid
+lower bound SHALL return `EINVAL`; lack of an eligible free slot SHALL return
+`EMFILE`. A successful alias SHALL retain the existing open description and
+increment its reference count; it SHALL NOT copy the shared position into an
+independent description. Ordinary duplication SHALL clear close-on-exec on the
+new slot; the explicit close-on-exec variant SHALL set it.
+
+`dup2` and `dup3` SHALL validate their ABI-defined request before replacing a
+target. An invalid source SHALL leave a live target unchanged. A distinct valid
+target SHALL atomically release its previous reference and retain the source
+description, then return that target. `dup2(fd,fd)` SHALL validate liveness and
+return that descriptor without changing its flags. `dup3` SHALL reject equal
+source/target or flags other than the admitted close-on-exec flag with `EINVAL`;
+an out-of-table target SHALL return `EBADF`. Error precedence SHALL follow the
+baseline native adapter. Replacement SHALL destroy a previous target
+description exactly when its last reference is released.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-FLAGS-001 — Slot flags and description status
+
+`F_GETFD` SHALL return the selected slot's close-on-exec bit. `F_SETFD` SHALL
+set that bit from the native `FD_CLOEXEC` mask, preserving shared description
+rights, position and status flags. `F_GETFL` SHALL return the retained open
+description's native access/status flags; it SHALL NOT return descriptor flags.
+An unsupported fcntl command SHALL return `EINVAL` without changing the table.
+Every command SHALL validate descriptor liveness before command-specific work.
+
+Console write in this profile SHALL resolve a live writable console description
+through the table, including aliases, rather than retain authority by numeric
+descriptor identity alone. Closed/replaced slots and read-only immutable files
+SHALL return `EBADF`. The bounded staged payload, count/range errors and return
+contract of `TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001` SHALL otherwise hold.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-FD-CLOSE-001 — Release, exec filtering and reclamation
+
+Closing a live slot SHALL remove its descriptor flags and release exactly one
+description reference. A last release SHALL destroy that description and clear
+its private state. The slot SHALL be available for allocation as a new lifetime.
+Closing an invalid/already closed slot SHALL return `EBADF` unchanged.
+
+Failed exec SHALL preserve all slots, flags, backing identities and shared
+positions. Successful exec SHALL close exactly the close-on-exec slots, retaining
+eligible aliases, rights, status and positions independently of old user memory.
+It SHALL NOT reopen closed standard slots or reset an inherited file position.
+Every terminal status SHALL close all remaining slots, destroy each last
+description exactly once, release borrowed backing references and wipe/verify
+the complete private table before outer rollback.
+
+Qualification SHALL cover alias-position sharing, lowest-slot allocation,
+explicit replacement, invalid-source atomicity, flag independence, close/reuse,
+last release, rejected transfers after nonempty prefixes, metadata, seek/EOF,
+exec failure/filtering and immutable backing independent of loaded data. Pinned
+external file-consuming applications SHALL execute through these shared
+services and complete resource rollback. The profile SHALL NOT imply general
+path lookup, writable storage, cross-process sharing or concurrent mutation.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-ACTION-001 — Retained native signal actions
+
+The separately qualified reusable process profile SHALL own one native action
+for each signal. The x86-64 binding SHALL require an eight-byte sigset size,
+copy a nonnull 32-byte input before signal-specific validation, admit signal
+numbers one through 64, and reject installation for signals nine and nineteen
+with `EINVAL`. Queries for those signals SHALL be allowed. Unknown flags SHALL
+be cleared with UAPI mask `0xdc000807`; action masks SHALL clear bits eight and
+eighteen. Handler and restorer values SHALL remain opaque native ABI values,
+without dereference, Topal reference conversion or application-address oracle.
+
+The adapter SHALL capture the old action before committing a valid update.
+Input and output MAY overlap. An inaccessible input SHALL return `EFAULT`
+without mutation; an inaccessible old-action destination SHALL return `EFAULT`
+after any valid update has committed. Complete admitted input and output
+extents SHALL be checked against live user permissions and copied through
+erased private staging. Partial user-copy behavior remains unqualified.
+
+Construction SHALL import and consume predecessor action authority. Failed
+exec SHALL preserve actions. Successful exec SHALL retain ignored handlers
+only, default every other handler, and clear all flags, restorer and action
+masks, including ignored-action metadata. Terminal reclamation SHALL erase
+and verify all actions. Qualification SHALL cover overlap, validation order,
+normalization, output-fault commit and exec lifetime. This service SHALL NOT
+imply asynchronous delivery, signal frames, restart or `rt_sigreturn` support.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-MASK-001 — Retained blocked-signal set
+
+The reusable process profile SHALL own an eight-byte native blocked set. Its
+adapter SHALL validate sigset size before access. A nonnull new set SHALL be
+copied before validating the native selector; block, unblock and set SHALL
+update the retained set, always excluding signals nine and nineteen. A query
+with null new-set input SHALL ignore the selector. The old set SHALL be
+captured before update, allowing input/output overlap. An input-copy failure
+SHALL preserve state; an old-set output failure SHALL report `EFAULT` without
+undoing a valid update. Complete transfers SHALL use checked live permissions
+and erased private staging. Failed and successful exec SHALL preserve the
+blocked set. Terminal reclamation SHALL wipe and verify it. Tests SHALL cover
+selector/error precedence, overlap, normalization, output-fault commit and
+exec preservation. Pending signals and delivery remain unqualified.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

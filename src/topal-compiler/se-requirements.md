@@ -2316,6 +2316,39 @@ the same services. This realizes `TK-DEC-239` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-EXIT-STATUS-001`, and
 `TOPAL-SYSTEMS-STATIC-PROCESS-COMMAND-INPUT-001`.
 
+The reusable file-description realization shall implement `TK-DEC-240` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-TABLE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-READ-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-SEEK-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-METADATA-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-DUPLICATION-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-FLAGS-001`, and
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-CLOSE-001`
+with a separately owned bounded table, shared description state, immutable
+boot-member borrowing and checked native adapters. It shall enforce the
+slot/reference-count invariant, lowest-slot allocation and native flag/error
+behavior; preserve source and target on rejected operations; use complete live
+writable/readable extent checks and private staging for file data/metadata;
+preserve eligible aliases and positions across exec; and reclaim/wipe all
+description state before outer rollback. Table construction shall consume the
+predecessor single-description authority. Native file bytes shall remain
+independent of process-writable image data. Clean and physical qualification
+shall cover aliasing, replacement, flags, failed copies, offsets/EOF, exec
+filtering, descriptor reuse and application-selected file consumption without
+applet, payload or return-site oracles. Native table/backing arguments and
+integer/layout choices shall remain closed provider details.
+
+The reusable signal realization shall implement `TK-DEC-241`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-ACTION-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-MASK-001` with process-owned actions and
+blocked state. It shall import and consume predecessor authority, stage
+overlapping copies, enforce native validation order and normalization, retain
+valid updates after old-value output faults, reset action metadata on exec
+while retaining ignored handlers and blocked state, and erase all terminal
+state. Clean tests shall cover these boundaries before external application
+qualification. Registration shall treat handler/restorer values as opaque ABI
+data and shall not establish delivery, frames or return semantics.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
