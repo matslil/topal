@@ -1219,6 +1219,21 @@ nanoseconds. Nonnull output shall be complete and fault-contained. Unsupported
 clocks, inconsistent resolution, retained pointers, or partial output shall
 return the declared Linux error or fail closed.
 
+A systems artifact may import a source-defined pure kernel library under a
+versioned semantic interface. The shared ordinary frontend shall check the
+selected public export and reachable helper graph. The first freestanding
+profile shall admit only Boolean/nominal-Enum data and acyclic pure direct calls,
+reject effects, allocation, foreign dependencies and unqualified forms, and
+preserve ordinary language semantics. Target binding shall adapt private Enum
+representations, preserve native calling convention, prohibit absent resource
+rights, retain scoped ownership across exec and erase it at terminal return.
+Publication shall bind source/interface/LLVM/object digests and checked stack
+requirements, and shall include no hosted runtime or assembly from source.
+Qualification shall execute all finite input combinations, normal helper frames,
+source-body changes and Enum reordering, malformed/escape inputs, native syscall
+boundaries and full rollback. Kernel policy shall reside in the kernel source
+tree; native adapters shall translate semantic choices and enforce authority.
+
 A separately qualified static process shall borrow the bootstrap owner's
 monotonic clock for observation, resolution and relative sleep. The borrowed
 identity and observation history shall survive exec and return to the kernel

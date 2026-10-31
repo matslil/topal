@@ -366,6 +366,34 @@ monotonic meaning without becoming source spellings. This increment makes no
 wall-clock, periodic, sleep, timeout, latency, rate-accuracy, SMP, suspend,
 migration, userspace-ABI, or real-time guarantee.
 
+### Freestanding pure source libraries
+
+A systems artifact may bind an explicitly supplied Topal source-library unit
+through a versioned semantic interface. The ordinary shared language checker
+resolves and checks its exported function and complete reachable helper graph;
+the kernel backend does not reinterpret function bodies as privileged syntax.
+The first qualification admits Boolean/nominal-Enum values, local bindings,
+exhaustive decisions and direct acyclic helper calls. Other otherwise valid
+Topal forms remain unqualified for this freestanding library profile.
+
+The library receives ordinary semantic facts and returns an ordinary semantic
+choice. It receives no context, address, resource or ambient machine authority.
+The artifact owns the immutable code binding; a process may retain a scoped
+borrow across exec and must erase that binding on terminal return. Native ABI
+translation remains at the boundary, including private Enum representation
+adaptation. A policy result cannot create rights absent from the caller's owned
+resources. Source Enum declaration order does not become a machine ABI.
+
+Publication must prove the closed effect-free/nonallocating call graph, absence
+of hosted runtime or foreign dependencies, target calling convention, bounded
+stack use and safe kernel code-generation settings. The initial x86-64 backend
+uses ordinary shared function lowering with a generated private adapter,
+disables red-zone/implicit floating-point use and checks LLVM stack-size
+metadata against its declared caller reserve. Source names and ordinary helper
+calls remain represented in debug information. This adds systems artifact
+linking and qualification, without changing core-language function, Enum,
+publication, effect or termination meaning.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

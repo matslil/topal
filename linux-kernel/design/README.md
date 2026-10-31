@@ -245,6 +245,7 @@ records, not this directory alone, define language meaning.
 - [Open access intent in the immutable boot-root namespace](readonly-open-access.md)
 - [Recoverable unknown syscalls in static processes](static-syscall-fallback.md)
 - [Prepared-process monotonic time and relative sleep](static-process-time.md)
+- [Source-defined freestanding kernel policy library](freestanding-kernel-policy-library.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
