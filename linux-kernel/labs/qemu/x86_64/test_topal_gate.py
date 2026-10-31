@@ -77,10 +77,10 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(fixture[0x1000], 0xA5)
         # Physical checks cover the dynamic stack and recoverable failures.
         entry = fixture[0xA_6100:0xA_6580]
-        self.assertIn(bytes.fromhex("4881fc40fe7f00"), entry)
+        self.assertIn(bytes.fromhex("4881fc00f87f00"), entry)
         self.assertEqual(fixture[0xA_B000:0xA_B100],
-                         b"/bin/busybox\0true\0\0" + b"x" * 232 + bytes(5))
-        terminal = bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b")
+                         b"/alias/argv0\0true\0\0" + b"x" * 232 + bytes(5))
+        terminal = bytes.fromhex("bf00905f00be00935f00ba00746000b83b0000000f050f0b")
         continuation_end = fixture.index(terminal, 0xA_7000) + len(terminal)
         continuation = fixture[0xA_7000 : continuation_end]
         self.assertLessEqual(len(continuation), 0x3000)  # disjoint runtime island
@@ -453,7 +453,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn(bytes.fromhex("4883f81775fe"), continuation)
         self.assertIn(bytes.fromhex("48b865786563202f6269"), continuation)
         self.assertIn(bytes.fromhex("48833c25788f5f000075fe"), continuation)
-        self.assertTrue(continuation.endswith(bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b")))
+        self.assertTrue(continuation.endswith(bytes.fromhex("bf00905f00be00935f00ba00746000b83b0000000f050f0b")))
         self.assertEqual(fixture[0xA_6900 : 0xA_6912], b"/etc/busybox.conf\0")
         self.assertEqual(fixture[0xA_6912 : 0xA_691B], b"/dev/tty\0")
         self.assertEqual(fixture[0xA_6920 : 0xA_6935], b"/var/spool/mail/root\0")
@@ -466,23 +466,22 @@ class TopalToolchainGateTests(unittest.TestCase):
             "clean-negative-retry-maximum-aggregate-console-status-witness",
         )
         for bound in (self.evidence, self.external_evidence):
-            self.assertEqual(bound["observations"]["static_execve_environment"], [
-                "SHLVL=1", "OLDPWD=/", "PATH=/sbin:/usr/sbin:/bin:/usr/bin", "PWD=/"
-            ])
+            self.assertEqual(bound["observations"]["static_execve_environment"],
+                             "caller-owned-up-to-sixteen-entries-and-1024-bytes")
             self.assertEqual(bound["observations"]["static_execve_descriptor_inheritance"],
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/220")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/221")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/210")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/211")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/220",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/221",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/120",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/121",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1008,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/220")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/221")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1375,6 +1374,29 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(observations["result"], "pass")
             self.assertTrue(observations["qemu_running_after_markers"])
             self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
+
+    def test_exec_environments_and_payloads_bind_each_executed_fixture(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-{ENVIRONMENT,PAYLOAD}-001
+        hashes=set()
+        for mode in ("maximum", "empty", "null"):
+            record = self.evidence if mode == "maximum" else json.loads(
+                (LAB / "results" / f"topal-runtime-env-{mode}-gate.json").read_text())
+            self.assertEqual(record["clean_environment_mode"], mode)
+            expected=hashlib.sha256(GATE.static_user_fixture(mode)).hexdigest()
+            self.assertEqual(record["static_user_image_sha256"], expected)
+            self.assertEqual(record["linked_kernel_sha256"], self.external_evidence["linked_kernel_sha256"])
+            self.assertEqual(record["process_exit_status"], 0x23)
+            observations=record["observations"]
+            self.assertEqual(observations["static_execve_environment"],
+                             "caller-owned-up-to-sixteen-entries-and-1024-bytes")
+            self.assertEqual(observations["static_execve_stack_payload_profile"],
+                             "above-entry-vectors-separated-argv0-independent-execution-name")
+            self.assertTrue(observations["reusable_clean_boundary_corpus"])
+            self.assertEqual(observations["result"], "pass")
+            self.assertTrue(observations["qemu_running_after_markers"])
+            self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
+            hashes.add(expected)
+        self.assertEqual(len(hashes),3)
 
 
 if __name__ == "__main__":

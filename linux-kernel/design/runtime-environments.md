@@ -1,7 +1,8 @@
 # Caller-owned exec environments and stack payloads
 
 Status: systems-feature direction adopted under the standing authorization;
-implementation and qualification pending (`TK-DEC-245`).
+implemented and physically qualified (`TK-DEC-245`); see the
+[qualification report](../step-4-runtime-environments.md).
 
 ## Purpose and ownership
 

@@ -428,11 +428,11 @@ console bounds and nonzero status described in the
 The external runtime corpus uses `--external-static-user-image PATH` with
 `--process-workload true`, `false`, `echo`, `echo-changed`, `head-stdin`,
 `head-alias`, `wc-stdin`, `dd-seek`, `head-file`, `head-normalized`, `wc-file`,
-or `ls-bin`. The harness sends
+`ls-bin`, `pwd-bin`, `export-token`, or `export-token-changed`. The harness sends
 the selected final command over serial after the static entry marker; later
 probe input is sent at its existing resource marker. `--write-evidence` records
 the exact command, application output, observed status, linked kernel identity
-and full rollback. All twelve external cases must use the same kernel executable.
+and full rollback. All fifteen external cases must use the same kernel executable.
 The [file-description and signal qualification](../../../step-4-reusable-static-file-descriptions.md)
 adds a clean executed boundary corpus, shared file offsets and immutable backing,
 exec filtering, and retained native signal registration/mask semantics.
@@ -441,6 +441,15 @@ The [read-only namespace qualification](../../../step-4-reusable-readonly-namesp
 adds independent opens, component lookup, coherent metadata, native directory
 records/cookies and cwd/exec inheritance. The declared semantic boundary cases
 live in `namespace-cases.json`; Rust and Python encode that same data separately.
+
+The [environment qualification](../../../step-4-runtime-environments.md) adds
+caller-owned environment transport, independent argv-zero data and startup
+payloads protected from stack growth. The clean fixture defaults to the maximum
+sixteen entries and 1024 bytes. Run `topal_gate.py --clean-environment-mode empty`
+or `--clean-environment-mode null` for the two empty-environment forms; add
+`--write-evidence` to retain the corresponding result. These modes apply to the
+clean fixture. External export cases observe two distinct values through the
+pinned BusyBox `env` applet, and `pwd-bin` observes inherited cwd.
 
 Realtime calendar and representation cases use a separate harness:
 
