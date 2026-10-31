@@ -426,8 +426,12 @@ console bounds and nonzero status described in the
 [reusable process qualification](../../../step-4-reusable-static-process-execution.md).
 
 The external runtime corpus uses `--external-static-user-image PATH` with
-`--process-workload true`, `false`, `echo`, or `echo-changed`. The harness sends
+`--process-workload true`, `false`, `echo`, `echo-changed`, `head-stdin`,
+`head-alias`, `wc-stdin`, or `dd-seek`. The harness sends
 the selected final command over serial after the static entry marker; later
 probe input is sent at its existing resource marker. `--write-evidence` records
 the exact command, application output, observed status, linked kernel identity
-and full rollback. All four external cases must use the same kernel executable.
+and full rollback. All eight external cases must use the same kernel executable.
+The [file-description and signal qualification](../../../step-4-reusable-static-file-descriptions.md)
+adds a clean executed boundary corpus, shared file offsets and immutable backing,
+exec filtering, and retained native signal registration/mask semantics.

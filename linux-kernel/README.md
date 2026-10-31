@@ -884,6 +884,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 supplied initial user image](step-4-supplied-initial-user-image.md)
 - [Step 4 bounded BusyBox `true` image replacement](step-4-bounded-static-elf-shell-busybox-true-execve.md)
 - [Step 4 reusable bounded static-process execution](step-4-reusable-static-process-execution.md)
+- [Step 4 reusable static-process file descriptions and signal setup](step-4-reusable-static-file-descriptions.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

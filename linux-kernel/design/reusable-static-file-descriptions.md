@@ -1,7 +1,8 @@
 # Reusable static-process file descriptions
 
 Status: approved systems-feature direction under the standing authorization;
-implementation and qualification pending (`TK-DEC-240`).
+implemented and qualified (`TK-DEC-240`), as recorded in the
+[Step 4 report](../step-4-reusable-static-file-descriptions.md).
 
 ## Purpose and model
 

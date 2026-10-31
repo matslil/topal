@@ -1,7 +1,8 @@
 # Reusable static-process signal registration
 
 Status: approved systems-feature direction under the standing authorization;
-implementation and qualification pending (`TK-DEC-241`).
+implemented and qualified (`TK-DEC-241`), as recorded in the
+[Step 4 report](../step-4-reusable-static-file-descriptions.md).
 
 ## Purpose
 

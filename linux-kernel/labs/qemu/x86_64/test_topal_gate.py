@@ -473,16 +473,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/218")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/219")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/208")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/209")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/218",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/219",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/118",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/119",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -709,7 +709,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(observations["result"], "pass")
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
-        self.assertEqual(observations["static_applet_newline_count"], 20)
+        self.assertEqual(observations["static_applet_newline_count"], 21)
         self.assertEqual(
             observations["static_shell_getpid_profile"], "clean-pid-one-witness"
         )
@@ -994,7 +994,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             + "/ # "
             + "/\n"
             + "/ # "
-            + "runtime-clean\n" + "z" * 256
+            + "runtime-alias\nruntime-clean\n" + "z" * 256
             + "\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\n"
             + "".join(observations["markers_in_order"][newline_position:])
         )
@@ -1008,7 +1008,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/218")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/219")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1311,6 +1311,23 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
             identities.add(record["linked_kernel_sha256"])
         self.assertEqual(len(identities), 1)
+
+    def test_file_and_signal_boundaries_bind_the_executed_clean_fixture(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-FD-{TABLE,READ,SEEK,METADATA,DUPLICATION,FLAGS,CLOSE}-001
+        # TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-{ACTION,MASK}-001
+        self.assertEqual(self.evidence["static_user_image_sha256"],
+                         hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        observations = self.evidence["observations"]
+        self.assertTrue(observations["reusable_clean_boundary_corpus"])
+        self.assertFalse(self.external_evidence["observations"]["reusable_clean_boundary_corpus"])
+        self.assertEqual(observations["reusable_file_description_profile"],
+                         "sixteen-owned-slots-shared-offsets-original-member-backing")
+        self.assertEqual(observations["reusable_signal_registration_profile"],
+                         "process-owned-actions-and-blocked-mask-without-delivery")
+        self.assertIn("runtime-alias\nruntime-clean\n", observations["serial_utf8"])
+        self.assertEqual(self.evidence["process_exit_status"], 0x23)
+        self.assertTrue(observations["qemu_running_after_markers"])
+        self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
 
 
 if __name__ == "__main__":
