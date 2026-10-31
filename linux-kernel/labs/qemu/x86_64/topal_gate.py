@@ -35,6 +35,11 @@ PINNED_STATIC_BUSYBOX_SHA256 = (
 SERIAL_INPUT = b"read"
 PROCESS_COMMAND = b"exec /bin/busybox true\n"
 EXEC_COMMIT_MARKER = b"\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n"
+INTERACTIVE_BANNER = (
+    b"sh: can't access tty; job control turned off\n\n\n"
+    b"BusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\n"
+    b"Enter 'help' for a list of built-in commands.\n\n"
+)
 PROCESS_WORKLOADS = {
     "true": (PROCESS_COMMAND, b"", 0),
     "false": (b"exec /bin/busybox false\n", b"", 1),
@@ -76,6 +81,14 @@ PROCESS_WORKLOADS = {
     "export-token-changed": (
         b"export TOPAL_TOKEN=omega; exec /bin/busybox env\n",
         b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=omega\nPWD=/\n", 0
+    ),
+    "interactive-prompt": (
+        b"export PS1='topal> '; exec /bin/busybox sh -i\necho one\npwd\ncd /bin\npwd\nexit 7\n",
+        INTERACTIVE_BANNER + b"topal> one\ntopal> /\ntopal> topal> /bin\ntopal> ", 7
+    ),
+    "interactive-prompt-changed": (
+        b"export PS1='next> '; exec /bin/busybox sh -i\necho two\ncd /bin\npwd\ncd /\npwd\nexit 9\n",
+        INTERACTIVE_BANNER + b"next> two\nnext> next> /bin\nnext> next> /\nnext> ", 9
     ),
     "dd-seek": (
         b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
@@ -1280,7 +1293,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/224",
+        "schema": "topal-kernel-toolchain-gate-qemu/225",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1311,6 +1324,7 @@ def evidence_record(
         "boot_resource_sha256": digest(boot_resource),
         "boot_provenance_sha256": digest(boot_provenance),
         "observations": {
+            "readonly_open_access_profile": "lookup-and-type-errors-before-immutable-view-write-denial",
             "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
             "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
             "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",

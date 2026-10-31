@@ -198,12 +198,16 @@ fn emit_open(e: &mut E<'_>) -> Result<(), CompileError> {
     e.mov(Bp, D);
     e.mov(B, Di);
     e.0.bind("namespace-open-common")?;
-    // Only the explicitly admitted readonly flags reach a pathname operation.
+    // Native flags request access; no writable authority follows from them.
     e.0.bytes(&[0x89, 0xed]);
     e.mov(A, Bp);
-    e.arith(4, A, !0x000b_8900);
+    e.arith(4, A, !0x000b_8903);
     e.cmp(A, 0);
     e.0.jump_if(0x85, "fatal");
+    e.mov(A, Bp);
+    e.arith(4, A, 3);
+    e.cmp(A, 3); // nonstandard access-mode-three remains unqualified
+    e.0.jump_if(0x84, "fatal");
     e.0.call("namespace-copy-name");
     e.cmp(R13, 0);
     e.0.jump_if(0x84, "namespace-enoent");
@@ -230,6 +234,16 @@ fn emit_open(e: &mut E<'_>) -> Result<(), CompileError> {
     e.cmp(R15, 5);
     e.0.jump_if(0x84, "namespace-enotdir");
     e.0.bind("namespace-open-type-ready")?;
+    e.mov(A, Bp);
+    e.arith(4, A, 3);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "namespace-open-access-ready");
+    e.cmp(R15, 5);
+    e.0.jump_if(0x85, "namespace-eisdir");
+    // The retained member belongs to the prepared immutable boot-root view.
+    // Lookup/type errors precede this filesystem-level access denial.
+    e.0.jump("namespace-erofs");
+    e.0.bind("namespace-open-access-ready")?;
     // A free slot implies at least one free description; failure is corruption.
     e.mov(R10, R12);
     e.add(R10, DESCRIPTIONS);
@@ -428,6 +442,8 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
         ("namespace-enametoolong", 36),
         ("namespace-ebadf", 9),
         ("namespace-enotdir", 20),
+        ("namespace-eisdir", 21),
+        ("namespace-erofs", 30),
         ("namespace-emfile", 24),
         ("namespace-einval", 22),
         ("namespace-erange", 34),
