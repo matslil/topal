@@ -2598,6 +2598,25 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The static-process timing adapter shall realize
+`TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private
+binding to its owned initial clock, and native observations shall reuse the
+qualified clock provider's wrap/regression protocol. Binding provenance,
+shared history, exec retention, private binding erasure and owner return shall
+be checked. Native gettime/getres shall normalize clock IDs, publish complete
+checked normalized records, permit null resolution output and erase staging.
+Relative nanosleep/clock_nanosleep shall copy and validate complete intervals,
+retain pinned ktime conversion/addition saturation, round deadlines upward and
+never report success before the resulting same-clock deadline. Normal completion
+shall not inspect or modify remaining-time candidates. Invalid input shall
+preserve resources/history; successful waits shall preserve every process
+resource except legitimate clock observations. Independent physical witnesses
+and standard utility runs shall qualify time/interval boundaries, elapsed waits,
+native widths, exec lifetime and full rollback. Saturation paths shall receive
+explicit arithmetic and controlled execution evidence. Absolute sleeps,
+interruption, fairness and broader clocks shall remain separately qualified.
+
 The static-process adapter shall extend that recoverable policy under
 `TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001`: implemented dispatch arms shall win,
 then unknown low-32-bit native selectors shall return exact `-ENOSYS` through

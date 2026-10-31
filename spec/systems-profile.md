@@ -3368,6 +3368,70 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001 — Borrowed clock observations
+
+A qualified prepared static process SHALL borrow the bootstrap owner's initial
+monotonic clock view for its complete execution lifetime. The binding SHALL
+originate from the live root capability, remain private, survive exec and be
+erased on terminal return. The clock owner and legitimate observation history
+SHALL return intact to the bootstrap context. Observations SHALL use the same
+source, scale, wrap extension and regression checks as ordinary kernel clock
+observations; an independently invented process timeline SHALL be invalid.
+
+The initial native adapter SHALL implement `clock_gettime(CLOCK_MONOTONIC)`
+and `clock_getres(CLOCK_MONOTONIC)` under the existing native clock policy.
+Clock IDs SHALL use native integer width. Unsupported clock IDs SHALL return
+`EINVAL` before user publication. Gettime SHALL validate the complete writable
+native 16-byte destination before observing and publishing normalized
+nonnegative seconds and nanoseconds. Successive observations SHALL be
+nondecreasing. Getres SHALL publish the source's exact normalized resolution,
+SHALL permit null output, and SHALL NOT fabricate a clock observation. Invalid
+nonnull destinations SHALL return `EFAULT` without output. Private output
+staging SHALL be erased/read back and no user pointer SHALL survive return.
+
+Tests SHALL cover integer widths, exact/null resolution, normalization/order,
+complete mapping boundaries and fault canaries, exec retention, shared clock
+history, terminal binding erasure and later kernel clock/deadline use. Other
+clocks, adjustment, vDSO, namespaces and SMP migration SHALL remain separately
+qualified; source SHALL receive no counter or address representation.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001 — Relative interval completion
+
+A qualified static process MAY implement native `nanosleep` and relative
+`clock_nanosleep` using its borrowed monotonic clock. The initial clock-nanosleep
+profile SHALL admit native CLOCK_REALTIME/CLOCK_MONOTONIC and flags zero after
+native integer-width normalization. Absolute sleeps and other profiles SHALL
+remain unqualified. The adapter SHALL copy a complete native timespec before
+waiting. Invalid input extent SHALL return `EFAULT`; negative seconds or
+nanoseconds, or nanoseconds at least one billion, SHALL return `EINVAL`.
+
+Native interval conversion SHALL retain the pinned Linux ktime policy: seconds
+at least `9223372036` SHALL saturate to `9223372036854775807` nanoseconds;
+otherwise the validated seconds/nanoseconds pair SHALL convert exactly.
+Relative deadline addition SHALL saturate at that same maximum. The resulting
+deadline SHALL round upward to the qualified clock resolution. Arithmetic SHALL
+NOT wrap to an earlier deadline. Success SHALL occur only after a same-clock
+observation reaches the resulting deadline. A zero interval SHALL succeed;
+normal completion SHALL leave the remaining-time candidate untouched, including
+an invalid candidate. Saturation SHALL NOT imply waiting beyond the pinned
+native representable deadline.
+
+Complete input staging SHALL be erased/read back. Declared input errors SHALL
+preserve process resources and clock history; success MAY advance only legitimate
+clock observations. Descriptors/positions, cwd, signal state, startup phase,
+image and execution authority SHALL remain unchanged. Native non-result
+registers SHALL obey the existing syscall return contract. The sole-thread
+provider MAY poll its clock while waiting, without implying fairness, signal
+interruption or a runnable-peer scheduler.
+
+Independent executed witnesses SHALL check input/field boundaries, native
+widths, zero/nonzero waits, elapsed observations, resolution rounding, resource
+preservation, exec lifetime and terminal owner return. Qualification SHALL
+review and test conversion/addition saturation without physically waiting for
+an unrepresentable duration. Unmodified standard utility runs SHALL exercise
+changed nonzero intervals. Core-language meaning and ordinary blocking effects
+SHALL remain unchanged.
+
 ### TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001 — Recoverable unknown static-process selectors
 
 A qualified live static process SHALL return native Linux `-ENOSYS` for every
