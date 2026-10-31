@@ -1,7 +1,7 @@
 # Prepared-process monotonic time and relative sleep
 
-Status: systems-only direction adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-251`).
+Status: implemented and physically qualified under standing systems-only chat
+authorization (`TK-DEC-251`); see the [report](../step-4-static-process-time.md).
 
 The prepared static process borrows the bootstrap owner's existing initial
 monotonic clock view. This is a temporary binding to one live machine capability,

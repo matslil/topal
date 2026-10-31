@@ -13,6 +13,9 @@ in this phase.
 
 ## Current phase
 
+The [Step 4 status](step-4-status.md) separates current executed capabilities
+from the remaining distribution, container and VM-host acceptance work.
+
 The foundation and Step 1 research map define scope and Linux source coverage.
 Step 2 adds an approved [Topal-native kernel design](step-2-report.md), Linux
 responsibility mapping, and cross-architecture systems-element model. The
@@ -893,6 +896,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 reusable prepared-process and system observations](step-4-reusable-process-observations.md)
 - [Step 4 immutable boot-root open access and interactive serial prompts](step-4-readonly-open-access.md)
 - [Step 4 recoverable unknown static-process syscalls](step-4-static-syscall-fallback.md)
+- [Step 4 prepared-process monotonic time and relative sleep](step-4-static-process-time.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)

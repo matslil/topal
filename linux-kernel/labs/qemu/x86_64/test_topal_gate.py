@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/226")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/227")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/216")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/217")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/226",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/227",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/126",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/127",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/226")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/227")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1465,6 +1465,50 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(record["observations"]["result"],"pass")
             self.assertTrue(record["observations"]["qemu_running_after_markers"])
             self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
+
+    def test_borrowed_clock_relative_waits_and_controlled_saturation(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-{MONOTONIC,RELATIVE-SLEEP}-001
+        self.assertEqual(self.evidence["static_user_image_sha256"],
+                         hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        self.assertEqual(self.evidence["observations"]["static_process_time_profile"],
+                         "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines")
+        evidence=json.loads((LAB/"results/topal-static-process-time-gate.json").read_text())
+        self.assertEqual(evidence["schema"],"topal-static-process-time-qemu/1")
+        self.assertEqual(evidence["harness_sha256"],sha256(LAB/"time_gate.py"))
+        self.assertEqual({r["case"] for r in evidence["cases"]},
+                         {"conversion-saturation","addition-saturation","resolution-rounding"})
+        maximum=(1<<63)-1
+        for record in evidence["cases"]:
+            seconds,nanos=record["seconds"],record["nanoseconds"]
+            duration=maximum if seconds>=9223372036 else seconds*1000000000+nanos
+            self.assertEqual(record["converted_duration_nanoseconds"],duration)
+            sample=(record["deadline_sample_epoch"]<<64)+record["deadline_sample_ticks"]
+            target=(min(sample*10+duration,maximum)+9)//10
+            self.assertEqual(record["expected_deadline_ticks"],target)
+            self.assertEqual(record["observed_deadline_ticks"],target)
+            self.assertTrue(record["borrowed_root_clock_binding"])
+            self.assertTrue(record["initial_root_clock_state_zero"])
+            self.assertTrue(record["setup_registers_unchanged"])
+            self.assertEqual(record["hardware_counter_requested"],record["hardware_counter_before"]+300000000)
+            self.assertGreaterEqual(record["hardware_counter_observed"],record["hardware_counter_requested"])
+            self.assertLessEqual(record["hardware_counter_observed"],record["hardware_counter_requested"]+100000)
+            if seconds:
+                self.assertEqual(target,(maximum+9)//10)
+                self.assertEqual(record["advance_hpet_configuration_restored"],1)
+                self.assertGreaterEqual(record["advanced_counter_observed"],target)
+                self.assertLessEqual(record["advanced_counter_observed"],target+100000)
+            else:
+                self.assertEqual(target,sample+1)
+                self.assertIsNone(record["advanced_counter_observed"])
+                self.assertIsNone(record["advance_hpet_configuration_restored"])
+            runtime=record["runtime"]
+            self.assertEqual(runtime["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+            self.assertEqual(runtime["static_user_image_sha256"],GATE.PINNED_STATIC_BUSYBOX_SHA256)
+            self.assertEqual(runtime["process_exit_status"],0)
+            self.assertEqual(runtime["process_exec_commits"],1)
+            self.assertEqual(runtime["observations"]["result"],"pass")
+            self.assertTrue(runtime["observations"]["qemu_running_after_markers"])
+            self.assertTrue(runtime["observations"]["serial_quiescent_after_fatal_disposition"])
 
     def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001

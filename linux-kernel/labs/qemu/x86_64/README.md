@@ -503,3 +503,18 @@ fixture encoders check ENOSYS with invalid unused pointers, six preserved
 argument registers, unchanged user canaries and a subsequent implemented call
 whose selector has upper bits set. This retains recoverable failure without
 claiming implementation of the requested interface.
+
+The [prepared-process time qualification](../../../step-4-static-process-time.md)
+adds native monotonic clock/resolution queries and relative sleeps, retaining the
+root's clock identity/history across exec and terminal return. Standard workloads
+`sleep-short` and `sleep-changed` run pinned BusyBox with different nonzero
+intervals. Independent clean witnesses check time/interval boundaries, elapsed
+observations and unchanged resources.
+
+`time_gate.py --external-static-user-image PATH --write-evidence`, through the
+bounded wrapper, additionally checks conversion saturation, addition saturation
+and one-nanosecond resolution rounding at native wait boundaries. Its explicit
+QTest HPET inputs disable the counter for setup writes and restore/verify its
+configuration. Saturated waits are accelerated to the observed target; these
+records do not claim that centuries passed in real time. They retain actual
+counter readback, CPU-register preservation and the complete runtime rollback.
