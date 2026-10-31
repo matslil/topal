@@ -441,6 +441,18 @@ pub fn analyze_for_compiler_with_declared_exports(
     analyze_for_compiler_options(text, &[], exports)
 }
 
+/// Check declared-type exports with an explicit ordinary source-module snapshot.
+/// This combines the existing module and export-selection options without
+/// changing their semantics or acquiring any filesystem authority.
+///
+/// # Errors
+/// Returns the ordinary shared source diagnostic for invalid/unsupported input.
+pub fn analyze_for_compiler_with_modules_and_declared_exports(
+    text: &str, modules: &[CompilerSourceModule], exports: &[String],
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_for_compiler_options(text, modules, exports)
+}
+
 fn analyze_for_compiler_options(
     text: &str, modules: &[CompilerSourceModule], generalized_exports: &[String],
 ) -> Result<CompilerProgram, Diagnostic> {

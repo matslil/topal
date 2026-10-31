@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import struct
+import shutil
 import tempfile
 import threading
 import time
@@ -15,6 +16,29 @@ LAB = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("topal_gate", LAB / "topal_gate.py")
 GATE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GATE)
+
+
+def module_publication(directory, artifact, key, prefix):
+    """Bind the emitted dependency bytes to both input and output provenance."""
+    name = "kernel-library.modules.json" if key == "kernel_library" else "time-library.modules.json"
+    path = directory / name
+    sources = json.loads(path.read_text())
+    library = artifact[key]
+    digest = GATE.digest(path)
+    if digest != library["module_snapshot_sha256"]:
+        raise GATE.GateError("module snapshot digest disagrees with its library binding")
+    expected = [dict(source=m["source"], identity=m["identity"],
+                     sha256=GATE.hashlib.sha256(m["text"].encode()).hexdigest()) for m in sources]
+    if expected != library["modules"]:
+        raise GATE.GateError("exact dependency bytes disagree with their module records")
+    inputs = [i for i in artifact["inputs"] if i["identity"].startswith(prefix)]
+    required = sorted([dict(identity=prefix+m["source"], sha256=m["sha256"]) for m in expected],key=lambda i:i["identity"])
+    if inputs != required:
+        raise GATE.GateError("module source inputs disagree with published dependencies")
+    outputs = [o for o in artifact["outputs"] if o["identity"] == name]
+    if outputs != [dict(identity=name, sha256=digest)]:
+        raise GATE.GateError("module snapshot output is missing or ambiguous")
+    return dict(sources=sources, snapshot_sha256=digest, inputs=inputs, outputs=outputs)
 
 
 def commands(elf, debug, result, helper):
@@ -64,6 +88,7 @@ class Helper(gdb.Breakpoint):
         if not frames:
             trace=gdb.execute("bt",to_string=True)
             assert "boot-open-access.t" in trace,trace
+            assert "logic.t" in trace and "boot.t" in trace,trace
             assert "topal_kernel_boot_open_policy_v1" in trace,trace
             frames.append(trace)
         return False
@@ -94,7 +119,7 @@ def verify(timeout=30, write_evidence=False):
         library = artifact["kernel_library"]
         functions = {f["symbol"]: f for f in library["functions"]}
         entry = functions[library["native_export"]]["callees"][0]
-        helper = functions[entry]["callees"][0]
+        helper = next(name for name in functions if "support_2elogic_2eabsent_3f" in name)
         debug, result = root / "debug.sock", root / "library.json"
         script = root / "library.gdb"
         script.write_text(commands(root / "artifact/linked/kernel.elf", debug, result, helper))
@@ -132,6 +157,7 @@ def verify(timeout=30, write_evidence=False):
         record = dict(schema="topal-kernel-source-library-qemu/1",
                       harness_sha256=GATE.digest(Path(__file__)), library=library,
                       observation=observation, runtime=runtime)
+        record["module_publication"] = module_publication(values[3].parent,artifact,"kernel_library","kernel-source-module:")
         record["variants"] = variants(root, values, artifact, timeout)
     if write_evidence:
         (LAB / "results/topal-kernel-source-library-gate.json").write_text(
@@ -156,6 +182,7 @@ def variants(root, primary, artifact, timeout):
         unit = case / "policy/boot-open-access.t"
         unit.parent.mkdir(parents=True)
         unit.write_text(text)
+        shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
         (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)
         changed = json.loads(values[3].read_text())

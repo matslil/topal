@@ -64,6 +64,7 @@ impl DebugInfo {
             task_types: Vec::new(),
             location_types: Vec::new(),
             source,
+            source_modules: Vec::new(),
             filename,
         };
         debug.file = debug.node(format!(
@@ -1236,6 +1237,26 @@ impl DebugInfo {
         self.enum_type(&generator_debug_enumeration(generator))
     }
 
+    fn install_source_modules(&mut self, dependencies: &[topal_language::CompilerDependency]) {
+        for dependency in dependencies {
+            let path = Path::new(&dependency.source_name);
+            let filename = path.file_name().unwrap_or_default().to_string_lossy();
+            let directory = path.parent().unwrap_or_else(|| Path::new("")).to_string_lossy();
+            let file = self.node(format!("!DIFile(filename: \"{}\", directory: \"{}\")",llvm_string(&filename),llvm_string(&directory)));
+            self.source_modules.push((dependency.source_span,
+                topal_source::SourceText::new(&dependency.source_text).expect("checked dependency text"),file));
+        }
+    }
+
+    fn source_position(&self, span: Span) -> (usize, topal_source::Position) {
+        for (range,source,file) in &self.source_modules {
+            if span.start >= range.start && span.start < range.end {
+                return (*file,source.position(span.start-range.start));
+            }
+        }
+        (self.file,self.source.position(span.start.min(self.source.as_str().len())))
+    }
+
     fn subprogram(
         &mut self,
         name: &str,
@@ -1256,15 +1277,13 @@ impl DebugInfo {
         }
         let types = self.node(format!("!{{{}}}", types.join(", ")));
         let signature = self.node(format!("!DISubroutineType(types: !{types})"));
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "distinct !DISubprogram(name: \"{}\", linkageName: \"{}\", scope: !{}, file: !{}, line: {}, type: !{}, scopeLine: {}, spFlags: DISPFlagDefinition, unit: !{})",
             llvm_string(name),
             llvm_string(linkage_name),
-            self.file,
-            self.file,
+            file,
+            file,
             position.line,
             signature,
             position.line,
@@ -1273,12 +1292,10 @@ impl DebugInfo {
     }
 
     fn lexical_block(&mut self, span: Span, scope: usize) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "distinct !DILexicalBlock(scope: !{scope}, file: !{}, line: {}, column: {})",
-            self.file, position.line, position.column
+            file, position.line, position.column
         ))
     }
 
@@ -1304,13 +1321,11 @@ impl DebugInfo {
         value_type: usize,
         scope: usize,
     ) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         self.node(format!(
             "!DILocalVariable(name: \"{}\", scope: !{scope}, file: !{}, line: {}, type: !{value_type})",
             llvm_string(name),
-            self.file,
+            file,
             position.line
         ))
     }
@@ -1323,24 +1338,20 @@ impl DebugInfo {
         value_type: &CompilerType,
         scope: usize,
     ) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (file, position) = self.source_position(span);
         let argument = argument.map_or_else(String::new, |value| format!(", arg: {value}"));
         let value_type = self.type_id(value_type);
         self.node(format!(
             "!DILocalVariable(name: \"{}\"{argument}, scope: !{scope}, file: !{}, line: {}, type: !{})",
             llvm_string(name),
-            self.file,
+            file,
             position.line,
             value_type
         ))
     }
 
     fn location(&mut self, span: Span, scope: usize) -> usize {
-        let position = self
-            .source
-            .position(span.start.min(self.source.as_str().len()));
+        let (_, position) = self.source_position(span);
         self.node(format!(
             "!DILocation(line: {}, column: {}, scope: !{scope})",
             position.line, position.column

@@ -74,9 +74,17 @@ mod tests {
         let client = format!(
             "{source}\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\nsleep-deadline (seconds, nanoseconds, ticks, false)\n"
         );
-        let program =
-            super::analyze_for_compiler_with_declared_exports(&client, &["sleep-deadline".into()])
-                .unwrap();
+        let modules = [super::CompilerSourceModule {
+            identity: vec!["support".into(), "clock".into()],
+            source_name: "support/clock.t".into(),
+            source: include_str!("../../../linux-kernel/kernel/support/clock.t").into(),
+        }];
+        let program = super::analyze_for_compiler_with_modules_and_declared_exports(
+            &client,
+            &modules,
+            &["sleep-deadline".into()],
+        )
+        .unwrap();
         let entry = program
             .functions
             .iter()

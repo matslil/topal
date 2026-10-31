@@ -70,9 +70,9 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use topal_compiler::{
-        LlvmTools, SystemsSourceLibraryInput, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE,
-        X86_INITIAL_BOOT_RESOURCE_FILE, publish_x86_64_systems_artifact_with_libraries,
-        qualified_x86_64_static_user_image_fixture,
+        LlvmTools, SystemsSourceLibraryInput, SystemsSourceModuleInput, X86_BOOT_IMAGE_FILE,
+        X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
+        publish_x86_64_systems_artifact_with_libraries, qualified_x86_64_static_user_image_fixture,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
@@ -100,11 +100,28 @@ mod tests {
             source: "policy/boot-open-access.t".into(),
             source_name: "policy/boot-open-access.t".into(),
             text: include_str!("../../../kernel/policy/boot-open-access.t").into(),
+            modules: vec![
+                SystemsSourceModuleInput {
+                    source: "support/boot.t".into(),
+                    identity: vec!["support".into(), "boot".into()],
+                    text: include_str!("../../../kernel/support/boot.t").into(),
+                },
+                SystemsSourceModuleInput {
+                    source: "support/logic.t".into(),
+                    identity: vec!["support".into(), "logic".into()],
+                    text: include_str!("../../../kernel/support/logic.t").into(),
+                },
+            ],
         };
         let time = SystemsSourceLibraryInput {
             source: "policy/relative-sleep-deadline.t".into(),
             source_name: "policy/relative-sleep-deadline.t".into(),
             text: include_str!("../../../kernel/policy/relative-sleep-deadline.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/clock.t".into(),
+                identity: vec!["support".into(), "clock".into()],
+                text: include_str!("../../../kernel/support/clock.t").into(),
+            }],
         };
         publish_x86_64_systems_artifact_with_libraries(
             &program,

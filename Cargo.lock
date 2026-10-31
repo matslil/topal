@@ -620,6 +620,7 @@ dependencies = [
  "topal-language",
  "topal-semantics",
  "topal-source",
+ "topal-syntax",
 ]
 
 [[package]]

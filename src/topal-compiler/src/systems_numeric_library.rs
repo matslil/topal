@@ -350,7 +350,6 @@ pub(crate) fn check_numeric_library(
     requirement.validate().map_err(|e| invalid(e.to_string()))?;
     if requirement.interface != CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1
         || requirement.source != input.source
-        || !topal_language::modules::declared_libraries(&input.text).is_empty()
         || !topal_language::published_function_names(&input.text)
             .iter()
             .any(|n| canonically_equal(n, &requirement.export))
@@ -370,8 +369,10 @@ pub(crate) fn check_numeric_library(
         "{}\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\n{} (seconds, nanoseconds, ticks, false)\n",
         input.text, requirement.export
     );
-    let program = topal_language::analyze_for_compiler_with_declared_exports(
+    let modules = crate::systems_library::modules::validate(input)?;
+    let program = topal_language::analyze_for_compiler_with_modules_and_declared_exports(
         &client,
+        &modules,
         &[requirement.export.clone()],
     )
     .map_err(|e| CompileError::Tool(e.render(&input.source_name)))?;
@@ -443,6 +444,7 @@ pub(crate) fn check_numeric_library(
         maximum_bytes,
         limit_bytes: ARENA_BYTES,
     };
+    crate::systems_library::modules::check_isolation(input, &program)?;
     Ok(CheckedNumericLibrary {
         program,
         source_name: input.source_name.clone(),
@@ -470,6 +472,12 @@ mod tests {
             source: requirement.source.clone(),
             source_name: requirement.source.clone(),
             text,
+            modules: crate::systems_library::load_source_library(
+                &requirement,
+                &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+            .modules,
         };
         let cases = [
             (
@@ -485,11 +493,6 @@ mod tests {
                 "wrong signature",
                 text.replace("ticks : Nat", "ticks : Int"),
             ),
-            ("unproven divisor", text.replace("/% ten", "/% ticks")),
-            (
-                "unsupported subtraction",
-                text.replace("target + nine", "target - nine"),
-            ),
             (
                 "cycle",
                 text.replace(
@@ -504,6 +507,13 @@ mod tests {
                 check_numeric_library(&requirement, &input(changed)).is_err(),
                 "accepted {name}"
             );
+        }
+        for (from, to) in [("/% ten", "/% target"), ("target + nine", "target - nine")] {
+            let mut changed = input(text.into());
+            let original = changed.modules[0].text.clone();
+            changed.modules[0].text = original.replace(from, to);
+            assert_ne!(original, changed.modules[0].text);
+            assert!(check_numeric_library(&requirement, &changed).is_err());
         }
         let mut mismatched = input(text.into());
         mismatched.source = "other.t".into();
@@ -530,6 +540,12 @@ mod tests {
             source_name: requirement.source.clone(),
             text: include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t")
                 .into(),
+            modules: crate::systems_library::load_source_library(
+                &requirement,
+                &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+            .modules,
         };
         let library = check_numeric_library(&requirement, &source).unwrap();
         eprintln!("numeric allocation bound: {:?}", library.allocation);

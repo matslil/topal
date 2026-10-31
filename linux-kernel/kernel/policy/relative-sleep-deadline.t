@@ -1,4 +1,5 @@
 use language (version is v0.1)
+use library support (version is v0.1)
 # TK-DEC-253: ordinary numeric policy for the qualified ten-nanosecond clock view.
 
 duration-nanoseconds is fn ((seconds : Nat, nanoseconds : Nat)) -> Nat
@@ -14,15 +15,11 @@ saturate is fn (nanoseconds : Nat) -> Nat
     true then maximum
     false then nanoseconds
 
-first-quotient is fn (quotient : Int, remainder : Int) -> Int
-  quotient
-
 ordinary-deadline is fn ((seconds : Nat, nanoseconds : Nat, ticks : Nat)) -> Int
   ten : Nat is 10
-  nine : Nat is 9
   duration is duration-nanoseconds (seconds, nanoseconds)
   target is saturate (ticks * ten + duration)
-  first-quotient ((target + nine) /% ten)
+  support clock rounded target
 
 # The native boundary validates interval facts and owns the borrowed clock.
 pub sleep-deadline is fn ((seconds : Nat, nanoseconds : Nat, ticks : Nat, wrapped : Boolean)) -> Int

@@ -954,5 +954,6 @@ struct DebugInfo {
     task_types: Vec<(CompilerTaskType, usize)>,
     location_types: Vec<(CompilerLocationType, usize)>,
     source: topal_source::SourceText,
+    source_modules: Vec<(Span, topal_source::SourceText, usize)>,
     filename: String,
 }

@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import shutil
 import tempfile
 import threading
 import time
@@ -18,6 +19,7 @@ def module(name):
     return loaded
 GATE=module("topal_gate")
 TIMING=module("time_gate")
+LIBRARY=module("library_gate")
 
 def commands(elf,debug,result,target,bound):
     setup=f'''
@@ -97,6 +99,7 @@ class Runtime(gdb.Breakpoint):
             trace=gdb.execute("bt",to_string=True)
             assert "topal.runtime.int.divmod" in trace,trace
             assert "relative-sleep-deadline.t" in trace,trace
+            assert "clock.t" in trace,trace
             assert "topal_kernel_sleep_deadline_policy_v1" in trace,trace
             frames.append(trace)
         return False
@@ -150,22 +153,32 @@ def verify(timeout=30,write_evidence=False):
             raise GATE.GateError("numeric debugger did not finish: "+repr(outcome)+"\n"+(root/"debug.log").read_text())
         record=dict(schema="topal-owned-numeric-runtime-qemu/1",harness_sha256=GATE.digest(Path(__file__)),
                     library=library,observation=json.loads(result.read_text()),runtime=runtime)
+        record["module_publication"]=LIBRARY.module_publication(values[3].parent,artifact,"time_library","kernel-time-source-module:")
         record["counterexample"]=wrong_policy(root,artifact,timeout)
+        record["module_counterexample"]=wrong_policy(root,artifact,timeout,module_body=True)
     if write_evidence:
         (LAB/"results/topal-owned-numeric-runtime-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     print("PASS ordinary numeric source/runtime frames, ABI, arena/stack erasure and binding release",flush=True)
     return record
 
-def wrong_policy(root,primary,timeout):
+def wrong_policy(root,primary,timeout,module_body=False):
     """Reject a changed scalar at the independent deadline oracle, before completion."""
-    case=root/"wrong-deadline"
+    case=root/("wrong-deadline-module" if module_body else "wrong-deadline")
     policy=case/"policy"
     policy.mkdir(parents=True)
     original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
     changed=original.replace("false then ordinary-deadline (seconds, nanoseconds, ticks)","false then 0")
-    if changed==original:raise GATE.GateError("counterexample did not alter the source policy")
+    if module_body: changed=original
+    elif changed==original:raise GATE.GateError("counterexample did not alter the source policy")
     (policy/"relative-sleep-deadline.t").write_text(changed)
     (policy/"boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
+    if module_body:
+        module=case/"support/clock.t"
+        before=module.read_text()
+        after=before.replace("  first-quotient ((target + nine) /% ten)","  0")
+        if before==after:raise GATE.GateError("counterexample did not change the imported helper")
+        module.write_text(after)
     original_build,original_command,original_observe=GATE.build_image,GATE.qemu_command,GATE.observe_gate
     values=original_build(case/"artifact",library_root=case)
     artifact=json.loads(values[3].read_text())
@@ -175,6 +188,11 @@ def wrong_policy(root,primary,timeout):
         if len(before)!=1 or before!=after:raise GATE.GateError("numeric body changed native root/provider")
     if artifact["time_library"]["object_sha256"]==primary["time_library"]["object_sha256"]:
         raise GATE.GateError("changed numeric source did not change the object")
+    if module_body:
+        if artifact["time_library"]["source_sha256"]!=primary["time_library"]["source_sha256"]:
+            raise GATE.GateError("module-only counterexample changed its root source")
+        if artifact["time_library"]["modules"]==primary["time_library"]["modules"]:
+            raise GATE.GateError("module-only counterexample did not change dependency identity")
     _,target=TIMING.points(values[3].parent/"kernel.elf")
     debug,result,script=case/"debug.sock",case/"failure.json",case/"failure.gdb"
     script.write_text(f'''set pagination off
@@ -227,6 +245,7 @@ detach
     finally:GATE.build_image,GATE.qemu_command,GATE.observe_gate=original_build,original_command,original_observe
     print("PASS changed numeric body rejected at the independent deadline oracle",flush=True)
     return dict(result="expected-deadline-rejection",root_and_provider_unchanged=True,
+                module_body=module_body,root_source_unchanged=module_body,
                 library=artifact["time_library"],linked_kernel_sha256=GATE.digest(values[3].parent/"kernel.elf"),
                 observation=json.loads(result.read_text()),execution="stopped before completion after independent rejection")
 

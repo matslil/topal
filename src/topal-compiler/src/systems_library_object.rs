@@ -20,6 +20,7 @@ use topal_language::compiler::CompilerSystemsSourceLibraryRequirement;
 const NATIVE_SHIM_BYTES: u64 = 32;
 
 pub(crate) struct CompiledSourceLibrary {
+    pub(crate) module_snapshot: Vec<u8>,
     pub(crate) llvm: String,
     pub(crate) object: Vec<u8>,
     pub(crate) source: String,
@@ -162,11 +163,13 @@ pub(crate) fn build_source_library(
         .arg(&object_path))?;
     inspect_instructions(&disassembly)?;
     let record = SystemsSourceLibraryArtifact {
-        schema: "topal.kernel-source-library/1".into(),
+        schema: "topal.kernel-source-library/2".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_sha256: digest(input.text.as_bytes()),
+        modules: super::modules::records(input),
+        module_snapshot_sha256: digest(&super::modules::snapshot(input)?),
         checked_client_sha256: digest(unit.program().source.as_str().as_bytes()),
         llvm_sha256: digest(llvm.as_bytes()),
         object_sha256: digest(&bytes),
@@ -182,6 +185,7 @@ pub(crate) fn build_source_library(
         functions: records,
     };
     Ok(CompiledSourceLibrary {
+        module_snapshot: super::modules::snapshot(input)?,
         llvm,
         object: bytes,
         source: input.text.clone(),
@@ -323,7 +327,7 @@ pub(crate) fn inspect_linked_library(
     record: &SystemsSourceLibraryArtifact,
 ) -> Result<(), CompileError> {
     let file = ::object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
-    if record.schema != "topal.kernel-source-library/1"
+    if record.schema != "topal.kernel-source-library/2"
         || record.interface != "boot-open-decision-v1"
         || record.native_export != EXPORT_SYMBOL
         || record.machine_profile != "x86_64-gpr-only-no-red-zone-acyclic/1"

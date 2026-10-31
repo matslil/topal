@@ -26,6 +26,8 @@ pub struct SystemsNumericLibraryArtifact {
     pub source_export: String,
     pub native_export: String,
     pub source_sha256: String,
+    pub modules: Vec<crate::SystemsSourceModuleArtifact>,
+    pub module_snapshot_sha256: String,
     pub checked_client_sha256: String,
     pub llvm_sha256: String,
     pub retained_llvm_sha256: String,
@@ -42,6 +44,7 @@ pub struct SystemsNumericLibraryArtifact {
     pub allocation: SystemsNumericAllocationBound,
 }
 pub(crate) struct CompiledNumericLibrary {
+    pub(crate) module_snapshot: Vec<u8>,
     pub(crate) source: String,
     pub(crate) llvm: String,
     pub(crate) retained_llvm: String,
@@ -224,13 +227,15 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/1".into(),
+        schema: "topal.kernel-numeric-source-library/2".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: requirement.export.clone(),
         native_export: EXPORT_SYMBOL.into(),
         source_sha256: digest(input.text.as_bytes()),
+        modules: crate::systems_library::modules::records(input),
+        module_snapshot_sha256: digest(&crate::systems_library::modules::snapshot(input)?),
         checked_client_sha256: digest(checked.program.source.as_str().as_bytes()),
         llvm_sha256: digest(llvm.as_bytes()),
         retained_llvm_sha256: digest(retained_llvm.as_bytes()),
@@ -247,6 +252,7 @@ pub(crate) fn build_numeric_library(
         allocation: checked.allocation,
     };
     Ok(CompiledNumericLibrary {
+        module_snapshot: crate::systems_library::modules::snapshot(input)?,
         source: input.text.clone(),
         llvm,
         retained_llvm,
@@ -367,7 +373,7 @@ pub(crate) fn inspect_linked_numeric_library(
     record: &SystemsNumericLibraryArtifact,
 ) -> Result<(), CompileError> {
     let file = object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
-    if record.schema != "topal.kernel-numeric-source-library/1"
+    if record.schema != "topal.kernel-numeric-source-library/2"
         || record.interface != "relative-sleep-deadline-v1"
         || record.native_export != EXPORT_SYMBOL
         || record.stack_limit_bytes != 4096

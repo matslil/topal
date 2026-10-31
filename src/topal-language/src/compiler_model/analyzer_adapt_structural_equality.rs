@@ -522,11 +522,14 @@ impl Analyzer {
                 span,
             }));
         }
+        // The qualifier selects the declaration; it supplies no function
+        // operands. Passing it to the ordinary infix-call resolver would try
+        // to evaluate the library/module names as arguments.
         self.analyze_resolved_call_from(
-            items,
+            &items[function_index..],
             span,
             environment,
-            function_index,
+            0,
             &function_name,
             &declarations,
             &[],

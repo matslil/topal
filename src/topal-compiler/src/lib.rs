@@ -60,6 +60,7 @@ pub use systems_boot_resource::{
 };
 pub use systems_library::{
     SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact, SystemsSourceLibraryInput,
+    SystemsSourceModuleArtifact, SystemsSourceModuleInput,
 };
 pub use systems_numeric_library::{SystemsNumericAllocationBound, SystemsNumericLibraryArtifact};
 pub use systems_provider::{

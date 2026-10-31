@@ -1,4 +1,5 @@
 use language (version is v0.1)
+use library support (version is v0.1)
 # TK-DEC-252; TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001.
 # Semantic facts and choices; native flags and errors stay at the ABI boundary.
 pub BootOpenDecision is Enum (ReadDescription, NotDirectory, DirectoryWrite, ReadOnlyView)
@@ -14,9 +15,9 @@ after-kind is fn (write-intent : Boolean, directory : Boolean) -> BootOpenDecisi
     true then deny-write directory
 
 require-directory is fn (write-intent : Boolean, directory : Boolean) -> BootOpenDecision
-  directory
-    false then NotDirectory
-    true then after-kind (write-intent, directory)
+  support boot missing? directory
+    true then NotDirectory
+    false then after-kind (write-intent, directory)
 
 pub boot-open-decision is fn ((write-intent : Boolean, directory : Boolean, directory-only : Boolean)) -> BootOpenDecision
   directory-only

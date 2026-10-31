@@ -14,6 +14,12 @@ fn compiled_numeric_policy_uses_owned_arena_and_general_native_inputs() {
         source: requirement.source.clone(),
         source_name: requirement.source.clone(),
         text: include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t").into(),
+        modules: crate::systems_library::load_source_library(
+            &requirement,
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap()
+        .modules,
     };
     let tools = crate::LlvmTools::discover(None).unwrap();
     let directory =

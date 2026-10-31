@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/132";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/133";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -342,6 +342,14 @@ fn validate_artifact_input(
         ));
     }
     if let Some(library) = &artifact.kernel_library {
+        crate::systems_library::modules::validate_binding(
+            &library.modules,
+            &library.module_snapshot_sha256,
+            &artifact.inputs,
+            &artifact.outputs,
+            "kernel-source-module:",
+            "kernel-library.modules.json",
+        )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
     let has_numeric = file
@@ -353,6 +361,14 @@ fn validate_artifact_input(
         ));
     }
     if let Some(library) = &artifact.time_library {
+        crate::systems_library::modules::validate_binding(
+            &library.modules,
+            &library.module_snapshot_sha256,
+            &artifact.inputs,
+            &artifact.outputs,
+            "kernel-time-source-module:",
+            "time-library.modules.json",
+        )?;
         crate::systems_numeric_library::inspect_linked_numeric_library(kernel, library)?;
     }
     Ok(())

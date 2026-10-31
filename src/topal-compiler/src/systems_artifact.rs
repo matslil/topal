@@ -266,7 +266,7 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/232";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/233";
 pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/221";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
@@ -752,6 +752,10 @@ fn publish_in_stage(
             ("kernel-library.t", library.source.as_bytes()),
             ("kernel-library.ll", library.llvm.as_bytes()),
             ("kernel-library.o", library.object.as_slice()),
+            (
+                "kernel-library.modules.json",
+                library.module_snapshot.as_slice(),
+            ),
         ] {
             fs::write(stage.join(name), bytes)
                 .map_err(io_error("write source library artifact", stage))?;
@@ -764,6 +768,12 @@ fn publish_in_stage(
             identity: format!("kernel-source:{}", library.record.source),
             sha256: library.record.source_sha256.clone(),
         });
+        record
+            .inputs
+            .extend(library.record.modules.iter().map(|m| DigestEntry {
+                identity: format!("kernel-source-module:{}", m.source),
+                sha256: m.sha256.clone(),
+            }));
         record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.kernel_library = Some(library.record);
@@ -774,6 +784,10 @@ fn publish_in_stage(
             ("time-library.ll", numeric.llvm.as_bytes()),
             ("time-library.retained.ll", numeric.retained_llvm.as_bytes()),
             ("time-library.o", numeric.object.as_slice()),
+            (
+                "time-library.modules.json",
+                numeric.module_snapshot.as_slice(),
+            ),
         ] {
             fs::write(stage.join(name), bytes)
                 .map_err(io_error("write numeric library artifact", stage))?;
@@ -786,6 +800,12 @@ fn publish_in_stage(
             identity: format!("kernel-time-source:{}", numeric.record.source),
             sha256: numeric.record.source_sha256.clone(),
         });
+        record
+            .inputs
+            .extend(numeric.record.modules.iter().map(|m| DigestEntry {
+                identity: format!("kernel-time-source-module:{}", m.source),
+                sha256: m.sha256.clone(),
+            }));
         record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.time_library = Some(numeric.record);

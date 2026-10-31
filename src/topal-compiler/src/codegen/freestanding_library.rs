@@ -4,6 +4,7 @@ pub(crate) fn emit_finite_kernel_library(unit: &crate::systems_library::CheckedF
     -> Result<String,crate::CompileError> {
     let mut generator=Generator::new(unit.program(),unit.source_name());
     generator.kernel_library_mode=true;
+    generator.debug.install_source_modules(&unit.program().dependencies);
     for function in &unit.program().functions { generator.emit_function(function); }
     if !generator.globals.is_empty() || !generator.foreign_declarations.is_empty()
         || !generator.scalar_list_runtime_fragments.is_empty()
