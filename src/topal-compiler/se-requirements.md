@@ -2598,6 +2598,17 @@ arguments or changing state. Structural and pinned-QEMU evidence shall prove
 one deliberate unsupported call, its exact result, and a later successful
 implemented call.
 
+The static-process adapter shall extend that recoverable policy under
+`TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001`: implemented dispatch arms shall win,
+then unknown low-32-bit native selectors shall return exact `-ENOSYS` through
+the existing saved-register-clearing SYSRET path. Unselected ABI-tag selectors
+shall not select native implementations. Unused arguments shall not be read or
+validated, startup phase and process resources shall remain unchanged, and the
+process shall continue before and after exec. Independently encoded physical
+witnesses shall check selector boundaries, invalid unused pointers, user-memory
+canaries, preserved non-result registers and later implemented calls with full
+terminal rollback. This shall add no new implemented syscall or core meaning.
+
 The adapter shall dispatch Linux x86-64 syscall 24 as `sched_yield`, preserve
 the sole live user context and all private state, and return zero without a
 provider context-transfer operation. Structural and pinned-QEMU evidence shall

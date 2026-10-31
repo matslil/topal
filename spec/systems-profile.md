@@ -3368,6 +3368,30 @@ provider-owned syscall selection, non-executable return, or terminal
 disposition SHALL be invalid. This rule SHALL NOT add syscall reflection,
 seccomp, audit, tracing, or a general Topal error mechanism.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001 — Recoverable unknown static-process selectors
+
+A qualified live static process SHALL return native Linux `-ENOSYS` for every
+selector not selected by an implemented dispatch arm. Implemented-arm selection
+SHALL precede fallback. Native selector-width normalization SHALL apply; the
+initial x86-64 adapter SHALL use the low 32 bits for selection. Unselected ABI
+tag values SHALL receive fallback rather than select a native implementation.
+
+Fallback SHALL use the ordinary retained syscall continuation before and after
+image replacement. It SHALL NOT inspect unused arguments, access user memory,
+change startup phase, mutate process resources, consume execution authority or
+terminate the context. It SHALL preserve native non-result registers under the
+existing syscall contract and clear saved entry registers before return.
+Subsequent implemented calls, exec and terminal reclamation SHALL remain usable.
+
+Qualification SHALL execute repeated negative, large, upper-bit and unselected
+ABI-tag selectors with invalid unused pointer values, unchanged user canaries
+and non-result register observations before and after replacement. Independent
+fixture encoders SHALL bind the executed bytes. An implemented selector's
+unqualified argument profiles SHALL remain outside that arm's qualification;
+this fallback SHALL NOT fabricate results or claim an interface is available.
+Syscall reflection, other ABI implementations and core-language changes SHALL
+remain outside this refinement.
+
 ### TOPAL-SYSTEMS-USER-SCHED-YIELD-001 — Sole-runnable scheduling point
 
 While the sole initial user context is live and its return continuation lies in
