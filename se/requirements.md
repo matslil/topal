@@ -631,6 +631,17 @@ not mutable user memory. Tests shall cover repeated/reordered calls, native
 integer width, exec inheritance, failure independence and terminal erasure.
 Other identity changes remain separately required and unqualified.
 
+A reusable exec-environment refinement shall transport caller-owned byte
+aggregates without chosen key/value or argv-zero pathname matching. It shall
+admit empty/null environments, preserve duplicates/empty entries, enforce its
+declared vector/byte bounds and native copy/error ordering, erase failed
+prefixes, and preserve all process resources before commit. Fresh stack vectors
+and payloads shall be derived from copied offsets, with payloads isolated from
+stack growth (above entry RSP in the initial x86 binding) and an execution name
+independent of argv[0]. Qualification shall cover
+copy/boundary errors, maximum transport, downward stack growth, state on failed
+exec, changed cwd/exported environments and complete reclamation.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained

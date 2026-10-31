@@ -1622,6 +1622,16 @@ of pathname or prior call ordering. Its authority is retained process identity,
 not user-writable auxiliary metadata. Exec preserves that view and exit erases
 its witness. Arbitrary identity and privilege changes remain unqualified.
 
+A separately qualified exec-environment refinement may transport checked owned
+argument/environment byte aggregates without interpreting keys or requiring
+argv[0] to equal the executable pathname. Empty/null environments, duplicates
+and empty entries remain caller data. A fresh stack derives vectors and payload
+pointers from copied lengths/offsets, isolates payloads from ordinary stack
+growth (above entry RSP in the initial x86 binding) and
+separates execution name from argument zero. Failures preserve the original
+process owner and erase staging; committed entry consumes the copied aggregate.
+Declared count/byte bounds and native layout remain provider-qualified details.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
