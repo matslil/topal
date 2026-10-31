@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import pty
+import runpy
 import shutil
 import struct
 import subprocess
@@ -39,6 +40,13 @@ PROCESS_WORKLOADS = {
     "echo": (b"exec /bin/busybox echo alpha beta\n", b"alpha beta\n", 0),
     "echo-changed": (
         b"exec /bin/busybox echo omega '' gamma\n", b"omega  gamma\n", 0
+    ),
+    "head-stdin": (b"exec /bin/busybox head -c 4 <&3\n", b"\x7fELF", 0),
+    "head-alias": (b"exec 4<&3; exec /bin/busybox head -c 4 <&4\n", b"\x7fELF", 0),
+    "wc-stdin": (b"exec /bin/busybox wc -c <&3\n", b"2024544\n", 0),
+    "dd-seek": (
+        b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
+        b"ELF\x02", 0,
     ),
 }
 MARKERS = (
@@ -933,6 +941,8 @@ def static_user_fixture() -> bytes:
     for index, offset in enumerate((0, 13, 18, 19, 252, 253, 254, 255)):
         store(0x5F9300 + index * 8, 0x5F9200 + offset)
     store(0x5F9340, 0)
+    checks = runpy.run_path(str(LAB / "static_process_checks.py"))
+    continuation.extend(b"\xb8" + struct.pack("<I", checks["PRE_EXEC"]) + b"\xff\xd0")
     continuation.extend(bytes.fromhex("bf00905f00be00935f00baa0905f00b83b0000000f050f0b"))
     image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
     runtime = bytearray()
@@ -942,6 +952,7 @@ def static_user_fixture() -> bytes:
         runtime.extend(bytes((0x48,0x81,0x7C,0x24,offset))
                        + struct.pack("<I", expected) + bytes.fromhex("75fe"))
     runtime.extend(bytes.fromhex("be00e07f00bf00b04a00b900010000fcf3a675fe"))
+    runtime.extend(b"\xb8" + struct.pack("<I", checks["ENTRY"]) + b"\xff\xd0")
 
     def write_call(fd: int, pointer: int, count: int) -> None:
         runtime.extend(b"\xbf" + struct.pack("<I", fd) + b"\x48\xbe"
@@ -960,8 +971,12 @@ def static_user_fixture() -> bytes:
     runtime.extend(bytes.fromhex("bf23010000b83c0000000f050f0b"))
     image[0xA_A000:0xA_A000+len(runtime)] = runtime
     image[0xA_B000:0xA_B100] = argument_bytes
-    output_bytes = b"runtime-clean\n" + b"z" * 256
+    output_bytes = b"runtime-clean\n" + b"z" * 256 + b"runtime-alias\n"
     image[0xA_B200:0xA_B200+len(output_bytes)] = output_bytes
+    for address, payload in ((checks["ENTRY"], checks["code"]()),
+                             (checks["PRE_EXEC"], checks["pre_exec"]())):
+        offset = address - 0x400000
+        image[offset:offset+len(payload)] = payload
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1213,7 +1228,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/218",
+        "schema": "topal-kernel-toolchain-gate-qemu/219",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1243,6 +1258,9 @@ def evidence_record(
         "boot_resource_sha256": digest(boot_resource),
         "boot_provenance_sha256": digest(boot_provenance),
         "observations": {
+            "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
+            "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
+            "reusable_clean_boundary_corpus": static_user_input != "pinned-external-static-busybox",
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
@@ -1577,7 +1595,7 @@ def verify(
 ) -> dict[str, Any]:
     process_command, process_output, process_status = PROCESS_WORKLOADS[process_workload]
     if external_static_user_image is None:
-        process_output, process_status = b"runtime-clean\n" + b"z" * 256, 0x23
+        process_output, process_status = b"runtime-alias\nruntime-clean\n" + b"z" * 256, 0x23
     if external_static_user_image is None and process_workload != "true":
         raise GateError("the standard clean fixture uses the true workload")
     # Reject an unapproved external image before invoking any build tool.

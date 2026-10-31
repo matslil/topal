@@ -243,12 +243,14 @@ use crate::{
     X86_SYSTEMS_STATIC_IMAGE_REVOKE_STACK_SLOT_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_REVOKE_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_SEAL_PERMISSIONS_SYMBOL, X86_SYSTEMS_STATIC_IMAGE_ZERO_PAYLOAD_SYMBOL,
     X86_SYSTEMS_STATIC_IMAGE_ZERO_STACK_BACKING_SYMBOL,
-    X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL, X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL, X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL,
-    X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL,
-    X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL,
+    X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL, X86_SYSTEMS_TRANSLATION_ACTIVATE_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_BEGIN_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_COMMIT_SYMBOL,
+    X86_SYSTEMS_TRANSLATION_EDIT_MAP_SYMBOL, X86_SYSTEMS_TRANSLATION_EDIT_UNMAP_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_MAP_SYMBOL, X86_SYSTEMS_USER_ADDRESS_SPACE_PREPARE_SYMBOL,
+    X86_SYSTEMS_USER_ADDRESS_SPACE_RECLAIM_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RELEASE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_RESERVE_ANONYMOUS_SYMBOL,
     X86_SYSTEMS_USER_ADDRESS_SPACE_UNMAP_SYMBOL,
@@ -264,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/218";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/207";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/219";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/208";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1750,6 +1752,9 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         );
     }
     emit_store_qword(&mut continuation_code, 0x5f9340, [0; 8]);
+    continuation_code.push(0xb8);
+    continuation_code.extend_from_slice(&process_fixture::checks::PRE_EXEC.to_le_bytes());
+    continuation_code.extend_from_slice(&[0xff, 0xd0]);
     continuation_code.extend_from_slice(&[
         0xbf, 0x00, 0x90, 0x5f, 0x00, // selected path
         0xbe, 0x00, 0x93, 0x5f, 0x00, // maximum argc/aggregate fixture
@@ -1765,6 +1770,14 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
             process_fixture::arguments(),
         ),
         (process_fixture::OUTPUT_BYTES, process_fixture::output()),
+        (
+            process_fixture::checks::ENTRY,
+            process_fixture::checks::code(),
+        ),
+        (
+            process_fixture::checks::PRE_EXEC,
+            process_fixture::checks::pre_exec(),
+        ),
     ] {
         let offset = address as usize - 0x400000;
         image[offset..offset + bytes.len()].copy_from_slice(&bytes);
@@ -3208,6 +3221,7 @@ enum ProviderSymbol {
     EntropyUserRandomService,
     StaticProcessBrkReserve,
     StaticProcessExecSnapshot,
+    StaticProcessDescriptorTable,
 }
 
 impl ProviderSymbol {
@@ -3482,6 +3496,9 @@ impl ProviderSymbol {
             Self::EntropyUserRandomService => X86_SYSTEMS_ENTROPY_USER_RANDOM_SERVICE_SYMBOL,
             Self::StaticProcessBrkReserve => X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL,
             Self::StaticProcessExecSnapshot => X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL,
+            Self::StaticProcessDescriptorTable => {
+                X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
+            }
         }
     }
 
@@ -3496,7 +3513,8 @@ impl ProviderSymbol {
             | Self::EntropyOutput
             | Self::EntropyUserRandomService
             | Self::StaticProcessBrkReserve
-            | Self::StaticProcessExecSnapshot => SymbolKind::Data,
+            | Self::StaticProcessExecSnapshot
+            | Self::StaticProcessDescriptorTable => SymbolKind::Data,
             Self::DescribeBootMemory
             | Self::AllocatePhysicalFrames
             | Self::PrepareStaticImage
@@ -4001,6 +4019,7 @@ struct ProviderSymbols {
     entropy_user_random_service: SymbolId,
     static_process_brk_reserve: SymbolId,
     static_process_exec_snapshot: SymbolId,
+    static_process_descriptor_table: SymbolId,
     read_pci_region_register: SymbolId,
     read_pci_region_register_eventually: SymbolId,
     write_pci_region_register: SymbolId,
@@ -5637,6 +5656,11 @@ impl RootEncoder {
                 "x86 static-image process entry requires the exact randomized owner".into(),
             ));
         }
+        self.bytes
+            .extend_from_slice(&[0x41, 0x55, 0x48, 0x8d, 0x05]);
+        // Eleventh argument: retained boot handoff; tenth: private descriptor table.
+        self.rip_relative_symbol(ProviderSymbol::StaticProcessDescriptorTable, 0)?;
+        self.bytes.push(0x50);
         self.bytes.extend_from_slice(&[
             0x4c, 0x89, 0xf7, // payload
             0x4c, 0x89, 0xe6, // leaf metadata
@@ -5659,7 +5683,7 @@ impl RootEncoder {
         self.rip_relative_storage(512, 0)?;
         self.bytes.push(0x50); // seventh System V argument
         self.call_checked_bool(ProviderSymbol::EnterStaticImageProcess)?;
-        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x18]);
+        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x28]);
         self.static_image = RootStaticImageState::CompletedProcess;
         Ok(())
     }
@@ -9310,6 +9334,10 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
             &mut object,
             ProviderSymbol::StaticProcessExecSnapshot,
         ),
+        static_process_descriptor_table: undefined_provider_symbol(
+            &mut object,
+            ProviderSymbol::StaticProcessDescriptorTable,
+        ),
         read_pci_region_register: undefined_provider_symbol(
             &mut object,
             ProviderSymbol::ReadPciRegionRegister,
@@ -10532,6 +10560,9 @@ fn append_root(
             ProviderSymbol::StaticProcessExecSnapshot => {
                 provider_symbols.static_process_exec_snapshot
             }
+            ProviderSymbol::StaticProcessDescriptorTable => {
+                provider_symbols.static_process_descriptor_table
+            }
             ProviderSymbol::ReadPciRegionRegister => provider_symbols.read_pci_region_register,
             ProviderSymbol::ReadPciRegionRegisterEventually => {
                 provider_symbols.read_pci_region_register_eventually
@@ -11713,7 +11744,7 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 9483);
+        assert_eq!(relocation_targets.len(), 9484);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -12313,6 +12344,7 @@ mod tests {
                 "topal_x86_systems_entropy_user_random_service",
                 "topal_x86_static_process_brk_reserve",
                 "topal_x86_static_process_exec_snapshot",
+                "topal_x86_static_process_descriptor_table",
                 "topal_x86_systems_pci_region_configuration_gateway_read_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_read_eventually_equals",
                 "topal_x86_systems_pci_region_configuration_gateway_write",

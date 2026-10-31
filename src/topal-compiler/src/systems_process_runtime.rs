@@ -6,6 +6,11 @@
 
 use super::{CompileError, X86FunctionEncoder, emit_static_process_sysret};
 
+#[path = "systems_file_descriptions.rs"]
+pub(super) mod file_descriptions;
+#[path = "systems_process_signals.rs"]
+pub(super) mod signals;
+
 // The pristine segment ends at 0x9728; the rollback stack starts at 0xa000.
 // Strings [0,256), pointer offsets [256,320), argc at 320, size at 328.
 const STAGING: i32 = 0x9800;
@@ -119,10 +124,15 @@ impl E<'_> {
 
 /// Check R8..R8+R9 against the live mappings, including each leaf's present
 /// and user bits. This also catches heap holes before/after brk publication.
-/// Preserves every register except RAX/R10/R11; CF reports failure.
+/// Preserves every register except RAX/RCX/R10/R11; CF reports failure.
 pub(super) fn emit_extent_subroutine(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
     e.0.bind("runtime-readable-extent")?;
+    e.imm(C, 5);
+    e.0.jump("runtime-extent-check");
+    e.0.bind("runtime-writable-extent")?;
+    e.imm(C, 7);
+    e.0.bind("runtime-extent-check")?;
     e.mov(A, R8);
     e.rr(0x01, A, R9);
     e.0.jump_if(0x82, "runtime-extent-invalid");
@@ -155,8 +165,8 @@ pub(super) fn emit_extent_subroutine(code: &mut X86FunctionEncoder) -> Result<()
     e.rr(0x01, R11, R10);
     e.load(R11, R11, 0);
     e.0.bytes(&[0x41, 0x5a]);
-    e.arith(4, R11, 5);
-    e.cmp(R11, 5);
+    e.rr(0x21, R11, C);
+    e.rr(0x39, R11, C);
     e.0.jump_if(0x85, "runtime-extent-invalid");
     e.rr(0x39, R10, A);
     e.0.jump_if(0x84, "runtime-extent-valid");
@@ -425,6 +435,7 @@ pub(super) fn emit_console_write(code: &mut X86FunctionEncoder) -> Result<(), Co
     e.cmp(Di, 2);
     e.0.jump_if(0x85, "runtime-write-ebadf");
     e.0.bind("runtime-write-fd-ready")?;
+    e.0.bind("runtime-console-payload")?;
     e.cmp(D, 256);
     e.0.jump_if(0x87, "runtime-write-einval");
     e.cmp(D, 0);

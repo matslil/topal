@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 #[path = "systems_process_runtime.rs"]
 mod process_runtime;
+use process_runtime::file_descriptions as process_files;
 
 use object::write::{Object, Symbol, SymbolSection};
 use object::{
@@ -22,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/200";
+    "topal.provider-object.x86_64-qemu-pc-q35/201";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -32,6 +33,8 @@ pub const X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL: &str =
     "topal_x86_static_process_brk_reserve";
 pub const X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL: &str =
     "topal_x86_static_process_exec_snapshot";
+pub const X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL: &str =
+    "topal_x86_static_process_descriptor_table";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
@@ -1939,6 +1942,20 @@ pub fn generate_x86_64_systems_provider_object(
             .to_vec(),
         value: exec_snapshot_offset,
         size: 0xb000,
+        kind: SymbolKind::Data,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(process_storage),
+        flags: SymbolFlags::None,
+    });
+
+    let descriptor_table_offset = object.append_section_bss(process_storage, 4096, 4096);
+    object.add_symbol(Symbol {
+        name: X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
+            .as_bytes()
+            .to_vec(),
+        value: descriptor_table_offset,
+        size: 4096,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
         weak: false,
@@ -9415,12 +9432,20 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         code.bytes(&[0]);
         code.jump_if(0x85, "fail");
     }
-    for offset in [896_u32, 904, 912, process_runtime::AUX_CONTEXT] {
+    for offset in [
+        896_u32,
+        904,
+        912,
+        process_runtime::AUX_CONTEXT,
+        process_files::TABLE_CONTEXT,
+        process_files::ARCHIVE_CONTEXT,
+    ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0]);
         code.jump_if(0x85, "fail");
     }
+    process_files::emit_entry_validation(&mut code)?;
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
     code.bytes(&[0x4c, 0x39, 0xd0]);
@@ -9638,6 +9663,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 8, 0, 0, 0]);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fatal");
+    process_files::emit_dispatch(&mut code)?;
+    process_runtime::signals::emit_dispatch(&mut code)?;
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x85, "static-process-non-read-syscall");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -9812,8 +9839,10 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x3c, 15]);
     code.jump_if(0x87, "fatal");
     process_runtime::emit_exit_witness(&mut code);
+    code.call("fd-terminal-release");
+    code.bytes(&[0x31, 0xff]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 16]);
-    for (offset, expected) in [(737_u32, 1_u8), (892, 5)] {
+    for (offset, expected) in [(737_u32, 0_u8), (892, 5)] {
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[expected]);
@@ -12020,6 +12049,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bind("static-process-shell-final-command-read-facts-ready")?;
     process_runtime::emit_command_input(&mut code)?;
     code.bytes(&[0x50]);
+    code.call("fd-table-initialize");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[6]);
@@ -12036,13 +12066,14 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         "static-process-execve-high-heap",
     )?;
     code.bytes(&[0x59, 0x5a, 0x5e, 0x5f]);
-    for (offset, expected) in [(418_u32, 6_u8), (104, 32), (737, 1), (892, 5)] {
+    for (offset, expected) in [(418_u32, 6_u8), (104, 32), (737, 0), (892, 5)] {
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[expected]);
         code.jump_if(0x85, "fatal");
     }
     process_runtime::emit_exec_arguments(&mut code)?;
+    code.call("fd-exec-filter");
 
     // Restore all writable image pages before copying the sealed snapshot.
     code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25]);
@@ -16500,7 +16531,18 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&(0xb000_u32 / 8).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
-    for offset in [896_u32, 904, 912, process_runtime::AUX_CONTEXT] {
+    code.bytes(&[0x49, 0x8b, 0xba]);
+    code.bytes(&process_files::TABLE_CONTEXT.to_le_bytes());
+    code.bytes(&[0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fatal");
+    for offset in [
+        896_u32,
+        904,
+        912,
+        process_runtime::AUX_CONTEXT,
+        process_files::TABLE_CONTEXT,
+        process_files::ARCHIVE_CONTEXT,
+    ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0, 0, 0, 0]);
@@ -16673,6 +16715,11 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&entropy_extract_chacha20_generator()?);
     process_runtime::emit_console_write(&mut code)?;
     process_runtime::emit_extent_subroutine(&mut code)?;
+    process_files::emit_initialize(&mut code)?;
+    process_files::emit_lifetime_services(&mut code)?;
+    process_files::emit_transfer_services(&mut code)?;
+    process_files::emit_reclamation(&mut code)?;
+    process_runtime::signals::emit_services(&mut code)?;
     code.finish()
 }
 
@@ -20290,11 +20337,11 @@ assert bytes(output) == block[32:]
                     .windows(9)
                     .filter(|window| { *window == [0x65, 0x80, 0x3c, 0x25, 0xe1, 0x02, 0, 0, 1] })
                     .count()
-                    == 16
+                    == 14
                 && process_enter
                     .windows(9)
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0xe1, 0x02, 0, 0, 0]),
-            "profile and busybox opens must publish, gate successors including bounded header polling, terminal probes, reopened lifetime, and revoke their private descriptions"
+            "profile and busybox opens must publish and gate predecessor observations before transferring the reopened description to the reusable table"
         );
         assert!(
             shell_continuation.windows(20).any(|window| window

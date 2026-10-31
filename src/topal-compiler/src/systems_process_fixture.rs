@@ -4,6 +4,8 @@
 pub(super) const RUNTIME_ENTRY: u32 = 0x004a_a000;
 pub(super) const ARGUMENT_BYTES: u32 = 0x004a_b000;
 pub(super) const OUTPUT_BYTES: u32 = 0x004a_b200;
+#[path = "systems_process_checks.rs"]
+pub(super) mod checks;
 
 pub(super) fn arguments() -> Vec<u8> {
     let mut bytes = b"/bin/busybox\0true\0\0".to_vec();
@@ -16,6 +18,7 @@ pub(super) fn arguments() -> Vec<u8> {
 pub(super) fn output() -> Vec<u8> {
     let mut bytes = b"runtime-clean\n".to_vec();
     bytes.extend_from_slice(&[b'z'; 256]);
+    bytes.extend_from_slice(b"runtime-alias\n");
     bytes
 }
 
@@ -43,6 +46,9 @@ pub(super) fn code() -> Vec<u8> {
     code.extend_from_slice(&[0xbe, 0, 0xe0, 0x7f, 0, 0xbf]);
     code.extend_from_slice(&ARGUMENT_BYTES.to_le_bytes());
     code.extend_from_slice(&[0xb9, 0, 1, 0, 0, 0xfc, 0xf3, 0xa6, 0x75, 0xfe]);
+    code.extend_from_slice(&[0xb8]);
+    code.extend_from_slice(&checks::ENTRY.to_le_bytes());
+    code.extend_from_slice(&[0xff, 0xd0]);
     // TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001: error priority,
     // complete-extent rejection without partial output, empty candidates,
     // both descriptions, and the maximum successful transfer count.
