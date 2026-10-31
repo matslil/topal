@@ -642,6 +642,17 @@ independent of argv[0]. Qualification shall cover
 copy/boundary errors, maximum transport, downward stack growth, state on failed
 exec, changed cwd/exported environments and complete reclamation.
 
+A repeated static-exec refinement shall admit successive image replacements
+under the same retained process/executable owner after each qualified startup,
+without depending on the original shell command phase. Each transition shall
+validate current backing, copy before commit, preserve process resources,
+filter/reset image-local state, construct fresh startup/random identity and
+erase staging. Failed requests shall preserve the current generation; terminal
+reclamation shall release retained authority exactly once. Qualification shall
+execute multiple replacements, later-generation failed-prefix retries,
+repeated descriptor/signal/cwd inheritance and complete rollback. Broader
+mapping and executable selection remain separately required.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained

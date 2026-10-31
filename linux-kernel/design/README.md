@@ -239,6 +239,7 @@ records, not this directory alone, define language meaning.
 - [Static-process realtime seconds](static-process-realtime-seconds.md)
 - [Reusable sealed-root credentials](reusable-root-credentials.md)
 - [Caller-owned exec environments and stack payloads](runtime-environments.md)
+- [Successive retained static executable generations](repeated-static-exec.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)

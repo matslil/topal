@@ -704,6 +704,15 @@ entry mechanisms. Rejected operations preserve the table's prior authority.
 These systems services do not introduce core-language aliasing, raw references,
 assembly, arbitrary path selection or a general VFS merely from bounded evidence.
 
+A repeated static-exec refinement may replace successive images under one
+retained executable/process owner after each admitted startup. It validates
+current authority rather than an earlier shell-command phase, copies before
+commit, preserves process resources and filters/resets image resources on each
+transition. Every entry constructs fresh stack/auxiliary/random identity and
+terminal cleanup releases retained execution authority once. Bounded mapping
+and executable qualifications remain explicit; repetition grants no new
+executable, process or core-language authority.
+
 A separately qualified process-signal refinement may retain native action
 registrations and a blocked set as process-owned ABI state. Complete checked
 input and old-value transfers preserve native overlap and commit/error behavior.
