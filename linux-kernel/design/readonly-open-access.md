@@ -1,7 +1,7 @@
 # Access intent in the immutable boot-root namespace
 
-Status: systems-only direction adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-249`).
+Status: implemented and physically qualified under standing systems-only chat
+authorization (`TK-DEC-249`); see the [report](../step-4-readonly-open-access.md).
 
 The prepared boot-root namespace is an immutable read-only filesystem view.
 Its regular object uses the retained boot-resource member, and it cannot grant

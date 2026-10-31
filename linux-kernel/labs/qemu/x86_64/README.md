@@ -487,3 +487,12 @@ adds a binary-representation case through QTest setup before the final command,
 and checks actual `date +%s` output against the expected epoch interval. The
 [RTC evidence](results/topal-realtime-seconds-gate.json) records these explicit
 RTC overrides and encodings as well as the common artifact/runtime provenance.
+
+The [open-access qualification](../../../step-4-readonly-open-access.md) retains
+native write-intent copy/lookup/type/access error cases without granting
+writable descriptions. `--process-workload interactive-prompt` and
+`interactive-prompt-changed`, with the pinned external static image, run an
+unmodified replacement shell through successive serial prompt/read/builtin
+cycles, cwd changes and statuses 7/9. Caller environments select the prompt;
+expected transcripts remain harness evidence. Process creation, a controlling
+terminal and job control remain separately qualified.

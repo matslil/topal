@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/224")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/225")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/214")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/215")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/224",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/225",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/124",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/125",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/224")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/225")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1444,6 +1444,24 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "retained-pid-tid-parent-and-immutable-390-byte-uts-view")
             self.assertEqual(record["observations"]["result"],"pass")
             self.assertEqual(record["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+
+    def test_readonly_open_access_and_interactive_serial_cycles(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-ACCESS-001
+        self.assertEqual(self.evidence["static_user_image_sha256"],
+                         hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        self.assertEqual(self.evidence["observations"]["readonly_open_access_profile"],
+                         "lookup-and-type-errors-before-immutable-view-write-denial")
+        for workload, status in (("interactive-prompt", 7), ("interactive-prompt-changed", 9)):
+            record=json.loads((LAB/"results"/f"topal-runtime-{workload}-gate.json").read_text())
+            command,output,_=GATE.PROCESS_WORKLOADS[workload]
+            self.assertEqual(record["process_command_utf8"].encode(),command)
+            self.assertEqual(record["process_output_utf8"].encode(),output)
+            self.assertEqual(record["process_exit_status"],status)
+            self.assertEqual(record["process_exec_commits"],1)
+            self.assertEqual(record["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+            self.assertEqual(record["observations"]["result"],"pass")
+            self.assertTrue(record["observations"]["qemu_running_after_markers"])
+            self.assertTrue(record["observations"]["serial_quiescent_after_fatal_disposition"])
 
     def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001

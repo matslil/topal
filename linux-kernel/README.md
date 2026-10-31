@@ -891,6 +891,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 completed deadline notification admission](step-4-deadline-entry-filter.md)
 
 - [Step 4 reusable prepared-process and system observations](step-4-reusable-process-observations.md)
+- [Step 4 immutable boot-root open access and interactive serial prompts](step-4-readonly-open-access.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
