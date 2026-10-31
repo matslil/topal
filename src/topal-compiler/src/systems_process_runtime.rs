@@ -6,8 +6,14 @@
 
 use super::{CompileError, X86FunctionEncoder, emit_static_process_sysret};
 
+#[path = "systems_process_credentials.rs"]
+pub(super) mod credentials;
 #[path = "systems_file_descriptions.rs"]
 pub(super) mod file_descriptions;
+#[path = "systems_process_namespace.rs"]
+pub(super) mod namespace;
+#[path = "systems_process_realtime.rs"]
+pub(super) mod realtime;
 #[path = "systems_process_signals.rs"]
 pub(super) mod signals;
 

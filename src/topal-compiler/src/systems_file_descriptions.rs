@@ -10,8 +10,9 @@ use super::{CompileError, E, R::*, X86FunctionEncoder};
 
 pub(in super::super) const TABLE_CONTEXT: u32 = 928;
 pub(in super::super) const ARCHIVE_CONTEXT: u32 = 936;
-const SLOTS: i32 = 64;
-const DESCRIPTIONS: i32 = 320;
+pub(super) const SLOTS: i32 = 64;
+pub(super) const DESCRIPTIONS: i32 = 320;
+pub(in super::super) const TABLE_BYTES: u64 = 8192;
 pub(super) const STAGING: i32 = 1408;
 const FILE_SIZE: u64 = 2_024_544;
 
@@ -32,7 +33,7 @@ pub(in super::super) fn emit_entry_validation(
     // Both private table and borrowed archive must retain supervisor identity
     // addresses outside that interval during user-copy service execution.
     e.mov(R8, A);
-    e.add(R8, 4096);
+    e.add(R8, TABLE_BYTES as i32);
     e.0.jump_if(0x82, "fail");
     e.cmp(R8, 0x4000_0000);
     e.0.jump_if(0x87, "fail");
@@ -44,7 +45,7 @@ pub(in super::super) fn emit_entry_validation(
     e.store(R10, TABLE_CONTEXT as i32, A);
     e.mov(Di, A);
     e.imm(A, 0);
-    e.imm(C, 4096 / 8);
+    e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fail");
     e.load(Si, Sp, 0x50); // eleventh argument: retained boot handoff
@@ -140,6 +141,12 @@ pub(in super::super) fn emit_initialize(code: &mut X86FunctionEncoder) -> Result
     e.store(R12, 16, A);
     e.imm(A, FILE_SIZE);
     e.store(R12, 24, A);
+    e.imm(A, 3);
+    e.store(R12, 40, A); // cwd object: root
+    e.imm(A, 1);
+    e.store(R12, 48, A); // borrowed prepared-root identity witness
+    e.imm(A, 5);
+    e.store(R12, DESCRIPTIONS + 3 * 64 + 32, A);
     for index in 0..4_i32 {
         e.imm(A, index as u64 + 1);
         e.store(R12, SLOTS + 16 * index, A);
@@ -347,6 +354,8 @@ pub(in super::super) fn emit_lifetime_services(
         ("fd-espipe", 29),
         ("fd-enotty", 25),
         ("fd-esrch", 3),
+        ("fd-eisdir", 21),
+        ("fd-enotdir", 20),
     ] {
         e.0.bind(name)?;
         e.imm(A, (-errno as i64) as u64);
@@ -390,12 +399,14 @@ pub(in super::super) fn emit_transfer_services(
     e.mov(R9, D);
     e.0.call("fd-native-range");
     e.0.jump_if(0x82, "fd-efault");
+    e.cmp(B, 4);
+    e.0.jump_if(0x84, "fd-eisdir");
     e.cmp(R9, 0);
     e.0.jump_if(0x84, "fd-read-zero");
     e.cmp(B, 1);
     e.0.jump_if(0x84, "fd-serial-read");
     e.cmp(B, 3);
-    e.0.jump_if(0x85, "fatal");
+    e.0.jump_if(0x85, "fd-eisdir");
     e.load(R15, R14, 24);
     e.load(A, R12, 24);
     e.rr(0x39, R15, A);
@@ -469,7 +480,10 @@ pub(in super::super) fn emit_transfer_services(
     e.0.jump_if(0x82, "fd-ebadf");
     e.load(A, R14, 0);
     e.cmp(A, 3);
+    e.0.jump_if(0x84, "fd-seek-kind-ready");
+    e.cmp(A, 4);
     e.0.jump_if(0x85, "fd-espipe");
+    e.0.bind("fd-seek-kind-ready")?;
     e.0.bytes(&[0x89, 0xd2]);
     e.cmp(D, 0);
     e.0.jump_if(0x84, "fd-seek-set");
@@ -477,6 +491,9 @@ pub(in super::super) fn emit_transfer_services(
     e.0.jump_if(0x84, "fd-seek-current");
     e.cmp(D, 2);
     e.0.jump_if(0x85, "fd-einval");
+    e.load(A, R14, 0);
+    e.cmp(A, 4);
+    e.0.jump_if(0x84, "fd-seek-set");
     e.load(A, R12, 24);
     e.0.jump("fd-seek-add");
     e.0.bind("fd-seek-set")?;
@@ -509,24 +526,21 @@ pub(in super::super) fn emit_transfer_services(
     e.load(A, R14, 0);
     e.cmp(A, 3);
     e.0.jump_if(0x84, "fd-stat-file");
+    e.cmp(A, 4);
+    e.0.jump_if(0x84, "fd-stat-file");
     e.imm(A, 0x2180);
     e.store(R12, STAGING + 24, A);
     e.imm(A, 0x4400);
     e.store(R12, STAGING + 40, A);
     e.0.jump("fd-stat-publish");
     e.0.bind("fd-stat-file")?;
-    e.imm(A, 5);
-    e.store(R12, STAGING + 8, A);
-    e.imm(A, 0o100755);
-    e.store(R12, STAGING + 24, A);
-    e.imm(A, FILE_SIZE);
-    e.store(R12, STAGING + 48, A);
-    e.imm(A, FILE_SIZE.div_ceil(512));
-    e.store(R12, STAGING + 64, A);
+    e.load(R15, R14, 32);
+    e.0.call("namespace-stat-value");
     e.0.bind("fd-stat-publish")?;
+    e.0.bind("fd-stat-publish-to-r8")?;
     e.mov(Si, R12);
     e.add(Si, STAGING);
-    e.gs(0x8b, Di, 320);
+    e.mov(Di, R8);
     e.imm(C, 144);
     e.0.bytes(&[0xf3, 0xa4]);
     wipe_staging(&mut e);
@@ -605,10 +619,10 @@ pub(in super::super) fn emit_reclamation(
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.mov(Di, R12);
-    e.imm(C, 4096 / 8);
+    e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xf3, 0x48, 0xab]);
     e.mov(Di, R12);
-    e.imm(C, 4096 / 8);
+    e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.0.bind("fd-release-return")?;

@@ -1,5 +1,7 @@
 """Independent executable ABI witnesses for file and signal process state."""
 import struct
+import runpy
+from pathlib import Path
 
 ENTRY, PRE_EXEC = 0x4AC000, 0x4B2000
 BUF, STAT, ACTION, OLD = 0x7FE400, 0x7FE600, 0x7FE900, 0x7FE940
@@ -57,6 +59,8 @@ class Witness:
 
 def pre_exec():
     w = Witness()
+    w.imm('48b8', 0x4C0000)
+    w.raw('ffd0')
     w.call(72, (3,1030,10), 10)
     w.call(32, (3,), 4)
     w.call(8, (4,7,0), 7)
@@ -135,6 +139,8 @@ def code():
     ):
         w.call(number,args,result)
     signal_checks(w)
+    w.imm('48b8', 0x4B4000)
+    w.raw('ffd0')
     result = w.finish()
     assert len(result) < PRE_EXEC-ENTRY
     return result
@@ -173,3 +179,8 @@ def signal_checks(w):
     w.call(14,(2,ACTION,0x7FFFFC,8),-14)
     w.call(14,(99,0,OLD,8),0)
     w.memory(OLD,32)
+
+
+def namespace_code(stage):
+    encoder = runpy.run_path(str(Path(__file__).parent / 'static_namespace_checks.py'))
+    return encoder['code'](stage, Witness)

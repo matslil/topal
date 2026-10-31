@@ -9,25 +9,25 @@ const OLD: u64 = 0x7fe940;
 const MASK: u64 = !0x40100_u64;
 
 #[derive(Default)]
-struct Witness(Vec<u8>);
+pub(super) struct Witness(pub(super) Vec<u8>);
 impl Witness {
-    fn imm(&mut self, prefix: &[u8], value: u64) {
+    pub(super) fn imm(&mut self, prefix: &[u8], value: u64) {
         self.0.extend_from_slice(prefix);
         self.0.extend_from_slice(&value.to_le_bytes());
     }
-    fn store(&mut self, address: u64, value: u64) {
+    pub(super) fn store(&mut self, address: u64, value: u64) {
         self.imm(&[0x48, 0xb8], value);
         self.imm(&[0x48, 0xa3], address);
     }
-    fn expect(&mut self, value: u64) {
+    pub(super) fn expect(&mut self, value: u64) {
         self.imm(&[0x49, 0xbb], value);
         self.0.extend_from_slice(&[0x4c, 0x39, 0xd8, 0x75, 0xfe]);
     }
-    fn memory(&mut self, address: u64, value: u64) {
+    pub(super) fn memory(&mut self, address: u64, value: u64) {
         self.imm(&[0x48, 0xa1], address);
         self.expect(value);
     }
-    fn call(&mut self, number: u64, args: &[u64], expected: i64) {
+    pub(super) fn call(&mut self, number: u64, args: &[u64], expected: i64) {
         for (prefix, value) in [
             &[0x48, 0xbf][..],
             &[0x48, 0xbe],
@@ -62,7 +62,7 @@ impl Witness {
             self.memory(OLD + offset, value);
         }
     }
-    fn finish(mut self) -> Vec<u8> {
+    pub(super) fn finish(mut self) -> Vec<u8> {
         // Erase all scratch without touching the user CALL return address.
         self.imm(&[0x48, 0xbf], BUF);
         self.imm(&[0x48, 0xb9], 0x600 / 8);
@@ -74,6 +74,8 @@ impl Witness {
 
 pub(in super::super) fn pre_exec() -> Vec<u8> {
     let mut w = Witness::default();
+    w.imm(&[0x48, 0xb8], u64::from(super::namespace_checks::PRE_EXEC));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     w.call(72, &[3, 1030, 10], 10);
     w.call(32, &[3], 4);
     w.call(8, &[4, 7, 0], 7);
@@ -186,6 +188,8 @@ pub(in super::super) fn code() -> Vec<u8> {
     w.call(3, &[4], 0);
     w.call(1, &[4, u64::MAX, 1], -9);
     signal_checks(&mut w);
+    w.imm(&[0x48, 0xb8], u64::from(super::namespace_checks::ENTRY));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     let code = w.finish();
     assert!(code.len() < (PRE_EXEC - ENTRY) as usize);
     code

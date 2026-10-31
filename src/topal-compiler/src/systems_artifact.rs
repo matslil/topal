@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/219";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/208";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/220";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/209";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1777,6 +1777,14 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
         (
             process_fixture::checks::PRE_EXEC,
             process_fixture::checks::pre_exec(),
+        ),
+        (
+            process_fixture::namespace_checks::ENTRY,
+            process_fixture::namespace_checks::code("after_exec"),
+        ),
+        (
+            process_fixture::namespace_checks::PRE_EXEC,
+            process_fixture::namespace_checks::code("pre_exec"),
         ),
     ] {
         let offset = address as usize - 0x400000;

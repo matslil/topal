@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/201";
+    "topal.provider-object.x86_64-qemu-pc-q35/202";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1949,13 +1949,14 @@ pub fn generate_x86_64_systems_provider_object(
         flags: SymbolFlags::None,
     });
 
-    let descriptor_table_offset = object.append_section_bss(process_storage, 4096, 4096);
+    let descriptor_table_offset =
+        object.append_section_bss(process_storage, process_files::TABLE_BYTES, 4096);
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
             .as_bytes()
             .to_vec(),
         value: descriptor_table_offset,
-        size: 4096,
+        size: process_files::TABLE_BYTES,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
         weak: false,
@@ -9665,6 +9666,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     process_files::emit_dispatch(&mut code)?;
     process_runtime::signals::emit_dispatch(&mut code)?;
+    process_runtime::namespace::emit_dispatch(&mut code)?;
+    process_runtime::realtime::emit_dispatch(&mut code)?;
+    process_runtime::credentials::emit_dispatch(&mut code)?;
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x85, "static-process-non-read-syscall");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -16533,7 +16537,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x49, 0x8b, 0xba]);
     code.bytes(&process_files::TABLE_CONTEXT.to_le_bytes());
-    code.bytes(&[0x31, 0xc0, 0xb9, 0, 2, 0, 0, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.bytes(&[0x31, 0xc0, 0xb9]);
+    code.bytes(&((process_files::TABLE_BYTES / 8) as u32).to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
     for offset in [
         896_u32,
@@ -16720,6 +16726,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_files::emit_transfer_services(&mut code)?;
     process_files::emit_reclamation(&mut code)?;
     process_runtime::signals::emit_services(&mut code)?;
+    process_runtime::namespace::emit_services(&mut code)?;
+    process_runtime::realtime::emit_services(&mut code)?;
+    process_runtime::credentials::emit_services(&mut code)?;
     code.finish()
 }
 

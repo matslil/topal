@@ -6,6 +6,8 @@ pub(super) const ARGUMENT_BYTES: u32 = 0x004a_b000;
 pub(super) const OUTPUT_BYTES: u32 = 0x004a_b200;
 #[path = "systems_process_checks.rs"]
 pub(super) mod checks;
+#[path = "systems_namespace_checks.rs"]
+pub(super) mod namespace_checks;
 
 pub(super) fn arguments() -> Vec<u8> {
     let mut bytes = b"/bin/busybox\0true\0\0".to_vec();

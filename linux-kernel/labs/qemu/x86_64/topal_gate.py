@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any
+from typing import Any, Callable
 
 
 LAB = Path(__file__).resolve().parent
@@ -44,6 +44,12 @@ PROCESS_WORKLOADS = {
     "head-stdin": (b"exec /bin/busybox head -c 4 <&3\n", b"\x7fELF", 0),
     "head-alias": (b"exec 4<&3; exec /bin/busybox head -c 4 <&4\n", b"\x7fELF", 0),
     "wc-stdin": (b"exec /bin/busybox wc -c <&3\n", b"2024544\n", 0),
+    "head-file": (b"exec /bin/busybox head -c 4 /bin/busybox\n", b"\x7fELF", 0),
+    "head-normalized": (
+        b"exec /bin/busybox head -c 4 /bin/../bin//./busybox\n", b"\x7fELF", 0
+    ),
+    "wc-file": (b"exec /bin/busybox wc -c /bin/busybox\n", b"2024544 /bin/busybox\n", 0),
+    "ls-bin": (b"exec /bin/busybox ls -1 /bin\n", b"busybox\n", 0),
     "dd-seek": (
         b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
         b"ELF\x02", 0,
@@ -974,7 +980,9 @@ def static_user_fixture() -> bytes:
     output_bytes = b"runtime-clean\n" + b"z" * 256 + b"runtime-alias\n"
     image[0xA_B200:0xA_B200+len(output_bytes)] = output_bytes
     for address, payload in ((checks["ENTRY"], checks["code"]()),
-                             (checks["PRE_EXEC"], checks["pre_exec"]())):
+                             (checks["PRE_EXEC"], checks["pre_exec"]()),
+                             (0x4B4000, checks["namespace_code"]("after_exec")),
+                             (0x4C0000, checks["namespace_code"]("pre_exec"))):
         offset = address - 0x400000
         image[offset:offset+len(payload)] = payload
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
@@ -1133,6 +1141,7 @@ def qemu_command(
 def observe_gate(
     image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float,
     process_command: bytes = PROCESS_COMMAND,
+    before_process_command: Callable[[], None] | None = None,
 ) -> bytes:
     master_fd, slave_fd = pty.openpty()
     os.set_blocking(master_fd, False)
@@ -1178,6 +1187,8 @@ def observe_gate(
                     not command_injected
                     and b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK" in observed
                 ):
+                    if before_process_command is not None:
+                        before_process_command()
                     os.write(master_fd, process_command)
                     command_injected = True
                 positions = [observed.find(marker) for marker in MARKERS]
@@ -1228,7 +1239,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/219",
+        "schema": "topal-kernel-toolchain-gate-qemu/220",
         "publication": "topalc-target-interface/1",
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
@@ -1258,6 +1269,9 @@ def evidence_record(
         "boot_resource_sha256": digest(boot_resource),
         "boot_provenance_sha256": digest(boot_provenance),
         "observations": {
+            "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
+            "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
+            "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",
             "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
             "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
             "reusable_clean_boundary_corpus": static_user_input != "pinned-external-static-busybox",
