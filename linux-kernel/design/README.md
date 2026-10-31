@@ -262,3 +262,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Resumable static-process pair](resumable-static-process-pair.md)
 - [Shared anonymous pipes and exact readiness](static-process-pipes.md)
 - [Closed ordinary source modules for kernel policy](freestanding-source-modules.md)
+- [Immutable Records in numeric kernel modules](freestanding-numeric-records.md)

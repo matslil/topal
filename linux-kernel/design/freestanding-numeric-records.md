@@ -1,7 +1,8 @@
 # Immutable Records in freestanding numeric modules
 
 `TK-DEC-258`; systems-only qualification adopted under standing authorization.
-Implementation and qualification pending.
+Implemented and physically qualified; see the
+[Step 4 report](../step-4-freestanding-numeric-records.md).
 
 The approved architecture places semantic kernel policy in ordinary modules.
 `TK-DEC-257` qualifies closed source imports but admits only scalar numeric and
