@@ -2679,6 +2679,19 @@ dependency bytes explicitly and perform no ambient discovery. Changed-helper
 execution, actual imported frames, malformed snapshots and complete kernel
 rollback shall be tested.
 
+The numeric publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RECORDS-001` under
+`TK-DEC-258`. It shall reuse ordinary Record construction, static selection,
+reconstruction, branch and direct-call lowering; recursively bound every field;
+charge actual evaluation without duplicate or omitted base/receiver/replacement
+costs; and prove actual aggregate call/spill stack costs within the unchanged
+reserves. It shall preserve field-order metadata while permitting an order-free
+bound abstraction only for the order-insensitive admitted operations. Isolated
+module checking shall construct exact structured argument classifiers without
+caller-private declarations. Unsupported payloads, shape changes, reflection,
+effects, escape and missing/excessive resource evidence shall reject publication.
+Physical structured-helper execution, independent arithmetic, construction-order
+variants, malformed/bounded cases and full erasure shall qualify the extension.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private

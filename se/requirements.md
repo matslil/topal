@@ -1555,6 +1555,16 @@ failures shall fail closed. Qualification shall cover boundary arithmetic,
 source/runtime execution, bounds, ABI preservation, retained ownership and full
 reclamation; measured resource use alone shall not establish the bound.
 
+Under `TK-DEC-258`, numeric source modules may use closed immutable Records
+composed recursively from qualified Boolean/numeric/pair values. Admission shall
+preserve ordinary labels, order, evaluation, reconstruction and private function
+boundaries; extend complete fieldwise allocation bounds and actual aggregate
+stack proofs; retain module isolation and exact source publication; and forbid
+escape beyond the numeric invocation. The native scalar interface and existing
+4096-byte stack/65536-byte arena limits shall remain unchanged. Actual nested
+Record execution, independent arithmetic, order variants, malformed inputs,
+resource bounds and complete reclamation shall qualify the extension.
+
 The initial static-process child refinement shall realize `TK-DEC-254` under
 `TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
 shared inherited open descriptions, checked native creation/wait boundaries,

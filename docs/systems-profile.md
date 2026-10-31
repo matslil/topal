@@ -427,6 +427,16 @@ prove stack and allocation bounds, including runtime iteration/allocation costs;
 measurements alone are insufficient. Missing proof or unsupported source fails
 before publication. Existing finite libraries retain their contracts.
 
+A further numeric systems qualification may group those values in recursively
+closed immutable Records. Ordinary construction, static field selection,
+reconstruction, decisions and helper parameter/result transport retain their
+existing semantics and actual field-order metadata. Complete allocation bounds
+must charge all evaluated fields, receivers, bases and replacements exactly once
+per evaluation, and complete stack evidence must cover aggregate transport.
+The invocation owns every nested numeric value until scalar result extraction
+and full erasure. This introduces no new allocator, persistent state, native
+layout, resource authority or core-language meaning; see `TK-DEC-258`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 container, concurrent invocation or module support.

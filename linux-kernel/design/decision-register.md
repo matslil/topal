@@ -274,6 +274,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-257` | ordinary imported modules in finite and numeric kernel policy | single-unit rejection prevents sharing ordinary checked helpers; implicit loading would break source identity and closure proofs | systems-only direction adopted under standing authorization; [closed module snapshots](freestanding-source-modules.md) defines exact dependency closure, shared checking, bounded discovery, complete proofs and digested publication; [qualified report](../step-4-freestanding-source-modules.md) records actual transitive/numeric module frames, 180/824-byte stack and 41544-byte allocation bounds, exact snapshot publication, changed-module rejection, one-kernel regression and complete rollback |
 
+| `TK-DEC-258` | ordinary immutable Records in numeric kernel policy modules | flat facts obstruct structured subsystem interfaces; unchecked aggregate costs or lifetime would undermine the owned numeric runtime | systems-only qualification adopted under standing authorization; [numeric Records](freestanding-numeric-records.md) defines recursive checked shapes, ordinary lowering, fieldwise evaluation bounds, aggregate stack proof and invocation lifetime; implementation and qualification pending |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
