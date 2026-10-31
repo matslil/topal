@@ -180,7 +180,7 @@ class Released(Checked):
         assert records
         assert memory(table,0x43000)==bytes(0x43000)
         assert word(context+152)==0 and word(context+160)==0
-        assert all(word(context+i)==0 for i in (952,960,968))
+        assert all(word(context+i)==0 for i in (952,960,968,976))
         if {terminate!r}:assert terminated_live and pending and second_bank_retained
         else:assert not pending and blocking_waits=={1 if external else 2}
         if {external!r}:assert injected_yield and external_exec and entropy_advanced

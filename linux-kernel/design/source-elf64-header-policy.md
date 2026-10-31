@@ -1,7 +1,8 @@
 # Source ELF64 header policy over an owned snapshot
 
 `TK-DEC-260`; systems-only refinement adopted under standing authorization.
-Design adopted; implementation and physical qualification remain required.
+Implemented; [qualification report](../step-4-source-elf64-header.md) records
+the current source, ownership and physical refusal evidence.
 
 The next boundary moves actual executable-header interpretation into an
 ordinary source module. Add an optional `image-library` declaration with the

@@ -19,6 +19,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
   aggregate stack/allocation bounds and an imported structured deadline policy.
 - Bounded immutable integer Arrays with checked Optional reads, exact per-entry
   allocation bounds and imported collection helpers using shared ordinary runtime.
+- Source ELF64 header interpretation over copied owned bytes, precommit exec
+  refusal, independently selected header/time policies and complete reclamation.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -37,16 +39,18 @@ systems abstractions; ARM64 implementation is outside the current focus.
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-freestanding-numeric-arrays.md) records 56 successful
-physical runs on one kernel, two positive representation/order variants, twenty-four lab
-contracts and bounded workspace validation. Each report identifies its executed scope and limitations.
+The [current runtime report](step-4-source-elf64-header.md) records source byte
+ownership, refusal atomicity, header-only execution, 57 successful physical runs
+on one primary kernel, three positive variants, 25 toolchain contracts plus four
+reference-VM contracts and bounded workspace validation. Each report identifies
+its executed scope and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed source-module imports, recursive immutable Records and bounded integer Arrays/Optional reads; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed source-module imports, recursive immutable Records, bounded integer Arrays/Optional reads and copied header interpretation; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects, four shared anonymous FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |

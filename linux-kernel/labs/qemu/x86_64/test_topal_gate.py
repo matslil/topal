@@ -25,11 +25,71 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_source_header_policy_owns_bytes_refuses_before_commit_and_runs_without_time(self) -> None:
+        # TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
+        proof=json.loads((LAB/"results/topal-source-elf64-header-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-source-elf64-header-qemu/1")
+        self.assertEqual(proof["harness_sha256"],sha256(LAB/"header_gate.py"))
+        self.assertEqual(proof["inspector_sha256"],sha256(LAB/"header_inspect.py"))
+        library=proof["library"]
+        self.assertEqual(library["interface"],"static-elf64-header-v1")
+        self.assertEqual(library["allocation"]["maximum_bytes"],9648)
+        self.assertEqual(library["allocation"]["bridge_bytes"],2624)
+        self.assertEqual(library["native_invocation_save_bytes"],64)
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t"))
+        self.assertEqual(proof["module_publication"]["snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertEqual([m["source"] for m in library["modules"]],["support/elf.t"])
+        self.assertEqual(library["modules"][0]["sha256"],sha256(GATE.LINUX_KERNEL/"kernel/support/elf.t"))
+        names={f["symbol"] for f in library["functions"]}
+        self.assertIn("topal.elf.runtime.container.array.int.at",names)
+        self.assertFalse(any(n.startswith(("topal.runtime.","topal.platform.","topal.numeric.")) for n in names))
+        costs={"topal_kernel_numeric_allocate_v1":8,"topal_kernel_numeric_abort_v1":8}
+        for function in library["functions"]:
+            cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
+            self.assertEqual(cost,function["maximum_call_path_bytes"])
+            costs[function["symbol"]]=cost
+        self.assertEqual(costs[library["native_export"]]+32+64,library["maximum_stack_bytes"])
+        self.assertLessEqual(library["maximum_stack_bytes"],4096)
+        primary=proof["primary"]
+        self.assertEqual(primary["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        self.assertTrue(proof["header_only"]["time_library_absent"])
+        for name in ("primary","header_only"):
+            case=proof[name]
+            self.assertEqual(case["runtime"]["observations"]["result"],"pass")
+            observation=case["observation"]
+            self.assertEqual(observation["result"],"pass")
+            self.assertTrue(observation["binding_erased"] and observation["terminal_arena_erased"] and observation["backing_erased"])
+        for name in ("primary","controlled_refusal","counterexample","header_only"):
+            observation=proof[name]["observation"]
+            frame=observation["source_frames"][0]
+            self.assertEqual(frame["entry_count"],64)
+            self.assertEqual(frame["bytes"][:7],[127,69,76,70,2,1,1])
+            self.assertEqual((frame["machine"],frame["maximum_program_headers"]),(62,16))
+            self.assertEqual(len(set(frame["node_arena_offsets"])),64)
+            self.assertTrue(frame["actual_bytes_match_owned_input"] and frame["all_allocated_storage_invocation_owned"])
+            self.assertIn("support/elf.t",frame["trace"])
+            for call in observation["calls"]:
+                self.assertLessEqual(call["arena_highwater"],9648)
+                self.assertTrue(all(call[k] for k in ("arena_erased","retired_stack_erased","native_state_preserved",
+                                                     "volatile_pointers_cleared","original_file_unchanged","retained_state_unchanged")))
+        refusal=proof["controlled_refusal"]
+        self.assertIsNone(refusal["runtime"])
+        self.assertEqual(refusal["linked_kernel_sha256"],primary["linked_kernel_sha256"])
+        self.assertEqual(refusal["observation"]["native_error"],8)
+        self.assertTrue(all(refusal["observation"][k] for k in ("staging_erased","no_exec_commit","retained_state_preserved")))
+        wrong=proof["counterexample"]
+        self.assertIsNone(wrong["runtime"])
+        self.assertTrue(wrong["native_root_and_provider_unchanged"])
+        self.assertEqual(wrong["library"]["source_sha256"],library["source_sha256"])
+        self.assertNotEqual(wrong["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertEqual(wrong["observation"]["result"],"expected-header-rejection")
+        self.assertEqual((wrong["observation"]["calls"][0]["expected"],wrong["observation"]["calls"][0]["observed"]),(0,1))
+
     def test_numeric_arrays_retain_actual_owned_entries_and_reviewed_runtime_closure(self) -> None:
         # TOPAL-SYSTEMS-NUMERIC-ARRAYS-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/3")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/4")
         runtime=GATE.REPOSITORY/"src/topal-compiler/src/runtime"
         allocation=library["allocation"]
         self.assertEqual(allocation["collection_runtime_sha256"],sha256(runtime/"fundamental_containers.ll"))
@@ -58,8 +118,8 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-RECORDS-001, TOPAL-TYPE-RECONSTRUCT-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/3")
-        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/3")
+        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/4")
+        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/4")
         self.assertLessEqual(library["maximum_stack_bytes"],4096)
         self.assertEqual(library["allocation"]["maximum_bytes"],41624)
         variant=proof["order_variant"]
@@ -742,16 +802,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/235")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/236")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/222")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/223")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/235",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/236",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/135",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/136",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1277,7 +1337,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/235")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/236")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1797,7 +1857,7 @@ class TopalToolchainGateTests(unittest.TestCase):
             cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
             self.assertEqual(cost,function["maximum_call_path_bytes"])
             costs[function["symbol"]]=cost
-        maximum=costs[library["native_export"]]+library["native_alignment_reserve_bytes"]
+        maximum=costs[library["native_export"]]+library["native_alignment_reserve_bytes"]+library["native_invocation_save_bytes"]
         self.assertEqual(maximum,library["maximum_stack_bytes"])
         self.assertLessEqual(maximum,library["stack_limit_bytes"])
         self.assertEqual(library["native_leaf_return_bytes"],8)

@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [bounded ordinary numeric Arrays](step-4-freestanding-numeric-arrays.md).
+The latest Step 4 increment qualifies [source ELF64 header interpretation](step-4-source-elf64-header.md).
 
 ## Current phase
 
@@ -714,6 +714,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 1 report](step-1-report.md)
 - [Step 2 design proposal](step-2-report.md)
 - [Step 3 reference VM report](step-3-report.md)
+- [Step 4 source ELF64 header policy](step-4-source-elf64-header.md)
 - [Step 4 systems-root semantic foundation](step-4-semantic-foundation.md)
 - [Step 4 bounded bootstrap storage](step-4-bootstrap-storage.md)
 - [Step 4 x86-64 provider plan](step-4-x86-provider-plan.md)

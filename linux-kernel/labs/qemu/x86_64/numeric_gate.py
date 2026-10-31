@@ -264,6 +264,7 @@ def order_variant(root,primary,timeout):
     if changed==original:raise GATE.GateError("Record order variant did not change the constructor")
     (case/"policy/relative-sleep-deadline.t").write_text(changed)
     (case/"policy/boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
+    (case/"policy/static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t").read_bytes())
     values=GATE.build_image(case/"artifact",library_root=case)
     artifact=json.loads(values[3].read_text())
     for prefix in ("topal.systems-root-object","topal.provider-object"):
@@ -288,6 +289,7 @@ def wrong_policy(root,primary,timeout,module_body=False):
     elif changed==original:raise GATE.GateError("counterexample did not alter the source policy")
     (policy/"relative-sleep-deadline.t").write_text(changed)
     (policy/"boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
+    (policy/"static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t").read_bytes())
     shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
     if module_body:
         module=case/"support/clock.t"

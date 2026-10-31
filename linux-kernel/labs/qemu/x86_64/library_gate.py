@@ -20,7 +20,9 @@ SPEC.loader.exec_module(GATE)
 
 def module_publication(directory, artifact, key, prefix):
     """Bind the emitted dependency bytes to both input and output provenance."""
-    name = "kernel-library.modules.json" if key == "kernel_library" else "time-library.modules.json"
+    name = {"kernel_library": "kernel-library.modules.json",
+            "time_library": "time-library.modules.json",
+            "image_library": "image-library.modules.json"}[key]
     path = directory / name
     sources = json.loads(path.read_text())
     library = artifact[key]
@@ -183,6 +185,7 @@ def variants(root, primary, artifact, timeout):
         unit.parent.mkdir(parents=True)
         unit.write_text(text)
         shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
+        (unit.parent / "static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/static-elf64-header.t").read_bytes())
         (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)
         changed = json.loads(values[3].read_text())
