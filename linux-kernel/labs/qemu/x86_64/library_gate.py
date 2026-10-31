@@ -156,6 +156,7 @@ def variants(root, primary, artifact, timeout):
         unit = case / "policy/boot-open-access.t"
         unit.parent.mkdir(parents=True)
         unit.write_text(text)
+        (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)
         changed = json.loads(values[3].read_text())
         for prefix in ("topal.systems-root-object", "topal.provider-object"):

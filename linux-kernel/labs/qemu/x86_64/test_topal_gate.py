@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/228")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/229")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/218")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/219")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/228",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/229",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/128",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/129",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/228")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/229")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1509,6 +1509,57 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(runtime["observations"]["result"],"pass")
             self.assertTrue(runtime["observations"]["qemu_running_after_markers"])
             self.assertTrue(runtime["observations"]["serial_quiescent_after_fatal_disposition"])
+
+    def test_owned_numeric_runtime_binds_source_frames_budgets_and_complete_erasure(self) -> None:
+        # TOPAL-SYSTEMS-NUMERIC-RUNTIME-001, TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001
+        proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-owned-numeric-runtime-qemu/1")
+        self.assertEqual(proof["harness_sha256"],sha256(LAB/"numeric_gate.py"))
+        library=proof["library"]
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t"))
+        self.assertEqual(library["allocation"]["runtime_sha256"],sha256(GATE.REPOSITORY/"src/topal-compiler/src/runtime/value_core.ll"))
+        allocation=library["allocation"]
+        self.assertEqual(allocation["maximum_bytes"],allocation["source_evaluation_bytes"]+allocation["bridge_bytes"]+allocation["header_bytes"])
+        self.assertEqual(allocation["maximum_bytes"],41544)
+        self.assertEqual(allocation["limit_bytes"],65536)
+        costs={"topal_kernel_numeric_allocate_v1":8,"topal_kernel_numeric_abort_v1":8}
+        for function in library["functions"]:
+            cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
+            self.assertEqual(cost,function["maximum_call_path_bytes"])
+            costs[function["symbol"]]=cost
+        maximum=costs[library["native_export"]]+library["native_alignment_reserve_bytes"]
+        self.assertEqual(maximum,library["maximum_stack_bytes"])
+        self.assertLessEqual(maximum,library["stack_limit_bytes"])
+        self.assertEqual(library["native_leaf_return_bytes"],8)
+        observation=proof["observation"]
+        self.assertEqual(observation["result"],"pass")
+        self.assertTrue(observation["binding_erased"])
+        self.assertTrue(observation["terminal_arena_erased"])
+        self.assertTrue(observation["calls"])
+        self.assertIn("relative-sleep-deadline.t",observation["source_runtime_frames"][0])
+        self.assertIn("topal.runtime.int.divmod",observation["source_runtime_frames"][0])
+        for call in observation["calls"]:
+            seconds,nanos,ticks,wrapped=(call[k] for k in ("seconds","nanoseconds","raw_ticks","wrapped"))
+            limit=(1<<63)-1
+            duration=limit if seconds>=9223372036 else seconds*1000000000+nanos
+            expected=((limit if wrapped else min(ticks*10+duration,limit))+9)//10
+            self.assertEqual(call["expected_deadline"],expected)
+            self.assertEqual(call["observed_deadline"],expected)
+            self.assertLessEqual(call["arena_highwater"],allocation["maximum_bytes"])
+            for key in ("stack_aligned","interrupts_masked","callee_saved_preserved","simd_preserved",
+                        "unused_storage_untouched","arena_erased","retired_stack_erased",
+                        "volatile_pointers_cleared","binding_retained"):
+                self.assertTrue(call[key],key)
+        self.assertEqual(proof["runtime"]["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        self.assertEqual(proof["runtime"]["observations"]["result"],"pass")
+        wrong=proof["counterexample"]
+        self.assertEqual(wrong["result"],"expected-deadline-rejection")
+        self.assertTrue(wrong["root_and_provider_unchanged"])
+        self.assertTrue(wrong["observation"]["independent_deadline_rejection"])
+        self.assertEqual(wrong["observation"]["observed_deadline"],0)
+        self.assertGreater(wrong["observation"]["expected_deadline"],0)
+        self.assertNotEqual(wrong["library"]["object_sha256"],library["object_sha256"])
+        self.assertNotIn("runtime",wrong)
 
     def test_source_kernel_library_executes_checked_source_with_owned_abi(self) -> None:
         # TOPAL-SYSTEMS-SOURCE-LIBRARY-001, TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001

@@ -207,7 +207,9 @@ fn uleb(data: &[u8], cursor: &mut usize) -> Result<u64, CompileError> {
     }
     Err(invalid("overflowing stack-size encoding"))
 }
-fn stack_sizes(file: &::object::File<'_>) -> Result<BTreeMap<String, u64>, CompileError> {
+pub(crate) fn stack_sizes(
+    file: &::object::File<'_>,
+) -> Result<BTreeMap<String, u64>, CompileError> {
     let mut result = BTreeMap::new();
     for section in file
         .sections()
@@ -270,7 +272,7 @@ fn stack_sizes(file: &::object::File<'_>) -> Result<BTreeMap<String, u64>, Compi
     Ok(result)
 }
 
-fn inspect_instructions(text: &str) -> Result<(), CompileError> {
+pub(crate) fn inspect_instructions(text: &str) -> Result<(), CompileError> {
     let forbidden = [
         "syscall", "sysenter", "int", "int3", "in", "inb", "inw", "inl", "out", "outb", "outw",
         "outl", "cli", "sti", "hlt", "swapgs", "wrmsr", "rdmsr", "rdtsc", "rdtscp", "rdpmc",

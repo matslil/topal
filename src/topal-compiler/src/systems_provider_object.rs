@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/210";
+    "topal.provider-object.x86_64-qemu-pc-q35/211";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1609,7 +1609,10 @@ pub fn generate_x86_64_systems_provider_object(
         &mut object,
         text,
         X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
-        &static_image_process_enter(program.kernel_library.is_some())?,
+        &static_image_process_enter(
+            program.kernel_library.is_some(),
+            program.time_library.is_some(),
+        )?,
     );
     append_encoded_function(
         &mut object,
@@ -1803,6 +1806,36 @@ pub fn generate_x86_64_systems_provider_object(
         ],
     );
 
+    if program.time_library.is_some() {
+        append_encoded_function(
+            &mut object,
+            text,
+            process_runtime::numeric::ALLOCATE_SYMBOL,
+            &process_runtime::numeric::allocator()?,
+        );
+        append_encoded_function(
+            &mut object,
+            text,
+            process_runtime::numeric::ABORT_SYMBOL,
+            &[0xfa, 0xf4, 0xeb, 0xfd],
+        );
+        let arena = object.add_section(
+            Vec::new(),
+            b".bss.topal.numeric".to_vec(),
+            SectionKind::UninitializedData,
+        );
+        let offset = object.append_section_bss(arena, process_runtime::numeric::ARENA_BYTES, 4096);
+        object.add_symbol(Symbol {
+            name: process_runtime::numeric::ARENA_SYMBOL.as_bytes().to_vec(),
+            value: offset,
+            size: process_runtime::numeric::ARENA_BYTES,
+            kind: SymbolKind::Data,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Section(arena),
+            flags: SymbolFlags::None,
+        });
+    }
     let storage = object.add_section(
         Vec::new(),
         X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION.as_bytes().to_vec(),
@@ -9406,7 +9439,10 @@ fn emit_static_process_shell_output_heap_validation(
     Ok(())
 }
 
-fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileError> {
+fn static_image_process_enter(
+    source_bound: bool,
+    source_numeric: bool,
+) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
     const VALUE: u32 = 0x0fd0;
@@ -9450,6 +9486,8 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
         process_files::ARCHIVE_CONTEXT,
         process_runtime::time::CLOCK_CONTEXT,
         process_runtime::policy::POLICY_CONTEXT,
+        process_runtime::numeric::CODE_CONTEXT,
+        process_runtime::numeric::ARENA_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9460,6 +9498,9 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
     process_runtime::time::emit_entry_validation(&mut code)?;
     if source_bound {
         process_runtime::policy::emit_entry_validation(&mut code)?;
+    }
+    if source_numeric {
+        process_runtime::numeric::emit_entry_validation(&mut code)?;
     }
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
@@ -12218,7 +12259,11 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
 
     // Reset process-local state while retaining the process identity, cwd,
     // standard descriptors, ignored disposition, and live descriptor three.
-    for offset in [process_runtime::policy::POLICY_CONTEXT] {
+    for offset in [
+        process_runtime::policy::POLICY_CONTEXT,
+        process_runtime::numeric::CODE_CONTEXT,
+        process_runtime::numeric::ARENA_CONTEXT,
+    ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0]);
@@ -16575,6 +16620,9 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
     code.bytes(&((process_files::TABLE_BYTES / 8) as u32).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
+    if source_numeric {
+        process_runtime::numeric::emit_terminal_readback(&mut code)?;
+    }
     for offset in [
         896_u32,
         904,
@@ -16584,6 +16632,8 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
         process_files::ARCHIVE_CONTEXT,
         process_runtime::time::CLOCK_CONTEXT,
         process_runtime::policy::POLICY_CONTEXT,
+        process_runtime::numeric::CODE_CONTEXT,
+        process_runtime::numeric::ARENA_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
@@ -16766,7 +16816,7 @@ fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileErro
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
-    process_runtime::time::emit_services(&mut code)?;
+    process_runtime::time::emit_services(&mut code, source_numeric)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }
@@ -17813,7 +17863,7 @@ impl X86FunctionEncoder {
 }
 
 fn provider_note(plan: &X86SystemsProviderPlan) -> String {
-    format!(
+    let mut note = format!(
         "revision={X86_SYSTEMS_PROVIDER_OBJECT_REVISION}\nprovider={}\ntarget={}\nboard={}\nprofile={}\nmachine-cpu={}\ncodegen-cpu={}\nplatform-abi={}\ndata-layout={}\nobject-format={}\nrelocation-model={}\ncode-model={}\nstorage-capacity={}\nstorage-alignment={}\nsource-library-interface={}\n",
         X86_SYSTEMS_PROVIDER_REVISION,
         plan.target,
@@ -17829,7 +17879,11 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
         plan.bootstrap_placement.capacity_bytes,
         plan.bootstrap_placement.alignment_bytes,
         plan.source_library_interface.unwrap_or("none"),
-    )
+    );
+    if let Some(interface) = plan.time_library_interface {
+        note.push_str(&format!("time-library-interface={interface}\nnumeric-runtime-bytes=65536\nnumeric-stack-reserve=4096\n"));
+    }
+    note
 }
 
 fn elf_note(description: &[u8]) -> Result<Vec<u8>, CompileError> {

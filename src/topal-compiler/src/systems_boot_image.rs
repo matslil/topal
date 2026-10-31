@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/128";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/129";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -342,6 +342,17 @@ fn validate_artifact_input(
     }
     if let Some(library) = &artifact.kernel_library {
         crate::systems_library::inspect_linked_library(kernel, library)?;
+    }
+    let has_numeric = file
+        .symbol_by_name(crate::systems_numeric_library::EXPORT_SYMBOL)
+        .is_some();
+    if has_numeric != artifact.time_library.is_some() {
+        return Err(CompileError::Tool(
+            "numeric code and artifact binding disagree".into(),
+        ));
+    }
+    if let Some(library) = &artifact.time_library {
+        crate::systems_numeric_library::inspect_linked_numeric_library(kernel, library)?;
     }
     Ok(())
 }
@@ -974,12 +985,18 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
         )
         .unwrap();
-        let linked = crate::publish_x86_64_systems_artifact_with_source_library(
+        let time = crate::systems_library::load_source_library(
+            program.time_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let linked = crate::publish_x86_64_systems_artifact_with_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             Some(&source),
+            Some(&time),
             &parent.join("linked"),
         )
         .unwrap();

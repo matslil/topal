@@ -372,7 +372,8 @@ fn llvm_string(value: &str) -> String {
         .collect()
 }
 
-const PLATFORM_RUNTIME: &str = include_str!("../runtime/linux_x86_64.ll");
+const VALUE_RUNTIME: &str = include_str!("../runtime/value_core.ll");
+const PLATFORM_RUNTIME: &str = concat!(include_str!("../runtime/linux_x86_64.ll"),include_str!("../runtime/value_core.ll"));
 const INFINITY_RESULT_RUNTIME: &str = include_str!("../runtime/infinity_result.ll");
 const LIST_BOOLEAN_CORE_RUNTIME: &str = include_str!("../runtime/list_boolean_core.ll");
 const LIST_BOOLEAN_STRING_PAIR_CORE_RUNTIME: &str =

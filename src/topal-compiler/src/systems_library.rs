@@ -2,7 +2,9 @@
 use crate::CompileError;
 #[path = "systems_library_object.rs"]
 mod native_object;
-pub(crate) use native_object::{build_source_library, inspect_linked_library};
+pub(crate) use native_object::{
+    build_source_library, inspect_instructions, inspect_linked_library, stack_sizes,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use topal_language::compiler::{
@@ -292,6 +294,7 @@ mod tests {
             interface:
                 topal_language::compiler::CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1,
             stack_limit_bytes: 1024,
+            runtime_limit_bytes: None,
         }
     }
     fn input() -> SystemsSourceLibraryInput {

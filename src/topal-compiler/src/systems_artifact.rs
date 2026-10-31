@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/228";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/217";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/229";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/218";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -423,6 +423,8 @@ pub struct SystemsArtifactProvenance {
     pub semantic_trace: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kernel_library: Option<crate::SystemsSourceLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub inputs: Vec<DigestEntry>,
     pub outputs: Vec<DigestEntry>,
 }
@@ -555,6 +557,33 @@ pub fn publish_x86_64_systems_artifact_with_source_library(
     source_library: Option<&crate::SystemsSourceLibraryInput>,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_libraries(
+        program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        source_library,
+        None,
+        destination,
+    )
+}
+
+/// Publish both explicit source-library snapshots with their owned kernel root.
+///
+/// # Errors
+/// Rejects missing, mismatched, unsupported or unbounded source before publication.
+pub fn publish_x86_64_systems_artifact_with_libraries(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
+    time_library: Option<&crate::SystemsSourceLibraryInput>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    if program.time_library.is_some() != time_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared numeric import requires its matching explicit source snapshot".into()));
+    }
     if program.kernel_library.is_some() != source_library.is_some() {
         return Err(CompileError::Tool(
             "E-SYSTEMS-LIBRARY: declared import requires its matching explicit source snapshot"
@@ -593,6 +622,7 @@ pub fn publish_x86_64_systems_artifact_with_source_library(
         initial_user_image,
         static_user_image,
         source_library,
+        time_library,
         &stage,
     );
     let record = match result {
@@ -631,6 +661,7 @@ fn publish_in_stage(
     initial_user_image: &[u8],
     static_user_image: Option<&[u8]>,
     source_library: Option<&crate::SystemsSourceLibraryInput>,
+    time_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -649,7 +680,24 @@ fn publish_in_stage(
             crate::systems_library::build_source_library(requirement, input, tools, &work)
         })
         .transpose()?;
+    if program.time_library.is_some() {
+        crate::systems_numeric_library::inspect_numeric_provider(tools, &provider_path)?;
+    }
+    let numeric = program
+        .time_library
+        .as_ref()
+        .zip(time_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    if let Some(numeric) = &numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &numeric.record,
+        )?;
+    }
     if let Some(library) = &library {
         crate::systems_library::inspect_linked_library(&linked.kernel, &library.record)?;
     }
@@ -718,6 +766,28 @@ fn publish_in_stage(
         record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.kernel_library = Some(library.record);
+    }
+    if let Some(numeric) = numeric {
+        for (name, bytes) in [
+            ("time-library.t", numeric.source.as_bytes()),
+            ("time-library.ll", numeric.llvm.as_bytes()),
+            ("time-library.retained.ll", numeric.retained_llvm.as_bytes()),
+            ("time-library.o", numeric.object.as_slice()),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write numeric library artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-time-source:{}", numeric.record.source),
+            sha256: numeric.record.source_sha256.clone(),
+        });
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.time_library = Some(numeric.record);
     }
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
         CompileError::Tool(format!(
@@ -2589,6 +2659,11 @@ fn build_linked_outputs(
             .arg("root.o")
             .arg("provider.o")
             .args(
+                work.join("time-library.o")
+                    .is_file()
+                    .then_some("time-library.o"),
+            )
+            .args(
                 work.join("kernel-library.o")
                     .is_file()
                     .then_some("kernel-library.o"),
@@ -2607,6 +2682,7 @@ fn build_linked_outputs(
     run_tool(
         Command::new(&objcopy)
             .arg("--only-keep-debug")
+            .arg("--remove-section=.debug_names")
             .arg(&unstripped_path)
             .arg(&debug_path),
     )?;
@@ -2703,6 +2779,7 @@ fn artifact_provenance(
         placements,
         semantic_trace: semantic_trace(program)?,
         kernel_library: None,
+        time_library: None,
         inputs,
         outputs,
     })
@@ -3814,9 +3891,17 @@ struct PendingRelocation {
     encoding: RelocationEncoding,
 }
 
+#[derive(Clone, Copy)]
+enum NumericRootDependency {
+    Code,
+    Arena,
+}
+
 #[derive(Default)]
 struct RootEncoder {
     source_bound_library: bool,
+    numeric_library: bool,
+    numeric_relocations: Vec<(u64, NumericRootDependency)>,
     source_library_relocations: Vec<u64>,
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
@@ -5773,12 +5858,23 @@ impl RootEncoder {
         }
         // Retain ABI stack alignment with one pad above the twelfth argument.
         // The process borrows the root's existing clock; it owns no new timeline.
+        if self.numeric_library {
+            for dependency in [NumericRootDependency::Arena, NumericRootDependency::Code] {
+                self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
+                self.numeric_relocations
+                    .push((self.bytes.len() as u64, dependency));
+                self.bytes.extend_from_slice(&[0; 4]);
+                self.bytes.push(0x50);
+            }
+        }
         if self.source_bound_library {
             self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
             self.source_library_relocations
                 .push(self.bytes.len() as u64);
             self.bytes.extend_from_slice(&[0; 4]);
             self.bytes.push(0x50); // thirteenth argument: artifact-owned pure code
+        } else if self.numeric_library {
+            self.bytes.extend_from_slice(&[0x6a, 0]); // no open policy binding
         } else {
             self.bytes.extend_from_slice(&[0x48, 0x83, 0xec, 8]);
         }
@@ -5812,7 +5908,12 @@ impl RootEncoder {
         self.rip_relative_storage(512, 0)?;
         self.bytes.push(0x50); // seventh System V argument
         self.call_checked_bool(ProviderSymbol::EnterStaticImageProcess)?;
-        self.bytes.extend_from_slice(&[0x48, 0x83, 0xc4, 0x38]);
+        self.bytes.extend_from_slice(&[
+            0x48,
+            0x83,
+            0xc4,
+            if self.numeric_library { 0x48 } else { 0x38 },
+        ]);
         self.static_image = RootStaticImageState::CompletedProcess;
         Ok(())
     }
@@ -9807,6 +9908,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
         source_bound_library: program.kernel_library.is_some(),
+        numeric_library: program.time_library.is_some(),
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
@@ -10490,6 +10592,40 @@ fn append_root(
                     CompileError::Tool(format!("source-library relocation: {error}"))
                 })?;
         }
+    }
+    for (offset, dependency) in &encoded.numeric_relocations {
+        let (name, kind) = match dependency {
+            NumericRootDependency::Code => (
+                crate::systems_numeric_library::EXPORT_SYMBOL,
+                SymbolKind::Text,
+            ),
+            NumericRootDependency::Arena => ("topal_x86_systems_numeric_arena", SymbolKind::Data),
+        };
+        let symbol = object.add_symbol(Symbol {
+            name: name.as_bytes().to_vec(),
+            value: 0,
+            size: 0,
+            kind,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Undefined,
+            flags: SymbolFlags::None,
+        });
+        object
+            .add_relocation(
+                section,
+                Relocation {
+                    offset: start + offset,
+                    symbol,
+                    addend: -4,
+                    flags: RelocationFlags::Generic {
+                        kind: RelocationKind::Relative,
+                        encoding: RelocationEncoding::X86RipRelative,
+                        size: 32,
+                    },
+                },
+            )
+            .map_err(|e| CompileError::Tool(e.to_string()))?;
     }
     for relocation in &encoded.relocations {
         let symbol = match relocation.target {
@@ -11604,6 +11740,7 @@ mod tests {
         // The existing structural corpus explicitly exercises the retained
         // closed profile; source-bound publication is covered independently.
         program.kernel_library = None;
+        program.time_library = None;
         program
     }
 
@@ -11632,14 +11769,20 @@ mod tests {
         source.text = source
             .text
             .replace("pub boot-open-decision", "boot-open-decision");
+        let time = crate::systems_library::load_source_library(
+            program.time_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
         let destination = parent.join("invalid");
         assert!(
-            publish_x86_64_systems_artifact_with_source_library(
+            publish_x86_64_systems_artifact_with_libraries(
                 &program,
                 &tools,
                 None,
                 None,
                 Some(&source),
+                Some(&time),
                 &destination
             )
             .is_err()

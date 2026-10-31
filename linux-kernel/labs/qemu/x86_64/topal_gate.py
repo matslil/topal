@@ -1206,6 +1206,7 @@ def observe_gate(
     image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float,
     process_command: bytes = PROCESS_COMMAND,
     before_process_command: Callable[[], None] | None = None,
+    failure_check: Callable[[], str | None] | None = None,
 ) -> bytes:
     master_fd, slave_fd = pty.openpty()
     os.set_blocking(master_fd, False)
@@ -1240,6 +1241,10 @@ def observe_gate(
                 if status is not None:
                     raise GateError(f"QEMU exited with status {status} before the gate completed")
                 drain_client()
+                if failure_check is not None:
+                    failure = failure_check()
+                    if failure is not None:
+                        raise GateError(failure)
                 observed = bytes(received)
                 if (
                     not injected
@@ -1303,7 +1308,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/228",
+        "schema": "topal-kernel-toolchain-gate-qemu/229",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),

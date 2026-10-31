@@ -71,7 +71,7 @@ mod tests {
 
     use topal_compiler::{
         LlvmTools, SystemsSourceLibraryInput, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE,
-        X86_INITIAL_BOOT_RESOURCE_FILE, publish_x86_64_systems_artifact_with_source_library,
+        X86_INITIAL_BOOT_RESOURCE_FILE, publish_x86_64_systems_artifact_with_libraries,
         qualified_x86_64_static_user_image_fixture,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
@@ -101,12 +101,18 @@ mod tests {
             source_name: "policy/boot-open-access.t".into(),
             text: include_str!("../../../kernel/policy/boot-open-access.t").into(),
         };
-        publish_x86_64_systems_artifact_with_source_library(
+        let time = SystemsSourceLibraryInput {
+            source: "policy/relative-sleep-deadline.t".into(),
+            source_name: "policy/relative-sleep-deadline.t".into(),
+            text: include_str!("../../../kernel/policy/relative-sleep-deadline.t").into(),
+        };
+        publish_x86_64_systems_artifact_with_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             Some(&source),
+            Some(&time),
             &linked,
         )
         .unwrap();

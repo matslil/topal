@@ -35,6 +35,7 @@ pub(super) fn parse_requirement(
         return Err(error(source, *span, "unknown source-library constructor"));
     }
     let (mut path, mut export, mut interface, mut stack) = (None, None, None, None);
+    let mut runtime = None;
     let mut seen = BTreeSet::new();
     for field in fields {
         let label = artifact_field_label(source, field)?;
@@ -74,6 +75,12 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "boot-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1);
             }
+            "interface" if identifier_is(source, &field.value, "relative-sleep-deadline-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1);
+            }
+            "runtime-limit-bytes" => {
+                runtime = Some(parse_storage_natural(source, &field.value)?);
+            }
             "stack-limit-bytes" => {
                 stack = Some(parse_storage_natural(source, &field.value)?);
             }
@@ -100,6 +107,7 @@ pub(super) fn parse_requirement(
         export,
         interface,
         stack_limit_bytes,
+        runtime_limit_bytes: runtime,
     };
     result
         .validate()
@@ -110,6 +118,27 @@ pub(super) fn parse_requirement(
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    #[test]
+    fn numeric_time_library_retains_exact_declared_resource_obligations() {
+        // TOPAL-SYSTEMS-NUMERIC-RUNTIME-001
+        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let source = source.to_owned();
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let program = analyze_systems_for_compiler(&source, &target).unwrap();
+        let time = program.time_library.unwrap();
+        assert_eq!(time.runtime_limit_bytes, Some(65536));
+        assert_eq!(time.stack_limit_bytes, 4096);
+        for changed in [
+            source.replace(
+                "runtime-limit-bytes is 65536",
+                "runtime-limit-bytes is 65535",
+            ),
+            source.replace("runtime-limit-bytes is 65536", "runtime-limit-bytes is 0"),
+            source.replace("stack-limit-bytes is 4096", "stack-limit-bytes is 1024"),
+        ] {
+            assert!(analyze_systems_for_compiler(&changed, &target).is_err());
+        }
+    }
     #[test]
     fn source_library_import_is_optional_and_structurally_checked() {
         // TOPAL-SYSTEMS-SOURCE-LIBRARY-001

@@ -1909,6 +1909,7 @@ pub struct SystemsEntry {
 pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
@@ -2775,6 +2776,21 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     program.bootstrap_storage.validate()?;
     if let Some(library) = &program.kernel_library {
         library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::BootOpenDecisionV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LIBRARY",
+                "kernel-library requires boot-open-decision-v1",
+            ));
+        }
+    }
+    if let Some(library) = &program.time_library {
+        library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::RelativeSleepDeadlineV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LIBRARY",
+                "time-library requires relative-sleep-deadline-v1",
+            ));
+        }
     }
     validate_entry(
         &program.bootstrap,
@@ -9155,6 +9171,7 @@ mod tests {
         SystemsProgram {
             target,
             kernel_library: None,
+            time_library: None,
             bootstrap_storage: BootstrapStorageDescriptor {
                 capacity_bytes: 65_536,
                 alignment_bytes: 4096,

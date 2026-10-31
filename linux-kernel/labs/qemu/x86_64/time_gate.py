@@ -31,7 +31,7 @@ def points(elf):
             raise GATE.GateError("missing timing instruction address")
         return int(match[1],16)
     samples=[address(line) for line in lines if re.search(r"%gs:0x3b0,\s*%rdi",line)]
-    starts=[i for i,line in enumerate(lines) if re.search(r"\$0xccccccccccccccd,\s*%r14",line)]
+    starts=[i for i,line in enumerate(lines) if re.search(r"%gs:0x3c0,\s*%rax",line)]
     if len(samples)!=1 or len(starts)!=1:
         raise GATE.GateError("cannot identify unique private clock binding/target")
     targets=[address(line) for line in lines[starts[0]+1:] if "pause" in line]
@@ -84,10 +84,16 @@ actual_seconds=int(gdb.parse_and_eval("$rbx"))
 actual_nanos=int(gdb.parse_and_eval("$rbp"))
 assert (actual_seconds,actual_nanos)==({seconds},{nanos}),(actual_seconds,actual_nanos)
 duration={MAX} if actual_seconds>=9223372036 else actual_seconds*1000000000+actual_nanos
-assert int(gdb.parse_and_eval("$r13"))==duration
 raw=int.from_bytes(inferior.read_memory(clock,8),"little")
 epoch=int.from_bytes(inferior.read_memory(clock+8,8),"little")
 assert epoch==0
+assert int(gdb.parse_and_eval("$r13"))==raw
+assert int(gdb.parse_and_eval("$r15"))==0
+arena=int.from_bytes(inferior.read_memory(context+968,8),"little")
+assert arena==int(gdb.parse_and_eval("&topal_x86_systems_numeric_arena"))
+assert bytes(inferior.read_memory(arena,65536))==bytes(65536)
+stack=int(gdb.parse_and_eval("$rsp"))
+assert bytes(inferior.read_memory(stack-4096,4096))==bytes(4096)
 expected=(min((epoch*(1<<64)+raw)*10+duration,{MAX})+9)//10
 actual=int(gdb.parse_and_eval("$r14"))
 assert actual==expected,(actual,expected)

@@ -1929,6 +1929,13 @@ lang systems artifact (
     interface is boot-open-decision-v1,
     stack-limit-bytes is 1024
   ),
+  time-library is lang systems source-library (
+    source is "policy/relative-sleep-deadline.t",
+    export is sleep-deadline,
+    interface is relative-sleep-deadline-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096

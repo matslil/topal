@@ -11,6 +11,7 @@ mod systems_artifact;
 mod systems_boot_image;
 mod systems_boot_resource;
 mod systems_library;
+mod systems_numeric_library;
 mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
@@ -41,6 +42,7 @@ pub use systems_artifact::{
     X86_SYSTEMS_KERNEL_THREAD_ENTRY, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY,
     X86_SYSTEMS_ROOT_OBJECT_REVISION, X86_SYSTEMS_ROOT_TEXT_SECTION,
     publish_x86_64_systems_artifact, publish_x86_64_systems_artifact_with_initial_user_image,
+    publish_x86_64_systems_artifact_with_libraries,
     publish_x86_64_systems_artifact_with_source_library,
     publish_x86_64_systems_artifact_with_static_user_image,
     publish_x86_64_systems_artifact_with_user_images, qualified_x86_64_static_user_image_fixture,
@@ -59,6 +61,7 @@ pub use systems_boot_resource::{
 pub use systems_library::{
     SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact, SystemsSourceLibraryInput,
 };
+pub use systems_numeric_library::{SystemsNumericAllocationBound, SystemsNumericLibraryArtifact};
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsLowering,

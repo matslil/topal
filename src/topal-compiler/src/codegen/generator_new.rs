@@ -14,6 +14,7 @@ impl<'a> Generator<'a> {
         }
         Self {
             kernel_library_mode: false,
+            kernel_function_prefix: "",
             program,
             source_name,
             globals: Vec::new(),
@@ -251,6 +252,7 @@ impl<'a> Generator<'a> {
             self.emit_foreign_function(function);
             return;
         }
+        let linkage_symbol = format!("{}{}",self.kernel_function_prefix,function.symbol);
         let return_type = function_llvm_return_type(function);
         let parameter_types = function
             .parameters
@@ -259,7 +261,7 @@ impl<'a> Generator<'a> {
             .collect::<Vec<_>>();
         let subprogram = self.debug.subprogram(
             &function.source_name,
-            &function.symbol,
+            &linkage_symbol,
             function.span,
             &function.result_type,
             &parameter_types,
@@ -405,7 +407,7 @@ impl<'a> Generator<'a> {
         let extra_attributes=if self.kernel_library_mode { " noredzone noimplicitfloat \"disable-tail-calls\"=\"true\"" } else { "" };
         self.functions.push(format!(
             "define internal fastcc {return_type} @{}({parameters}) nounwind noinline{extra_attributes} !dbg !{subprogram} {{\n{}\n}}\n",
-            function.symbol,
+            linkage_symbol,
             body.render()
         ));
     }

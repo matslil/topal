@@ -114,6 +114,7 @@ struct Analyzer {
     external_locations: BTreeMap<String, CompilerLocation>,
     instances: Vec<CompilerFunction>,
     active_calls: Vec<String>,
+    generalized_exports: BTreeSet<String>,
     active_recursive_functions: BTreeMap<String, ActiveRecursiveFunction>,
     root_bindings: BTreeMap<String, CompilerDataMemberFacts>,
     root_callable_bindings: BTreeMap<String, CompilerCallableFacts>,
@@ -178,6 +179,7 @@ impl Analyzer {
             external_locations: BTreeMap::new(),
             instances: Vec::new(),
             active_calls: Vec::new(),
+            generalized_exports: BTreeSet::new(),
             active_recursive_functions: BTreeMap::new(),
             root_bindings: BTreeMap::new(),
             root_callable_bindings: BTreeMap::new(),
@@ -423,6 +425,25 @@ pub fn analyze_for_compiler_with_modules(
     text: &str,
     modules: &[CompilerSourceModule],
 ) -> Result<CompilerProgram, Diagnostic> {
+    analyze_for_compiler_options(text, modules, &[])
+}
+
+/// Select checked export bodies without inheriting literal client refinements.
+///
+/// The caller must separately qualify the declared external interface and its
+/// representations. This supplies no resource or machine authority.
+///
+/// # Errors
+/// Returns the ordinary shared diagnostic for invalid or unsupported source.
+pub fn analyze_for_compiler_with_declared_exports(
+    text: &str, exports: &[String],
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_for_compiler_options(text, &[], exports)
+}
+
+fn analyze_for_compiler_options(
+    text: &str, modules: &[CompilerSourceModule], generalized_exports: &[String],
+) -> Result<CompilerProgram, Diagnostic> {
     let primary_source_end = text.len();
     let mut combined = text.to_owned();
     let mut dependencies = Vec::with_capacity(modules.len());
@@ -529,6 +550,7 @@ pub fn analyze_for_compiler_with_modules(
         sums,
         sum_alternatives,
     );
+    analyzer.generalized_exports=generalized_exports.iter().cloned().collect();
     analyzer.install_modular_types(&modular_sources)?;
     analyzer.install_interfaces(&interface_sources)?;
     analyzer.validate_interface_implementations(&root_statements)?;
