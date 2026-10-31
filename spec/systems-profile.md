@@ -3808,12 +3808,50 @@ bases, complete evaluation charges, branch bounds, malformed labels/shapes/types
 resource exhaustion, isolated module checking, exact source provenance and the
 existing independent changed-helper rejection.
 
+### TOPAL-SYSTEMS-NUMERIC-ARRAYS-001 — Bounded immutable integer sequences
+
+The numeric invocation MAY admit ordinary finite `List Int` construction,
+fixed `Array (N, Int)` collection, constant-index checked access, Array count
+and emptiness observations, and `Optional Int` construction/decisions. Values
+SHALL retain existing collection/Optional meanings. The first qualification
+SHALL retain exact sequence lengths, at most 256 entries and per-entry numeric
+bounds; joins SHALL require equal sequence lengths and combine corresponding
+entries. Other elements, dynamic indexes, sequence transformations and effects
+SHALL remain unqualified. Records MAY contain these qualified values.
+
+The allocation evaluator SHALL charge every evaluated List head/tail and each
+16-byte node; Array collection SHALL charge its source once and its 16-byte
+header; each checked read SHALL charge its receiver once and a 16-byte Optional
+wrapper on both present and absent paths. Count SHALL charge its native-to-Int
+conversion. Optional decisions SHALL preserve possible presence and payload
+bounds, introduce the payload binding only for `Some`, and charge the maximum
+reachable branch, including subject cost. Infeasible paths SHALL still receive
+ordinary frontend checking and complete emitted-object closure/stack inspection.
+No source value SHALL escape its exclusive invocation or create native authority.
+
+Shared collection lowering and runtime SHALL be reused. Publication SHALL bind
+the exact reviewed runtime bytes in the allocation certificate, retain only
+qualified helper symbols after dead-code elimination and prove bounded traversal
+from constructed finite values. Actual stack frames, return addresses, alignment
+and all source/runtime callees SHALL fit the unchanged 4096-byte stack; complete
+allocation SHALL fit the unchanged 65536-byte arena. All nodes, headers, wrappers
+and nested payloads SHALL be erased under the existing owner protocol.
+
+Qualification SHALL inspect actual imported Array lengths and entries against
+independent native inputs; cover empty and out-of-bounds access, Optional joins,
+per-entry ranges, evaluation costs and malformed/excessive source; and retain
+independent arithmetic, source/module provenance, Record-order variants,
+changed-helper rejection, native-state preservation and complete reclamation.
+This rule SHALL NOT qualify general containers, native-memory views, persistent
+state or additional public Linux interfaces.
+
 ### TOPAL-SYSTEMS-SOURCE-MODULES-001 — Closed ordinary module snapshots
 
 The finite and numeric source-library profiles MAY include ordinary source
 module dependencies. Initial imported units SHALL contain functions over the selected profile's
 Boolean/numeric values, including Record shapes qualified through
-`TOPAL-SYSTEMS-NUMERIC-RECORDS-001`. Imported type declarations and cross-unit
+`TOPAL-SYSTEMS-NUMERIC-RECORDS-001`, and the bounded sequence/Optional values in
+`TOPAL-SYSTEMS-NUMERIC-ARRAYS-001`. Imported type declarations and cross-unit
 nominal values SHALL remain unqualified; nominal Enum adaptation SHALL remain at the finite
 root. Filesystem discovery SHALL start at the selected root unit and resolve
 declared libraries and qualified references to a fixed point

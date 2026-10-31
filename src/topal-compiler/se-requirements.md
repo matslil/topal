@@ -2692,6 +2692,18 @@ effects, escape and missing/excessive resource evidence shall reject publication
 Physical structured-helper execution, independent arithmetic, construction-order
 variants, malformed/bounded cases and full erasure shall qualify the extension.
 
+Under `TK-DEC-259`, the numeric publisher shall realize
+`TOPAL-SYSTEMS-NUMERIC-ARRAYS-001` through shared finite List/Array/Optional
+lowering and runtime. It shall retain exact lengths and per-entry bounds, charge
+every evaluated operand and actual node/header/wrapper/conversion, preserve
+Optional presence across joins and bound reachable branch costs. It shall bind
+reviewed collection runtime bytes, restrict the retained helper closure and
+include all actual calls in existing stack/allocation limits. Isolated imported
+clients shall construct precise collection classifiers. Actual source Array
+arguments, independently decoded entries, empty/out-of-bounds and exhaustion
+cases, unchanged native arithmetic/state and full erasure shall qualify this
+subset without granting persistent storage or native-memory authority.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private
