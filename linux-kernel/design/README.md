@@ -261,3 +261,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Initial static-process children and wait ownership](serialized-static-process-children.md)
 - [Resumable static-process pair](resumable-static-process-pair.md)
 - [Shared anonymous pipes and exact readiness](static-process-pipes.md)
+- [Closed ordinary source modules for kernel policy](freestanding-source-modules.md)

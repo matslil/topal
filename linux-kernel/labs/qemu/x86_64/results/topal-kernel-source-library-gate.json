@@ -1,57 +1,72 @@
 {
-  "harness_sha256": "409e3645e32789b9c8cc6d3c6845201214177341448b4fd46d21d481948804a2",
+  "harness_sha256": "abcfb27f12cadc1f00af415e1fea34c628d66cc809b7b1eb95ab7e93b1e16ea5",
   "library": {
-    "checked_client_sha256": "4ba2e47bea4634ccd784297b443b55bb3a29d88ab426220361dd0b3267f2a981",
-    "disassembly_sha256": "5458ba78c11f1d84dac53bf47d1ce85a6dbf32e909a79577b782884e35c352f3",
+    "checked_client_sha256": "cec4ca64ccf3361cdb9d840d060dc996b079a5d9789cf2defe05650266c7493d",
+    "disassembly_sha256": "313f9f5ce7c4f2228984cbe3deed7cc3d0e76dec4311ae24d9b5f786d98be3fa",
     "functions": [
       {
         "callees": [],
-        "frame_bytes": 12,
-        "maximum_call_path_bytes": 20,
-        "symbol": "topal.fn.deny_2dwrite.0"
+        "frame_bytes": 8,
+        "maximum_call_path_bytes": 16,
+        "symbol": "topal.fn.support_2elogic_2eabsent_3f.0"
       },
       {
         "callees": [
-          "topal.fn.deny_2dwrite.0"
+          "topal.fn.support_2elogic_2eabsent_3f.0"
         ],
-        "frame_bytes": 24,
-        "maximum_call_path_bytes": 52,
-        "symbol": "topal.fn.after_2dkind.1"
-      },
-      {
-        "callees": [
-          "topal.fn.after_2dkind.1"
-        ],
-        "frame_bytes": 24,
-        "maximum_call_path_bytes": 84,
-        "symbol": "topal.fn.require_2ddirectory.2"
+        "frame_bytes": 8,
+        "maximum_call_path_bytes": 32,
+        "symbol": "topal.fn.support_2eboot_2emissing_3f.1"
       },
       {
         "callees": [],
         "frame_bytes": 12,
         "maximum_call_path_bytes": 20,
-        "symbol": "topal.fn.deny_2dwrite.3"
+        "symbol": "topal.fn.deny_2dwrite.2"
       },
       {
         "callees": [
-          "topal.fn.deny_2dwrite.3"
+          "topal.fn.deny_2dwrite.2"
         ],
         "frame_bytes": 24,
         "maximum_call_path_bytes": 52,
-        "symbol": "topal.fn.after_2dkind.4"
+        "symbol": "topal.fn.after_2dkind.3"
       },
       {
         "callees": [
-          "topal.fn.after_2dkind.4",
-          "topal.fn.require_2ddirectory.2"
+          "topal.fn.after_2dkind.3",
+          "topal.fn.support_2eboot_2emissing_3f.1"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 84,
+        "symbol": "topal.fn.require_2ddirectory.4"
+      },
+      {
+        "callees": [],
+        "frame_bytes": 12,
+        "maximum_call_path_bytes": 20,
+        "symbol": "topal.fn.deny_2dwrite.5"
+      },
+      {
+        "callees": [
+          "topal.fn.deny_2dwrite.5"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 52,
+        "symbol": "topal.fn.after_2dkind.6"
+      },
+      {
+        "callees": [
+          "topal.fn.after_2dkind.6",
+          "topal.fn.require_2ddirectory.4"
         ],
         "frame_bytes": 24,
         "maximum_call_path_bytes": 116,
-        "symbol": "topal.fn.boot_2dopen_2ddecision.5"
+        "symbol": "topal.fn.boot_2dopen_2ddecision.7"
       },
       {
         "callees": [
-          "topal.fn.boot_2dopen_2ddecision.5"
+          "topal.fn.boot_2dopen_2ddecision.7"
         ],
         "frame_bytes": 24,
         "maximum_call_path_bytes": 148,
@@ -59,18 +74,37 @@
       }
     ],
     "interface": "boot-open-decision-v1",
-    "llvm_sha256": "133b52f4b42312c097b12c4a3924168a2dbc942f787c58a94bb667a643941e59",
+    "llvm_sha256": "a93de2794ed5ba7db47ca37c685ee7127ba6cc18cc111fd33132251c517cfd58",
     "llvm_version": "22.1.6",
     "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
     "maximum_stack_bytes": 180,
+    "module_snapshot_sha256": "49daf0a85745a6106bab4a428e141b184258363708c73dc3f5d8727c9ea5b129",
+    "modules": [
+      {
+        "identity": [
+          "support",
+          "boot"
+        ],
+        "sha256": "f50f161403a1c6d2e20bc6268212dc133601a7a0dfa742d41af1458ca7016d05",
+        "source": "support/boot.t"
+      },
+      {
+        "identity": [
+          "support",
+          "logic"
+        ],
+        "sha256": "f612974d56bfd11ea6f040e6600a39e331c2a4bb93b9a5e46abdc7ad23051276",
+        "source": "support/logic.t"
+      }
+    ],
     "native_alignment_reserve_bytes": 32,
     "native_export": "topal_kernel_boot_open_policy_v1",
-    "object_sha256": "4f32a17f53a96cb227f0212170161e7c26f0feee567577cae02f3f01be297ab4",
-    "schema": "topal.kernel-source-library/1",
+    "object_sha256": "ea85dbc477c370e87b9b51ea534979642946e4563c8a062320deea56ae521fe3",
+    "schema": "topal.kernel-source-library/2",
     "source": "policy/boot-open-access.t",
     "source_export": "boot-open-decision",
     "source_name": "/home/mats/git/topal/linux-kernel/kernel/policy/boot-open-access.t",
-    "source_sha256": "eb527c17f2815a2131dcbb96fbdb35860e302948ed79826e7601659fa171e154",
+    "source_sha256": "dd6946060a90a536313ebcf4e1aec98dbdc28ee6e5b2b3d4dc128ec85a672ca3",
     "source_tags": [
       0,
       1,
@@ -78,6 +112,43 @@
       3
     ],
     "stack_limit_bytes": 1024
+  },
+  "module_publication": {
+    "inputs": [
+      {
+        "identity": "kernel-source-module:support/boot.t",
+        "sha256": "f50f161403a1c6d2e20bc6268212dc133601a7a0dfa742d41af1458ca7016d05"
+      },
+      {
+        "identity": "kernel-source-module:support/logic.t",
+        "sha256": "f612974d56bfd11ea6f040e6600a39e331c2a4bb93b9a5e46abdc7ad23051276"
+      }
+    ],
+    "outputs": [
+      {
+        "identity": "kernel-library.modules.json",
+        "sha256": "49daf0a85745a6106bab4a428e141b184258363708c73dc3f5d8727c9ea5b129"
+      }
+    ],
+    "snapshot_sha256": "49daf0a85745a6106bab4a428e141b184258363708c73dc3f5d8727c9ea5b129",
+    "sources": [
+      {
+        "identity": [
+          "support",
+          "boot"
+        ],
+        "source": "support/boot.t",
+        "text": "use language (version is v0.1)\nuse library support (version is v0.1)\n# Keep absence policy shared through a real transitive source-module call.\npub missing? is fn (present : Boolean) -> Boolean\n  support logic absent? present\n"
+      },
+      {
+        "identity": [
+          "support",
+          "logic"
+        ],
+        "source": "support/logic.t",
+        "text": "use language (version is v0.1)\n# TOPAL-SYSTEMS-SOURCE-MODULES-001: ordinary authority-free Boolean policy.\npub absent? is fn (present : Boolean) -> Boolean\n  not present\n"
+      }
+    ]
   },
   "observation": {
     "binding_erased": true,
@@ -562,19 +633,19 @@
     "complete_finite_domain": true,
     "result": "pass",
     "source_helper_frames": [
-      "#0  topal.fn.after_2dkind.4 (write-intent=<optimized out>, directory=false) at boot-open-access.t:11\n#1  0x0000000000302a33 in topal.fn.boot_2dopen_2ddecision.5 (write-intent=false, directory=false, directory-only=<optimized out>) at boot-open-access.t:24\n#2  0x0000000000302a6e in topal_kernel_boot_open_policy_v1 ()\n#3  0x00000000002b316f in topal_x86_systems_static_image_process_enter ()\n#4  0x0000000001005000 in ?? ()\n#5  0x0000000001000000 in ?? ()\n#6  0x0000000001203000 in ?? ()\n#7  0x000000000020fe59 in _topal_kernel_entry ()\n"
+      "#0  topal.fn.support_2elogic_2eabsent_3f.0 (present=<optimized out>) at support/logic.t:3\n#1  0x000000000030290f in topal.fn.support_2eboot_2emissing_3f.1 (present=3) at support/boot.t:5\n#2  0x00000000003029ac in topal.fn.require_2ddirectory.4 (directory=3) at boot-open-access.t:18\n#3  0x0000000000302a7d in topal.fn.boot_2dopen_2ddecision.7 (write-intent=7, directory=3, directory-only=<optimized out>) at boot-open-access.t:24\n#4  0x0000000000302ace in topal_kernel_boot_open_policy_v1 ()\n#5  0x00000000002b317f in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x000000000020fe69 in _topal_kernel_entry ()\n"
     ]
   },
   "runtime": {
-    "artifact_provenance_sha256": "68f5c060c397642256af476f1992e1468d90f14c4d85514b4bcb6e093325d01b",
-    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/232",
-    "boot_image_sha256": "f4edba567b8cc5ebf3adfc5466c5e2acc8bd3ee420ebeb00d6c1af1c60aaed3d",
-    "boot_provenance_sha256": "f42fcde57ccccced5232b253fafb92fd13406e225781cab7155942416faa6009",
+    "artifact_provenance_sha256": "c0e7113919422c504eb1672403b1027da16af34c5b845a69fd9b196fcc320e1a",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/233",
+    "boot_image_sha256": "5fd4cc91ba2123064625498f8cdaa91ac90bface2c60a4ba0bd499500308bb54",
+    "boot_provenance_sha256": "8cc10c9cce27cf1bb377eb413edc4f1e3ff6a7cadf0cabb33ba160b16c98ba4a",
     "boot_resource_bytes": 2037200,
     "boot_resource_member": "init",
     "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
     "boot_resource_sha256": "9037a9295595e6c4c04408fc61fffd507b943bbece9cdc4fa95211b606ded680",
-    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/132",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/133",
     "clean_environment_mode": "maximum",
     "cpu": "qemu64-v1",
     "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -582,7 +653,7 @@
     "initial_user_image_bytes": 12288,
     "initial_user_image_input": "supplied",
     "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-    "linked_kernel_sha256": "6f5fd985cb20e648211153d33fad69bdd370fc76990549f5832742896eaab3c7",
+    "linked_kernel_sha256": "d391e3f526927567f2e70fbd9c2d0548fe024789194fffcd9093f947a31f1833",
     "machine": "pc-q35-10.2",
     "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
     "observations": {
@@ -853,7 +924,7 @@
     "provider": "topal.provider.x86_64-qemu-pc-q35/222",
     "publication": "topalc-target-interface/1",
     "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-    "schema": "topal-kernel-toolchain-gate-qemu/232",
+    "schema": "topal-kernel-toolchain-gate-qemu/233",
     "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
     "serial_input_utf8": "read",
     "source_sha256": "e064f039d42417fbd3a24dea8ae6150ef2b44356567a4412b1cc87bff2b2a4c6",
@@ -867,57 +938,72 @@
     {
       "case": "enum-reordered",
       "library": {
-        "checked_client_sha256": "e8c0bfb1f572b33c58d96b0e10156c40ce92925b5c1a29a4d9a637d78f1ad538",
-        "disassembly_sha256": "b25daa1ddf9dc82719f564fe120fcf4a04f26bd4dc006651f8029fba54b9b616",
+        "checked_client_sha256": "b178f5ae80677c6df269c1c3ee5ecaacce3ccea7912204aa11c3060d28ab61ed",
+        "disassembly_sha256": "ebeac1174f581459f60c54a642cd2f46ee721eebb1f0fca71c4d379a82ca291c",
         "functions": [
           {
             "callees": [],
-            "frame_bytes": 12,
-            "maximum_call_path_bytes": 20,
-            "symbol": "topal.fn.deny_2dwrite.0"
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 16,
+            "symbol": "topal.fn.support_2elogic_2eabsent_3f.0"
           },
           {
             "callees": [
-              "topal.fn.deny_2dwrite.0"
+              "topal.fn.support_2elogic_2eabsent_3f.0"
             ],
-            "frame_bytes": 24,
-            "maximum_call_path_bytes": 52,
-            "symbol": "topal.fn.after_2dkind.1"
-          },
-          {
-            "callees": [
-              "topal.fn.after_2dkind.1"
-            ],
-            "frame_bytes": 24,
-            "maximum_call_path_bytes": 84,
-            "symbol": "topal.fn.require_2ddirectory.2"
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 32,
+            "symbol": "topal.fn.support_2eboot_2emissing_3f.1"
           },
           {
             "callees": [],
             "frame_bytes": 12,
             "maximum_call_path_bytes": 20,
-            "symbol": "topal.fn.deny_2dwrite.3"
+            "symbol": "topal.fn.deny_2dwrite.2"
           },
           {
             "callees": [
-              "topal.fn.deny_2dwrite.3"
+              "topal.fn.deny_2dwrite.2"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 52,
-            "symbol": "topal.fn.after_2dkind.4"
+            "symbol": "topal.fn.after_2dkind.3"
           },
           {
             "callees": [
-              "topal.fn.after_2dkind.4",
-              "topal.fn.require_2ddirectory.2"
+              "topal.fn.after_2dkind.3",
+              "topal.fn.support_2eboot_2emissing_3f.1"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 84,
+            "symbol": "topal.fn.require_2ddirectory.4"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 12,
+            "maximum_call_path_bytes": 20,
+            "symbol": "topal.fn.deny_2dwrite.5"
+          },
+          {
+            "callees": [
+              "topal.fn.deny_2dwrite.5"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 52,
+            "symbol": "topal.fn.after_2dkind.6"
+          },
+          {
+            "callees": [
+              "topal.fn.after_2dkind.6",
+              "topal.fn.require_2ddirectory.4"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 116,
-            "symbol": "topal.fn.boot_2dopen_2ddecision.5"
+            "symbol": "topal.fn.boot_2dopen_2ddecision.7"
           },
           {
             "callees": [
-              "topal.fn.boot_2dopen_2ddecision.5"
+              "topal.fn.boot_2dopen_2ddecision.7"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 148,
@@ -925,18 +1011,37 @@
           }
         ],
         "interface": "boot-open-decision-v1",
-        "llvm_sha256": "03f78d44e1805bb389403089dc898be453ee7784203eb906704c305793f5d542",
+        "llvm_sha256": "8c6441aaab796eec029708d335d36b33cbadd08be488a0ee56d3bcf9db8220d1",
         "llvm_version": "22.1.6",
         "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
         "maximum_stack_bytes": 180,
+        "module_snapshot_sha256": "49daf0a85745a6106bab4a428e141b184258363708c73dc3f5d8727c9ea5b129",
+        "modules": [
+          {
+            "identity": [
+              "support",
+              "boot"
+            ],
+            "sha256": "f50f161403a1c6d2e20bc6268212dc133601a7a0dfa742d41af1458ca7016d05",
+            "source": "support/boot.t"
+          },
+          {
+            "identity": [
+              "support",
+              "logic"
+            ],
+            "sha256": "f612974d56bfd11ea6f040e6600a39e331c2a4bb93b9a5e46abdc7ad23051276",
+            "source": "support/logic.t"
+          }
+        ],
         "native_alignment_reserve_bytes": 32,
         "native_export": "topal_kernel_boot_open_policy_v1",
-        "object_sha256": "c580a3b1aaf1dc411d20af968b3e7bbebb080a6d272461540da6604cda8f10d6",
-        "schema": "topal.kernel-source-library/1",
+        "object_sha256": "8d980d98b1ab74268501965489d0445fd8e25e9c91c15b8e891efbabc170b257",
+        "schema": "topal.kernel-source-library/2",
         "source": "policy/boot-open-access.t",
         "source_export": "boot-open-decision",
-        "source_name": "/tmp/topal-library-a7csf4ks/enum-reordered/policy/boot-open-access.t",
-        "source_sha256": "41c9df2a199b90e943f80d80feff6c391bdb80236a564d3137a01c04a4f35063",
+        "source_name": "/tmp/topal-library-8n6d106_/enum-reordered/policy/boot-open-access.t",
+        "source_sha256": "5a3f61b400fba28301307ff676adab0fb0037d26a8989a6f249dd9379244ad76",
         "source_tags": [
           3,
           2,
@@ -945,19 +1050,19 @@
         ],
         "stack_limit_bytes": 1024
       },
-      "linked_kernel_sha256": "4836871341e517e2e5098640aca2ec3c60832852707e1465440b14e100b0405e",
+      "linked_kernel_sha256": "a1fe16bf62691633ac5bd96c4efe4256258631e973041a300a2e6281a958ea76",
       "result": "pass",
       "root_and_provider_unchanged": true,
       "runtime": {
-        "artifact_provenance_sha256": "eefba873d336208f883270a7dd46a6ea322ed6d721dc45053524269be82c528e",
-        "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/232",
-        "boot_image_sha256": "683cb0f1c346d3d439333a112657248cf76cddb99dc2623f43975e2fd1881266",
-        "boot_provenance_sha256": "36ab87fa18b2d2465cf34afded067fd6ae9d75677b72053a8b7b88d114bd7271",
+        "artifact_provenance_sha256": "223195880d8f6bdc38861cb6f8a859cfa334acefc9d2cb56fceab87e2a61d9c7",
+        "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/233",
+        "boot_image_sha256": "83484f75155da61108933bb98674a23bd9531e0ee32c5881ae70248ab57773fa",
+        "boot_provenance_sha256": "967aa9b07bd57979f4e6a0ae214d6cd0121e6c23c29d35586879b8bf4ea2a0b5",
         "boot_resource_bytes": 2037200,
         "boot_resource_member": "init",
         "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
         "boot_resource_sha256": "9037a9295595e6c4c04408fc61fffd507b943bbece9cdc4fa95211b606ded680",
-        "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/132",
+        "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/133",
         "clean_environment_mode": "maximum",
         "cpu": "qemu64-v1",
         "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -965,7 +1070,7 @@
         "initial_user_image_bytes": 12288,
         "initial_user_image_input": "supplied",
         "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-        "linked_kernel_sha256": "4836871341e517e2e5098640aca2ec3c60832852707e1465440b14e100b0405e",
+        "linked_kernel_sha256": "a1fe16bf62691633ac5bd96c4efe4256258631e973041a300a2e6281a958ea76",
         "machine": "pc-q35-10.2",
         "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
         "observations": {
@@ -1236,7 +1341,7 @@
         "provider": "topal.provider.x86_64-qemu-pc-q35/222",
         "publication": "topalc-target-interface/1",
         "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-        "schema": "topal-kernel-toolchain-gate-qemu/232",
+        "schema": "topal-kernel-toolchain-gate-qemu/233",
         "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
         "serial_input_utf8": "read",
         "source_sha256": "e064f039d42417fbd3a24dea8ae6150ef2b44356567a4412b1cc87bff2b2a4c6",
@@ -1256,57 +1361,72 @@
         "witness_failure_loop": true
       },
       "library": {
-        "checked_client_sha256": "4819c0ed65112b87fd77b0944bb95426bf308cd375b49f60db93060e108b8c80",
-        "disassembly_sha256": "02bc337975c8fc3ccf2b251a860b2561fc08fc355dbfcbf7313f35659f030a1c",
+        "checked_client_sha256": "8a728f01f7ba0633cfc61ac9efad5e8ad1e6496fc8ea7a89042155856557970b",
+        "disassembly_sha256": "55a1e7ae9e9532fd879cdc0b1a63ab0faab381eea458c3e37ff2314040620290",
         "functions": [
           {
             "callees": [],
-            "frame_bytes": 12,
-            "maximum_call_path_bytes": 20,
-            "symbol": "topal.fn.deny_2dwrite.0"
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 16,
+            "symbol": "topal.fn.support_2elogic_2eabsent_3f.0"
           },
           {
             "callees": [
-              "topal.fn.deny_2dwrite.0"
+              "topal.fn.support_2elogic_2eabsent_3f.0"
             ],
-            "frame_bytes": 24,
-            "maximum_call_path_bytes": 52,
-            "symbol": "topal.fn.after_2dkind.1"
-          },
-          {
-            "callees": [
-              "topal.fn.after_2dkind.1"
-            ],
-            "frame_bytes": 24,
-            "maximum_call_path_bytes": 84,
-            "symbol": "topal.fn.require_2ddirectory.2"
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 32,
+            "symbol": "topal.fn.support_2eboot_2emissing_3f.1"
           },
           {
             "callees": [],
             "frame_bytes": 12,
             "maximum_call_path_bytes": 20,
-            "symbol": "topal.fn.deny_2dwrite.3"
+            "symbol": "topal.fn.deny_2dwrite.2"
           },
           {
             "callees": [
-              "topal.fn.deny_2dwrite.3"
+              "topal.fn.deny_2dwrite.2"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 52,
-            "symbol": "topal.fn.after_2dkind.4"
+            "symbol": "topal.fn.after_2dkind.3"
           },
           {
             "callees": [
-              "topal.fn.after_2dkind.4",
-              "topal.fn.require_2ddirectory.2"
+              "topal.fn.after_2dkind.3",
+              "topal.fn.support_2eboot_2emissing_3f.1"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 84,
+            "symbol": "topal.fn.require_2ddirectory.4"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 12,
+            "maximum_call_path_bytes": 20,
+            "symbol": "topal.fn.deny_2dwrite.5"
+          },
+          {
+            "callees": [
+              "topal.fn.deny_2dwrite.5"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 52,
+            "symbol": "topal.fn.after_2dkind.6"
+          },
+          {
+            "callees": [
+              "topal.fn.after_2dkind.6",
+              "topal.fn.require_2ddirectory.4"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 116,
-            "symbol": "topal.fn.boot_2dopen_2ddecision.5"
+            "symbol": "topal.fn.boot_2dopen_2ddecision.7"
           },
           {
             "callees": [
-              "topal.fn.boot_2dopen_2ddecision.5"
+              "topal.fn.boot_2dopen_2ddecision.7"
             ],
             "frame_bytes": 24,
             "maximum_call_path_bytes": 148,
@@ -1314,18 +1434,37 @@
           }
         ],
         "interface": "boot-open-decision-v1",
-        "llvm_sha256": "3e80e9335cd0de5c1b0df276a90ad252412e10daf26bca9dc670a0ce7462e277",
+        "llvm_sha256": "01b4d9efb4bca40cf27eeb0379ae7cb5d8dc7e7e57263b7e232fe344814a97d4",
         "llvm_version": "22.1.6",
         "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
         "maximum_stack_bytes": 180,
+        "module_snapshot_sha256": "49daf0a85745a6106bab4a428e141b184258363708c73dc3f5d8727c9ea5b129",
+        "modules": [
+          {
+            "identity": [
+              "support",
+              "boot"
+            ],
+            "sha256": "f50f161403a1c6d2e20bc6268212dc133601a7a0dfa742d41af1458ca7016d05",
+            "source": "support/boot.t"
+          },
+          {
+            "identity": [
+              "support",
+              "logic"
+            ],
+            "sha256": "f612974d56bfd11ea6f040e6600a39e331c2a4bb93b9a5e46abdc7ad23051276",
+            "source": "support/logic.t"
+          }
+        ],
         "native_alignment_reserve_bytes": 32,
         "native_export": "topal_kernel_boot_open_policy_v1",
-        "object_sha256": "cdeebc44d0ce38e11aa4ba07f2bc6ab18abd008623fdf420b5ba2aab829bacbe",
-        "schema": "topal.kernel-source-library/1",
+        "object_sha256": "f5995f8d691dbad86f97415db73b9be52965929acc93cb444bede7a3f6b10830",
+        "schema": "topal.kernel-source-library/2",
         "source": "policy/boot-open-access.t",
         "source_export": "boot-open-decision",
-        "source_name": "/tmp/topal-library-a7csf4ks/wrong-denial/policy/boot-open-access.t",
-        "source_sha256": "246b0e468512b5ecd2dbf80ae4a3cb18c473ddbadcd79f722e1e9cb59e9b2cd3",
+        "source_name": "/tmp/topal-library-8n6d106_/wrong-denial/policy/boot-open-access.t",
+        "source_sha256": "adb6a01598254c1d9d2f41ac73e51979ed5b833a78ce5eb50dd9ce372b2e4ac5",
         "source_tags": [
           0,
           1,
@@ -1334,8 +1473,8 @@
         ],
         "stack_limit_bytes": 1024
       },
-      "linked_kernel_sha256": "9237691a937eaff1119ce255974e03d52ac545644bfab61db78e90ffafc69ef7",
-      "rejection": "timed out after 30s waiting for all kernel markers\nserial output:\nTOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\n\nQEMU output:\nqemu-system-x86_64: terminating on signal 15 from pid 3709848 (python)\n",
+      "linked_kernel_sha256": "2f4c4eb0c28d701b02f65482cf25211f7c1ee5ab991ef481bfd23bc7aafa5fea",
+      "rejection": "timed out after 30s waiting for all kernel markers\nserial output:\nTOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\n\nQEMU output:\nqemu-system-x86_64: terminating on signal 15 from pid 3757891 (python)\n",
       "result": "expected-behavior-rejection",
       "root_and_provider_unchanged": true,
       "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\n"

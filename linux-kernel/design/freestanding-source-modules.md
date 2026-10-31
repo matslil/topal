@@ -1,7 +1,8 @@
 # Closed source-module snapshots for freestanding policy
 
 `TK-DEC-257`; systems-only direction adopted under standing authorization.
-Implementation and qualification pending.
+Implemented and qualified for the two pure interfaces; see the
+[Step 4 report](../step-4-freestanding-source-modules.md).
 
 Step 2 requires ordinary kernel modules. The two qualified policy interfaces
 currently reject imports, which prevents even pure helpers from being shared
