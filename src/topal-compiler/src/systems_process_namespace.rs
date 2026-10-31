@@ -187,7 +187,7 @@ fn emit_copy_and_walk(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn emit_open(e: &mut E<'_>) -> Result<(), CompileError> {
+fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-open")?;
     e.mov(R8, Di);
     e.mov(Bp, Si);
@@ -227,23 +227,27 @@ fn emit_open(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bytes(&[0x41, 0x56]);
     e.0.call("namespace-walk");
     e.0.bytes(&[0x41, 0x5e]);
-    e.mov(A, Bp);
-    e.arith(4, A, 0x10000);
-    e.cmp(A, 0);
-    e.0.jump_if(0x84, "namespace-open-type-ready");
-    e.cmp(R15, 5);
-    e.0.jump_if(0x84, "namespace-enotdir");
-    e.0.bind("namespace-open-type-ready")?;
-    e.mov(A, Bp);
-    e.arith(4, A, 3);
-    e.cmp(A, 0);
-    e.0.jump_if(0x84, "namespace-open-access-ready");
-    e.cmp(R15, 5);
-    e.0.jump_if(0x85, "namespace-eisdir");
-    // The retained member belongs to the prepared immutable boot-root view.
-    // Lookup/type errors precede this filesystem-level access denial.
-    e.0.jump("namespace-erofs");
-    e.0.bind("namespace-open-access-ready")?;
+    if source_bound {
+        super::policy::emit_open_decision(e)?;
+    } else {
+        e.mov(A, Bp);
+        e.arith(4, A, 0x10000);
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "namespace-open-type-ready");
+        e.cmp(R15, 5);
+        e.0.jump_if(0x84, "namespace-enotdir");
+        e.0.bind("namespace-open-type-ready")?;
+        e.mov(A, Bp);
+        e.arith(4, A, 3);
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "namespace-open-access-ready");
+        e.cmp(R15, 5);
+        e.0.jump_if(0x85, "namespace-eisdir");
+        // The retained member belongs to the prepared immutable boot-root view.
+        // Lookup/type errors precede this filesystem-level access denial.
+        e.0.jump("namespace-erofs");
+        e.0.bind("namespace-open-access-ready")?;
+    }
     // A free slot implies at least one free description; failure is corruption.
     e.mov(R10, R12);
     e.add(R10, DESCRIPTIONS);
@@ -428,10 +432,13 @@ fn emit_cwd(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
-pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(in super::super) fn emit_services(
+    code: &mut X86FunctionEncoder,
+    source_bound: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
     emit_copy_and_walk(&mut e)?;
-    emit_open(&mut e)?;
+    emit_open(&mut e, source_bound)?;
     emit_metadata(&mut e)?;
     emit_cwd(&mut e)?;
     // Directory encoding is emitted by its separate, narrowly scoped helper.

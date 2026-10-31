@@ -316,6 +316,7 @@ def compile_systems_artifact(
     linked: Path,
     initial_user_image: Path | None = None,
     static_user_image: Path | None = None,
+    library_root: Path | None = None,
 ) -> None:
     compiler_command = [
         "cargo",
@@ -334,6 +335,8 @@ def compile_systems_artifact(
         "topal-qemu-pc-q35-10.2",
         "--emit",
         "executable",
+        "--library-root",
+        str(library_root or LINUX_KERNEL / "kernel"),
     ]
     if initial_user_image is not None:
         compiler_command.extend(["--initial-user-image", str(initial_user_image)])
@@ -1066,9 +1069,10 @@ def checked_static_user_image(external: Path | None, environment_mode: str = "ma
 def build_image(
     destination: Path, external_static_user_image: Path | None = None,
     clean_environment_mode: str = "maximum",
+    library_root: Path | None = None,
 ) -> tuple[Path, Path, Path, Path, Path, Path, str]:
     generated = destination / "generated"
-    compile_systems_artifact(generated)
+    compile_systems_artifact(generated, library_root=library_root)
     generated_initial_user_image = generated / "initial-user.elf"
     supplied_initial_user_image = destination / "supplied-initial-user.elf"
     supplied = bytearray(generated_initial_user_image.read_bytes())
@@ -1082,7 +1086,7 @@ def build_image(
 
     linked = destination / "linked"
     compile_systems_artifact(
-        linked, supplied_initial_user_image, supplied_static_user_image
+        linked, supplied_initial_user_image, supplied_static_user_image, library_root
     )
     published_initial_user_image = linked / "initial-user.elf"
     if published_initial_user_image.read_bytes() != supplied:
@@ -1299,7 +1303,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/227",
+        "schema": "topal-kernel-toolchain-gate-qemu/228",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),

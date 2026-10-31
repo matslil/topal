@@ -1923,6 +1923,12 @@ illegal-seek-error is 29
 )
 
 lang systems artifact (
+  kernel-library is lang systems source-library (
+    source is "policy/boot-open-access.t",
+    export is boot-open-decision,
+    interface is boot-open-decision-v1,
+    stack-limit-bytes is 1024
+  ),
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096

@@ -1908,6 +1908,7 @@ pub struct SystemsEntry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
+    pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
@@ -2772,6 +2773,9 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         ));
     }
     program.bootstrap_storage.validate()?;
+    if let Some(library) = &program.kernel_library {
+        library.validate()?;
+    }
     validate_entry(
         &program.bootstrap,
         SystemsEntryKind::Bootstrap,
@@ -9150,6 +9154,7 @@ mod tests {
         terminal_thread_effects.sort();
         SystemsProgram {
             target,
+            kernel_library: None,
             bootstrap_storage: BootstrapStorageDescriptor {
                 capacity_bytes: 65_536,
                 alignment_bytes: 4096,

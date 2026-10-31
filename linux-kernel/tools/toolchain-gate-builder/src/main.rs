@@ -70,8 +70,8 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use topal_compiler::{
-        LlvmTools, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
-        publish_x86_64_systems_artifact_with_static_user_image,
+        LlvmTools, SystemsSourceLibraryInput, X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE,
+        X86_INITIAL_BOOT_RESOURCE_FILE, publish_x86_64_systems_artifact_with_source_library,
         qualified_x86_64_static_user_image_fixture,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
@@ -96,10 +96,17 @@ mod tests {
         .unwrap();
         let tools = LlvmTools::discover(None).unwrap();
         let linked = parent.join("linked");
-        publish_x86_64_systems_artifact_with_static_user_image(
+        let source = SystemsSourceLibraryInput {
+            source: "policy/boot-open-access.t".into(),
+            source_name: "policy/boot-open-access.t".into(),
+            text: include_str!("../../../kernel/policy/boot-open-access.t").into(),
+        };
+        publish_x86_64_systems_artifact_with_source_library(
             &program,
             &tools,
-            &qualified_x86_64_static_user_image_fixture(),
+            None,
+            Some(&qualified_x86_64_static_user_image_fixture()),
+            Some(&source),
             &linked,
         )
         .unwrap();

@@ -13,6 +13,7 @@ impl<'a> Generator<'a> {
             debug.enum_type(&constraint_value_enumeration(program));
         }
         Self {
+            kernel_library_mode: false,
             program,
             source_name,
             globals: Vec::new(),
@@ -401,8 +402,9 @@ impl<'a> Generator<'a> {
                 }
             }
         }
+        let extra_attributes=if self.kernel_library_mode { " noredzone noimplicitfloat \"disable-tail-calls\"=\"true\"" } else { "" };
         self.functions.push(format!(
-            "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
+            "define internal fastcc {return_type} @{}({parameters}) nounwind noinline{extra_attributes} !dbg !{subprogram} {{\n{}\n}}\n",
             function.symbol,
             body.render()
         ));

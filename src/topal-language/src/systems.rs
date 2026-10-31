@@ -6,6 +6,9 @@
 
 use std::collections::BTreeMap;
 
+#[path = "systems_library.rs"]
+mod source_library;
+
 use topal_source::{Diagnostic, SourceText, Span};
 use topal_syntax::{
     CallableKind, DecisionMatcher, DecisionRule, Expression, FunctionClauses, FunctionParameter,
@@ -167,6 +170,8 @@ pub use topal_semantics::{
     SystemsDisposition as CompilerSystemsDisposition, SystemsEntry as CompilerSystemsEntry,
     SystemsEntryKind as CompilerSystemsEntryKind, SystemsHandler as CompilerSystemsHandler,
     SystemsOperation as CompilerSystemsOperation, SystemsProgram as CompilerSystemsProgram,
+    SystemsSourceLibraryInterface as CompilerSystemsSourceLibraryInterface,
+    SystemsSourceLibraryRequirement as CompilerSystemsSourceLibraryRequirement,
     SystemsTargetSelection as CompilerSystemsTargetSelection,
     SystemsTransition as CompilerSystemsTransition,
     TranslationEditKind as CompilerTranslationEditKind,
@@ -333,6 +338,7 @@ pub fn analyze_systems_for_compiler(
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
+        kernel_library: root_entries.kernel_library,
         bootstrap_storage: root_entries.bootstrap_storage,
         bootstrap: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::Bootstrap,
@@ -491,6 +497,7 @@ fn validate_language_selection(
 }
 
 struct ArtifactEntries {
+    kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
     bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
@@ -534,11 +541,17 @@ fn parse_artifact_root(
         ));
     }
     let mut bootstrap_storage = None;
+    let mut kernel_library = None;
     let mut entries = BTreeMap::new();
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "bootstrap-storage" {
+        if label_text == "kernel-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if kernel_library.replace(requirement).is_some() {
+                return Err(duplicate_artifact_field(source, label, label_text));
+            }
+        } else if label_text == "bootstrap-storage" {
             let descriptor = parse_bootstrap_storage(source, field)?;
             if bootstrap_storage.replace(descriptor).is_some() {
                 return Err(duplicate_artifact_field(source, label, label_text));
@@ -595,6 +608,7 @@ fn parse_artifact_root(
         return Err(invalid_entry_set(source, *span));
     }
     Ok(ArtifactEntries {
+        kernel_library,
         bootstrap_storage,
         bootstrap,
         debug_break,

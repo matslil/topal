@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/127";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/128";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -330,6 +330,18 @@ fn validate_artifact_input(
         return Err(CompileError::Tool(
             "static user-image bytes do not match artifact provenance".into(),
         ));
+    }
+    let file = object::File::parse(kernel).map_err(|e| CompileError::Tool(e.to_string()))?;
+    let has_library = file
+        .symbol_by_name(crate::systems_library::EXPORT_SYMBOL)
+        .is_some();
+    if has_library != artifact.kernel_library.is_some() {
+        return Err(CompileError::Tool(
+            "source-library code and artifact binding disagree".into(),
+        ));
+    }
+    if let Some(library) = &artifact.kernel_library {
+        crate::systems_library::inspect_linked_library(kernel, library)?;
     }
     Ok(())
 }
@@ -946,10 +958,7 @@ mod tests {
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
     use super::*;
-    use crate::{
-        LlvmTools, publish_x86_64_systems_artifact_with_static_user_image,
-        qualified_x86_64_static_user_image_fixture,
-    };
+    use crate::{LlvmTools, qualified_x86_64_static_user_image_fixture};
 
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
@@ -960,10 +969,17 @@ mod tests {
         )
         .unwrap();
         let tools = LlvmTools::discover(None).unwrap();
-        let linked = publish_x86_64_systems_artifact_with_static_user_image(
+        let source = crate::systems_library::load_source_library(
+            program.kernel_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let linked = crate::publish_x86_64_systems_artifact_with_source_library(
             &program,
             &tools,
-            &qualified_x86_64_static_user_image_fixture(),
+            None,
+            Some(&qualified_x86_64_static_user_image_fixture()),
+            Some(&source),
             &parent.join("linked"),
         )
         .unwrap();

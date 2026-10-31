@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/227";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/216";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/228";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/217";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -421,6 +421,8 @@ pub struct SystemsArtifactProvenance {
     pub bootstrap_storage_alignment: u64,
     pub placements: Vec<SystemsArtifactPlacement>,
     pub semantic_trace: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kernel_library: Option<crate::SystemsSourceLibraryArtifact>,
     pub inputs: Vec<DigestEntry>,
     pub outputs: Vec<DigestEntry>,
 }
@@ -531,6 +533,42 @@ pub fn publish_x86_64_systems_artifact_with_user_images(
     static_user_image: Option<&[u8]>,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_x86_64_systems_artifact_with_source_library(
+        program,
+        tools,
+        Some(initial_user_image),
+        static_user_image,
+        None,
+        destination,
+    )
+}
+
+/// Publish a systems root with its explicit immutable source-library snapshot.
+///
+/// # Errors
+/// Rejects missing, mismatched or unqualified source before atomic publication.
+pub fn publish_x86_64_systems_artifact_with_source_library(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    if program.kernel_library.is_some() != source_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-LIBRARY: declared import requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
+    let generated;
+    let initial_user_image = match initial_user_image {
+        Some(image) => image,
+        None => {
+            generated = initial_user_elf_file()?;
+            &generated
+        }
+    };
     validate_x86_64_initial_user_image(initial_user_image)?;
     if let Some(image) = static_user_image {
         validate_x86_64_static_user_image(image)?;
@@ -554,6 +592,7 @@ pub fn publish_x86_64_systems_artifact_with_user_images(
         &root_object,
         initial_user_image,
         static_user_image,
+        source_library,
         &stage,
     );
     let record = match result {
@@ -591,6 +630,7 @@ fn publish_in_stage(
     root_object: &[u8],
     initial_user_image: &[u8],
     static_user_image: Option<&[u8]>,
+    source_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -601,7 +641,18 @@ fn publish_in_stage(
         .map_err(io_error("write provider object", &provider_path))?;
     fs::write(&root_path, root_object).map_err(io_error("write root object", &root_path))?;
 
+    let library = program
+        .kernel_library
+        .as_ref()
+        .zip(source_library)
+        .map(|(requirement, input)| {
+            crate::systems_library::build_source_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    if let Some(library) = &library {
+        crate::systems_library::inspect_linked_library(&linked.kernel, &library.record)?;
+    }
     inspect_linked_kernel(
         &linked.kernel,
         &linked.debug,
@@ -634,7 +685,7 @@ fn publish_in_stage(
         fs::write(&static_user_image_path, image)
             .map_err(io_error("write static user image", &static_user_image_path))?;
     }
-    let record = artifact_provenance(
+    let mut record = artifact_provenance(
         program,
         tools,
         plan,
@@ -647,6 +698,27 @@ fn publish_in_stage(
         static_user_image,
         placements,
     )?;
+    if let Some(library) = library {
+        for (name, bytes) in [
+            ("kernel-library.t", library.source.as_bytes()),
+            ("kernel-library.ll", library.llvm.as_bytes()),
+            ("kernel-library.o", library.object.as_slice()),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write source library artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-source:{}", library.record.source),
+            sha256: library.record.source_sha256.clone(),
+        });
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.kernel_library = Some(library.record);
+    }
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
         CompileError::Tool(format!(
             "cannot encode systems artifact provenance: {error}"
@@ -2516,6 +2588,11 @@ fn build_linked_outputs(
             .arg(format!("-Map=../{SYSTEMS_MAP_FILE}"))
             .arg("root.o")
             .arg("provider.o")
+            .args(
+                work.join("kernel-library.o")
+                    .is_file()
+                    .then_some("kernel-library.o"),
+            )
             .arg("-o")
             .arg("kernel.unstripped"),
     )?;
@@ -2625,6 +2702,7 @@ fn artifact_provenance(
         bootstrap_storage_alignment: plan.bootstrap_placement.alignment_bytes,
         placements,
         semantic_trace: semantic_trace(program)?,
+        kernel_library: None,
         inputs,
         outputs,
     })
@@ -3738,6 +3816,8 @@ struct PendingRelocation {
 
 #[derive(Default)]
 struct RootEncoder {
+    source_bound_library: bool,
+    source_library_relocations: Vec<u64>,
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
     frame_allocator_created: bool,
@@ -5693,8 +5773,16 @@ impl RootEncoder {
         }
         // Retain ABI stack alignment with one pad above the twelfth argument.
         // The process borrows the root's existing clock; it owns no new timeline.
-        self.bytes
-            .extend_from_slice(&[0x48, 0x83, 0xec, 8, 0x48, 0x8d, 0x05]);
+        if self.source_bound_library {
+            self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
+            self.source_library_relocations
+                .push(self.bytes.len() as u64);
+            self.bytes.extend_from_slice(&[0; 4]);
+            self.bytes.push(0x50); // thirteenth argument: artifact-owned pure code
+        } else {
+            self.bytes.extend_from_slice(&[0x48, 0x83, 0xec, 8]);
+        }
+        self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
         self.rip_relative_storage(24, 0)?;
         self.bytes.push(0x50); // twelfth argument: borrowed clock view
         self.bytes
@@ -9718,6 +9806,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
 
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
+        source_bound_library: program.kernel_library.is_some(),
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
@@ -10371,6 +10460,37 @@ fn append_root(
         section: SymbolSection::Section(section),
         flags: SymbolFlags::None,
     });
+    if !encoded.source_library_relocations.is_empty() {
+        let dependency = object.add_symbol(Symbol {
+            name: crate::systems_library::EXPORT_SYMBOL.as_bytes().to_vec(),
+            value: 0,
+            size: 0,
+            kind: SymbolKind::Text,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Undefined,
+            flags: SymbolFlags::None,
+        });
+        for offset in &encoded.source_library_relocations {
+            object
+                .add_relocation(
+                    section,
+                    Relocation {
+                        offset: start + offset,
+                        symbol: dependency,
+                        addend: -4,
+                        flags: RelocationFlags::Generic {
+                            kind: RelocationKind::Relative,
+                            encoding: RelocationEncoding::X86RipRelative,
+                            size: 32,
+                        },
+                    },
+                )
+                .map_err(|error| {
+                    CompileError::Tool(format!("source-library relocation: {error}"))
+                })?;
+        }
+    }
     for relocation in &encoded.relocations {
         let symbol = match relocation.target {
             ProviderSymbol::DescribeBootMemory => provider_symbols.describe_boot_memory,
@@ -11476,11 +11596,57 @@ mod tests {
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
     fn program() -> CompilerSystemsProgram {
-        analyze_systems_for_compiler(
+        let mut program = analyze_systems_for_compiler(
             SOURCE,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
-        .unwrap()
+        .unwrap();
+        // The existing structural corpus explicitly exercises the retained
+        // closed profile; source-bound publication is covered independently.
+        program.kernel_library = None;
+        program
+    }
+
+    #[test]
+    fn declared_library_requires_checked_snapshot_before_publication() {
+        // TOPAL-SYSTEMS-SOURCE-LIBRARY-001, TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001
+        let program = analyze_systems_for_compiler(
+            SOURCE,
+            &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+        )
+        .unwrap();
+        let tools = LlvmTools::discover(None).unwrap();
+        let parent = std::env::temp_dir().join(format!(
+            "topal-source-policy-publication-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&parent).unwrap();
+        let destination = parent.join("missing");
+        assert!(publish_x86_64_systems_artifact(&program, &tools, &destination).is_err());
+        assert!(!destination.exists());
+        let mut source = crate::systems_library::load_source_library(
+            program.kernel_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        source.text = source
+            .text
+            .replace("pub boot-open-decision", "boot-open-decision");
+        let destination = parent.join("invalid");
+        assert!(
+            publish_x86_64_systems_artifact_with_source_library(
+                &program,
+                &tools,
+                None,
+                None,
+                Some(&source),
+                &destination
+            )
+            .is_err()
+        );
+        assert!(!destination.exists());
+        assert_eq!(std::fs::read_dir(&parent).unwrap().count(), 0);
+        std::fs::remove_dir_all(parent).unwrap();
     }
 
     fn put_u16(image: &mut [u8], offset: usize, value: u16) {

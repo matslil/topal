@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/209";
+    "topal.provider-object.x86_64-qemu-pc-q35/210";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1609,7 +1609,7 @@ pub fn generate_x86_64_systems_provider_object(
         &mut object,
         text,
         X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
-        &static_image_process_enter()?,
+        &static_image_process_enter(program.kernel_library.is_some())?,
     );
     append_encoded_function(
         &mut object,
@@ -9406,7 +9406,7 @@ fn emit_static_process_shell_output_heap_validation(
     Ok(())
 }
 
-fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
+fn static_image_process_enter(source_bound: bool) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
     const VALUE: u32 = 0x0fd0;
@@ -9449,6 +9449,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         process_files::TABLE_CONTEXT,
         process_files::ARCHIVE_CONTEXT,
         process_runtime::time::CLOCK_CONTEXT,
+        process_runtime::policy::POLICY_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9457,6 +9458,9 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     }
     process_files::emit_entry_validation(&mut code)?;
     process_runtime::time::emit_entry_validation(&mut code)?;
+    if source_bound {
+        process_runtime::policy::emit_entry_validation(&mut code)?;
+    }
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
     code.bytes(&[0x4c, 0x39, 0xd0]);
@@ -12214,6 +12218,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
 
     // Reset process-local state while retaining the process identity, cwd,
     // standard descriptors, ignored disposition, and live descriptor three.
+    for offset in [process_runtime::policy::POLICY_CONTEXT] {
+        code.bytes(&[0x49, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     for offset in (296_u32..=408).step_by(8) {
         code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -16573,6 +16583,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
         process_files::TABLE_CONTEXT,
         process_files::ARCHIVE_CONTEXT,
         process_runtime::time::CLOCK_CONTEXT,
+        process_runtime::policy::POLICY_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
@@ -16751,7 +16762,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_files::emit_transfer_services(&mut code)?;
     process_files::emit_reclamation(&mut code)?;
     process_runtime::signals::emit_services(&mut code)?;
-    process_runtime::namespace::emit_services(&mut code)?;
+    process_runtime::namespace::emit_services(&mut code, source_bound)?;
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
@@ -17803,7 +17814,7 @@ impl X86FunctionEncoder {
 
 fn provider_note(plan: &X86SystemsProviderPlan) -> String {
     format!(
-        "revision={X86_SYSTEMS_PROVIDER_OBJECT_REVISION}\nprovider={}\ntarget={}\nboard={}\nprofile={}\nmachine-cpu={}\ncodegen-cpu={}\nplatform-abi={}\ndata-layout={}\nobject-format={}\nrelocation-model={}\ncode-model={}\nstorage-capacity={}\nstorage-alignment={}\n",
+        "revision={X86_SYSTEMS_PROVIDER_OBJECT_REVISION}\nprovider={}\ntarget={}\nboard={}\nprofile={}\nmachine-cpu={}\ncodegen-cpu={}\nplatform-abi={}\ndata-layout={}\nobject-format={}\nrelocation-model={}\ncode-model={}\nstorage-capacity={}\nstorage-alignment={}\nsource-library-interface={}\n",
         X86_SYSTEMS_PROVIDER_REVISION,
         plan.target,
         plan.board,
@@ -17817,6 +17828,7 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
         plan.code_model,
         plan.bootstrap_placement.capacity_bytes,
         plan.bootstrap_placement.alignment_bytes,
+        plan.source_library_interface.unwrap_or("none"),
     )
 }
 

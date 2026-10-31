@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/227")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/228")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/217")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/218")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/227",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/228",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/127",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/128",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/227")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/228")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1509,6 +1509,52 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(runtime["observations"]["result"],"pass")
             self.assertTrue(runtime["observations"]["qemu_running_after_markers"])
             self.assertTrue(runtime["observations"]["serial_quiescent_after_fatal_disposition"])
+
+    def test_source_kernel_library_executes_checked_source_with_owned_abi(self) -> None:
+        # TOPAL-SYSTEMS-SOURCE-LIBRARY-001, TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001
+        proof=json.loads((LAB/"results/topal-kernel-source-library-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-kernel-source-library-qemu/1")
+        self.assertEqual(proof["harness_sha256"],sha256(LAB/"library_gate.py"))
+        library=proof["library"]
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t"))
+        self.assertEqual(library["source_tags"],[0,1,2,3])
+        self.assertEqual(library["stack_limit_bytes"],1024)
+        self.assertEqual(library["native_alignment_reserve_bytes"],32)
+        costs={}
+        for function in library["functions"]:
+            cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
+            self.assertEqual(function["maximum_call_path_bytes"],cost)
+            costs[function["symbol"]]=cost
+        maximum=costs[library["native_export"]]+32
+        self.assertEqual(library["maximum_stack_bytes"],maximum)
+        self.assertLessEqual(maximum,1024)
+        observation=proof["observation"]
+        self.assertTrue(observation["binding_erased"])
+        self.assertTrue(observation["complete_finite_domain"])
+        self.assertEqual({v["facts"] for v in observation["calls"]},set(range(8)))
+        for call in observation["calls"]:
+            self.assertEqual(call["choice"],[0,3,0,2,1,1,0,2][call["facts"]])
+            self.assertTrue(call["stack_aligned"])
+            self.assertTrue(call["callee_saved_preserved"])
+            self.assertTrue(call["simd_preserved"])
+        self.assertIn("boot-open-access.t",observation["source_helper_frames"][0])
+        self.assertIn("topal_kernel_boot_open_policy_v1",observation["source_helper_frames"][0])
+        runtime=proof["runtime"]
+        self.assertEqual(runtime["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        self.assertEqual(runtime["observations"]["result"],"pass")
+        reordered,wrong=proof["variants"]
+        self.assertEqual(reordered["case"],"enum-reordered")
+        self.assertEqual(reordered["library"]["source_tags"],[3,2,1,0])
+        self.assertEqual(reordered["runtime"]["observations"]["result"],"pass")
+        self.assertNotEqual(reordered["linked_kernel_sha256"],runtime["linked_kernel_sha256"])
+        self.assertEqual(wrong["result"],"expected-behavior-rejection")
+        self.assertEqual(wrong["failure"]["observed_errno"],20)
+        self.assertEqual(wrong["failure"]["expected_errno"],30)
+        self.assertTrue(wrong["failure"]["user_comparison_failed"])
+        self.assertTrue(wrong["failure"]["witness_failure_loop"])
+        for variant in (reordered,wrong):
+            self.assertTrue(variant["root_and_provider_unchanged"])
+            self.assertNotEqual(variant["library"]["object_sha256"],library["object_sha256"])
 
     def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001

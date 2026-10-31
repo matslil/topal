@@ -51,6 +51,18 @@ pub(crate) fn publish(
             })
         })
         .transpose()?;
+    if let Some(requirement) = &program.kernel_library {
+        let source =
+            crate::systems_library::load_source_library(requirement, &options.library_root)?;
+        return crate::publish_x86_64_systems_artifact_with_source_library(
+            &program,
+            &tools,
+            initial_user_image.as_deref(),
+            static_user_image.as_deref(),
+            Some(&source),
+            &options.output,
+        );
+    }
     match (initial_user_image.as_deref(), static_user_image.as_deref()) {
         (Some(initial), Some(static_image)) => publish_x86_64_systems_artifact_with_user_images(
             &program,

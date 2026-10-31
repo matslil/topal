@@ -235,6 +235,7 @@ fn systems_target_publishes_the_canonical_artifact_set() {
             "--board",
             "topal-qemu-pc-q35-10.2",
         ])
+        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&output)
         .arg(&source));
@@ -269,6 +270,7 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
             "--board",
             "topal-qemu-pc-q35-10.2",
         ])
+        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&generated)
         .arg(&source));
@@ -288,6 +290,7 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
             "--initial-user-image",
         ])
         .arg(&supplied_path)
+        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&published)
         .arg(&source));
@@ -302,6 +305,7 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
     let result = run(topalc()
         .arg("--initial-user-image")
         .arg(&supplied_path)
+        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&native_output)
         .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t")));
