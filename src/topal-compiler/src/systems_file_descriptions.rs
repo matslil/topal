@@ -145,6 +145,7 @@ pub(in super::super) fn emit_initialize(code: &mut X86FunctionEncoder) -> Result
     e.store(R12, 40, A); // cwd object: root
     e.imm(A, 1);
     e.store(R12, 48, A); // borrowed prepared-root identity witness
+    e.store(R12, super::observations::IDENTITY, A); // prepared PID-one/single-thread view
     e.imm(A, 5);
     e.store(R12, DESCRIPTIONS + 3 * 64 + 32, A);
     for index in 0..4_i32 {

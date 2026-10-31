@@ -10,6 +10,8 @@ pub(super) mod checks;
 pub(super) mod environment_checks;
 #[path = "systems_namespace_checks.rs"]
 pub(super) mod namespace_checks;
+#[path = "systems_observation_checks.rs"]
+pub(super) mod observation_checks;
 
 pub(super) fn arguments() -> Vec<u8> {
     let mut bytes = b"/alias/argv0\0true\0\0".to_vec();

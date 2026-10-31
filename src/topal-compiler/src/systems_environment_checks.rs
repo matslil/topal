@@ -42,6 +42,8 @@ fn exec_error(w: &mut Witness, environment: u64, errno: i64) {
 }
 pub(in super::super) fn pre_code(mode: &str) -> Vec<u8> {
     let mut w = Witness::default();
+    w.imm(&[0x48, 0xb8], u64::from(super::observation_checks::ENTRY));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     for pointer in [u64::MAX - 3, 0x7ffffc] {
         exec_error(&mut w, pointer, 14);
     }
@@ -118,6 +120,8 @@ fn payloads(w: &mut Witness, count: u64) {
 }
 pub(in super::super) fn post_code(mode: &str) -> Vec<u8> {
     let mut w = Witness::default();
+    w.imm(&[0x48, 0xb8], u64::from(super::observation_checks::ENTRY));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     let count = if mode == "maximum" { 16 } else { 0 };
     if count != 0 {
         // A caller-owned nonzero byte transports progress across destroyed

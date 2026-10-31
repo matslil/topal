@@ -30,6 +30,8 @@ def exec_error(w,environment,errno):
 
 def pre_code(witness_type,mode):
     w=witness_type()
+    w.imm('48b8',0x4D0000)
+    w.raw('ffd0')
     for pointer in (MAX-3,0x7FFFFC):
         exec_error(w,pointer,14)
     first=int.from_bytes(b'A=one\0\0\0','little')
@@ -97,6 +99,8 @@ def payloads(w,count):
 
 def post_code(witness_type,mode):
     w=witness_type()
+    w.imm('48b8',0x4D0000)
+    w.raw('ffd0')
     count=16 if mode=='maximum' else 0
     if count:
         w.raw('440fb63c25')

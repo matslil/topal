@@ -12,6 +12,8 @@ pub(super) mod credentials;
 pub(super) mod file_descriptions;
 #[path = "systems_process_namespace.rs"]
 pub(super) mod namespace;
+#[path = "systems_process_observations.rs"]
+pub(super) mod observations;
 #[path = "systems_process_realtime.rs"]
 pub(super) mod realtime;
 #[path = "systems_process_signals.rs"]

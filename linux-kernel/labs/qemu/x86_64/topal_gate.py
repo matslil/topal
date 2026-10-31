@@ -59,6 +59,16 @@ PROCESS_WORKLOADS = {
     "exec-chain-cwd": (
         b"cd /bin; exec /bin/busybox env /bin/busybox env /bin/busybox pwd\n", b"/bin\n", 0
     ),
+    "replacement-shell-pid": (
+        b"exec /bin/busybox sh -c 'echo $$; exec /bin/busybox true'\n", b"1\n", 0
+    ),
+    "replacement-shell-cwd": (
+        b"exec /bin/busybox sh -c 'cd /bin; echo $$; exec /bin/busybox pwd'\n", b"1\n/bin\n", 0
+    ),
+    "uname-kernel": (b"exec /bin/busybox uname -srm\n", b"Linux 7.2.9-topal x86_64\n", 0),
+    "replacement-shell-script": (
+        b"exec /bin/busybox sh -c 'echo one; pwd; cd /bin; pwd; exit 7'\n", b"one\n/\n/bin\n", 7
+    ),
     "export-token": (
         b"export TOPAL_TOKEN=alpha; exec /bin/busybox env\n",
         b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=alpha\nPWD=/\n", 0
@@ -1009,6 +1019,10 @@ def static_user_fixture(environment_mode: str = "maximum") -> bytes:
         image[offset:offset+len(payload)] = payload
     environment_encoder = runpy.run_path(str(LAB / "static_environment_checks.py"))
     image[0xC_C000:0xC_C400] = environment_encoder["environment_bytes"]()
+    observation_encoder = runpy.run_path(str(LAB / "static_observation_checks.py"))
+    observation_code = observation_encoder["code"](checks["Witness"])
+    image[0xD_0000:0xD_0000+len(observation_code)] = observation_code
+    image[0xD_8000:0xD_8000+390] = observation_encoder["system_bytes"]()
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1266,7 +1280,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/223",
+        "schema": "topal-kernel-toolchain-gate-qemu/224",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1574,6 +1588,7 @@ def evidence_record(
             ),
             "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
             "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+            "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
             "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
             "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
             "static_shell_bin_busybox_reopen_terminal_revoke_profile": (
@@ -1697,7 +1712,8 @@ def verify(
             raise GateError("runtime process output or observed exit status differed")
         expected_commits = 3 if external_static_user_image is None and clean_environment_mode == "maximum" else 1
         if external_static_user_image is not None:
-            expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3}.get(process_workload, 1)
+            expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
+                                "replacement-shell-pid": 2, "replacement-shell-cwd": 2}.get(process_workload, 1)
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/205";
+    "topal.provider-object.x86_64-qemu-pc-q35/206";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9677,6 +9677,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_runtime::namespace::emit_dispatch(&mut code)?;
     process_runtime::realtime::emit_dispatch(&mut code)?;
     process_runtime::credentials::emit_dispatch(&mut code)?;
+    process_runtime::observations::emit_dispatch(&mut code)?;
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x85, "static-process-non-read-syscall");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -16742,6 +16743,7 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     process_runtime::namespace::emit_services(&mut code)?;
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
+    process_runtime::observations::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }
