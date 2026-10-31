@@ -653,6 +653,15 @@ execute multiple replacements, later-generation failed-prefix retries,
 repeated descriptor/signal/cwd inheritance and complete rollback. Broader
 mapping and executable selection remain separately required.
 
+A reusable prepared-process observation refinement shall expose stable
+PID/TID/parent and immutable system-information facts repeatedly and independently
+of application call order after qualified startup. It shall import private
+prepared identity, ignore unused native arguments, preserve non-result registers
+and process state, check complete writable native records before publication,
+retain no caller pointer and preserve identity across exec. Tests shall cover
+repetition/reordering, native record bytes and faults, replacement shells and
+complete reclamation. Broader process and UTS namespace behavior remains open.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained

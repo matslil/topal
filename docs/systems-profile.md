@@ -713,6 +713,14 @@ terminal cleanup releases retained execution authority once. Bounded mapping
 and executable qualifications remain explicit; repetition grants no new
 executable, process or core-language authority.
 
+A reusable prepared-process observation refinement may expose retained
+process/thread/parent identity and the selected immutable system-information
+view repeatedly after qualified startup. Observations do not advance a chosen
+shell sequence or derive authority from mutable user bytes. Native record
+publication requires a complete checked destination; exec retains process and
+system views, and terminal reclamation erases their private witness. Broader
+process creation and mutable namespace identities remain separately qualified.
+
 A separately qualified process-signal refinement may retain native action
 registrations and a blocked set as process-owned ABI state. Complete checked
 input and old-value transfers preserve native overlap and commit/error behavior.
