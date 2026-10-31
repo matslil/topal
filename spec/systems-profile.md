@@ -3650,7 +3650,8 @@ client. Its complete reachable helper graph SHALL use ordinary language
 semantics. The initial profile SHALL admit only Boolean, `Nat`/`Int`, the
 Euclidean integer pair, local bindings, finite decisions, direct acyclic calls,
 addition, multiplication, comparison and proven-nonzero-divisor Euclidean
-operations. Unqualified forms, effects, foreign calls, imports, recursion,
+operations. Unqualified forms, effects, foreign calls, imports outside
+`TOPAL-SYSTEMS-SOURCE-MODULES-001`, recursion,
 dynamic callables and source resource/address authority SHALL be invalid.
 Admission SHALL NOT redefine arithmetic, errors, types, purity or overloads.
 
@@ -3740,7 +3741,8 @@ The ordinary shared language frontend SHALL check the selected export and its
 complete reachable helper graph. The first profile SHALL admit only Boolean
 and nominal Enum data, ordinary local bindings, finite decisions and direct
 acyclic calls. Effects, resource/address values, allocation, foreign calls,
-dynamic callable values, recursion, imports and other unqualified forms SHALL
+dynamic callable values, recursion, imports outside
+`TOPAL-SYSTEMS-SOURCE-MODULES-001` and other unqualified forms SHALL
 produce a profile diagnostic. This admission boundary SHALL NOT change valid
 core-language meaning, overload selection, type identity, exhaustiveness,
 visibility or termination rules. Unchecked source-body reinterpretation SHALL
@@ -3767,6 +3769,41 @@ execute the complete finite input domain, source/helper frames, source-body and
 Enum-order variants, malformed/escape inputs and full artifact/runtime rollback.
 This rule SHALL NOT establish arbitrary-type, allocating or general module
 support merely from the first profile.
+
+### TOPAL-SYSTEMS-SOURCE-MODULES-001 — Closed ordinary module snapshots
+
+The finite and numeric source-library profiles MAY include ordinary source
+module dependencies. Initial imported units SHALL contain functions over the selected profile's
+Boolean/numeric values. Imported type declarations and cross-unit nominal values
+SHALL remain unqualified; nominal Enum adaptation SHALL remain at the finite
+root. Filesystem discovery SHALL start at the selected root unit and resolve
+declared libraries and qualified references to a fixed point
+under the shared ordinary selection rules. The frozen input SHALL include each
+selected module's contained relative `.t` path, ordinary logical identity and
+exact bytes. Explicit in-memory publication SHALL validate the same complete
+closure without ambient filesystem access. Missing, duplicate, conflicting,
+unselected, escaping or cyclic dependencies SHALL fail before publication.
+The first discovery binding SHALL admit at most 64 selected dependencies and
+1048576 total source bytes, apply the same byte budget to all scanned source
+files, inspect at most 4096 filesystem entries and reject symlinked dependency
+trees. These budgets SHALL NOT redefine core semantics.
+
+The shared frontend SHALL retain ordinary library-version checks, visibility,
+type/overload identity and declared numeric export types. Module runtime
+initializers SHALL be rejected. Every reachable imported helper SHALL pass the
+selected profile's purity, value-form, acyclic-call and native restrictions.
+Complete stack and numeric allocation bounds SHALL include imported helpers.
+No imported source SHALL create machine, allocator or resource authority.
+
+Publication SHALL bind each module identity, relative path and content digest,
+emit exact frozen dependency bytes in a digested snapshot output and retain
+actual module source locations in debug information. Qualification SHALL observe
+imported helper frames, unchanged native semantics/state and terminal rollback,
+show an imported-body change affects behavior independently of root/provider
+objects, and reject malformed/extra/missing/escaping/effectful/cyclic snapshots.
+This rule SHALL NOT establish arbitrary types, persistent allocation, dynamic
+loading or separate native module linking. Atomic publication SHALL cover the
+frozen inputs; no atomic read of a concurrently changing source tree is implied.
 
 ### TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001 — Owned pure boot-open policy binding
 
