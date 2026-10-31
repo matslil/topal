@@ -6209,6 +6209,52 @@ fabricate another syscall observation. Tests SHALL cover repetition/reordering,
 native width, metadata independence, exec lifetime and erasure. This SHALL NOT
 imply arbitrary identity, capability or multi-user permission policy.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ENVIRONMENT-001 — Caller-owned environment bytes
+
+A separately selected exec-environment refinement SHALL admit zero through
+sixteen native environment entries and at most 1024 copied bytes including
+terminators. Null envp SHALL denote an empty environment. Empty entries,
+duplicates and arbitrary nonzero byte contents SHALL be transported in order,
+without key/value interpretation, sorting or selected-payload comparison.
+Existing one-through-eight argument and 256-byte bounds SHALL remain; argv[0]
+SHALL be caller data independent of executable identity, including empty data.
+Other argv normalization remains outside this profile's qualification.
+
+Each vector qword and string byte SHALL pass checked arithmetic and live
+readable-user validation before access. A seventeenth nonnull vector entry
+SHALL return `E2BIG` without reading its string. Aggregate exhaustion SHALL
+return `E2BIG`; inaccessible input SHALL return `EFAULT`. A complete copied
+aggregate SHALL retain lengths and offsets, never old user pointers. Before
+commit, failure SHALL preserve image, descriptors/positions, cwd, signal state
+and prepared identity and erase/verify all private staging, including failed
+nonempty prefixes. Successful entry SHALL consume/erase the complete aggregate.
+Qualified tests SHALL prove exact values, count/byte boundaries, error order,
+successful retry, arbitrary argv-zero data and changed external environments.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-PAYLOAD-001 — Startup payload isolation
+
+The environment refinement SHALL derive fresh argc/argv/envp and both vector
+terminators from copied counts/offsets. Every pointer SHALL name the committed
+image's storage. Auxiliary data SHALL retain a complete `AT_NULL` pair, this
+generation's platform/random identities and an execution filename independent
+of argv[0]. All argument, environment, filename, platform and random payloads
+SHALL be disjoint from the vector area and ordinary stack-growth region.
+The initial x86 binding SHALL place them above entry RSP. Another binding SHALL
+use its own declared growth direction; no native register name or one address
+ordering SHALL become universal source meaning. Ordinary stack growth SHALL
+NOT overwrite startup payloads.
+
+The initial x86 binding MAY reserve fixed maximum vector/payload regions within
+its existing two-page stack, with declared aligned entry and free stack prefix.
+Kernel calls SHALL continue using the private kernel stack. Expanded private
+copy staging SHALL remain disjoint from pristine image bytes and rollback
+storage and SHALL be erased/read back before entry. Startup adapters SHALL
+use actual generation identity rather than fixed predecessor environment or
+payload addresses. Qualification SHALL cover maximum aggregates, every pointer
+and terminator, execution-name/argv-zero distinction, deliberate below-RSP
+writes preserving payloads, copied-value lifetime and full terminal erasure.
+This SHALL NOT establish unbounded stack/ARG_MAX or general loader coverage.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

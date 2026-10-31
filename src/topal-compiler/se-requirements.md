@@ -2377,6 +2377,18 @@ qualify repeated/reordered calls, native widths and metadata independence,
 without using user-writable auxiliary data as authority or admitting other
 identity changes.
 
+The runtime-environment realization shall implement `TK-DEC-245`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ENVIRONMENT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-PAYLOAD-001`. It shall copy caller environments
+into disjoint owned staging, preserve empty/null/duplicate data and arbitrary
+argv[0], enforce declared vector/byte/copy errors, preserve pre-commit state and
+erase every failed prefix. It shall derive vectors and above-RSP payloads from
+copied counts/offsets, separate execution name from argv-zero data, preserve
+generation-specific auxiliary/random facts and consume all staging before
+entry. Executed cases shall cover limits, failed-prefix retry, pointer/value
+transport, downward-stack writes, changed cwd/exported environments and full
+reclamation. Native bounds/layout remain closed systems-provider details.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
