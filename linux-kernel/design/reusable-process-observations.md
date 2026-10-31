@@ -1,7 +1,8 @@
 # Reusable prepared-process observations
 
 Status: systems-only direction adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-247`).
+implemented and physically qualified (`TK-DEC-247`); see the
+[qualification report](../step-4-reusable-process-observations.md).
 
 The prepared single-threaded PID-one process has stable process, thread and
 parent observations. Repeated or reordered queries after qualified startup

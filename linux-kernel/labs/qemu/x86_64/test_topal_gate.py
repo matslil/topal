@@ -472,16 +472,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/223")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/224")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/213")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/214")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/223",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/224",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/123",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/124",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1007,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/223")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/224")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1427,13 +1427,32 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIn("TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",previous["serial_utf8"])
         self.assertNotIn("TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",previous["serial_utf8"])
 
+    def test_prepared_process_observations_bind_queries_and_replacement_shells(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-{IDENTITY,UNAME}-001
+        self.assertEqual(self.evidence["static_user_image_sha256"],
+                         hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        expected={"replacement-shell-pid":("1\n",0,2),
+                  "replacement-shell-cwd":("1\n/bin\n",0,2),
+                  "replacement-shell-script":("one\n/\n/bin\n",7,1),
+                  "uname-kernel":("Linux 7.2.9-topal x86_64\n",0,1)}
+        for workload,(output,status,commits) in expected.items():
+            record=json.loads((LAB/"results"/f"topal-runtime-{workload}-gate.json").read_text())
+            self.assertEqual(record["process_output_utf8"],output)
+            self.assertEqual(record["process_exit_status"],status)
+            self.assertEqual(record["process_exec_commits"],commits)
+            self.assertEqual(record["observations"]["prepared_process_observation_profile"],
+                             "retained-pid-tid-parent-and-immutable-390-byte-uts-view")
+            self.assertEqual(record["observations"]["result"],"pass")
+            self.assertEqual(record["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+
     def test_successive_exec_entries_bind_live_generations_and_terminal_release(self) -> None:
         # TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001
         records=[(self.evidence,3)]
         for workload in GATE.PROCESS_WORKLOADS:
             record=self.external_evidence if workload=="true" else json.loads(
                 (LAB/"results"/f"topal-runtime-{workload}-gate.json").read_text())
-            records.append((record,{"exec-chain":3,"exec-chain-false":2,"exec-chain-cwd":3}.get(workload,1)))
+            records.append((record,{"exec-chain":3,"exec-chain-false":2,"exec-chain-cwd":3,
+                                    "replacement-shell-pid":2,"replacement-shell-cwd":2}.get(workload,1)))
         for record,count in records:
             serial=record["observations"]["serial_utf8"]
             marker=GATE.EXEC_COMMIT_MARKER.decode()

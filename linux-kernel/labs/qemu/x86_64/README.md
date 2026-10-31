@@ -429,11 +429,12 @@ The external runtime corpus uses `--external-static-user-image PATH` with
 `--process-workload true`, `false`, `echo`, `echo-changed`, `head-stdin`,
 `head-alias`, `wc-stdin`, `dd-seek`, `head-file`, `head-normalized`, `wc-file`,
 `ls-bin`, `pwd-bin`, `export-token`, `export-token-changed`, `exec-chain`,
-`exec-chain-false`, or `exec-chain-cwd`. The harness sends
+`exec-chain-false`, `exec-chain-cwd`, `replacement-shell-pid`,
+`replacement-shell-cwd`, `replacement-shell-script`, or `uname-kernel`. The harness sends
 the selected final command over serial after the static entry marker; later
 probe input is sent at its existing resource marker. `--write-evidence` records
 the exact command, application output, observed status, linked kernel identity
-and full rollback. All eighteen external cases must use the same kernel executable.
+and full rollback. All twenty-two external cases must use the same kernel executable.
 The [file-description and signal qualification](../../../step-4-reusable-static-file-descriptions.md)
 adds a clean executed boundary corpus, shared file offsets and immutable backing,
 exec filtering, and retained native signal registration/mask semantics.
@@ -467,6 +468,13 @@ actual filter entry, exact saved-frame equality, restored test instrumentation
 and full kernel rollback. An optional `--predecessor-artifact PATH` points to a
 previous build's `artifact` directory and records its expected rejection of the
 same injection separately. Run the harness through `scripts/run_bounded.py`.
+
+The [process-observation qualification](../../../step-4-reusable-process-observations.md)
+adds repeated PID/TID/parent queries and complete immutable guest uname records.
+The clean fixture checks these before and after replacement, including full
+record bytes, exact destination boundaries and rejected-copy canaries.
+Replacement shell cases execute PID observations, builtin command sequences,
+cwd changes, another exec and nonzero exit through ordinary application code.
 
 Realtime calendar and representation cases use a separate harness:
 
