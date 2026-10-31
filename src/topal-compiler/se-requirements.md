@@ -2617,6 +2617,16 @@ in the restored parent mapping, and release inactive resources at outer-owner
 termination. Independent ABI, state-model, GDB and unchanged-application evidence
 shall qualify these boundaries without claiming general scheduling fairness.
 
+The anonymous-pipe service shall implement `TK-DEC-256` with shared owned FIFO
+storage excluded from private snapshots, exact endpoint references, native pair
+publication and rollback, checked byte transport, atomic-write/partial-transfer
+boundaries and condition-bound read/write suspension. Readiness shall follow the
+exact FIFO generation and peer lifetime; restored retries shall recheck authority
+and current user permissions. Close/exec/child exit/parent termination shall
+release endpoints and erase payload/metadata before reuse. Unsupported pipe/signal
+profiles shall remain explicit. Independent model, native user/GDB, fault/capacity
+and unchanged BusyBox command-substitution evidence shall qualify the result.
+
 The systems publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
 `TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` through ordinary declared-type export
 selection, shared numeric algorithms, qualified kernel allocation/fatal hooks,

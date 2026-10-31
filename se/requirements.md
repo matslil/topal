@@ -1555,6 +1555,15 @@ both live processes making cooperative progress and a blocking parent resuming
 only after matching child exit. This shall not claim general fairness or user
 preemption or discharge the ordinary Topal scheduler-module requirement.
 
+The anonymous-pipe refinement shall realize `TK-DEC-256` under the artifact
+requirement: shared FIFO/endpoints independent of snapshots, complete native
+pair publication, atomic/partial and blocking/nonblocking byte transfers,
+generation-bound readiness/retry, peer closure, failure rollback and complete
+reclamation. Native signal cases outside the qualified ignore disposition shall
+remain explicit until signal ownership/delivery is implemented. Independent
+model/user/GDB evidence and unmodified shell command substitution shall establish
+actual byte transport and cooperative progress without claiming general IPC.
+
 ## TOPAL-REQ-SYSTEMS-QUALIFY-001 — Cross-architecture and target evidence
 
 Every systems element shall have architecture-independent semantic and

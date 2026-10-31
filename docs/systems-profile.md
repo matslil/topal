@@ -1761,6 +1761,17 @@ in the restored process generation before publication. Pair termination releases
 inactive as well as active resources. Cooperative qualification does not establish
 general user preemption, scheduling fairness, blocking I/O or core task semantics.
 
+A separately qualified anonymous-pipe service may construct shared byte-stream
+objects and read/write endpoints under an existing process owner. Descriptor
+aliases retain endpoint rights/status and peer lifetime independently of private
+process snapshots. Blocking transfer atomically retains an exact object-generation
+condition and native retry continuation; bytes, available space or peer closure
+make that condition eligible. Resumption rechecks current-generation user access
+before publication. Unrelated identities and ordinary yields cannot manufacture
+readiness, and destruction requires complete endpoint/wait/payload reclamation.
+Native pipe flags, atomic-write bounds and signal/error behavior remain qualified
+personality contracts. This introduces no core-language byte sharing or raw address.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct
