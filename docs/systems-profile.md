@@ -1597,6 +1597,31 @@ absence of interruption, and one interface delivery for the syscall. The
 larger bound does not imply unbounded allocation, partial-progress policy, or
 an architecture page-size dependency.
 
+A separately qualified read-only namespace refinement may retain immutable
+object identities, owned path bytes, directory descriptions and process cwd.
+It resolves native paths through namespace components and relative authority,
+allocates independent descriptions for independent opens, and makes metadata,
+enumeration and file reads agree on object identity and backing. Native copies
+and allocation precede their declared lookup/commit boundaries; failures retain
+existing resources and erase private names. Cwd survives image replacement.
+Path bytes, native layouts and directory cookies stay behind the Linux ABI
+adapter. This does not establish writable storage, links, mounts or general VFS
+coverage, and introduces no ordinary language pointer or string semantics.
+
+A separately qualified native realtime-seconds adapter may observe a declared
+platform realtime resource and publish Unix-epoch seconds with an optional
+checked complete native output. It keeps acquisition/calendar conversion
+private, distinct from monotonic observation, validates source coherence and
+bounds, and erases staging on every return. This does not establish clock
+setting, timezone or synchronization services or expose native clock registers
+to ordinary source.
+
+A separately qualified prepared-root identity refinement may expose repeated
+real/effective user/group queries and idempotent root selection independently
+of pathname or prior call ordering. Its authority is retained process identity,
+not user-writable auxiliary metadata. Exec preserves that view and exit erases
+its witness. Arbitrary identity and privilege changes remain unqualified.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

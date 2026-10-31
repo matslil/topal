@@ -603,6 +603,34 @@ clean cases and actual external setup calls shall qualify these services;
 asynchronous delivery, pending queues, frames and return/restart behavior shall
 remain separately tracked requirements.
 
+A separately qualified read-only namespace refinement shall retain immutable
+objects, process cwd and independently opened descriptions. It shall copy
+native names through checked live user mappings, resolve components and
+relative directory authority, distinguish missing/non-directory/invalid cases,
+preserve allocation and lookup error order, and erase private copies on all
+paths. Opens, metadata, directory records and file reads shall agree on object
+identity and backing. Cwd shall survive exec. Qualification shall cover error
+atomicity, independent opens and aliases, native directory-record boundaries,
+cwd/exec lifetime and external file/directory consumers. Writable storage,
+links, mounts and broader VFS behavior remain separately required.
+
+A separately qualified realtime-seconds refinement shall obtain actual epoch
+seconds from a declared platform clock, validate coherent calendar acquisition
+and conversion bounds, and publish the same returned/native-output value only
+after complete writable user checks. Null output shall be a pure query; copy
+faults shall not partially publish. Private staging shall be erased. Calendar
+and physical tests shall cover epoch/leap/century boundaries, actual platform
+dates, query/copy behavior and rollback. No monotonic-uptime substitution or
+application-specific timestamp shall implement realtime observation.
+
+A reusable prepared-root identity refinement shall observe retained real and
+effective user/group identity independently of ordinary call order and pathname
+operations. Idempotent root selection shall preserve the same identity and all
+other process resources. Authority shall come from the prepared process owner,
+not mutable user memory. Tests shall cover repeated/reordered calls, native
+integer width, exec inheritance, failure independence and terminal erasure.
+Other identity changes remain separately required and unqualified.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained
