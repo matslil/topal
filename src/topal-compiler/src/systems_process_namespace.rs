@@ -248,7 +248,8 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
         e.0.jump("namespace-erofs");
         e.0.bind("namespace-open-access-ready")?;
     }
-    // A free slot implies at least one free description; failure is corruption.
+    // Two sixteen-slot processes can retain at most thirty-two descriptions.
+    // A free active slot therefore implies a free cell across BOTH banks.
     e.mov(R10, R12);
     e.add(R10, DESCRIPTIONS);
     e.imm(R11, 0);
@@ -257,9 +258,13 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.cmp(A, 0);
     e.0.jump_if(0x84, "namespace-description-ready");
     e.add(R11, 1);
-    e.cmp(R11, 16);
+    e.cmp(R11, 32);
     e.0.jump_if(0x84, "fatal");
     e.add(R10, 64);
+    e.cmp(R11, 16);
+    e.0.jump_if(0x85, "namespace-free-description");
+    e.mov(R10, R12);
+    e.add(R10, super::file_descriptions::CHILD_DESCRIPTIONS);
     e.0.jump("namespace-free-description");
     e.0.bind("namespace-description-ready")?;
     e.imm(A, 4);

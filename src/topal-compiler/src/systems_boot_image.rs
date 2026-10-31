@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/129";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/130";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -307,6 +307,7 @@ fn validate_artifact_input(
             "linked kernel bytes do not match artifact provenance".into(),
         ));
     }
+    crate::systems_provider_object::inspect_linked_process_backing(kernel)?;
     let expected = artifact
         .outputs
         .iter()
@@ -1016,6 +1017,52 @@ mod tests {
         ));
         fs::create_dir(&path).unwrap();
         path
+    }
+
+    #[test]
+    fn rejects_truncated_or_user_visible_child_backing_before_boot() {
+        // TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001
+        use object::{ObjectSection as _, ObjectSymbol as _};
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        let file = object::File::parse(kernel.as_slice()).unwrap();
+        let symbol = file
+            .symbol_by_name(
+                crate::systems_provider_object::X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL,
+            )
+            .unwrap();
+        let (start, _) = file
+            .section_by_name(".symtab")
+            .unwrap()
+            .file_range()
+            .unwrap();
+        let entry = start as usize + symbol.index().0 * 24;
+        assert_eq!(symbol.size(), 0x3e000);
+        for (field, value) in [
+            (16, 8192_u64),
+            (16, u64::MAX),
+            (8, 0x3ff000),
+            (8, 0x400000),
+            (8, 0x800001),
+        ] {
+            let mut changed = kernel.clone();
+            changed[entry + field..entry + field + 8].copy_from_slice(&value.to_le_bytes());
+            assert!(
+                crate::systems_provider_object::inspect_linked_process_backing(&changed).is_err()
+            );
+            let mut provenance = artifact.clone();
+            provenance
+                .outputs
+                .iter_mut()
+                .find(|o| o.identity == SYSTEMS_KERNEL_FILE)
+                .unwrap()
+                .sha256 = sha256(&changed);
+            assert!(
+                generate_x86_64_linux_boot_image(&changed, &provenance, &initial, &static_image)
+                    .is_err()
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
     }
 
     #[test]

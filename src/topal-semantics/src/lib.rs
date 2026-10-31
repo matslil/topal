@@ -52,3 +52,5 @@ include!("lib/resource_tracker.rs");
 mod tests {
     include!("lib/tests/declaration.rs");
 }
+mod systems_children;
+pub use systems_children::*;

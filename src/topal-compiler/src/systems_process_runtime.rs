@@ -4,6 +4,8 @@
 //! TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001. All addresses below belong
 //! to the retained ABI provider, rather than the portable process model.
 
+#[path = "systems_process_children.rs"]
+pub(super) mod children;
 #[path = "systems_process_numeric.rs"]
 pub(super) mod numeric;
 #[path = "systems_process_policy.rs"]

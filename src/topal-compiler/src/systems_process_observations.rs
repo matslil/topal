@@ -36,11 +36,22 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.bind("process-observations-identity")?;
     e.gs(0x8b, R12, TABLE_CONTEXT);
     e.load(A, R12, IDENTITY);
-    // The imported prepared initial process has one thread and no parent
-    // visible in its qualified view. The witness is never mutable user data.
+    // Resolve the current identity through the owned child relationship.
     e.cmp(A, 1);
+    e.0.jump_if(0x84, "process-observations-initial");
+    e.load(R11, R12, 0x2000);
+    e.cmp(R11, 1);
     e.0.jump_if(0x85, "fatal");
+    e.load(R11, R12, 0x2010);
+    e.rr(0x39, A, R11);
+    e.0.jump_if(0x85, "fatal");
+    e.cmp(R9, 0);
+    e.0.jump_if(0x84, "process-observations-return");
+    e.imm(A, 1);
+    e.0.jump("process-observations-return");
+    e.0.bind("process-observations-initial")?;
     e.rr(0x29, A, R9);
+    e.0.bind("process-observations-return")?;
     emit_static_process_sysret(e.0);
 
     e.0.bind("process-observations-uname")?;

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/211";
+    "topal.provider-object.x86_64-qemu-pc-q35/212";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -36,6 +36,52 @@ pub const X86_SYSTEMS_STATIC_PROCESS_EXEC_SNAPSHOT_SYMBOL: &str =
 pub const X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL: &str =
     "topal_x86_static_process_descriptor_table";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
+
+/// Verify the expanded process/child backing before it can reach a boot image.
+pub(crate) fn inspect_linked_process_backing(bytes: &[u8]) -> Result<(), CompileError> {
+    use object::{Object as _, ObjectSection as _, ObjectSymbol as _};
+    let invalid = || CompileError::Tool("unqualified linked process/child backing".into());
+    let file = object::File::parse(bytes).map_err(|_| invalid())?;
+    if file.format() != BinaryFormat::Elf
+        || file.architecture() != Architecture::X86_64
+        || !file.is_little_endian()
+        || file.kind() != object::ObjectKind::Executable
+    {
+        return Err(invalid());
+    }
+    let symbols = file
+        .symbols()
+        .filter(|s| {
+            s.is_definition()
+                && s.name().ok() == Some(X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL)
+        })
+        .collect::<Vec<_>>();
+    if symbols.len() != 1 {
+        return Err(invalid());
+    }
+    let symbol = &symbols[0];
+    let end = symbol
+        .address()
+        .checked_add(symbol.size())
+        .ok_or_else(invalid)?;
+    if symbol.kind() != SymbolKind::Data
+        || symbol.size() != process_runtime::children::STORAGE_BYTES
+        || symbol.address() % 4096 != 0
+        || symbol.address() < 0x200000
+        || end > 0x40000000
+        || (symbol.address() < 0x800000 && end > 0x400000)
+    {
+        return Err(invalid());
+    }
+    let section = file
+        .section_by_index(symbol.section_index().ok_or_else(invalid)?)
+        .map_err(|_| invalid())?;
+    if !matches!(section.flags(),object::SectionFlags::Elf { sh_flags,.. } if sh_flags.0 & 7 == 3) {
+        return Err(invalid());
+    }
+    Ok(())
+}
+
 pub const X86_SYSTEMS_BOOT_MEMORY_SYMBOL: &str = "topal_x86_systems_describe_boot_memory";
 pub const X86_SYSTEMS_FRAME_ALLOCATE_SYMBOL: &str = "topal_x86_systems_allocate_physical_frames";
 pub const X86_SYSTEMS_STATIC_IMAGE_PREPARE_SYMBOL: &str =
@@ -1982,14 +2028,17 @@ pub fn generate_x86_64_systems_provider_object(
         flags: SymbolFlags::None,
     });
 
-    let descriptor_table_offset =
-        object.append_section_bss(process_storage, process_files::TABLE_BYTES, 4096);
+    let descriptor_table_offset = object.append_section_bss(
+        process_storage,
+        process_runtime::children::STORAGE_BYTES,
+        4096,
+    );
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
             .as_bytes()
             .to_vec(),
         value: descriptor_table_offset,
-        size: process_files::TABLE_BYTES,
+        size: process_runtime::children::STORAGE_BYTES,
         kind: SymbolKind::Data,
         scope: SymbolScope::Linkage,
         weak: false,
@@ -9728,6 +9777,7 @@ fn static_image_process_enter(
     process_runtime::credentials::emit_dispatch(&mut code)?;
     process_runtime::observations::emit_dispatch(&mut code)?;
     process_runtime::time::emit_dispatch(&mut code)?;
+    process_runtime::children::emit_dispatch(&mut code)?;
     code.bytes(&[0x85, 0xc0]);
     code.jump_if(0x85, "static-process-non-read-syscall");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -9901,12 +9951,14 @@ fn static_image_process_enter(
     code.jump("static-process-shell-root-condition-terminal-clear");
 
     code.bind("static-process-execve-true-exit")?;
+    process_runtime::children::emit_exit_dispatch(&mut code)?;
     code.bytes(&[0x65, 0x8a, 0x04, 0x25, 104, 0, 0, 0]);
     code.bytes(&[0x3c, 11]);
     code.jump_if(0x82, "fatal");
     code.bytes(&[0x3c, 15]);
     code.jump_if(0x87, "fatal");
     process_runtime::emit_exit_witness(&mut code);
+    code.call("child-parent-release");
     code.call("fd-terminal-release");
     code.bytes(&[0x31, 0xff]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 16]);
@@ -10210,6 +10262,23 @@ fn static_image_process_enter(
         code.bytes(&[0, 0, 0, 0]);
     }
     code.bind("static-process-terminal-thread-state")?;
+    // Runtime thread registrations are opaque user values. A private sole-mm
+    // exit drops them without dereferencing an unchecked robust/TID address.
+    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+    code.bytes(&896_u32.to_le_bytes());
+    code.bytes(&[1]);
+    code.jump_if(0x85, "static-process-legacy-thread-release");
+    for offset in [152_u32, 160] {
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
+    code.jump("static-process-terminal-thread-state-ready");
+    code.bind("static-process-legacy-thread-release")?;
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0xa0, 0, 0, 0]);
@@ -16392,7 +16461,13 @@ fn static_image_process_enter(
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x48, 0x89, 0x3c, 0x25, 0x98, 0, 0, 0]);
     code.bytes(&[0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 4]);
+    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25]);
+    code.bytes(&process_files::TABLE_CONTEXT.to_le_bytes());
+    code.bytes(&[0x48, 0x8b, 0x40, 56]);
+    code.bytes(&[0x48, 0x85, 0xc0]);
+    code.jump_if(0x85, "static-process-tid-known");
     code.bytes(&[0xb8, 1, 0, 0, 0]);
+    code.bind("static-process-tid-known")?;
     emit_static_process_sysret(&mut code);
 
     code.bind("static-process-set-robust-list")?;
@@ -16617,7 +16692,7 @@ fn static_image_process_enter(
     code.bytes(&[0x49, 0x8b, 0xba]);
     code.bytes(&process_files::TABLE_CONTEXT.to_le_bytes());
     code.bytes(&[0x31, 0xc0, 0xb9]);
-    code.bytes(&((process_files::TABLE_BYTES / 8) as u32).to_le_bytes());
+    code.bytes(&((process_runtime::children::STORAGE_BYTES / 8) as u32).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
     if source_numeric {
@@ -16705,14 +16780,13 @@ fn static_image_process_enter(
     for context_offset in [8_u8, 48] {
         code.bytes(&[0x49, 0xc7, 0x42, context_offset, 0, 0, 0, 0]);
     }
-    code.bytes(&[0x49, 0x83, 0xba, 0x80, 0, 0, 0, 0]);
-    code.jump_if(0x84, "static-process-returned-thread-pointer-ready");
-    code.bytes(&[0x49, 0x81, 0xba, 0x80, 0, 0, 0]);
-    code.bytes(&0x005f_7400_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bind("static-process-returned-thread-pointer-ready")?;
+    // A reusable user FS base is an opaque value within the qualified native limit.
+    code.bytes(&[0x49, 0x8b, 0x82, 0x80, 0, 0, 0, 0x49, 0xbb]);
+    code.bytes(&0x0000_8000_0000_0000_u64.to_le_bytes());
+    code.bytes(&[0x4c, 0x39, 0xd8]);
+    code.jump_if(0x83, "fatal");
     code.bytes(&[0x49, 0xc7, 0x82, 0x80, 0, 0, 0, 0, 0, 0, 0]);
-    for context_offset in [136_u32, 144] {
+    for context_offset in [128_u32, 136, 144, 152, 160] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&context_offset.to_le_bytes());
         code.bytes(&[0]);
@@ -16817,6 +16891,7 @@ fn static_image_process_enter(
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
     process_runtime::time::emit_services(&mut code, source_numeric)?;
+    process_runtime::children::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }
@@ -20659,8 +20734,8 @@ assert bytes(output) == block[32:]
                 .windows(3)
                 .filter(|window| *window == [0x0f, 0x22, 0xd8])
                 .count(),
-            2,
-            "entry and terminal return must each switch CR3 exactly once"
+            3,
+            "entry, child parent-restoration invalidation and terminal return each reload CR3 once"
         );
         assert!(
             process_enter

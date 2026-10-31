@@ -6,9 +6,11 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 LAB = Path(__file__).resolve().parent
@@ -23,6 +25,88 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_child_evidence_binds_private_restoration_shared_history_and_erasure(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001, TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001
+        # TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001
+        record = json.loads((LAB / "results/topal-static-process-children-gate.json").read_text())
+        self.assertEqual(record["schema"], "topal-static-process-children-qemu/1")
+        self.assertEqual(record["harness_sha256"], sha256(LAB / "children_gate.py"))
+        self.assertEqual(record["fixture_sha256"], sha256(LAB / "static_child_checks.py"))
+        for name, count in (("clean", 4), ("external", 1)):
+            case = record[name]
+            self.assertEqual(case["linked_kernel_sha256"], self.evidence["linked_kernel_sha256"])
+            self.assertEqual(case["runtime"]["linked_kernel_sha256"], case["linked_kernel_sha256"])
+            self.assertEqual(case["runtime"]["observations"]["result"], "pass")
+            observation = case["observation"]
+            self.assertEqual(observation["result"], "pass")
+            self.assertEqual(observation["process_backing_bytes"], 0x3e000)
+            for flag in ("terminal_storage_erased", "terminal_thread_registrations_erased",
+                         "terminal_library_bindings_erased"):
+                self.assertTrue(observation[flag])
+            self.assertEqual(len(observation["calls"]), count)
+            for call in observation["calls"]:
+                self.assertGreaterEqual(call["pid"], 2)
+                for flag in ("child_returned", "parent_returned", "registers_preserved",
+                             "extended_state_preserved", "tls_preserved", "private_backings_preserved",
+                             "private_process_state_preserved", "shared_description_references_preserved",
+                             "snapshot_erased", "thread_registrations_restored", "entropy_history_preserved"):
+                    self.assertTrue(call[flag])
+            self.assertEqual(case["runtime"]["static_user_image_sha256"],
+                             GATE.PINNED_STATIC_BUSYBOX_SHA256 if name == "external" else
+                             hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        self.assertEqual([call["pid"] for call in record["clean"]["observation"]["calls"]], [2, 3, 4, 5])
+        self.assertEqual([call["status"] for call in record["clean"]["observation"]["calls"]], [7, 0, 0, 0])
+        self.assertEqual(record["clean"]["observation"]["calls"][-1]["maximum_live_descriptions"],32)
+        external = record["external"]["observation"]["calls"][0]
+        self.assertTrue(external["child_exec"])
+        self.assertTrue(external["entropy_history_advanced"])
+        counterexample = record["counterexample"]
+        self.assertNotIn("runtime", counterexample)
+        self.assertEqual(counterexample["linked_kernel_sha256"], self.evidence["linked_kernel_sha256"])
+        rejected = counterexample["observation"]
+        self.assertEqual(rejected["result"], "expected-parent-restoration-rejection")
+        self.assertTrue(rejected["snapshot_byte_injected"])
+        self.assertTrue(rejected["exact_user_comparison"])
+        self.assertEqual(rejected["expected"], 0x12345678)
+        self.assertEqual(rejected["observed"], 0x12345679)
+        self.assertEqual(rejected["execution"], "stopped before completion after independent rejection")
+
+    def test_observer_cleanup_preserves_a_reused_slave_descriptor(self) -> None:
+        # Failure/debugger threads can open a descriptor after the PTY slave
+        # has been closed. Cleanup must never close that new owner's handle.
+        original_openpty = GATE.pty.openpty
+        pair = []
+        retained = []
+        process = mock.Mock()
+        process.poll.return_value = None
+        process.wait.return_value = 0
+
+        def opening():
+            opened = original_openpty()
+            pair.extend(opened)
+            return opened
+
+        def failure():
+            descriptor = os.open(os.devnull, os.O_RDONLY)
+            retained.append(descriptor)
+            self.assertEqual(descriptor, pair[1])
+            return "controlled observer failure"
+
+        try:
+            with tempfile.TemporaryDirectory() as temporary, \
+                    mock.patch.object(GATE.pty, "openpty", side_effect=opening), \
+                    mock.patch.object(GATE, "qemu_command", return_value=["test-qemu"]), \
+                    mock.patch.object(GATE.subprocess, "Popen", return_value=process):
+                root = Path(temporary)
+                with self.assertRaisesRegex(GATE.GateError, "controlled observer failure"):
+                    GATE.observe_gate(root / "image", root / "archive", root / "serial", root / "qemu.log",
+                                      1, failure_check=failure)
+                os.fstat(retained[0])
+                process.terminate.assert_called_once()
+        finally:
+            for descriptor in retained:
+                os.close(descriptor)
+
     def setUp(self) -> None:
         self.manifest = json.loads((LAB / "manifest.json").read_text(encoding="utf-8"))
         self.evidence = json.loads(
@@ -472,16 +556,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/229")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/230")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/219")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/220")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/229",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/230",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/129",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/130",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1007,7 +1091,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/229")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/230")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1614,7 +1698,9 @@ class TopalToolchainGateTests(unittest.TestCase):
             record=self.external_evidence if workload=="true" else json.loads(
                 (LAB/"results"/f"topal-runtime-{workload}-gate.json").read_text())
             records.append((record,{"exec-chain":3,"exec-chain-false":2,"exec-chain-cwd":3,
-                                    "replacement-shell-pid":2,"replacement-shell-cwd":2}.get(workload,1)))
+                                    "replacement-shell-pid":2,"replacement-shell-cwd":2,
+                                    "child-echo":2,"child-status":2,"child-repeated":3,
+                                    "child-cwd":2,"child-offset":3}.get(workload,1)))
         for record,count in records:
             serial=record["observations"]["serial_utf8"]
             marker=GATE.EXEC_COMMIT_MARKER.decode()

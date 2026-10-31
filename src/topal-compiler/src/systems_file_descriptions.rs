@@ -12,6 +12,10 @@ pub(in super::super) const TABLE_CONTEXT: u32 = 928;
 pub(in super::super) const ARCHIVE_CONTEXT: u32 = 936;
 pub(super) const SLOTS: i32 = 64;
 pub(super) const DESCRIPTIONS: i32 = 320;
+// A parked parent can retain sixteen distinct descriptions while its child
+// independently opens sixteen more. The additional cells occupy the reserved
+// final process-backing page; parent-only execution always fits the first bank.
+pub(super) const CHILD_DESCRIPTIONS: i32 = 0x3d000;
 pub(in super::super) const TABLE_BYTES: u64 = 8192;
 pub(super) const STAGING: i32 = 1408;
 const FILE_SIZE: u64 = 2_024_544;
@@ -33,7 +37,7 @@ pub(in super::super) fn emit_entry_validation(
     // Both private table and borrowed archive must retain supervisor identity
     // addresses outside that interval during user-copy service execution.
     e.mov(R8, A);
-    e.add(R8, TABLE_BYTES as i32);
+    e.add(R8, super::children::STORAGE_BYTES as i32);
     e.0.jump_if(0x82, "fail");
     e.cmp(R8, 0x4000_0000);
     e.0.jump_if(0x87, "fail");
@@ -45,7 +49,7 @@ pub(in super::super) fn emit_entry_validation(
     e.store(R10, TABLE_CONTEXT as i32, A);
     e.mov(Di, A);
     e.imm(A, 0);
-    e.imm(C, TABLE_BYTES / 8);
+    e.imm(C, super::children::STORAGE_BYTES / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fail");
     e.load(Si, Sp, 0x50); // eleventh argument: retained boot handoff
@@ -200,12 +204,16 @@ fn emit_lookup_and_release(e: &mut E<'_>) -> Result<(), CompileError> {
     e.load(A, R13, 0);
     e.cmp(A, 0);
     e.0.jump_if(0x84, "fd-lookup-invalid");
-    e.cmp(A, 16);
+    e.cmp(A, 32);
     e.0.jump_if(0x87, "fatal");
-    e.add(A, -1);
-    e.0.bytes(&[0x48, 0xc1, 0xe0, 6]);
     e.mov(R14, R12);
     e.add(R14, DESCRIPTIONS);
+    e.cmp(A, 16);
+    e.0.jump_if(0x86, "fd-description-base-ready");
+    e.add(R14, CHILD_DESCRIPTIONS - DESCRIPTIONS - 16 * 64);
+    e.0.bind("fd-description-base-ready")?;
+    e.add(A, -1);
+    e.0.bytes(&[0x48, 0xc1, 0xe0, 6]);
     e.rr(0x01, R14, A);
     e.load(A, R14, 0);
     e.cmp(A, 0);
@@ -328,9 +336,17 @@ fn emit_duplication(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bind("fd-install-alias")?;
     e.mov(A, R15);
     e.rr(0x29, A, R12);
+    e.cmp(A, CHILD_DESCRIPTIONS);
+    e.0.jump_if(0x82, "fd-alias-normal-description");
+    e.add(A, -CHILD_DESCRIPTIONS);
+    e.0.bytes(&[0x48, 0xc1, 0xe8, 6]);
+    e.add(A, 17);
+    e.0.jump("fd-alias-description-ready");
+    e.0.bind("fd-alias-normal-description")?;
     e.add(A, -DESCRIPTIONS);
     e.0.bytes(&[0x48, 0xc1, 0xe8, 6]);
     e.add(A, 1);
+    e.0.bind("fd-alias-description-ready")?;
     e.store(R13, 0, A);
     e.store(R13, 8, R9);
     e.load(A, R15, 8);
@@ -582,6 +598,25 @@ pub(in super::super) fn emit_reclamation(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
+    // An inactive parent retains references in this same description store.
+    // Release only current child slots, never the shared store/header.
+    e.0.bind("child-release-slots")?;
+    table(&mut e);
+    e.imm(R8, 0);
+    e.0.bind("child-release-slot")?;
+    slot(&mut e, R8);
+    e.load(A, R13, 0);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "child-release-next");
+    e.mov(Di, R8);
+    e.0.call("fd-lookup");
+    e.0.jump_if(0x82, "fatal");
+    e.0.call("fd-drop-reference");
+    e.0.bind("child-release-next")?;
+    e.add(R8, 1);
+    e.cmp(R8, 16);
+    e.0.jump_if(0x82, "child-release-slot");
+    e.0.bytes(&[0xc3]);
     e.0.bind("fd-exec-filter")?;
     e.imm(B, 1);
     e.0.jump("fd-release-slots");

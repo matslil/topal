@@ -150,6 +150,8 @@ pub(in super::super) fn post_code(mode: &str) -> Vec<u8> {
     if count != 0 {
         repeated_generation(&mut w);
     }
+    w.imm(&[0x48, 0xb8], u64::from(super::child_checks::ENTRY));
+    w.0.extend_from_slice(&[0xff, 0xd0]);
     w.finish()
 }
 

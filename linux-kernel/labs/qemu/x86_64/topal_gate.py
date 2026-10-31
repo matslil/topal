@@ -96,6 +96,26 @@ PROCESS_WORKLOADS = {
         b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
         b"ELF\x02", 0,
     ),
+    "child-echo": (
+        b"exec /bin/busybox sh -c '/bin/busybox echo child; echo parent'\n",
+        b"child\nparent\n", 0,
+    ),
+    "child-status": (
+        b"exec /bin/busybox sh -c '/bin/busybox false; echo $?; echo $$; exit 7'\n",
+        b"1\n1\n", 7,
+    ),
+    "child-repeated": (
+        b"exec /bin/busybox sh -c '/bin/busybox echo one; /bin/busybox echo two; echo done'\n",
+        b"one\ntwo\ndone\n", 0,
+    ),
+    "child-cwd": (
+        b"exec /bin/busybox sh -c '/bin/busybox sh -c \"cd /bin; echo \\$\\$; pwd; exit 9\"; echo $?; pwd; echo $$'\n",
+        b"2\n/bin\n9\n/\n1\n", 0,
+    ),
+    "child-offset": (
+        b"exec /bin/busybox sh -c '/bin/busybox head -c1 <&3; /bin/busybox head -c1 <&3; echo done'\n",
+        b"\x7fEdone\n", 0,
+    ),
 }
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
@@ -1045,6 +1065,9 @@ def static_user_fixture(environment_mode: str = "maximum") -> bytes:
     time_code = time_encoder["code"](checks["Witness"])
     image[0xE_0000:0xE_0000+len(time_code)] = time_code
     image[0xE_8000:0xE_8010] = struct.pack("<QQ", 0, 1)
+    child_encoder = runpy.run_path(str(LAB / "static_child_checks.py"))
+    child_code = child_encoder["code"](checks["Witness"])
+    image[0xF_0000:0xF_0000+len(child_code)] = child_code
     image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
     image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
     image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
@@ -1234,6 +1257,7 @@ def observe_gate(
             stderr=subprocess.STDOUT,
         )
         os.close(slave_fd)
+        slave_fd = None
         try:
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
@@ -1278,10 +1302,8 @@ def observe_gate(
             raise GateError(f"timed out after {timeout:g}s waiting for all kernel markers")
         finally:
             os.close(master_fd)
-            try:
+            if slave_fd is not None:
                 os.close(slave_fd)
-            except OSError:
-                pass
             if process.poll() is None:
                 process.terminate()
                 try:
@@ -1308,7 +1330,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/229",
+        "schema": "topal-kernel-toolchain-gate-qemu/230",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1744,7 +1766,9 @@ def verify(
         expected_commits = 3 if external_static_user_image is None and clean_environment_mode == "maximum" else 1
         if external_static_user_image is not None:
             expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
-                                "replacement-shell-pid": 2, "replacement-shell-cwd": 2}.get(process_workload, 1)
+                                "replacement-shell-pid": 2, "replacement-shell-cwd": 2,
+                                "child-echo": 2, "child-status": 2, "child-repeated": 3,
+                                "child-cwd": 2, "child-offset": 3}.get(process_workload, 1)
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

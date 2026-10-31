@@ -92,5 +92,7 @@ fn write_call(code: &mut Vec<u8>, fd: u32, pointer: u64, count: u32) {
     code.extend_from_slice(&[0xb8, 1, 0, 0, 0, 0x0f, 0x05]);
 }
 
+#[path = "systems_child_checks.rs"]
+pub(super) mod child_checks;
 #[path = "systems_time_checks.rs"]
 pub(super) mod time_checks;
