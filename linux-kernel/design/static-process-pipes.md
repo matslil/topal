@@ -1,7 +1,8 @@
 # Owned anonymous pipes and condition-bound process waits
 
 Status: systems-only direction adopted under standing chat authorization,
-`TK-DEC-256`; implementation and qualification pending.
+`TK-DEC-256`; implemented and physically qualified in the
+[Step 4 report](../step-4-static-process-pipes.md).
 
 ## Purpose and scope
 

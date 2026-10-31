@@ -256,6 +256,8 @@ It is adopted through `docs/systems-profile.md`, the `TOPAL-REQ-SYSTEMS-*`
 requirements, and `spec/systems-profile.md`. The approved profile adds no new
 grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 
-- [Owned runtime for pure numeric kernel libraries](owned-numeric-kernel-runtime.md) (`TK-DEC-253`; implementation and qualification pending).
+- [Owned runtime for pure numeric kernel libraries](owned-numeric-kernel-runtime.md)
 
 - [Initial static-process children and wait ownership](serialized-static-process-children.md)
+- [Resumable static-process pair](resumable-static-process-pair.md)
+- [Shared anonymous pipes and exact readiness](static-process-pipes.md)

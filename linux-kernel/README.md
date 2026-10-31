@@ -903,6 +903,7 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 owned numeric kernel runtime](step-4-owned-numeric-runtime.md)
 - [Step 4 independently owned static child processes](step-4-static-process-children.md)
 - [Step 4 resumable parent and child](step-4-resumable-static-process-pair.md)
+- [Step 4 anonymous pipes and blocked byte transfers](step-4-static-process-pipes.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
