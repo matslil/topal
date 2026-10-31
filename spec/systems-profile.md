@@ -3495,6 +3495,120 @@ retry, extended-state and translation evidence. This rule SHALL NOT establish
 user preemption, general fairness, blocking I/O, threads or ordinary Topal
 scheduler-module qualification.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-001 — Owned anonymous FIFO endpoints
+
+The first x86-64 static-process binding MAY reserve four shared anonymous FIFO
+objects with 4096-byte rings. Native `pipe` (22) SHALL ignore unused arguments;
+`pipe2` (293) SHALL interpret its low-32-bit flags. Ordinary streams with optional
+O_CLOEXEC (0x80000) and O_NONBLOCK (0x800) SHALL be admitted. Unknown bits SHALL
+return EINVAL; otherwise valid packet/notification shapes SHALL return ENOSYS
+before mutation until separately qualified.
+
+Creation SHALL prepare one fresh FIFO generation, two distinct read/write open
+descriptions and two lowest free descriptor slots. FIFO-capacity admission SHALL
+precede descriptor-capacity admission; exhaustion SHALL return ENFILE or EMFILE
+respectively. The complete writable eight-byte native pair SHALL be checked
+before publication; a bad destination SHALL return EFAULT without a partial pair,
+leaked reference or payload mutation. Native outputs SHALL be two exact 32-bit
+descriptor values. No integer or user byte SHALL construct FIFO authority.
+
+Close-on-exec SHALL belong to the slots; nonblocking/access status SHALL belong
+to each shared endpoint description. Aliases, fork, exec filtering and close
+SHALL preserve the corresponding reference/rights lifetimes. FIFO identity,
+payload, cursors, timestamps and peer presence SHALL remain with the shared
+owner outside private process snapshots. Either process MAY retain descriptions
+in either bank. A last endpoint reference SHALL publish peer closure; no FIFO
+generation SHALL be reused while an endpoint or wait retains it. Both last
+endpoints SHALL release and erase/read back the ring and object metadata before
+reuse. Outer-owner termination SHALL release inactive and active endpoints and
+erase/read back all shared FIFO backing and identity history.
+
+`fstat` SHALL report coherent native FIFO metadata: distinct anonymous device/
+generation inode identity, mode S_IFIFO with owner read/write permission, link
+count one, prepared root UID/GID, zero regular-file size/blocks and 4096-byte
+block size. Timestamp seconds SHALL derive from the qualified retained realtime
+view, with the provider's declared coarse resolution and access/modification
+policy. They SHALL NOT be fabricated calendar constants. F_GETPIPE_SZ (1032)
+SHALL observe the actual capacity through either endpoint. Native FIONREAD
+(0x541b) SHALL publish the current count through a complete checked four-byte
+destination or return EFAULT unchanged. Seek SHALL first resolve the descriptor,
+returning EBADF if invalid, then normalize unsigned low-32-bit whence. A mode
+greater than four SHALL return EINVAL before object dispatch; a live pipe SHALL
+return ESPIPE for modes zero through four independently of the offset.
+Unimplemented control profiles SHALL NOT receive fabricated success.
+
+Other target providers SHALL qualify their native syscall/layout/width and page
+granularity. They MAY choose a different owned capacity at least as large as
+the Linux atomic-write bound, SHALL report that actual capacity, and SHALL
+preserve the same FIFO/endpoint/wait ownership. Allocation-page size and native
+retry-instruction width SHALL NOT become portable source meaning.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-TRANSFER-001 — Checked FIFO byte transport
+
+Read/write SHALL resolve a live endpoint and its direction before user transfer;
+wrong direction SHALL return EBADF. Native numerical range admission and complete
+live permissions for the bytes actually transferred SHALL precede payload/cursor
+mutation. Failed user access SHALL return EFAULT without consuming or publishing
+bytes. Zero-length handling SHALL preserve native range/error admission and
+SHALL NOT consume peer activity or construct readiness.
+
+Read SHALL copy at most the requested/available bytes, preserve FIFO order through
+wrap, erase consumed ring bytes, and update the shared count/cursor. Empty with
+no writer SHALL return zero EOF; empty with a writer and O_NONBLOCK SHALL return
+EAGAIN unchanged. A successful read MAY return a positive short count.
+
+Writes of at most 4096 bytes SHALL be atomic: insufficient space SHALL wait or
+return EAGAIN unchanged, never publish a partial short write. Larger requests MAY
+return a real positive partial transfer bounded by available capacity. Full with
+a reader and O_NONBLOCK SHALL return EAGAIN unchanged. A positive transfer SHALL
+return its actual byte count and update shared payload/count and timestamp facts.
+
+For a nonempty write with no reader, the first error profile SHALL admit SIGPIPE
+ignored and return EPIPE without payload mutation, including when that ignored
+signal is masked. Nonignored default, blocked or user-handler SIGPIPE profiles
+SHALL remain explicitly unqualified (ENOSYS before mutation)
+until pending-signal/delivery ownership is implemented. Silently returning EPIPE
+while omitting required signal state SHALL be invalid. This restriction SHALL
+NOT change ordinary transfers while a reader remains live.
+
+Application command, payload or image identity SHALL NOT select FIFO behavior.
+Host pipes, substituted output, stale bytes, forged EOF, partial atomic writes
+and positive results without actual transfer SHALL be invalid.
+
+### TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-WAIT-001 — Condition-bound transfer suspension
+
+A blocking empty read with a writer, or insufficient-space write with a reader,
+SHALL atomically retain its exact FIFO generation and readiness predicate before
+parking its native retry continuation. It SHALL select an eligible owned process
+without retaining a checked user pointer, partial transfer or live kernel stack
+continuation. The restored retry SHALL re-resolve endpoint authority and current
+process-generation permissions before publication.
+
+Published bytes, sufficient space or last-peer closure SHALL update eligibility
+only for a matching FIFO generation/condition. Unrelated FIFO traffic, descriptor
+equality, stale identity and ordinary yield SHALL NOT fabricate readiness. Child
+wait and pipe wait SHALL remain distinct obligations. A waiting parent or child
+SHALL NOT become an ordinary runnable continuation until its condition resolves.
+Exit MAY restore a native retry to observe final peer/lifecycle state, but that
+retry SHALL NOT return bytes/success before readiness or a real error holds.
+
+If the closed profile has no eligible process, it SHALL retain its blocked
+obligations rather than fabricate success, EOF or an unrelated error. Last-peer
+close, exec filtering and child exit SHALL publish the corresponding readiness
+before reclamation. Parent termination SHALL release inactive wait/endpoint state
+before active resources and the outer owner return. A wait SHALL resolve once;
+stale/wrong-owner/wrong-generation activation SHALL fail closed.
+
+Qualification SHALL execute both directions of blocking progress, nonblocking
+and fault/atomic boundaries, peer closure, aliases/fork/exec, generation reuse,
+capacity and terminal reclamation, using independent model/user/GDB witnesses.
+Unmodified command substitution, changed payload and payload exceeding capacity
+SHALL demonstrate shared byte services without provider-owned application output.
+An unrelated/stale-condition counterexample SHALL be independently rejected.
+Other targets SHALL supply native pair/layout/width, retry and ordering evidence.
+This rule SHALL NOT qualify general process counts, signals, poll/epoll, packet
+pipes, splice or filesystem mutation.
+
 ### TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001 — Reusable thread registration and local base
 
 After qualified startup, `set_tid_address` (218) SHALL retain the caller's opaque

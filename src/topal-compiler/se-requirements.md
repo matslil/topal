@@ -2617,7 +2617,10 @@ in the restored parent mapping, and release inactive resources at outer-owner
 termination. Independent ABI, state-model, GDB and unchanged-application evidence
 shall qualify these boundaries without claiming general scheduling fairness.
 
-The anonymous-pipe service shall implement `TK-DEC-256` with shared owned FIFO
+The anonymous-pipe service shall implement `TK-DEC-256` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-TRANSFER-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-WAIT-001` with shared owned FIFO
 storage excluded from private snapshots, exact endpoint references, native pair
 publication and rollback, checked byte transport, atomic-write/partial-transfer
 boundaries and condition-bound read/write suspension. Readiness shall follow the
