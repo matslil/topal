@@ -70,9 +70,10 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use topal_compiler::{
-        LlvmTools, SystemsSourceLibraryInput, SystemsSourceModuleInput, X86_BOOT_IMAGE_FILE,
-        X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
-        publish_x86_64_systems_artifact_with_libraries, qualified_x86_64_static_user_image_fixture,
+        LlvmTools, SystemsKernelLibraries, SystemsSourceLibraryInput, SystemsSourceModuleInput,
+        X86_BOOT_IMAGE_FILE, X86_BOOT_PROVENANCE_FILE, X86_INITIAL_BOOT_RESOURCE_FILE,
+        publish_x86_64_systems_artifact_with_kernel_libraries,
+        qualified_x86_64_static_user_image_fixture,
     };
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
@@ -123,13 +124,26 @@ mod tests {
                 text: include_str!("../../../kernel/support/clock.t").into(),
             }],
         };
-        publish_x86_64_systems_artifact_with_libraries(
+        let image = SystemsSourceLibraryInput {
+            source: "policy/static-elf64-header.t".into(),
+            source_name: "policy/static-elf64-header.t".into(),
+            text: include_str!("../../../kernel/policy/static-elf64-header.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/elf.t".into(),
+                identity: vec!["support".into(), "elf".into()],
+                text: include_str!("../../../kernel/support/elf.t").into(),
+            }],
+        };
+        publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
-            Some(&source),
-            Some(&time),
+            SystemsKernelLibraries {
+                policy: Some(&source),
+                time: Some(&time),
+                image: Some(&image),
+            },
             &linked,
         )
         .unwrap();

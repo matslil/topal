@@ -4,8 +4,9 @@ pub(crate) fn emit_numeric_kernel_library(unit:&crate::systems_numeric_library::
     ->Result<String,crate::CompileError> {
     let mut generator=Generator::new(&unit.program,&unit.source_name);
     generator.kernel_library_mode=true;
+    generator.kernel_parameter_debug_storage=true;
     generator.debug.install_source_modules(&unit.program.dependencies);
-    generator.kernel_function_prefix=crate::systems_numeric_library::FUNCTION_PREFIX;
+    generator.kernel_function_prefix=unit.policy.function_prefix();
     for function in &unit.program.functions { generator.emit_function(function); }
     if !generator.foreign_declarations.is_empty() || !generator.scalar_list_runtime_fragments.is_empty()
         || generator.list_int_runtime_fragments.iter().any(|fragment|
@@ -26,6 +27,11 @@ pub(crate) fn emit_numeric_kernel_library(unit:&crate::systems_numeric_library::
     }
     for global in &generator.globals { let _=writeln!(module,"{global}"); }
     for function in &generator.functions { module.push_str(function);module.push('\n'); }
+    if unit.policy==crate::systems_numeric_library::NumericPolicy::Elf64Header {
+        module.push_str(&emit_owned_header_bridge(unit));
+        module.push_str(&generator.debug.finish());
+        return Ok(unit.policy.namespace(&module));
+    }
     let _=writeln!(module,"define i64 @{}(i64 %seconds, i64 %nanoseconds, i64 %ticks, i64 %wrapped) nounwind noinline noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {{",crate::systems_numeric_library::EXPORT_SYMBOL);
     module.push_str("entry:\n  %seconds.valid = icmp ule i64 %seconds, 9223372036854775807\n  %nanos.valid = icmp ult i64 %nanoseconds, 1000000000\n  %wrapped.valid = icmp ule i64 %wrapped, 1\n  %valid.interval = and i1 %seconds.valid, %nanos.valid\n  %valid = and i1 %valid.interval, %wrapped.valid\n  br i1 %valid, label %invoke, label %invalid\ninvoke:\n  %s = call ptr @topal.runtime.int.from.u64(i64 %seconds)\n  %n = call ptr @topal.runtime.int.from.u64(i64 %nanoseconds)\n  %t = call ptr @topal.runtime.int.from.u64(i64 %ticks)\n  %w = trunc i64 %wrapped to i1\n");
     let _=writeln!(module,"  %result = call fastcc ptr @{}(ptr %s, ptr %n, ptr %t, i1 %w)",format!("{}{}",crate::systems_numeric_library::FUNCTION_PREFIX,unit.entry_symbol));

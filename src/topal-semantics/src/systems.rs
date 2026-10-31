@@ -1910,6 +1910,7 @@ pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
@@ -2789,6 +2790,15 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
                 "time-library requires relative-sleep-deadline-v1",
+            ));
+        }
+    }
+    if let Some(library) = &program.image_library {
+        library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::StaticElf64HeaderV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LIBRARY",
+                "image-library requires static-elf64-header-v1",
             ));
         }
     }
@@ -9172,6 +9182,7 @@ mod tests {
             target,
             kernel_library: None,
             time_library: None,
+            image_library: None,
             bootstrap_storage: BootstrapStorageDescriptor {
                 capacity_bytes: 65_536,
                 alignment_bytes: 4096,

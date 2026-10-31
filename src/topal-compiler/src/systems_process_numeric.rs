@@ -9,14 +9,14 @@ pub(in super::super) const ARENA_SYMBOL: &str = "topal_x86_systems_numeric_arena
 pub(in super::super) const ALLOCATE_SYMBOL: &str = "topal_kernel_numeric_allocate_v1";
 pub(in super::super) const ABORT_SYMBOL: &str = "topal_kernel_numeric_abort_v1";
 
-fn zero_readback(e: &mut E<'_>, base: super::R, bytes: u64) {
+pub(super) fn zero_readback(e: &mut E<'_>, base: super::R, bytes: u64) {
     e.mov(Di, base);
     e.imm(A, 0);
     e.imm(C, bytes / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
 }
-fn erase(e: &mut E<'_>, base: super::R, bytes: u64) {
+pub(super) fn erase(e: &mut E<'_>, base: super::R, bytes: u64) {
     e.mov(Di, base);
     e.imm(A, 0);
     e.imm(C, bytes / 8);
@@ -25,19 +25,39 @@ fn erase(e: &mut E<'_>, base: super::R, bytes: u64) {
 }
 pub(in super::super) fn emit_entry_validation(
     code: &mut X86FunctionEncoder,
+    time: bool,
+    image: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
-    e.load(A, Sp, 0x68); // fourteenth argument after five provider saves
-    e.cmp(A, 0x200000);
-    e.0.jump_if(0x82, "fail");
-    e.cmp(A, 0x40000000);
-    e.0.jump_if(0x83, "fail");
-    e.cmp(A, 0x400000);
-    e.0.jump_if(0x82, "numeric-code-disjoint");
-    e.cmp(A, 0x800000);
-    e.0.jump_if(0x82, "fail");
-    e.0.bind("numeric-code-disjoint")?;
-    e.store(R10, CODE_CONTEXT as i32, A);
+    for (selected, argument, context, label) in [
+        (time, 0x68, CODE_CONTEXT, "numeric-code-disjoint"),
+        (
+            image,
+            0x78,
+            super::header::CODE_CONTEXT,
+            "header-code-disjoint",
+        ),
+    ] {
+        if !selected {
+            continue;
+        }
+        e.load(A, Sp, argument);
+        e.cmp(A, 0x200000);
+        e.0.jump_if(0x82, "fail");
+        e.cmp(A, 0x40000000);
+        e.0.jump_if(0x83, "fail");
+        e.cmp(A, 0x400000);
+        e.0.jump_if(0x82, label);
+        e.cmp(A, 0x800000);
+        e.0.jump_if(0x82, "fail");
+        e.0.bind(label)?;
+        e.store(R10, context as i32, A);
+    }
+    if !time {
+        e.load(A, Sp, 0x68);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fail");
+    }
     e.load(R8, Sp, 0x70); // fifteenth argument: artifact-owned temporary arena
     e.cmp(R8, 0x200000);
     e.0.jump_if(0x82, "fail");
@@ -154,7 +174,16 @@ pub(in super::super) fn allocator() -> Result<Vec<u8>, CompileError> {
     e.0.jump_if(0x85, "fail");
     e.load(R8, R11, 16);
     e.cmp(R8, 1);
+    e.0.jump_if(0x84, "numeric-time-binding");
+    e.cmp(R8, 2);
     e.0.jump_if(0x85, "fail");
+    e.gs(0x8b, R8, super::header::CODE_CONTEXT);
+    e.0.jump("numeric-policy-binding-ready");
+    e.0.bind("numeric-time-binding")?;
+    e.gs(0x8b, R8, CODE_CONTEXT);
+    e.0.bind("numeric-policy-binding-ready")?;
+    e.cmp(R8, 0);
+    e.0.jump_if(0x84, "fail");
     e.mov(A, Di);
     e.add(A, 7);
     e.0.jump_if(0x82, "fail");

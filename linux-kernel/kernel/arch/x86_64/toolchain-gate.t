@@ -1936,6 +1936,13 @@ lang systems artifact (
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
+  image-library is lang systems source-library (
+    source is "policy/static-elf64-header.t",
+    export is header-admitted?,
+    interface is static-elf64-header-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096

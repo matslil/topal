@@ -14,6 +14,7 @@ impl<'a> Generator<'a> {
         }
         Self {
             kernel_library_mode: false,
+            kernel_parameter_debug_storage: false,
             kernel_function_prefix: "",
             program,
             source_name,
@@ -595,7 +596,8 @@ impl<'a> Generator<'a> {
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
             let retained_context_capture = function_parameter_is_context_capture(parameter);
-            if retained_character_generator_source
+            if self.kernel_parameter_debug_storage
+                || retained_character_generator_source
                 || retained_value_generator_source
                 || retained_unused_enum
                 || retained_context_capture

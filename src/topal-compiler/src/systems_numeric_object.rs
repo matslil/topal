@@ -1,5 +1,5 @@
 //! Inspect the actual numeric object, direct calls, frames and qualified hooks.
-use super::{EXPORT_SYMBOL, SystemsNumericAllocationBound, check_numeric_library, invalid};
+use super::{SystemsNumericAllocationBound, check_numeric_library, invalid};
 use crate::{CompileError, LlvmTools, SystemsLibraryFunctionStack, SystemsSourceLibraryInput};
 use object::{
     Object, ObjectKind, ObjectSection, ObjectSymbol, RelocationTarget, SectionFlags, SymbolKind,
@@ -14,7 +14,6 @@ use topal_language::compiler::CompilerSystemsSourceLibraryRequirement;
 
 pub(crate) const ALLOCATE: &str = "topal_kernel_numeric_allocate_v1";
 pub(crate) const ABORT: &str = "topal_kernel_numeric_abort_v1";
-const ALIGNMENT_RESERVE: u64 = 32;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -37,6 +36,7 @@ pub struct SystemsNumericLibraryArtifact {
     pub machine_profile: String,
     pub disassembly_sha256: String,
     pub native_alignment_reserve_bytes: u64,
+    pub native_invocation_save_bytes: u64,
     pub native_leaf_return_bytes: u64,
     pub maximum_stack_bytes: u64,
     pub stack_limit_bytes: u64,
@@ -72,10 +72,12 @@ pub(crate) fn build_numeric_library(
 ) -> Result<CompiledNumericLibrary, CompileError> {
     let checked = check_numeric_library(requirement, input)?;
     let llvm = crate::codegen::emit_numeric_kernel_library(&checked)?;
-    let source = work.join("time-library.ll");
-    let bc = work.join("time-library.bc");
-    let retained = work.join("time-library.retained.ll");
-    let object = work.join("time-library.o");
+    let policy = checked.policy;
+    let export = policy.native_export();
+    let source = work.join(format!("{}.ll", policy.stem()));
+    let bc = work.join(format!("{}.bc", policy.stem()));
+    let retained = work.join(format!("{}.retained.ll", policy.stem()));
+    let object = work.join(format!("{}.o", policy.stem()));
     fs::write(&source, &llvm).map_err(|e| invalid(e.to_string()))?;
     run(Command::new(tools.tool_path("llvm-as"))
         .arg(&source)
@@ -126,7 +128,7 @@ pub(crate) fn build_numeric_library(
         .program
         .functions
         .iter()
-        .map(|f| format!("{}{}", super::FUNCTION_PREFIX, f.symbol))
+        .map(|f| format!("{}{}", policy.function_prefix(), f.symbol))
         .collect();
     let mut names = BTreeSet::new();
     let mut undefined = BTreeSet::new();
@@ -136,12 +138,13 @@ pub(crate) fn build_numeric_library(
             undefined.insert(name.to_owned());
         }
         if symbol.kind() == SymbolKind::Text && symbol.is_definition() {
-            if symbol.is_global() && name != EXPORT_SYMBOL {
+            if symbol.is_global() && name != export {
                 return Err(invalid("unexpected exported numeric symbol"));
             }
-            if name != EXPORT_SYMBOL
+            let canonical = policy.canonical_name(name);
+            if name != export
                 && !expected_source.contains(name)
-                && !name.starts_with("topal.runtime.int.")
+                && !canonical.starts_with("topal.runtime.int.")
                 && ![
                     "topal.runtime.container.list.count",
                     "topal.runtime.container.array.int.collect",
@@ -153,14 +156,14 @@ pub(crate) fn build_numeric_library(
                     "topal.runtime.optional.is.some",
                     "topal.runtime.optional.payload",
                 ]
-                .contains(&name)
+                .contains(&canonical.as_str())
                 && ![
                     "topal.platform.allocate",
                     "topal.platform.exit",
                     "topal.platform.write",
                     "memset",
                 ]
-                .contains(&name)
+                .contains(&canonical.as_str())
             {
                 return Err(invalid(format!("unexpected numeric code {name}")));
             }
@@ -168,7 +171,7 @@ pub(crate) fn build_numeric_library(
         }
     }
     if undefined != BTreeSet::from([ALLOCATE.to_owned(), ABORT.to_owned()])
-        || !names.contains(EXPORT_SYMBOL)
+        || !names.contains(export)
         || !expected_source.iter().all(|s| names.contains(s))
     {
         return Err(invalid(format!(
@@ -225,8 +228,9 @@ pub(crate) fn build_numeric_library(
             &mut records,
         )?;
     }
-    let maximum_stack_bytes = costs[EXPORT_SYMBOL]
-        .checked_add(ALIGNMENT_RESERVE)
+    let maximum_stack_bytes = costs[export]
+        .checked_add(policy.alignment_reserve())
+        .and_then(|cost| cost.checked_add(policy.invocation_saves()))
         .ok_or_else(|| invalid("numeric shim frame overflow"))?;
     if maximum_stack_bytes > requirement.stack_limit_bytes {
         return Err(invalid(format!(
@@ -239,12 +243,12 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/3".into(),
+        schema: "topal.kernel-numeric-source-library/4".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: requirement.export.clone(),
-        native_export: EXPORT_SYMBOL.into(),
+        native_export: export.into(),
         source_sha256: digest(input.text.as_bytes()),
         modules: crate::systems_library::modules::records(input),
         module_snapshot_sha256: digest(&crate::systems_library::modules::snapshot(input)?),
@@ -254,9 +258,10 @@ pub(crate) fn build_numeric_library(
         platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
         object_sha256: digest(&bytes),
         llvm_version: tools.version.clone(),
-        machine_profile: "x86_64-owned-numeric-gpr-only/3".into(),
+        machine_profile: "x86_64-owned-numeric-gpr-only/4".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
-        native_alignment_reserve_bytes: ALIGNMENT_RESERVE,
+        native_alignment_reserve_bytes: policy.alignment_reserve(),
+        native_invocation_save_bytes: policy.invocation_saves(),
         native_leaf_return_bytes: 8,
         maximum_stack_bytes,
         stack_limit_bytes: requirement.stack_limit_bytes,
@@ -386,31 +391,65 @@ pub(crate) fn inspect_linked_numeric_library(
 ) -> Result<(), CompileError> {
     let file = object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
     let (collection_runtime, collection_layout) = super::collections::runtime_digests()?;
-    if record.schema != "topal.kernel-numeric-source-library/3"
-        || record.interface != "relative-sleep-deadline-v1"
-        || record.native_export != EXPORT_SYMBOL
+    let policy = match record.interface.as_str() {
+        "relative-sleep-deadline-v1" => super::NumericPolicy::Deadline,
+        "static-elf64-header-v1" => super::NumericPolicy::Elf64Header,
+        _ => return Err(invalid("unqualified numeric binding interface")),
+    };
+    if record.schema != "topal.kernel-numeric-source-library/4"
+        || record.native_export != policy.native_export()
         || record.stack_limit_bytes != 4096
         || record.maximum_stack_bytes > 4096
-        || record.native_alignment_reserve_bytes != 32
+        || record.native_alignment_reserve_bytes != policy.alignment_reserve()
+        || record.native_invocation_save_bytes != policy.invocation_saves()
         || record.native_leaf_return_bytes != 8
         || record.allocation.limit_bytes != 65536
         || record.allocation.maximum_bytes > 65536
         || record.allocation.header_bytes != 32
+        || record.allocation.bridge_bytes != policy.bridge_bytes()
+        || record
+            .allocation
+            .source_evaluation_bytes
+            .checked_add(record.allocation.bridge_bytes)
+            .and_then(|n| n.checked_add(record.allocation.header_bytes))
+            != Some(record.allocation.maximum_bytes)
         || record.allocation.certificate != super::ALLOCATION_CERTIFICATE
         || record.allocation.runtime_sha256 != super::CERTIFIED_RUNTIME_SHA256
         || record.allocation.collection_runtime_sha256 != collection_runtime
         || record.allocation.collection_layout_sha256 != collection_layout
-        || record.machine_profile != "x86_64-owned-numeric-gpr-only/3"
-        || !record.functions.iter().any(|f| f.symbol == EXPORT_SYMBOL)
+        || record.machine_profile != "x86_64-owned-numeric-gpr-only/4"
+        || !record
+            .functions
+            .iter()
+            .any(|f| f.symbol == policy.native_export())
     {
         return Err(invalid(
             "incomplete numeric binding or resource certificate",
         ));
     }
     let mut seen = BTreeSet::new();
+    let mut costs = BTreeMap::from([(ALLOCATE.to_owned(), 8_u64), (ABORT.to_owned(), 8_u64)]);
     for function in &record.functions {
         if !seen.insert(&function.symbol) {
             return Err(invalid("duplicate numeric function binding"));
+        }
+        let mut child = 0;
+        for callee in &function.callees {
+            child = child.max(
+                *costs
+                    .get(callee)
+                    .ok_or_else(|| invalid("incomplete or cyclic numeric call certificate"))?,
+            );
+        }
+        let cost = function
+            .frame_bytes
+            .checked_add(8)
+            .and_then(|n| n.checked_add(child))
+            .ok_or_else(|| invalid("numeric call certificate overflow"))?;
+        if cost != function.maximum_call_path_bytes
+            || costs.insert(function.symbol.clone(), cost).is_some()
+        {
+            return Err(invalid("inconsistent numeric call certificate"));
         }
         let found = file
             .symbols()
@@ -443,6 +482,13 @@ pub(crate) fn inspect_linked_numeric_library(
         {
             return Err(invalid("numeric code is not immutable executable text"));
         }
+    }
+    if costs[policy.native_export()]
+        .checked_add(policy.alignment_reserve())
+        .and_then(|n| n.checked_add(policy.invocation_saves()))
+        != Some(record.maximum_stack_bytes)
+    {
+        return Err(invalid("inconsistent complete numeric stack certificate"));
     }
     let arena = file
         .symbol_by_name("topal_x86_systems_numeric_arena")

@@ -340,6 +340,7 @@ pub fn analyze_systems_for_compiler(
         target: target.clone(),
         kernel_library: root_entries.kernel_library,
         time_library: root_entries.time_library,
+        image_library: root_entries.image_library,
         bootstrap_storage: root_entries.bootstrap_storage,
         bootstrap: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::Bootstrap,
@@ -500,6 +501,7 @@ fn validate_language_selection(
 struct ArtifactEntries {
     kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
@@ -545,11 +547,25 @@ fn parse_artifact_root(
     let mut bootstrap_storage = None;
     let mut kernel_library = None;
     let mut time_library = None;
+    let mut image_library = None;
     let mut entries = BTreeMap::new();
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "time-library" {
+        if label_text == "image-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface != CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1 {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-LIBRARY",
+                    label,
+                    "image-library requires the static ELF64 header interface",
+                ));
+            }
+            if image_library.replace(requirement).is_some() {
+                return Err(duplicate_artifact_field(source, label, label_text));
+            }
+        } else if label_text == "time-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if requirement.interface
                 != CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1
@@ -636,6 +652,7 @@ fn parse_artifact_root(
     Ok(ArtifactEntries {
         kernel_library,
         time_library,
+        image_library,
         bootstrap_storage,
         bootstrap,
         debug_break,

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/214";
+    "topal.provider-object.x86_64-qemu-pc-q35/215";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1658,6 +1658,7 @@ pub fn generate_x86_64_systems_provider_object(
         &static_image_process_enter(
             program.kernel_library.is_some(),
             program.time_library.is_some(),
+            program.image_library.is_some(),
         )?,
     );
     append_encoded_function(
@@ -1852,7 +1853,7 @@ pub fn generate_x86_64_systems_provider_object(
         ],
     );
 
-    if program.time_library.is_some() {
+    if program.time_library.is_some() || program.image_library.is_some() {
         append_encoded_function(
             &mut object,
             text,
@@ -9491,6 +9492,7 @@ fn emit_static_process_shell_output_heap_validation(
 fn static_image_process_enter(
     source_bound: bool,
     source_numeric: bool,
+    source_image: bool,
 ) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -9537,6 +9539,7 @@ fn static_image_process_enter(
         process_runtime::policy::POLICY_CONTEXT,
         process_runtime::numeric::CODE_CONTEXT,
         process_runtime::numeric::ARENA_CONTEXT,
+        process_runtime::header::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9548,8 +9551,8 @@ fn static_image_process_enter(
     if source_bound {
         process_runtime::policy::emit_entry_validation(&mut code)?;
     }
-    if source_numeric {
-        process_runtime::numeric::emit_entry_validation(&mut code)?;
+    if source_numeric || source_image {
+        process_runtime::numeric::emit_entry_validation(&mut code, source_numeric, source_image)?;
     }
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
@@ -12212,6 +12215,15 @@ fn static_image_process_enter(
         code.jump_if(0x85, "fatal");
     }
     process_runtime::emit_exec_arguments(&mut code)?;
+    if source_image {
+        process_runtime::header::emit_invoke(&mut code)?;
+        code.bytes(&[0x48, 0x85, 0xc0]);
+        code.jump_if(0x84, "static-process-source-header-refused");
+        code.jump("static-process-source-header-accepted");
+        code.bind("static-process-source-header-refused")?;
+        process_runtime::header::emit_refusal(&mut code);
+        code.bind("static-process-source-header-accepted")?;
+    }
     code.call("fd-exec-filter");
 
     // Restore all writable image pages before copying the sealed snapshot.
@@ -16696,7 +16708,7 @@ fn static_image_process_enter(
     code.bytes(&((process_runtime::children::STORAGE_BYTES / 8) as u32).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
-    if source_numeric {
+    if source_numeric || source_image {
         process_runtime::numeric::emit_terminal_readback(&mut code)?;
     }
     for offset in [
@@ -16710,10 +16722,15 @@ fn static_image_process_enter(
         process_runtime::policy::POLICY_CONTEXT,
         process_runtime::numeric::CODE_CONTEXT,
         process_runtime::numeric::ARENA_CONTEXT,
+        process_runtime::header::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[0, 0, 0, 0]);
+        code.bytes(&[0x49, 0x83, 0xba]);
+        code.bytes(&offset.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
     }
     code.bytes(&[0x41, 0x80, 0x3a, 2]);
     code.jump_if(0x85, "fatal");

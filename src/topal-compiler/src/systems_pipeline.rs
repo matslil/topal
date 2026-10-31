@@ -51,7 +51,10 @@ pub(crate) fn publish(
             })
         })
         .transpose()?;
-    if program.kernel_library.is_some() || program.time_library.is_some() {
+    if program.kernel_library.is_some()
+        || program.time_library.is_some()
+        || program.image_library.is_some()
+    {
         let source = program
             .kernel_library
             .as_ref()
@@ -62,13 +65,21 @@ pub(crate) fn publish(
             .as_ref()
             .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
             .transpose()?;
-        return crate::publish_x86_64_systems_artifact_with_libraries(
+        let image = program
+            .image_library
+            .as_ref()
+            .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
+            .transpose()?;
+        return crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             initial_user_image.as_deref(),
             static_user_image.as_deref(),
-            source.as_ref(),
-            time.as_ref(),
+            crate::SystemsKernelLibraries {
+                policy: source.as_ref(),
+                time: time.as_ref(),
+                image: image.as_ref(),
+            },
             &options.output,
         );
     }

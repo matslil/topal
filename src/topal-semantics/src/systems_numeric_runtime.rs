@@ -1,11 +1,14 @@
 //! Reference lifetime/erasure model. Labels and offsets grant no machine authority.
 use crate::{SystemsModelError, SystemsSourceLibraryInterface, SystemsSourceLibraryRequirement};
+use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsNumericRuntimeArena {
     root_owner: String,
     process: Option<String>,
     active: bool,
+    policies: BTreeSet<SystemsSourceLibraryInterface>,
+    active_policy: Option<SystemsSourceLibraryInterface>,
     cursor: u64,
     allocations: u64,
     storage: Vec<u8>,
@@ -23,16 +26,33 @@ impl SystemsNumericRuntimeArena {
         requirement: &SystemsSourceLibraryRequirement,
         root_owner: &str,
     ) -> Result<Self, SystemsModelError> {
-        requirement.validate()?;
-        if requirement.interface != SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
-            || root_owner.is_empty()
-        {
+        Self::new_with_policies(std::slice::from_ref(requirement), root_owner)
+    }
+    pub fn new_with_policies(
+        requirements: &[SystemsSourceLibraryRequirement],
+        root_owner: &str,
+    ) -> Result<Self, SystemsModelError> {
+        let mut policies = BTreeSet::new();
+        for requirement in requirements {
+            requirement.validate()?;
+            if !matches!(
+                requirement.interface,
+                SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
+                    | SystemsSourceLibraryInterface::StaticElf64HeaderV1
+            ) || !policies.insert(requirement.interface)
+            {
+                return Err(invalid());
+            }
+        }
+        if policies.is_empty() || root_owner.is_empty() {
             return Err(invalid());
         }
         Ok(Self {
             root_owner: root_owner.into(),
             process: None,
             active: false,
+            policies,
+            active_policy: None,
             cursor: 0,
             allocations: 0,
             storage: vec![0; 65536],
@@ -51,6 +71,7 @@ impl SystemsNumericRuntimeArena {
             || process.is_empty()
             || self.process.is_some()
             || self.active
+            || self.active_policy.is_some()
             || self.cursor != 0
             || self.allocations != 0
             || !self.binding_erased
@@ -65,6 +86,7 @@ impl SystemsNumericRuntimeArena {
     pub fn retain_across_exec(&self, process: &str) -> Result<(), SystemsModelError> {
         if !self.process_matches(process)
             || self.active
+            || self.active_policy.is_some()
             || self.cursor != 0
             || self.allocations != 0
             || !self.clean()
@@ -75,7 +97,19 @@ impl SystemsNumericRuntimeArena {
         Ok(())
     }
     pub fn begin(&mut self, process: &str) -> Result<(), SystemsModelError> {
+        if self.policies.len() != 1 {
+            return Err(invalid());
+        }
+        self.begin_policy(process, *self.policies.first().unwrap())
+    }
+    pub fn begin_policy(
+        &mut self,
+        process: &str,
+        policy: SystemsSourceLibraryInterface,
+    ) -> Result<(), SystemsModelError> {
         if !self.process_matches(process)
+            || !self.policies.contains(&policy)
+            || self.active_policy.is_some()
             || self.active
             || self.cursor != 0
             || self.allocations != 0
@@ -85,6 +119,7 @@ impl SystemsNumericRuntimeArena {
             return Err(invalid());
         }
         self.active = true;
+        self.active_policy = Some(policy);
         self.cursor = 32;
         self.allocations = 0;
         self.storage[..32].fill(0xa5);
@@ -93,7 +128,13 @@ impl SystemsNumericRuntimeArena {
     }
     /// Return a modeled byte offset, never an addressed-storage capability.
     pub fn allocate(&mut self, process: &str, length: u64) -> Result<u64, SystemsModelError> {
-        if !self.process_matches(process) || !self.active || length == 0 {
+        if !self.process_matches(process)
+            || !self.active
+            || length == 0
+            || self
+                .active_policy
+                .is_none_or(|policy| !self.policies.contains(&policy))
+        {
             return Err(invalid());
         }
         let aligned = length.checked_add(7).ok_or_else(invalid)? & !7;
@@ -109,7 +150,14 @@ impl SystemsNumericRuntimeArena {
         Ok(previous)
     }
     pub fn finish(&mut self, process: &str) -> Result<(), SystemsModelError> {
-        if !self.process_matches(process) || !self.active {
+        self.finish_policy(process, self.active_policy.ok_or_else(invalid)?)
+    }
+    pub fn finish_policy(
+        &mut self,
+        process: &str,
+        policy: SystemsSourceLibraryInterface,
+    ) -> Result<(), SystemsModelError> {
+        if !self.process_matches(process) || !self.active || self.active_policy != Some(policy) {
             return Err(invalid());
         }
         self.storage.fill(0);
@@ -118,6 +166,7 @@ impl SystemsNumericRuntimeArena {
             return Err(invalid());
         }
         self.active = false;
+        self.active_policy = None;
         self.cursor = 0;
         self.allocations = 0;
         Ok(())
@@ -125,6 +174,7 @@ impl SystemsNumericRuntimeArena {
     pub fn return_to_root(&mut self, process: &str) -> Result<(), SystemsModelError> {
         if !self.process_matches(process)
             || self.active
+            || self.active_policy.is_some()
             || !self.clean()
             || self.cursor != 0
             || self.allocations != 0
@@ -139,6 +189,7 @@ impl SystemsNumericRuntimeArena {
     pub fn is_reclaimed(&self) -> bool {
         self.process.is_none()
             && !self.active
+            && self.active_policy.is_none()
             && self.cursor == 0
             && self.allocations == 0
             && self.clean()
@@ -149,6 +200,54 @@ impl SystemsNumericRuntimeArena {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn distinct_numeric_policies_share_only_inactive_clean_storage() {
+        // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
+        let requirement = |interface| SystemsSourceLibraryRequirement {
+            source: "policy/unit.t".into(),
+            export: "policy".into(),
+            interface,
+            stack_limit_bytes: 4096,
+            runtime_limit_bytes: Some(65536),
+        };
+        let time = SystemsSourceLibraryInterface::RelativeSleepDeadlineV1;
+        let header = SystemsSourceLibraryInterface::StaticElf64HeaderV1;
+        for selected in [
+            vec![requirement(header)],
+            vec![requirement(time), requirement(header)],
+        ] {
+            let mut arena =
+                SystemsNumericRuntimeArena::new_with_policies(&selected, "root").unwrap();
+            arena.lend("root", "process").unwrap();
+            assert!(arena.begin_policy("other", header).is_err());
+            assert!(
+                arena
+                    .begin_policy("process", SystemsSourceLibraryInterface::BootOpenDecisionV1)
+                    .is_err()
+            );
+            for policy in selected.iter().cycle().take(4).map(|r| r.interface) {
+                arena.begin_policy("process", policy).unwrap();
+                let before = arena.clone();
+                let other = if policy == header { time } else { header };
+                assert!(arena.begin_policy("process", other).is_err());
+                assert!(arena.finish_policy("process", other).is_err());
+                assert_eq!(arena, before);
+                arena.allocate("process", 24).unwrap();
+                arena.finish_policy("process", policy).unwrap();
+                arena.retain_across_exec("process").unwrap();
+            }
+            arena.return_to_root("process").unwrap();
+            assert!(arena.is_reclaimed());
+        }
+        assert!(SystemsNumericRuntimeArena::new_with_policies(&[], "root").is_err());
+        assert!(
+            SystemsNumericRuntimeArena::new_with_policies(
+                &[requirement(time), requirement(time)],
+                "root"
+            )
+            .is_err()
+        );
+    }
     #[test]
     fn numeric_storage_lending_is_exclusive_and_completely_erased() {
         // TOPAL-SYSTEMS-NUMERIC-RUNTIME-001

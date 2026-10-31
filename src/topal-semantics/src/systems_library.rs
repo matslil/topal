@@ -1,10 +1,11 @@
 //! Static source-library obligations; no code or numeric authority is modeled.
 use crate::SystemsModelError;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum SystemsSourceLibraryInterface {
     BootOpenDecisionV1,
     RelativeSleepDeadlineV1,
+    StaticElf64HeaderV1,
 }
 impl SystemsSourceLibraryInterface {
     #[must_use]
@@ -12,6 +13,7 @@ impl SystemsSourceLibraryInterface {
         match self {
             Self::BootOpenDecisionV1 => "boot-open-decision-v1",
             Self::RelativeSleepDeadlineV1 => "relative-sleep-deadline-v1",
+            Self::StaticElf64HeaderV1 => "static-elf64-header-v1",
         }
     }
 }
@@ -45,7 +47,8 @@ impl SystemsSourceLibraryRequirement {
                 SystemsSourceLibraryInterface::BootOpenDecisionV1 => {
                     self.stack_limit_bytes == 1024 && self.runtime_limit_bytes.is_none()
                 }
-                SystemsSourceLibraryInterface::RelativeSleepDeadlineV1 => {
+                SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
+                | SystemsSourceLibraryInterface::StaticElf64HeaderV1 => {
                     self.stack_limit_bytes == 4096 && self.runtime_limit_bytes == Some(65536)
                 }
             }
@@ -56,6 +59,33 @@ impl SystemsSourceLibraryRequirement {
             ));
         }
         Ok(())
+    }
+}
+
+/// Copied protocol facts, never a file, addressed storage or mapping grant.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct SystemsElf64HeaderFacts {
+    pub bytes: [u8; 64],
+    pub machine: u16,
+    pub maximum_program_headers: u16,
+}
+impl SystemsElf64HeaderFacts {
+    pub fn admitted(&self) -> Result<bool, SystemsModelError> {
+        if self.machine == 0 || self.maximum_program_headers == 0 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LIBRARY",
+                "invalid ELF64 header facts",
+            ));
+        }
+        let word = |offset| u16::from_le_bytes(self.bytes[offset..offset + 2].try_into().unwrap());
+        let version = u32::from_le_bytes(self.bytes[20..24].try_into().unwrap());
+        Ok(self.bytes[..7] == [127, 69, 76, 70, 2, 1, 1]
+            && word(16) == 2
+            && word(18) == self.machine
+            && version == 1
+            && word(52) == 64
+            && word(54) == 56
+            && (1..=self.maximum_program_headers).contains(&word(56)))
     }
 }
 
@@ -96,6 +126,62 @@ impl SystemsSleepDeadlineFacts {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn copied_elf64_header_facts_preserve_exact_admission_and_unexamined_bytes() {
+        // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
+        let mut header = SystemsElf64HeaderFacts {
+            bytes: [0; 64],
+            machine: 62,
+            maximum_program_headers: 16,
+        };
+        header.bytes[..7].copy_from_slice(&[127, 69, 76, 70, 2, 1, 1]);
+        for (offset, value) in [(16, 2u16), (18, 62), (52, 64), (54, 56), (56, 4)] {
+            header.bytes[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+        }
+        header.bytes[20..24].copy_from_slice(&1u32.to_le_bytes());
+        assert_eq!(header.admitted(), Ok(true));
+        for position in 0..64 {
+            for value in 0..=255 {
+                let mut changed = header.clone();
+                changed.bytes[position] = value;
+                let expected = match position {
+                    0..=6 | 16..=23 | 52..=55 => value == header.bytes[position],
+                    56 => (1..=16).contains(&value),
+                    57 => value == 0,
+                    _ => true,
+                };
+                assert_eq!(
+                    changed.admitted(),
+                    Ok(expected),
+                    "position={position} value={value}"
+                );
+            }
+        }
+        let mut other = header.clone();
+        other.machine = u16::MAX;
+        other.maximum_program_headers = u16::MAX;
+        other.bytes[18..20].copy_from_slice(&u16::MAX.to_le_bytes());
+        other.bytes[56..58].copy_from_slice(&u16::MAX.to_le_bytes());
+        assert_eq!(other.admitted(), Ok(true));
+        other.bytes[56..58].copy_from_slice(&0u16.to_le_bytes());
+        assert_eq!(other.admitted(), Ok(false));
+        for (machine, maximum) in [(0, 16), (62, 0)] {
+            let mut invalid = header.clone();
+            invalid.machine = machine;
+            invalid.maximum_program_headers = maximum;
+            assert!(invalid.admitted().is_err());
+        }
+        let requirement = SystemsSourceLibraryRequirement {
+            source: "policy/header.t".into(),
+            export: "header-admitted?".into(),
+            interface: SystemsSourceLibraryInterface::StaticElf64HeaderV1,
+            stack_limit_bytes: 4096,
+            runtime_limit_bytes: Some(65536),
+        };
+        requirement.validate().unwrap();
+        assert_eq!(requirement.interface.as_str(), "static-elf64-header-v1");
+    }
 
     #[test]
     fn models_numeric_deadline_boundaries_without_machine_authority() {

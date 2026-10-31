@@ -4,6 +4,12 @@
 mod array_tests;
 #[path = "systems_numeric_collections.rs"]
 mod collections;
+#[cfg(test)]
+#[path = "systems_header_tests.rs"]
+mod header_tests;
+#[path = "systems_numeric_interface.rs"]
+mod interface;
+pub(crate) use interface::NumericPolicy;
 #[path = "systems_numeric_object.rs"]
 mod native_object;
 #[cfg(test)]
@@ -32,7 +38,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/3";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/4";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -59,6 +65,7 @@ pub(crate) struct CheckedNumericLibrary {
     pub(crate) source_name: String,
     pub(crate) entry_symbol: String,
     pub(crate) allocation: SystemsNumericAllocationBound,
+    pub(crate) policy: NumericPolicy,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -439,8 +446,8 @@ pub(crate) fn check_numeric_library(
     input: &SystemsSourceLibraryInput,
 ) -> Result<CheckedNumericLibrary, CompileError> {
     requirement.validate().map_err(|e| invalid(e.to_string()))?;
-    if requirement.interface != CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1
-        || requirement.source != input.source
+    let policy = NumericPolicy::from_interface(requirement.interface)?;
+    if requirement.source != input.source
         || !topal_language::published_function_names(&input.text)
             .iter()
             .any(|n| canonically_equal(n, &requirement.export))
@@ -457,10 +464,7 @@ pub(crate) fn check_numeric_library(
         ));
     }
     let (collection_runtime_sha256, collection_layout_sha256) = collections::runtime_digests()?;
-    let client = format!(
-        "{}\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\n{} (seconds, nanoseconds, ticks, false)\n",
-        input.text, requirement.export
-    );
+    let client = format!("{}{}", input.text, policy.client(&requirement.export));
     let modules = crate::systems_library::modules::validate(input)?;
     let program = topal_language::analyze_for_compiler_with_modules_and_declared_exports(
         &client,
@@ -490,21 +494,20 @@ pub(crate) fn check_numeric_library(
         .iter()
         .map(|p| p.value_type.clone())
         .collect::<Vec<_>>()
-        != [
-            CompilerType::Nat,
-            CompilerType::Nat,
-            CompilerType::Nat,
-            CompilerType::Boolean,
-        ]
-        || entry.result_type != CompilerType::Int
+        != policy.parameters()
+        || entry.result_type != policy.result()
         || entry.parameters.iter().any(|p| p.int_range.is_some())
     {
-        return Err(invalid(
-            "numeric interface is not declared-type Nat/Nat/Nat/Boolean -> Int",
-        ));
+        return Err(invalid(match policy {
+            NumericPolicy::Deadline => {
+                "numeric interface is not declared-type Nat/Nat/Nat/Boolean -> Int"
+            }
+            NumericPolicy::Elf64Header => {
+                "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
+            }
+        }));
     }
     let entry_symbol = symbol.clone();
-    let maximum = BigInt::from(i64::MAX);
     let mut bounds = Bounds {
         functions: program
             .functions
@@ -515,16 +518,8 @@ pub(crate) fn check_numeric_library(
         active: BTreeSet::new(),
         maximum_bits: 0,
     };
-    let result = bounds.function(
-        &entry_symbol,
-        vec![
-            Value::Number(Range(BigInt::from(0), maximum)),
-            Value::Number(Range(BigInt::from(0), BigInt::from(999_999_999_u64))),
-            Value::Number(Range(BigInt::from(0), BigInt::from(u64::MAX))),
-            Value::Boolean,
-        ],
-    )?;
-    let bridge_bytes = 3 * 24; // three normal unsigned native-word input objects
+    let result = bounds.function(&entry_symbol, policy.arguments())?;
+    let bridge_bytes = policy.bridge_bytes();
     let maximum_bytes = cost_add(cost_add(result.bytes, bridge_bytes)?, HEADER_BYTES)?;
     let allocation = SystemsNumericAllocationBound {
         certificate: ALLOCATION_CERTIFICATE.into(),
@@ -544,6 +539,7 @@ pub(crate) fn check_numeric_library(
         source_name: input.source_name.clone(),
         entry_symbol,
         allocation,
+        policy,
     })
 }
 

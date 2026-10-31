@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/135";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/136";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -352,24 +352,53 @@ fn validate_artifact_input(
         )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
-    let has_numeric = file
-        .symbol_by_name(crate::systems_numeric_library::EXPORT_SYMBOL)
-        .is_some();
-    if has_numeric != artifact.time_library.is_some() {
-        return Err(CompileError::Tool(
-            "numeric code and artifact binding disagree".into(),
-        ));
-    }
-    if let Some(library) = &artifact.time_library {
-        crate::systems_library::modules::validate_binding(
-            &library.modules,
-            &library.module_snapshot_sha256,
-            &artifact.inputs,
-            &artifact.outputs,
+    for (library, interface, policy, prefix, stem) in [
+        (
+            &artifact.time_library,
+            "relative-sleep-deadline-v1",
+            crate::systems_numeric_library::NumericPolicy::Deadline,
             "kernel-time-source-module:",
-            "time-library.modules.json",
-        )?;
-        crate::systems_numeric_library::inspect_linked_numeric_library(kernel, library)?;
+            "time-library",
+        ),
+        (
+            &artifact.image_library,
+            "static-elf64-header-v1",
+            crate::systems_numeric_library::NumericPolicy::Elf64Header,
+            "kernel-image-source-module:",
+            "image-library",
+        ),
+    ] {
+        let has_numeric = file.symbol_by_name(policy.native_export()).is_some();
+        if has_numeric != library.is_some() {
+            return Err(CompileError::Tool(
+                "numeric code and artifact binding disagree".into(),
+            ));
+        }
+        if let Some(library) = library {
+            if library.interface != interface || library.native_export != policy.native_export() {
+                return Err(CompileError::Tool(
+                    "numeric source binding is in the wrong policy slot".into(),
+                ));
+            }
+            crate::systems_library::modules::validate_binding(
+                &library.modules,
+                &library.module_snapshot_sha256,
+                &artifact.inputs,
+                &artifact.outputs,
+                prefix,
+                &format!("{stem}.modules.json"),
+            )?;
+            crate::systems_numeric_library::inspect_linked_numeric_library(kernel, library)?;
+        }
+    }
+    if file
+        .symbol_by_name("topal_x86_systems_numeric_arena")
+        .is_some()
+        != (artifact.time_library.is_some() || artifact.image_library.is_some())
+    {
+        return Err(CompileError::Tool(
+            "numeric arena and complete policy set disagree".into(),
+        ));
     }
     Ok(())
 }
@@ -1007,13 +1036,21 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
         )
         .unwrap();
-        let linked = crate::publish_x86_64_systems_artifact_with_libraries(
+        let image = crate::systems_library::load_source_library(
+            program.image_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
-            Some(&source),
-            Some(&time),
+            crate::SystemsKernelLibraries {
+                policy: Some(&source),
+                time: Some(&time),
+                image: Some(&image),
+            },
             &parent.join("linked"),
         )
         .unwrap();
@@ -1077,6 +1114,72 @@ mod tests {
             assert!(
                 generate_x86_64_linux_boot_image(&changed, &provenance, &initial, &static_image)
                     .is_err()
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_cross_policy_missing_or_undercharged_header_binding_before_boot() {
+        // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..10 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.image_library = None,
+                1 => std::mem::swap(&mut changed.image_library, &mut changed.time_library),
+                2 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                3 => changed
+                    .image_library
+                    .as_mut()
+                    .unwrap()
+                    .machine_profile
+                    .push_str("-unknown"),
+                4 => changed
+                    .inputs
+                    .retain(|i| !i.identity.starts_with("kernel-image-source-module:")),
+                5 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .maximum_bytes = 65537
+                }
+                6 => changed.image_library.as_mut().unwrap().maximum_stack_bytes -= 8,
+                7 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes -= 8
+                }
+                8 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .maximum_bytes -= 8
+                }
+                9 => {
+                    changed.image_library.as_mut().unwrap().functions[0].maximum_call_path_bytes -=
+                        8
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
             );
         }
         fs::remove_dir_all(parent).unwrap();
