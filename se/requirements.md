@@ -662,6 +662,16 @@ retain no caller pointer and preserve identity across exec. Tests shall cover
 repetition/reordering, native record bytes and faults, replacement shells and
 complete reclamation. Broader process and UTS namespace behavior remains open.
 
+The immutable boot-root open refinement shall decode ordinary native access
+intents with its qualified modifiers while retaining the read-only filesystem
+view. Complete name copying and free-slot checks shall precede walking; lookup,
+relative authority and object-type errors shall precede denial of write access
+to existing objects. Rejection shall publish no handle, preserve process state
+and erase private name copies. Tests shall cover access/error ordering,
+exhaustion, preserved inherited resources and an interactive replacement shell
+using ordinary serial prompt/read/command cycles. Broader filesystem mutation,
+process creation and terminal/job-control authority remain separately required.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained

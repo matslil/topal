@@ -721,6 +721,14 @@ publication requires a complete checked destination; exec retains process and
 system views, and terminal reclamation erases their private witness. Broader
 process creation and mutable namespace identities remain separately qualified.
 
+The immutable boot-root namespace may decode ordinary open access intents
+without granting writable authority. Lookup and object-type errors precede
+denial of write access to an existing read-only filesystem object. Rejected
+requests preserve process state and publish no handle. Native access flags
+remain ABI data; a writable filesystem or device requires separate authority.
+This refinement permits ordinary missing-object probes by replacement shells
+without interpreting application names or prompt text.
+
 A separately qualified process-signal refinement may retain native action
 registrations and a blocked set as process-owned ABI state. Complete checked
 input and old-value transfers preserve native overlap and commit/error behavior.

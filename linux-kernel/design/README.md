@@ -242,6 +242,7 @@ records, not this directory alone, define language meaning.
 - [Successive retained static executable generations](repeated-static-exec.md)
 - [Completed deadline notification filtering](deadline-entry-filter.md)
 - [Reusable prepared-process and system observations](reusable-process-observations.md)
+- [Open access intent in the immutable boot-root namespace](readonly-open-access.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
