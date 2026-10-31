@@ -394,6 +394,30 @@ calls remain represented in debug information. This adds systems artifact
 linking and qualification, without changing core-language function, Enum,
 publication, effect or termination meaning.
 
+### Owned runtime for pure numeric libraries
+
+A further systems profile may execute ordinary numeric policy over a root-owned,
+bounded temporary arena. The first interface computes relative-sleep deadlines
+from ordinary `Nat` inputs and a wrapped-clock Boolean, returning an `Int` which
+the private boundary validates before native use. Arithmetic keeps its existing
+arbitrary-precision meaning. It must reuse ordinary frontend/function lowering
+and the shared numeric algorithms with qualified kernel allocation/fatal services.
+There is no hosted allocation or syscall dependency.
+
+The artifact explicitly binds the source/interface, complete runtime closure,
+4096-byte stack limit and 65536-byte temporary-storage limit. Source receives no
+resource, context or pointer. One invocation exclusively borrows the arena; no
+allocated value escapes. Complete storage/state erasure precedes return, and
+binding erasure precedes terminal process return. Reentrant activation, wrong
+ownership, exhausted storage or invalid results fail closed. Publication must
+prove stack and allocation bounds, including runtime iteration/allocation costs;
+measurements alone are insufficient. Missing proof or unsupported source fails
+before publication. Existing finite libraries retain their contracts.
+
+This is a systems-only runtime qualification. It changes no core numeric,
+function, effect, type or error semantics and grants no general allocator,
+container, concurrent invocation or module support.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

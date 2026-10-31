@@ -255,3 +255,5 @@ The base semantic proposal was approved in the project discussion after PR
 It is adopted through `docs/systems-profile.md`, the `TOPAL-REQ-SYSTEMS-*`
 requirements, and `spec/systems-profile.md`. The approved profile adds no new
 grammar; its sealed vocabulary uses ordinary Topal construction syntax.
+
+- [Owned runtime for pure numeric kernel libraries](owned-numeric-kernel-runtime.md) (`TK-DEC-253`; implementation and qualification pending).

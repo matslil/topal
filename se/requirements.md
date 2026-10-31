@@ -1525,6 +1525,20 @@ source-body changes and Enum reordering, malformed/escape inputs, native syscall
 boundaries and full rollback. Kernel policy shall reside in the kernel source
 tree; native adapters shall translate semantic choices and enforce authority.
 
+A separately qualified pure numeric source-library profile may use an explicitly
+root-owned temporary arena and the shared ordinary numeric runtime. It shall
+preserve arbitrary-precision semantics, bind only qualified kernel allocation
+and fatal mechanisms, and prove conservative complete stack/allocation bounds
+including runtime loops. The initial relative-sleep interface shall declare a
+4096-byte stack and 65536-byte temporary-storage limit, admit no source resource
+or address authority, prohibit allocated-value escape and reentrant activation,
+and erase/read back invocation storage before return and binding at termination.
+Publication shall reject missing proof, unsupported code, hosted dependencies
+or insufficient resources. Runtime ownership, exhaustion and representation
+failures shall fail closed. Qualification shall cover boundary arithmetic,
+source/runtime execution, bounds, ABI preservation, retained ownership and full
+reclamation; measured resource use alone shall not establish the bound.
+
 ## TOPAL-REQ-SYSTEMS-QUALIFY-001 — Cross-architecture and target evidence
 
 Every systems element shall have architecture-independent semantic and
