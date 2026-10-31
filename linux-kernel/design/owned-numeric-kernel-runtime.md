@@ -1,7 +1,8 @@
 # Owned runtime for pure numeric kernel libraries
 
 Status: systems-only direction adopted under standing authorization;
-implementation and qualification pending (`TK-DEC-253`).
+implemented and qualified for the initial numeric unit (`TK-DEC-253`);
+[execution report](../step-4-owned-numeric-runtime.md).
 
 Step 2 requires ordinary Topal kernel policy and a freestanding runtime. The
 first finite source library does not allocate, whereas ordinary `Nat`/`Int`
@@ -86,6 +87,10 @@ and preserves caller ABI/extended state. The library bridge and arena lending
 remain target-private. AArch64 and RISC-V need their own ABI, alignment, frame,
 mapping and owner evidence; the source arithmetic and storage-lifetime contract
 remain portable.
+The first interface uses the existing qualified ten-nanosecond clock view; it
+is not a claim that other hardware counters have that period. Another provider
+shall normalize its counter to that semantic view or qualify an interface with
+explicit scale facts, preserving saturation and rounding.
 
 ## Qualification and review
 

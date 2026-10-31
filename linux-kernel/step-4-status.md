@@ -11,6 +11,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 - An ordinary Topal Boolean/Enum policy library with source-bound code ownership,
   actual helper calls, native ABI and stack evidence, and representation adaptation.
+- Ordinary Topal numeric deadline policy using shared arbitrary-precision algorithms,
+  exclusive owned arena lending, allocation/stack proofs and complete temporary erasure.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -18,12 +20,12 @@ systems abstractions; ARM64 implementation is outside the current focus.
 - Shared file descriptions and offsets, descriptor flags/aliases, an immutable
   boot-root namespace, cwd/directory observations and prepared root/PID/UTS views.
 - Signal registration/masks without user delivery; actual RTC seconds; borrowed
-  monotonic time/resolution and relative sleeps with native saturation.
+  monotonic time/resolution and relative sleeps with source-defined saturation.
 - Unmodified pinned BusyBox utilities and interactive shell builtin/cwd/input
   cycles through shared services. Unknown syscall selectors return ENOSYS.
 
-The [current library report](step-4-kernel-policy-library.md) records 39 successful
-physical runs on one kernel, one positive representation-variant run, sixteen lab
+The [current runtime report](step-4-owned-numeric-runtime.md) records 40 successful
+physical runs on one kernel, one positive representation-variant run, seventeen lab
 contracts and bounded workspace validation. Each report identifies its executed scope and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
@@ -31,7 +33,7 @@ A successful bounded witness does not establish general Linux compatibility.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | First nonallocating Boolean/Enum source unit; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded allocating numeric source units; general/persistent allocation and imports remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Sole prepared process, one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks and kernel-context foundations; sole-thread waits |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects and qualified serial/entropy/time hardware |

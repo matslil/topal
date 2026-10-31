@@ -899,6 +899,8 @@ records the completed evidence, remaining gaps, risk assessment, and next gate.
 - [Step 4 immutable boot-root open access and interactive serial prompts](step-4-readonly-open-access.md)
 - [Step 4 recoverable unknown static-process syscalls](step-4-static-syscall-fallback.md)
 - [Step 4 prepared-process monotonic time and relative sleep](step-4-static-process-time.md)
+- [Step 4 ordinary finite kernel policy library](step-4-kernel-policy-library.md)
+- [Step 4 owned numeric kernel runtime](step-4-owned-numeric-runtime.md)
 - [Generated inventory coverage](inventory/coverage.md)
 - [Kernel design set](design/README.md)
 - [Open decision register](design/decision-register.md)
