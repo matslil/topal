@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/207";
+    "topal.provider-object.x86_64-qemu-pc-q35/208";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9672,6 +9672,8 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x65, 0x48, 0x8b, 0x24, 0x25, 8, 0, 0, 0]);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0, 0, 0, 0, 1]);
     code.jump_if(0x85, "fatal");
+    // Linux x86-64 selects a syscall with the low native 32-bit number.
+    code.bytes(&[0x89, 0xc0]);
     process_files::emit_dispatch(&mut code)?;
     process_runtime::signals::emit_dispatch(&mut code)?;
     process_runtime::namespace::emit_dispatch(&mut code)?;
@@ -9762,7 +9764,12 @@ fn static_image_process_enter() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x3d, 0x6e, 0, 0, 0]);
     code.jump_if(0x84, "static-process-shell-getppid");
     code.bytes(&[0x3d, 0xe7, 0, 0, 0]);
-    code.jump_if(0x85, "fatal");
+    code.jump_if(0x84, "static-process-exit-group-selected");
+    // TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001: no implemented arm selected.
+    // Do not inspect unused arguments, advance startup or consume the owner.
+    code.bytes(&[0x48, 0xc7, 0xc0, 0xda, 0xff, 0xff, 0xff]);
+    emit_static_process_sysret(&mut code);
+    code.bind("static-process-exit-group-selected")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&896_u32.to_le_bytes());
     code.bytes(&[1]);

@@ -37,6 +37,27 @@ pub(in super::super) fn code() -> Vec<u8> {
     w.imm(&[0x48, 0xbf], 0x7fe800);
     w.imm(&[0x48, 0xb9], 512);
     w.0.extend_from_slice(&[0xfc, 0xf3, 0xa4]);
+    // Unknown selectors ignore all arguments and preserve user state. These
+    // run before the first exec and after every maximum-environment generation.
+    w.store(BUFFER, 0xdecafbad);
+    for number in [u64::MAX, 0x7fff_ffff, 0x2000, 0x1_0000_2000, 0x4000_0027] {
+        w.imm(&[0x49, 0xb8], u64::MAX - 7);
+        w.imm(&[0x49, 0xb9], 0x619000);
+        w.call(number, &[u64::MAX, 0x619000, 0x800000, u64::MAX - 1], -38);
+        for (bytes, value) in [
+            ([0x48, 0x89, 0xf8], u64::MAX),
+            ([0x48, 0x89, 0xf0], 0x619000),
+            ([0x48, 0x89, 0xd0], 0x800000),
+            ([0x4c, 0x89, 0xd0], u64::MAX - 1),
+            ([0x4c, 0x89, 0xc0], u64::MAX - 7),
+            ([0x4c, 0x89, 0xc8], 0x619000),
+        ] {
+            w.0.extend_from_slice(&bytes);
+            w.expect(value);
+        }
+        w.memory(BUFFER, 0xdecafbad);
+        w.call(0x1_0000_0027, &[], 1); // upper bits must not hide getpid
+    }
     for (number, expected) in [(186, 1), (110, 0), (39, 1), (39, 1), (110, 0), (186, 1)] {
         w.call(number, &[u64::MAX, 0x619000, 0, 17], expected);
     }
