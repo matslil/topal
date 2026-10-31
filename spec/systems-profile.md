@@ -3845,6 +3845,101 @@ changed-helper rejection, native-state preservation and complete reclamation.
 This rule SHALL NOT qualify general containers, native-memory views, persistent
 state or additional public Linux interfaces.
 
+### TOPAL-SYSTEMS-NUMERIC-ENUMS-001 — Bounded nominal operation choices
+
+The owned numeric profile MAY admit payload-free nominal Enum construction,
+local binding, direct acyclic root-module helper arguments/results, equality,
+Boolean branches and Enum decisions. Ordinary declared type/nominal checking
+SHALL precede qualification. The bound SHALL retain the checked Enum identity,
+ordered alternatives and every possible tag. Joins SHALL require equal checked
+kinds and union their possible tags; they SHALL NOT merge structurally similar
+but distinct kinds. A constructor SHALL have its single checked tag.
+
+Tag representation SHALL allocate zero bytes. An expression SHALL charge every
+evaluated subject/argument and reachable action once. Enum decisions SHALL retain
+only reachable result alternatives and charge the maximum reachable action plus
+the subject. Unsupported forms SHALL remain diagnostics even in an unreachable
+action; every emitted function/call path SHALL retain closure and stack checks.
+Uncovered reachable tags SHALL require the checked fallback. An invalid tag,
+identity, duplicate case or incomplete reachable result SHALL fail qualification.
+
+The initial qualification SHALL NOT admit nominal Enum values through imported
+module interfaces, container payloads or numeric Record fields, payload variants,
+effects, foreign calls, dynamic callbacks, recursion or persistent allocation.
+Existing finite-library and numeric/Record/Array/Optional semantics SHALL retain
+their contracts. Only the selected interface's validated scalar operation result
+SHALL leave the exclusive invocation; all native saves, returns and adaptation
+SHALL enter complete resource proofs and erasure.
+
+### TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001 — Ordinary source syscall selection
+
+An artifact MAY declare one `dispatch-library` through `lang systems source-library`
+with interface `static-linux-dispatch-v1`, a contained source path/public export,
+`stack-limit-bytes is 4096` and `runtime-limit-bytes is 65536`. It SHALL select
+ordinary declared type `Nat -> StaticLinuxOperation`, with no hidden inputs or
+source parameter range narrowing. The result SHALL be a nominal payload-free
+Enum with exactly the 55 semantic operation names below and `Unsupported`.
+Canonical name matching SHALL follow ordinary source identity rules; declaration
+order SHALL NOT determine the native operation identity.
+
+The x86-64 mapping SHALL be the following exact selector/name relation:
+
+```text
+0 Read; 1 Write; 2 Open; 3 Close; 5 FileStatus; 7 Poll; 8 Seek;
+10 ProtectMemory; 12 ProgramBreak; 13 SignalAction; 14 SignalMask; 16 IoControl;
+22 Pipe; 24 Yield; 32 Duplicate; 33 DuplicateTo; 35 NanoSleep; 39 ProcessId;
+56 Clone; 57 Fork; 59 Execute; 60 Exit; 61 Wait; 63 KernelIdentity;
+72 FileControl; 79 WorkingDirectory; 80 ChangeDirectory; 81 ChangeDirectoryByFile;
+97 ResourceLimit; 102 UserId; 104 GroupId; 105 SetUserId; 106 SetGroupId;
+107 EffectiveUserId; 108 EffectiveGroupId; 110 ParentId; 157 ProcessControl;
+158 ThreadLocal; 186 ThreadId; 201 RealtimeSeconds; 217 DirectoryEntries;
+218 RegisterThreadId; 228 ClockTime; 229 ClockResolution; 230 ClockSleep;
+231 ExitGroup; 257 OpenAt; 262 FileStatusAt; 267 ReadLinkAt; 273 RegisterRobustList;
+292 DuplicateToFlags; 293 PipeFlags; 302 ResourceLimits; 318 RandomBytes;
+334 RestartableSequences
+```
+
+Every other source input SHALL select `Unsupported`. The source input SHALL be
+an untrusted ABI-normalized selector in 0..2^64-1. The existing x86-64 low-32-bit
+normalization SHALL occur before invocation. Architecture-specific mappings
+SHALL live in source ABI modules; another target SHALL qualify its own number
+mapping, normalization and native operation adaptation.
+
+Invocation SHALL follow complete user-context capture and switching to the owned
+kernel stack, and precede argument inspection or handler entry. Source SHALL
+receive no user argument, pointer, context or resource authority. The bridge
+SHALL box the selector, call ordinary source and validate/adapt its actual nominal
+result to one explicitly bound private operation code. Native routing SHALL use
+that selected operation after cleanup. It SHALL NOT redispatch the original
+selector or substitute native selection when declared source fails. Missing,
+duplicate, mismatched, escaping or unqualified declarations/snapshots and invalid
+result/ownership/binding/proof SHALL fail closed before publication or use.
+
+Existing handler resource/startup/argument/process/mapping/lifecycle constraints
+and errors SHALL remain in force; operation selection SHALL NOT imply success
+or expand supported UAPI. `Unsupported` SHALL retain existing native ENOSYS and
+unused-argument behavior. Private handler codes SHALL NOT be exposed as source
+Enum tags or external ABI. Reordered source alternatives SHALL preserve choices.
+
+Dispatch, header and deadline policies SHALL work independently or together, with
+the complete selected set bound to the owner. Shared storage SHALL admit only
+exclusive sequential invocations with distinct active-policy identities and
+code/runtime bindings. Dispatch cleanup SHALL precede any selected handler's
+header/deadline invocation. Captured context, argument facts, SIMD state and
+retained resources SHALL be preserved at the selection boundary; restored
+argument words SHALL remain untrusted. Only the checked operation scalar SHALL
+escape. Complete input/source/runtime/bridge allocation, actual frames, native
+saves, returns and alignment SHALL fit the unchanged reserves. Normal/unsupported
+completion and terminal return SHALL require complete erasure/readback.
+
+Qualification SHALL cover all mapped and unknown selectors, full-width boundaries,
+x86 normalization/unused-argument cases, exact signatures/vocabulary, reordered
+Enum adaptation, source/module provenance, actual source facts and cleaned
+results, preserved native/argument/context state, dispatch-only/shared operation,
+changed-source rejection before handler execution, complete resource proofs and
+the previous runtime regression. This rule SHALL NOT claim broader handler or
+core-language support.
+
 ### TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001 — Source policy over owned header bytes
 
 An artifact MAY declare one `image-library` through `lang systems source-library`

@@ -272,6 +272,16 @@ return shall require clean invocation state; terminal return shall require every
 selected binding erased. Machine copy, namespace, native ABI and complete resource
 proofs remain publisher/provider obligations.
 
+Under `TK-DEC-261`, the model shall retain the exact dispatch-library interface
+and complete selected policy set from
+`TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001`, compute named operations independently
+from normalized selector facts and preserve existing unknown-selector behavior.
+Dispatch/header/deadline policies shall work independently and through sequential
+exclusive borrowing; cross-owner, cross-policy and overlapping activation shall
+fail without mutation. The model shall not assign authority to a selector or
+operation name, invent native tag encodings, or replace required source/ABI,
+resource-bound, before-handler and complete-erasure evidence.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

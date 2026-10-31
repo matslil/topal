@@ -2718,6 +2718,21 @@ source bytes/frames, independent header decoding, controlled copied-byte refusal
 header-only operation, malformed inputs and changed-helper rejection shall
 qualify the boundary alongside previous regressions.
 
+Under `TK-DEC-261`, the numeric checker and process adapter shall realize
+`TOPAL-SYSTEMS-NUMERIC-ENUMS-001` and
+`TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001`. The declared Nat-to-nominal-Enum
+export shall retain full selector bounds and an exact named operation vocabulary,
+independent of source tag order. Nominal branch bounds and zero-allocation tag
+transport shall preserve ordinary semantics and existing subset exclusions.
+The native bridge shall select a bound operation from the actual source result
+after context capture/stack switch and before argument inspection or handler
+entry. It shall preserve argument/context/SIMD facts, enforce complete independent
+or shared policy ownership/bindings, and erase all temporary/terminal state.
+No declared-source failure shall fall back to native selector dispatch. Exact
+source/module/representation provenance and complete stack/allocation costs shall
+qualify native routing, including dispatch-only operation, reordered tags,
+unknown/full-width selectors, changed-source rejection and the existing corpus.
+
 The static-process timing adapter shall realize
 `TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
 `TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private
