@@ -721,6 +721,25 @@ publication requires a complete checked destination; exec retains process and
 system views, and terminal reclamation erases their private witness. Broader
 process creation and mutable namespace identities remain separately qualified.
 
+A separately qualified prepared-process timing refinement may borrow the
+bootstrap owner's initial monotonic clock view for the complete process
+lifetime. Native monotonic observations and resolution queries use that same
+clock identity, scale and wrap extension, publish normalized records through
+checked user transfers and retain no user pointer. Exec retains the borrowed
+view; terminal cleanup erases the private binding and returns the clock owner
+with its legitimate observation history intact.
+
+Relative native sleeps may copy and validate a complete interval, construct a
+deadline on that borrowed clock and return success only when a later observation
+reaches it. Native interval conversion and deadline addition retain the pinned
+ABI's saturating time range; the resulting deadline is rounded upward to the
+provider's resolution and must not wrap into an earlier deadline. A sole-thread implementation may wait by
+observing its clock without granting another runnable context or claiming
+signal interruption, scheduler fairness, absolute-time or realtime-clock
+semantics. Invalid interval/copy errors preserve process resources. The provider
+owns native selectors, records, counter representation and return mechanisms;
+source gains no address, assembly, generic blocking effect or core meaning.
+
 The immutable boot-root namespace may decode ordinary open access intents
 without granting writable authority. Lookup and object-type errors precede
 denial of write access to an existing read-only filesystem object. Rejected

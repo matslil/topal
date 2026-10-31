@@ -1219,6 +1219,18 @@ nanoseconds. Nonnull output shall be complete and fault-contained. Unsupported
 clocks, inconsistent resolution, retained pointers, or partial output shall
 return the declared Linux error or fail closed.
 
+A separately qualified static process shall borrow the bootstrap owner's
+monotonic clock for observation, resolution and relative sleep. The borrowed
+identity and observation history shall survive exec and return to the kernel
+owner after private process-binding erasure. Complete native records shall use
+checked user transfers. Relative intervals shall be validated and rounded up,
+deadlines shall retain the pinned ABI's saturating native time range without
+wrapping, and success shall never precede the resulting relative deadline. Qualification shall cover normalized/nondecreasing
+observations, copy boundaries, invalid intervals, zero and nonzero sleep,
+resolution rounding, integer widths, resource preservation, exec lifetime and
+terminal rollback, including unmodified standard utility runs. The sole-thread
+qualification shall not imply signals, scheduling fairness or absolute sleep.
+
 The initial-process syscall adapter shall return Linux `-ENOSYS` for every
 syscall number not selected by an implemented dispatch arm. The fallback shall
 use the ordinary executable return continuation without reading unused
