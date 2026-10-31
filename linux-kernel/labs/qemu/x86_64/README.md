@@ -427,11 +427,29 @@ console bounds and nonzero status described in the
 
 The external runtime corpus uses `--external-static-user-image PATH` with
 `--process-workload true`, `false`, `echo`, `echo-changed`, `head-stdin`,
-`head-alias`, `wc-stdin`, or `dd-seek`. The harness sends
+`head-alias`, `wc-stdin`, `dd-seek`, `head-file`, `head-normalized`, `wc-file`,
+or `ls-bin`. The harness sends
 the selected final command over serial after the static entry marker; later
 probe input is sent at its existing resource marker. `--write-evidence` records
 the exact command, application output, observed status, linked kernel identity
-and full rollback. All eight external cases must use the same kernel executable.
+and full rollback. All twelve external cases must use the same kernel executable.
 The [file-description and signal qualification](../../../step-4-reusable-static-file-descriptions.md)
 adds a clean executed boundary corpus, shared file offsets and immutable backing,
 exec filtering, and retained native signal registration/mask semantics.
+
+The [read-only namespace qualification](../../../step-4-reusable-readonly-namespace.md)
+adds independent opens, component lookup, coherent metadata, native directory
+records/cookies and cwd/exec inheritance. The declared semantic boundary cases
+live in `namespace-cases.json`; Rust and Python encode that same data separately.
+
+Realtime calendar and representation cases use a separate harness:
+
+```sh
+rtk scripts/run_bounded.py -- env RUST_MIN_STACK=16777216 python linux-kernel/labs/qemu/x86_64/realtime_gate.py --external-static-user-image PATH --write-evidence
+```
+
+It builds one kernel and pinned BusyBox input, supplies four declared RTC dates,
+adds a binary-representation case through QTest setup before the final command,
+and checks actual `date +%s` output against the expected epoch interval. The
+[RTC evidence](results/topal-realtime-seconds-gate.json) records these explicit
+RTC overrides and encodings as well as the common artifact/runtime provenance.

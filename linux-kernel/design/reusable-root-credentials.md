@@ -1,7 +1,7 @@
 # Reusable sealed-root credential observations
 
 Status: systems design adopted under standing authorization (`TK-DEC-244`);
-implementation and qualification pending.
+implemented and qualified; see the [Step 4 report](../step-4-reusable-readonly-namespace.md).
 
 Shared pathname metadata must not depend on advancing a shell-specific
 credential sequence. Once the existing image-startup identity preparation has

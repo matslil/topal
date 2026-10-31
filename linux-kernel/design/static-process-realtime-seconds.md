@@ -1,7 +1,7 @@
 # Static-process realtime seconds
 
 Status: systems-only design adopted under the standing authorization;
-implementation and qualification pending (`TK-DEC-243`).
+implemented and qualified (`TK-DEC-243`); see the [Step 4 report](../step-4-reusable-readonly-namespace.md).
 
 Directory-consuming `ls` queries native `time` during setup. A monotonic uptime
 value or constant calendar date would not implement that interface. The process

@@ -1,7 +1,7 @@
 # Reusable read-only namespace
 
 Status: systems-feature design adopted under the standing chat authorization;
-implementation and qualification pending (`TK-DEC-242`).
+implemented and qualified (`TK-DEC-242`); see the [Step 4 report](../step-4-reusable-readonly-namespace.md).
 
 ## Purpose and boundaries
 

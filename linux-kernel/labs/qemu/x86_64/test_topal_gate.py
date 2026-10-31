@@ -473,16 +473,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/219")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/220")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/209")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/210")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/219",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/220",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/119",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/120",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1008,7 +1008,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/219")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/220")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -1328,6 +1328,53 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(self.evidence["process_exit_status"], 0x23)
         self.assertTrue(observations["qemu_running_after_markers"])
         self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
+
+    def test_namespace_and_prepared_identity_use_the_executed_boundary_corpus(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-PATH-{COPY,LOOKUP,OPEN,METADATA}-001
+        # TOPAL-SYSTEMS-STATIC-PROCESS-{DIRECTORY-READ,CWD,ROOT-CREDENTIALS}-001
+        observations = self.evidence["observations"]
+        self.assertEqual(observations["reusable_namespace_profile"],
+                         "owned-path-bytes-independent-opens-directory-cookies-and-cwd")
+        self.assertEqual(observations["root_credentials_profile"],
+                         "borrowed-prepared-root-identity-independent-of-metadata-order")
+        self.assertEqual(self.evidence["static_user_image_sha256"],
+                         hashlib.sha256(GATE.static_user_fixture()).hexdigest())
+        self.assertTrue(observations["reusable_clean_boundary_corpus"])
+        cases = json.loads((LAB / "namespace-cases.json").read_text())
+        self.assertEqual(cases["schema"], "topal-kernel-namespace-witness/1")
+        self.assertTrue(cases["pre_exec"])
+        self.assertTrue(cases["after_exec"])
+
+    def test_realtime_cases_observe_declared_hardware_dates_and_encoding(self) -> None:
+        # TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001
+        evidence = json.loads((LAB / "results" / "topal-realtime-seconds-gate.json").read_text())
+        self.assertEqual(evidence["schema"], "topal-kernel-realtime-seconds-qemu/1")
+        expected = {
+            "epoch": ("1970-01-01T00:00:00", "bcd", 0),
+            "leap-day": ("2000-02-29T12:34:56", "bcd", 951827696),
+            "non-leap-century": ("2100-03-01T00:00:00", "bcd", 4107542400),
+            "last-whole-year": ("2261-12-31T23:59:00", "bcd", 9214646340),
+            "binary-leap-day": ("2000-02-29T12:34:56", "binary", 951827696),
+        }
+        self.assertEqual({record["case"] for record in evidence["cases"]}, set(expected))
+        for record in evidence["cases"]:
+            date, encoding, epoch = expected[record["case"]]
+            self.assertEqual(record["qualification_rtc_base"], date)
+            self.assertEqual(record["qualification_rtc_encoding"], encoding)
+            self.assertEqual(record["epoch_minimum"], epoch)
+            self.assertEqual(record["epoch_maximum"], epoch + 30)
+            self.assertGreaterEqual(record["observed_epoch"], epoch)
+            self.assertLessEqual(record["observed_epoch"], epoch + 30)
+            self.assertEqual(record["process_exit_status"], 0)
+            self.assertEqual(record["process_command_utf8"], "exec /bin/busybox date +%s\n")
+            self.assertEqual(record["linked_kernel_sha256"], self.external_evidence["linked_kernel_sha256"])
+            self.assertEqual(record["static_user_image_sha256"], GATE.PINNED_STATIC_BUSYBOX_SHA256)
+            observations = record["observations"]
+            self.assertIn(f"/\n{record['observed_epoch']}\n\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=00\n",
+                          observations["serial_utf8"])
+            self.assertEqual(observations["result"], "pass")
+            self.assertTrue(observations["qemu_running_after_markers"])
+            self.assertTrue(observations["serial_quiescent_after_fatal_disposition"])
 
 
 if __name__ == "__main__":
