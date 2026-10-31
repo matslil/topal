@@ -692,6 +692,27 @@ source pointers, assembly, a general executable namespace, dynamic linking or
 ordinary Topal effects. Payload-specific qualification cases do not authorize
 the provider to substitute constant arguments or output for runtime values.
 
+A separately qualified file-description refinement may place live process
+descriptors in a bounded owned table. Slots have independent descriptor flags
+and retain shared open descriptions with rights, status and position. Aliases
+share description state; closing the last alias destroys that description.
+Checked byte and metadata transfers may borrow a sealed immutable boot-resource
+member independently of the process's mutable loaded image. Native descriptor
+operations, exec filtering and terminal reclamation adapt this object model to
+Linux observations; the provider owns integer widths, addresses, layouts and
+entry mechanisms. Rejected operations preserve the table's prior authority.
+These systems services do not introduce core-language aliasing, raw references,
+assembly, arbitrary path selection or a general VFS merely from bounded evidence.
+
+A separately qualified process-signal refinement may retain native action
+registrations and a blocked set as process-owned ABI state. Complete checked
+input and old-value transfers preserve native overlap and commit/error behavior.
+Handler/restorer fields remain opaque values until a separately qualified user
+delivery transition; registration grants no privileged call authority. Exec
+preserves ignored handler dispositions and the blocked set while resetting
+action metadata and other handlers. This systems service does not change
+ordinary Topal effects or establish asynchronous delivery merely from setup calls.
+
 The bounded initial-configuration refinement may answer one optional
 configuration-file metadata probe for a sealed initial process. It recognizes
 the complete immutable path `/etc/busybox.conf`, requires a complete writable

@@ -579,6 +579,30 @@ cover positive and negative transfers, multiple applets and payload values,
 observable status, and complete rollback. Native vectors, registers and stack
 mechanics shall remain provider-private.
 
+A separately qualified reusable file-description refinement shall distinguish
+descriptor slots/flags, shared descriptions with rights/status/position, and
+immutable backing identities. It shall use the declared finite descriptor
+capacity, lowest-slot allocation, checked user transfers and truthful native
+limit queries. Aliases shall share position, invalid-source replacement shall
+preserve its target, and a last close shall destroy one description exactly
+once. Immutable file data shall come from a retained validated boot-resource
+view rather than process-modified loaded bytes. Exec failure shall preserve
+table state; successful exec shall close only eligible close-on-exec slots;
+terminal cleanup shall release every remaining reference and erase private
+table storage. Qualification shall cover error atomicity, aliasing and reuse,
+metadata, read/seek/EOF, exec filtering and complete external file consumption.
+
+A separately qualified process-signal registration refinement shall retain
+shared action and blocked-mask state, normalize native flags and unmaskable
+signals, preserve input/output overlap semantics and distinguish rejection
+before commit from output failure after commit. Registration shall retain
+handler/restorer fields only as opaque ABI values. Exec shall preserve ignored
+handlers and the blocked set while clearing action metadata and other handlers;
+terminal reclamation shall erase the complete state. Positive and negative
+clean cases and actual external setup calls shall qualify these services;
+asynchronous delivery, pending queues, frames and return/restart behavior shall
+remain separately tracked requirements.
+
 The bounded static-process identity adapter shall expose the existing sealed
 PID-one fact for one ordered `getpid` observation. It shall require the exact
 live process, executable continuation, active checked address space, retained

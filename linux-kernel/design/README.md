@@ -233,6 +233,8 @@ records, not this directory alone, define language meaning.
 - [Bounded static-process shell bin-busybox reopen](bounded-static-elf-shell-bin-busybox-reopen.md)
 - [Bounded static-process shell BusyBox `true` image replacement](bounded-static-elf-shell-busybox-true-execve.md)
 - [Reusable bounded static-process execution](reusable-static-process-execution.md)
+- [Reusable static-process file descriptions](reusable-static-file-descriptions.md)
+- [Reusable static-process signal registration](reusable-static-signal-registration.md)
 - [Bounded static ELF resident-header variants](bounded-static-elf-resident-header-variants.md)
 - [Kernel licensing and provenance policy](license-and-provenance.md)
 - [Original primitive design criteria](topal-kernel-primitives.md)
