@@ -276,6 +276,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-258` | ordinary immutable Records in numeric kernel policy modules | flat facts obstruct structured subsystem interfaces; unchecked aggregate costs or lifetime would undermine the owned numeric runtime | systems-only qualification adopted under standing authorization; [numeric Records](freestanding-numeric-records.md) defines recursive checked shapes, ordinary lowering, fieldwise evaluation bounds, aggregate stack proof and invocation lifetime; [qualified report](../step-4-freestanding-numeric-records.md) records actual typed fields/order metadata, reordered-constructor execution, 1304-byte stack and 41544-byte allocation bounds, oversized-call rejection, independent arithmetic and full rollback |
 
+| `TK-DEC-259` | ordinary bounded Arrays and checked Optional reads in numeric modules | scalar/Record-only admission prevents ordinary collection-based parsing; unchecked traversal, wrapper costs or lifetime would undermine the owned runtime | systems-only qualification adopted under standing authorization; [numeric Arrays](freestanding-numeric-arrays.md) defines finite per-entry bounds, shared List/Array/Optional lowering, complete costs and invocation lifetime; [qualified report](../step-4-freestanding-numeric-arrays.md) records actual imported Array entries/ownership, empty/absent/Optional native cases, 1304-byte stack and 41624-byte allocation proofs, reviewed runtime closure and full regression/erasure |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.

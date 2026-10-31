@@ -4,22 +4,57 @@
     "library": {
       "allocation": {
         "bridge_bytes": 72,
-        "certificate": "topal.numeric-allocation/2",
+        "certificate": "topal.numeric-allocation/3",
+        "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+        "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
         "header_bytes": 32,
         "limit_bytes": 65536,
-        "maximum_bytes": 41544,
+        "maximum_bytes": 41624,
         "maximum_operand_bits": 93,
         "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
-        "source_evaluation_bytes": 41440
+        "source_evaluation_bytes": 41520
       },
-      "checked_client_sha256": "df6fd9160a577625dfc9da8be0484f1f607c3f9595f7d0f1d1c23cdf5a77ef39",
-      "disassembly_sha256": "342a17e0a050971d2ebe8f4d68ffe9dfdbf4fbe1d6eaf8679e2ed4d0fcd612b7",
+      "checked_client_sha256": "7603cc3daf7091353f22b78320d9b922bfb230e1a08ee7f6abac3f4d24cfc1fa",
+      "disassembly_sha256": "24ea7ab71f2479f079e99c68ac8b0e3e099676705bd767c7a8aba839ac833f74",
       "functions": [
         {
           "callees": [],
           "frame_bytes": 40,
           "maximum_call_path_bytes": 48,
           "symbol": "memset"
+        },
+        {
+          "callees": [
+            "topal_kernel_numeric_allocate_v1"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 24,
+          "symbol": "topal.platform.allocate"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 40,
+          "symbol": "topal.runtime.optional.none"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.some"
+        },
+        {
+          "callees": [
+            "topal.runtime.optional.none",
+            "topal.runtime.optional.some"
+          ],
+          "frame_bytes": 56,
+          "maximum_call_path_bytes": 120,
+          "symbol": "topal.runtime.container.array.int.at"
         },
         {
           "callees": [
@@ -31,11 +66,37 @@
         },
         {
           "callees": [
-            "topal_kernel_numeric_allocate_v1"
+            "topal.platform.exit"
           ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.is.some"
+        },
+        {
+          "callees": [],
           "frame_bytes": 8,
-          "maximum_call_path_bytes": 24,
-          "symbol": "topal.platform.allocate"
+          "maximum_call_path_bytes": 16,
+          "symbol": "topal.runtime.optional.payload"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0"
         },
         {
           "callees": [
@@ -123,19 +184,46 @@
         },
         {
           "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1",
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0",
             "topal.runtime.int.add",
             "topal.runtime.int.compare",
             "topal.runtime.int.multiply"
           ],
-          "frame_bytes": 56,
-          "maximum_call_path_bytes": 312,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0"
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 296,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2"
+        },
+        {
+          "callees": [],
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 48,
+          "symbol": "topal.runtime.container.list.count"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate",
+            "topal.runtime.container.list.count"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 80,
+          "symbol": "topal.runtime.container.array.int.collect"
+        },
+        {
+          "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2",
+            "topal.platform.allocate",
+            "topal.runtime.container.array.int.collect"
+          ],
+          "frame_bytes": 72,
+          "maximum_call_path_bytes": 376,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3"
         },
         {
           "callees": [],
           "frame_bytes": 8,
           "maximum_call_path_bytes": 16,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5"
         },
         {
           "callees": [],
@@ -221,7 +309,7 @@
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2",
+            "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5",
             "topal.runtime.int.add",
             "topal.runtime.int.divmod.quotient",
             "topal.runtime.int.divmod.remainder",
@@ -229,7 +317,7 @@
           ],
           "frame_bytes": 40,
           "maximum_call_path_bytes": 600,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.3"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.6"
         },
         {
           "callees": [
@@ -237,35 +325,35 @@
           ],
           "frame_bytes": 24,
           "maximum_call_path_bytes": 152,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.1"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.4"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0",
-            "topal.numeric.topal.fn.support_2eclock_2erounded.3",
-            "topal.numeric.topal.fn.support_2eclock_2esaturate.1",
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3",
+            "topal.numeric.topal.fn.support_2eclock_2erounded.6",
+            "topal.numeric.topal.fn.support_2eclock_2esaturate.4",
             "topal.runtime.int.add",
             "topal.runtime.int.multiply"
           ],
           "frame_bytes": 200,
           "maximum_call_path_bytes": 808,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
           ],
           "frame_bytes": 216,
           "maximum_call_path_bytes": 1032,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
           ],
           "frame_bytes": 120,
           "maximum_call_path_bytes": 1160,
-          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.6"
+          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.9"
         },
         {
           "callees": [
@@ -277,7 +365,7 @@
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.sleep_2ddeadline.6",
+            "topal.numeric.topal.fn.sleep_2ddeadline.9",
             "topal.runtime.int.from.u64",
             "topal_kernel_numeric_abort_v1"
           ],
@@ -287,42 +375,42 @@
         }
       ],
       "interface": "relative-sleep-deadline-v1",
-      "llvm_sha256": "1ea078a6be5df858e75fdaa596094c7de984766999f889be004bb13529567d33",
+      "llvm_sha256": "b9c2091681538a250960617f18035d8fdf133a509728cf7b4ae6145c986c61d5",
       "llvm_version": "22.1.6",
-      "machine_profile": "x86_64-owned-numeric-gpr-only/2",
+      "machine_profile": "x86_64-owned-numeric-gpr-only/3",
       "maximum_stack_bytes": 1304,
-      "module_snapshot_sha256": "58f505e491273871f2f65b661d315416eec185b152693e3a05f97f1ad1271bca",
+      "module_snapshot_sha256": "e3a9de79159ed624e7553d8c5a23a7ef5f4839f55bb810507d48c53525b6631d",
       "modules": [
         {
           "identity": [
             "support",
             "clock"
           ],
-          "sha256": "86364b750b9dcddc2d0dd02e97ba97281e655052a37dae0070cca1495ea764df",
+          "sha256": "dbadee3f0f3888a6d2e0367a9aa27c28870a35181bfe5bba2dbd8f2023cae32a",
           "source": "support/clock.t"
         }
       ],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_leaf_return_bytes": 8,
-      "object_sha256": "23014c88c02999e0a6a2962e24b78283f1ece042abb28bc5758ec688339c1e51",
+      "object_sha256": "ccce44fe0e2c8ef494ba5f5323cb261f1eb266e85260733e2c42f0b24e179919",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
-      "retained_llvm_sha256": "c7cd47efca95302860ec33ae235ff30e2d362d55bd8964c8c38a4cd3a113e1e8",
-      "schema": "topal.kernel-numeric-source-library/2",
+      "retained_llvm_sha256": "00bb69ac1249c658059fa6c01aae172afb80b6421f2f299634ec287300f4d664",
+      "schema": "topal.kernel-numeric-source-library/3",
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-r7784_ox/wrong-deadline/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-2p4yx4li/wrong-deadline/policy/relative-sleep-deadline.t",
       "source_sha256": "1acbb22ffddb4fd3ef09c121caf7d0d0b95157b3f2a49f74ae64e792b8efde74",
       "stack_limit_bytes": 4096
     },
-    "linked_kernel_sha256": "63abfa0ea8f645db8728fbb42e7a840153b5b735af2f9977a0434f75654ad085",
+    "linked_kernel_sha256": "2d73858fd2bbb7623ba12518dc0952c41dd1521ac21562ac4196631c43970e82",
     "module_body": false,
     "observation": {
-      "expected_deadline": 96537,
+      "expected_deadline": 89330,
       "independent_deadline_rejection": true,
       "nanoseconds": 1,
       "observed_deadline": 0,
-      "raw_ticks": 96536,
+      "raw_ticks": 89329,
       "seconds": 0,
       "wrapped": 0
     },
@@ -330,26 +418,61 @@
     "root_and_provider_unchanged": true,
     "root_source_unchanged": false
   },
-  "harness_sha256": "972f4f7ca68833498c77a636558d4e2e0e98fc999deb3d37b642209b29cabd94",
+  "harness_sha256": "c5eae4e65e97bc06086fcda78cbcf501b6b2cdcef3765381b8e44bf7e496fa93",
   "library": {
     "allocation": {
       "bridge_bytes": 72,
-      "certificate": "topal.numeric-allocation/2",
+      "certificate": "topal.numeric-allocation/3",
+      "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+      "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
       "header_bytes": 32,
       "limit_bytes": 65536,
-      "maximum_bytes": 41544,
+      "maximum_bytes": 41624,
       "maximum_operand_bits": 93,
       "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
-      "source_evaluation_bytes": 41440
+      "source_evaluation_bytes": 41520
     },
-    "checked_client_sha256": "28354800a77512ee0b94854514eebfe4aa595ea6febb7fbee2bfc00d47882f34",
-    "disassembly_sha256": "43d1859558464514a228c5c91d66731956892a0c78177ded0deabcd81ef2322a",
+    "checked_client_sha256": "9b19c4beae77089949ba0b56b1d3921ed2c70ad80c78813ae6a2d9adb1f3d9d2",
+    "disassembly_sha256": "64761dbe0a310b4b9e6f01fcfc1492a387c094c2d2fcd771978acea88aeee084",
     "functions": [
       {
         "callees": [],
         "frame_bytes": 40,
         "maximum_call_path_bytes": 48,
         "symbol": "memset"
+      },
+      {
+        "callees": [
+          "topal_kernel_numeric_allocate_v1"
+        ],
+        "frame_bytes": 8,
+        "maximum_call_path_bytes": 24,
+        "symbol": "topal.platform.allocate"
+      },
+      {
+        "callees": [
+          "topal.platform.allocate"
+        ],
+        "frame_bytes": 8,
+        "maximum_call_path_bytes": 40,
+        "symbol": "topal.runtime.optional.none"
+      },
+      {
+        "callees": [
+          "topal.platform.allocate"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 56,
+        "symbol": "topal.runtime.optional.some"
+      },
+      {
+        "callees": [
+          "topal.runtime.optional.none",
+          "topal.runtime.optional.some"
+        ],
+        "frame_bytes": 56,
+        "maximum_call_path_bytes": 120,
+        "symbol": "topal.runtime.container.array.int.at"
       },
       {
         "callees": [
@@ -361,11 +484,37 @@
       },
       {
         "callees": [
-          "topal_kernel_numeric_allocate_v1"
+          "topal.platform.exit"
         ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 56,
+        "symbol": "topal.runtime.optional.is.some"
+      },
+      {
+        "callees": [],
         "frame_bytes": 8,
-        "maximum_call_path_bytes": 24,
-        "symbol": "topal.platform.allocate"
+        "maximum_call_path_bytes": 16,
+        "symbol": "topal.runtime.optional.payload"
+      },
+      {
+        "callees": [
+          "topal.runtime.container.array.int.at",
+          "topal.runtime.optional.is.some",
+          "topal.runtime.optional.payload"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 152,
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1"
+      },
+      {
+        "callees": [
+          "topal.runtime.container.array.int.at",
+          "topal.runtime.optional.is.some",
+          "topal.runtime.optional.payload"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 152,
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0"
       },
       {
         "callees": [
@@ -453,19 +602,46 @@
       },
       {
         "callees": [
+          "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1",
+          "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0",
           "topal.runtime.int.add",
           "topal.runtime.int.compare",
           "topal.runtime.int.multiply"
         ],
-        "frame_bytes": 56,
-        "maximum_call_path_bytes": 312,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0"
+        "frame_bytes": 40,
+        "maximum_call_path_bytes": 296,
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2"
+      },
+      {
+        "callees": [],
+        "frame_bytes": 40,
+        "maximum_call_path_bytes": 48,
+        "symbol": "topal.runtime.container.list.count"
+      },
+      {
+        "callees": [
+          "topal.platform.allocate",
+          "topal.runtime.container.list.count"
+        ],
+        "frame_bytes": 24,
+        "maximum_call_path_bytes": 80,
+        "symbol": "topal.runtime.container.array.int.collect"
+      },
+      {
+        "callees": [
+          "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2",
+          "topal.platform.allocate",
+          "topal.runtime.container.array.int.collect"
+        ],
+        "frame_bytes": 72,
+        "maximum_call_path_bytes": 376,
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3"
       },
       {
         "callees": [],
         "frame_bytes": 8,
         "maximum_call_path_bytes": 16,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2"
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5"
       },
       {
         "callees": [],
@@ -551,7 +727,7 @@
       },
       {
         "callees": [
-          "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2",
+          "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5",
           "topal.runtime.int.add",
           "topal.runtime.int.divmod.quotient",
           "topal.runtime.int.divmod.remainder",
@@ -559,7 +735,7 @@
         ],
         "frame_bytes": 40,
         "maximum_call_path_bytes": 600,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.3"
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.6"
       },
       {
         "callees": [
@@ -567,35 +743,35 @@
         ],
         "frame_bytes": 24,
         "maximum_call_path_bytes": 152,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.1"
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.4"
       },
       {
         "callees": [
-          "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0",
-          "topal.numeric.topal.fn.support_2eclock_2erounded.3",
-          "topal.numeric.topal.fn.support_2eclock_2esaturate.1",
+          "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3",
+          "topal.numeric.topal.fn.support_2eclock_2erounded.6",
+          "topal.numeric.topal.fn.support_2eclock_2esaturate.4",
           "topal.runtime.int.add",
           "topal.runtime.int.multiply"
         ],
         "frame_bytes": 200,
         "maximum_call_path_bytes": 808,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
       },
       {
         "callees": [
-          "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+          "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
         ],
         "frame_bytes": 216,
         "maximum_call_path_bytes": 1032,
-        "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+        "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
       },
       {
         "callees": [
-          "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+          "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
         ],
         "frame_bytes": 120,
         "maximum_call_path_bytes": 1160,
-        "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.6"
+        "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.9"
       },
       {
         "callees": [
@@ -607,7 +783,7 @@
       },
       {
         "callees": [
-          "topal.numeric.topal.fn.sleep_2ddeadline.6",
+          "topal.numeric.topal.fn.sleep_2ddeadline.9",
           "topal.runtime.int.from.u64",
           "topal_kernel_numeric_abort_v1"
         ],
@@ -617,28 +793,28 @@
       }
     ],
     "interface": "relative-sleep-deadline-v1",
-    "llvm_sha256": "28d60b5d9ee1a248054fd43482423b8e768435316e04234b6d606ddd5a5c4b89",
+    "llvm_sha256": "4beef634fec4491e6e29493292cdf0218253395af25da71818e168343f1b1b5b",
     "llvm_version": "22.1.6",
-    "machine_profile": "x86_64-owned-numeric-gpr-only/2",
+    "machine_profile": "x86_64-owned-numeric-gpr-only/3",
     "maximum_stack_bytes": 1304,
-    "module_snapshot_sha256": "58f505e491273871f2f65b661d315416eec185b152693e3a05f97f1ad1271bca",
+    "module_snapshot_sha256": "e3a9de79159ed624e7553d8c5a23a7ef5f4839f55bb810507d48c53525b6631d",
     "modules": [
       {
         "identity": [
           "support",
           "clock"
         ],
-        "sha256": "86364b750b9dcddc2d0dd02e97ba97281e655052a37dae0070cca1495ea764df",
+        "sha256": "dbadee3f0f3888a6d2e0367a9aa27c28870a35181bfe5bba2dbd8f2023cae32a",
         "source": "support/clock.t"
       }
     ],
     "native_alignment_reserve_bytes": 32,
     "native_export": "topal_kernel_sleep_deadline_policy_v1",
     "native_leaf_return_bytes": 8,
-    "object_sha256": "97139dcb9182f12668b7fd1b2230b2d3928f3cf25c8da8b4e9bbb3d3075d4261",
+    "object_sha256": "6fbbe6bf1cea15e44a350ac2ed30b71eebe226fdf745966d049187ec0c1e4e54",
     "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
-    "retained_llvm_sha256": "20b4868eeb4abe63c7071b382f506c5fdac57f2dfeac10deb001093c61bbb650",
-    "schema": "topal.kernel-numeric-source-library/2",
+    "retained_llvm_sha256": "9b4c7575a7a0e61cd03de84aa9a6b47966ad1f2b1bfd6d2860f213d51c72e666",
+    "schema": "topal.kernel-numeric-source-library/3",
     "source": "policy/relative-sleep-deadline.t",
     "source_export": "sleep-deadline",
     "source_name": "/home/mats/git/topal/linux-kernel/kernel/policy/relative-sleep-deadline.t",
@@ -650,22 +826,57 @@
     "library": {
       "allocation": {
         "bridge_bytes": 72,
-        "certificate": "topal.numeric-allocation/2",
+        "certificate": "topal.numeric-allocation/3",
+        "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+        "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
         "header_bytes": 32,
         "limit_bytes": 65536,
-        "maximum_bytes": 1384,
+        "maximum_bytes": 1464,
         "maximum_operand_bits": 93,
         "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
-        "source_evaluation_bytes": 1280
+        "source_evaluation_bytes": 1360
       },
-      "checked_client_sha256": "4d7c3082df8ff6c65fbe4ce01ecff7b291b1281cb00c3e1fa29704d3718148fa",
-      "disassembly_sha256": "acc35efeb3d74dc0644f75e0b67717e75ba7d891d18c1834db40365107090eaf",
+      "checked_client_sha256": "eabf824fa3a4c6f946e398cd968516d64b529eb33d578a843c644c257773af0e",
+      "disassembly_sha256": "9cf4cc7884e24ef13413776ff0488bc29bcad714d0043f9ed81bae94cc291a5a",
       "functions": [
         {
           "callees": [],
           "frame_bytes": 40,
           "maximum_call_path_bytes": 48,
           "symbol": "memset"
+        },
+        {
+          "callees": [
+            "topal_kernel_numeric_allocate_v1"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 24,
+          "symbol": "topal.platform.allocate"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 40,
+          "symbol": "topal.runtime.optional.none"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.some"
+        },
+        {
+          "callees": [
+            "topal.runtime.optional.none",
+            "topal.runtime.optional.some"
+          ],
+          "frame_bytes": 56,
+          "maximum_call_path_bytes": 120,
+          "symbol": "topal.runtime.container.array.int.at"
         },
         {
           "callees": [
@@ -677,11 +888,37 @@
         },
         {
           "callees": [
-            "topal_kernel_numeric_allocate_v1"
+            "topal.platform.exit"
           ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.is.some"
+        },
+        {
+          "callees": [],
           "frame_bytes": 8,
-          "maximum_call_path_bytes": 24,
-          "symbol": "topal.platform.allocate"
+          "maximum_call_path_bytes": 16,
+          "symbol": "topal.runtime.optional.payload"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0"
         },
         {
           "callees": [
@@ -769,19 +1006,46 @@
         },
         {
           "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1",
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0",
             "topal.runtime.int.add",
             "topal.runtime.int.compare",
             "topal.runtime.int.multiply"
           ],
-          "frame_bytes": 56,
-          "maximum_call_path_bytes": 312,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0"
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 296,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2"
+        },
+        {
+          "callees": [],
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 48,
+          "symbol": "topal.runtime.container.list.count"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate",
+            "topal.runtime.container.list.count"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 80,
+          "symbol": "topal.runtime.container.array.int.collect"
+        },
+        {
+          "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2",
+            "topal.platform.allocate",
+            "topal.runtime.container.array.int.collect"
+          ],
+          "frame_bytes": 72,
+          "maximum_call_path_bytes": 376,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3"
         },
         {
           "callees": [],
           "frame_bytes": 8,
           "maximum_call_path_bytes": 16,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.2"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.5"
         },
         {
           "callees": [
@@ -789,35 +1053,35 @@
           ],
           "frame_bytes": 24,
           "maximum_call_path_bytes": 152,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.1"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.4"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0",
-            "topal.numeric.topal.fn.support_2eclock_2erounded.2",
-            "topal.numeric.topal.fn.support_2eclock_2esaturate.1",
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3",
+            "topal.numeric.topal.fn.support_2eclock_2erounded.5",
+            "topal.numeric.topal.fn.support_2eclock_2esaturate.4",
             "topal.runtime.int.add",
             "topal.runtime.int.multiply"
           ],
           "frame_bytes": 200,
-          "maximum_call_path_bytes": 520,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.3"
+          "maximum_call_path_bytes": 584,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.6"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.3"
+            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.6"
           ],
           "frame_bytes": 216,
-          "maximum_call_path_bytes": 744,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.4"
+          "maximum_call_path_bytes": 808,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.7"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.4"
+            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.7"
           ],
           "frame_bytes": 120,
-          "maximum_call_path_bytes": 872,
-          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.5"
+          "maximum_call_path_bytes": 936,
+          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.8"
         },
         {
           "callees": [
@@ -829,52 +1093,52 @@
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.sleep_2ddeadline.5",
+            "topal.numeric.topal.fn.sleep_2ddeadline.8",
             "topal.runtime.int.from.u64",
             "topal_kernel_numeric_abort_v1"
           ],
           "frame_bytes": 104,
-          "maximum_call_path_bytes": 984,
+          "maximum_call_path_bytes": 1048,
           "symbol": "topal_kernel_sleep_deadline_policy_v1"
         }
       ],
       "interface": "relative-sleep-deadline-v1",
-      "llvm_sha256": "26fdc0f3c6f4e4c76d06e90b537e0d06277bfd7ae1ec7951a07bf32fb7ecc78f",
+      "llvm_sha256": "7bb57dbba467639f0b8c5955cb0c836d004abdae5ad81d02e03f30647cc2d1c0",
       "llvm_version": "22.1.6",
-      "machine_profile": "x86_64-owned-numeric-gpr-only/2",
-      "maximum_stack_bytes": 1016,
-      "module_snapshot_sha256": "8a28797eed9bc4c422ef105cb072f86e63f351147230cefe9ffc472fe4800c6c",
+      "machine_profile": "x86_64-owned-numeric-gpr-only/3",
+      "maximum_stack_bytes": 1080,
+      "module_snapshot_sha256": "da8c5fb2479cc5cb9a89a4923d0c7d974f6f8582525e47a075fbe1bd5c7ea064",
       "modules": [
         {
           "identity": [
             "support",
             "clock"
           ],
-          "sha256": "b23589e3a8fd52707f548739aaaef2959de4b79158297ca4326600772d47870b",
+          "sha256": "efec3d4b1c6a9316b34d3c8ea6775ef9ed5bd5dff6b05c8cf6493daf7cbeb5cd",
           "source": "support/clock.t"
         }
       ],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_leaf_return_bytes": 8,
-      "object_sha256": "cb8a22b4cab6a0a025545807efae435f41732b509abcdcbc57010ccad4c46811",
+      "object_sha256": "fbe33fb608b06e406fa319d6caadd0b13bf2f8ef20d88c4a84d1359ce4fb8940",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
-      "retained_llvm_sha256": "fbd80991d9a08205a5b4f2ae54ea4bf3d4257865d65f8dbd39d405d88843fece",
-      "schema": "topal.kernel-numeric-source-library/2",
+      "retained_llvm_sha256": "f104a24c94b74a9a0768c65ad6b09a4a108f709861bd07298ea15fce133ca83c",
+      "schema": "topal.kernel-numeric-source-library/3",
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-r7784_ox/wrong-deadline-module/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-2p4yx4li/wrong-deadline-module/policy/relative-sleep-deadline.t",
       "source_sha256": "6d9f5f63b19fe96bc1bf7930e735a0c5b32949f5ca5677c7c4b8c44f8c22204d",
       "stack_limit_bytes": 4096
     },
-    "linked_kernel_sha256": "34532f33b7d279cd384057c6e0fd477b376825a82417674189cf59ca3703ed12",
+    "linked_kernel_sha256": "feeab64994563dca96176b5c37a3b1ad6035d4d2ff45907dd7782019b820fad5",
     "module_body": true,
     "observation": {
-      "expected_deadline": 90768,
+      "expected_deadline": 97990,
       "independent_deadline_rejection": true,
       "nanoseconds": 1,
       "observed_deadline": 0,
-      "raw_ticks": 90767,
+      "raw_ticks": 97989,
       "seconds": 0,
       "wrapped": 0
     },
@@ -886,16 +1150,16 @@
     "inputs": [
       {
         "identity": "kernel-time-source-module:support/clock.t",
-        "sha256": "86364b750b9dcddc2d0dd02e97ba97281e655052a37dae0070cca1495ea764df"
+        "sha256": "dbadee3f0f3888a6d2e0367a9aa27c28870a35181bfe5bba2dbd8f2023cae32a"
       }
     ],
     "outputs": [
       {
         "identity": "time-library.modules.json",
-        "sha256": "58f505e491273871f2f65b661d315416eec185b152693e3a05f97f1ad1271bca"
+        "sha256": "e3a9de79159ed624e7553d8c5a23a7ef5f4839f55bb810507d48c53525b6631d"
       }
     ],
-    "snapshot_sha256": "58f505e491273871f2f65b661d315416eec185b152693e3a05f97f1ad1271bca",
+    "snapshot_sha256": "e3a9de79159ed624e7553d8c5a23a7ef5f4839f55bb810507d48c53525b6631d",
     "sources": [
       {
         "identity": [
@@ -903,25 +1167,43 @@
           "clock"
         ],
         "source": "support/clock.t",
-        "text": "use language (version is v0.1)\n# Rounding belongs to ordinary numeric policy, never a native representation.\nfirst-quotient is fn (quotient : Int, remainder : Int) -> Int\n  quotient\n\npub rounded is fn (target : Nat) -> Int\n  ten : Nat is 10\n  nine : Nat is 9\n  first-quotient ((target + nine) /% ten)\n\nduration-nanoseconds is fn (interval : Record (seconds : Nat, nanoseconds : Nat)) -> Nat\n  seconds is interval seconds\n  nanoseconds is interval nanoseconds\n  maximum : Nat is 9223372036854775807\n  billion : Nat is 1000000000\n  seconds >= 9223372036\n    true then maximum\n    false then seconds * billion + nanoseconds\n\nsaturate is fn (nanoseconds : Nat) -> Nat\n  maximum : Nat is 9223372036854775807\n  nanoseconds > maximum\n    true then maximum\n    false then nanoseconds\n\nordinary-deadline is fn (request : Record (interval : Record (seconds : Nat, nanoseconds : Nat), clock : Record (ticks : Nat, wrapped : Boolean))) -> Int\n  interval is request interval\n  clock is request clock\n  ticks is clock ticks\n  ten : Nat is 10\n  duration is duration-nanoseconds interval\n  state is (nanoseconds is duration, ticks is ticks)\n  requested is ticks * ten + duration\n  normalized is state with (nanoseconds is saturate requested)\n  target is normalized nanoseconds\n  rounded target\n\npub sleep-deadline is fn (request : Record (interval : Record (seconds : Nat, nanoseconds : Nat), clock : Record (ticks : Nat, wrapped : Boolean))) -> Int\n  clock is request clock\n  wrapped is clock wrapped\n  wrapped\n    true then 922337203685477581\n    false then ordinary-deadline request\n"
+        "text": "use language (version is v0.1)\n# Rounding belongs to ordinary numeric policy, never a native representation.\nfirst-quotient is fn (quotient : Int, remainder : Int) -> Int\n  quotient\n\npub rounded is fn (target : Int) -> Int\n  ten : Int is 10\n  nine : Int is 9\n  first-quotient ((target + nine) /% ten)\n\ninterval-seconds is fn (parts : Array (2, Int)) -> Int\n  array-at? (parts, 0)\n    Some value then value\n    None then 0\n\ninterval-nanoseconds is fn (parts : Array (2, Int)) -> Int\n  array-at? (parts, 1)\n    Some value then value\n    None then 0\n\nduration-from-parts is fn (parts : Array (2, Int)) -> Int\n  seconds is interval-seconds parts\n  nanoseconds is interval-nanoseconds parts\n  maximum : Int is 9223372036854775807\n  billion : Int is 1000000000\n  seconds >= 9223372036\n    true then maximum\n    false then seconds * billion + nanoseconds\n\nduration-nanoseconds is fn (interval : Record (seconds : Nat, nanoseconds : Nat)) -> Int\n  seconds is interval seconds\n  nanoseconds is interval nanoseconds\n  seconds-value : Int is seconds\n  nanoseconds-value : Int is nanoseconds\n  entries : List Int is Entry (seconds-value, Entry (nanoseconds-value, Empty))\n  parts : Array (2, Int) is entries collect Array\n  duration-from-parts parts\n\nsaturate is fn (nanoseconds : Int) -> Int\n  maximum : Int is 9223372036854775807\n  nanoseconds > maximum\n    true then maximum\n    false then nanoseconds\n\nordinary-deadline is fn (request : Record (interval : Record (seconds : Nat, nanoseconds : Nat), clock : Record (ticks : Nat, wrapped : Boolean))) -> Int\n  interval is request interval\n  clock is request clock\n  ticks is clock ticks\n  ten : Nat is 10\n  duration is duration-nanoseconds interval\n  state is (nanoseconds is duration, ticks is ticks)\n  requested is ticks * ten + duration\n  normalized is state with (nanoseconds is saturate requested)\n  target is normalized nanoseconds\n  rounded target\n\npub sleep-deadline is fn (request : Record (interval : Record (seconds : Nat, nanoseconds : Nat), clock : Record (ticks : Nat, wrapped : Boolean))) -> Int\n  clock is request clock\n  wrapped is clock wrapped\n  wrapped\n    true then 922337203685477581\n    false then ordinary-deadline request\n"
       }
     ]
   },
   "observation": {
+    "array_frames": [
+      {
+        "actual_entries_match_native_inputs": true,
+        "all_allocated_storage_invocation_owned": true,
+        "entries": [
+          0,
+          1
+        ],
+        "entry_count": 2,
+        "header_arena_offset": 112,
+        "immutable_zero_payloads": 1,
+        "node_arena_offsets": [
+          96,
+          80
+        ],
+        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x305070 <topal_x86_systems_numeric_arena+112>) at support/clock.t:22\n#1  0x000000000030290e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at support/clock.t:37\n#2  0x0000000000302ab6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:50\n#3  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#4  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x70, nanoseconds=0x80, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=112) at relative-sleep-deadline.t:10\n#5  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x000000000020fe79 in _topal_kernel_entry ()\n"
+      }
+    ],
     "binding_erased": true,
     "calls": [
       {
-        "allocation_count": 132,
+        "allocation_count": 135,
         "arena_erased": true,
-        "arena_highwater": 3168,
+        "arena_highwater": 3200,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 84329,
+        "expected_deadline": 77575,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 84329,
-        "raw_ticks": 84328,
+        "observed_deadline": 77575,
+        "raw_ticks": 77574,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -933,17 +1215,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 134,
+        "allocation_count": 143,
         "arena_erased": true,
-        "arena_highwater": 3216,
+        "arena_highwater": 3392,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 942404,
+        "expected_deadline": 1000052,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 942404,
-        "raw_ticks": 942403,
+        "observed_deadline": 1000052,
+        "raw_ticks": 1000051,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -955,17 +1237,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 134,
+        "allocation_count": 169,
         "arena_erased": true,
-        "arena_highwater": 3216,
+        "arena_highwater": 4016,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 1159712,
+        "expected_deadline": 1225902,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 1159712,
-        "raw_ticks": 1159712,
+        "observed_deadline": 1225902,
+        "raw_ticks": 1225902,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -977,17 +1259,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 158,
+        "allocation_count": 153,
         "arena_erased": true,
-        "arena_highwater": 3792,
+        "arena_highwater": 3632,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 1411301,
+        "expected_deadline": 1476374,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 1411301,
-        "raw_ticks": 1411300,
+        "observed_deadline": 1476374,
+        "raw_ticks": 1476373,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -999,17 +1281,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 168,
+        "allocation_count": 175,
         "arena_erased": true,
-        "arena_highwater": 4032,
+        "arena_highwater": 4160,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 1736398,
+        "expected_deadline": 1807945,
         "interrupts_masked": true,
         "nanoseconds": 1000001,
-        "observed_deadline": 1736398,
-        "raw_ticks": 1636397,
+        "observed_deadline": 1807945,
+        "raw_ticks": 1707944,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1021,17 +1303,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 132,
+        "allocation_count": 175,
         "arena_erased": true,
-        "arena_highwater": 3168,
+        "arena_highwater": 4160,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 2102030,
+        "expected_deadline": 2201465,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 2102030,
-        "raw_ticks": 1902030,
+        "observed_deadline": 2201465,
+        "raw_ticks": 2001465,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1043,17 +1325,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 152,
+        "allocation_count": 183,
         "arena_erased": true,
-        "arena_highwater": 3648,
+        "arena_highwater": 4352,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 2633963,
+        "expected_deadline": 3045289,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 2633963,
-        "raw_ticks": 2633962,
+        "observed_deadline": 3045289,
+        "raw_ticks": 3045288,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1065,17 +1347,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 170,
+        "allocation_count": 183,
         "arena_erased": true,
-        "arena_highwater": 4080,
+        "arena_highwater": 4352,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 2841173,
+        "expected_deadline": 3381226,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 2841173,
-        "raw_ticks": 2841172,
+        "observed_deadline": 3381226,
+        "raw_ticks": 3381225,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1087,17 +1369,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 160,
+        "allocation_count": 165,
         "arena_erased": true,
-        "arena_highwater": 3840,
+        "arena_highwater": 3920,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 3083310,
+        "expected_deadline": 3638952,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 3083310,
-        "raw_ticks": 3083310,
+        "observed_deadline": 3638952,
+        "raw_ticks": 3638952,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1109,17 +1391,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 156,
+        "allocation_count": 185,
         "arena_erased": true,
-        "arena_highwater": 3744,
+        "arena_highwater": 4400,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 3286260,
+        "expected_deadline": 3991275,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 3286260,
-        "raw_ticks": 3286259,
+        "observed_deadline": 3991275,
+        "raw_ticks": 3991274,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1131,17 +1413,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 182,
+        "allocation_count": 127,
         "arena_erased": true,
-        "arena_highwater": 4368,
+        "arena_highwater": 3008,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 3607487,
+        "expected_deadline": 4300852,
         "interrupts_masked": true,
         "nanoseconds": 1000001,
-        "observed_deadline": 3607487,
-        "raw_ticks": 3507486,
+        "observed_deadline": 4300852,
+        "raw_ticks": 4200851,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1153,17 +1435,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 186,
+        "allocation_count": 157,
         "arena_erased": true,
-        "arena_highwater": 4464,
+        "arena_highwater": 3728,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 3931074,
+        "expected_deadline": 4618258,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 3931074,
-        "raw_ticks": 3731074,
+        "observed_deadline": 4618258,
+        "raw_ticks": 4418258,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1175,17 +1457,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 168,
+        "allocation_count": 155,
         "arena_erased": true,
-        "arena_highwater": 4032,
+        "arena_highwater": 3680,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 4337451,
+        "expected_deadline": 4884230,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 4337451,
-        "raw_ticks": 4337450,
+        "observed_deadline": 4884230,
+        "raw_ticks": 4884229,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1197,17 +1479,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 166,
+        "allocation_count": 165,
         "arena_erased": true,
-        "arena_highwater": 3984,
+        "arena_highwater": 3920,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 4594605,
+        "expected_deadline": 5158496,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 4594605,
-        "raw_ticks": 4594604,
+        "observed_deadline": 5158496,
+        "raw_ticks": 5158495,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1219,17 +1501,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 156,
+        "allocation_count": 175,
         "arena_erased": true,
-        "arena_highwater": 3744,
+        "arena_highwater": 4160,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 4817801,
+        "expected_deadline": 5355368,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 4817801,
-        "raw_ticks": 4817801,
+        "observed_deadline": 5355368,
+        "raw_ticks": 5355368,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1241,17 +1523,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 172,
+        "allocation_count": 181,
         "arena_erased": true,
-        "arena_highwater": 4128,
+        "arena_highwater": 4304,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 5034797,
+        "expected_deadline": 5596508,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 5034797,
-        "raw_ticks": 5034796,
+        "observed_deadline": 5596508,
+        "raw_ticks": 5596507,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1263,17 +1545,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 176,
+        "allocation_count": 163,
         "arena_erased": true,
-        "arena_highwater": 4224,
+        "arena_highwater": 3872,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 5397643,
+        "expected_deadline": 5918120,
         "interrupts_masked": true,
         "nanoseconds": 1000001,
-        "observed_deadline": 5397643,
-        "raw_ticks": 5297642,
+        "observed_deadline": 5918120,
+        "raw_ticks": 5818119,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1285,17 +1567,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 182,
+        "allocation_count": 181,
         "arena_erased": true,
-        "arena_highwater": 4368,
+        "arena_highwater": 4304,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 5722921,
+        "expected_deadline": 6237222,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 5722921,
-        "raw_ticks": 5522921,
+        "observed_deadline": 6237222,
+        "raw_ticks": 6037222,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1307,17 +1589,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 138,
+        "allocation_count": 193,
         "arena_erased": true,
-        "arena_highwater": 3312,
+        "arena_highwater": 4592,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 5931027,
+        "expected_deadline": 6422190,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 5931027,
-        "raw_ticks": 5931026,
+        "observed_deadline": 6422190,
+        "raw_ticks": 6422189,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1329,17 +1611,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 176,
+        "allocation_count": 177,
         "arena_erased": true,
-        "arena_highwater": 4224,
+        "arena_highwater": 4208,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 6112381,
+        "expected_deadline": 6625628,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 6112381,
-        "raw_ticks": 6112380,
+        "observed_deadline": 6625628,
+        "raw_ticks": 6625627,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1351,17 +1633,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 172,
+        "allocation_count": 173,
         "arena_erased": true,
-        "arena_highwater": 4128,
+        "arena_highwater": 4112,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 6342331,
+        "expected_deadline": 6866334,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 6342331,
-        "raw_ticks": 6342331,
+        "observed_deadline": 6866334,
+        "raw_ticks": 6866334,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1373,17 +1655,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 166,
+        "allocation_count": 185,
         "arena_erased": true,
-        "arena_highwater": 3984,
+        "arena_highwater": 4400,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 6575956,
+        "expected_deadline": 7072525,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 6575956,
-        "raw_ticks": 6575955,
+        "observed_deadline": 7072525,
+        "raw_ticks": 7072524,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1395,17 +1677,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 172,
+        "allocation_count": 187,
         "arena_erased": true,
-        "arena_highwater": 4128,
+        "arena_highwater": 4448,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 6958002,
+        "expected_deadline": 7368190,
         "interrupts_masked": true,
         "nanoseconds": 1000001,
-        "observed_deadline": 6958002,
-        "raw_ticks": 6858001,
+        "observed_deadline": 7368190,
+        "raw_ticks": 7268189,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1417,17 +1699,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 178,
+        "allocation_count": 155,
         "arena_erased": true,
-        "arena_highwater": 4272,
+        "arena_highwater": 3680,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 7278195,
+        "expected_deadline": 7700507,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 7278195,
-        "raw_ticks": 7078195,
+        "observed_deadline": 7700507,
+        "raw_ticks": 7500507,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -1450,12 +1732,12 @@
         "record_bytes": 24,
         "seconds": 0,
         "stack_relative_offset": 736,
-        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0 (interval=...) at support/clock.t:16\n#1  0x00000000003027e6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4 (request=...) at support/clock.t:31\n#2  0x0000000000302993 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5 (request=...) at support/clock.t:43\n#3  0x0000000000302a34 in topal.numeric.topal.fn.sleep_2ddeadline.6 (seconds=0x0, nanoseconds=0x304000 <topal_x86_systems_numeric_arena>, ticks=0x304038 <topal_x86_systems_numeric_arena+56>, wrapped=32) at relative-sleep-deadline.t:10\n#4  0x0000000000302ac1 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002b7c7a in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x000000000020fe69 in _topal_kernel_entry ()\n"
+        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at support/clock.t:35\n#1  0x0000000000302ab6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:50\n#2  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#3  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x0, nanoseconds=0x305000 <topal_x86_systems_numeric_arena>, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=88) at relative-sleep-deadline.t:10\n#4  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x000000000020fe79 in _topal_kernel_entry ()\n"
       }
     ],
     "result": "pass",
     "source_runtime_frames": [
-      "#0  0x00000000003022e0 in topal.runtime.int.divmod[absolute] ()\n#1  0x00000000003024e6 in topal.runtime.int.quotient[modulo] ()\n#2  0x00000000003026dd in topal.numeric.topal.fn.support_2eclock_2erounded.3 (target=0x304068 <topal_x86_systems_numeric_arena+104>) at support/clock.t:9\n#3  0x000000000030285f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4 (request=...) at support/clock.t:36\n#4  0x0000000000302993 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5 (request=...) at support/clock.t:43\n#5  0x0000000000302a34 in topal.numeric.topal.fn.sleep_2ddeadline.6 (seconds=0x80, nanoseconds=0x9, ticks=0x304038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x0000000000302ac1 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002b7c7a in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x000000000020fe69 in _topal_kernel_entry ()\n"
+      "#0  0x0000000000302380 in topal.runtime.int.divmod[absolute] ()\n#1  0x0000000000302586 in topal.runtime.int.quotient[modulo] ()\n#2  0x00000000003029ad in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3050b8 <topal_x86_systems_numeric_arena+184>) at support/clock.t:9\n#3  0x0000000000302b2f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:55\n#4  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#5  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0xd0, nanoseconds=0x9, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x000000000020fe79 in _topal_kernel_entry ()\n"
     ],
     "terminal_arena_erased": true
   },
@@ -1464,22 +1746,57 @@
     "library": {
       "allocation": {
         "bridge_bytes": 72,
-        "certificate": "topal.numeric-allocation/2",
+        "certificate": "topal.numeric-allocation/3",
+        "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+        "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
         "header_bytes": 32,
         "limit_bytes": 65536,
-        "maximum_bytes": 41544,
+        "maximum_bytes": 41624,
         "maximum_operand_bits": 93,
         "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
-        "source_evaluation_bytes": 41440
+        "source_evaluation_bytes": 41520
       },
-      "checked_client_sha256": "e11c38c1f13bfb9acd0a0cd354e3f5a84b77aa71357f58b0e0e5f955b30625d1",
-      "disassembly_sha256": "5c6e01851748434dd7d2f178ca0cd338928f7aafd8045e147e6aa781659a8850",
+      "checked_client_sha256": "d5aa7910319d552be36a40457f1c39d9a898514366aabbc98a66d1715c865dbb",
+      "disassembly_sha256": "69e89e4cfc4761a0c388c03e85a4ce7848d36266581e89cf6893b024b5407602",
       "functions": [
         {
           "callees": [],
           "frame_bytes": 40,
           "maximum_call_path_bytes": 48,
           "symbol": "memset"
+        },
+        {
+          "callees": [
+            "topal_kernel_numeric_allocate_v1"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 24,
+          "symbol": "topal.platform.allocate"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 8,
+          "maximum_call_path_bytes": 40,
+          "symbol": "topal.runtime.optional.none"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.some"
+        },
+        {
+          "callees": [
+            "topal.runtime.optional.none",
+            "topal.runtime.optional.some"
+          ],
+          "frame_bytes": 56,
+          "maximum_call_path_bytes": 120,
+          "symbol": "topal.runtime.container.array.int.at"
         },
         {
           "callees": [
@@ -1491,11 +1808,37 @@
         },
         {
           "callees": [
-            "topal_kernel_numeric_allocate_v1"
+            "topal.platform.exit"
           ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 56,
+          "symbol": "topal.runtime.optional.is.some"
+        },
+        {
+          "callees": [],
           "frame_bytes": 8,
-          "maximum_call_path_bytes": 24,
-          "symbol": "topal.platform.allocate"
+          "maximum_call_path_bytes": 16,
+          "symbol": "topal.runtime.optional.payload"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1"
+        },
+        {
+          "callees": [
+            "topal.runtime.container.array.int.at",
+            "topal.runtime.optional.is.some",
+            "topal.runtime.optional.payload"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 152,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0"
         },
         {
           "callees": [
@@ -1583,19 +1926,46 @@
         },
         {
           "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dnanoseconds.1",
+            "topal.numeric.topal.fn.support_2eclock_2einterval_2dseconds.0",
             "topal.runtime.int.add",
             "topal.runtime.int.compare",
             "topal.runtime.int.multiply"
           ],
-          "frame_bytes": 56,
-          "maximum_call_path_bytes": 312,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0"
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 296,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2"
+        },
+        {
+          "callees": [],
+          "frame_bytes": 40,
+          "maximum_call_path_bytes": 48,
+          "symbol": "topal.runtime.container.list.count"
+        },
+        {
+          "callees": [
+            "topal.platform.allocate",
+            "topal.runtime.container.list.count"
+          ],
+          "frame_bytes": 24,
+          "maximum_call_path_bytes": 80,
+          "symbol": "topal.runtime.container.array.int.collect"
+        },
+        {
+          "callees": [
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2",
+            "topal.platform.allocate",
+            "topal.runtime.container.array.int.collect"
+          ],
+          "frame_bytes": 72,
+          "maximum_call_path_bytes": 376,
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3"
         },
         {
           "callees": [],
           "frame_bytes": 8,
           "maximum_call_path_bytes": 16,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5"
         },
         {
           "callees": [],
@@ -1681,7 +2051,7 @@
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.2",
+            "topal.numeric.topal.fn.support_2eclock_2efirst_2dquotient.5",
             "topal.runtime.int.add",
             "topal.runtime.int.divmod.quotient",
             "topal.runtime.int.divmod.remainder",
@@ -1689,7 +2059,7 @@
           ],
           "frame_bytes": 40,
           "maximum_call_path_bytes": 600,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.3"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2erounded.6"
         },
         {
           "callees": [
@@ -1697,35 +2067,35 @@
           ],
           "frame_bytes": 24,
           "maximum_call_path_bytes": 152,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.1"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esaturate.4"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0",
-            "topal.numeric.topal.fn.support_2eclock_2erounded.3",
-            "topal.numeric.topal.fn.support_2eclock_2esaturate.1",
+            "topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3",
+            "topal.numeric.topal.fn.support_2eclock_2erounded.6",
+            "topal.numeric.topal.fn.support_2eclock_2esaturate.4",
             "topal.runtime.int.add",
             "topal.runtime.int.multiply"
           ],
           "frame_bytes": 200,
           "maximum_call_path_bytes": 808,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4"
+            "topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7"
           ],
           "frame_bytes": 216,
           "maximum_call_path_bytes": 1032,
-          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+          "symbol": "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5"
+            "topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8"
           ],
           "frame_bytes": 120,
           "maximum_call_path_bytes": 1160,
-          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.6"
+          "symbol": "topal.numeric.topal.fn.sleep_2ddeadline.9"
         },
         {
           "callees": [
@@ -1737,7 +2107,7 @@
         },
         {
           "callees": [
-            "topal.numeric.topal.fn.sleep_2ddeadline.6",
+            "topal.numeric.topal.fn.sleep_2ddeadline.9",
             "topal.runtime.int.from.u64",
             "topal_kernel_numeric_abort_v1"
           ],
@@ -1747,50 +2117,68 @@
         }
       ],
       "interface": "relative-sleep-deadline-v1",
-      "llvm_sha256": "006940de1fca0726694e15e9b965846985fac7eea30ccd32a976327494e74ea2",
+      "llvm_sha256": "ff9d9872f04d6bb2b4505533f8edc5ecc7251080663c03ec1eb41a13b539ae6e",
       "llvm_version": "22.1.6",
-      "machine_profile": "x86_64-owned-numeric-gpr-only/2",
+      "machine_profile": "x86_64-owned-numeric-gpr-only/3",
       "maximum_stack_bytes": 1304,
-      "module_snapshot_sha256": "58f505e491273871f2f65b661d315416eec185b152693e3a05f97f1ad1271bca",
+      "module_snapshot_sha256": "e3a9de79159ed624e7553d8c5a23a7ef5f4839f55bb810507d48c53525b6631d",
       "modules": [
         {
           "identity": [
             "support",
             "clock"
           ],
-          "sha256": "86364b750b9dcddc2d0dd02e97ba97281e655052a37dae0070cca1495ea764df",
+          "sha256": "dbadee3f0f3888a6d2e0367a9aa27c28870a35181bfe5bba2dbd8f2023cae32a",
           "source": "support/clock.t"
         }
       ],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_leaf_return_bytes": 8,
-      "object_sha256": "10f22ed37559821d5076efa8ebdf727d84f14bd602877b331383f390e5215079",
+      "object_sha256": "b42b30325c850828d857dafa5218f78d225db43af303cf6202bade6b8d3c6a0b",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
-      "retained_llvm_sha256": "be6ba0ce4b4f7700179b4a5e6eb86268fe5594bbf1c92b4eae7e5a5515f0a9d6",
-      "schema": "topal.kernel-numeric-source-library/2",
+      "retained_llvm_sha256": "92aa89e87f5c8837bc05d22ef9e267929732c321e816556f5d4031a8550aa616",
+      "schema": "topal.kernel-numeric-source-library/3",
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-r7784_ox/record-fields-reordered/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-2p4yx4li/record-fields-reordered/policy/relative-sleep-deadline.t",
       "source_sha256": "b10bbe6c9051b96b5e82ece53641516026ed9037169c99446cbafb2cd7fc79f0",
       "stack_limit_bytes": 4096
     },
     "module_source_unchanged": true,
     "observation": {
+      "array_frames": [
+        {
+          "actual_entries_match_native_inputs": true,
+          "all_allocated_storage_invocation_owned": true,
+          "entries": [
+            0,
+            1
+          ],
+          "entry_count": 2,
+          "header_arena_offset": 112,
+          "immutable_zero_payloads": 1,
+          "node_arena_offsets": [
+            96,
+            80
+          ],
+          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x305070 <topal_x86_systems_numeric_arena+112>) at support/clock.t:22\n#1  0x000000000030290e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at support/clock.t:37\n#2  0x0000000000302ab6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:50\n#3  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#4  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x70, nanoseconds=0x80, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=112) at relative-sleep-deadline.t:10\n#5  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x000000000020fe79 in _topal_kernel_entry ()\n"
+        }
+      ],
       "binding_erased": true,
       "calls": [
         {
-          "allocation_count": 126,
+          "allocation_count": 131,
           "arena_erased": true,
-          "arena_highwater": 3024,
+          "arena_highwater": 3104,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 79119,
+          "expected_deadline": 77931,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 79119,
-          "raw_ticks": 79118,
+          "observed_deadline": 77931,
+          "raw_ticks": 77930,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1802,17 +2190,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 156,
+          "allocation_count": 133,
           "arena_erased": true,
-          "arena_highwater": 3744,
+          "arena_highwater": 3152,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 959941,
+          "expected_deadline": 1015928,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 959941,
-          "raw_ticks": 959940,
+          "observed_deadline": 1015928,
+          "raw_ticks": 1015927,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1824,17 +2212,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 158,
+          "allocation_count": 183,
           "arena_erased": true,
-          "arena_highwater": 3792,
+          "arena_highwater": 4352,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 1201059,
+          "expected_deadline": 1271803,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 1201059,
-          "raw_ticks": 1201059,
+          "observed_deadline": 1271803,
+          "raw_ticks": 1271803,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1846,17 +2234,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 172,
+          "allocation_count": 173,
           "arena_erased": true,
-          "arena_highwater": 4128,
+          "arena_highwater": 4112,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 1493806,
+          "expected_deadline": 1521359,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 1493806,
-          "raw_ticks": 1493805,
+          "observed_deadline": 1521359,
+          "raw_ticks": 1521358,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1868,17 +2256,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 156,
+          "allocation_count": 161,
           "arena_erased": true,
-          "arena_highwater": 3744,
+          "arena_highwater": 3824,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 1848718,
+          "expected_deadline": 1888634,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 1848718,
-          "raw_ticks": 1748717,
+          "observed_deadline": 1888634,
+          "raw_ticks": 1788633,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1890,17 +2278,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 164,
+          "allocation_count": 137,
           "arena_erased": true,
-          "arena_highwater": 3936,
+          "arena_highwater": 3248,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 2256501,
+          "expected_deadline": 2234913,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 2256501,
-          "raw_ticks": 2056501,
+          "observed_deadline": 2234913,
+          "raw_ticks": 2034913,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1912,17 +2300,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 186,
+          "allocation_count": 177,
           "arena_erased": true,
-          "arena_highwater": 4464,
+          "arena_highwater": 4208,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 3051483,
+          "expected_deadline": 2996377,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 3051483,
-          "raw_ticks": 3051482,
+          "observed_deadline": 2996377,
+          "raw_ticks": 2996376,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1934,17 +2322,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 170,
+          "allocation_count": 153,
           "arena_erased": true,
-          "arena_highwater": 4080,
+          "arena_highwater": 3632,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 3258022,
+          "expected_deadline": 3204488,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 3258022,
-          "raw_ticks": 3258021,
+          "observed_deadline": 3204488,
+          "raw_ticks": 3204487,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1956,17 +2344,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 166,
+          "allocation_count": 147,
           "arena_erased": true,
-          "arena_highwater": 3984,
+          "arena_highwater": 3488,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 3484312,
+          "expected_deadline": 3463744,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 3484312,
-          "raw_ticks": 3484312,
+          "observed_deadline": 3463744,
+          "raw_ticks": 3463744,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -1978,17 +2366,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 162,
+          "allocation_count": 161,
           "arena_erased": true,
-          "arena_highwater": 3888,
+          "arena_highwater": 3824,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 3708872,
+          "expected_deadline": 3681137,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 3708872,
-          "raw_ticks": 3708871,
+          "observed_deadline": 3681137,
+          "raw_ticks": 3681136,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2000,17 +2388,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 168,
+          "allocation_count": 191,
           "arena_erased": true,
-          "arena_highwater": 4032,
+          "arena_highwater": 4544,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 4037174,
+          "expected_deadline": 4025783,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 4037174,
-          "raw_ticks": 3937173,
+          "observed_deadline": 4025783,
+          "raw_ticks": 3925782,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2022,17 +2410,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 160,
+          "allocation_count": 165,
           "arena_erased": true,
-          "arena_highwater": 3840,
+          "arena_highwater": 3920,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 4361774,
+          "expected_deadline": 4359141,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 4361774,
-          "raw_ticks": 4161774,
+          "observed_deadline": 4359141,
+          "raw_ticks": 4159141,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2044,17 +2432,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 186,
+          "allocation_count": 175,
           "arena_erased": true,
-          "arena_highwater": 4464,
+          "arena_highwater": 4160,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 4708344,
+          "expected_deadline": 4684528,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 4708344,
-          "raw_ticks": 4708343,
+          "observed_deadline": 4684528,
+          "raw_ticks": 4684527,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2066,17 +2454,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 188,
+          "allocation_count": 179,
           "arena_erased": true,
-          "arena_highwater": 4512,
+          "arena_highwater": 4256,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 4913074,
+          "expected_deadline": 4891493,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 4913074,
-          "raw_ticks": 4913073,
+          "observed_deadline": 4891493,
+          "raw_ticks": 4891492,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2088,17 +2476,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 168,
+          "allocation_count": 175,
           "arena_erased": true,
-          "arena_highwater": 4032,
+          "arena_highwater": 4160,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 5141864,
+          "expected_deadline": 5148101,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 5141864,
-          "raw_ticks": 5141864,
+          "observed_deadline": 5148101,
+          "raw_ticks": 5148101,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2110,17 +2498,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 154,
+          "allocation_count": 171,
           "arena_erased": true,
-          "arena_highwater": 3696,
+          "arena_highwater": 4064,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 5353684,
+          "expected_deadline": 5393649,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 5353684,
-          "raw_ticks": 5353683,
+          "observed_deadline": 5393649,
+          "raw_ticks": 5393648,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2132,17 +2520,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 178,
+          "allocation_count": 193,
           "arena_erased": true,
-          "arena_highwater": 4272,
+          "arena_highwater": 4592,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 5688377,
+          "expected_deadline": 5739635,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 5688377,
-          "raw_ticks": 5588376,
+          "observed_deadline": 5739635,
+          "raw_ticks": 5639634,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2154,17 +2542,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 176,
+          "allocation_count": 173,
           "arena_erased": true,
-          "arena_highwater": 4224,
+          "arena_highwater": 4112,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 6011971,
+          "expected_deadline": 6033364,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 6011971,
-          "raw_ticks": 5811971,
+          "observed_deadline": 6033364,
+          "raw_ticks": 5833364,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2176,17 +2564,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 156,
+          "allocation_count": 151,
           "arena_erased": true,
-          "arena_highwater": 3744,
+          "arena_highwater": 3584,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 6275093,
+          "expected_deadline": 6298938,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 6275093,
-          "raw_ticks": 6275092,
+          "observed_deadline": 6298938,
+          "raw_ticks": 6298937,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2198,17 +2586,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 164,
+          "allocation_count": 147,
           "arena_erased": true,
-          "arena_highwater": 3936,
+          "arena_highwater": 3488,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 6481186,
+          "expected_deadline": 6505505,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 6481186,
-          "raw_ticks": 6481185,
+          "observed_deadline": 6505505,
+          "raw_ticks": 6505504,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2220,17 +2608,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 128,
+          "allocation_count": 161,
           "arena_erased": true,
-          "arena_highwater": 3072,
+          "arena_highwater": 3824,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 6685440,
+          "expected_deadline": 6725711,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 6685440,
-          "raw_ticks": 6685440,
+          "observed_deadline": 6725711,
+          "raw_ticks": 6725711,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2242,17 +2630,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 186,
+          "allocation_count": 175,
           "arena_erased": true,
-          "arena_highwater": 4464,
+          "arena_highwater": 4160,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 6871859,
+          "expected_deadline": 6953163,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 6871859,
-          "raw_ticks": 6871858,
+          "observed_deadline": 6953163,
+          "raw_ticks": 6953162,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2264,17 +2652,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 156,
+          "allocation_count": 191,
           "arena_erased": true,
-          "arena_highwater": 3744,
+          "arena_highwater": 4544,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 7181345,
+          "expected_deadline": 7297710,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 7181345,
-          "raw_ticks": 7081344,
+          "observed_deadline": 7297710,
+          "raw_ticks": 7197709,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2286,17 +2674,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 158,
+          "allocation_count": 179,
           "arena_erased": true,
-          "arena_highwater": 3792,
+          "arena_highwater": 4256,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 7476848,
+          "expected_deadline": 7596880,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 7476848,
-          "raw_ticks": 7276848,
+          "observed_deadline": 7596880,
+          "raw_ticks": 7396880,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -2319,27 +2707,27 @@
           "record_bytes": 24,
           "seconds": 0,
           "stack_relative_offset": 736,
-          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.0 (interval=...) at support/clock.t:16\n#1  0x00000000003027e6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4 (request=...) at support/clock.t:31\n#2  0x0000000000302993 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5 (request=...) at support/clock.t:43\n#3  0x0000000000302a34 in topal.numeric.topal.fn.sleep_2ddeadline.6 (seconds=0x1, nanoseconds=0x304000 <topal_x86_systems_numeric_arena>, ticks=0x304038 <topal_x86_systems_numeric_arena+56>, wrapped=32) at relative-sleep-deadline.t:10\n#4  0x0000000000302ac1 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002b7c7a in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x000000000020fe69 in _topal_kernel_entry ()\n"
+          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at support/clock.t:35\n#1  0x0000000000302ab6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:50\n#2  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#3  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x1, nanoseconds=0x305000 <topal_x86_systems_numeric_arena>, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=88) at relative-sleep-deadline.t:10\n#4  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x000000000020fe79 in _topal_kernel_entry ()\n"
         }
       ],
       "result": "pass",
       "source_runtime_frames": [
-        "#0  0x00000000003022e0 in topal.runtime.int.divmod[absolute] ()\n#1  0x00000000003024e6 in topal.runtime.int.quotient[modulo] ()\n#2  0x00000000003026dd in topal.numeric.topal.fn.support_2eclock_2erounded.3 (target=0x304068 <topal_x86_systems_numeric_arena+104>) at support/clock.t:9\n#3  0x000000000030285f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.4 (request=...) at support/clock.t:36\n#4  0x0000000000302993 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.5 (request=...) at support/clock.t:43\n#5  0x0000000000302a34 in topal.numeric.topal.fn.sleep_2ddeadline.6 (seconds=0x80, nanoseconds=0x9, ticks=0x304038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x0000000000302ac1 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002b7c7a in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x000000000020fe69 in _topal_kernel_entry ()\n"
+        "#0  0x0000000000302380 in topal.runtime.int.divmod[absolute] ()\n#1  0x0000000000302586 in topal.runtime.int.quotient[modulo] ()\n#2  0x00000000003029ad in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3050b8 <topal_x86_systems_numeric_arena+184>) at support/clock.t:9\n#3  0x0000000000302b2f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at support/clock.t:55\n#4  0x0000000000302c63 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at support/clock.t:62\n#5  0x0000000000302d04 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0xd0, nanoseconds=0x9, ticks=0x305038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x0000000000302d91 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002b7c8a in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x000000000020fe79 in _topal_kernel_entry ()\n"
       ],
       "terminal_arena_erased": true
     },
     "result": "pass",
     "root_and_provider_unchanged": true,
     "runtime": {
-      "artifact_provenance_sha256": "983bd22ae2a4ed63fc88a1b9a6d781fff26c5c922d05dc5c5913030f86ac6270",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/234",
-      "boot_image_sha256": "b756ceeb7cadd321a713dcd4538756c27cc8dee587d3367bd228c47248a28ae3",
-      "boot_provenance_sha256": "60bdaea423305f4b452bd73fabb41f56cc862480e54dd224f7d36e5b86b9d63f",
+      "artifact_provenance_sha256": "52a757c334af62a44dc467b6e76a388974e757780c1a7f868bfa5da7f1fc016d",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/235",
+      "boot_image_sha256": "edb6800401f13cd010bded2d6ed0d1b562ef2db0830d49e72254c42a8c4a41d9",
+      "boot_provenance_sha256": "441b5951cfed725b5c0797829f8fd76fbda6b27813b98920a00d69d02f2c90ee",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "9037a9295595e6c4c04408fc61fffd507b943bbece9cdc4fa95211b606ded680",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/134",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/135",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -2347,7 +2735,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "6eb49d6f5bf87139ffbbd49bbba547109d249be4d18bfd5856680f58b67c24f1",
+      "linked_kernel_sha256": "7c1bb7cce4aea8817a04dfd2e5712f878a1119a161950d1530e4771d2567adb8",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -2618,7 +3006,7 @@
       "provider": "topal.provider.x86_64-qemu-pc-q35/222",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/234",
+      "schema": "topal-kernel-toolchain-gate-qemu/235",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "e064f039d42417fbd3a24dea8ae6150ef2b44356567a4412b1cc87bff2b2a4c6",
@@ -2629,15 +3017,15 @@
     }
   },
   "runtime": {
-    "artifact_provenance_sha256": "4ca2d74324a92872d012696d6ed28a57c32d3f077e056741812ce1925ed261b1",
-    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/234",
-    "boot_image_sha256": "08bd227c16ae6411206a8a5d060c800d767b91a931836c104301743842d1f37a",
-    "boot_provenance_sha256": "abc2bcfd4029b1c7f67d39a64d891341ce89a8260d7f2f0505b737e0b762d37c",
+    "artifact_provenance_sha256": "80304108da0988b96060f5a2715a54e752d284ea5ad042f97c874cdd8aee7b78",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/235",
+    "boot_image_sha256": "63505064d4b8e70f9441d7db85752398eab1a7ca0fa2dfa1d808e3b741a5ce70",
+    "boot_provenance_sha256": "891406b595130c784ef5edb56547de01cb49c30ec11392f448435993d92c6a06",
     "boot_resource_bytes": 2037200,
     "boot_resource_member": "init",
     "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
     "boot_resource_sha256": "9037a9295595e6c4c04408fc61fffd507b943bbece9cdc4fa95211b606ded680",
-    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/134",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/135",
     "clean_environment_mode": "maximum",
     "cpu": "qemu64-v1",
     "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -2645,7 +3033,7 @@
     "initial_user_image_bytes": 12288,
     "initial_user_image_input": "supplied",
     "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-    "linked_kernel_sha256": "5d98ad88f8282033610df1ab73874625ec1589ad408e4a9a2d5093ca809b7a7d",
+    "linked_kernel_sha256": "1ad6065ca12d63795453f6f4e2a293ced64beebd09a2b8955b57ffd28a4afeb8",
     "machine": "pc-q35-10.2",
     "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
     "observations": {
@@ -2916,7 +3304,7 @@
     "provider": "topal.provider.x86_64-qemu-pc-q35/222",
     "publication": "topalc-target-interface/1",
     "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-    "schema": "topal-kernel-toolchain-gate-qemu/234",
+    "schema": "topal-kernel-toolchain-gate-qemu/235",
     "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
     "serial_input_utf8": "read",
     "source_sha256": "e064f039d42417fbd3a24dea8ae6150ef2b44356567a4412b1cc87bff2b2a4c6",

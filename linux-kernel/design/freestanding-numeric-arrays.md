@@ -1,6 +1,7 @@
 # Bounded immutable numeric Arrays
 
 `TK-DEC-259`; systems-only qualification adopted under standing authorization.
+Implemented; see the [qualification report](../step-4-freestanding-numeric-arrays.md).
 
 Qualify existing ordinary `List Int` construction, fixed `Array (N, Int)`
 collection, checked constant-index lookup and `Optional Int` decisions in the
@@ -8,6 +9,12 @@ owned numeric invocation. This implements the Array/Optional meanings already
 defined in `docs/containers.md`; it introduces no core type or byte authority.
 The first source use transports the interval through an Array helper inside
 the existing clock module. Native scalar input/result interfaces stay unchanged.
+
+Keeping every value in a separate native argument would leave collection-based
+parsing unavailable to source. Introducing an opaque byte-view type now would
+require another authority/lifetime boundary before ordinary immutable
+collections can execute at all. Qualifying the existing finite collection
+semantics supplies that foundation without selecting a new core representation.
 
 Admission retains exact finite sequence length and a separate numeric range for
 each entry, with at most 256 entries. List construction charges every head and

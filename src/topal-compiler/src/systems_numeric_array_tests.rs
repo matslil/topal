@@ -134,7 +134,7 @@ fn unqualified_elements_extents_and_operations_are_rejected() {
         "  entries : List Int is Entry (s, Empty)\n  parts : Array (2, Int) is entries collect Array\n  0",
         "  entries : List Boolean is Entry (true, Empty)\n  parts is entries collect Array\n  0",
         "  entries : List Int is Entry (s, Empty)\n  parts is entries collect Set\n  0",
-        "  entries : List Int is Entry (s, Empty)\n  values is reverse entries\n  0",
+        "  entries : List Int is Entry (s, Empty)\n  values is entries reverse\n  0",
     ] {
         let (requirement, input) = input("", body);
         assert!(

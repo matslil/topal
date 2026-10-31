@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies an [ordinary Topal kernel policy library](step-4-kernel-policy-library.md).
+The latest Step 4 increment qualifies [bounded ordinary numeric Arrays](step-4-freestanding-numeric-arrays.md).
 
 ## Current phase
 

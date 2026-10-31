@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import subprocess
 import shutil
+import struct
 import tempfile
 import threading
 import time
@@ -21,10 +22,28 @@ GATE=module("topal_gate")
 TIMING=module("time_gate")
 LIBRARY=module("library_gate")
 
+def immutable_zero_addresses(elf):
+    """Bind unnamed shared zero constants to actual immutable ELF section bytes."""
+    data=Path(elf).read_bytes()
+    if data[:6]!=b'\x7fELF\x02\x01':raise GATE.GateError("numeric witness needs little-endian ELF64")
+    start=struct.unpack_from('<Q',data,40)[0]
+    stride,count=struct.unpack_from('<HH',data,58)
+    result=[]
+    for index in range(count):
+        _,kind,flags,address,offset,size,*_=struct.unpack_from('<IIQQQQIIQQ',data,start+index*stride)
+        if kind!=1 or flags&7!=2:continue
+        if offset+size>len(data):raise GATE.GateError("immutable section escapes ELF bytes")
+        for relative in range(0,max(0,size-15),8):
+            if (address+relative)%8==0 and data[offset+relative:offset+relative+16]==bytes(16):
+                result.append(address+relative)
+    if not result:raise GATE.GateError("numeric object has no immutable zero representation")
+    return result
+
 def commands(elf,debug,result,target,bound,record_order=(1,0)):
     source=(GATE.LINUX_KERNEL/'kernel/support/clock.t').read_text().splitlines()
     record_line=source.index('  seconds is interval seconds')+1
     array_line=source.index('  seconds is interval-seconds parts')+1
+    zero_addresses=immutable_zero_addresses(elf)
     setup=f'''
 import gdb,json
 from pathlib import Path
@@ -149,20 +168,20 @@ class Array(gdb.Breakpoint):
             assert node not in nodes
             nodes.append(node)
             pointer=word(node)
-            if pointer==symbol("topal.runtime.int.zero"):
+            if pointer in {zero_addresses!r}:
                 assert memory(pointer,16)==bytes(16)
                 static_zero_payloads+=1
             else:
                 owned(pointer,16)
             sign,length=word(pointer),word(pointer+8)
             assert sign==0 and length<=2
-            if pointer!=symbol("topal.runtime.int.zero"):owned(pointer,16+4*length)
+            if pointer not in {zero_addresses!r}:owned(pointer,16+4*length)
             entries.append(sum(int.from_bytes(memory(pointer+16+i*4,4),"little")<<(32*i) for i in range(length)))
             node=word(node+8)
         assert node==0 and entries==[active["seconds"],active["nanoseconds"]]
         arrays.append(dict(entry_count=count,entries=entries,
             actual_entries_match_native_inputs=True,all_allocated_storage_invocation_owned=True,
-            immutable_canonical_zero_payloads=static_zero_payloads,
+            immutable_zero_payloads=static_zero_payloads,
             header_arena_offset=address-arena,node_arena_offsets=[n-arena for n in nodes],
             trace=gdb.execute("bt",to_string=True)))
         self.delete()

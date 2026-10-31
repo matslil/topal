@@ -263,3 +263,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Shared anonymous pipes and exact readiness](static-process-pipes.md)
 - [Closed ordinary source modules for kernel policy](freestanding-source-modules.md)
 - [Immutable Records in numeric kernel modules](freestanding-numeric-records.md)
+- [Bounded immutable numeric Arrays](freestanding-numeric-arrays.md)
