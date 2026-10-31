@@ -51,6 +51,18 @@ fn analyze_physical_frame_sequence(
     let (subject, extent_name, success, _problem_name, failure, span) =
         result_sequence(source, statements, "physical-frame allocation")?;
     let request = parse_physical_frame_allocation(source, subject, allocator_context)?;
+    if request
+        != (CompilerPhysicalFrameRequest {
+            frame_count: 1,
+            alignment_frames: 1,
+        })
+    {
+        return Err(frame_diagnostic(
+            source,
+            subject.span(),
+            "the initial kernel-mapping probe requires exactly one frame aligned to one frame",
+        ));
+    }
     let failure_disposition = action_disposition(source, failure, allocator_context)?;
     let CompilerSystemsDisposition::Fatal {
         message: failure_message,
@@ -340,11 +352,11 @@ fn parse_physical_frame_allocation(
             "physical-frame allocation requires `frame-count` and `alignment-frames`",
         ));
     };
-    if frame_count != 1 || alignment_frames != 1 {
+    if !matches!(frame_count, 1..=3 | 5 | 34 | 503) || alignment_frames != 1 {
         return Err(frame_diagnostic(
             source,
             *span,
-            "the initial executable frame-allocation slice admits exactly one frame aligned to one frame",
+            "the executable frame-allocation slice admits only one, two, three, five, 34, or exactly 503 frames with unit alignment",
         ));
     }
     Ok(CompilerPhysicalFrameRequest {

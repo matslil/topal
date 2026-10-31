@@ -48,8 +48,8 @@ pub use compiler_model::{
     CompilerSourceModule, CompilerStatement, CompilerSumAlternative, CompilerSumRule,
     CompilerSumType, CompilerTaskHandler, CompilerTaskHandlerKind, CompilerTaskMessage,
     CompilerTaskScheduler, CompilerTaskType, CompilerType, CompilerTypeView, CompilerTypeViewForm,
-    CompilerValidation, IntRange, analyze_for_compiler, analyze_for_compiler_with_modules,
-    compiler_function_result_capture_storage,
+    CompilerValidation, IntRange, analyze_for_compiler, analyze_for_compiler_with_declared_exports,
+    analyze_for_compiler_with_modules, compiler_function_result_capture_storage,
 };
 pub use concurrency::{
     Admission, DependencyGraph, DependencyKind, Interaction, InteractionForm, Protocol,

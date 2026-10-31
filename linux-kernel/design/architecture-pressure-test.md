@@ -29,6 +29,7 @@ device on which an operation is authorized. Neither substitutes for the other.
 | per-CPU base | segment-base facilities commonly used | thread-pointer/system-register choices | thread-pointer/CSR convention | semantic per-CPU location provider |
 | extended state | XSAVE-family feature-dependent state | FP/SIMD/SVE/SME feature-dependent state | FP/vector extension state | opaque feature-qualified context component |
 | suspended kernel context | stack position plus ABI/feature-qualified callee-saved state | `SP`, `x19`–`x30`, and qualified system state | `sp`, `ra`, `s0`–`s11`, and qualified system state | affine continuation owning a stack and provider-declared state policy |
+| user syscall | `SYSCALL` with native x86-64 argument/result ABI | `SVC` with selected AArch64 ABI | `ECALL` with selected RISC-V ABI | typed entry exposes semantic number/arguments, not registers |
 
 Consequences:
 
@@ -65,6 +66,15 @@ provider must prove that the target binding precedes delivery enablement and
 that later dispatch restores the exact interrupted continuation; none may
 select or store the runnable queue.
 
+User execution likewise retains processor, address-space, thread, ABI, and
+continuation identity without exposing a target frame. X86-64 `SYSCALL`,
+AArch64 `SVC`, and RISC-V `ECALL` can all produce the same typed semantic
+request even though their registers and entry mechanics differ. A
+`ReturnToUser` disposition requires target-specific validation and may choose
+a fast or general return privately; `TerminateUser` restores only the exact
+registered kernel continuation. Linux syscall-number meaning remains in the
+selected personality rather than the common machine provider.
+
 ## Translation and user access
 
 | Concern | x86-64 | AArch64 | RISC-V | Design result |
@@ -74,11 +84,20 @@ select or store the runnable queue.
 | invalidation | address/context/global operations and shootdown | scoped TLBI plus completion ordering | `SFENCE.VMA` scopes and shootdown | semantic range/address-space/scope invalidation |
 | kernel/user isolation | page permissions, SMEP/SMAP-related controls | permission and PAN-related controls | U/S permissions and SUM-related control | user-transfer capability and access scope |
 | instruction visibility | coherent cases plus serialization rules | cache maintenance may be required | fence/cache-block facilities vary | explicit instruction-publication contract |
+| fault-contained `copy_to_user` | generated #PF recovery and SMAP-qualified access | generated synchronous-abort recovery with PAN/UAO-qualified access | generated page-fault recovery with SUM-qualified access | affine user-transfer scope with complete or copied-prefix fault outcome |
+| layout-validating `copy_from_user` | generated #PF recovery around supervisor loads | generated synchronous-abort recovery around PAN/UAO-qualified loads | generated page-fault recovery around SUM-qualified loads | complete validated value or prefix-only fault; no partial staging value |
 
 A common `flush TLB` intrinsic is rejected: targets differ in scope,
 completion, broadcast, and required ordering. The common operation instead
 names the mapping change, affected address-space/range, processors, and point
 at which reuse becomes legal.
+
+The user-transfer scope likewise names no recovery address or access-control
+bit. Each provider binds only generated copy sites to its private synchronous
+fault entry and returns the same complete-or-prefix outcome. Input layout
+staging remains provider-private unless every byte is present and validation
+succeeds. A prevalidation cannot replace recovery because mappings or
+permissions may change after the check in later concurrent profiles.
 
 ## Atomicity, ordering, and critical state
 
@@ -94,6 +113,12 @@ The common atomic orders in `TK-ELEMENT-ATOMIC-001` describe language
 relations, not opcodes. Progress classification is separate: an LL/SC loop may
 meet a different progress bound from a single architectural RMW under
 contention or interruption.
+
+The first blocking contract is therefore a one-shot completion rather than a
+portable halt instruction. It linearizes persistent readiness against blocked
+context publication, returns the same affine blocked/already-complete outcome
+on every target, and leaves low-power waiting, mask state, and context-frame
+representation to each provider.
 
 ## Devices, DMA, and addressed I/O
 

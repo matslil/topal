@@ -8,6 +8,142 @@ use crate::{BootMemoryClass, BootMemoryProvenance, MemoryDescribedContext};
 pub const SYSTEMS_FRAME_ALLOCATOR_CREATE: &str = "topal.systems.memory.create-frame-allocator/1";
 pub const SYSTEMS_FRAMES_ALLOCATE: &str = "topal.systems.frames.allocate/1";
 pub const SYSTEMS_FRAMES_RELEASE: &str = "topal.systems.frames.release/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE: &str =
+    "topal.systems.static-image.construction.prepare/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD: &str =
+    "topal.systems.static-image.construction.zero-payload/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING: &str =
+    "topal.systems.static-image.construction.zero-stack-backing/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.publish-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.revoke-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.initialize-stack-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.clear-stack-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ: &str =
+    "topal.systems.static-image.construction.add-stack-pagesz/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ: &str =
+    "topal.systems.static-image.construction.remove-stack-pagesz/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.add-stack-entry-fact/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.remove-stack-entry-fact/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS: &str =
+    "topal.systems.static-image.construction.add-stack-program-headers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS: &str =
+    "topal.systems.static-image.construction.remove-stack-program-headers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME: &str =
+    "topal.systems.static-image.construction.add-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME: &str =
+    "topal.systems.static-image.construction.remove-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.add-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.remove-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.add-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.remove-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.add-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.remove-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.add-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.remove-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.add-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.remove-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.add-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.remove-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.authorize-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.retain-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK: &str =
+    "topal.systems.static-image.construction.qualify-retained-disjoint-work/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.authorize-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.authorize-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.revoke-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-device/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT: &str =
+    "topal.systems.static-image.construction.qualify-entropy-transport/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-negotiation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER: &str =
+    "topal.systems.static-image.construction.qualify-entropy-bus-master/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS: &str =
+    "topal.systems.static-image.construction.qualify-entropy-dma-buffers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING: &str =
+    "topal.systems.static-image.construction.qualify-entropy-split-ring/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-dma-preparation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-addresses/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-activation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-request-completion/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-capture/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-quality/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-pool-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-generator-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.deliver-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.revoke-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_ENTER: &str =
+    "topal.systems.static-image.process.enter.initial-process-name/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY: &str =
+    "topal.systems.static-image.process.restore-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.revoke-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.restore-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.revoke-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
+    "topal.systems.static-image.construction.copy-payload/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
+    "topal.systems.static-image.construction.seal-permissions/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.attach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.activate-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.restore-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY: &str =
+    "topal.systems.static-image.construction.authorize-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT: &str =
+    "topal.systems.static-image.construction.authorize-stack-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT: &str =
+    "topal.systems.static-image.construction.revoke-stack-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY: &str =
+    "topal.systems.static-image.construction.revoke-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.detach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY: &str =
+    "topal.systems.static-image.construction.reclaim-hierarchy/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA: &str =
+    "topal.systems.static-image.construction.revoke-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD: &str =
+    "topal.systems.static-image.construction.reclaim-payload/1";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PhysicalFrameRequest {

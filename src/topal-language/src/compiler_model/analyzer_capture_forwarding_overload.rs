@@ -290,7 +290,7 @@ impl Analyzer {
             &arguments,
             metadata,
             reserved_symbol.as_deref(),
-            recursion_proof.is_some(),
+            recursion_proof.is_some() || self.generalized_exports.iter().any(|name| canonically_equal(name, function_name)),
         );
         let popped = self.active_calls.pop();
         debug_assert_eq!(popped.as_deref(), Some(identity.as_str()));

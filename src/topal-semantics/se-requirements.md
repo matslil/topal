@@ -72,6 +72,15 @@ restore the exact interrupted continuation only when source selects it again.
 It shall reject mismatched identities, wrong order, repeated take or restore,
 and completion with any live transfer obligation.
 
+The one-shot completion model shall create matching affine wait and signal
+endpoints with one fresh identity. It shall distinguish block-first from
+signal-first linearization, retain signal-first readiness, bind a blocked
+worker to its exact suspended dispatcher, and return only the matching
+awakened context for source-owned enqueue. It shall reject wrong completion,
+context, dispatcher, provider, processor, or address-space identity, repeated
+wait or signal, blocking with incompatible live obligations, and disposition
+with any live endpoint, blocked context, dispatcher, or completed state.
+
 The first implementation increment shall model the sealed bootstrap and
 debug-break entry kinds, console-write and debug-break effects, resume and
 fatal dispositions, stable semantic identities, and the exact initial target
@@ -100,6 +109,30 @@ affine extent ownership and provenance, same-allocator consuming release, and
 rejection of escape, cross-allocator release, double release, or completion
 with live extents. Model frame indices shall not grant machine-address or
 mapping authority.
+
+The exact static-ELF frame refinement shall model the additional literal
+503-frame unit-aligned request as one affine extent, require its complete
+release, and retain the same normalized-range, reservation, non-overlap, and
+no-address-authority invariants. The executable bootstrap model shall require
+the request after the three-frame extent is returned, one witness while the
+extent is live, and whole release before later operations.
+
+The mapping-resource refinement shall model the exact nested one-frame
+metadata allocation while the 503-frame payload owner remains live. It shall
+retain two distinct affine identities, require provider-proved whole-interval
+disjointness, require one observation while both are live, transition back to
+payload-only ownership when metadata is released, and require final payload
+release before continuation. Wrong nesting, overlap, reversed release,
+combination, splitting, and completion with either resource live shall fail.
+
+The initial-leaf refinement shall consume the exact two-resource state into one
+opaque live construction, retain the 503 ordinal page-to-frame relation and
+semantic RW/NX rights without target entry representation, and make success
+atomic. Revocation shall refine that owner and return only the original
+metadata extent; after its release, payload reclaim shall return only the
+original 503-frame extent. The model shall reject partial construction, wrong
+identity or ordering, early resource release, duplicate revoke/reclaim, active
+attachment, and completion with live construction state.
 
 The kernel-mapping increment shall model consuming frame ownership into one
 opaque provider-qualified kernel mapping; explicit rights, execution, and
@@ -184,12 +217,50 @@ ordinary-return lifecycles. Register sets, stack pointers, frame layouts,
 continuation addresses, and save/restore instructions shall remain outside the
 common model.
 
+The first user-execution increment shall model one opaque validated user state,
+one suspended user context, exact kernel-continuation registration, affine
+syscall entry, source-owned `getpid` result, return to the exact captured user
+continuation, `exit_group` termination, and restoration of the exact kernel
+continuation. It shall retain processor, address-space, thread, process, ABI,
+probe, entry, and continuation identities and reject wrong order, syscall,
+result, status, or identity. Registers, privilege encodings, entry frames,
+stacks, security sequences, instructions, and return-path selection shall
+remain outside the common model.
+
 The third implementation increment shall model source-visible exhaustive
 bootstrap allocation, borrowed bounds-checked plain byte store/load, and
 consuming release. It shall retain byte contents without assigning a machine
 address, reject out-of-bounds access and use after release, and distinguish
 plain storage from volatile, atomic, device, DMA, firmware, and user-memory
 protocols.
+
+The qualified systems source-library refinement shall retain a typed optional
+artifact import requirement under `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` and
+`TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`. It shall identify the relative source
+unit, public export, selected semantic interface and 1024-byte caller-stack
+limit, reject missing/duplicate/unknown or escaping fields through shared
+checking, preserve existing entry/lifetime validation and connect the import
+to explicit publisher inputs and owned process binding. This metadata shall
+not reinterpret core function syntax, grant numeric code authority or imply
+unqualified general-library support.
+
+The systems child-process model shall realize
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001` through explicit process,
+snapshot, shared-description and waitable-status lifetimes. Negative tests shall
+cover missing/mismatched ownership, capacity, failed publication/retry, private
+state restoration and once-only reaping. Modeled values shall grant no native
+address/context authority or general scheduling guarantee.
+
+The systems reference model shall retain the explicit numeric-library interface,
+4096-byte stack and 65536-byte temporary-storage obligations, invocation owner
+and exclusive activity, result bounds, exec-retained binding and terminal erasure
+required by `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
+`TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001`. It shall model arbitrary-precision
+deadline arithmetic independently and reject missing, conflicting or out-of-scope
+metadata. Machine allocation/frame bounds remain mandatory publisher/provider
+evidence rather than invented numeric authority in the reference model.
 
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 

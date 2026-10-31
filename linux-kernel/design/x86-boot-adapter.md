@@ -67,16 +67,19 @@ zero-filled in the protected payload.
 
 The generated setup header records a high-loaded, non-relocatable 64-bit
 kernel, `code32_start = 0x0010_0000`, 4 KiB kernel alignment, the protected
-payload size, and no embedded initramfs. QEMU remains responsible for the
-command-line pointer and other bootloader-written fields. The adapter preserves
-the boot-parameter address, supplies the BIOS E820 portion needed by the
+payload size, and no embedded initramfs. The boot publication may include the
+separate deterministic resource selected by the
+[initial boot-resource contract](initial-boot-resource.md); QEMU supplies it
+through the Linux ramdisk handoff. QEMU remains responsible for the command-line
+pointer and other bootloader-written fields. The adapter preserves the
+boot-parameter address, supplies the BIOS E820 portion needed by the
 boot-memory provider, and does not consume the command line.
 
-Packaging publishes the `bzImage` and canonical adapter provenance together.
-The record includes the exact protocol/header identity, transition layout,
-linked kernel digest, boot image digest, entry addresses, QEMU machine/CPU, and
-provider revisions. Structural inspection precedes publication; QEMU execution
-is a separate physical-evidence stage.
+Packaging publishes the `bzImage`, the initial resource, and canonical adapter
+provenance together. The record includes the exact protocol/header identity,
+transition layout, linked kernel digest, boot image and resource digests, entry
+addresses, QEMU machine/CPU, and provider revisions. Structural inspection
+precedes publication; QEMU execution is a separate physical-evidence stage.
 
 ## Alternatives and portability
 

@@ -80,6 +80,41 @@ require same-allocator consuming release before any disposition, and reject
 context reuse, extent escape, cross-allocator release, double release, and
 unsupported dynamic or multi-extent forms before lowering.
 
+The exact static-ELF frame-extent increment shall additionally admit only the
+literal 503-frame, unit-aligned shape after the earlier three-frame extent is
+returned. The checked root and x86-64 provider shall preserve one indivisible
+owner, use checked frame-to-byte arithmetic, select the whole interval inside
+one normalized E820 RAM run below 1 GiB, exclude the boot resource and retained
+reservations, emit the exact ordered witness while ownership is live, and
+consume whole release before continuing. Structural and negative tests shall
+reject intermediate or larger counts, non-unit alignment, partial selection,
+overlap, duplicate witness, and continuation with live ownership. No mapping
+or byte-access authority shall be introduced.
+
+The static-ELF mapping-resource increment shall admit only a nested literal
+one-frame, unit-aligned metadata request while the exact 503-frame payload
+extent remains live. The checker shall require the payload witness first, one
+pair witness while both owners are live, metadata release before payload
+release, fatal-only failures, and no later transition with either owner. The
+x86-64 root shall pass the complete retained payload interval as opaque
+provider exclusion evidence; provider lowering shall validate the exclusion,
+select a complete disjoint E820 interval below 1 GiB, and publish no partial
+ownership. Structural and negative tests shall reject overlap, unsupported
+nesting, wrong order, hidden allocation, and incomplete unwind. Neither owner
+shall acquire byte-access or leaf-publication authority in this increment.
+
+The static-ELF initial-leaf increment shall check one consuming preparation of
+the exact live payload and metadata identities into an opaque construction,
+the exact ordered witness, consuming complete revocation, metadata release,
+payload reclaim, and payload release before continuation. The semantic trace
+shall retain distinct prepare, revoke, and reclaim operations. X86-64 lowering
+shall revalidate both intervals, zero one 512-entry metadata page, write and
+verify exactly 503 ordinal-matched present/user/writable/NX leaves with nine
+absent entries, order inactive publication, clear and verify all entries on
+revoke, and return the original extents in the checked order. Structural and
+negative tests shall reject partial or wrong-role entries, active attachment,
+wrong identity/order, duplicate transitions, and incomplete teardown.
+
 The kernel-mapping increment shall accept only the approved static
 read-write, non-executable normal-memory request. It shall consume the one live
 frame extent into an affine mapping, admit statically bounded plain byte
@@ -213,6 +248,2456 @@ context again. Structural and pinned-QEMU evidence shall prove this causal
 order without exposing interrupt frames, registers, stack pointers, vectors,
 routes, or scheduler selection to source.
 
+The one-shot completion increment shall check one fresh completion identity,
+matching affine wait and signal authority, one third disjoint 16 KiB worker
+stack, capacity-three FIFO selection, exact dispatcher registration, a
+block-first outcome, signal after terminal reclamation, awakened enqueue,
+resume immediately after the wait, all three context reclamations, and final
+completion and queue consumption. The source-owned create, signal, queue, and
+consume transitions shall add no provider-owned scheduler. The x86-64
+provider shall keep the completion worker's context record and stack layout
+private and lower only the checked opaque block/restore boundary. Structural
+and pinned-QEMU evidence shall prove blocking, intervening terminal execution,
+signalling, later source-selected resumption, retirement, and quiescence.
+
+The initial user-execution increment shall check one PID-one probe, one affine
+prepare/enter/complete lifecycle, one typed user-syscall entry, Linux x86-64
+`getpid` followed by `exit_group(0)`, the exact return and terminal results,
+and restoration of the bound kernel continuation. The source-owned semantic
+model shall expose the syscall number and six arguments while keeping target
+frames, registers, selectors, page-table encodings, stacks, and return
+instructions private. The x86-64 provider shall lower the checked operations
+to one fixed qualification-only user code page and NX stack, user privilege
+entry, `SYSCALL` dispatch, exact `SYSRETQ` return, and terminal kernel-stack
+restoration. Structural and pinned-QEMU evidence shall prove the complete
+round trip before its success marker and quiescent fatal disposition.
+
+The writable initial-data increment shall check the typed
+`user mapping permit writable data` transition only after generation-two
+RO/NX verification. Lowering shall restore the qualified data PTE's write
+authority, retain NX, complete translation invalidation, and return one opaque
+writable-data owner accepted by exact data-first unmap. The generated ELF shall
+mark its data segment `PF_R | PF_W`; constructed code shall write and read back
+one BSS byte before terminal success. The root shall emit the exact ordered
+`TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK` marker only after successful user
+return. Structural tests shall reject code-role use, preverification use,
+identity substitution, stale unmap, missing invalidation, or W+X permission.
+
+The bounded multipage-executable increment shall accept a two-frame
+`probe-code` extent and keep the one-frame `probe-data` extent distinct. The
+x86-64 provider shall publish adjacent leaves for both code frames, copy and
+compare the complete runtime-sized segment across their boundary, remove write
+authority from both leaves before setting execute on either, invalidate both
+virtual pages after permission or presence changes, and unmap and return the
+original extent as one unit. The generated ELF entry and successful terminal
+path shall execute from the second page. Structural and pinned-QEMU evidence
+shall prove complete two-leaf lifecycle, no W+X phase, second-page execution,
+exact return, and the ordered
+`TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK` marker.
+
+The bounded static-ELF plan increment shall derive one immutable checked plan
+before any supplied executable metadata can influence artifact construction.
+The parser shall validate the complete ELF64 header and bounded program-header
+table, exact four R/RX/R/RW load roles, file/memory/page interval arithmetic,
+page congruence and disjointness, entry containment, non-executable stack,
+optional TLS and RELRO containment, no interpreter or W+X, and the x86-64
+512-page one-leaf-table bound. Tests shall reproduce the pinned BusyBox-shaped
+envelope without committing third-party bytes and shall reject each malformed
+class independently. The existing sealed two-page runtime validator shall
+remain stricter and shall not select a plan-only image.
+
+The bounded static-ELF page-realization increment shall consume that checked
+plan without reparsing ELF bytes. It shall require exact adjacency, derive one
+future span-sized affine request with alignment one, enumerate every virtual
+page and frame ordinal, start every page RW/NX, assign entry-stage RO/NX, RO/X,
+or RW/NX including staged writable RELRO, and retain one whole-span zero followed by
+the four exact file-copy intervals. Tests shall prove the pinned 503-page role
+counts, complete ordered coverage, zero-before-copy, no W+X state, and rejection
+of gaps or malformed inherited plans. It shall grant no runtime authority or
+make the image selectable.
+
+The supplied static-ELF artifact increment shall accept one
+`--static-user-image PATH` only for qualified systems publication, read and
+validate the complete input before creating publication state, and require the
+exact approved 2,024,544-byte, eleven-program-header, 503-page x86-64 shape.
+On success it shall publish those exact bytes as canonical `static-user.elf`
+and bind that canonical name and SHA-256 digest in artifact provenance without
+recording the host path. The option shall remain distinct from
+`--initial-user-image`; omitting it shall preserve the existing output set and
+selecting it shall add exactly one provenance-bound output. Unreadable,
+duplicate, nonsystems, malformed, noncanonical-shape, partially written, or
+unbound input shall fail before atomic publication. Tests shall use a
+deterministic clean-room fixture with approved metadata and independent
+payload bytes, cover rejected shape classes and exact-byte publication, and
+prove that the current boot resource does not consume the new artifact.
+
+The bounded static-ELF resident-header-variant increment shall admit exactly
+the sectionless clean-room tuple or the pinned external tuple
+`(e_shoff=0x1edea0, e_shentsize=64, e_shnum=23, e_shstrndx=22)` while keeping
+every other ELF-header byte and the complete eleven-row program-header table
+exact. Artifact validation shall prove the external section directory ends at
+the complete 2,024,544-byte input boundary and reject mixed, third, overflowed,
+or out-of-bounds tuples. Provider lowering shall byte-check the selected
+coherent resident header and complete program-header table without parsing or
+retaining the non-loadable section directory. Qualification shall preserve the
+clean-room gate and separately require external digest
+`7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd`,
+bind the exact bytes through artifact and boot provenance, and run the complete
+existing process and rollback evidence without committing or recording the
+host path. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-RESIDENT-HEADER-VARIANTS-001` and `TK-DEC-192`.
+
+The static-ELF boot-transport increment shall require the canonical
+`static-user.elf` output and verify its artifact-provenance digest before boot
+publication. It shall generate exactly one deterministic uncompressed newc
+archive with ordered `init`, `static-user.elf`, and terminal records, copy both
+payloads exactly, and bind the archive plus both member names, sizes, and
+SHA-256 digests in boot provenance. The x86-64 provider shall validate the
+extended handoff bounds, exact archive length, both headers and padding, the
+terminal record, and the complete approved static ELF header/program-header
+metadata while leaving caller-owned payload bytes unembedded. Frame allocation
+shall exclude the whole enlarged resource. Tests shall reject missing,
+unbound, changed, or reordered static input, prove exact two-member layout and
+digest binding, and retain deterministic pinned-QEMU execution without making
+the static member source-visible or runnable.
+
+The bounded static-ELF payload-copy increment shall accept exactly one typed
+consuming transition from the zeroed construction to a populated construction,
+sealed source `retained-static-user-elf`, and sealed plan
+`bounded-static-elf-four-loads`. X86-64 lowering shall revalidate the retained
+boot handoff and static ELF metadata, copy the exact four approved intervals
+to offsets `0`, `0x1000`, `0x18d000`, and `0x1e5660`, compare every copied
+byte, verify every other byte through the complete `0x1f7000` payload remains
+zero, and verify all 503 RW/NX leaves plus nine absent entries unchanged. The
+checker and model shall require zero-before-copy, one exact copied witness,
+populated-owner revocation, complete metadata-then-payload return, and no live
+construction at disposition. Structural and pinned-QEMU tests shall reject
+wrong owner, selector, plan, order, or early revocation and shall prove no
+source-visible offset, address, byte, loop, or final permission authority.
+
+The bounded static-ELF final-permission increment shall accept exactly one
+typed consuming transition from the populated construction to a sealed
+construction and only plan `bounded-static-elf-wx-relro`. X86-64 lowering
+shall revalidate the complete populated payload, both resource extents, all
+503 initial RW/NX leaves, and nine absent entries before replacing inactive
+leaves with exactly 89 RO/NX, 396 RO/X, and 18 RW/NX entry-stage roles. It shall preserve
+every payload-frame identity and ordinal, keep all nine remaining entries
+absent, reject every W+X result, publish the complete update, and read back the
+entire final table before success. The checker and model shall require
+population-before-sealing, one exact permission witness, sealed-owner
+revocation, complete metadata-then-payload return, and no live construction at
+disposition. Structural and pinned-QEMU tests shall reject wrong owner, plan,
+role, count, order, duplicate sealing, or early revocation and shall prove no
+source-visible page ordinal, permission bit, address, loop, page-table entry,
+or activation authority.
+
+The bounded static-ELF hierarchy-extent increment shall admit exactly one typed
+`static image construction reserve hierarchy` operation for a five-frame,
+one-frame-aligned allocation while the sealed construction remains live.
+X86-64 lowering shall fail closed through the fatal edge, preserve the payload and leaf-table identities,
+select the complete hierarchy extent after and disjoint from both resources,
+the boot resource, and active translation metadata, and return it only as one
+whole affine extent. The checker and model shall require permission sealing
+before allocation, one exact hierarchy witness while both authorities are
+live, whole hierarchy release before construction revocation, and no live
+extent at disposition. Structural and pinned-QEMU tests shall reject wrong
+count, order, marker, split, early release, or early revocation and shall prove
+that allocation grants no byte, mapping, attachment, activation, or entry
+authority.
+
+The bounded static-ELF address-space increment shall accept exact typed attach,
+detach, and hierarchy-reclaim transitions over the sealed construction and
+five-frame hierarchy extent. X86-64 lowering shall revalidate all extents and
+final leaves, prove the root inactive, zero and verify the hierarchy, construct
+and read back the exact supervisor bootstrap/MMIO hierarchy linked to the
+existing user leaf table, and preserve every payload byte and leaf role.
+Detach shall revalidate the same inactive shape, zero and verify the complete
+hierarchy, return it through one affine reclaim and whole release, then admit
+the existing metadata/payload revocation under the detached owner. Tests shall
+reject wrong owner, layout, entry, leaf, root state, order, witness, partial
+return, or live disposition and shall prove two deterministic pinned-QEMU
+executions without activation, stack, entry, or execution authority.
+
+The bounded static-ELF activation increment shall accept exact typed activate
+and restore transitions over the attached construction. X86-64 lowering shall
+revalidate the hierarchy, final leaves, retained bootstrap root, and exact
+active/inactive root preconditions; switch to the static root with architectural
+synchronization and readback; permit only the bounded supervisor witness
+continuation; restore and read back the bootstrap root; and reproduce the
+unchanged attached owner before detach. The checker and semantic model shall
+reject wrong owner, policy, order, nested activation, detach or resource return
+while active, wrong witness order, or live activation authority at disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact root-register
+transitions, unchanged hierarchy/leaves/payload, restoration before teardown,
+and no static entry, stack, TLS, user-mode, syscall, or BusyBox authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ACTIVATION-001` and `TK-DEC-137`.
+
+The bounded static-ELF entry-authority increment shall accept exact typed
+authorize and revoke transitions over the restored attached construction.
+X86-64 lowering shall revalidate the inactive hierarchy, final leaves, copied
+ELF entry `0x004a6580`, entry-page ordinal 166, offset `0x580`, and immutable
+user read/execute non-writable role without publishing any numeric address.
+The checker and semantic model shall admit only policies
+`validated-static-elf-entry` and `bounded-entry-qualification-rollback`, keep
+the authority affine, reject activation, detach, return, duplication, wrong
+witness order, or disposition while authorized, and reproduce the restored
+owner only after exact revocation. Structural and duplicate pinned-QEMU tests
+shall prove complete readback, unchanged payload/leaves/hierarchy/root state,
+ordered authorization and revocation witnesses, and no stack, TLS, user-mode,
+instruction-fetch, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTRY-AUTHORITY-001` and `TK-DEC-138`.
+
+The bounded static-ELF stack-slot increment shall accept exact typed authorize
+and revoke transitions over the entry-authorized construction. X86-64 lowering
+shall revalidate the inactive hierarchy, all 503 final image leaves, copied ELF
+entry authority, all nine absent leaves, absent slot ordinal 511, immediate
+absent guard ordinal 510, and provider-private aligned top `0x00800000` without
+publishing an address, page-table index, or stack pointer. The checker and
+semantic model shall admit only policies `bounded-linux-initial-stack-slot` and
+`bounded-stack-slot-qualification-rollback`, keep both entry and slot authority
+affine, reject entry revocation, activation, detach, return, duplication, wrong
+witness order, or disposition while slot-authorized, and reproduce the
+entry-authorized owner only after exact slot revocation. Structural and
+duplicate pinned-QEMU tests shall prove complete readback, absent slot and
+guard, unchanged payload/leaves/hierarchy/root state, ordered authorization and
+revocation witnesses, and no stack backing, initialization, TLS, user-mode,
+instruction-fetch, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-SLOT-001` and `TK-DEC-139`.
+
+The bounded static-ELF stack-backing increment shall admit one exact nested
+`(1, 1)` physical-frame request while stack-slot authority is live. X86-64
+lowering shall retain the static hierarchy identity, request at or above the
+first frame after its exact five-frame extent, reuse complete E820 and boot-
+reservation validation, keep the resulting backing identity opaque, and clear
+it while restoring the hierarchy identity on exact whole release. The checker
+and semantic model shall reject another shape, duplicate extent, partial or
+misordered release, slot or entry revocation, teardown, or disposition while
+backing is live. Structural and duplicate pinned-QEMU tests shall prove the
+nested allocator floor, disjoint resource identities, one ordered witness,
+whole release before slot revocation, and no zeroing, leaf publication, stack
+pointer, initialization, TLS, user-mode, syscall, or BusyBox authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-STACK-BACKING-001` and `TK-DEC-140`.
+
+The bounded static-ELF stack-zeroing increment shall accept one exact typed
+zero transition over the slot-authorized construction and its live one-frame
+backing. X86-64 lowering shall validate a nonzero page-aligned bounded frame,
+clear exactly 512 forward qwords, execute one store fence, and compare exactly
+512 forward qwords with zero before success. The checker and semantic model
+shall accept only the exact owner, backing identity, and complete extent;
+retain affine zeroed-backing ownership until whole release; and reject early
+release, duplicate zeroing, slot or entry revocation, teardown, or disposition
+while backing is live. Structural and duplicate pinned-QEMU tests shall prove
+complete clear/readback, target ordering, unchanged hierarchy/leaves/payload,
+one ordered witness, whole release before slot revocation, and no leaf
+publication, stack pointer, process-entry initialization, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ZERO-001` and `TK-DEC-141`.
+
+The bounded static-ELF stack-leaf increment shall accept one exact typed
+publication from the zeroed-backing construction and one exact typed
+revocation back to it. X86-64 lowering shall validate the inactive hierarchy,
+current bootstrap root, all 503 final image leaves, absent guard and slot, and
+complete zero backing; publish only leaf ordinal 511 as the exact backing with
+present/user/writable/NX attributes; execute one store fence; and completely
+read back the result. Revocation shall validate that exact leaf, erase only it,
+execute one store fence, and completely revalidate the absent slot/guard,
+unchanged image leaves, inactive hierarchy, current root, and zero backing.
+The checker and semantic model shall preserve affine published-leaf ownership
+and reject another owner/backing/access/extent/policy, duplicate publication,
+early release, activation, teardown, or disposition while the leaf is live.
+Structural and duplicate pinned-QEMU tests shall prove exact publication and
+revocation, complete readback, preserved guard/image/hierarchy/root/backing,
+ordered witnesses, and no stack pointer, process-entry initialization, TLS,
+user-mode, syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-LEAF-001` and `TK-DEC-142`.
+
+The bounded static-ELF stack-entry increment shall accept one exact typed
+initialization from the published-stack-leaf construction and one exact typed
+complete clearing back to it. X86-64 lowering shall validate the inactive
+hierarchy, current bootstrap root, all final image leaves, exact RW/NX stack
+leaf, absent guard, and complete zero backing; construct a 16-byte-aligned
+Linux entry block with `argc` two, in-leaf `busybox` and `echo` strings,
+terminated `argv`, empty terminated environment, and `AT_NULL`; execute one
+store fence; and completely read back all content, pointer relations, and
+otherwise-zero bytes. Clearing shall zero all 512 qwords, execute one store
+fence, and completely revalidate zero backing plus unchanged leaf, hierarchy,
+and root. The checker and semantic model shall preserve affine initialized-
+stack ownership and reject another owner/backing/profile/extent/policy,
+duplicate initialization, early leaf revocation or release, activation,
+teardown, or disposition while initialized. Structural and duplicate pinned-
+QEMU tests shall prove exact ABI content, complete readback and clearing,
+preserved guard/image/hierarchy/root/leaf, ordered witnesses, and no exposed
+stack pointer, further auxiliary-vector entries, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-STACK-ENTRY-001` and `TK-DEC-143`.
+
+The bounded static-ELF page-size auxiliary-vector increment shall accept one
+exact typed addition from the minimal initialized stack-entry construction and
+one exact typed removal back to it. X86-64 lowering shall completely validate
+the minimal block and inactive translation obligations; clear the full frame;
+reconstruct a 16-byte-aligned block with native `AT_PAGESZ` tag 6, value 4096,
+and the exact prior arguments, empty environment, strings, and terminating
+`AT_NULL`; fence; and completely read back all content and otherwise-zero
+bytes. Removal shall validate the extended block, clear the full frame,
+reconstruct the exact minimal block, fence, and completely read it back. The
+checker and semantic model shall preserve affine page-size-fact ownership and
+reject another owner/backing/value/policy, duplicate addition, early ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact tag/value/order,
+complete reconstruction and rollback, preserved translation state, ordered
+witnesses, and no exposed representation, further auxiliary-vector fact, TLS,
+user-mode, syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PAGESZ-001` and `TK-DEC-144`.
+
+The bounded static-ELF executable-entry auxiliary-vector increment shall
+accept one exact typed addition from the page-size-qualified stack-entry
+construction and one exact typed removal back to it. X86-64 lowering shall
+completely validate the page-size block, inactive translation obligations,
+resident static ELF header, exact executable leaf, and retained opaque entry
+authority; prove executable containment; clear the full frame; reconstruct a
+16-byte-aligned block with native `AT_ENTRY` tag 9, exact retained entry
+`0x4a6580`, prior `AT_PAGESZ=(6,4096)`, arguments, empty environment, strings,
+and terminating `AT_NULL`; fence; and completely read back all content,
+relations, and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact page-size block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+executable-entry-fact ownership and reject another owner/backing/value/policy,
+duplicate addition, early page-size removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tag/value/order and executable
+containment, complete reconstruction and rollback, preserved translation and
+entry authority, ordered witnesses, and no exposed address or representation,
+further auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution
+authority. This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-ENTRY-001` and
+`TK-DEC-145`.
+
+The bounded static-ELF program-header auxiliary-vector increment shall accept
+one exact typed addition from the executable-entry-qualified stack construction
+and one exact typed removal back to it. X86-64 lowering shall completely
+validate that block, inactive translation obligations, resident static ELF
+header, complete eleven-row program-header table, exact immutable header leaf,
+and validated-plan agreement; clear the full frame; reconstruct a 16-byte-
+aligned block with `AT_PHDR=(3,0x400040)`, `AT_PHENT=(4,56)`,
+`AT_PHNUM=(5,11)`, all prior facts, arguments, empty environment, strings, and
+terminating `AT_NULL`; fence; and completely read back all content, relations,
+and otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact executable-entry-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+program-header-group ownership and reject another owner/backing/value/policy,
+duplicate addition, early prior-fact removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tags, values, order, table
+identity and bounds, complete reconstruction and rollback, preserved
+translation and metadata authority, ordered witnesses, and no exposed address
+or representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-PHDR-001` and `TK-DEC-146`.
+
+The bounded static-ELF executable-name auxiliary-vector increment shall accept
+one exact typed addition from the program-header-qualified stack construction
+and one exact typed removal back to it. X86-64 lowering shall validate that
+block, inactive translation obligations, exact stack leaf, and complete
+`busybox\0` and `echo\0` objects; prove the executable-name identity equals
+the existing `argv[0]` object; clear the full frame; reconstruct a 16-byte-
+aligned block with `AT_EXECFN=(31,0x7fffe0)`, all prior facts, arguments,
+strings, and terminating `AT_NULL`; fence; and completely read back all
+content, aliases, and otherwise-zero bytes. Removal shall validate the
+extended block, clear the full frame, reconstruct the exact program-header-
+qualified block, fence, and completely read it back. The checker and semantic
+model shall preserve affine executable-name-fact ownership and reject another
+owner/backing/value/policy, duplicate addition, early prior-fact removal,
+ordinary clearing or leaf revocation, activation, release, teardown, or
+disposition. Structural and duplicate pinned-QEMU tests shall prove exact tag,
+pointer, order, same-object aliasing, complete reconstruction and rollback,
+preserved translation state, ordered witnesses, and no exposed pointer or
+representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-EXECFN-001` and `TK-DEC-147`.
+
+The bounded static-ELF credential auxiliary-vector increment shall accept one
+exact typed addition from the executable-name-qualified stack construction and
+one exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+and sealed PID-one process profile; clear the full frame; reconstruct a
+16-byte-aligned block with ordered `AT_UID=(11,0)`, `AT_EUID=(12,0)`,
+`AT_GID=(13,0)`, and `AT_EGID=(14,0)`, all prior facts, arguments, strings,
+and terminating `AT_NULL`; fence; and completely read back all content,
+relations, and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact executable-name-qualified
+block, fence, and completely read it back. The checker and semantic model
+shall preserve affine credential-group ownership and reject another owner,
+backing, value, policy, duplicate addition, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove exact tags, zero values,
+order, profile agreement, complete reconstruction and rollback, preserved
+translation state, ordered witnesses, and no exposed numeric identity or
+representation, further auxiliary-vector fact, TLS, user-mode, syscall, or
+BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-CREDENTIALS-001` and `TK-DEC-148`.
+
+The bounded static-ELF non-secure auxiliary-vector increment shall accept one
+exact typed addition from the credential-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+sealed equal real/effective credentials, and absence of a privilege-changing
+executable transition; clear the full frame; reconstruct a 16-byte-aligned
+block with `AT_SECURE=(23,0)`, all prior facts, arguments, strings, and
+terminating `AT_NULL`; fence; and completely read back all content, relations,
+and otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact credential-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+security-fact ownership and reject another owner, backing, value, policy,
+duplicate addition, early prior-fact removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tag, zero value, credential
+agreement, complete reconstruction and rollback, preserved translation state,
+ordered witnesses, and no exposed policy number or representation, further
+auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-SECURE-001` and `TK-DEC-149`.
+
+The bounded static-ELF userspace-accounting-rate increment shall accept one
+exact typed addition from the secure-mode-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument strings,
+and the separation of Linux's baseline userspace accounting rate from hardware
+and scheduler clocks; clear the full frame; reconstruct a 16-byte-aligned block
+with `AT_CLKTCK=(17,100)`, all prior facts, arguments, strings, and terminating
+`AT_NULL`; fence; and completely read back all content, relations, and
+otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact secure-mode-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+clock-tick-rate ownership and reject another owner, backing, value, policy,
+duplicate addition, early prior-fact removal, ordinary clearing or leaf
+revocation, activation, release, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove exact tag and value, clock-identity
+separation, complete reconstruction and rollback, preserved translation state,
+ordered witnesses, and no exposed rate or representation, further auxiliary-
+vector fact, TLS, user-mode, syscall, or BusyBox execution authority. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-CLKTCK-001` and `TK-DEC-150`.
+
+The bounded static-ELF native-platform increment shall accept one exact typed
+addition from the clock-rate-qualified stack construction and one exact typed
+removal back to it. X86-64 lowering shall validate that block, inactive
+translation obligations, exact stack leaf, complete argument strings, and
+prior facts; clear the full frame; reconstruct a 16-byte-aligned block with
+native `AT_PLATFORM` pointing to one complete bounded `x86_64\0` string, all
+prior facts, arguments, strings, and terminating `AT_NULL`; fence; and
+completely read back all content, pointer containment, alias separation, and
+otherwise-zero bytes. Removal shall validate the extended block, clear the
+full frame, reconstruct the exact clock-rate-qualified block, fence, and
+completely read it back. The checker and semantic model shall preserve affine
+platform ownership and reject another owner, backing, value, policy, duplicate
+addition, early prior-fact removal, ordinary clearing or leaf revocation,
+activation, release, teardown, or disposition. Structural and duplicate pinned-
+QEMU tests shall prove exact tag, pointer, string and termination, complete
+reconstruction and rollback, executable-name separation, preserved translation
+state, ordered witnesses, and no exposed platform representation, further
+auxiliary-vector fact, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-AUXV-PLATFORM-001` and `TK-DEC-151`.
+
+The bounded static-ELF native hardware-capability increment shall accept one
+exact typed addition from the platform-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete argument and
+platform strings, and prior facts; clear the full frame; reconstruct a 16-byte-
+aligned block with native `AT_HWCAP=(16,0x178bfbfd)` and `AT_HWCAP2=(26,0)`,
+all prior facts, strings, and terminating `AT_NULL`; fence; and completely read
+back all content and otherwise-zero bytes. Removal shall validate the extended
+block, clear the full frame, reconstruct the exact platform-qualified block,
+fence, and completely read it back. The checker and semantic model shall
+preserve affine capability-group ownership and reject another owner, backing,
+value, policy, duplicate addition, early prior-fact removal, ordinary clearing
+or leaf revocation, activation, release, teardown, or disposition. Structural
+and duplicate pinned-QEMU tests shall prove exact tags and masks, complete
+reconstruction and rollback, preserved strings and translation state, ordered
+witnesses, and no exposed mask, CPUID, feature-bit, random, TLS, user-mode,
+syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-HWCAP-001` and `TK-DEC-152`.
+
+The bounded static-ELF load-metadata increment shall accept one exact typed
+addition from the hardware-capability-qualified stack construction and one
+exact typed removal back to it. X86-64 lowering shall validate that block,
+inactive translation obligations, exact stack leaf, complete strings, prior
+facts, absent interpreter, and accepted ELF flags; clear the full frame;
+reconstruct a 16-byte-aligned block with native `AT_BASE=(7,0)` and
+`AT_FLAGS=(8,0)`, all prior facts and strings, and terminating `AT_NULL`; fence;
+and completely read back all content and otherwise-zero bytes. Removal shall
+validate the extended block, clear the full frame, reconstruct the exact
+capability-qualified block, fence, and completely read it back. The checker and
+semantic model shall preserve affine load-metadata ownership and reject another
+owner, backing, value, policy, duplicate addition, early prior-fact removal,
+ordinary clearing or leaf revocation, activation, release, teardown, or
+disposition. Structural and duplicate pinned-QEMU tests shall prove exact tags
+and explicit zero values, complete reconstruction and rollback, non-overlapping
+block growth, preserved prior facts and translation state, ordered witnesses,
+and no exposed value, header, random, TLS, user-mode, syscall, or BusyBox
+execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-AUXV-LOAD-METADATA-001` and `TK-DEC-153`.
+
+The bounded static-ELF random-slot-authority increment shall accept one exact
+typed authorization from the load-metadata-qualified stack construction and
+one exact typed revocation back to it. X86-64 lowering shall validate the
+complete unchanged block, inactive translation obligations, exact stack leaf,
+complete strings and prior facts; prove one naturally aligned 16-byte zero
+destination and space for one future native tag-25 entry inside the same page;
+and completely read back all content and otherwise-zero bytes without a store.
+Revocation shall repeat the complete validation and restore the exact load-
+metadata-qualified owner. The checker and semantic model shall preserve affine
+random-slot authority and reject another owner, backing, value, extent,
+policy, duplicate authorization, mutation, early prior-fact removal, ordinary
+clearing or leaf revocation, activation, release, teardown, or disposition.
+Structural and duplicate pinned-QEMU tests shall prove the zero destination,
+alignment, complete bounds and non-overlap, unchanged deterministic block,
+preserved translation state, ordered witnesses, and no exposed address, byte,
+tag, pointer, entropy, TLS, user-mode, syscall, or BusyBox execution authority.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-RANDOM-SLOT-001` and `TK-DEC-154`.
+
+The bounded static-ELF prepared-process-retention increment shall accept one
+exact typed transfer from the random-slot-authorized construction into an
+opaque affine retained-process owner and one exact qualification restoration.
+X86-64 lowering shall preserve the provider-private payload, metadata,
+hierarchy, leaf, entry, and stack-backing identities in compiler-controlled
+root state, close construction allocator state without resource release, and
+restore the exact nested one-frame backing obligation. Both transitions shall
+completely validate the inactive hierarchy, image, deterministic stack, future
+random-object zeros, guard, and identity tuple without stores, fences,
+invalidation, release, or activation. The checker and semantic model shall
+reject another owner, backing, value, policy, duplicate retention, mutation,
+early restore, resource reuse, teardown, or disposition. Structural and
+duplicate pinned-QEMU tests shall prove complete survival, closed allocator
+state, exact restoration, ordered witnesses, and no exposed resource, entropy,
+TLS, user-mode, syscall, or BusyBox execution authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-PREPARED-RETENTION-001` and `TK-DEC-155`.
+
+The bounded static-ELF retained-disjoint-work increment shall consume and return
+the exact opaque retained-process owner while using the same sealed allocator
+for one fresh aligned frame. X86-64 lowering shall prove the selected extent
+disjoint from payload, leaf metadata, upper hierarchy, and stack backing,
+release only the fresh frame, and completely revalidate all retained identities
+and bytes before returning the owner. The checker and semantic model shall
+reject another owner, request, policy, allocator, overlap, incomplete proof,
+partial or wrong release, mutation, duplication, early restore, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove fresh allocation
+and release, retained-state survival, exact later restoration, ordered witnesses,
+and no exposed address, DMA, entropy, TLS, user-mode, syscall, or BusyBox
+authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-RETAINED-DISJOINT-WORK-001` and `TK-DEC-156`.
+
+The bounded static-ELF entropy-handoff increment shall consume the exact
+retained-process owner and produce one opaque entropy-pending process owner,
+then support one immediate qualification revocation back to the exact retained
+owner. X86-64 lowering shall keep the complete provider-private resource tuple
+in compiler-controlled root state and completely validate the inactive image,
+hierarchy, deterministic stack, future random-object zeros, strings, guard, and
+identities on both transitions without allocation, release, stores, fences,
+invalidation, activation, extraction, or delivery. The checker and semantic
+model shall reject another owner, process identity, policy, mutation,
+duplication, early restore, output use, or recoverable failure. Structural and
+duplicate pinned-QEMU tests shall prove exact transfer and rollback, unchanged
+state, ordered witnesses, and no exposed address, entropy, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-HANDOFF-001` and `TK-DEC-157`.
+
+The bounded static-ELF entropy-acquisition-authority increment shall consume the
+exact entropy-pending owner into one opaque acquisition owner bound to output
+identity one and resulting generation two, then support one immediate
+qualification revocation to the exact entropy-pending owner. X86-64 lowering
+shall preserve the complete provider-private process tuple and completely
+validate every retained identity and byte on both transitions without device
+access, allocation, release, mutation, activation, extraction, output copy, or
+delivery. The checker and semantic model shall reject another owner, output,
+generation, policy, ordering, mutation, duplication, early handoff revocation,
+output use, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove exact transfer and rollback, unchanged process state, ordered
+witnesses, and no exposed process or entropy representation, TLS, user-mode,
+syscall, or BusyBox authority. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-ACQUISITION-AUTHORITY-001` and `TK-DEC-158`.
+
+The bounded static-ELF entropy-device-coexistence increment shall consume and
+return the exact acquisition owner around one sealed read-only initial entropy-
+device observation. X86-64 lowering shall completely validate the retained
+process, then use the existing generic PCI configuration boundary to require
+the pinned Q35 virtio-rng identity at `0000:00:05.0` without a configuration
+write, BAR access, DMA, negotiation, process mutation, release, activation, or
+output use. The checker and semantic model shall reject another owner, device,
+policy, ordering, duplicate observation, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation before one real read, same-owner return, exact ordered
+witness, and no exposed process, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DEVICE-COEXISTENCE-001` and `TK-DEC-159`.
+
+The bounded static-ELF entropy-transport-discovery increment shall consume and
+return the exact acquisition owner around the remaining sealed read-only
+initial entropy-transport observations. X86-64 lowering shall completely
+validate the retained process, then use the existing generic PCI configuration
+boundary for the remaining 23 entries of the exact pinned Q35 virtio-rng
+discovery sequence without a configuration write, BAR access, DMA,
+negotiation, process mutation, release, activation, or output use. Together
+with the preceding identity observation, the checker and semantic model shall
+require the complete sequence and reject another owner, transport, policy,
+coordinate, value, ordering, omission, duplicate observation, early rollback,
+or recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+complete process validation before real reads, same-owner return, exact ordered
+witnesses, and no exposed process, capability, PCI, or entropy representation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-DISCOVERY-001` and `TK-DEC-160`.
+
+The bounded static-ELF entropy-transport-negotiation increment shall consume
+and return the exact acquisition owner around one reversible write-capable
+transport qualification. X86-64 lowering shall completely validate the
+retained process, use the existing generic PCI-region boundary for the exact
+16-access pinned Q35 virtio-rng negotiation, prove the mandatory version-one
+feature and retained `FEATURES_OK`, then write and read back status zero. It
+shall restore and verify the discovered zero BAR, offset, and length fields of
+the provider-private configuration gateway after every access and shall not
+consume the later ordinary transport sequence. The checker and
+semantic model shall reject another owner, transport, policy, access, feature,
+order, omission, duplicate, final status, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation before real accesses, exact negotiation, reset, and gateway
+rollback, same-owner return, later-sequence preservation, and no exposed
+process, BAR, register, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-TRANSPORT-NEGOTIATION-001` and `TK-DEC-161`.
+
+The bounded static-ELF entropy-queue-discovery increment shall consume and
+return the exact acquisition owner around one reversible queue qualification.
+X86-64 lowering shall completely validate the retained process, replay the
+exact 16-access pinned Q35 virtio-rng negotiation, execute the exact
+five-access queue-discovery sequence, and prove queue zero exists with size
+eight, disabled state, and notification identity zero. It shall then write and
+read back status zero through the generic PCI-region boundary, restore and
+verify the provider-private configuration gateway after every access, and
+shall not consume the later ordinary transport sequence. The checker and
+semantic model shall reject another owner, transport, queue, policy, access,
+feature, order, omission, duplicate, queue fact, final state, early rollback,
+or recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+complete process validation before real accesses, exact negotiation, queue
+discovery, reset, and gateway rollback, same-owner return, later-sequence
+preservation, and no exposed process, BAR, register, queue, PCI, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-DISCOVERY-001` and `TK-DEC-162`.
+
+The bounded static-ELF entropy-bus-master increment shall consume and return
+the exact acquisition owner around one reversible device-initiation-authority
+qualification. X86-64 lowering shall completely validate the retained process,
+replay the exact negotiation and queue-discovery sequences, perform the exact
+masked bus-master enable and inverse transitions with unmasked command bits
+preserved, then write and read back status zero. It shall restore and verify
+the provider-private configuration gateway after every region access and shall
+not consume the later ordinary transport sequence. The checker and semantic
+model shall reject another owner, device, policy, prerequisite access, masked
+transition, order, omission, duplicate, unmasked-bit change, final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove complete process validation before real accesses, exact
+prerequisite replay, exact enable and inverse transitions, device and gateway
+rollback, same-owner return, later-sequence preservation, and no exposed
+process, command, PCI, DMA, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-BUS-MASTER-001` and `TK-DEC-163`.
+
+The bounded static-ELF entropy-DMA-buffer-coexistence increment shall consume
+and return the exact acquisition owner around one transaction-scoped two-buffer
+qualification. X86-64 lowering shall completely validate the retained process,
+replay negotiation and queue discovery, enable bus mastering, qualify the exact
+sealed control and payload requests, prove their aligned, disjoint, initially
+zero backing, then reverse bus mastering and restore device and gateway state.
+No candidate identity shall escape and the later ordinary sequence shall
+remain unconsumed. The checker and semantic model shall reject another owner,
+device, domain, policy, request, role, direction, visibility, order, omission,
+duplicate, backing property, final state, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove complete
+process validation, exact prerequisite replay, both buffer qualifications,
+complete rollback, same-owner return, later-sequence preservation, and no
+exposed process, DMA, address, PCI, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-BUFFER-COEXISTENCE-001` and `TK-DEC-164`.
+
+The bounded static-ELF entropy-split-ring-coexistence increment shall consume
+and return the exact acquisition owner around one transaction-scoped queue
+construction. X86-64 lowering shall completely validate the retained process;
+replay negotiation, queue discovery, bus mastering, and both DMA-buffer
+qualifications; perform the exact opaque reference binding and four ordered
+split-ring stores; then erase all five fields in reverse publication order,
+including an exact 8-byte zero store for the reference field. It shall reverse
+bus mastering and restore device and gateway state. No buffer identity or bound
+address shall escape and the later ordinary sequence shall remain unconsumed.
+The checker and semantic model shall reject another owner, device, domain,
+queue, policy, field, width, offset, value, order, omission, duplicate, exposed
+identity/address, nonzero final byte, early rollback, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove complete process
+validation, exact prerequisite replay, exact ring construction, reverse-order
+erasure, complete rollback, same-owner return, later-sequence preservation, and
+no exposed process, DMA, address, PCI, queue, or entropy representation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SPLIT-RING-COEXISTENCE-001` and
+`TK-DEC-165`.
+
+The bounded static-ELF entropy-DMA-preparation-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+payload-then-control ownership transfer. X86-64 lowering shall completely
+validate the retained process, replay the exact prerequisite sequence through
+ring construction, prepare payload then control, cancel unexposed ownership in
+control-then-payload order, erase and read back the ring, and restore bus-
+master, device, and gateway state. No DMA identity shall escape and the later
+ordinary sequence shall remain unconsumed. The checker and semantic model shall
+reject another owner, device, domain, queue, policy, ownership order, omission,
+duplicate, escaped identity, final state, early rollback, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove the complete
+transaction, same-owner return, later-sequence preservation, and no exposed
+process, DMA, cache, mapping, PCI, queue, or entropy representation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-DMA-PREPARATION-COEXISTENCE-001` and
+`TK-DEC-166`.
+
+The bounded static-ELF entropy-queue-address-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+three-reference publication. X86-64 lowering shall completely validate the
+retained process, replay the exact prerequisite sequence through payload-then-
+control DMA preparation, publish descriptor then driver then device-area
+references, clear and read back those complete registers in reverse order,
+cancel control then payload preparation, erase and read back the ring, and
+restore bus-master, device, and gateway state. No DMA identity or resolved
+reference shall escape and the later ordinary sequence shall remain
+unconsumed. The checker and semantic model shall reject another owner, device,
+domain, queue, transport, policy, publication or clearing order, omission,
+duplicate, escaped identity, nonzero final register, final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove the complete transaction, same-owner return, later-sequence
+preservation, and no exposed process, DMA, address, PCI, queue, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ADDRESS-COEXISTENCE-001` and
+`TK-DEC-167`.
+
+The bounded static-ELF entropy-queue-activation-coexistence increment shall
+consume and return the exact acquisition owner around one transaction-scoped
+empty activation. X86-64 lowering shall completely validate the retained
+process, replay the exact prerequisite sequence through ring construction,
+withdraw and verify the available index while CPU-owned, prepare and publish
+both buffers, perform exact queue enablement and `DRIVER_OK` readback without
+notification, reset the device, and prove status, queue enable, and every queue
+address zero before DMA cancellation. It shall then erase and read back the
+ring and restore bus-master and gateway state. No DMA identity or resolved
+reference shall escape and the later ordinary sequence shall remain
+unconsumed. The checker and semantic model shall reject another owner, device,
+domain, queue, transport, policy, nonempty activation, notification, missing
+readback, omission, duplicate, escaped identity, nonzero final state, early
+rollback, or recoverable failure. Structural and duplicate pinned-QEMU tests
+shall prove the complete transaction, same-owner return, later-sequence
+preservation, and no exposed process, DMA, address, PCI, queue, or entropy
+representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-QUEUE-ACTIVATION-COEXISTENCE-001` and
+`TK-DEC-168`.
+
+The bounded static-ELF entropy-request-completion-coexistence increment shall
+consume and return the exact acquisition owner around one completed and erased
+32-byte device request. X86-64 lowering shall completely validate the retained
+process, replay the exact ordinary sequence through activated available work,
+notify queue zero, observe and acknowledge the bounded signal, validate the
+four used-ring facts, and return control then payload ownership. It shall
+capture or credit no sample, reset and verify all transport state, overwrite
+and read back the complete payload and every source- or device-written ring
+field, reverse bus mastering, and restore gateway state. No payload byte, DMA
+identity, or resolved reference shall escape and the later ordinary sequence
+shall remain structurally unconsumed. The checker and semantic model shall
+reject another owner, device, domain, queue, transport, policy, completion
+fact, ownership order, early CPU access, missing acknowledgement, partial
+erase, captured or credited sample, escaped byte or identity, nonzero final
+state, or recoverable failure. Structural and duplicate pinned-QEMU tests shall
+prove the complete transaction, same-owner return, later-sequence preservation,
+and no exposed process, DMA, address, PCI, queue, or entropy representation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-REQUEST-COMPLETION-COEXISTENCE-001` and
+`TK-DEC-169`.
+
+The bounded static-ELF entropy-sample-capture-coexistence increment shall
+consume and return the exact acquisition owner around one captured and erased
+raw sample. X86-64 lowering shall completely validate the retained process,
+replay the exact ordinary sequence through payload ownership return, copy the
+complete 32-byte payload into the sealed raw-sample storage with zero credit,
+and preserve payload ownership. It shall expose no byte or sample identity,
+assess or credit no entropy, reset and verify all transport state, overwrite
+and read back the complete payload, ring, and raw-sample storage, reverse bus
+mastering, and restore gateway state. The later ordinary sequence shall remain
+structurally unconsumed. The checker and semantic model shall reject another
+owner, device, domain, queue, transport, sample, range, credit, policy,
+ordering, omission, duplicate, assessment, escaped byte or identity, partial
+erase, nonzero final state, or recoverable failure. Structural and duplicate
+pinned-QEMU tests shall prove exact capture, complete destruction, same-owner
+return, later-sequence preservation, and no exposed process, DMA, address, PCI,
+queue, or entropy representation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-CAPTURE-COEXISTENCE-001` and
+`TK-DEC-170`.
+
+The bounded static-ELF entropy-sample-quality-coexistence increment shall
+consume and return the exact acquisition owner around one assessed and erased
+sample. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact zero-credit capture. The checked
+kernel policy shall apply only the sealed Q35 source/evidence, 32-byte extent,
+1024/1024 quality, and 256-bit credit transition without emitting target trust
+mechanics or inspecting bytes. Lowering shall reset and verify transport state,
+overwrite and read back payload, ring, and assessed-sample storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, provider-selected trust, omission, duplicate,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove exact
+assessment, complete destruction, same-owner return, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-SAMPLE-QUALITY-COEXISTENCE-001` and
+`TK-DEC-171`.
+
+The bounded static-ELF entropy-pool-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete pool
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through exact assessed-sample creation. Checked
+policy shall create the exact empty 256-bit pool, invoke the qualified BLAKE2s
+conditioner for the exact first contribution, and transfer zero-to-256 credit
+only after mixing. Lowering shall reset and verify transport state, overwrite
+and read back payload, ring, sample, and pool storage, reverse bus mastering,
+and restore gateway state. The checker and semantic model shall reject every
+substituted fact, early credit, ordering error, omission, duplicate, escaped
+byte or authority, partial erase, nonzero final state, or recoverable failure.
+Structural and duplicate pinned-QEMU tests shall prove the complete lifecycle,
+destruction, same-owner return, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-POOL-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-172`.
+
+The bounded static-ELF entropy-generator-lifecycle-coexistence increment shall
+consume and return the exact acquisition owner around one complete generator
+lifecycle. X86-64 lowering shall completely validate the retained process and
+replay the ordinary sequence through the exact credited pool, initialize the
+generation-one 32-byte ChaCha20 key, and extract only output range `[32, 64)`
+from the exact counter-zero, nonce-zero block while advancing to generation
+two. It shall deliver no output, reset and verify transport state, overwrite
+and read back payload, ring, sample, pool, key, and output storage, reverse bus
+mastering, and restore gateway state. The checker and semantic model shall
+reject every substituted fact, ordering error, omission, duplicate, delivery,
+escaped byte or authority, partial erase, nonzero final state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove the complete
+lifecycle, destruction, same-owner return, and later-sequence preservation.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ENTROPY-GENERATOR-LIFECYCLE-COEXISTENCE-001` and
+`TK-DEC-173`.
+
+The bounded static-ELF initial-random-delivery-coexistence increment shall
+consume the exact acquisition owner and produce one affine randomized static-
+process owner. X86-64 lowering shall completely validate the retained process,
+replay the ordinary entropy sequence through exact first extraction, publish
+one native tag-25 pair and distinct aligned 16-byte stack object, verify the
+copy without exposing bytes, wipe the complete output, and destroy and verify
+all remaining entropy, DMA, transport, bus-master, and gateway resources while
+the process result remains live. A qualification-only inverse shall verify and
+erase the complete object and pair and restore the exact acquisition owner
+before existing rollback. The checker and semantic model shall reject every
+substituted fact, ordering error, omission, duplicate, premature delivery,
+overlap, escaped authority, partial copy or erase, nonzero inverse state, or
+recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+the persistent forward boundary, exact inverse, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RANDOM-DELIVERY-COEXISTENCE-001` and
+`TK-DEC-174`.
+
+The bounded static-ELF process-entry increment shall consume the exact
+randomized-process owner and produce one affine completed-process owner. X86-64
+lowering shall completely revalidate the retained process, derive its entry
+and initial stack from provider-private authorities, install a private static-
+process syscall/continuation context, activate the retained address space,
+enter CPL3, accept only `exit_group(0)`, and restore the exact kernel CR3, GS,
+stack, and continuation before returning. It shall enter the pinned external
+executable at its complete final Linux stack (`0x007ffe90`) while retaining the
+clean-room fixture's exact pre-existing stack, preserve every non-result Linux
+syscall register and provider System V callee-saved register, and clear all
+private saved slots.
+Lowering shall retain and restore CR4, enable only OSFXSR and OSXMMEXCPT after
+checking CR0, initialize fresh x87/MXCSR/XMM state, and scrub it before return.
+It shall zero and verify the bounded mutable stack prefix and normalize A/D bits
+across all 503 image leaves plus the stack leaf before exact readback. The
+qualification shall cover clean-room bytes and the digest-pinned external
+BusyBox `echo` path without redistributing the external bytes. A qualification-
+only inverse shall validate and clear the terminal context and restore the exact
+randomized owner before the existing nested rollback. The checker and semantic
+model shall reject every substituted owner, executable digest, header variant,
+ABI, terminal result, policy, ordering error, duplicate entry, escaped native
+state, changed process resource, incomplete restoration, nonzero inverse state,
+or recoverable failure. Structural and duplicate pinned-QEMU tests shall prove
+real `IRETQ` entry, native `SYSCALL` return, exact CR3 and SIMD restoration, the
+affine forward/inverse lifecycle, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-PROCESS-ENTRY-001`, `TK-DEC-175`, `TK-DEC-194`, and
+`TK-DEC-195`.
+
+The bounded static-ELF initial-break-query increment shall refine that exact
+entry with `startup is initial-brk-query` and policy
+`bounded-static-elf-initial-brk-query`. X86-64 lowering shall derive the initial
+break by checked 4 KiB ceiling of the retained writable load segment's memory
+end, admit exactly one native `brk(0)` from the sealed executable before
+`exit_group(0)`, return the derived value, and retain no source-provided or
+independently embedded address authority. The clean-room fixture shall compare
+the complete returned `0x005f7000` value before terminal return. The
+qualification inverse shall clear the private query-completion state. The
+checker and semantic model shall reject every substituted startup service,
+policy, request, result, ordering error, duplicate query, non-executable
+continuation, changed process state, nonzero inverse state, or recoverable
+failure. Structural and duplicate pinned-QEMU tests shall prove derivation from
+the writable image, native dispatch, query-before-terminal ordering, affine
+forward/inverse preservation, and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-QUERY-001` and `TK-DEC-176`.
+
+The bounded static-ELF initial-break-growth increment shall refine that entry
+with startup service `initial-brk-query-growth`, one distinct aligned zeroed
+artifact reserve, and policy `bounded-static-elf-initial-brk-growth`. X86-64
+lowering shall preserve the exact initial query, then accept one request for
+`0x005f7d80`, publish and invalidate one user RW/NX leaf at `0x005f7000`,
+return the request through `SYSRETQ`, and permit a first-byte store/load before
+terminal exit. Terminal handling shall remove and verify the leaf, reset the
+private break, erase and verify all 4,096 reserve bytes, and clear mapping
+authority before returning. The qualification inverse shall prove and clear
+query/growth completion. The checker and semantic model shall reject another
+startup service, reserve, request, result, order, duplicate, early terminal,
+permission, alias, partial publication, inaccessible byte, retained state,
+partial erase, or recoverable failure. Structural and duplicate pinned-QEMU
+tests shall prove distinct BSS ownership, exact leaf mechanics, query/growth/
+terminal order, first-byte access, complete teardown, and later-sequence
+preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-BRK-GROWTH-001` and `TK-DEC-177`.
+
+The bounded static-ELF initial-x86-FS-base increment shall refine that entry
+with startup service `initial-brk-query-growth-x64-fs-base` and policy
+`bounded-static-elf-initial-x64-fs-base`. After the exact query and growth,
+x86-64 lowering shall accept one native syscall 158 operation `0x1002` with
+candidate `0x005f7400`, prove the complete byte lies in the live readable
+anonymous break mapping, retain it privately, install `IA32_FS_BASE`, return
+zero through `SYSRETQ`, and permit an FS-relative byte read before terminal
+exit. Terminal handling shall require install completion, restore the exact
+pre-entry physical FS base, clear the private selection, and preserve complete
+heap rollback. The qualification inverse shall prove and clear query/growth/
+install completion. The checker and semantic model shall reject another
+startup service, operation, candidate, result, order, duplicate, early
+terminal, unreadable base, non-executable continuation, wrong physical state,
+failed relative access, retained selection, source-visible native detail, or
+recoverable failure. Structural and duplicate pinned-QEMU tests shall prove the
+exact native dispatch, provider installation, access, restoration, clearing,
+and later-sequence preservation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-X64-FS-BASE-001` and `TK-DEC-178`.
+
+The bounded static-ELF initial-clear-TID increment shall refine that entry with
+startup service `initial-brk-query-growth-x64-fs-base-clear-tid` and policy
+`bounded-static-elf-initial-clear-tid`. X86-64 lowering shall accept one native
+syscall 218 candidate `0x005f76d0`, prove its complete writable word lies in the
+live anonymous break mapping, retain it without dereference, and return TID one
+through `SYSRETQ`. Terminal exit shall store and verify zero while the process
+address space remains active, clear the candidate, emit no futex wake, and
+preserve complete state and heap rollback. Checker, structural, negative, and
+duplicate pinned-QEMU evidence shall reject another candidate, result, order,
+duplicate, early terminal, invalid word, failed clear, retained state, native
+source detail, or recoverable failure. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CLEAR-TID-001` and `TK-DEC-179`.
+
+The bounded static-ELF empty-robust-list increment shall refine startup with
+service `initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list` and
+policy `bounded-static-elf-initial-empty-robust-list`. X86-64 lowering shall
+accept syscall 273 only for candidate `0x005f76e0` and length 24, prove the
+complete readable head lies in the anonymous break mapping, retain it without
+dereference, and return zero. Terminal handling shall copy and validate the
+exact self-link, `-32` offset, and null pending pointer before restoration,
+clear registration, perform no futex action, and preserve earlier teardown.
+Negative, structural, and duplicate pinned-QEMU evidence shall enforce this
+boundary. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-EMPTY-ROBUST-LIST-001` and `TK-DEC-180`.
+
+The bounded static-ELF initial-`rseq` fallback increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback`
+and policy `bounded-static-elf-initial-rseq-fallback`. The clean-room x86-64
+payload shall issue native syscall 334 with candidate `0x005f7300`, length 33,
+flags zero, and signature `0x53053053` immediately after robust-list
+registration. The existing unsupported-call arm shall return exact `-ENOSYS`
+without inspecting the arguments, touching user memory, retaining state, or
+changing any prior process state; later implemented terminal dispatch shall
+remain usable. Negative, structural, and duplicate pinned-QEMU evidence shall
+enforce exact request order, result, state preservation, and continuation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-RSEQ-FALLBACK-001` and `TK-DEC-181`.
+
+The bounded static-ELF initial-stack-limit increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit`
+and policy `bounded-static-elf-initial-stack-limit`. The clean-room x86-64
+payload shall issue query-only syscall 302 for PID zero, selector 3, null new
+limit, and exact writable stack candidate `0x007ffe60`. Lowering shall validate
+the live state, executable continuation, exact request, and complete candidate;
+publish the established 8 MiB soft limit and infinite hard limit; retain no
+state; and return zero. The payload shall validate both words, balance its
+temporary stack extent, and continue through terminal dispatch. Negative,
+structural, and duplicate pinned-QEMU evidence shall enforce the boundary. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-STACK-LIMIT-001` and `TK-DEC-182`.
+
+The bounded static-ELF initial-`readlinkat` fallback increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback`
+and policy `bounded-static-elf-initial-readlinkat-fallback`. The clean-room
+x86-64 payload shall issue native syscall 267 with `AT_FDCWD`, path candidate
+`0x005bfdda`, output candidate `0x005fe000`, and length 4096 immediately after
+the stack-limit query. The unsupported-call path shall return exact `-ENOSYS`
+without inspecting arguments, touching user memory, retaining state, or
+changing prior process state; later implemented terminal dispatch shall remain
+usable. Negative, structural, and duplicate pinned-QEMU evidence shall enforce
+exact request order, result, state preservation, and continuation. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-READLINKAT-FALLBACK-001` and
+`TK-DEC-183`.
+
+The bounded static-ELF initial-`getrandom` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom`
+and policy `bounded-static-elf-initial-getrandom`. Initial-random delivery
+shall move output bytes 16 through 31 into one process-private affine
+reservation before wiping provider output and destroying every other entropy
+resource. The clean-room x86-64 payload shall then issue native syscall 318
+with output candidate `0x005f5e68`, length eight, and nonblocking flag one.
+Lowering shall validate the live startup state, sealed executable
+continuation, exact request, available reservation, and complete writable
+static destination; publish and verify the exact reserved prefix without a
+value oracle; wipe the complete reservation; mark it consumed; and return
+eight. Terminal handling shall require consumed zero state and clear the
+marker before restoration. Negative, structural, and duplicate pinned-QEMU
+evidence shall enforce exact provenance, request order, publication,
+single-use consumption, destruction, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETRANDOM-001` and `TK-DEC-184`.
+
+The bounded static-ELF reusable-`getrandom` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated`
+and policy `bounded-static-elf-reusable-getrandom`. Initial-random delivery
+shall move both the 16-byte reserved first output and generation-two ChaCha20
+key into one process-private affine service before provider-global entropy
+teardown. The first call shall remain unchanged. Later valid calls of one
+through 16 bytes shall validate flags and the complete writable static extent
+before privileged-stack extraction, replace the persistent key before
+publication, copy and verify the requested prefix, wipe the complete temporary
+output, and retain only the successor key. Zero, `-EINVAL`, and `-EFAULT` paths
+shall not evolve service state. The clean-room x86-64 payload shall add a second
+eight-byte nonblocking request at `0x005f5e70`, observe no constant value, and
+clear its scratch. Terminal handling shall erase and verify every private key,
+output, reference, counter, and scratch byte and normalize every accepted
+writable static leaf before restoration. Negative, structural, and duplicate
+pinned-QEMU evidence shall enforce ownership, validation-before-evolution,
+fast key erasure, repeated delivery, complete destruction, and continuation.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-REUSABLE-GETRANDOM-001` and
+`TK-DEC-185`.
+
+The bounded static-ELF post-random-break-query increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query`
+and policy `bounded-static-elf-post-random-brk-query`. After the reusable-random
+witness, the clean-room x86-64 payload shall issue native syscall 12 with a
+zero request and require exact current break `0x005f7d80`. Lowering shall
+validate the live post-growth state and sealed executable continuation, return
+the established byte-granular break, and preserve the anonymous reserve,
+mapping, random service, and terminal rollback unchanged. Negative,
+structural, and duplicate pinned-QEMU evidence shall enforce exact request,
+result, order, nonmutation, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-QUERY-001` and `TK-DEC-186`.
+
+The bounded static-ELF post-random-break-growth increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth`
+and policy `bounded-static-elf-post-random-brk-growth`. After the current-break
+witness, the clean-room x86-64 payload shall request native break
+`0x00618d80`, require that exact result, and write/read last admitted byte
+`0x00618d7f`. Lowering shall consume one exact 34-frame anonymous extent, use
+the separately owned fifth hierarchy frame as the high leaf table, retain 34
+zero anonymous data frames, preserve the initial first-page behavior, publish
+eight remaining leaves in the existing table and 25 in the high table, and
+update the current break only after publication. Terminal handling shall
+retain the disjoint high stack leaf, remove all anonymous leaves, clear and verify the complete
+extent, and return it through the existing affine inverse. Negative,
+structural, full-workspace, and duplicate pinned-QEMU evidence shall enforce
+exact request, zero backing, hierarchy-boundary publication, last-byte access,
+complete rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-GROWTH-001` and `TK-DEC-187`.
+
+The bounded static-ELF post-random-break-page-alignment increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment`
+and policy `bounded-static-elf-post-random-brk-page-alignment`. After the
+cross-boundary growth witness, the clean-room x86-64 payload shall request
+native break `0x00619000`, require that exact result, and write/read final newly
+admitted byte `0x00618fff`. Lowering shall require current break `0x00618d80`,
+the live 34-frame anonymous extent, the complete existing heap-leaf set, the
+disjoint stack leaf, sealed executable continuation, and reusable-random
+service; allocate no storage; edit no translation entry; and update only the
+byte-granular break state. Terminal handling shall require the aligned state
+before performing the complete existing rollback. Negative, structural,
+full-workspace, and duplicate pinned-QEMU evidence shall enforce exact request,
+nonallocation, mapping preservation, final-byte access, complete rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-POST-RANDOM-BRK-PAGE-ALIGNMENT-001` and `TK-DEC-188`.
+
+The bounded static-ELF RELRO-protection increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect`
+and policy `bounded-static-elf-relro-mprotect`. After the aligned-break witness,
+the clean-room x86-64 payload shall request native `mprotect` for exact interval
+`[0x005e5000, 0x005ed000)` with `PROT_READ` and require result zero. Lowering
+shall require the live aligned-break phase, sealed executable continuation,
+active checked hierarchy, exact eight-page GNU RELRO role with original affine
+frames and RW/NX leaves, complete existing heap and disjoint stack state, and
+reusable-random service. It shall replace exactly those leaves with RO/NX
+leaves, preserve every frame, publish the complete edit, invalidate exactly the
+eight target pages, read back the complete sealed interval, and advance only
+the private startup phase. Terminal
+handling shall require that phase before performing the complete existing
+rollback. Negative, structural, full-workspace, and duplicate pinned-QEMU
+evidence shall enforce exact request, entry and sealed role and frame validation,
+bounded translation mutation and invalidation, complete rollback, and continuation.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-RELRO-MPROTECT-001`, `TK-DEC-189`, and
+`TK-DEC-193`.
+
+The bounded static-ELF initial-process-name increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name`
+and policy `bounded-static-elf-initial-process-name`. After the RELRO witness,
+the clean-room x86-64 payload shall reuse the qualified temporary area below its initial stack,
+request native `prctl(PR_GET_NAME)` into exact interval
+`[0x007ffe60, 0x007ffe70)`, require result zero, verify the complete `busybox`
+plus zero-padding field, erase the scratch, and restore its stack pointer.
+Lowering shall require the live RELRO-confirmed phase, sealed executable
+continuation, active hierarchy, exact writable stack leaf and output extent,
+and reusable-random service. It shall publish the complete field from sealed
+process metadata, retain no user pointer or mutable name state, and advance
+only the private startup phase. Terminal handling shall require that phase
+before performing the complete existing rollback. Negative, structural,
+full-workspace, and duplicate pinned-QEMU evidence shall enforce exact request,
+complete byte publication, stack bounds, nonretention, scratch clearing,
+rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-PROCESS-NAME-001` and `TK-DEC-190`.
+
+The bounded static-ELF initial-`getuid` increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid`
+and policy `bounded-static-elf-initial-getuid`. After the process-name witness,
+the clean-room x86-64 payload shall issue native syscall 102, require result
+zero, and continue. Lowering shall require the live process-name phase, sealed
+executable continuation, active checked hierarchy, exact retained stack leaf,
+and complete zero-valued `AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` group. It shall
+ignore native argument registers, retain no argument or mutable identity
+state, and advance only the private startup phase. Terminal handling shall
+require that phase before performing the complete existing rollback. Negative,
+structural, full-workspace, and duplicate pinned-QEMU evidence shall enforce
+exact dispatch, credential coherence, zero result, nonretention, rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-GETUID-001`,
+`TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-191`.
+
+The bounded static-ELF initial-configuration-stat increment shall refine
+startup with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss`
+and policy `bounded-static-elf-initial-config-stat-miss`. After the real-UID
+witness, the clean-room x86-64 payload shall reserve scratch below its initial
+vector, issue native syscall 262 with `AT_FDCWD`, an immutable
+`/etc/busybox.conf` path, a complete 144-byte stack destination and flags zero,
+require `-ENOENT`, restore its stack pointer, and continue. Lowering shall
+require the live real-UID phase, sealed executable continuation, active checked
+hierarchy, exact retained stack leaf, complete header-variant-bound immutable
+path, and complete writable destination. It shall publish no bytes, retain no
+argument or lookup state, and advance only the private startup phase. Clean-
+room terminal handling shall require the absence phase and all later phases;
+the pinned external root `echo` profile may skip from `getuid(0)` to its
+mandatory output phase. Negative, structural, full-workspace, clean-QEMU, and external-QEMU
+evidence shall enforce exact dispatch, complete path and range validation,
+absence result, nonmutation, nonretention, header-bound terminal choice,
+rollback, and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001` and `TK-DEC-196`.
+
+The bounded static-ELF initial-credential-tail increment shall refine startup
+with service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail`
+and policy `bounded-static-elf-initial-credential-tail`. After the configuration
+miss, the clean-room x86-64 payload shall issue native syscalls 104, 106, and
+105 in order, supply zero to the latter two, require zero after each, and
+continue. Lowering shall require the
+exact preceding phase, sealed executable continuation, active checked
+hierarchy, exact retained stack leaf, and complete zero-valued
+`AT_UID`/`AT_EUID`/`AT_GID`/`AT_EGID` group for every operation. It shall ignore
+the `getgid` argument registers, require both setter arguments to equal the
+sealed zero identities, retain no argument or mutable identity state, leave the
+credential group unchanged, and advance only the exact private startup phase.
+Clean-room terminal handling shall require this phase and its later output;
+the pinned external root `echo` profile may skip this optional branch but must
+complete output. Negative, structural, full-workspace, clean-QEMU, and
+external-QEMU evidence shall enforce exact dispatch, ordering, credential
+coherence, same-value setter requests, zero results, nonretention, rollback,
+and continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001`,
+`TOPAL-SYSTEMS-USER-IDENTITY-001`, and `TK-DEC-197`.
+
+The bounded static-ELF applet-newline increment shall refine startup with
+service
+`initial-brk-query-growth-x64-fs-base-clear-tid-empty-robust-list-rseq-fallback-stack-limit-readlinkat-fallback-getrandom-repeated-brk-query-growth-page-alignment-relro-mprotect-process-name-getuid-config-stat-miss-credential-tail-applet-newline-write`
+and policy `bounded-static-elf-applet-newline-write`. After the credential tail,
+the clean-room x86-64 payload shall construct a stack-local line feed, issue
+native `write(1, candidate, 1)`, require result one, clear the byte, restore its
+stack, and continue. Lowering shall require the exact phase, sealed executable
+continuation, active checked hierarchy, and the header-profile-bound byte in
+the retained stack leaf or pinned anonymous program-break mapping. It shall revalidate backing,
+stage before output, require line feed, publish once, return one, retain no
+pointer or staging, and advance only the private startup phase. The clean
+profile shall require the credential-tail predecessor; the pinned external
+root `echo` profile shall require the sealed `getuid(0)` predecessor. Both
+shall require the output phase before terminal handling.
+Negative, structural, full-workspace, clean-QEMU, and external-QEMU evidence
+shall enforce dispatch, ordering, range and backing validation, staging,
+payload equality, exact output and result, nonretention, rollback, and
+continuation. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-APPLET-NEWLINE-WRITE-001`,
+`TOPAL-SYSTEMS-USER-WRITE-001`, and `TK-DEC-198`.
+
+The pinned static-BusyBox echo-profile increment shall seal profile
+`bounded-static-elf-busybox-echo` and exact arguments `busybox`, `echo` in the
+existing complete initial stack. All later stack facts, native process entry,
+syscall returns, and rollback validation shall preserve those same strings and
+pointer relations until complete clearing. After sealed `getuid(0)`, the pinned
+external header shall skip its optional configuration and credential branch,
+complete exactly one staged line-feed write, and call `exit_group(0)`; no
+earlier terminal phase remains valid. The clean fixture shall retain its longer
+optional branch before the same output and terminal phase.
+Clean-room and external QEMU evidence shall each contain exactly one newline,
+while the external executable stays digest-pinned and outside the repository.
+Structural tests shall reject the former string bytes/profile and earlier
+external terminal phases. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-ECHO-PROFILE-001` and `TK-DEC-199`.
+
+The bounded static-process shell-getpid increment shall accept native x86-64
+syscall 39 once, return the sealed PID one, retain no argument or mutable task
+state, and advance only its private startup phase. The clean fixture shall
+invoke it after newline output; the external echo profile may retain its
+newline terminal path, and the future external shell profile shall bind it
+directly to `getuid(0)`. Structural and QEMU evidence shall enforce exact
+header-selected predecessor, executable continuation, retained hierarchy and
+stack, result, nonretention, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPID-001` and `TK-DEC-200`.
+
+The bounded static-process shell-child-disposition increment shall accept one
+native x86-64 `rt_sigaction` request for signal 17 after the shell-getpid
+phase. It shall require no old-action output, native signal-set size eight,
+the approved `SA_RESTORER` policy and child mask, complete readable candidate,
+executable handler, trampoline, and continuation addresses, active checked
+hierarchy and retained stack, and empty prior disposition. It shall copy and
+validate the complete request, retain only private disposition state, return
+zero, and advance one private startup phase. Terminal handling shall validate
+and clear that state before rollback. The clean fixture shall construct and
+erase the request; the external echo profile may retain its newline terminal
+path, and a future external shell profile may bind the operation after
+`getpid`. Structural and QEMU evidence shall enforce exact dispatch, fields,
+ordering, state lifecycle, result, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-SIGCHLD-001` and `TK-DEC-201`.
+
+The bounded static-process shell-getppid increment shall accept native x86-64
+syscall 110 once after the child-disposition phase, return the sealed no-parent
+value zero, retain no argument, lookup result, or mutable task state, and
+advance only its private startup phase. It shall require executable
+continuation, active checked hierarchy, retained stack, and the live child
+disposition. The clean fixture shall require result zero; the external echo
+profile may retain its newline terminal path, and a future external shell
+profile may bind the observation after disposition installation. Structural
+and QEMU evidence shall enforce exact dispatch, ordering, result,
+nonretention, disposition preservation, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-GETPPID-001` and `TK-DEC-202`.
+
+The bounded static-process empty-input shell increment shall accept exactly
+native x86-64 `uname` into a checked stack extent, publish the established
+390-byte identity, accept `getcwd(0x5f9460, 4096)`, publish `"/\0"`, return
+two, then accept `ioctl(0, TCGETS, candidate)` with `-ENOTTY`, ordered
+`rt_sigaction` observations for signals 2, 3, and 15, one native ignored
+signal-3 installation, and `read(0, 0x5f8f60, 1023)` with result zero after
+the shell-getppid phase. It shall publish complete zeroed 32-byte old actions
+only to checked writable stack extents, validate and copy the ignored action,
+retain only a private ignored-disposition fact, and clear it with the existing
+child disposition at successful exit. The clean fixture shall continue in a
+sealed executable island and require every result. The pinned external
+profile shall select exact `busybox sh` arguments with an empty environment
+and reach the same terminal phase. Structural and QEMU evidence shall enforce
+dispatch, arguments, order, output, nonretention, disposition lifecycle,
+sealed identity, directory, end-of-input, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-INPUT-001` and `TK-DEC-203`.
+
+The bounded static-process sealed exit-command increment shall replace the
+terminal empty-input result with one exact five-byte `exit\n` publication for
+`read(0, 0x5f8f60, 1023)`, consume one fresh private input owner, return five,
+and accept only immediate `exit_group(0)`. It shall validate the complete
+writable destination before mutation, retain no pointer or readable input copy,
+erase the process-visible bytes during terminal handling, and preserve the
+existing disposition lifecycle and complete rollback. The clean fixture shall
+verify and erase the same bytes before exit; the pinned external profile shall
+select exact `busybox sh` arguments and execute the command. Structural and
+QEMU evidence shall enforce input identity, dispatch, arguments, ordering,
+complete copy, consumption, immediate exit, erasure, and rollback. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-EXIT-COMMAND-001` and `TK-DEC-204`.
+
+The bounded static-process sealed echo-command increment shall replace the
+five-byte command with one exact sixteen-byte `echo topal\nexit\n` publication
+for `read(0, 0x5f8f60, 1023)`, consume the fresh private input owner, return
+sixteen, and accept only one exact six-byte descriptor-one `topal\n` write
+before `exit_group(0)`. It shall validate the complete writable input and
+readable output extents before access, stage and validate all output before
+publication, retain no user pointer or readable private copy, require an exact
+post-output phase at terminal handling, erase and prove erasure of every
+command byte, and preserve the existing disposition lifecycle and complete
+rollback. The clean fixture shall verify the same command, output, erasure, and
+exit sequence; the pinned external profile shall execute the built-in command.
+Structural and QEMU evidence shall enforce identity, dispatch, arguments,
+ordering, complete copies, ownership, staging, publication, phase, terminal
+erasure, and rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ECHO-COMMAND-001` and `TK-DEC-205`.
+
+The bounded static-process shell console-fstat increment shall accept native
+x86-64 syscall 5 once for descriptor one and the exact checked clean-fixture
+stack candidate after signal setup and before sealed command input. It shall
+construct the complete approved 144-byte immutable console metadata in private
+process staging, validate the complete destination before mutation, copy every
+byte, clear and verify all staging, return zero, retain no user pointer, and
+record one private observation without advancing the input-predecessor phase.
+The later read and terminal paths shall require and clear the exact header-
+profile-specific observation state; the external echo-command profile shall
+require that it remains absent. The clean fixture shall validate every output
+byte before its existing command sequence. Structural and QEMU evidence shall
+enforce dispatch, arguments, phase, mapping, metadata, staging, publication,
+erasure, profile distinction, lifecycle, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CONSOLE-FSTAT-001` and `TK-DEC-206`.
+
+The bounded static-process `/dev/tty` open-miss increment shall accept native
+x86-64 syscall 257 once after the clean console-fstat observation and before
+sealed command input. It shall require `AT_FDCWD`, the exact immutable clean-
+fixture pathname candidate, `O_RDWR`, zero mode, complete `/dev/tty\0` bytes,
+the live dispositions and checked hierarchy, and the unchanged input-
+predecessor phase. It shall return `-ENOENT`, allocate no descriptor, retain no
+pointer or lookup state, and publish one additional private observation without
+advancing the phase. The read and terminal paths shall require the exact
+header-profile-specific observation pair and clear both together at terminal
+handling; the external echo-command profile shall require both absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, pathname,
+mapping, result, nonallocation, ordering, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-DEV-TTY-OPEN-MISS-001` and `TK-DEC-207`.
+
+The bounded static-process standard-terminal-probe increment shall accept
+exactly three native x86-64 syscall-16 requests after the clean `/dev/tty`
+absence observation and before warning output or sealed input. It shall require
+`TCGETS`, descriptors two, one, and zero in order, one complete checked 36-byte
+initial-stack candidate, the live dispositions and checked hierarchy, the
+unchanged input-predecessor phase, and both predecessor observations. Every
+call shall return `-ENOTTY` without reading or changing the candidate or any
+descriptor state. One private count shall advance only after complete
+validation, and later clean input and terminal handling shall require count
+three and clear it with the predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, extent, ordering, no-output effect, result,
+count lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-STANDARD-TERMINAL-PROBES-001` and `TK-DEC-208`.
+
+The bounded static-process terminal-warning increment shall accept exactly
+three native x86-64 syscall-1 requests after clean terminal-probe count three
+and before later startup work or sealed input. It shall require descriptor two,
+exact 4-, 40-, and 1-byte segments spelling `sh: can't access tty; job control
+turned off\n`, complete checked readable initial-stack candidates, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall stage and validate every complete segment before the
+existing serial adapter publishes it, return each length, clear staging, and
+retain no pointer or payload. One private count shall advance only after full
+publication, and later clean input and terminal handling shall require count
+three and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, lengths, ordering, candidate extents,
+staging-before-output, exact result and output, staging erasure, lifecycle,
+profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-TERMINAL-WARNING-001` and `TK-DEC-209`.
+
+The bounded static-process mailbox-metadata increment shall accept exactly one
+native x86-64 syscall-262 request after clean warning count three and before
+banner output or sealed input. It shall require `AT_FDCWD`, immutable
+`/var/spool/mail/root`, flags zero, one complete checked writable 144-byte
+native-stat candidate in the retained initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, and all prior observations. It
+shall return `-ENOENT` without changing the candidate, allocating a descriptor,
+or retaining a pointer or path. One private fact shall publish only after
+complete validation, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, arguments, pathname, candidate extent, no-output
+effect, result, nonallocation, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MAILPATH-STAT-MISS-001` and `TK-DEC-210`.
+
+The bounded static-process shell-banner increment shall accept exactly one
+native x86-64 syscall-1 request after the clean mailbox-absence fact and before
+later profile lookup, prompt output, or sealed input. It shall require
+descriptor one, the exact 109-byte BusyBox version and help banner, one complete
+checked readable initial-stack candidate, live dispositions and hierarchy,
+unchanged input-predecessor phase, and all prior observations. It shall copy
+and validate all bytes in a fixed 112-byte private extent before the existing
+serial adapter publishes them, return 109, erase and prove erasure of the whole
+extent, and retain no pointer or payload. One private fact shall publish only
+after complete output, and later clean input and terminal handling shall require
+it and clear it with all predecessor observations; the external echo profile
+shall require all optional observations absent. Structural and QEMU evidence
+shall enforce dispatch, contents, length, candidate extent, staging-before-
+output, exact result and output, staging erasure, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BANNER-001` and `TK-DEC-211`.
+
+The bounded static-process post-banner-terminal increment shall accept exactly
+one native x86-64 syscall-16 request after the clean banner fact and before
+later startup work or sealed input. It shall require descriptor zero,
+`TCGETS`, one complete checked writable 36-byte initial-stack candidate, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall return `-ENOTTY` without reading or changing the
+candidate, descriptor state, or retaining a pointer. One private fact shall
+publish only after complete validation, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, candidate
+extent, no-output effect, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-TERMINAL-PROBE-001` and `TK-DEC-212`.
+
+The bounded static-process post-banner-current-directory increment shall
+accept exactly one native x86-64 syscall-79 request after the clean post-banner
+terminal fact and before later startup work or sealed input. It shall require
+candidate `0x5f9460`, count 4096, complete checked anonymous-heap backing, live
+dispositions and hierarchy, unchanged input-predecessor phase, and all prior
+observations. It shall publish exactly `"/\0"`, return two, retain no pointer,
+and leave process phase unchanged. One private fact shall publish only after
+complete validation and publication, and later clean input and terminal
+handling shall require it and clear it with all predecessor observations; the
+external echo profile shall require all optional observations absent.
+Structural and QEMU evidence shall enforce dispatch, arguments, checked heap,
+complete output, result, lifecycle, profile distinction, and unchanged
+rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETCWD-001` and `TK-DEC-213`.
+
+The bounded static-process post-banner-effective-identity increment shall
+accept exactly one native x86-64 syscall-107 request after the clean post-
+banner current-directory fact and before profile, prompt, or sealed input. It
+shall require the retained checked initial stack, live dispositions and
+hierarchy, unchanged input-predecessor phase, all prior observations, and the
+complete eight-word sealed real/effective user/group credential set. It shall
+return zero, retain no argument or credential state, and leave process phase
+unchanged. One fresh private fact shall publish only after complete validation,
+and later clean input and terminal handling shall require it and clear it with
+all predecessor observations; the external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, phase, complete credential coherence, result, lifecycle, profile
+distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-POST-BANNER-GETEUID-001` and `TK-DEC-214`.
+
+The bounded static-process shell-profile-open increment shall accept exactly
+one native x86-64 syscall-257 request after the clean post-banner effective-
+identity fact and before later profile work or sealed input. It shall require
+`AT_FDCWD`, exact sealed executable pathname `"/etc/profile\0"` at `0x4a6938`,
+read-only flags, mode zero, the unused descriptor-three slot, an immutable
+empty launch-owned file object, live dispositions and hierarchy, unchanged
+input-predecessor phase, and all prior observations. It shall allocate one
+process-owned read-only description, return three, retain no user pointer or
+lookup scratch, and publish one private lifecycle fact. Later clean profile
+work and terminal handling shall require the fact; teardown may revoke an
+unclosed bounded description. The external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, arguments, pathname, object identity, allocation, result, lifecycle,
+profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-OPEN-001` and `TK-DEC-215`.
+
+The bounded static-process shell-profile-metadata increment shall accept
+exactly one native x86-64 syscall-5 request after the clean profile-open fact
+and before profile input, close, or sealed input. It shall require descriptor
+three, the live process-owned read-only description for the immutable empty
+launch-owned profile, one exact complete writable 144-byte continuation-stack
+candidate, live dispositions and hierarchy, unchanged input-predecessor phase,
+and all prior observations. It shall construct the complete native regular-
+file metadata in private staging, validate before user mutation, publish it,
+erase and verify staging, return zero, retain no user pointer, and publish one
+private completion fact. The value shall have stable identity two, link count
+one, root ownership, mode `0100444`, zero size, blocks, timestamps, padding,
+and unused fields, and preferred I/O size 4096. Later clean profile work and
+terminal handling shall require the fact; teardown may revoke an unclosed
+description. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity, candidate extent, complete value, result, staging
+erasure, lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-FSTAT-001` and `TK-DEC-216`.
+
+The bounded static-process shell-profile-EOF increment shall accept exactly
+one native x86-64 syscall-0 request after the clean profile-metadata fact and
+before profile close or sealed input. It shall require descriptor three, the
+live process-owned read-only description for the immutable empty launch-owned
+profile at position zero, the exact complete writable 128-byte continuation-
+stack candidate, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall validate the complete candidate,
+return zero without reading or changing any candidate byte or description
+position, retain no user pointer, and publish one private completion fact.
+Later clean profile work and terminal handling shall require the fact; teardown
+may revoke an unclosed description. The clean fixture shall prove all 128 bytes
+unchanged and then erased. The external echo profile shall require every
+optional observation absent. Structural and QEMU evidence shall enforce
+dispatch, description identity and position, candidate extent, bound, no-
+output effect, result, lifecycle, profile distinction, and unchanged rollback.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-READ-001` and
+`TK-DEC-217`.
+
+The bounded static-process shell-profile-close increment shall accept exactly
+one native x86-64 syscall-3 request after the clean profile-EOF fact and before
+prompt or sealed input. It shall require descriptor three, the live process-
+owned read-only description for the immutable empty launch-owned profile at
+position zero, live dispositions and hierarchy, unchanged input-predecessor
+phase, and all prior observations. It shall consume the description, free the
+lowest nonstandard slot, preserve EOF history, return zero, retain no argument
+or object state, and publish one distinct private closed-state fact after
+proving the description absent. Later clean startup and terminal handling shall
+require the description absent and close fact present; terminal handling shall
+clear that fact. The external echo profile shall require every optional
+observation absent. Structural and QEMU evidence shall enforce dispatch,
+description identity and position, consumption, free-slot state, result,
+lifecycle, profile distinction, and unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROFILE-CLOSE-001` and `TK-DEC-218`.
+
+The bounded static-process shell-prompt increment shall accept exactly one
+native x86-64 syscall-1 request after explicit clean profile close and before
+command input. It shall require descriptor two, count four, the exact complete
+readable continuation-stack segment `/ # `, live dispositions and hierarchy,
+unchanged input-predecessor phase, absent profile description, live closed-
+state history, fresh prompt fact, and all prior observations. It shall copy the
+complete segment into empty private staging, validate before publication, emit
+it in source order, erase and prove staging empty, return four, retain no user
+pointer, and publish one private completion fact. Later clean input and
+terminal handling shall require that fact; terminal handling shall clear it.
+The clean fixture shall validate and erase its complete candidate. The external
+echo profile shall require every optional observation absent. Structural and
+QEMU evidence shall enforce dispatch, description state, candidate extent and
+value, staging, output, result, erasure, lifecycle, profile distinction, and
+unchanged rollback. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PROMPT-001` and `TK-DEC-219`.
+
+The bounded static-process shell-refill increment shall replace the one
+combined clean command publication with two exact native x86-64 syscall-0
+requests through the same checked anonymous buffer. After the initial prompt,
+the first shall publish `echo topal\n` with zero sealed tail and return 11.
+After exact `topal\n` output, one exact syscall-1 standard-error `/ # ` prompt
+shall satisfy the existing complete checked-copy and staging-erasure contract
+and publish a distinct fact. The second read shall replace the consumed first
+command with `exit\n`, zero the sealed tail, and return 5. Both reads shall use
+descriptor zero, requested count 1023, complete buffer and hierarchy checks,
+live dispositions, exact predecessor state, and exclusive input-owner
+transitions without retaining pointers. Clean terminal handling shall require
+and validate the second publication, erase and prove the complete buffer,
+consume its owner, and clear the second-prompt fact. The external echo profile
+shall require the same second refill and terminal consumption while requiring
+the optional clean prompt fact and all other clean observations absent.
+Structural and QEMU evidence shall enforce dispatch, buffer and bound, exact
+prefixes and zero tails, ownership, clean prompt ordering, results, terminal
+erasure, profile distinction, and unchanged
+rollback. This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-REFILL-INPUT-001` and
+`TK-DEC-220`.
+
+The bounded static-process shell-`pwd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `pwd\n`, and `exit\n` publications with
+results 11, 4, and 5 and distinct affine input-owner states. After the `pwd`
+publication, the clean profile shall admit one exact command-time native
+x86-64 syscall-79 current-directory request through the complete checked
+anonymous 4096-byte candidate at `0x005f_9460`, publish exact `/\0`, and return
+two. The pinned external profile shall instead admit one syscall-5 descriptor-
+one console-metadata request through the complete 144-byte stack candidate at
+`0x007f_f370`, then one syscall-16 descriptor-one `TCGETS` request through the
+exact 36-byte stack candidate at `0x007f_f2d0`; it shall return `-ENOTTY`
+without mutating the terminal candidate and may then use its previously sealed
+root fact. One following descriptor-one write shall validate and privately
+stage exact `/\n`, publish two bytes, erase staging, and return two; its clean
+candidate shall be `0x005f_9460` and its pinned external candidate shall be
+`0x005f_9570`. The clean profile shall interpose an exact qualified prompt
+before each command; the external profile shall require those optional
+observations absent. Terminal handling shall require and erase the third
+publication, consume its owner, clear every command-time fact, and preserve
+complete rollback. Structural and QEMU evidence shall enforce one affine two-
+base-page stack extent with both pages reserved, zeroed, mapped adjacent RW/NX,
+verified, and released together; the initial ABI value shall remain in the
+upper page and no stack growth or demand paging is admitted. Evidence shall
+also enforce both profile variants, exact predecessor state, requests, values,
+results, ownership, prompt and output ordering, erasure, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001` and `TK-DEC-221`.
+
+The bounded static-process shell-root-`cd` increment shall extend the checked
+command buffer to exact `echo topal\n`, `cd /\n`, `pwd\n`, and `exit\n`
+publications with results 11, 5, 4, and 5 and five distinct affine input-owner
+states. After the `cd /` publication, both profiles shall admit one native
+x86-64 syscall-80 current-directory change through a complete checked readable
+two-byte candidate containing exact `/\0`; success shall return zero and
+replace the prior private current-directory fact with a new sealed-root
+generation without retaining a pointer or bytes. The later profile-specific
+`pwd` sequence shall require that generation and preserve the exact clean
+`getcwd`, external stdout `fstat`/`TCGETS`, application-owned `/\n`, and prompt
+distinction of `TOPAL-SYSTEMS-STATIC-ELF-SHELL-PWD-COMMAND-001`. Its clean
+output candidate shall remain exact; its pinned external output candidate may
+move within the checked readable heap mapping `[0x005f7000, 0x00619000)`, but
+shall retain a complete overflow-free two-byte extent, exact `/\n`, and count
+and result two. Terminal handling shall require and erase the fourth
+publication, consume its owner, clear all command-time and directory-generation
+facts, and preserve complete rollback of the affine two-page stack. Structural
+and QEMU evidence shall enforce exact predecessor state, requests, candidate
+extent and value, result, state replacement, ownership, prompt and output
+ordering, erasure, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-CD-ROOT-COMMAND-001` and `TK-DEC-222`.
+
+The bounded static-process shell-root-directory-test increment shall extend the
+checked command buffer to exact `echo topal\n`, `cd /\n`, `test -d /\n`,
+`pwd\n`, and `exit\n` publications with results 11, 5, 10, 4, and 5 and six
+distinct affine input-owner states. After the sealed-root generation has been
+replaced, both profiles shall admit one native x86-64 syscall-262 request with
+`AT_FDCWD`, flags zero, a complete checked readable two-byte pathname
+containing exact `/\0`, and a complete checked writable 144-byte native
+metadata candidate. Success shall publish a complete provider-sealed immutable
+root-directory value with mode `040755`, root ownership, no device-special
+identity, 4096-byte preferred I/O block, and coherent remaining fields; return
+zero; retain no user pointer or bytes; and publish one private observation
+fact. The application shall consume that value only for silent successful
+`test -d /`, and the later profile-specific `pwd` sequence shall require the
+fact. Terminal handling shall require and erase the fifth publication, consume
+its owner, clear the directory generation, metadata observation, and all
+command-time facts, and preserve complete rollback of the affine two-page
+stack. Structural and QEMU evidence shall enforce exact predecessor state,
+dispatch, complete transfers, pathname and metadata, result, observation and
+ownership transitions, prompt and output ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-TEST-001` and `TK-DEC-223`.
+
+The bounded static-process shell-root-directory-condition increment shall
+replace the third command with exact
+`test -d / && echo root-directory\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall complete the qualified exact-root metadata
+request and consume its complete native value before issuing one x86-64
+syscall-1 standard-output request for a complete checked readable 15-byte
+candidate containing exact `root-directory\n`. The provider shall require the
+exact predecessor and metadata-observation state, stage and compare the entire
+candidate before output, publish only those bytes, return 15, erase staging,
+retain no user pointer or bytes, and publish one private conditional-output
+fact. The later profile-specific `pwd` sequence shall require that fact.
+Terminal handling shall require and erase the fifth publication, consume its
+owner, clear the directory generation, metadata and conditional-output
+observations, and all command-time facts, and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+predecessor state, complete metadata consumption, application-selected output,
+candidate extent and value, result, observation and ownership transitions,
+prompt and output ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-DIRECTORY-CONDITION-001` and `TK-DEC-224`.
+
+The bounded static-process shell-missing-directory-condition increment shall
+replace the third command with exact
+`test -d /missing || echo missing\n`, preserving five publications, six affine
+input-owner states, the clean prompt profile, and external prompt absence. Both
+profiles shall issue one exact `AT_FDCWD` metadata request for `/missing\0`
+with flags zero and a complete checked writable 144-byte native candidate. The
+provider shall validate the exact predecessor, complete pathname, request
+selectors, candidate extent, and sealed-root absence before returning exact
+`-ENOENT`, leaving the entire candidate unchanged, retaining no user pointer or
+bytes, and publishing one private missing-path fact.
+
+After consuming that result, both applications shall select the false edge and
+issue one x86-64 syscall-1 standard-output request for a complete checked
+readable eight-byte candidate containing exact `missing\n`. The provider shall
+require the missing-path fact, stage and compare the entire candidate before
+output, publish only those bytes, return eight, erase staging, retain no user
+pointer or bytes, and publish one private failed-condition-output fact. The
+later profile-specific `pwd` sequence shall require that fact. Terminal
+handling shall require and erase the fifth publication, consume its owner,
+clear the directory generation, missing-path and failed-condition-output facts,
+and all command-time facts, and preserve complete rollback of the affine
+two-page stack. Structural and QEMU evidence shall enforce exact negative
+lookup, unchanged failed-call output memory, application-selected output,
+candidate extent and value, result, observation and ownership transitions,
+prompt and output ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-MISSING-DIRECTORY-CONDITION-001` and
+`TK-DEC-225`.
+
+The bounded static-process shell-root-glob-enumeration increment shall replace
+the third command with exact `echo /*\n`, preserving five publications, six
+affine input-owner states, the clean prompt profile, and external prompt
+absence. Both profiles shall open exact `/\0` relative to `AT_FDCWD` with
+read-only, nonblocking, close-on-exec, directory-only flags as lowest-free
+descriptor three. The provider shall retain one immutable sealed-root
+description with private position and no host-derived state.
+
+Both applications shall issue x86-64 syscall 217 on descriptor three through a
+complete checked writable clean-stack or external-heap candidate and request
+the qualified profile count. The provider shall stage and publish exact
+coherent 24-byte `.` and `..` directory records, return 48, erase staging, and
+advance the private position. A second exact request shall return EOF without
+output. The applications shall explicitly close descriptor three; the
+provider shall consume the description and free the slot while preserving
+private enumeration history.
+
+After consuming EOF and close, both applications shall retain the unmatched
+glob and issue one syscall-1 standard-output request for complete exact `/*\n`.
+The provider shall validate and stage the entire three-byte candidate before
+output, return three, erase staging, retain no user pointer or bytes, and
+publish one private glob-output fact. The later profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every enumeration,
+description, output, and command-time fact and preserve complete rollback of
+the affine two-page stack. Structural and QEMU evidence shall enforce exact
+open flags and pathname, checked candidates, native records, position, EOF,
+explicit close, application-selected output, observation and ownership
+transitions, prompt ordering, erasure, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-ROOT-GLOB-ENUMERATION-001` and `TK-DEC-226`.
+
+The bounded static-process named-root-glob-match increment shall retain the
+five exact commands and the complete qualified root-description lifecycle. It
+shall refine sealed root with one immutable `bin` directory child at inode
+four and update root's coherent link count to three without granting child
+lookup, open, metadata, or enumeration authority.
+
+Both profiles shall receive three exact ordered 24-byte native directory
+records for `.`, `..`, and `bin`, with root inode three, child inode four,
+offsets one through three, directory type, exact terminated names, and zero
+padding. The provider shall return 72, erase private staging, advance the
+description, return EOF on the second qualified request, and require explicit
+close exactly as in the predecessor.
+
+After EOF and close, both applications shall issue one syscall-1
+standard-output request for complete exact `/bin\n`. The provider shall
+validate and stage the entire five-byte candidate before output, return five,
+erase staging, retain no user pointer or bytes, and publish one private
+matched-glob fact. The later profile-specific `pwd` shall require that fact.
+Terminal handling shall clear every enumeration, description, output, and
+command-time fact and preserve complete rollback of the affine two-page stack.
+Structural and QEMU evidence shall enforce coherent parent metadata, exact
+child identity and records, position, EOF, close, application-selected output,
+observation and ownership transitions, prompt ordering, erasure, and unchanged
+external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-GLOB-MATCH-001` and `TK-DEC-227`.
+
+The bounded static-process named-root-directory-condition increment shall
+replace the third publication with exact
+`echo /*; test -d /bin && echo bin-directory\n`. Both profiles shall first
+complete the qualified root enumeration, close, and `/bin\n` output. They shall
+then issue x86-64 syscall 262 for exact `/bin\0` relative to `AT_FDCWD`, zero
+flags, and a complete checked 144-byte clean-stack or external-heap candidate.
+
+The provider shall publish complete deterministic inode-four directory
+metadata with link count two, mode `0755`, root ownership, zero size and times,
+and 4,096-byte preferred transfer size. It shall verify the complete copy,
+return zero, erase staging, retain no pointer or bytes, and publish one private
+ordered metadata fact. After consuming it, both applications shall issue one
+syscall-1 request for exact `bin-directory\n`; the provider shall validate and
+stage all 14 bytes, publish them, return 14, erase staging, and record one
+private condition-output fact.
+
+The later prompt and profile-specific `pwd` shall require the named condition.
+Terminal handling shall clear every child-metadata, enumeration, description,
+output, and command-time fact and preserve complete rollback. Structural and
+QEMU evidence shall enforce the combined 44-byte command, predecessor match,
+exact lookup and metadata, application-selected output, ordered observations,
+candidate and staging erasure, prompt distinction, and unchanged external
+compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-NAMED-ROOT-DIRECTORY-CONDITION-001` and
+`TK-DEC-228`.
+
+The bounded static-process empty-bin-glob-enumeration increment shall replace
+the third publication with exact
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, and complete named-child
+metadata lookup. They shall then issue x86-64 syscall 257 for exact `/bin/\0`
+relative to `AT_FDCWD`, flags `0x90800`, mode zero, and result three.
+
+The provider shall bind descriptor three to one immutable inode-four directory
+description at position zero and publish its complete qualified metadata on
+syscall 5. It shall accept one syscall-217 request, stage coherent ordered
+24-byte `.` and `..` records for inode four and parent inode three, copy and
+verify all 48 bytes to a complete checked clean-stack or external-heap
+candidate, erase staging, advance position, and return 48. A following request
+shall return EOF with the candidate unchanged, and syscall 3 shall explicitly
+consume the description.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/*\n`; the provider shall validate and stage all seven bytes,
+publish them, return seven, erase staging, and record one private empty-bin-glob
+output fact. The later prompt and profile-specific `pwd` shall require that
+fact. Terminal handling shall clear every child-metadata, enumeration,
+description, output, and command-time fact and preserve complete rollback.
+Structural and QEMU evidence shall enforce the combined 37-byte command,
+predecessor match and metadata, exact child open, metadata, records, EOF and
+close, application-selected output, ordered observations, candidate and
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-EMPTY-BIN-GLOB-ENUMERATION-001` and
+`TK-DEC-229`.
+
+The bounded static-process bin-busybox-glob-match increment shall retain the
+five qualified publications and exact third command
+`echo /*; test -d /bin && echo /bin/*\n`. Both profiles shall first complete
+the qualified root enumeration, `/bin\n` output, named-child metadata lookup,
+exact `/bin/` open, and descriptor metadata query.
+
+The provider shall add exactly one immutable inode-five regular-file `busybox`
+entry beneath inode four. For the qualified syscall-217 request it shall stage
+coherent ordered 24-byte `.` and `..` records followed by one aligned 32-byte
+`busybox` record with next offset three and `DT_REG=8`; copy and verify all 80
+bytes to the complete checked clean-stack or external-heap candidate; erase
+staging; advance position; and return 80. A following request shall return EOF
+with the candidate unchanged, and syscall 3 shall explicitly consume the
+description. The entry identity shall grant no lookup, metadata, content, open,
+or execution authority.
+
+After EOF and close, both applications shall issue one syscall-1 request for
+exact `/bin/busybox\n`; the provider shall validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+bin-busybox-glob output fact. The later prompt and profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every child-metadata,
+enumeration, description, output, and command-time fact and preserve complete
+rollback. Structural and QEMU evidence shall enforce the unchanged 37-byte
+command, predecessor match and metadata, exact child-directory open, coherent
+three-record transfer, EOF and close, application-selected matched output,
+ordered observations, candidate and staging erasure, prompt distinction, and
+unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-GLOB-MATCH-001` and `TK-DEC-230`.
+
+The bounded static-process bin-busybox-file-condition increment shall replace
+the third publication with the exact 80-byte command
+`echo /*; test -d /bin && echo /bin/*; test -f /bin/busybox && echo busybox-file\n`.
+Both profiles shall first complete all qualified root and child enumeration,
+metadata, close, and output transitions.
+
+They shall then issue x86-64 syscall 262 for exact `/bin/busybox\0` relative
+to `AT_FDCWD`, flags zero, and a complete checked 144-byte clean-stack or
+external-heap candidate. The provider shall publish immutable inode-five
+regular-file metadata with link count one, mode `0555`, root ownership, zero
+size, blocks and times, and 4,096-byte preferred transfer size. It shall verify
+the complete copy, return zero, erase staging, and record one private ordered
+file-metadata fact.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-file\n`; the provider shall validate and stage all thirteen
+bytes, publish them, return thirteen, erase staging, and record one private
+file-condition output fact. The later prompt and profile-specific `pwd` shall
+require that fact. Terminal handling shall clear every file-metadata,
+enumeration, description, output, and command-time fact and preserve complete
+rollback. Structural and QEMU evidence shall enforce the complete 80-byte
+command, predecessor enumeration and output, exact lookup and metadata,
+application-selected output, ordered observations, candidate and staging
+erasure, prompt distinction, and unchanged external compatibility. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-FILE-CONDITION-001` and
+`TK-DEC-231`.
+
+The bounded shell profile may extend the same third publication to the exact
+129-byte command ending in
+`test -x /bin/busybox && echo busybox-executable\n`. Both clean and pinned
+external profiles shall first complete the qualified regular-file metadata and
+`busybox-file\n` output transitions. They shall then repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero, followed by syscall 107 with no arguments. The provider shall
+republish the identical immutable inode-five mode `0555`, require all ordered
+predecessor facts, return effective UID zero, and record private repeated-
+metadata and credential facts.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-executable\n`; the provider shall validate and stage all
+nineteen bytes, publish them, return nineteen, erase staging, and record one
+private executable-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear every access,
+metadata, enumeration, description, output, and command-time fact and preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+129-byte command, exact repeated metadata and credential requests,
+application-selected output, ordered observations, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXECUTABLE-CONDITION-001` and
+`TK-DEC-232`.
+
+The bounded shell profile may extend the same third publication to the exact
+176-byte command ending in
+`test -s /bin/busybox && echo busybox-nonempty\n`. For this extended profile,
+every inode-five metadata publication shall replace the predecessor's zero
+size and blocks with size 2,024,544 and block count 3,955, bound to the complete
+digest-checked static-user boot resource. All other metadata and every ordered
+predecessor transition shall remain unchanged.
+
+After `busybox-executable\n`, both profiles shall repeat x86-64 syscall 262
+with `AT_FDCWD=-100`, exact `/bin/busybox\0`, the complete 144-byte candidate,
+and flags zero. The provider shall require the executable-condition output and
+all predecessor facts, republish the identical artifact-bound metadata, return
+zero, and record one private repeated nonempty-metadata fact.
+
+After consuming that fact, both applications shall issue one syscall-1 request
+for exact `busybox-nonempty\n`; the provider shall validate and stage all
+seventeen bytes, publish them, return seventeen, erase staging, and record one
+private nonempty-condition output fact. The later prompt and profile-specific
+`pwd` shall require that fact. Terminal handling shall clear both new facts and
+every predecessor fact with complete rollback. Structural and QEMU evidence
+shall enforce the complete 176-byte command, artifact-bound size, exact
+repeated metadata request, application-selected output, observation ordering,
+staging erasure, prompt distinction, and unchanged external compatibility.
+This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-NONEMPTY-CONDITION-001` and
+`TK-DEC-233`.
+
+The bounded shell profile may extend the same third publication to the exact
+216-byte command ending in
+`exec 3</bin/busybox; echo busybox-open\n`. After every predecessor fact and
+`busybox-nonempty\n`, both profiles shall issue x86-64 syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox\0`, flags zero, and mode zero. The
+provider shall validate the complete readable pathname, artifact-bound
+inode-five identity, command owner, live process, and absence of a live
+nonstandard description before binding lowest-free descriptor three to one
+immutable read-only description at offset zero and returning three.
+
+After the successful open, both applications shall issue one syscall-1
+request for exact `busybox-open\n`; the provider shall validate and stage all
+thirteen bytes, publish them, return thirteen, erase staging, and record one
+private read-only-open output fact. The later prompt and profile-specific
+`pwd` shall require that fact while descriptor three remains live. Terminal
+handling shall prove and revoke the description, clear the new output fact
+and every predecessor fact, and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 216-byte command, exact open
+arguments and result, artifact identity, application-selected output,
+description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-READ-ONLY-OPEN-001` and
+`TK-DEC-234`.
+
+The bounded shell profile may extend the same third publication to the exact
+263-byte command ending in
+`echo busybox-open; IFS= read -r -n 4 -u 3 _ && echo busybox-read\n`.
+After every predecessor fact and `busybox-open\n`, the clean profile shall
+issue four direct x86-64 syscall-0 requests. The external profile shall first
+issue syscall 16 twice with `TCGETS=0x5401` and once with `TCSETS=0x5402` on
+descriptor three and its complete observed stack candidate; each shall return
+`-ENOTTY`. Before every external read, syscall 7 shall receive one exact
+eight-byte descriptor-three `POLLIN` entry, `nfds=1`, and timeout `-1`; shall
+validate first-use zero or retained `POLLIN` in `revents`; shall publish
+`POLLIN`; shall return one; and shall authorize only the next read.
+
+Both profiles shall issue four ordered syscall-0 requests on descriptor three,
+each with count one and the next byte of one complete writable candidate. The
+provider shall validate the live immutable artifact-bound description,
+current offset, sealed continuation, complete candidate, hierarchy, stack,
+dispositions, command owner, exact profile-specific terminal-probe count, and
+readiness state before returning exact bytes `0x7f`, `E`, `L`, and `F` through
+private kernel staging, reading back each publication, erasing staging,
+consuming any external readiness fact, and advancing the description from
+offset zero to four. It shall retain no user pointer.
+
+After the fourth successful read, the external profile shall issue one
+`TCGETS` and one `TCSETS` request with the same checked `-ENOTTY` result.
+Both applications shall then issue one syscall-1 request for exact
+`busybox-read\n`; the provider shall validate and stage all thirteen bytes,
+publish them, return thirteen, erase staging, and record one private
+header-read output fact. The later prompt and profile-specific `pwd` shall
+require that fact while descriptor three remains live at offset four.
+Terminal handling shall prove and revoke the description, offset,
+terminal-probe counter, and pending-readiness fact; clear the new output fact
+and every predecessor fact; and preserve complete rollback. Structural and
+QEMU evidence shall enforce the complete 263-byte command, exact
+profile-specific terminal probes and readiness calls, four exact read arguments,
+results and bytes, artifact identity, offset progression, application-selected
+output, description lifetime, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-HEADER-READ-001` and
+`TK-DEC-235`.
+
+The bounded shell profile may extend the same third publication to the exact
+294-byte command ending in
+`echo busybox-read; exec 3<&-; echo busybox-close\n`. After every predecessor
+fact and `busybox-read\n`, both profiles shall issue syscall 72 with descriptor
+three, `F_DUPFD_CLOEXEC=0x406`, and minimum ten. The provider shall validate
+the live artifact-bound description at offset four, exact command and minimum,
+absence of a saved mapping, sealed continuation, hierarchy, stack,
+dispositions, and command owner before binding lowest-available descriptor ten
+to the same description, marking only that mapping close-on-exec, and returning
+ten.
+
+Both profiles shall then issue syscall 3 on descriptor three and syscall 3 on
+descriptor ten. The first shall return zero, remove descriptor three, and
+retain the immutable description and offset through descriptor ten. The second
+shall return zero, remove descriptor ten, destroy the last description
+reference, and revoke the offset, ordered terminal-probe counter, and readiness
+state. After the second close, both applications shall issue one syscall-1
+request for exact `busybox-close\n`; the provider shall validate and stage all
+fourteen bytes, publish them, return fourteen, erase staging, and record one
+private explicit-close output fact.
+
+The later prompt and profile-specific `pwd` shall require the output fact and
+absence of both nonstandard mappings and their description. Terminal handling
+shall prove and clear the redirection and output facts with every predecessor
+fact without revoking the destroyed description again, and shall preserve
+complete rollback. Structural and QEMU evidence shall enforce the complete
+294-byte command, exact duplicate arguments and result, shared-description
+identity and offset, ordered closes and results, last-close destruction,
+application-selected output, observation ordering, staging erasure, prompt
+distinction, and unchanged external compatibility. This realizes
+`TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-EXPLICIT-CLOSE-001` and
+`TK-DEC-236`.
+
+The bounded shell profile may retain the exact 294-byte third publication and
+replace the fourth publication with exact `exec 3</bin/busybox;pwd\n`. After
+every predecessor fact, `busybox-close\n`, and the profile-specific
+following-prompt observation, both profiles shall issue syscall 257 with
+`AT_FDCWD=-100`, exact `/bin/busybox`, flags zero, and mode zero. The provider
+shall require the old descriptor-three and descriptor-ten mappings
+and their description to be absent; validate the live process, sealed
+continuation, hierarchy, stack, dispositions, command owner, full immutable
+pathname, and artifact identity; then reuse lowest descriptor three for a
+distinct immutable read-only description generation at offset zero and return
+three. No old offset, mapping, close-on-exec flag, terminal-probe counter,
+readiness fact, or description identity may survive into the new generation.
+
+After the reopen, both applications shall execute the `pwd` segment in the
+same publication. Its profile-specific pathname and output flow and the later
+prompt shall require exactly the new descriptor-three description at offset
+zero; no synthetic reopen-confirmation output shall be added.
+Terminal handling shall prove and revoke the reopened mapping and description
+exactly once, clear its generation, rights, offset, command-time facts, and every
+predecessor fact without reviving or revoking the destroyed generation again,
+and preserve complete rollback. Structural and QEMU evidence shall enforce the
+exact 294-byte third and 24-byte fourth publications, old-generation absence,
+exact second-open arguments and result, lowest-slot reuse, distinct description
+generation, fresh offset and clean auxiliary state, the external profile's
+resulting complete 144-byte console-stat candidate at exact `0x007f_f240` and
+following complete 36-byte `TCGETS` candidate at exact `0x007f_f1a0`,
+application-selected continuation into `pwd`,
+observation ordering, prompt distinction, and unchanged external compatibility.
+This realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BIN-BUSYBOX-REOPEN-001` and
+`TK-DEC-237`.
+
+The bounded static-process shell may preserve the first four reopen-profile
+publications and replace its terminal publication with exact
+`exec /bin/busybox true\n`, returning 23 from the final input read. Both
+profiles shall then admit exactly one syscall-59 process-image replacement for
+the same sealed `/bin/busybox` artifact. The provider shall completely validate
+the exact pathname, argument vector `[/bin/busybox, true]`, ordered environment
+strings `SHLVL=1`, `OLDPWD=/`, `PATH=/sbin:/usr/sbin:/bin:/usr/bin`, and `PWD=/`, all null
+terminators and extents, live process state, artifact identity, hierarchy,
+stack, dispositions, command owner, and replacement resources without retaining
+user pointers.
+
+Success shall not return. It shall consume the shell image generation while
+preserving PID one, root credentials, sealed root current directory, standard
+descriptions, and the reopened non-close-on-exec descriptor three. It shall
+reset caught dispositions, FS/thread registrations, command state, old random
+delivery, stack, heap, mutable image state, and replacement-sensitive mapping
+permissions; restore the exact sealed ELF file bytes and zero-fill; construct a
+fresh exact initial stack, auxiliary vector, and random generation; and enter
+the same artifact at its validated entry as BusyBox `true`. The replacement
+application shall traverse its ordinary startup sequence and terminate with
+`exit_group(0)`. Terminal handling shall revoke the inherited description and
+all fresh image resources exactly once and complete the existing affine
+rollback. Structural and clean plus pinned-external QEMU evidence shall enforce
+validation-before-consumption, nonreturn, generation distinction, reset state,
+descriptor inheritance, startup, termination, cleanup, and rollback. This
+realizes `TOPAL-SYSTEMS-STATIC-ELF-SHELL-BUSYBOX-TRUE-EXECVE-001` and
+`TK-DEC-238`.
+
+The reusable static-process realization shall replace exact later-argument
+comparison with checked runtime transport of one through eight arguments and
+at most 256 aggregate bytes including terminators. It shall enforce complete
+path/vector/string/environment bounds and the declared Linux input errors,
+erase private staging on every rejected prefix, preserve the original owner
+until commit, and construct a fresh aligned ABI stack from the copied values.
+Startup stack destinations and credential facts shall derive from complete
+mapping extents and the new auxiliary-vector identity. Console write shall
+stage caller-selected standard-output/error bytes with zero-length, descriptor,
+size and access behavior matching the formal rule; it shall not compare output
+with qualification payloads. Terminal cleanup shall retain the low eight status
+bits and reclaim the same resources for every application status. Final shell
+refill shall observe bounded serial input rather than fabricate a compiled exec
+command, with the later probe input remaining a distinct observation.
+
+Compiler and physical qualification shall cover runtime payload variation,
+empty and maximum-sized arguments, count/aggregate overflow, inaccessible and
+unterminated candidates, nonempty failed prefixes and retry on the unchanged
+owner, fresh image state, descriptor inheritance, staged output/error atomicity,
+register restoration, statuses zero/one, and full rollback. The external corpus
+shall execute pinned BusyBox `true`, `false` and multi-argument `echo` through
+the same services. This realizes `TK-DEC-239` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ARGUMENTS-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-STACK-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CONSOLE-WRITE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXIT-STATUS-001`, and
+`TOPAL-SYSTEMS-STATIC-PROCESS-COMMAND-INPUT-001`.
+
+The reusable file-description realization shall implement `TK-DEC-240` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-TABLE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-READ-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-SEEK-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-METADATA-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-DUPLICATION-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-FLAGS-001`, and
+`TOPAL-SYSTEMS-STATIC-PROCESS-FD-CLOSE-001`
+with a separately owned bounded table, shared description state, immutable
+boot-member borrowing and checked native adapters. It shall enforce the
+slot/reference-count invariant, lowest-slot allocation and native flag/error
+behavior; preserve source and target on rejected operations; use complete live
+writable/readable extent checks and private staging for file data/metadata;
+preserve eligible aliases and positions across exec; and reclaim/wipe all
+description state before outer rollback. Table construction shall consume the
+predecessor single-description authority. Native file bytes shall remain
+independent of process-writable image data. Clean and physical qualification
+shall cover aliasing, replacement, flags, failed copies, offsets/EOF, exec
+filtering, descriptor reuse and application-selected file consumption without
+applet, payload or return-site oracles. Native table/backing arguments and
+integer/layout choices shall remain closed provider details.
+
+The reusable signal realization shall implement `TK-DEC-241`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-ACTION-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-SIGNAL-MASK-001` with process-owned actions and
+blocked state. It shall import and consume predecessor authority, stage
+overlapping copies, enforce native validation order and normalization, retain
+valid updates after old-value output faults, reset action metadata on exec
+while retaining ignored handlers and blocked state, and erase all terminal
+state. Clean tests shall cover these boundaries before external application
+qualification. Registration shall treat handler/restorer values as opaque ABI
+data and shall not establish delivery, frames or return semantics.
+
+The read-only namespace realization shall implement `TK-DEC-242` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PATH-{COPY,LOOKUP,OPEN,METADATA}-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-DIRECTORY-READ-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-CWD-001`. It shall retain immutable object and cwd
+identities, use disjoint checked/erased pathname storage, enforce native copy/
+allocation/lookup ordering, publish independent open descriptions atomically,
+and make metadata, records and reads coherent. Clean executed cases shall cover
+name boundaries, relative authority, errors, exhaustion, aliases/independent
+positions and cookies, cwd/exec lifetime and erasure. External named-file and
+directory consumers shall share these services; the existing corpus remains a
+regression. Unqualified modes shall fail closed. Native encodings stay private.
+
+The realtime-seconds realization shall implement `TK-DEC-243` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-REALTIME-SECONDS-001` with exclusive platform
+acquisition, coherent/validated calendar samples, checked epoch conversion,
+optional complete native output and erased staging. It shall qualify calendar
+boundaries, actual declared RTC dates, return/output equality, null/bad outputs,
+native registers, external directory-consumer setup and complete rollback.
+Hardware ports and representations shall remain closed provider details.
+
+The reusable prepared-root adapter shall realize `TK-DEC-244` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-ROOT-CREDENTIALS-001` using an imported private
+identity witness, independent queries and idempotent root selections, preserved
+native registers and exec identity, and complete terminal erasure. It shall
+qualify repeated/reordered calls, native widths and metadata independence,
+without using user-writable auxiliary data as authority or admitting other
+identity changes.
+
+The runtime-environment realization shall implement `TK-DEC-245`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-ENVIRONMENT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-PAYLOAD-001`. It shall copy caller environments
+into disjoint owned staging, preserve empty/null/duplicate data and arbitrary
+argv[0], enforce declared vector/byte/copy errors, preserve pre-commit state and
+erase every failed prefix. It shall derive vectors and above-RSP payloads from
+copied counts/offsets, separate execution name from argv-zero data, preserve
+generation-specific auxiliary/random facts and consume all staging before
+entry. Executed cases shall cover limits, failed-prefix retry, pointer/value
+transport, downward-stack writes, changed cwd/exported environments and full
+reclamation. Native bounds/layout remain closed systems-provider details.
+
+The repeated-exec adapter shall implement `TK-DEC-246` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001`. It shall validate the current
+qualified generation independently of the original command phase, retain the
+pristine executable authority, copy before every commit and repeat descriptor
+filtering, signal reset, backing erasure/revocation and fresh stack/random
+construction. Errors shall preserve the current generation; final cleanup
+shall reclaim retained resources once. Executed repeated-entry and inherited
+state witnesses shall cover later-generation failed retries and full rollback.
+The complete backing precondition shall remain explicit until independently
+broadened; no fixed replacement count shall authorize execution.
+
+The deadline-entry correction shall implement `TK-DEC-248` and
+`TOPAL-SYSTEMS-DEADLINE-EVENT-001` by filtering a completed event's raw target
+notification before source dispatch. It shall acknowledge that notification
+without repeating completion/preemption, restore the exact interrupted register
+and frame image, and close the source/controller route on accepted completion.
+Qualification shall inject a queued completed-event notification at worker
+resumption, reject the predecessor behavior and complete ordinary context and
+application/resource regressions. Native vectors and MMIO remain private.
+
+The reusable process-observation adapter shall implement `TK-DEC-247`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-IDENTITY-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-UNAME-001`. It shall import the prepared process
+identity privately, observe PID/TID/parent repeatedly without altering call
+phase, and publish the selected immutable guest system record only after a
+complete checked writable extent. It shall preserve non-result registers,
+ignore unused arguments, retain no caller pointer and preserve identity across
+exec and complete terminal erasure. Executed cases shall cover native bytes,
+reordering, faults, replacement shells and full rollback. Native record and
+selector details shall remain provider-owned.
+
+The immutable boot-root open-access adapter shall implement `TK-DEC-249` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-ACCESS-001`. It shall decode ordinary
+access modes with qualified modifiers, preserve complete name-copy/allocation/
+lookup/type/access ordering and retain the prepared read-only filesystem view.
+Failed write-intent requests shall publish no handle, preserve process state
+and erase private name copies. Executed cases shall cover native widths,
+lookup/type/readonly and exhaustion errors, repeated inherited state, an
+interactive replacement shell and full rollback. No native flags or user
+command/prompt data shall grant writable authority or select kernel policy.
+
+The bounded initial-output adapter shall accept Linux x86-64 `write` only for
+descriptor one, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's readable user mapping
+set. It shall reject invalid requests before dereference or UART output, copy a
+valid extent completely into fixed private kernel staging, publish exactly the
+argument-selected prefix, return the requested count, and preserve the
+continuation. It shall contain no exact payload or single-return-site oracle.
+Structural and pinned-QEMU evidence shall prove range rejection, dynamic loop
+bounds, staging before output, argument-derived return, and deterministic
+execution of the existing 26-byte application witness.
+
+The bounded initial-input adapter shall accept Linux x86-64 `read` only for
+descriptor zero, an executable return continuation, a length of 1–256, and a
+complete overflow-free candidate inside the provider's writable user mapping
+set. It shall reject invalid requests before polling or user access, receive
+exactly the requested bounded count into fixed private kernel staging, perform
+a fault-contained copy of the complete staged prefix, return the requested
+count, and preserve the continuation. It shall contain no exact input-value,
+candidate, or single-return-site oracle. User code shall validate the
+deterministic four-byte qualification input before stack disposal. Structural
+and pinned-QEMU evidence shall prove range rejection, dynamic receive and copy
+bounds, complete staging before user publication, argument-derived return, and
+the ordered post-return witness.
+
+The bounded initial-heap adapter shall lower Linux x86-64 syscall 12 only for a
+live initial context and a return continuation inside the finalized executable
+mapping. Image construction shall derive the initial break from runtime ELF
+`p_memsz`, prove it lies inside the 4096-byte data page, zero the complete tail
+from runtime `p_filesz` through the page end, and publish the break only after
+successful construction. Dispatch shall keep current state provider-private,
+return it for a zero query or unsupported request, and replace it only with an
+in-range byte-granular request. Teardown shall clear it. Structural and pinned-
+QEMU evidence shall prove runtime derivation, complete zeroing, query, grow,
+write/read, shrink, rejected growth, exact returns, and state clearing.
+
+The initial scalar-identity adapter shall lower Linux x86-64 syscall numbers
+39, 102, 104, 107, 108, 110, and 186 only for a live initial context and a
+return continuation inside the finalized executable mapping. It shall return
+PID/TID one, parent PID zero, and real/effective UID/GID zero exactly as the
+checked disposition declares and shall introduce no user-copy or retained
+state. Structural and pinned-QEMU evidence shall prove every dispatch number,
+broad executable-return validation, constant coherence, application result
+checks, and terminal continuation.
+
+The initial x86-64 stack adapter shall place native `AT_SECURE` with value zero
+after the program-header facts and before the unique `AT_NULL`. It shall shift
+the bounded block without changing the `argv[0]`/`AT_EXECFN` string alias.
+Constructed code shall validate the pair, terminator, and exact enlarged block
+consumption. Structural and pinned-QEMU evidence shall prove placement, value,
+alias identity, stack alignment, and continued application execution.
+
+The adapter shall place native `AT_CLKTCK` with value 100 after `AT_SECURE` and
+before the unique `AT_NULL`, shift the bounded block while keeping the
+executable-name string address fixed, and validate the pair, moved terminator,
+and exact enlarged consumption in constructed code. Structural and pinned-QEMU
+evidence shall prove order, value, fixed aliasing, alignment, and continuation.
+
+The adapter shall place native `AT_PLATFORM` after `AT_CLKTCK` and before
+`AT_NULL`, pointing to a distinct in-block NUL-terminated `x86_64` string while
+keeping the executable-name address fixed. Constructed code shall validate the
+tag, exact pointer, all bytes, terminator, alias separation, moved `AT_NULL`,
+and exact enlarged consumption. Structural and pinned-QEMU evidence shall prove
+the complete pointer-bearing fact and continued execution.
+
+The initial x86-64 FS-base adapter shall lower syscall 158 only for operation
+codes `0x1002` and `0x1003`, a live initial context, and a return continuation
+inside the finalized executable mapping. `ARCH_SET_FS` shall validate zero or
+a canonical base within the readable user mapping set, retain it privately,
+install it for user return, and return zero. `ARCH_GET_FS` shall copy the same
+private value to a validated writable eight-byte user extent under fault
+recovery and return zero. Invalid base, destination, and operation paths shall
+return Linux-compatible errors without changing retained state, and data-role
+teardown shall clear it. Structural and pinned-QEMU evidence shall prove the
+set/get/restore sequence, result and word checks, provider installation, fault-
+contained output, and state clearing.
+
+The initial clear-child-TID adapter shall lower Linux x86-64 syscall 218 only
+for a live initial context and a return continuation inside the finalized
+executable mapping. It shall accept null or one complete writable four-byte
+candidate, retain it privately, and return TID one without dereference. The
+terminal `exit_group(0)` path shall fault-contain a zero store to a nonnull
+candidate and clear private state before publishing terminal lifecycle state.
+Structural and pinned-QEMU evidence shall prove registration, exact return,
+terminal store/clear ordering, and no retained state at data teardown.
+
+The initial empty robust-list adapter shall lower Linux x86-64 syscall 273 only
+for a live initial context, finalized executable return continuation, exact
+length 24, and a complete readable 24-byte candidate. Registration shall
+retain the candidate privately without access and return zero. Terminal exit
+shall fault-contain a complete 24-byte copy, require the native list link to be
+self-referential and the pending pointer null, and clear state before terminal
+publication. Structural and pinned-QEMU evidence shall prove registration,
+terminal copy and checks, state clearing, and teardown rejection.
+
+The initial stack-limit adapter shall lower Linux x86-64 syscalls 97 and 302
+only for a live initial context and finalized executable return continuation.
+It shall accept selector 3; `prlimit64` shall additionally require PID zero or
+one and a null new-limit pointer. Both shall validate a complete writable 16-
+byte output extent, copy the native 8 MiB/`RLIM_INFINITY` pair under fault
+recovery, retain no pointer, and return zero. Structural and pinned-QEMU
+evidence shall prove both dispatch forms, argument rejection, shared complete
+copy, exact application values, and results.
+
+The initial signal-mask adapter shall lower Linux x86-64 syscall 14 only for a
+live initial context and finalized executable return continuation. It shall
+require native set size eight, stage a complete optional input word, remove
+signal bits 8 and 18, apply query/block/unblock/replacement to one private word,
+and optionally publish the complete prior word after update, with every user
+transfer fault contained. It shall clear state during teardown. Structural and
+pinned-QEMU evidence shall prove all operations, null candidates, exact values,
+unblockable-bit removal, error checks, update-before-output ordering, and state
+clearing.
+
+The bounded runtime anonymous-page adapter shall lower one source-owned
+single-frame reservation to a non-present provider-selected x86-64 user PTE.
+Linux x86-64 syscall 9 shall admit only the bounded null-address, one-page-or-
+smaller, RW, private-anonymous, descriptor-minus-one, zero-offset shape, zero
+the complete frame before ordered RW/NX publication, and return the selected
+address. Syscall 11 shall revoke that exact page with ordered invalidation and
+succeed when it is already absent. Repeated generations shall remain
+exclusive; terminal completion shall revoke an active page; source release
+shall return the exact frame. Structural and pinned-QEMU evidence shall prove
+absence before activation, complete zeroing, publication, direct access,
+revocation, re-zeroed reuse, terminal state, and exact backing return.
+
+The bounded anonymous-protection adapter shall dispatch Linux x86-64 syscall
+10 only for the exact live anonymous page, a nonzero one-page-or-smaller range,
+and `PROT_NONE`, `PROT_READ`, or `PROT_READ | PROT_WRITE`. It shall preserve
+the active generation and backing contents while replacing the PTE with a
+non-present, R/NX, or RW/NX state, perform ordered invalidation before return,
+and retain private state sufficient for `munmap` and terminal cleanup from
+every protection. Rejected requests shall preserve the prior PTE and state.
+Structural and pinned-QEMU evidence shall prove every admitted transition,
+retained contents across inaccessible state, active-map rejection while none,
+revocation from a protected state, and non-executable publication.
+
+The bounded anonymous-advice adapter shall dispatch Linux x86-64 syscall 28
+only for the exact live anonymous page, a nonzero one-page-or-smaller range,
+and `MADV_DONTNEED`. It shall zero the complete backing through kernel
+authority while preserving the active generation and private none, read-only,
+or read-write NX state. Rejected requests shall preserve prior bytes and state.
+Structural and pinned-QEMU evidence shall prove advice while inaccessible,
+overlapping-map rejection, restored full zero observation, later mutation, and
+unchanged protection semantics.
+
+The bounded userspace-clock adapter shall dispatch Linux x86-64 syscall 228
+only for `CLOCK_MONOTONIC`, a live initial context, an executable return, and a
+complete writable 16-byte candidate. It shall sample the qualified 64-bit Q35
+HPET source once, validate its 10 ns period, normalize ticks to native seconds
+and nanoseconds, and copy the complete staged pair under page-fault recovery.
+Structural and pinned-QEMU evidence shall prove two calls, normalized fields,
+nondecreasing order, exact zero results, private target details, and balanced
+temporary storage.
+
+The bounded userspace-resolution adapter shall dispatch Linux x86-64 syscall
+229 only for `CLOCK_MONOTONIC` and an optional complete writable 16-byte
+candidate. It shall return zero for null output, otherwise publish the native
+zero-second/ten-nanosecond pair under page-fault recovery, retain no pointer,
+and agree with the qualified HPET conversion. Structural and pinned-QEMU
+evidence shall prove exact output, null-output success, and balanced storage.
+
+The initial userspace syscall adapter shall return x86-64 Linux `-ENOSYS` for
+every number not selected by an implemented dispatch arm. The fallback shall
+return through the retained executable continuation without inspecting unused
+arguments or changing state. Structural and pinned-QEMU evidence shall prove
+one deliberate unsupported call, its exact result, and a later successful
+implemented call.
+
+The static-process provider shall realize `TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-WAIT-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-THREAD-REGISTRATION-001`: exclusive child/snapshot
+storage, complete private parent restoration, copied slots/shared descriptions,
+fork-like native creation, reusable opaque thread registrations, child exec/exit
+and once-only checked wait publication. Actual mapping/backing, native register,
+TLS/extended-state, boundary/failure and unmodified shell evidence shall qualify
+the serialized finite-child profile without claiming general scheduling.
+
+The resumable static pair shall implement owned native yield/handoff and
+blocking child wait under `TK-DEC-255` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PAIR-001`. It shall exchange complete private
+process state without suspending a live kernel continuation, preserve shared
+service histories, retain either process's descriptions across snapshot release,
+exclude a waiting parent from runnable selection, validate status publication
+in the restored parent mapping, and release inactive resources at outer-owner
+termination. Independent ABI, state-model, GDB and unchanged-application evidence
+shall qualify these boundaries without claiming general scheduling fairness.
+
+The anonymous-pipe service shall implement `TK-DEC-256` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-001`,
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-TRANSFER-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PIPE-WAIT-001` with shared owned FIFO
+storage excluded from private snapshots, exact endpoint references, native pair
+publication and rollback, checked byte transport, atomic-write/partial-transfer
+boundaries and condition-bound read/write suspension. Readiness shall follow the
+exact FIFO generation and peer lifetime; restored retries shall recheck authority
+and current user permissions. Close/exec/child exit/parent termination shall
+release endpoints and erase payload/metadata before reuse. Unsupported pipe/signal
+profiles shall remain explicit. Independent model, native user/GDB, fault/capacity
+and unchanged BusyBox command-substitution evidence shall qualify the result.
+
+The systems publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
+`TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` through ordinary declared-type export
+selection, shared numeric algorithms, qualified kernel allocation/fatal hooks,
+conservative complete stack/allocation proofs, explicitly borrowed invocation
+storage, result conversion, exec retention and complete storage/binding erasure.
+It shall reject unsupported or unbounded closure/resource inputs before atomic
+publication. Source/runtime frames, arithmetic boundaries, high-water observations,
+invalid bounds, wrong-policy rejection and full kernel rollback shall qualify
+this profile; measurements alone shall not establish the required bounds.
+
+The systems publisher shall realize `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` and
+`TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`. It shall load an explicitly selected
+relative source-library unit under `--library-root`, or consume an explicit
+matching in-memory snapshot, and use the ordinary shared frontend for the public
+export and complete reachable helper graph. The first profile shall admit only
+Boolean/nominal-Enum pure acyclic direct calls and their local/decision forms,
+rejecting unqualified values, effects, allocation, foreign dependencies and
+imports before publication. Ordinary function lowering shall emit a separate
+freestanding object with source/helper debug information and a private native
+interface adapter. No hosted runtime, source assembly, TLS or writable library
+data shall be linked. Red-zone/implicit floating-point use shall be disabled,
+actual object/stack-size evidence shall prove the complete call-path cost fits
+the 1024-byte caller reserve, and missing/dynamic/excess evidence shall fail.
+The bound semantic open-policy interface shall normalize private Enum order,
+receive only owned-view facts, preserve native ABI/state, retain its scoped
+binding across exec and erase it at terminal return. A source choice shall not
+grant missing resource rights. Publication shall bind exact source/interface,
+instantiation, LLVM/object and stack evidence. Exhaustive finite inputs, guest
+source/helper frames, Enum reordering, changed-source counterexamples, missing/
+malformed inputs, native boundaries and complete rollback shall qualify it.
+A declared import shall never use a fallback on failure; older roots without
+this refinement retain their own declared contracts.
+
+The static-process timing adapter shall realize
+`TOPAL-SYSTEMS-STATIC-PROCESS-MONOTONIC-001` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-RELATIVE-SLEEP-001`. The root shall pass a private
+binding to its owned initial clock, and native observations shall reuse the
+qualified clock provider's wrap/regression protocol. Binding provenance,
+shared history, exec retention, private binding erasure and owner return shall
+be checked. Native gettime/getres shall normalize clock IDs, publish complete
+checked normalized records, permit null resolution output and erase staging.
+Relative nanosleep/clock_nanosleep shall copy and validate complete intervals,
+retain pinned ktime conversion/addition saturation, round deadlines upward and
+never report success before the resulting same-clock deadline. Normal completion
+shall not inspect or modify remaining-time candidates. Invalid input shall
+preserve resources/history; successful waits shall preserve every process
+resource except legitimate clock observations. Independent physical witnesses
+and standard utility runs shall qualify time/interval boundaries, elapsed waits,
+native widths, exec lifetime and full rollback. Saturation paths shall receive
+explicit arithmetic and controlled execution evidence. Absolute sleeps,
+interruption, fairness and broader clocks shall remain separately qualified.
+
+The static-process adapter shall extend that recoverable policy under
+`TOPAL-SYSTEMS-STATIC-PROCESS-ENOSYS-001`: implemented dispatch arms shall win,
+then unknown low-32-bit native selectors shall return exact `-ENOSYS` through
+the existing saved-register-clearing SYSRET path. Unselected ABI-tag selectors
+shall not select native implementations. Unused arguments shall not be read or
+validated, startup phase and process resources shall remain unchanged, and the
+process shall continue before and after exec. Independently encoded physical
+witnesses shall check selector boundaries, invalid unused pointers, user-memory
+canaries, preserved non-result registers and later implemented calls with full
+terminal rollback. This shall add no new implemented syscall or core meaning.
+
+The adapter shall dispatch Linux x86-64 syscall 24 as `sched_yield`, preserve
+the sole live user context and all private state, and return zero without a
+provider context-transfer operation. Structural and pinned-QEMU evidence shall
+prove a dedicated arm, exact result, and continued implemented execution.
+
 ## TOPAL-COMP-SYSTEMS-CHECK-001 — Complete systems semantic checking
 
 Before backend lowering, the checked compiler model shall validate special
@@ -223,6 +2708,302 @@ device and DMA protocols, storage, placement, and artifact obligations. Every
 systems operation shall retain a stable semantic identity and required target
 evidence; LLVM spelling shall not enter the checked model.
 
+The first device refinement shall retain one PCI segment/BDF, aligned dword
+register offset, expected value, and transaction identity in the checked model.
+The checker shall reject out-of-range, misaligned, non-sealed, or unsupported
+requests before lowering and shall not infer PCI enumeration or virtio policy.
+
+The bounded virtio-PCI discovery refinement shall accept only the exact
+24-transaction source sequence for the pinned function. It shall prove link
+order, MSI-X traversal, virtio vendor/type headers, capability lengths, BAR
+indices, BAR-relative offsets, region lengths, and the notification multiplier
+before lowering. Each operation shall retain its request and monotonically
+assigned transaction identity; duplicates, omissions, reordering, alternate
+values, and reads outside the sequence shall be rejected.
+
+The PCI region-register refinement shall retain the function, selected
+configuration-access capability, BAR index, BAR-relative region, register
+offset, width, direction, value, and monotonically assigned transaction
+identity. It shall reject overflow, out-of-region access, unsupported widths,
+and non-sealed requests. The bounded virtio negotiation shall accept only its
+exact 16-operation sequence through confirmed `FEATURES_OK`, leave `DRIVER_OK`
+clear for later queue setup, and reject omission, duplication, reordering,
+substitution, or a status transition not confirmed by a following read.
+
+The bounded virtio queue-discovery refinement shall accept only the exact five
+operations after feature negotiation. It shall retain a distinct ordered
+identity, exact two-byte width, and complete request for every queue fact. It
+shall reject omissions, duplicates, reordering, substituted values, premature
+queue access, and any attempt to derive DMA authority or `DRIVER_OK`.
+
+The bounded PCI command refinement shall accept one masked word update only
+after complete queue discovery. It shall retain the exact function, offset,
+mask, pre-state, and post-state, reject malformed or substituted requests, and
+reject omission or duplication before root completion.
+
+The bounded DMA-buffer refinement shall accept exactly two ordered creation
+requests only after bus-master authorization. It shall retain fresh opaque
+identities, the pinned device and translation domain, exact size/alignment,
+direction, visibility policy, and role; reject malformed, overlapping,
+omitted, duplicated, reordered, or substituted requests; and leave both
+buffers CPU-owned.
+
+The bounded split-ring refinement shall accept exactly one opaque DMA-reference
+binding and four ordered integer stores after both DMA buffers exist. It shall
+retain buffer identities, offsets, widths, values, device/domain compatibility,
+and CPU ownership; reject malformed, omitted, duplicated, reordered, or
+substituted operations; and never materialize a DMA address in source state.
+
+The bounded DMA-preparation refinement shall accept exactly two ordered
+ownership transitions after split-ring construction: payload identity two,
+then control identity one. It shall retain exact device/domain, direction,
+visibility, role, and identity state; reject malformed, omitted, duplicated,
+reordered, substituted, premature, or post-transfer CPU operations; and require
+provider visibility evidence before each transition completes.
+
+The bounded queue-address refinement shall accept exactly three ordered
+PCI-region DMA-reference publications after both preparation transitions. It
+shall retain the exact pinned common region, register, reference width,
+device/domain, buffer identity, and in-buffer offset; reject malformed,
+omitted, duplicated, reordered, substituted, or premature requests; and never
+materialize the provider-selected reference in source state.
+
+The bounded virtio queue-activation refinement shall accept exactly four
+additional PCI-region transactions after complete queue-address publication.
+It shall require queue-enable write/readback followed by `DRIVER_OK`
+write/readback, reject malformed, omitted, duplicated, reordered, substituted,
+or premature operations, and retain device ownership of both DMA buffers.
+
+The bounded virtio queue-notification refinement shall accept exactly one
+additional PCI-region write after verified queue activation. It shall require
+the separate configuration-access capability, discovered notification
+capability, and exact BAR, region, offset, width, and queue-zero value; reject
+malformed, omitted, duplicated, reordered, substituted, or premature
+notification; and retain device ownership of both DMA buffers without
+fabricating completion.
+
+The bounded virtio completion-signal refinement shall accept exactly one
+additional PCI-region read-eventually-equals-one operation after queue
+notification. It shall require the separate configuration-access capability,
+discovered ISR capability, and exact BAR, region, offset, width,
+queue-interrupt bit, and 1,000,000-attempt bound; reject malformed, omitted,
+duplicated, reordered, substituted, premature, or unbounded observation; lower
+exhaustion to checked failure; and retain device ownership without claiming
+used-ring or payload validity.
+
+The bounded virtio used-ring refinement shall accept exactly one control-buffer
+DMA completion after the completion signal and exactly four subsequent integer
+read-equals operations for used flags, index, descriptor identity, and length.
+It shall preserve and validate the exact buffer/device/domain/direction/
+visibility/role metadata, lower provider-managed device-to-CPU visibility
+before any read, reject malformed or reordered operations, and keep the entropy
+payload device-owned and inaccessible.
+
+The bounded virtio payload-completion refinement shall accept exactly one
+payload-buffer DMA completion after all four used-ring observations. It shall
+validate and preserve the exact buffer/device/domain/direction/visibility/role
+metadata, lower provider-managed device-to-CPU visibility before returning
+authority, reject malformed or reordered completion, retain the control buffer
+as CPU-owned, and emit no payload read or entropy-credit operation.
+
+The bounded entropy-sample refinement shall accept exactly one fresh opaque
+sample capture after payload completion. It shall validate sample and buffer
+identities, exact offset/count, device/domain/direction/visibility/role facts,
+and zero credited bits; preserve payload ownership; lower one complete exact
+copy between provider-resolved opaque storage objects; expose no address or
+byte value; and reject malformed, partial, duplicated, or reordered capture.
+
+The bounded entropy-quality refinement shall accept exactly one assessment of
+the captured raw sample. It shall validate the exact sample/source/evidence
+identities, 32-byte extent, 1024/1024 quality, derived 256-bit credit, raw
+pre-state, and capture ordering; preserve opaque bytes and affine identity;
+model the transition as source-owned kernel policy with no provider operation;
+and reject malformed, omitted, duplicated, reordered, substituted, or
+premature assessment.
+
+The bounded entropy-pool refinement shall accept exactly one empty-pool
+creation after sample assessment. It shall validate pool identity one,
+256-bit credit capacity, zero initial credit, and exact ordering; produce one
+affine source-owned pool state without emitting provider code or storage; and
+reject malformed, omitted, duplicated, reordered, substituted, or premature
+creation.
+
+The bounded entropy-mixing refinement shall accept exactly one first-generation
+mix after empty-pool creation. It shall validate pool, sample, conditioner, and
+contribution identity one; exact 32-byte input; 256-bit contribution; assessed
+sample and empty-pool pre-states; and exact ordering. The provider shall
+compute BLAKE2s-256 personalized by `TopalRNG`, publish all 32 opaque pool-state
+bytes, wipe all 32 sample bytes, and return success only after both actions.
+The root shall preserve zero pool credit and the separate affine contribution
+token and shall reject malformed, partial, duplicated, reordered, substituted,
+or premature mixing.
+
+The bounded entropy-credit refinement shall accept exactly one provider-free
+transfer after successful first-generation mixing. It shall validate pool,
+contribution, and conditioner-origin identity one; prior credit zero;
+transferred credit, capacity, and result 256; the mixed-but-uncredited pool and
+live contribution pre-states; exact checked addition; and exact ordering. It
+shall preserve opaque pool storage, consume the contribution, record the same
+pool as credited, emit no provider operation, and reject malformed, omitted,
+duplicated, reordered, substituted, overflowing, reused, or premature
+transfer.
+
+The bounded initial-CRNG refinement shall accept exactly one generator
+initialization after contribution credit. It shall validate pool, generator,
+and algorithm identity one; generation one; 32 key bytes; required and observed
+credit 256; the credited-pool pre-state; and exact ordering. The provider shall
+copy and verify all 32 opaque pool-state bytes into distinct generator storage,
+wipe and verify all 32 consumed pool bytes, and return success only after both
+actions. The root shall publish one ready affine generator and reject malformed,
+partial, duplicated, reordered, substituted, or premature initialization.
+
+The bounded CRNG-extraction refinement shall accept exactly one extraction
+after generator initialization. It shall validate generator and algorithm
+identity one; generations one and two; output identity one; a 64-byte block
+split at offset 32 into 32 output bytes; zero counter and nonce; the ready
+generation-one pre-state; and exact ordering. The provider shall compute the
+standard 20-round ChaCha20 block, replace and verify the persistent key before
+publishing and verifying opaque output, wipe and verify all temporary state,
+and return success only after every action. The root shall publish ready
+generation two and one affine output object and reject malformed, partial,
+duplicated, reordered, substituted, or premature extraction.
+
+The bounded initial-`AT_RANDOM` refinement shall accept exactly one opaque-
+output delivery after extraction and before initial user-context entry. It
+shall validate output, address-space, and Linux-interface identity one; source
+extent 32; selected offset zero and extent 16; discarded offset 16 and extent
+16; auxiliary tag 25; single-use policy; the prepared pre-state; and exact
+ordering. The provider shall publish and verify one distinct bounded 16-byte
+stack object, wipe and verify all 32 provider-output bytes, and return success
+only after every action. The root shall permit entry only from the randomized
+entry-ready state and reject malformed, partial, duplicated, reordered,
+substituted, reused, or premature delivery.
+
+The bounded initial-`getrandom` refinement shall accept one fresh extraction
+from generator generation two to generation three and reserve opaque output
+identity two for process, Linux interface, and user-random service identity one
+before entry. It shall validate source extent 32, maximum request extent 16,
+selected offset zero, discard partition, current Linux supported flag mask 7,
+incompatible mask 6, and single-use policy. The x86-64 provider shall privately
+map the service to syscall 318, preserve the reservation on zero, argument, and
+range failures, copy and verify one successful 1–16-byte prefix, wipe and verify
+all output storage, clear private reservation state, and reject partial,
+duplicated, reordered, substituted, reused, or premature delivery.
+
+The reusable process-`getrandom` refinement shall accept one checked binding
+of generator identity one at generation three and the live initial reservation
+into a process-lifetime service. It shall preserve output identity two for the
+first success and lower later successes to the same qualified ChaCha20
+extraction with key replacement before output publication. The x86-64 provider
+shall validate complete arguments and user ranges before later extraction,
+return and verify 1–16 bytes, wipe the full output after every success, retain
+only the successor generator, and leave state unchanged for zero and rejected
+calls. It shall execute two successful calls in ring 3 and wipe the unused
+output, generator key, and private service state before process return.
+
+The full-output process-`getrandom` refinement shall accept maximum delivery
+extent 32 for both the initial reservation and reusable binding, with selected
+offset zero and an empty discard partition. The x86-64 provider shall reject
+larger requests before extraction, copy and verify all 32 bytes for the added
+full-output call, wipe and verify the complete output, increment delivery state
+only after success, and retain no output remainder. The ring-3 probe shall
+preserve the preceding calls and read four qwords from the added request.
+
+The bounded small-request `getrandom` refinement shall lower one exact checked
+service expansion with output extent 32, maximum output count eight, maximum
+delivery 256, and complete-request policy. The x86-64 provider shall validate
+the full range before extraction, iterate at most eight fresh outputs in order,
+replace the key before each publication, copy and verify every chunk, wipe each
+complete output, and increment delivery state exactly once. The ring-3 probe
+shall preserve prior calls, require a 256-byte return, and read the first and
+last qwords without constraining them.
+
+The bounded large-request `getrandom` refinement shall lower one subsequent
+checked service expansion with output extent 32, maximum output count 16,
+maximum delivery 512, and signal-free complete-request policy. The x86-64
+provider shall preserve full-range validation before extraction, iterate at
+most 16 fresh outputs in order, replace the key before every publication,
+copy and verify every chunk, wipe every complete output, and increment delivery
+state exactly once. The ring-3 probe shall preserve prior calls, require a
+512-byte return, and read the first and last qwords without constraining them.
+
+The initial standard-descriptor close refinement shall lower descriptor count
+three and `EBADF` value nine through the checked Linux syscall-dispatch policy.
+The x86-64 provider shall initialize one private live/closed state for
+descriptors zero through two, map native syscall 3 to an atomic live-to-closed
+transition, reject negative, out-of-range, and repeated close with `-EBADF`,
+and make the existing bounded read/write arms consult the same state before any
+input, user access, or output. The ring-3 image shall close standard input after
+its final successful read, verify a later read and repeated close both return
+`-EBADF`, and preserve terminal success. Provider-object and physical evidence
+shall prove initialization, lookup, transition, rejection, complete teardown
+clearing, and the ordered `TOPAL_KERNEL_USER_CLOSE_OK` observation.
+
+The bounded initial-descriptor duplication refinement shall lower table count
+three, `EBADF` value nine, `EMFILE` value 24, and the three fixed description
+identities and access modes through checked dispatch policy. The x86-64
+provider shall map native syscalls 32 and 33 to lowest-free duplication and
+validation-before-replacement duplication, preserve aliases across one-slot
+close, and make read/write authorize the mapped description. The ring-3 image
+shall prove full-table rejection, zero-slot allocation, source-slot close
+survival, alias restoration, write-only read rejection without input, invalid-
+source nonreplacement, error-description replacement, exact close results,
+and terminal clearing. Provider-object and physical evidence shall prove the
+private mapping encoding, exact branches and returns, no premature state
+change, and ordered `TOPAL_KERNEL_USER_DUP_OK` observation.
+
+The bounded initial-descriptor metadata refinement shall lower `F_GETFD=1`,
+`F_SETFD=2`, `F_GETFL=3`, `FD_CLOEXEC=1`, `O_RDONLY=0`, `O_WRONLY=1`, and
+`EINVAL=22` through checked dispatch policy. The x86-64 provider shall map
+native syscall 72, retain three private per-slot flags separately from
+description identities, enforce lookup-before-command precedence, mask set
+arguments, clear destination flags on duplication, and clear close/terminal
+state. The ring-3 image and provider-object evidence shall prove access-mode
+lookup, set/get, unsupported command, alias flag independence, `dup2` clearing,
+closed-slot rejection, exact results, and ordered
+`TOPAL_KERNEL_USER_FCNTL_OK` observation.
+
+The bounded initial-descriptor `fstat` refinement shall lower one immutable
+console metadata value and the native 144-byte x86-64 layout through checked
+dispatch policy. The provider shall map syscall 5, look up description identity
+before user access, validate a complete writable extent, privately stage every
+field and zero byte, publish under generated fault recovery, and retain no user
+pointer. The ring-3 image and provider-object evidence shall prove exact object,
+ttyS0 device, character-mode, ownership, link, size, block, timestamp, padding,
+alias-equality, `EBADF`, `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_FSTAT_OK` behavior.
+
+The bounded initial-console terminal refinement shall lower `TCGETS=0x5401`,
+`ENOTTY=25`, the native 36-byte x86-64 `termios` layout, raw zero-valued input,
+output, and local flags, control flags `0x8bf`, line discipline zero, and only
+`VMIN=1` through checked dispatch policy. The provider shall map native syscall
+16, enforce descriptor-before-request-before-pointer precedence, privately
+stage every byte, validate one complete writable extent, publish under
+generated fault recovery, and retain no user pointer. Ring-3 and provider-
+object evidence shall prove input/output equality, every exact byte, unknown-
+request `ENOTTY`, closed-slot `EBADF`, invalid-candidate `EFAULT`, and ordered
+`TOPAL_KERNEL_USER_TCGETS_OK` behavior.
+
+The bounded initial-console geometry refinement shall lower
+`TIOCGWINSZ=0x5413` and the native eight-byte x86-64 `winsize` layout through
+checked dispatch policy. The provider shall retain descriptor-before-request-
+before-pointer precedence, privately stage four zero unsigned 16-bit geometry
+components, validate one complete writable extent, publish under generated
+fault recovery, and retain no pointer. Ring-3 and provider-object evidence
+shall prove input/output equality, every byte, closed-slot `EBADF`, invalid-
+candidate `EFAULT`, retained unknown-request `ENOTTY`, and ordered
+`TOPAL_KERNEL_USER_WINSIZE_OK` behavior.
+
+The bounded initial-console seek refinement shall lower Linux x86-64 `lseek`
+for the fixed descriptor table without allocating file-position state. The
+provider shall map native syscall 8, resolve the slot before mode validation,
+return `EBADF` for invalid or closed slots, return `ESPIPE` for modes zero
+through four on a live console independently of the signed offset, and return
+`EINVAL` for a larger unsigned mode on a live console. Ring-3 and provider-
+object evidence shall prove input/output `SEEK_CUR`, unsupported live mode,
+closed-slot precedence, absence of position mutation, and ordered
+`TOPAL_KERNEL_USER_LSEEK_OK` behavior.
+
 ## TOPAL-COMP-SYSTEMS-X64-001 — Qualified x86-64 provider lowering
 
 The first executable systems provider shall be native 64-bit x86-64 and shall
@@ -232,6 +3013,72 @@ fault-recovery, context-transfer, privileged, atomic, ordering, and device
 support without source assembly, instruction templates, programmer-selected
 registers, or a generic intrinsic escape. AArch64 and RISC-V review evidence
 shall not mark their backends executable-qualified.
+
+For the bounded Q35 PCI observation, the x86-64 provider shall accept only the
+sealed segment-zero `00:05.0` discovery requests, serialize each mechanism-1
+address/data transaction, compare the request's exact expected value, and fail
+terminally on mismatch. Structural evidence shall prove one generated call per
+request and the shared `0xcf8` write/`0xcfc` read provider operation without
+exposing either port to source.
+
+For bounded PCI region access, the x86-64 provider shall configure the selected
+Virtio PCI Configuration Access capability and access its data field using the
+register's exact byte, word, or dword width. It shall serialize the complete gateway
+transaction with other configuration accesses and shall not interpret common
+configuration offsets, feature bits, status values, or queue facts. Structural evidence
+shall prove the private mechanism-1 access sequences and one typed provider
+call for each checked region transaction.
+
+For the bounded bus-master authorization, the x86-64 provider shall serialize
+one configuration-mechanism-1 word read, masked pre-state comparison, word
+write preserving unmasked command bits, and word readback comparison. It shall
+use the two-byte command field without writing adjacent PCI status and shall
+remain unaware that bit two grants bus-master permission.
+
+For the bounded DMA-buffer refinement, the x86-64 provider shall reserve two
+distinct zero-initialized 4 KiB pages with 4 KiB alignment, prove their static
+placement and non-overlap, and accept only the two checked creation calls. The
+provider may use the Q35 identity-translated coherent domain but shall expose
+neither page address to source and shall not publish either page to the device.
+
+For bounded CPU-owned DMA construction, the x86-64 provider shall resolve only
+checked opaque identities to the two provider data symbols. It shall perform
+exact-width bounded stores and bind the payload's identity-translated address
+into descriptor zero. Structural evidence shall prove every data-symbol
+relocation, exact store width and offset, complete bounds checks, and absence of
+an address return to source.
+
+For bounded DMA device preparation, the x86-64 provider shall accept only the
+checked payload-then-control sequence and preserve opaque identities in
+provider-private state. It shall prove coherent identity-domain reachability
+and emit a compiler/device ordering boundary before returning success.
+Structural evidence shall prove exact argument checks, no buffer-address
+return, and no hidden queue publication, enable, notification, or completion.
+
+For bounded queue-address publication, the x86-64 provider shall privately
+resolve the checked control-buffer symbol plus each admitted offset and write
+the 64-bit value through the pinned configuration gateway as ordered low and
+high dwords. Structural evidence shall prove exact region and argument checks,
+three control-symbol relocations, six dword data writes, no address return, and
+no hidden queue enablement or notification.
+
+For bounded queue activation, the x86-64 provider shall reuse the qualified
+configuration-gateway byte/word register access without interpreting the
+virtio offsets or values. Structural evidence shall prove four typed calls,
+exact access widths, serialized write/readback pairs, and no queue notification
+or completion hidden in the provider.
+
+For bounded queue notification, the x86-64 provider shall reuse the qualified
+configuration-gateway word write without interpreting queue or notification
+meaning. Structural evidence shall prove one typed call, capability-relative
+region selection, exact width/value, serialized write, and no hidden readback,
+completion, or ownership transition.
+
+For bounded completion-signal observation, the x86-64 provider shall reuse the
+qualified configuration-gateway byte read without interpreting ISR or queue
+meaning. Structural evidence shall prove one typed call, exact capability-
+relative region and expected value, serialized read/compare acknowledgement,
+and no hidden ring access or ownership transition.
 
 The first x86-64 provider increment shall derive a deterministic sealed plan
 from the checked systems program. It shall bind the exact target, QEMU board,
@@ -273,6 +3120,31 @@ assembly, bind IDT vector 3 to the linked debug-break entry, and atomically
 publish only the boot image and canonical adapter provenance. Structural
 packaging alone shall not executable-qualify the systems target; qualification
 requires separate execution under the pinned QEMU board and CPU.
+
+The initial user-image publication increment shall add exactly one canonical
+ELF image to the atomic systems-artifact directory and bind its filename and
+digest in artifact provenance. The boot adapter shall read that published
+image, reject absence, digest mismatch, or an unbound output identity, and use
+the exact verified bytes for the deterministic initial boot resource. It shall
+not privately regenerate or silently substitute the user image. Unit tests
+shall cover canonical output closure, repeatable publication, and tamper
+rejection; pinned-QEMU evidence shall bind the published image digest through
+the boot resource and completed user execution.
+
+The supplied initial user-image increment shall accept
+`--initial-user-image PATH` only for qualified systems publication. Before
+creating publication state, the compiler shall read the complete file and
+validate the current x86-64 bounded ELF envelope: exact file and ELF class,
+machine, type, header, program-header, segment-layout, immutable-metadata, and
+alignment facts; relational page-bounded executable and data/BSS sizes; and an
+entry strictly inside the executable file extent. Executable payload and
+initialized-data bytes shall remain caller authority. Successful publication
+shall copy those exact bytes to the canonical image and bind them through the
+existing content provenance without the host path. Unreadable, duplicate,
+nonsystems, malformed, or out-of-profile input shall fail before publication.
+Tests shall cover every rejected field class, path-independent repeatability,
+a supplied payload distinct from the generated default, exact-byte boot
+packaging, and deterministic pinned-QEMU execution.
 
 The first executable bootstrap-region increment shall accept only an
 exhaustively handled static allocation request whose capacity and alignment

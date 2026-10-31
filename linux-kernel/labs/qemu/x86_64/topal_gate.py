@@ -6,13 +6,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
+import pty
+import runpy
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
 import time
-from typing import Any
+from typing import Any, Callable
 
 
 LAB = Path(__file__).resolve().parent
@@ -22,13 +26,213 @@ BUILD_ROOT = LINUX_KERNEL / "build" / "x86_64" / "topal-toolchain-gate"
 MANIFEST_PATH = LAB / "manifest.json"
 SOURCE_PATH = LINUX_KERNEL / "kernel" / "arch" / "x86_64" / "toolchain-gate.t"
 EVIDENCE_PATH = LAB / "results" / "topal-toolchain-gate.json"
+PINNED_STATIC_BUSYBOX_EVIDENCE_PATH = (
+    LAB / "results" / "topal-pinned-static-busybox-gate.json"
+)
+PINNED_STATIC_BUSYBOX_SHA256 = (
+    "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+)
+SERIAL_INPUT = b"read"
+PROCESS_COMMAND = b"exec /bin/busybox true\n"
+EXEC_COMMIT_MARKER = b"\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n"
+INTERACTIVE_BANNER = (
+    b"sh: can't access tty; job control turned off\n\n\n"
+    b"BusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\n"
+    b"Enter 'help' for a list of built-in commands.\n\n"
+)
+PROCESS_WORKLOADS = {
+    "true": (PROCESS_COMMAND, b"", 0),
+    "false": (b"exec /bin/busybox false\n", b"", 1),
+    "echo": (b"exec /bin/busybox echo alpha beta\n", b"alpha beta\n", 0),
+    "echo-changed": (
+        b"exec /bin/busybox echo omega '' gamma\n", b"omega  gamma\n", 0
+    ),
+    "head-stdin": (b"exec /bin/busybox head -c 4 <&3\n", b"\x7fELF", 0),
+    "head-alias": (b"exec 4<&3; exec /bin/busybox head -c 4 <&4\n", b"\x7fELF", 0),
+    "wc-stdin": (b"exec /bin/busybox wc -c <&3\n", b"2024544\n", 0),
+    "head-file": (b"exec /bin/busybox head -c 4 /bin/busybox\n", b"\x7fELF", 0),
+    "head-normalized": (
+        b"exec /bin/busybox head -c 4 /bin/../bin//./busybox\n", b"\x7fELF", 0
+    ),
+    "wc-file": (b"exec /bin/busybox wc -c /bin/busybox\n", b"2024544 /bin/busybox\n", 0),
+    "ls-bin": (b"exec /bin/busybox ls -1 /bin\n", b"busybox\n", 0),
+    "pwd-bin": (b"cd /bin; exec /bin/busybox pwd\n", b"/bin\n", 0),
+    "exec-chain": (
+        b"exec /bin/busybox env /bin/busybox env /bin/busybox echo chain\n", b"chain\n", 0
+    ),
+    "exec-chain-false": (b"exec /bin/busybox env /bin/busybox false\n", b"", 1),
+    "exec-chain-cwd": (
+        b"cd /bin; exec /bin/busybox env /bin/busybox env /bin/busybox pwd\n", b"/bin\n", 0
+    ),
+    "replacement-shell-pid": (
+        b"exec /bin/busybox sh -c 'echo $$; exec /bin/busybox true'\n", b"1\n", 0
+    ),
+    "replacement-shell-cwd": (
+        b"exec /bin/busybox sh -c 'cd /bin; echo $$; exec /bin/busybox pwd'\n", b"1\n/bin\n", 0
+    ),
+    "uname-kernel": (b"exec /bin/busybox uname -srm\n", b"Linux 7.2.9-topal x86_64\n", 0),
+    "replacement-shell-script": (
+        b"exec /bin/busybox sh -c 'echo one; pwd; cd /bin; pwd; exit 7'\n", b"one\n/\n/bin\n", 7
+    ),
+    "export-token": (
+        b"export TOPAL_TOKEN=alpha; exec /bin/busybox env\n",
+        b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=alpha\nPWD=/\n", 0
+    ),
+    "export-token-changed": (
+        b"export TOPAL_TOKEN=omega; exec /bin/busybox env\n",
+        b"SHLVL=1\nOLDPWD=/\nPATH=/sbin:/usr/sbin:/bin:/usr/bin\nTOPAL_TOKEN=omega\nPWD=/\n", 0
+    ),
+    "interactive-prompt": (
+        b"export PS1='topal> '; exec /bin/busybox sh -i\necho one\npwd\ncd /bin\npwd\nexit 7\n",
+        INTERACTIVE_BANNER + b"topal> one\ntopal> /\ntopal> topal> /bin\ntopal> ", 7
+    ),
+    "interactive-prompt-changed": (
+        b"export PS1='next> '; exec /bin/busybox sh -i\necho two\ncd /bin\npwd\ncd /\npwd\nexit 9\n",
+        INTERACTIVE_BANNER + b"next> two\nnext> next> /bin\nnext> next> /\nnext> ", 9
+    ),
+    "sleep-short": (b"exec /bin/busybox sleep 0.001\n", b"", 0),
+    "sleep-changed": (b"exec /bin/busybox sleep 0.002\n", b"", 0),
+    "dd-seek": (
+        b"exec /bin/busybox dd bs=1 count=4 skip=1 status=none <&3\n",
+        b"ELF\x02", 0,
+    ),
+    "child-echo": (
+        b"exec /bin/busybox sh -c '/bin/busybox echo child; echo parent'\n",
+        b"child\nparent\n", 0,
+    ),
+    "child-status": (
+        b"exec /bin/busybox sh -c '/bin/busybox false; echo $?; echo $$; exit 7'\n",
+        b"1\n1\n", 7,
+    ),
+    "child-repeated": (
+        b"exec /bin/busybox sh -c '/bin/busybox echo one; /bin/busybox echo two; echo done'\n",
+        b"one\ntwo\ndone\n", 0,
+    ),
+    "child-cwd": (
+        b"exec /bin/busybox sh -c '/bin/busybox sh -c \"cd /bin; echo \\$\\$; pwd; exit 9\"; echo $?; pwd; echo $$'\n",
+        b"2\n/bin\n9\n/\n1\n", 0,
+    ),
+    "child-offset": (
+        b"exec /bin/busybox sh -c '/bin/busybox head -c1 <&3; /bin/busybox head -c1 <&3; echo done'\n",
+        b"\x7fEdone\n", 0,
+    ),
+    "pipe-substitution": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox echo pipe-child); echo \"$value\"'\n",
+        b"pipe-child\n", 0,
+    ),
+    "pipe-substitution-changed": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox printf changed); echo \"[$value]\"'\n",
+        b"[changed]\n", 0,
+    ),
+    "pipe-substitution-large": (
+        b"exec /bin/busybox sh -c 'value=$(/bin/busybox seq 1 2000); echo ${#value}'\n",
+        b"8892\n", 0,
+    ),
+}
 MARKERS = (
     b"TOPAL_KERNEL_FRAME_ALLOCATED",
     b"TOPAL_KERNEL_FRAME_MAPPED",
     b"TOPAL_KERNEL_TRANSLATION_ACTIVE",
     b"TOPAL_KERNEL_TRANSLATION_EDITED",
+    b"TOPAL_KERNEL_FRAME_EXTENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
+    b"TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
     b"TOPAL_KERNEL_INTERRUPTS_MASKED",
     b"TOPAL_KERNEL_MEMORY_DESCRIBED",
+    b"TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
+    b"TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK",
+    b"TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED",
+    b"TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED",
+    b"TOPAL_KERNEL_PCI_BUS_MASTER_OK",
+    b"TOPAL_KERNEL_DMA_BUFFERS_OK",
+    b"TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
+    b"TOPAL_KERNEL_DMA_DEVICE_OWNED",
+    b"TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK",
     b"TOPAL_KERNEL_BOOT",
     b"TOPAL_KERNEL_FAULT_RESUMED",
     b"TOPAL_KERNEL_ATOMIC_OK",
@@ -37,10 +241,68 @@ MARKERS = (
     b"TOPAL_KERNEL_TIME_OK",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
     b"TOPAL_KERNEL_DEADLINE_PREEMPTED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
     b"TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
     b"TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
     b"TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+    b"TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
+    b"TOPAL_KERNEL_USER_IMAGE_READY",
+    b"TOPAL_KERNEL_BOOT_RESOURCE_OK",
+    b"TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
+    b"TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
+    b"TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
+    b"TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+    b"TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
+    b"TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
+    b"TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
+    b"TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+    b"TOPAL_KERNEL_ENTROPY_POOL_MIXED",
+    b"TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
+    b"TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
+    b"TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
+    b"TOPAL_KERNEL_USER_WRITE_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
+    b"TOPAL_KERNEL_USER_GETRANDOM_OK",
+    b"TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
+    b"TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
+    b"TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK",
+    b"TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK",
+    b"TOPAL_KERNEL_USER_READ_OK",
+    b"TOPAL_KERNEL_USER_CLOSE_OK",
+    b"TOPAL_KERNEL_USER_DUP_OK",
+    b"TOPAL_KERNEL_USER_FCNTL_OK",
+    b"TOPAL_KERNEL_USER_FSTAT_OK",
+    b"TOPAL_KERNEL_USER_TCGETS_OK",
+    b"TOPAL_KERNEL_USER_WINSIZE_OK",
+    b"TOPAL_KERNEL_USER_LSEEK_OK",
+    b"TOPAL_KERNEL_USER_COPY_TO_OK",
+    b"TOPAL_KERNEL_USER_COPY_FROM_OK",
+    b"TOPAL_KERNEL_USER_SYSCALL_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_STACK_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_ELF_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_BSS_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
+    b"TOPAL_KERNEL_USER_IMAGE_RETAINED",
+    b"TOPAL_KERNEL_USER_MAPPING_OK",
+    b"TOPAL_KERNEL_FRAME_DISJOINT_OK",
+    b"TOPAL_KERNEL_USER_BACKING_OK",
 )
 
 
@@ -82,8 +344,12 @@ def verify_host() -> str:
     return version
 
 
-def build_image(destination: Path) -> tuple[Path, Path, Path]:
-    linked = destination / "linked"
+def compile_systems_artifact(
+    linked: Path,
+    initial_user_image: Path | None = None,
+    static_user_image: Path | None = None,
+    library_root: Path | None = None,
+) -> None:
     compiler_command = [
         "cargo",
         "run",
@@ -101,12 +367,777 @@ def build_image(destination: Path) -> tuple[Path, Path, Path]:
         "topal-qemu-pc-q35-10.2",
         "--emit",
         "executable",
+        "--library-root",
+        str(library_root or LINUX_KERNEL / "kernel"),
+    ]
+    if initial_user_image is not None:
+        compiler_command.extend(["--initial-user-image", str(initial_user_image)])
+    if static_user_image is not None:
+        compiler_command.extend(["--static-user-image", str(static_user_image)])
+    compiler_command.extend(
+        [
         "-o",
         str(linked),
         str(SOURCE_PATH),
-    ]
+        ]
+    )
     print("+", " ".join(compiler_command), flush=True)
     subprocess.run(compiler_command, cwd=REPOSITORY, check=True)
+
+
+def static_user_fixture(environment_mode: str = "maximum") -> bytes:
+    if environment_mode not in ("maximum", "empty", "null"):
+        raise GateError("unknown clean environment mode")
+    """Create approved ELF metadata with clean-room payload bytes."""
+    image = bytearray(2_024_544)
+    image[:16] = bytes(
+        [0x7F, ord("E"), ord("L"), ord("F"), 2, 1, 1, 3, 0, 0, 0, 0, 0, 0, 0, 0]
+    )
+    struct.pack_into(
+        "<HHIQQQIHHHHHH",
+        image,
+        16,
+        2,
+        62,
+        1,
+        0x004A_6580,
+        64,
+        0,
+        0,
+        64,
+        56,
+        11,
+        0,
+        0,
+        0,
+    )
+    headers = (
+        (1, 4, 0, 0x0040_0000, 0x6E0, 0x6E0, 0x1000),
+        (1, 5, 0x1000, 0x0040_1000, 0x18_B285, 0x18_B285, 0x1000),
+        (1, 4, 0x18_D000, 0x0058_D000, 0x5_7040, 0x5_7040, 0x1000),
+        (1, 6, 0x1E_4660, 0x005E_5660, 0x9728, 0x1_0B68, 0x1000),
+        (4, 4, 0x2A8, 0x0040_02A8, 0x20, 0x20, 8),
+        (4, 4, 0x2C8, 0x0040_02C8, 0x24, 0x24, 4),
+        (4, 4, 0x1E_4020, 0x005E_4020, 0x20, 0x20, 4),
+        (7, 4, 0x1E_4660, 0x005E_5660, 0x40, 0x82, 8),
+        (0x6474_E553, 4, 0x2A8, 0x0040_02A8, 0x20, 0x20, 8),
+        (0x6474_E551, 6, 0, 0, 0, 0, 0x10),
+        (0x6474_E552, 4, 0x1E_4660, 0x005E_5660, 0x79A0, 0x79A0, 1),
+    )
+    for index, (kind, flags, offset, virtual, file_size, memory_size, alignment) in enumerate(headers):
+        struct.pack_into(
+            "<IIQQQQQQ",
+            image,
+            64 + index * 56,
+            kind,
+            flags,
+            offset,
+            virtual,
+            virtual,
+            file_size,
+            memory_size,
+            alignment,
+        )
+    image[0x1000] = 0xA5
+    entry = bytes(
+        [
+            0xB8, 0x0C, 0, 0, 0,
+            0x31, 0xFF,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x00, 0x70, 0x5F, 0x00,
+            0x75, 0xFE,
+            0xBF, 0x80, 0x7D, 0x5F, 0x00,
+            0xB8, 0x0C, 0, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
+            0x75, 0xFE,
+            0xC6, 0x04, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
+            0x80, 0x3C, 0x25, 0x00, 0x70, 0x5F, 0x00, 0x5A,
+            0x75, 0xFE,
+            0xC6, 0x04, 0x25, 0x00, 0x74, 0x5F, 0x00, 0x6B,
+            0xBF, 0x02, 0x10, 0x00, 0x00,
+            0xBE, 0x00, 0x74, 0x5F, 0x00,
+            0xB8, 0x9E, 0, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x64, 0x8A, 0x04, 0x25, 0, 0, 0, 0,
+            0x3C, 0x6B,
+            0x75, 0xFE,
+            0xC7, 0x04, 0x25, 0xD0, 0x76, 0x5F, 0x00, 1, 0, 0, 0,
+            0xBF, 0xD0, 0x76, 0x5F, 0x00,
+            0xB8, 0xDA, 0, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 1,
+            0x75, 0xFE,
+            0x48, 0xC7, 0x04, 0x25, 0xE0, 0x76, 0x5F, 0x00, 0xE0, 0x76, 0x5F, 0x00,
+            0x48, 0xC7, 0x04, 0x25, 0xE8, 0x76, 0x5F, 0x00, 0xE0, 0xFF, 0xFF, 0xFF,
+            0x48, 0xC7, 0x04, 0x25, 0xF0, 0x76, 0x5F, 0x00, 0, 0, 0, 0,
+            0xBF, 0xE0, 0x76, 0x5F, 0x00,
+            0xBE, 0x18, 0, 0, 0,
+            0xB8, 0x11, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0xBF, 0x00, 0x73, 0x5F, 0x00,
+            0xBE, 0x21, 0, 0, 0,
+            0x31, 0xD2,
+            0x41, 0xBA, 0x53, 0x30, 0x05, 0x53,
+            0xB8, 0x4E, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0xDA,
+            0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x01, 0, 0,
+            0x31, 0xFF,
+            0xBE, 0x03, 0, 0, 0,
+            0x31, 0xD2,
+            0x49, 0x89, 0xE2,
+            0xB8, 0x2E, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0x81, 0x3C, 0x24, 0x00, 0x00, 0x80, 0x00,
+            0x75, 0xFE,
+            0x48, 0x83, 0x7C, 0x24, 0x08, 0xFF,
+            0x75, 0xFE,
+            0x48, 0x89, 0x04, 0x24,
+            0x48, 0x89, 0x44, 0x24, 0x08,
+            0x48, 0x81, 0xC4, 0x40, 0x01, 0, 0,
+            0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
+            0xBE, 0xDA, 0xFD, 0x5B, 0x00,
+            0xBA, 0x00, 0xE0, 0x5F, 0x00,
+            0x41, 0xBA, 0x00, 0x10, 0, 0,
+            0xB8, 0x0B, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0xDA,
+            0x75, 0xFE,
+            0xBF, 0x68, 0x5E, 0x5F, 0x00,
+            0xBE, 0x08, 0, 0, 0,
+            0xBA, 0x01, 0, 0, 0,
+            0xB8, 0x3E, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0x08,
+            0x75, 0xFE,
+            0x4C, 0x8B, 0x14, 0x25, 0x68, 0x5E, 0x5F, 0x00,
+            0x48, 0xC7, 0x04, 0x25, 0x68, 0x5E, 0x5F, 0x00, 0, 0, 0, 0,
+            0xBF, 0x70, 0x5E, 0x5F, 0x00,
+            0xBE, 0x08, 0, 0, 0,
+            0xBA, 0x01, 0, 0, 0,
+            0xB8, 0x3E, 0x01, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0x08,
+            0x75, 0xFE,
+            0x4C, 0x8B, 0x14, 0x25, 0x70, 0x5E, 0x5F, 0x00,
+            0x48, 0xC7, 0x04, 0x25, 0x70, 0x5E, 0x5F, 0x00, 0, 0, 0, 0,
+            0xB8, 0x0C, 0, 0, 0,
+            0x31, 0xFF,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x80, 0x7D, 0x5F, 0x00,
+            0x75, 0xFE,
+            0xBF, 0x80, 0x8D, 0x61, 0x00,
+            0xB8, 0x0C, 0, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x80, 0x8D, 0x61, 0x00,
+            0x75, 0xFE,
+            0xC6, 0x04, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
+            0x80, 0x3C, 0x25, 0x7F, 0x8D, 0x61, 0x00, 0x6D,
+            0x75, 0xFE,
+            0xBF, 0x00, 0x90, 0x61, 0x00,
+            0xB8, 0x0C, 0, 0, 0,
+            0x0F, 0x05,
+            0x48, 0x3D, 0x00, 0x90, 0x61, 0x00,
+            0x75, 0xFE,
+            0xC6, 0x04, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
+            0x80, 0x3C, 0x25, 0xFF, 0x8F, 0x61, 0x00, 0x71,
+            0x75, 0xFE,
+            0xBF, 0x00, 0x50, 0x5E, 0x00,
+            0xBE, 0x00, 0x80, 0x00, 0x00,
+            0xBA, 0x01, 0x00, 0x00, 0x00,
+            0xB8, 0x0A, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x01, 0x00, 0x00,
+            0xBF, 0x10, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xB8, 0x9D, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0xB8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6F, 0x78, 0x00,
+            0x48, 0x39, 0x04, 0x24,
+            0x75, 0xFE,
+            0x48, 0x83, 0x7C, 0x24, 0x08, 0x00,
+            0x75, 0xFE,
+            0x48, 0xC7, 0x04, 0x24, 0, 0, 0, 0,
+            0x48, 0xC7, 0x44, 0x24, 0x08, 0, 0, 0, 0,
+            0x48, 0x81, 0xC4, 0x40, 0x01, 0x00, 0x00,
+            0xB8, 0x66, 0x00, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x85, 0xC0,
+            0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x20, 0x02, 0x00, 0x00,
+            0xBF, 0x9C, 0xFF, 0xFF, 0xFF,
+            0xBE, 0x00, 0x69, 0x4A, 0x00,
+            0x48, 0x89, 0xE2,
+            0x45, 0x31, 0xD2,
+            0xB8, 0x06, 0x01, 0x00, 0x00,
+            0x0F, 0x05,
+            0x48, 0x83, 0xF8, 0xFE,
+            0x75, 0xFE,
+            0x48, 0x81, 0xC4, 0x20, 0x02, 0x00, 0x00,
+            0xB8, 0x68, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xFF,
+            0xB8, 0x6A, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xFF,
+            0xB8, 0x69, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x48, 0x81, 0xFC, 0x00, 0xF8, 0x7F, 0x00,
+            0x75, 0x0B, 0x31, 0xFF, 0xB8, 0xE7, 0, 0, 0, 0x0F, 0x05, 0x0F, 0x0B,
+            0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+            0xC6, 0x04, 0x24, 0x0A,
+            0xBF, 0x01, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0xBA, 0x01, 0x00, 0x00, 0x00,
+            0xB8, 0x01, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+            0xC6, 0x04, 0x24, 0x00,
+            0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x27, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x83, 0xF8, 0x01, 0x75, 0xFE,
+            0x48, 0x81, 0xEC, 0x40, 0x02, 0x00, 0x00,
+            0x48, 0xC7, 0x04, 0x24, 0x80, 0x65, 0x4A, 0x00,
+            0x48, 0xC7, 0x44, 0x24, 0x08, 0x00, 0x00, 0x00, 0x04,
+            0x48, 0xC7, 0x44, 0x24, 0x10, 0x80, 0x65, 0x4A, 0x00,
+            0x48, 0xB8, 0xFF, 0xFF, 0xFF, 0x7F, 0xFE, 0xFF, 0xFF, 0xFF,
+            0x48, 0x89, 0x44, 0x24, 0x18,
+            0xBF, 0x11, 0x00, 0x00, 0x00,
+            0x48, 0x89, 0xE6,
+            0x31, 0xD2,
+            0x41, 0xBA, 0x08, 0x00, 0x00, 0x00,
+            0xB8, 0x0D, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0x31, 0xC0,
+            0x48, 0x89, 0x04, 0x24,
+            0x48, 0x89, 0x44, 0x24, 0x08,
+            0x48, 0x89, 0x44, 0x24, 0x10,
+            0x48, 0x89, 0x44, 0x24, 0x18,
+            0x48, 0x81, 0xC4, 0x40, 0x02, 0x00, 0x00,
+            0xB8, 0x6E, 0x00, 0x00, 0x00,
+            0x0F, 0x05, 0x48, 0x85, 0xC0, 0x75, 0xFE,
+            0xE9, 0x7A, 0x0B, 0x00, 0x00,
+        ]
+    )
+    entry = bytearray(entry)
+    replacement_exit = entry.index(bytes.fromhex("31ffb8e70000000f050f0b"))
+    entry[replacement_exit:replacement_exit + 11] = (
+        b"\xe9" + struct.pack("<i", 0x4AA000 - (0x4A6100 + replacement_exit + 5))
+        + b"\x90" * 6
+    )
+    image[0xA_6100 : 0xA_6100 + len(entry)] = entry
+    image[0xA_6580 : 0xA_6585] = bytes.fromhex(
+        "e97bfbffff"
+    )
+    continuation = bytearray(bytes.fromhex(
+        "4881ec000400004889e7b83f0000000f054885c075fe48b84c696e7578000000"
+        "4839042475fe48b87838365f36340000483984240401000075fe48b8286e6f6e"
+        "65290000483984244501000075fe31c04889e7b931000000fcf348abbf60945f"
+        "00be00100000b84f0000000f054883f80275fe66813c2560945f002f0075fe48"
+        "c7042560945f0000000000c604246d31ffbe015400004889e2b8100000000f05"
+        "4883f8e775fe803c246d75fec604240048b8a5a5a5a5a5a5a5a54889e7b904"
+        "000000f348abbf0200000031f64889e241ba08000000b80d0000000f054885c0"
+        "75fe31c0b9040000004889e7fcf348af75fe48b8a5a5a5a5a5a5a5a54889e7"
+        "b904000000f348abbf0300000031f64889e241ba08000000b80d0000000f0548"
+        "85c075fe31c0b9040000004889e7fcf348af75fe48c704240100000048c74424"
+        "080000000448c744241080654a0048b8ffffff7ffeffffff4889442418bf030000"
+        "004889e631d241ba08000000b80d0000000f054885c075fe31c0488904244889"
+        "4424084889442410488944241848b8a5a5a5a5a5a5a5a54889e7b904000000f3"
+        "48abbf0f00000031f64889e241ba08000000b80d0000000f054885c075fe31c0"
+        "b9040000004889e7fcf348af75febf010000004889e6b8050000000f054885c0"
+        "75fe48833c240075fe48837c24080175fe48837c24100175fe48817c24188021"
+        "000075fe48837c24200075fe48817c24280044000075fe48837c24300075fe48"
+        "817c24380010000075fe48837c24400075fe48837c24480075fe48837c245000"
+        "75fe48837c24580075fe48837c24600075fe48837c24680075fe48837c247000"
+        "75fe48837c24780075fe4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
+        "bf9cffffffbe12694a00ba020000004531d2b8010100000f054883f8fe75fe"
+        "c604246dbf02000000be015400004889e2b8100000000f054883f8e775fe"
+        "803c246d75febf01000000be015400004889e2b8100000000f054883f8e775fe"
+        "803c246d75fe31ffbe015400004889e2b8100000000f054883f8e775fe"
+        "803c246d75fec6042400803c240075fe"
+        "c7042473683a20bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "c7042400000000833c240075fe"
+        "48b863616e27742061634889042448b863657373207474794889442408"
+        "48b83b206a6f6220636f488944241048b86e74726f6c2074754889442418"
+        "48b8726e6564206f66664889442420"
+        "bf020000004889e6ba28000000b8010000000f054883f82875fe"
+        "31c0b9050000004889e7fcf348ab31c0b9050000004889e7fcf348af75fe"
+        "c604240abf020000004889e6ba01000000b8010000000f054883f80175fe"
+        "c6042400803c240075fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe20694a004889e24531d2b8060100000f054883f8fe75fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348af75fe"
+        "31c0b9120000004889e7fcf348ab31c0b9120000004889e7fcf348af75fe"
+        "48b80a0a42757379426f4889042448b8782076312e33372e488944240848b830"
+        "20284465626961488944241048b86e20313a312e3337488944241848b82e302d"
+        "362b623929488944242048b8206275696c742d69488944242848b86e20736865"
+        "6c6c20488944243048b828617368290a456e488944243848b874657220276865"
+        "6c488944244048b8702720666f722061488944244848b8206c697374206f6648"
+        "8944245048b8206275696c742d69488944245848b86e20636f6d6d616e488944"
+        "246048b864732e0a0a0000004889442468bf010000004889e6ba6d000000b801"
+        "0000000f054883f86d75fe31c0b90e0000004889e7fcf348ab31c0b90e000000"
+        "4889e7fcf348af75fe"
+        "c604246d31ffbe015400004889e2b8100000000f054883f8e775fe803c246d75fe"
+        "c6042400803c240075fe"
+        "66c7042560945f00a5a5bf60945f00be00100000b84f0000000f054883f80275fe"
+        "66813c2560945f002f0075fe66c7042560945f00000066833c2560945f000075fe"
+        "b86b0000000f054885c075fe"
+        "bf9cffffffbe38694a0031d24531d2b8010100000f054883f80375fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf030000004889e6b8050000000f054885c075fe"
+        "48833c240075fe48837c24080275fe48837c24100175fe"
+        "48817c24182481000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b910000000fcf348ab"
+        "bf030000004889e6ba8000000031c00f054885c075fe"
+        "48b8a5a5a5a5a5a5a5a54889e7b910000000fcf348af75fe"
+        "31c0b9100000004889e7fcf348ab"
+        "31c0b9100000004889e7fcf348af75fe"
+        "bf03000000b8030000000f054885c075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80b75fe"
+        "48b86563686f20746f7048390425608f5f0075fe"
+        "48b8616c0a000000000048390425688f5f0075fe"
+        "48b8746f70616c0a000048890424bf010000004889e6ba06000000b801000000"
+        "0f054883f80675fe48c704240000000048833c240075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f80575fe"
+        "48b86364202f0a00000048390425608f5f0075fe"
+        "48833c25688f5f000075fe"
+        "66c7042560945f002f00"
+        "bf60945f00b8500000000f054885c075fe"
+        "66c7042560945f000000"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f05483d2601000075fe"
+        "48b86563686f202f2a3b48390425608f5f0075fe"
+        "48b82074657374202d6448390425688f5f0075fe"
+        "48b8202f62696e20262648390425708f5f0075fe"
+        "48b8206563686f202f6248390425788f5f0075fe"
+        "48b8696e2f2a3b20746548390425808f5f0075fe"
+        "48b87374202d66202f6248390425888f5f0075fe"
+        "48b8696e2f627573796248390425908f5f0075fe"
+        "48b86f7820262620656348390425988f5f0075fe"
+        "48b8686f20627573796248390425a08f5f0075fe"
+        "48b86f782d66696c653b48390425a88f5f0075fe"
+        "48b82074657374202d7848390425b08f5f0075fe"
+        "48b8202f62696e2f627548390425b88f5f0075fe"
+        "48b87379626f7820262648390425c08f5f0075fe"
+        "48b8206563686f20627548390425c88f5f0075fe"
+        "48b87379626f782d657848390425d08f5f0075fe"
+        "48b86563757461626c6548390425d88f5f0075fe"
+        "48b83b2074657374202d48390425e08f5f0075fe"
+        "48b873202f62696e2f6248390425e88f5f0075fe"
+        "48b8757379626f78202648390425f08f5f0075fe"
+        "48b826206563686f206248390425f88f5f0075fe"
+        "48b8757379626f782d6e4839042500905f0075fe"
+        "48b86f6e656d7074793b4839042508905f0075fe"
+        "48b8206578656320333c4839042510905f0075fe"
+        "48b82f62696e2f6275734839042518905f0075fe"
+        "48b879626f783b2065634839042520905f0075fe"
+        "48b8686f2062757379624839042528905f0075fe"
+        "48b86f782d6f70656e3b4839042530905f0075fe"
+        "48b8204946533d2072654839042538905f0075fe"
+        "48b86164202d72202d6e4839042540905f0075fe"
+        "48b82034202d752033204839042548905f0075fe"
+        "48b85f202626206563684839042550905f0075fe"
+        "48b86f2062757379626f4839042558905f0075fe"
+        "48b8782d726561643b204839042560905f0075fe"
+        "48b86578656320333c264839042568905f0075fe"
+        "48b82d3b206563686f204839042570905f0075fe"
+        "48b862757379626f782d4839042578905f0075fe"
+        "48b8636c6f73650a00004839042580905f0075fe"
+        "66c7042560945f002f00"
+        "bf9cffffffbe60945f00ba000809004531d2b8010100000f054883f80375fe"
+        "66c7042560945f000000"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf030000004889e6b8050000000f054885c075fe"
+        "48833c240075fe48837c24080375fe48837c24100375fe"
+        "48817c2418ed41000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "31c0b9400000004889e7fcf348ab"
+        "bf030000004889e6ba00020000b8d90000000f054883f84875fe"
+        "48833c240375fe48837c24080175fe"
+        "66837c24101875fe807c24120475fe807c24132e75fe"
+        "48837c24180375fe48837c24200275fe"
+        "66837c24281875fe807c242a0475fe807c242b2e75fe807c242c2e75fe"
+        "48837c24300475fe48837c24380375fe"
+        "66837c24401875fe807c24420475fe"
+        "807c24436275fe807c24446975fe807c24456e75fe"
+        "31c0b9090000004889e7fcf348ab"
+        "bf030000004889e6ba00020000b8d90000000f054885c075fe"
+        "bf03000000b8030000000f054885c075fe"
+        "48b82f62696e0a00000048890424"
+        "bf010000004889e6ba05000000b8010000000f054883f80575fe"
+        "31c04889042448833c240075fe"
+        "48b82f62696e000000004889042560945f00"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+        "48833c240075fe48837c24080475fe48837c24100275fe"
+        "48817c2418ed41000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48c7042560945f000000000048833c2560945f000075fe"
+        "48b82f62696e2f0000004889042560945f00"
+        "bf9cffffffbe60945f00ba000809004531d2b8010100000f054883f80375fe"
+        "48c7042560945f0000000000"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf030000004889e6b8050000000f054885c075fe"
+        "48833c240075fe48837c24080475fe48837c24100275fe"
+        "48817c2418ed41000075fe48837c24200075fe48837c24280075fe"
+        "48837c24300075fe48817c24380010000075fe"
+        "48837c24400075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "31c0b9400000004889e7fcf348ab"
+        "bf030000004889e6ba00020000b8d90000000f054883f85075fe"
+        "48833c240475fe48837c24080175fe"
+        "66837c24101875fe807c24120475fe807c24132e75fe"
+        "48837c24180375fe48837c24200275fe"
+        "66837c24281875fe807c242a0475fe807c242b2e75fe807c242c2e75fe"
+        "48837c24300575fe48837c24380375fe"
+        "66837c24402075fe807c24420875fe"
+        "48b862757379626f7800483944244375fe"
+        "31c0b90a0000004889e7fcf348ab"
+        "bf030000004889e6ba00020000b8d90000000f054885c075fe"
+        "31c0b90a0000004889e7fcf348af75fe"
+        "bf03000000b8030000000f054885c075fe"
+        "48b82f62696e2f62757348890424"
+        "48b879626f780a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+        "48833c240075fe48837c24080575fe48837c24100175fe"
+        "48817c24186d81000075fe48837c24200075fe48837c24280075fe"
+        "48817c243060e41e0075fe48817c24380010000075fe"
+        "48817c2440730f000075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "48b862757379626f782d48890424"
+        "48b866696c650a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+        "48833c240075fe48837c24080575fe48837c24100175fe"
+        "48817c24186d81000075fe48837c24200075fe48837c24280075fe"
+        "48817c243060e41e0075fe48817c24380010000075fe"
+        "48817c2440730f000075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "b86b0000000f054885c075fe"
+        "48b862757379626f782d48890424"
+        "48b865786563757461624889442408"
+        "c74424106c650a00"
+        "bf010000004889e6ba13000000b8010000000f054883f81375fe"
+        "31c04889042448894424084889442410"
+        "48833c240075fe48837c24080075fe48837c24100075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "48b8a5a5a5a5a5a5a5a54889e7b912000000fcf348ab"
+        "bf9cffffffbe60945f004889e24531d2b8060100000f054885c075fe"
+        "48833c240075fe48837c24080575fe48837c24100175fe"
+        "48817c24186d81000075fe48837c24200075fe48837c24280075fe"
+        "48817c243060e41e0075fe48817c24380010000075fe"
+        "48817c2440730f000075fe48837c24480075fe48837c24500075fe"
+        "48837c24580075fe48837c24600075fe48837c24680075fe"
+        "48837c24700075fe48837c24780075fe"
+        "4883bc24800000000075fe4883bc24880000000075fe"
+        "31c0b9120000004889e7fcf348ab"
+        "31c0b9120000004889e7fcf348af75fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "48b862757379626f782d48890424"
+        "48b86e6f6e656d7074794889442408"
+        "48c74424100a000000"
+        "bf010000004889e6ba11000000b8010000000f054883f81175fe"
+        "31c04889042448894424084889442410"
+        "48833c240075fe48837c24080075fe48837c24100075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "bf9cffffffbe60945f0031d24531d2b8010100000f054883f80375fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "48b862757379626f782d48890424"
+        "48b86f70656e0a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "bf03000000488d742400ba0100000031c00f054883f80175fe807c24007f75fe"
+        "bf03000000488d742401ba0100000031c00f054883f80175fe807c24014575fe"
+        "bf03000000488d742402ba0100000031c00f054883f80175fe807c24024c75fe"
+        "bf03000000488d742403ba0100000031c00f054883f80175fe807c24034675fe"
+        "c704240000000048833c240075fe"
+        "48b862757379626f782d48890424"
+        "48b8726561640a0000004889442408"
+        "bf010000004889e6ba0d000000b8010000000f054883f80d75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "bf03000000be06040000ba0a000000b8480000000f054883f80a75fe"
+        "bf03000000b8030000000f054885c075fe"
+        "bf0a000000b8030000000f054885c075fe"
+        "48b862757379626f782d48890424"
+        "48b8636c6f73650a00004889442408"
+        "bf010000004889e6ba0e000000b8010000000f054883f80e75fe"
+        "31c048890424488944240848833c240075fe48837c24080075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00baff03000031c00f054883f81875fe"
+        "48b86578656320333c2f48390425608f5f0075fe"
+        "48b862696e2f6275737948390425688f5f0075fe"
+        "48b8626f783b7077640a48390425708f5f0075fe"
+        "48833c25788f5f000075fe"
+        "48b82f62696e2f6275734889042560945f00"
+        "48b879626f78000000004889042568945f00"
+        "bf9cffffffbe60945f0031d24531d2b8010100000f054883f80375fe"
+        "48c7042560945f000000000048c7042568945f0000000000"
+        "66c7042560945f00a5a5"
+        "bf60945f00be00100000b84f0000000f054883f80275fe"
+        "66813c2560945f002f0075fe"
+        "c6042561945f000a66813c2560945f002f0a75fe"
+        "bf01000000be60945f00ba02000000b8010000000f054883f80275fe"
+        "66c7042560945f00000066833c2560945f000075fe"
+        "c704242f202320bf020000004889e6ba04000000b8010000000f054883f80475fe"
+        "48c704240000000048833c240075fe"
+        "31ffbe608f5f00ba1700000031c00f054883f81775fe"
+        "c60425778f5f0000"
+        "48b865786563202f626948390425608f5f0075fe"
+        "48b86e2f62757379626f48390425688f5f0075fe"
+        "48b87820747275650a0048390425708f5f0075fe"
+        "48833c25788f5f000075fe"
+    ))
+    for address, value in (
+        (0x005F_9000, b"/bin/bus"),
+        (0x005F_9008, b"ybox\0\0\0\0"),
+        (0x005F_9010, b"true\0\0\0\0"),
+        (0x005F_9020, b"SHLVL=1\0"),
+        (0x005F_9030, b"OLDPWD=/"),
+        (0x005F_9038, bytes(8)),
+        (0x005F_9040, b"PATH=/sb"),
+        (0x005F_9048, b"in:/usr/"),
+        (0x005F_9050, b"sbin:/bi"),
+        (0x005F_9058, b"n:/usr/b"),
+        (0x005F_9060, b"in\0\0\0\0\0\0"),
+        (0x005F_9070, b"PWD=/\0\0\0"),
+    ):
+        continuation.extend(b"\x48\xb8" + value + b"\x48\xa3" + struct.pack("<Q", address))
+    for address, value in (
+        (0x005F_9080, 0x005F_9000),
+        (0x005F_9088, 0x005F_9010),
+        (0x005F_9090, 0),
+        (0x005F_90A0, 0x005F_9020),
+        (0x005F_90A8, 0x005F_9030),
+        (0x005F_90B0, 0x005F_9040),
+        (0x005F_90B8, 0x005F_9070),
+        (0x005F_90C0, 0),
+    ):
+        continuation.extend(
+            b"\x48\xb8" + struct.pack("<Q", value) + b"\x48\xa3" + struct.pack("<Q", address)
+        )
+    def store(address: int, value: int) -> None:
+        continuation.extend(b"\x48\xb8" + struct.pack("<Q", value)
+                            + b"\x48\xa3" + struct.pack("<Q", address))
+
+    def exec_error(path: int, argv: int, env: int, errno: int) -> None:
+        for opcode, value in ((0xBF, path), (0xBE, argv), (0xBA, env)):
+            continuation.extend(bytes((0x48, opcode)) + struct.pack("<Q", value))
+        continuation.extend(bytes.fromhex("49c7c4ab510000b83b0000000f054883f8")
+                            + bytes(((-errno) & 255,))
+                            + bytes.fromhex("75fe4981fcab51000075fe"))
+
+    for address in range(0x5F9200, 0x5F9300, 8):
+        store(address, int.from_bytes(b"a" * 8, "little"))
+    for path, argv, env, errno in (
+        (0, 0x5F9080, 0x5F90A0, 14),
+        (2**64-1, 0x5F9080, 0x5F90A0, 14),
+        (0x4A6912, 0x5F9080, 0x5F90A0, 2),
+        (0x5F9200, 0x5F9080, 0x5F90A0, 36),
+        (0x5F9000, 0, 0x5F90A0, 14),
+        (0x5F9000, 0x7FFFFC, 0x5F90A0, 14),
+        (0x5F9000, 2**64-4, 0x5F90A0, 14),
+        (0x5F9000, 0x5F9300, 0x5F90A0, 22),
+        (0x5F9000, 0x5F9080, 2**64-1, 14),
+    ):
+        exec_error(path, argv, env, errno)
+    for pointer, errno in ((0x619000, 14), (0x5F9200, 7)):
+        store(0x5F9088, pointer)
+        exec_error(0x5F9000, 0x5F9080, 0x5F90A0, errno)
+    store(0x5F9088, 0x5F9010)
+    for index in range(9):
+        store(0x5F9300 + 8 * index, 2**64-1 if index == 8 else 0x5F9000)
+    exec_error(0x5F9000, 0x5F9300, 0x5F90A0, 7)
+    store(0x5F90B0, 0x619000)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 14)
+    store(0x5F90B0, 0x5F9040)
+    store(0x5F90C0, 1)
+    exec_error(0x5F9000, 0x5F9080, 0x5F90A0, 14)
+    store(0x5F90C0, 0)
+    continuation.extend(bytes.fromhex("bf00925f00b900010000b061fcf3ae75fe"))
+    argument_bytes = b"/alias/argv0\0true\0\0" + b"x" * 232 + bytes(5)
+    assert len(argument_bytes) == 256
+    for index in range(0, 256, 8):
+        store(0x5F9200 + index, int.from_bytes(argument_bytes[index:index+8], "little"))
+    for index, offset in enumerate((0, 13, 18, 19, 252, 253, 254, 255)):
+        store(0x5F9300 + index * 8, 0x5F9200 + offset)
+    store(0x5F9340, 0)
+    checks = runpy.run_path(str(LAB / "static_process_checks.py"))
+    continuation.extend(b"\xb8" + struct.pack("<I", checks["PRE_EXEC"]) + b"\xff\xd0")
+    environment_pointer = 0 if environment_mode == "null" else 0x607400
+    continuation.extend(bytes.fromhex("bf00905f00be00935f00ba")
+                        + struct.pack("<I", environment_pointer)
+                        + bytes.fromhex("b83b0000000f050f0b"))
+    image[0xA_7000 : 0xA_7000 + len(continuation)] = continuation
+    runtime = bytearray()
+    for offset, expected in ((0,8), (8,0x7FFA20), (16,0x7FFA2D),
+                             (24,0x7FFA32), (32,0x7FFA33), (40,0x7FFB1C),
+                             (48,0x7FFB1D), (56,0x7FFB1E), (64,0x7FFB1F), (72,0)):
+        runtime.extend(bytes((0x48,0x81,0x7C,0x24,offset))
+                       + struct.pack("<I", expected) + bytes.fromhex("75fe"))
+    runtime.extend(bytes.fromhex("be20fa7f00bf00b04a00b900010000fcf3a675fe"))
+    runtime.extend(bytes.fromhex("b800804c00ffd0"))
+    runtime.extend(b"\xb8" + struct.pack("<I", checks["ENTRY"]) + b"\xff\xd0")
+
+    def write_call(fd: int, pointer: int, count: int) -> None:
+        runtime.extend(b"\xbf" + struct.pack("<I", fd) + b"\x48\xbe"
+                       + struct.pack("<Q", pointer) + b"\xba" + struct.pack("<I", count)
+                       + bytes.fromhex("b8010000000f05"))
+
+    for fd, pointer, count, expected in ((0,2**64-1,0,-9), (1,2**64-1,257,-22),
+                                       (1,2**64-1,1,-14), (1,0x7FFFFF,2,-14),
+                                       (2,2**64-1,0,0)):
+        write_call(fd,pointer,count)
+        runtime.extend(bytes.fromhex("4883f8") + bytes((expected & 255,)) + bytes.fromhex("75fe"))
+    write_call(1,0x4AB200,14)
+    runtime.extend(bytes.fromhex("4883f80e75fe"))
+    write_call(2,0x4AB20E,256)
+    runtime.extend(bytes.fromhex("483d0001000075fe"))
+    runtime.extend(bytes.fromhex("bf23010000b83c0000000f050f0b"))
+    image[0xA_A000:0xA_A000+len(runtime)] = runtime
+    image[0xA_B000:0xA_B100] = argument_bytes
+    output_bytes = b"runtime-clean\n" + b"z" * 256 + b"runtime-alias\n"
+    image[0xA_B200:0xA_B200+len(output_bytes)] = output_bytes
+    for address, payload in ((checks["ENTRY"], checks["code"]()),
+                             (checks["PRE_EXEC"], checks["pre_exec"]()),
+                             (0x4B4000, checks["namespace_code"]("after_exec")),
+                             (0x4C0000, checks["namespace_code"]("pre_exec")),
+                             (0x4C4000, checks["environment_code"]("pre_code",environment_mode)),
+                             (0x4C8000, checks["environment_code"]("post_code",environment_mode))):
+        offset = address - 0x400000
+        image[offset:offset+len(payload)] = payload
+    environment_encoder = runpy.run_path(str(LAB / "static_environment_checks.py"))
+    image[0xC_C000:0xC_C400] = environment_encoder["environment_bytes"]()
+    observation_encoder = runpy.run_path(str(LAB / "static_observation_checks.py"))
+    observation_code = observation_encoder["code"](checks["Witness"])
+    image[0xD_0000:0xD_0000+len(observation_code)] = observation_code
+    image[0xD_8000:0xD_8000+390] = observation_encoder["system_bytes"]()
+    time_encoder = runpy.run_path(str(LAB / "static_time_checks.py"))
+    time_code = time_encoder["code"](checks["Witness"])
+    image[0xE_0000:0xE_0000+len(time_code)] = time_code
+    image[0xE_8000:0xE_8010] = struct.pack("<QQ", 0, 1)
+    child_encoder = runpy.run_path(str(LAB / "static_child_checks.py"))
+    child_code = child_encoder["code"](checks["Witness"])
+    image[0xF_0000:0xF_0000+len(child_code)] = child_code
+    pair_encoder = runpy.run_path(str(LAB / "static_pair_checks.py"))
+    pair_code = pair_encoder["code"](checks["Witness"])
+    image[0xF_8000:0xF_8000+len(pair_code)] = pair_code
+    pipe_encoder = runpy.run_path(str(LAB / "static_pipe_checks.py"))
+    pipe_code = pipe_encoder["code"](checks["Witness"])
+    image[0x10_0000:0x10_0000+len(pipe_code)] = pipe_code
+    image[0xA_6900 : 0xA_6912] = b"/etc/busybox.conf\0"
+    image[0xA_6912 : 0xA_691B] = b"/dev/tty\0"
+    image[0xA_6920 : 0xA_6935] = b"/var/spool/mail/root\0"
+    image[0xA_6938 : 0xA_6945] = b"/etc/profile\0"
+    return bytes(image)
+
+
+def checked_static_user_image(external: Path | None, environment_mode: str = "maximum") -> tuple[bytes, str]:
+    if external is None:
+        return static_user_fixture(environment_mode), "supplied-clean-room-fixture"
+    if environment_mode != "maximum":
+        raise GateError("clean environment modes apply only to the clean ABI fixture")
+    image = external.read_bytes()
+    actual = hashlib.sha256(image).hexdigest()
+    if actual != PINNED_STATIC_BUSYBOX_SHA256:
+        raise GateError(
+            "external static user image does not match the approved pinned SHA-256"
+        )
+    return image, "pinned-external-static-busybox"
+
+
+def build_image(
+    destination: Path, external_static_user_image: Path | None = None,
+    clean_environment_mode: str = "maximum",
+    library_root: Path | None = None,
+) -> tuple[Path, Path, Path, Path, Path, Path, str]:
+    generated = destination / "generated"
+    compile_systems_artifact(generated, library_root=library_root)
+    generated_initial_user_image = generated / "initial-user.elf"
+    supplied_initial_user_image = destination / "supplied-initial-user.elf"
+    supplied = bytearray(generated_initial_user_image.read_bytes())
+    supplied[4097] = 0xA5
+    supplied_initial_user_image.write_bytes(supplied)
+    supplied_static_user_image = destination / "supplied-static-user.elf"
+    static_user_bytes, static_user_input = checked_static_user_image(
+        external_static_user_image, clean_environment_mode
+    )
+    supplied_static_user_image.write_bytes(static_user_bytes)
+
+    linked = destination / "linked"
+    compile_systems_artifact(
+        linked, supplied_initial_user_image, supplied_static_user_image, library_root
+    )
+    published_initial_user_image = linked / "initial-user.elf"
+    if published_initial_user_image.read_bytes() != supplied:
+        raise GateError("compiler did not publish the exact supplied initial user image")
+    if digest(published_initial_user_image) == digest(generated_initial_user_image):
+        raise GateError("supplied initial user image is not distinct from the generated default")
+    published_static_user_image = linked / "static-user.elf"
+    if published_static_user_image.read_bytes() != supplied_static_user_image.read_bytes():
+        raise GateError("compiler did not publish the exact supplied static user image")
+
     boot = destination / "boot"
     packaging_command = [
         "cargo",
@@ -121,19 +1152,41 @@ def build_image(destination: Path) -> tuple[Path, Path, Path]:
     print("+", " ".join(packaging_command), flush=True)
     subprocess.run(packaging_command, cwd=REPOSITORY, check=True)
     image = boot / "bzImage"
+    boot_resource = boot / "initramfs.cpio"
     boot_provenance = boot / "boot-provenance.json"
     artifact_provenance = linked / "provenance.json"
-    for path in (image, boot_provenance, artifact_provenance):
+    for path in (image, boot_resource, boot_provenance, artifact_provenance):
         if not path.is_file():
             raise GateError(f"builder omitted required output: {path}")
-    return image, boot_provenance, artifact_provenance
+    artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
+    static_outputs = [
+        output
+        for output in artifact["outputs"]
+        if output["identity"] == "static-user.elf"
+    ]
+    if len(static_outputs) != 1 or static_outputs[0]["sha256"] != digest(
+        published_static_user_image
+    ):
+        raise GateError("artifact provenance does not bind the static user image")
+    return (
+        image,
+        boot_resource,
+        boot_provenance,
+        artifact_provenance,
+        generated_initial_user_image,
+        published_static_user_image,
+        static_user_input,
+    )
 
 
-def qemu_command(image: Path, serial: Path) -> list[str]:
+def qemu_command(
+    image: Path, boot_resource: Path, serial: Path, serial_tty: str | None = None
+) -> list[str]:
     data = manifest()
     emulator = data["emulator"]
     machine = data["machine"]
     firmware = data["firmware"]
+    entropy = data["devices"]["entropy"]
     return [
         emulator["program"],
         "-name",
@@ -169,41 +1222,106 @@ def qemu_command(image: Path, serial: Path) -> list[str]:
         "-global",
         "ICH9-LPC.disable_s4=1",
         "-chardev",
-        f"file,id=serial0,path={serial}",
+        (
+            f"serial,id=serial0,path={serial_tty}"
+            if serial_tty is not None
+            else f"socket,id=serial0,path={serial.with_suffix('.sock')},server=on,wait=on"
+        ),
         "-device",
         "isa-serial,chardev=serial0,index=0",
+        "-object",
+        f"rng-random,id=entropy0,filename={entropy['backend']}",
+        "-device",
+        (
+            f"{entropy['model']},rng=entropy0,bus=pcie.0,addr=05.0,"
+            f"max-bytes={entropy['max_bytes']},period={entropy['period_ms']}"
+        ),
         "-kernel",
         str(image),
+        "-initrd",
+        str(boot_resource),
     ]
 
 
-def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> bytes:
-    command = qemu_command(image, serial)
+def observe_gate(
+    image: Path, boot_resource: Path, serial: Path, qemu_log: Path, timeout: float,
+    process_command: bytes = PROCESS_COMMAND,
+    before_process_command: Callable[[], None] | None = None,
+    failure_check: Callable[[], str | None] | None = None,
+) -> bytes:
+    master_fd, slave_fd = pty.openpty()
+    os.set_blocking(master_fd, False)
+    command = qemu_command(image, boot_resource, serial, os.ttyname(slave_fd))
     print("+", " ".join(map(str, command)), flush=True)
+    injected = False
+    command_injected = False
+    received = bytearray()
+
+    def drain_client() -> None:
+        while True:
+            try:
+                block = os.read(master_fd, 4096)
+            except (BlockingIOError, OSError):
+                break
+            if not block:
+                break
+            received.extend(block)
+        serial.write_bytes(received)
+
     with qemu_log.open("wb") as output:
-        process = subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(
+            command,
+            stdout=output,
+            stderr=subprocess.STDOUT,
+        )
+        os.close(slave_fd)
+        slave_fd = None
         try:
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
                 status = process.poll()
                 if status is not None:
                     raise GateError(f"QEMU exited with status {status} before the gate completed")
-                observed = serial.read_bytes() if serial.exists() else b""
+                drain_client()
+                if failure_check is not None:
+                    failure = failure_check()
+                    if failure is not None:
+                        raise GateError(failure)
+                observed = bytes(received)
+                if (
+                    not injected
+                    and b"TOPAL_KERNEL_BOOT_RESOURCE_OK" in observed
+                ):
+                    os.write(master_fd, SERIAL_INPUT)
+                    injected = True
+                if (
+                    not command_injected
+                    and b"TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK" in observed
+                ):
+                    if before_process_command is not None:
+                        before_process_command()
+                    os.write(master_fd, process_command)
+                    command_injected = True
                 positions = [observed.find(marker) for marker in MARKERS]
                 if positions[0] >= 0 and all(
                     later > earlier for earlier, later in zip(positions, positions[1:])
                 ):
                     time.sleep(0.25)
-                    settled = serial.read_bytes()
+                    drain_client()
+                    settled = bytes(received)
                     time.sleep(1.0)
                     if process.poll() is not None:
                         raise GateError("QEMU exited instead of remaining in the fatal halt")
-                    if serial.read_bytes() != settled:
+                    drain_client()
+                    if bytes(received) != settled:
                         raise GateError("serial output continued after the fatal disposition")
                     return settled
                 time.sleep(0.05)
             raise GateError(f"timed out after {timeout:g}s waiting for all kernel markers")
         finally:
+            os.close(master_fd)
+            if slave_fd is not None:
+                os.close(slave_fd)
             if process.poll() is None:
                 process.terminate()
                 try:
@@ -216,33 +1334,379 @@ def observe_gate(image: Path, serial: Path, qemu_log: Path, timeout: float) -> b
 def evidence_record(
     qemu_version: str,
     image: Path,
+    boot_resource: Path,
     boot_provenance: Path,
     artifact_provenance: Path,
+    generated_initial_user_image: Path,
+    static_user_image: Path,
+    static_user_input: str,
     serial: bytes,
 ) -> dict[str, Any]:
     data = manifest()
     boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
     artifact = json.loads(artifact_provenance.read_text(encoding="utf-8"))
+    if boot["static_user_image_sha256"] != digest(static_user_image):
+        raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/16",
+        "schema": "topal-kernel-toolchain-gate-qemu/232",
         "publication": "topalc-target-interface/1",
+        "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
         "manifest_sha256": digest(MANIFEST_PATH),
         "qemu": qemu_version,
         "firmware_sha256": digest(Path(data["firmware"]["path"])),
         "machine": data["emulator"]["machine"],
         "cpu": data["emulator"]["cpu"],
+        "serial_input_utf8": SERIAL_INPUT.decode("ascii"),
+        "serial_input_sha256": hashlib.sha256(SERIAL_INPUT).hexdigest(),
         "provider": boot["provider"],
         "artifact_schema": artifact["schema"],
         "boot_schema": boot["schema"],
+        "boot_resource_schema": boot["boot_resource_schema"],
+        "boot_resource_member": boot["boot_resource_member"],
+        "static_boot_resource_member": boot["static_boot_resource_member"],
+        "boot_resource_bytes": boot["boot_resource_bytes"],
+        "initial_user_image_bytes": boot["initial_user_image_bytes"],
+        "initial_user_image_sha256": boot["initial_user_image_sha256"],
+        "generated_initial_user_image_sha256": digest(generated_initial_user_image),
+        "initial_user_image_input": "supplied",
+        "static_user_image_bytes": boot["static_user_image_bytes"],
+        "static_user_image_sha256": boot["static_user_image_sha256"],
+        "static_user_image_input": static_user_input,
         "linked_kernel_sha256": boot["linked_kernel_sha256"],
         "artifact_provenance_sha256": digest(artifact_provenance),
         "boot_image_sha256": digest(image),
+        "boot_resource_sha256": digest(boot_resource),
         "boot_provenance_sha256": digest(boot_provenance),
         "observations": {
+            "readonly_open_access_profile": "lookup-and-type-errors-before-immutable-view-write-denial",
+            "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
+            "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
+            "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",
+            "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
+            "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
+            "reusable_clean_boundary_corpus": static_user_input != "pinned-external-static-busybox",
             "markers_in_order": [marker.decode("ascii") for marker in MARKERS],
             "serial_utf8": serial.decode("utf-8"),
             "serial_sha256": hashlib.sha256(serial).hexdigest(),
+            "static_applet_newline_count": serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n"),
+            "static_shell_getpid_profile": (
+                "external-shell-echo-command"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-pid-one-witness"
+            ),
+            "static_shell_sigchld_profile": (
+                "external-shell-echo-command"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-installed-cleared-witness"
+            ),
+            "static_shell_getppid_profile": (
+                "external-shell-echo-command"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-no-parent-witness"
+            ),
+            "static_shell_echo_command_profile": (
+                "external-busybox-sh-echo-command-output-terminal"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-sealed-echo-command-witness"
+            ),
+            "static_shell_console_fstat_profile": (
+                "external-optional-console-fstat-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-console-fstat-witness"
+            ),
+            "static_shell_dev_tty_open_profile": (
+                "external-optional-dev-tty-open-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-dev-tty-open-enoent-witness"
+            ),
+            "static_shell_standard_terminal_probe_profile": (
+                "external-optional-standard-terminal-probes-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-stderr-stdout-stdin-enotty-witness"
+            ),
+            "static_shell_terminal_warning_profile": (
+                "external-optional-terminal-warning-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-three-segment-stderr-warning-witness"
+            ),
+            "static_shell_mailpath_stat_profile": (
+                "external-optional-mailpath-stat-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-root-mailpath-enoent-witness"
+            ),
+            "static_shell_banner_profile": (
+                "external-optional-shell-banner-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-109-byte-shell-banner-witness"
+            ),
+            "static_shell_post_banner_terminal_probe_profile": (
+                "external-optional-post-banner-terminal-probe-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-post-banner-stdin-enotty-witness"
+            ),
+            "static_shell_post_banner_getcwd_profile": (
+                "external-optional-post-banner-getcwd-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-post-banner-sealed-root-witness"
+            ),
+            "static_shell_post_banner_geteuid_profile": (
+                "external-optional-post-banner-geteuid-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-post-banner-effective-root-witness"
+            ),
+            "static_shell_profile_open_profile": (
+                "external-optional-system-profile-open-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-read-only-system-profile-descriptor-three-witness"
+            ),
+            "static_shell_profile_fstat_profile": (
+                "external-optional-system-profile-metadata-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-system-profile-metadata-witness"
+            ),
+            "static_shell_profile_read_profile": (
+                "external-optional-system-profile-read-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-empty-system-profile-eof-witness"
+            ),
+            "static_shell_profile_close_profile": (
+                "external-optional-system-profile-close-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-consumed-system-profile-description-witness"
+            ),
+            "static_shell_prompt_profile": (
+                "external-optional-root-prompt-absent"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-prompt-witness"
+            ),
+            "static_shell_refill_input_profile": (
+                "external-five-publication-command-refill-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-five-publication-command-refill-witness"
+            ),
+            "static_shell_cd_root_profile": (
+                "external-busybox-exact-root-chdir-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-chdir-witness"
+            ),
+            "static_shell_root_glob_open_profile": (
+                "external-busybox-exact-root-directory-open-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-root-directory-open-witness"
+            ),
+            "static_shell_root_glob_fstat_profile": (
+                "external-busybox-complete-root-directory-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-root-directory-metadata-witness"
+            ),
+            "static_shell_root_glob_enumeration_profile": (
+                "external-busybox-three-record-root-directory-enumeration-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-three-record-root-directory-enumeration-witness"
+            ),
+            "static_shell_root_glob_output_profile": (
+                "external-busybox-exact-named-root-glob-match-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-named-root-glob-match-witness"
+            ),
+            "static_shell_named_root_entry_profile": (
+                "external-busybox-sealed-bin-directory-entry-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-sealed-bin-directory-entry-witness"
+            ),
+            "static_shell_named_root_metadata_profile": (
+                "external-busybox-complete-bin-directory-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-bin-directory-metadata-witness"
+            ),
+            "static_shell_named_root_condition_profile": (
+                "external-busybox-selected-bin-busybox-glob-condition-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-selected-bin-busybox-glob-condition-witness"
+            ),
+            "static_shell_empty_bin_open_profile": (
+                "external-busybox-exact-bin-directory-open-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-directory-open-witness"
+            ),
+            "static_shell_empty_bin_fstat_profile": (
+                "external-busybox-complete-bin-directory-fstat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-bin-directory-fstat-witness"
+            ),
+            "static_shell_empty_bin_enumeration_profile": (
+                "external-busybox-three-record-bin-busybox-enumeration-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-three-record-bin-busybox-enumeration-witness"
+            ),
+            "static_shell_empty_bin_close_profile": (
+                "external-busybox-explicit-bin-directory-close-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-explicit-bin-directory-close-witness"
+            ),
+            "static_shell_empty_bin_output_profile": (
+                "external-busybox-exact-bin-busybox-glob-match-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-glob-match-witness"
+            ),
+            "static_shell_bin_busybox_entry_profile": (
+                "external-busybox-sealed-bin-busybox-dirent-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-sealed-bin-busybox-dirent-witness"
+            ),
+            "static_shell_bin_busybox_metadata_profile": (
+                "external-busybox-complete-bin-busybox-file-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-complete-bin-busybox-file-metadata-witness"
+            ),
+            "static_shell_bin_busybox_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-file-condition-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-file-condition-output-witness"
+            ),
+            "static_shell_bin_busybox_executable_metadata_profile": (
+                "external-busybox-repeated-complete-bin-busybox-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-repeated-complete-bin-busybox-metadata-witness"
+            ),
+            "static_shell_bin_busybox_executable_credential_profile": (
+                "external-busybox-effective-root-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-effective-root-witness"
+            ),
+            "static_shell_bin_busybox_executable_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-executable-condition-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-executable-condition-output-witness"
+            ),
+            "static_shell_bin_busybox_artifact_size_profile": (
+                "external-busybox-sealed-2024544-byte-bin-busybox-artifact-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-sealed-2024544-byte-bin-busybox-artifact-witness"
+            ),
+            "static_shell_bin_busybox_nonempty_metadata_profile": (
+                "external-busybox-third-complete-positive-bin-busybox-metadata-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-third-complete-positive-bin-busybox-metadata-witness"
+            ),
+            "static_shell_bin_busybox_nonempty_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-nonempty-condition-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-nonempty-condition-output-witness"
+            ),
+            "static_shell_bin_busybox_read_only_open_profile": (
+                "external-busybox-exact-bin-busybox-read-only-open-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-read-only-open-witness"
+            ),
+            "static_shell_bin_busybox_open_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-open-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-open-output-witness"
+            ),
+            "static_shell_bin_busybox_header_read_profile": (
+                "external-busybox-four-byte-elf-header-read-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-four-byte-elf-header-read-witness"
+            ),
+            "static_shell_bin_busybox_header_terminal_probe_profile": (
+                "external-busybox-ordered-five-regular-file-enotty-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-header-terminal-probes-not-issued"
+            ),
+            "static_shell_bin_busybox_header_poll_profile": (
+                "external-busybox-four-pollin-readiness-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-header-poll-not-issued"
+            ),
+            "static_shell_bin_busybox_header_read_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-read-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-read-output-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_duplicate_profile": (
+                "external-busybox-exact-f-dupfd-cloexec-ten-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-f-dupfd-cloexec-ten-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_profile": (
+                "external-busybox-ordered-three-then-ten-close-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-ordered-three-then-ten-close-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_condition_output_profile": (
+                "external-busybox-exact-bin-busybox-close-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-bin-busybox-close-output-witness"
+            ),
+            "static_shell_bin_busybox_explicit_close_terminal_absence_profile": (
+                "external-busybox-pre-reopen-proved-closed-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-pre-reopen-proved-closed-description-witness"
+            ),
+            "static_shell_bin_busybox_reopen_profile": (
+                "external-busybox-fresh-generation-descriptor-three-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-fresh-generation-descriptor-three-witness"
+            ),
+            "static_process_runtime_profile": (
+                "external-busybox-runtime-arguments-console-exit-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-negative-retry-maximum-aggregate-console-status-witness"
+            ),
+            "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
+            "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+            "static_process_time_profile": "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines",
+            "static_unknown_syscall_profile": "normalized-selector-enosys-without-argument-or-state-access",
+            "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
+            "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
+            "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
+            "static_shell_bin_busybox_reopen_terminal_revoke_profile": (
+                "external-busybox-terminal-revoked-reopened-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-terminal-revoked-reopened-description-witness"
+            ),
+            "static_shell_bin_busybox_header_read_terminal_revoke_profile": (
+                "external-busybox-explicit-close-revoked-header-read-state-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-explicit-close-revoked-header-read-state-witness"
+            ),
+            "static_shell_bin_busybox_open_terminal_revoke_profile": (
+                "external-busybox-reopen-terminal-revoked-live-bin-busybox-description-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-reopen-terminal-revoked-live-bin-busybox-description-witness"
+            ),
+            "static_shell_pwd_command_profile": (
+                "external-busybox-pwd-cached-root-output-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-output-witness"
+            ),
+            "static_shell_pwd_console_fstat_profile": (
+                "external-command-console-fstat-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-console-fstat-absent"
+            ),
+            "static_shell_pwd_terminal_probe_profile": (
+                "external-command-stdout-enotty-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-stdout-terminal-probe-absent"
+            ),
+            "static_shell_pwd_getcwd_profile": (
+                "external-cached-sealed-root-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-command-getcwd-root-witness"
+            ),
+            "static_shell_pwd_output_profile": (
+                "external-exact-application-root-line-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-exact-application-root-line-witness"
+            ),
+            "static_shell_stack_profile": (
+                "external-affine-two-page-rw-nx-stack-witness"
+                if static_user_input == "pinned-external-static-busybox"
+                else "clean-affine-two-page-rw-nx-stack-witness"
+            ),
             "qemu_running_after_markers": True,
             "serial_quiescent_after_fatal_disposition": True,
             "result": "pass",
@@ -250,16 +1714,42 @@ def evidence_record(
     }
 
 
-def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
+def verify(
+    timeout: float,
+    write_evidence: bool,
+    external_static_user_image: Path | None = None,
+    process_workload: str = "true",
+    clean_environment_mode: str = "maximum",
+) -> dict[str, Any]:
+    process_command, process_output, process_status = PROCESS_WORKLOADS[process_workload]
+    if external_static_user_image is None:
+        process_output, process_status = b"runtime-alias\nruntime-clean\n" + b"z" * 256, 0x23
+    if external_static_user_image is None and process_workload != "true":
+        raise GateError("the standard clean fixture uses the true workload")
+    # Reject an unapproved external image before invoking any build tool.
+    checked_static_user_image(external_static_user_image, clean_environment_mode)
     qemu_version = verify_host()
     BUILD_ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=BUILD_ROOT) as temporary:
         root = Path(temporary)
-        image, boot_provenance, artifact_provenance = build_image(root / "artifact")
+        (
+            image,
+            boot_resource,
+            boot_provenance,
+            artifact_provenance,
+            generated_initial_user_image,
+            static_user_image,
+            static_user_input,
+        ) = build_image(root / "artifact", external_static_user_image, clean_environment_mode)
+        boot = json.loads(boot_provenance.read_text(encoding="utf-8"))
+        if digest(boot_resource) != boot["boot_resource_sha256"]:
+            raise GateError("published boot resource does not match boot provenance")
         serial_path = root / "serial.log"
         qemu_log = root / "qemu.log"
         try:
-            serial = observe_gate(image, serial_path, qemu_log, timeout)
+            serial = observe_gate(
+                image, boot_resource, serial_path, qemu_log, timeout, process_command
+            )
         except GateError as error:
             serial_text = (
                 serial_path.read_text(encoding="utf-8", errors="replace")
@@ -274,15 +1764,65 @@ def verify(timeout: float, write_evidence: bool) -> dict[str, Any]:
             raise GateError(
                 f"{error}\nserial output:\n{serial_text}\nQEMU output:\n{qemu_text}"
             ) from error
+        expected_newline_count = (
+            12
+            if static_user_input == "pinned-external-static-busybox"
+            else 19
+        ) + process_output.count(b"\n")
+        if serial.replace(EXEC_COMMIT_MARKER, b"").count(b"\n") != expected_newline_count:
+            raise GateError(
+                "static applet newline count did not match the selected qualification input"
+            )
+        if b"busybox-open\nbusybox-read\nbusybox-close\n" not in serial:
+            raise GateError(
+                "static applet did not publish the exact BusyBox read and close output"
+            )
+        status_witness = f"\nTOPAL_KERNEL_PROCESS_EXIT_STATUS={process_status:02x}\n".encode()
+        final_prompt = b"/\n" if external_static_user_image is not None else b"/ # "
+        if final_prompt + process_output + status_witness not in serial.replace(EXEC_COMMIT_MARKER, b""):
+            raise GateError("runtime process output or observed exit status differed")
+        expected_commits = 3 if external_static_user_image is None and clean_environment_mode == "maximum" else 1
+        if external_static_user_image is not None:
+            expected_commits = {"exec-chain": 3, "exec-chain-false": 2, "exec-chain-cwd": 3,
+                                "replacement-shell-pid": 2, "replacement-shell-cwd": 2,
+                                "child-echo": 2, "child-status": 2, "child-repeated": 3,
+                                "child-cwd": 2, "child-offset": 3,
+                                "pipe-substitution":2,"pipe-substitution-changed":2,
+                                "pipe-substitution-large":2}.get(process_workload, 1)
+        if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
+            raise GateError("unexpected successful image-replacement count")
         record = evidence_record(
-            qemu_version, image, boot_provenance, artifact_provenance, serial
+            qemu_version,
+            image,
+            boot_resource,
+            boot_provenance,
+            artifact_provenance,
+            generated_initial_user_image,
+            static_user_image,
+            static_user_input,
+            serial,
         )
+        record["process_workload"] = process_workload
+        record["clean_environment_mode"] = clean_environment_mode if external_static_user_image is None else None
+        record["process_command_utf8"] = process_command.decode("ascii")
+        record["process_command_sha256"] = hashlib.sha256(process_command).hexdigest()
+        record["process_output_utf8"] = process_output.decode("ascii")
+        record["process_exit_status"] = process_status
     if write_evidence:
-        EVIDENCE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        staged = EVIDENCE_PATH.with_suffix(".json.new")
+        evidence_path = (
+            PINNED_STATIC_BUSYBOX_EVIDENCE_PATH
+            if external_static_user_image is not None
+            else EVIDENCE_PATH
+        )
+        if process_workload != "true":
+            evidence_path = evidence_path.with_name(f"topal-runtime-{process_workload}-gate.json")
+        if external_static_user_image is None and clean_environment_mode != "maximum":
+            evidence_path = evidence_path.with_name(f"topal-runtime-env-{clean_environment_mode}-gate.json")
+        evidence_path.parent.mkdir(parents=True, exist_ok=True)
+        staged = evidence_path.with_suffix(".json.new")
         staged.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        staged.replace(EVIDENCE_PATH)
-        print(f"wrote {EVIDENCE_PATH}")
+        staged.replace(evidence_path)
+        print(f"wrote {evidence_path}")
     return record
 
 
@@ -290,13 +1830,22 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--write-evidence", action="store_true")
+    parser.add_argument("--external-static-user-image", type=Path)
+    parser.add_argument("--process-workload", choices=PROCESS_WORKLOADS, default="true")
+    parser.add_argument("--clean-environment-mode", choices=("maximum", "empty", "null"), default="maximum")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
     try:
-        result = verify(args.timeout, args.write_evidence)
+        result = verify(
+            args.timeout,
+            args.write_evidence,
+            args.external_static_user_image,
+            args.process_workload,
+            args.clean_environment_mode,
+        )
         print(json.dumps(result, indent=2, sort_keys=True))
     except (GateError, OSError, subprocess.SubprocessError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
