@@ -1,7 +1,7 @@
 # Source-defined freestanding kernel policy library
 
-Status: systems-only direction adopted under standing chat authorization;
-implementation and qualification pending (`TK-DEC-252`).
+Status: implemented and qualified for the initial finite unit profile
+(`TK-DEC-252`); see the [execution report](../step-4-kernel-policy-library.md).
 
 Step 2 requires kernel policy to live in Topal libraries/modules over qualified
 machine elements. The current bounded adapters still contain policy in native
@@ -41,7 +41,7 @@ privileged function or creates code authority.
 
 ## First kernel policy unit
 
-`kernel/policy/boot-open-access.t` will define the public `BootOpenDecision`
+`kernel/policy/boot-open-access.t` defines the public `BootOpenDecision`
 Enum with semantic alternatives `ReadDescription`, `NotDirectory`,
 `DirectoryWrite` and `ReadOnlyView`, plus public `boot-open-decision` and private
 helpers. It accepts three Boolean facts: write intent, directory object and a

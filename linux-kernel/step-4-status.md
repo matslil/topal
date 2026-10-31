@@ -9,6 +9,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- An ordinary Topal Boolean/Enum policy library with source-bound code ownership,
+  actual helper calls, native ABI and stack evidence, and representation adaptation.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -20,16 +22,16 @@ systems abstractions; ARM64 implementation is outside the current focus.
 - Unmodified pinned BusyBox utilities and interactive shell builtin/cwd/input
   cycles through shared services. Unknown syscall selectors return ENOSYS.
 
-The [current timing report](step-4-static-process-time.md) records 38 successful
-physical runs on one kernel, fifteen lab contracts and the passing bounded
-workspace suite. Each report identifies its executed scope and limitations.
+The [current library report](step-4-kernel-policy-library.md) records 39 successful
+physical runs on one kernel, one positive representation-variant run, sixteen lab
+contracts and bounded workspace validation. Each report identifies its executed scope and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Closed systems-root/backend qualifications still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | First nonallocating Boolean/Enum source unit; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Sole prepared process, one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks and kernel-context foundations; sole-thread waits |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects and qualified serial/entropy/time hardware |
