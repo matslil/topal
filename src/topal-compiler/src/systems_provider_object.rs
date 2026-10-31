@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/204";
+    "topal.provider-object.x86_64-qemu-pc-q35/205";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -6029,6 +6029,14 @@ fn deadline_complete() -> Result<Vec<u8>, CompileError> {
     code.bytes(&[0x48, 0x3b, 0x47, 0x18]); // no earlier than scheduled
     code.jump_if(0x82, "fail");
     code.bytes(&[0x48, 0x89, 0x47, 0x30]); // retain observed raw
+    // Close route 2 before source disable/clear and local EOI. A notification
+    // already queued locally is handled by the generated entry filter.
+    code.bytes(&[0x49, 0xb9]);
+    code.bytes(&0xfec0_0000_u64.to_le_bytes());
+    code.bytes(&[0x41, 0xc7, 0x01, 0x14, 0, 0, 0]);
+    code.bytes(&[0x41, 0xc7, 0x41, 0x10]);
+    code.bytes(&0x0001_00f2_u32.to_le_bytes());
+    code.bytes(&[0x41, 0x8b, 0x41, 0x10]); // complete route publication
     code.bytes(&[0x41, 0x81, 0xa0, 0x00, 0x01, 0x00, 0x00]);
     code.bytes(&0xffff_fffb_u32.to_le_bytes()); // disable timer 0 interrupt
     code.bytes(&[0x41, 0xc7, 0x40, 0x20, 0x01, 0x00, 0x00, 0x00]); // clear status

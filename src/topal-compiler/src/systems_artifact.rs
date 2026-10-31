@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/222";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/211";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/223";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/212";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -7112,6 +7112,28 @@ impl RootEncoder {
         self.bytes.push(opcode);
     }
 
+    /// A completed event cannot grant a second affine source entry. A raw
+    /// controller notification can remain queued while its first interrupt
+    /// frame is suspended, so acknowledge it before source dispatch.
+    fn filter_completed_deadline_notification(&mut self) -> Result<(), CompileError> {
+        self.load_bootstrap_storage_address(24)?;
+        self.bytes
+            .extend_from_slice(&[0x80, 0x7f, 0x28, 3, 0x0f, 0x85]);
+        let branch = self.bytes.len();
+        self.bytes.extend_from_slice(&[0; 4]);
+        self.bytes.extend_from_slice(&[0x48, 0xb8]);
+        self.bytes.extend_from_slice(&0xfee0_00b0_u64.to_le_bytes());
+        self.bytes.extend_from_slice(&[0xc7, 0, 0, 0, 0, 0]);
+        for register in SAVED_REGISTERS.into_iter().rev() {
+            self.pop(register);
+        }
+        self.jump(ProviderSymbol::InterruptReturn);
+        let distance = i32::try_from(self.bytes.len() - branch - 4)
+            .map_err(|_| CompileError::Tool("deadline filter branch exceeds i32".into()))?;
+        self.bytes[branch..branch + 4].copy_from_slice(&distance.to_le_bytes());
+        Ok(())
+    }
+
     fn allocate_bootstrap_region(
         &mut self,
         request: CompilerBootstrapStorageRequest,
@@ -9691,6 +9713,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     for register in SAVED_REGISTERS {
         deadline.push(register);
     }
+    deadline.filter_completed_deadline_notification()?;
     encode_operations(
         &mut deadline,
         &program.deadline_notification.handler.operations,
@@ -11761,7 +11784,9 @@ mod tests {
                 file.symbol_by_index(symbol).unwrap().name().unwrap()
             })
             .collect::<Vec<_>>();
-        assert_eq!(relocation_targets.len(), 9484);
+        // Completed-event admission adds one private-state reference and one
+        // checked interrupt-return target, without another source operation.
+        assert_eq!(relocation_targets.len(), 9486);
         assert_eq!(
             relocation_targets
                 .iter()
@@ -12103,7 +12128,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_bootstrap_storage")
                 .count(),
-            60
+            61
         );
         assert_eq!(
             relocation_targets
@@ -12117,7 +12142,7 @@ mod tests {
                 .iter()
                 .filter(|target| **target == "topal_x86_systems_interrupt_return")
                 .count(),
-            3
+            4
         );
         let root = file.symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY).unwrap();
         let root_section = file
