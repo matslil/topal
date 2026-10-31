@@ -6255,6 +6255,35 @@ and terminator, execution-name/argv-zero distinction, deliberate below-RSP
 writes preserving payloads, copied-value lifetime and full terminal erasure.
 This SHALL NOT establish unbounded stack/ARG_MAX or general loader coverage.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001 — Successive image generations
+
+A separately qualified repeated-exec refinement SHALL retain the immutable
+executable and pristine snapshot for the process lifetime. A successful exec
+SHALL consume the current image generation without consuming that retained
+authority. Each later generation MAY request the same admitted replacement
+after completing its qualified startup and backing checks. The original shell
+command phase SHALL NOT authorize or prohibit that later request. No fixed
+replacement count or applet identity SHALL grant execution permission.
+
+Each request SHALL validate current address-space/backing identity and copy
+all inputs before commit. Pre-commit errors SHALL erase staging and preserve
+the current image and process resources. Each successful transition SHALL
+filter current close-on-exec descriptors, preserve eligible descriptions and
+shared offsets, cwd, credentials, ignored handlers and blocked signals, reset
+image-local state, restore pristine bytes, erase/revoke old anonymous storage,
+and construct fresh startup vectors and random data. Later generations SHALL
+NOT reuse earlier native pointers or auxiliary identities. Post-commit failures
+SHALL be terminal. Terminal cleanup SHALL release retained authority once.
+
+The initial native qualification MAY retain its complete 34-page anonymous
+backing precondition; sparse/arbitrary layouts and other executables SHALL
+remain outside that qualification. Executed cases SHALL cover at least three
+replacements, later-generation failed-prefix retry, repeated descriptor/signal/
+cwd inheritance, final nonzero status and complete rollback. Private commit
+observations SHALL supply qualification evidence and SHALL NOT grant runtime
+authority. Other architectures SHALL bind the same generation lifetime to
+their own entry/reset/mapping/ABI contracts.
+
 ### TOPAL-SYSTEMS-MAPPING-001 — Linear mapping state
 
 A location SHALL combine one live address range with layout, rights, lifetime,

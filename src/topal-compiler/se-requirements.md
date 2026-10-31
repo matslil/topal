@@ -2389,6 +2389,17 @@ entry. Executed cases shall cover limits, failed-prefix retry, pointer/value
 transport, downward-stack writes, changed cwd/exported environments and full
 reclamation. Native bounds/layout remain closed systems-provider details.
 
+The repeated-exec adapter shall implement `TK-DEC-246` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-EXEC-REPEAT-001`. It shall validate the current
+qualified generation independently of the original command phase, retain the
+pristine executable authority, copy before every commit and repeat descriptor
+filtering, signal reset, backing erasure/revocation and fresh stack/random
+construction. Errors shall preserve the current generation; final cleanup
+shall reclaim retained resources once. Executed repeated-entry and inherited
+state witnesses shall cover later-generation failed retries and full rollback.
+The complete backing precondition shall remain explicit until independently
+broadened; no fixed replacement count shall authorize execution.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping
