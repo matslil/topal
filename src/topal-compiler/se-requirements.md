@@ -2420,6 +2420,16 @@ exec and complete terminal erasure. Executed cases shall cover native bytes,
 reordering, faults, replacement shells and full rollback. Native record and
 selector details shall remain provider-owned.
 
+The immutable boot-root open-access adapter shall implement `TK-DEC-249` and
+`TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-ACCESS-001`. It shall decode ordinary
+access modes with qualified modifiers, preserve complete name-copy/allocation/
+lookup/type/access ordering and retain the prepared read-only filesystem view.
+Failed write-intent requests shall publish no handle, preserve process state
+and erase private name copies. Executed cases shall cover native widths,
+lookup/type/readonly and exhaustion errors, repeated inherited state, an
+interactive replacement shell and full rollback. No native flags or user
+command/prompt data shall grant writable authority or select kernel policy.
+
 The bounded initial-output adapter shall accept Linux x86-64 `write` only for
 descriptor one, an executable return continuation, a length of 1–256, and a
 complete overflow-free candidate inside the provider's readable user mapping

@@ -6147,6 +6147,34 @@ Existing close/dup/exec/reclamation semantics SHALL apply. Unqualified writable,
 creation, path-only and other modes SHALL fail closed without granting authority
 or implying Linux conformance for those requests.
 
+### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-OPEN-ACCESS-001 — Access intent in a read-only filesystem view
+
+A separately qualified open-access refinement SHALL decode ordinary read-only,
+write-only and read/write intents with the predecessor's qualified modifiers.
+Its prepared immutable boot-root filesystem view SHALL remain read-only.
+Flags SHALL NOT create writable authority. Creation, truncation, append,
+path-only and nonstandard access-mode-three behavior SHALL remain outside this
+profile's qualification.
+
+Native flag-width normalization SHALL precede complete checked name copying.
+An empty name SHALL return `ENOENT`; a nonempty copied name SHALL undergo the
+existing free-slot check before component walking. Missing components, invalid
+relative directory authority and non-directory traversal SHALL retain their
+ordinary errors regardless of admitted access intent. Absolute names SHALL
+continue ignoring dirfd. After successful lookup, directory-only requests for
+regular files SHALL return `ENOTDIR` before access denial. Write intent for a
+directory SHALL return `EISDIR`; write intent for the existing regular object
+in this immutable filesystem view SHALL return `EROFS`.
+
+Every rejected request SHALL install no slot or description, preserve all
+process resources and erase/read back private pathname storage. Read-only
+success SHALL retain the predecessor's fresh-description semantics. Tests SHALL
+cover native widths, copy/lookup/type/access and exhaustion priority, retained
+inherited state, interactive serial prompt/read/command cycles and complete
+reclamation. Neither an application name nor prompt/command bytes SHALL select
+lookup, access, I/O or error behavior. Broader writable filesystems, device
+access, process creation and job control SHALL remain separately qualified.
+
 ### TOPAL-SYSTEMS-STATIC-PROCESS-PATH-METADATA-001 — Coherent object observation
 
 Path and descriptor metadata SHALL agree on inode, type, size, mode, ownership
