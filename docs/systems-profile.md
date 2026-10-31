@@ -1751,6 +1751,16 @@ interrupted frame. Completion closes target delivery resources; filtering
 cannot re-complete an event or repeat its scheduler transition. Controller and
 notification mechanics remain target-owned.
 
+A separately qualified process-pair refinement may suspend either independent
+process at a completed syscall boundary and resume its exact counterpart.
+Yield makes an eligible counterpart runnable; child wait binds the parent to
+the exact live relationship and excludes it from runnable selection until exit.
+Private image/thread/return state stays with each process; shared descriptions,
+clock and entropy histories stay with their owners. Native output is checked
+in the restored process generation before publication. Pair termination releases
+inactive as well as active resources. Cooperative qualification does not establish
+general user preemption, scheduling fairness, blocking I/O or core task semantics.
+
 ## Storage, placement, and artifacts
 
 The systems root begins with bounded bootstrap storage and may later construct

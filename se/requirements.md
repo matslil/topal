@@ -1546,6 +1546,15 @@ parent restoration, once-only child reaping and complete private snapshot
 erasure. Serialized finite-child evidence shall not imply general scheduling,
 shared-VM cloning, signal delivery or distribution/container qualification.
 
+The resumable static pair refinement shall realize `TK-DEC-255` under the same
+artifact requirement: owned suspension/resumption of either process at syscall
+boundaries, exact wait eligibility, generation-correct status publication,
+independent private state, retained shared histories, both-bank description
+lifetimes and complete active/inactive teardown. Physical evidence shall show
+both live processes making cooperative progress and a blocking parent resuming
+only after matching child exit. This shall not claim general fairness or user
+preemption or discharge the ordinary Topal scheduler-module requirement.
+
 ## TOPAL-REQ-SYSTEMS-QUALIFY-001 — Cross-architecture and target evidence
 
 Every systems element shall have architecture-independent semantic and

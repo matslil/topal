@@ -2607,6 +2607,15 @@ and once-only checked wait publication. Actual mapping/backing, native register,
 TLS/extended-state, boundary/failure and unmodified shell evidence shall qualify
 the serialized finite-child profile without claiming general scheduling.
 
+The resumable static pair shall implement owned native yield/handoff and
+blocking child wait under `TK-DEC-255`. It shall exchange complete private
+process state without suspending a live kernel continuation, preserve shared
+service histories, retain either process's descriptions across snapshot release,
+exclude a waiting parent from runnable selection, validate status publication
+in the restored parent mapping, and release inactive resources at outer-owner
+termination. Independent ABI, state-model, GDB and unchanged-application evidence
+shall qualify these boundaries without claiming general scheduling fairness.
+
 The systems publisher shall realize `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
 `TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` through ordinary declared-type export
 selection, shared numeric algorithms, qualified kernel allocation/fatal hooks,
