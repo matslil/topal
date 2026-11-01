@@ -315,6 +315,10 @@ bounds remain separate qualification obligations; modeled values are not their
 evidence.
 
 Under `TK-DEC-265`, a volatile-file reference model shall distinguish owned
+dispatch-version selection under `TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001` and
+resources under `TOPAL-SYSTEMS-VOLATILE-FILE-OWNERSHIP-001`,
+`TOPAL-SYSTEMS-VOLATILE-FILE-TRANSFER-001` and
+`TOPAL-SYSTEMS-VOLATILE-FILE-PERSONALITY-001`: specifically
 filesystem/object/page identities from numeric slots, native descriptors and
 offsets. It shall model sparse zero reads, actual prefix publication, append,
 checked seek/truncate, page/object exhaustion, stable identity across aliases,

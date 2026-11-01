@@ -1881,6 +1881,10 @@ every page and identity exactly once. Native temporary-file creation, modes,
 umask, metadata and offset/error ordering remain Linux personality contracts.
 This service adds neither core mutable values nor a host allocation dependency;
 general writable namespace, mapping and device support need separate qualification.
+An enlarged closed syscall-operation vocabulary uses an explicitly selected new
+dispatch interface version. Earlier exact vocabularies remain independently
+usable in the same unique slot; adding a handler cannot silently reinterpret
+old nominal values or create a second invocation domain.
 
 The systems root begins with bounded bootstrap storage and may later construct
 allocator capabilities. Allocation is fallible and names a region or pool,

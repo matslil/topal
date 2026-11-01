@@ -625,6 +625,9 @@ shall preserve shared contents while process umask stays private. Last-reference
 destruction and terminal cancellation shall reclaim and erase all object/page
 state. Model, native boundary and physical evidence shall remain distinct;
 anonymous temporary files shall not imply linked-file or general VFS support.
+An extended closed dispatch interface shall version the added truncate/umask
+operations explicitly, preserve the prior exact vocabulary and reject concurrent
+selection or cross-version source/tag/export evidence.
 
 A separately qualified realtime-seconds refinement shall obtain actual epoch
 seconds from a declared platform clock, validate coherent calendar acquisition

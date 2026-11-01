@@ -65,7 +65,10 @@ This first refinement does not make the serial-input endpoint a complete tty.
 `lseek` on the immutable regular file observes a signed native file offset and
 implements set/current/end origins with checked arithmetic. Positions beyond
 EOF are valid within the declared signed offset limit and subsequent reads
-return EOF. Negative or overflowing resulting positions fail unchanged.
+return EOF when their complete native position/count interval is admissible.
+The [volatile-file refinement](owned-volatile-files.md) also corrects borrowed
+file read admission: signed interval overflow returns `EINVAL` before transfer
+clipping or EOF disposition. Negative or overflowing resulting seek positions fail unchanged.
 Nonseekable endpoints report `ESPIPE`. Additional native seek selectors require
 their own explicit disposition; they must not be inferred from the set/current/
 end evidence.

@@ -12155,6 +12155,10 @@ prepare-clean-publish-retire, shared history and complete reclamation. This
 qualifies no new core value or effect meaning.
 
 Under `TK-DEC-265`, the qualified volatile-file provider shall bind explicit
+dispatch-version evidence under `TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001` and
+evidence for `TOPAL-SYSTEMS-VOLATILE-FILE-OWNERSHIP-001`,
+`TOPAL-SYSTEMS-VOLATILE-FILE-TRANSFER-001` and
+`TOPAL-SYSTEMS-VOLATILE-FILE-PERSONALITY-001`, including
 supervisor-only object/page storage and capacity to artifact provenance. Its
 native personality shall preserve checked name/flag/mode and user-copy ordering,
 descriptor rights, sparse read/write/seek/truncate semantics, native umask and

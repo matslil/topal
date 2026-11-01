@@ -90,12 +90,29 @@ own qualification. Contradictory `O_CREAT|O_DIRECTORY`, malformed `O_TMPFILE`
 and read-only `O_TMPFILE` follow the pinned baseline's error/validation order.
 No unsupported creation or linking request may manufacture success.
 
+Add `static-linux-dispatch-v2` for the enlarged closed operation vocabulary:
+the 55 existing names plus `TruncateFile` (x86-64 selector 77) and
+`FileCreationMask` (95), and `Unsupported`. Preserve v1's exact source file,
+55-name contract and private export as an independently supported compatibility
+profile. Each version supplies its own complete named tag adaptation and native
+result validation; exactly one may occupy the dispatch slot. The versions share
+one exclusive invocation domain and existing stack/arena reserves. The primary
+root selects a separate v2 source file. Neither version may silently reinterpret
+the other's Enum or redistribute an unsupported captured selector in native code.
+
 ## Transfer, seeking and truncation
 
 Resolve descriptor liveness and access rights before touching user bytes.
 Numerical user-range admission precedes zero/EOF handling; actual nonempty
 transfers check live mapping permissions. Reuse bounded owned transfer staging,
 never retain a user pointer and preserve native return/register semantics.
+After numerical user-range admission, validate the complete requested count and
+the current description-position/count interval in the native signed domain.
+An invalid count or overflowing interval returns `EINVAL` before clipping or
+EOF disposition. This also refines existing borrowed immutable-file reads.
+For append, that initial check uses the current description position; selecting
+actual EOF happens afterward, as in the pinned `rw_verify_area`/write-iterator
+ordering. A valid seek alone does not make every later count admissible.
 The first transfer qualification covers complete admitted prefixes; it does not
 establish Linux partial progress across a fault inside one such prefix. Report
 that limitation explicitly rather than generalizing whole-prefix tests.
@@ -114,7 +131,8 @@ otherwise full. A missing page consumes one clean page or returns `ENOSPC` with
 contents, size, position and accounting unchanged. Partial positive progress is
 permitted across successive syscalls; a later page failure cannot revoke bytes
 already returned. Zero writes allocate nothing and do not move position or grow
-the file. A nonzero write at the maximum file size returns `EFBIG`; finite
+the file. After native interval admission, an append selected at maximum EOF
+returns `EFBIG`; a normal overflowing position/count already fails `EINVAL`. Finite
 filesystem page exhaustion is not an artificial maximum file size.
 
 Successful write publication copies the selected bytes, preserves unrelated

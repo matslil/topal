@@ -7055,7 +7055,10 @@ it SHALL NOT leave two independent owners of the same description reference.
 For a live readable immutable-file description, read SHALL first validate the
 descriptor and rights, then the overflow-free native candidate/count extent.
 Invalid rights SHALL return `EBADF`; inaccessible native candidate arithmetic
-SHALL return `EFAULT`. The transfer count SHALL be the minimum of requested
+SHALL return `EFAULT`. The complete requested count and its sum with the shared
+position SHALL fit the nonnegative signed native offset domain; otherwise
+return `EINVAL` unchanged before clipping or EOF disposition. For an admitted
+interval, the transfer count SHALL be the minimum of requested
 bytes, remaining bytes at the shared position and the 256-byte quantum. A
 position at or beyond EOF SHALL have zero remaining bytes. Larger requests
 MAY return short progress; qualification SHALL NOT infer unrestricted read
@@ -8989,6 +8992,142 @@ separately qualified adapter which records its boot/firmware contract and input
 artifact digest. A fatal disposition SHALL enter a nonreturning provider whose
 minimal path requires no general allocation, blocking lock, scheduler,
 filesystem, or userspace service.
+
+### TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001 — Extended native operation vocabulary
+
+The optional dispatch slot MAY select `static-linux-dispatch-v2` with the same
+declared `Nat -> StaticLinuxOperation` shape, 4096-byte stack and 65536-byte
+temporary reserve as v1. Its nominal result SHALL contain exactly the 55
+operation names under `TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001`, `TruncateFile`,
+`FileCreationMask` and `Unsupported`. Its x86-64 mapping SHALL retain every v1
+mapping and add 77 TruncateFile and 95 FileCreationMask; all other normalized
+selectors SHALL select Unsupported. Complete declared-type, source/tag/native
+adaptation, resource, cleanup, before-handler and artifact obligations SHALL
+apply unchanged.
+
+V1 SHALL retain its exact 55-operation vocabulary and mapping, source contract
+and private export. V2 SHALL have a distinct private export and exact metadata.
+No artifact SHALL select both versions or create two dispatch invocation domains.
+Mismatched interface, source vocabulary, tag evidence or export SHALL fail
+closed. Native result validation SHALL use the selected version's operation
+set. Either version SHALL remain independently usable with the other policy
+slots. Adding a handler SHALL NOT authorize native redispatch of an Unsupported
+source result.
+
+### TOPAL-SYSTEMS-VOLATILE-FILE-OWNERSHIP-001 — Sparse volatile object ownership
+
+The qualified volatile-file service SHALL own an explicit finite filesystem
+object/page budget and SHALL distinguish filesystem identity, live object
+generation, resident page, open description and descriptor reference. Numeric
+inode, slot, page index and file offset values SHALL confer no authority.
+Every resident page SHALL belong to exactly one live object generation and
+logical page index; duplicate associations SHALL be rejected. Free payload and
+metadata SHALL be clean. The initial profile SHALL admit four live objects and
+eight 4096-byte resident pages, with no host allocation in executable use.
+
+Anonymous creation SHALL allocate a fresh stable object identity, logical size
+zero, no resident pages, link count zero and a fresh open description at position
+zero. Identity exhaustion, object exhaustion or failed admission SHALL preserve
+all published state. Reusing a slot SHALL NOT reuse its previous identity or
+reveal its bytes. A descriptor alias or inherited reference SHALL retain the
+same open description, rights, status, position and object. Last-reference
+release SHALL erase the object and all its pages exactly once. Wrong-owner,
+wrong-pool and stale capabilities SHALL fail without mutation.
+
+The serialized process service SHALL keep filesystem objects, resident pages
+and shared descriptions outside private process snapshots. Fork/exec and
+active/inactive restoration SHALL preserve their actual evolved state. Terminal
+cancellation SHALL release active and inactive references before erasing and
+verifying the complete filesystem store. A broader concurrent provider SHALL
+qualify its own exclusion/publication protocol. This rule SHALL NOT introduce
+ordinary mutable Topal values, general source persistent allocation or a native
+address representation.
+
+### TOPAL-SYSTEMS-VOLATILE-FILE-TRANSFER-001 — Sparse contents and publication
+
+A file SHALL retain a nonnegative logical size and each open description a
+nonnegative position through the selected native signed offset maximum. Logical
+size SHALL be independent of resident-page capacity. Unallocated pages SHALL
+read as zero. Seek and sparse growth SHALL allocate no pages. Allocation failure
+SHALL NOT be represented as an artificial maximum logical file size.
+
+Descriptor liveness/rights and numerical user-range admission SHALL precede
+native signed position/count verification, which SHALL precede clipping or
+zero/EOF disposition. The complete requested count and its sum with the current
+description position SHALL fit the nonnegative signed native offset domain;
+otherwise return EINVAL unchanged. Append SHALL retain that check on the current
+position before selecting actual EOF. For a nonempty read, choose the minimum of requested count,
+remaining size, 256-byte transfer quantum and remaining current-page extent.
+After complete writable-prefix admission, publish actual stored or zero bytes
+and advance the shared position by exactly the result. Rejected admission SHALL
+change neither destination, position, contents nor allocation. Zero/EOF reads
+SHALL allocate nothing. The initial mount SHALL use noatime.
+
+A write SHALL select position from current EOF for append, otherwise from the
+shared position. Choose the minimum of count, quantum, page remainder and
+representable offset remainder. Zero writes SHALL allocate nothing and preserve
+position/size. After native interval admission, an append at maximum EOF SHALL
+return EFBIG. A normal overflowing position/count SHALL already fail EINVAL. Copy a
+complete admitted prefix before storage publication. A missing page SHALL
+consume one clean page or fail ENOSPC without changing the published object,
+position, data, timestamps or page accounting. An already resident page SHALL
+remain writable when the pool is full. Success SHALL preserve unrelated bytes,
+publish exactly the returned prefix, grow size only as needed, advance position
+to its actual end and update modification/change time at the selected clock
+resolution. Caller-visible partial progress across multiple completed calls
+SHALL NOT be revoked by a later failure. Whole-prefix qualification SHALL NOT
+be reported as partial-copy behavior inside a faulting prefix.
+
+Seek set/current/end SHALL use checked signed arithmetic and preserve position
+on rejection. Data/hole seek SHALL interpret resident pages as allocated data,
+absent pages as holes and EOF as the final implicit hole. For these selectors,
+negative input and input at/beyond EOF SHALL fail ENXIO.
+The search SHALL stop at the first matching extent at/after input, clipped at
+EOF; no later data extent SHALL fail ENXIO. Zero-valued resident bytes SHALL
+still belong to a data extent.
+
+Truncation SHALL require writable regular-file authority and an admitted
+nonnegative length. Growth SHALL create holes; shrink SHALL erase/free pages
+wholly beyond EOF and zero the removed suffix of a surviving page. Regrowth
+SHALL NOT recover removed bytes. Truncation SHALL preserve description positions,
+remain immediately visible to aliases/inherited references, and update
+modification/change time only when size changes. Equal-size truncation SHALL
+preserve data/allocation. Rejected admission SHALL preserve published state.
+
+### TOPAL-SYSTEMS-VOLATILE-FILE-PERSONALITY-001 — Temporary files and native evidence
+
+The x86-64 personality SHALL expose the selected RAM filesystem through `/tmp`,
+with directory mode 01777 and coherent path, cwd, parent and directory-record
+observations. Existing root/bin/archive identities SHALL retain their meanings.
+O_TMPFILE creation through open/openat SHALL require writable access and a
+resolved directory, create no directory entry, and retain O_EXCL no-link intent.
+Native flags/mode SHALL be validated before checked name copying; a complete
+name SHALL precede descriptor allocation, which SHALL precede component walk.
+Descriptor/object installation SHALL publish atomically after every recoverable
+check, preserving distinct native failures for bad flags/names/types, immutable
+filesystems and descriptor/filesystem exhaustion. Other creation/link protocols
+SHALL NOT manufacture success.
+
+Native umask SHALL return its previous value and retain only permission bits
+0777. Initial process umask SHALL be 0022; fork SHALL copy it privately and exec
+SHALL preserve it. Creation SHALL apply that mask to checked requested mode,
+with file type supplied by the service. Descriptor close-on-exec SHALL remain
+distinct from description access/status flags and filesystem ownership.
+
+Native fstat SHALL report stable device/inode, regular mode/credentials, zero
+link count, logical size, resident-page allocated block count and qualified
+block size/timestamps. Creation SHALL initialize all times from the declared
+realtime-seconds provider. Complete native copies SHALL use checked user access
+and erased private staging. Selected store extent, alignment, supervisor
+placement, page/object capacities, ABI and cleanup SHALL enter artifact evidence.
+
+Qualification SHALL separately include independent ownership/sparse-value
+models, malformed/capacity/boundary native cases, Linux UAPI differential controls
+and real caller-issued QEMU operations with full teardown. General tmpfs-driver
+equivalence, linked namespace mutation, persistent devices, writable mappings,
+general source effects, distribution and containers SHALL remain unqualified
+until their separate obligations pass. The service SHALL NOT substitute host
+files, application-specific buffers or prepared output for actual file contents.
 
 ### TOPAL-SYSTEMS-QUALIFY-001 — Qualification and fail-closed support
 
