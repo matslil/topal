@@ -17,6 +17,8 @@ use topal_language::compiler::{
 use topal_language::published_function_names;
 use topal_source::{Diagnostic, Span, canonically_equal};
 
+#[path = "systems_finite_interface.rs"]
+pub(crate) mod finite;
 pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_boot_open_policy_v1";
 pub(crate) const CHOICES: [&str; 4] = [
     "ReadDescription",
@@ -58,7 +60,7 @@ pub struct SystemsSourceLibraryArtifact {
     pub object_sha256: String,
     pub native_export: String,
     pub source_export: String,
-    pub source_tags: [u32; 4],
+    pub source_tags: Vec<u32>,
     pub llvm_version: String,
     pub machine_profile: String,
     pub disassembly_sha256: String,
@@ -72,7 +74,8 @@ pub(crate) struct CheckedFiniteLibrary {
     program: CompilerProgram,
     source_name: String,
     entry_symbol: String,
-    source_tags: [u32; 4],
+    source_tags: Vec<u32>,
+    policy: finite::FinitePolicy,
     calls: BTreeMap<String, BTreeSet<String>>,
 }
 impl CheckedFiniteLibrary {
@@ -85,8 +88,11 @@ impl CheckedFiniteLibrary {
     pub(crate) fn entry_symbol(&self) -> &str {
         &self.entry_symbol
     }
-    pub(crate) const fn source_tags(&self) -> &[u32; 4] {
+    pub(crate) fn source_tags(&self) -> &[u32] {
         &self.source_tags
+    }
+    pub(crate) fn policy(&self) -> finite::FinitePolicy {
+        self.policy
     }
     pub(crate) fn calls(&self) -> &BTreeMap<String, BTreeSet<String>> {
         &self.calls
@@ -156,6 +162,7 @@ pub(crate) fn check_source_library(
     input: &SystemsSourceLibraryInput,
 ) -> Result<CheckedFiniteLibrary, CompileError> {
     requirement.validate().map_err(|e| invalid(e.to_string()))?;
+    let policy = finite::FinitePolicy::from_interface(requirement.interface.as_str())?;
     let modules = modules::validate(input)?;
     if input.source != requirement.source {
         return Err(invalid(
@@ -173,10 +180,8 @@ pub(crate) fn check_source_library(
     }
     // Ordinary instantiation retains unconstrained Boolean parameters. The
     // client is only a type/overload-selection root and is never emitted.
-    let client = format!(
-        "{}\n{} (false, false, false)\n",
-        input.text, requirement.export
-    );
+    let arguments = vec!["false"; policy.arguments()].join(", ");
+    let client = format!("{}\n{} ({arguments})\n", input.text, requirement.export);
     let program = topal_language::analyze_for_compiler_with_modules(&client, &modules)
         .map_err(|diagnostic| CompileError::Tool(diagnostic.render(&input.source_name)))?;
     if !program.main.statements.is_empty() {
@@ -189,19 +194,21 @@ pub(crate) fn check_source_library(
             "public export did not instantiate as an ordinary function",
         ));
     };
-    if arguments.len() != 3
+    if arguments.len() != policy.arguments()
         || arguments
             .iter()
             .any(|a| a.value_type != CompilerType::Boolean)
     {
-        return Err(invalid("boot-open interface requires three Boolean facts"));
+        return Err(invalid(
+            "selected finite open interface has the wrong Boolean facts",
+        ));
     }
     let entry = program
         .functions
         .iter()
         .find(|f| &f.symbol == symbol)
         .ok_or_else(|| invalid("missing instantiated export"))?;
-    if entry.parameters.len() != 3
+    if entry.parameters.len() != policy.arguments()
         || entry
             .parameters
             .iter()
@@ -211,14 +218,16 @@ pub(crate) fn check_source_library(
     }
     let CompilerType::Enum(result) = &entry.result_type else {
         return Err(invalid(
-            "boot-open interface requires the nominal BootOpenDecision result",
+            "selected finite interface requires its nominal Enum result",
         ));
     };
-    if !canonically_equal(&result.name, "BootOpenDecision") || result.alternatives.len() != 4 {
-        return Err(invalid("wrong boot-open result classifier"));
+    if !canonically_equal(&result.name, policy.classifier())
+        || result.alternatives.len() != policy.choices().len()
+    {
+        return Err(invalid("wrong finite open result classifier"));
     }
-    let mut tags = [0; 4];
-    for (index, name) in CHOICES.iter().enumerate() {
+    let mut tags = vec![0; policy.choices().len()];
+    for (index, name) in policy.choices().iter().enumerate() {
         tags[index] = result
             .alternatives
             .iter()
@@ -289,6 +298,7 @@ pub(crate) fn check_source_library(
         source_name: input.source_name.clone(),
         entry_symbol,
         source_tags: tags,
+        policy,
         calls: all_calls,
     })
 }
@@ -504,3 +514,7 @@ pub(crate) fn load_source_library(
     modules::load(&mut input, &root)?;
     Ok(input)
 }
+
+#[cfg(test)]
+#[path = "systems_file_open_tests.rs"]
+mod file_open_tests;

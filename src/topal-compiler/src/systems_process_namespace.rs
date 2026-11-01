@@ -200,7 +200,7 @@ fn emit_copy_and_walk(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
+fn emit_open(e: &mut E<'_>, source_bound: bool, file_open_plan: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-open")?;
     e.mov(R8, Di);
     e.mov(Bp, Si);
@@ -274,7 +274,7 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.cmp(A, 0);
     e.0.jump_if(0x85, "file-create-temporary");
     if source_bound {
-        super::policy::emit_open_decision(e)?;
+        super::policy::emit_open_decision(e, file_open_plan)?;
     } else {
         e.mov(A, Bp);
         e.arith(4, A, 0x10000);
@@ -503,10 +503,11 @@ fn emit_cwd(e: &mut E<'_>) -> Result<(), CompileError> {
 pub(in super::super) fn emit_services(
     code: &mut X86FunctionEncoder,
     source_bound: bool,
+    file_open_plan: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     emit_copy_and_walk(&mut e)?;
-    emit_open(&mut e, source_bound)?;
+    emit_open(&mut e, source_bound, file_open_plan)?;
     emit_metadata(&mut e)?;
     emit_cwd(&mut e)?;
     // Directory encoding is emitted by its separate, narrowly scoped helper.

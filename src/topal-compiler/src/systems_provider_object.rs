@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/220";
+    "topal.provider-object.x86_64-qemu-pc-q35/221";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1661,6 +1661,7 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
         &static_image_process_enter(
             program.kernel_library.is_some(),
+            program.kernel_library.as_ref().is_some_and(|r| r.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1),
             program.time_library.is_some(),
             program.image_library.is_some(),
             program.dispatch_library.is_some(),
@@ -9524,6 +9525,7 @@ fn emit_static_process_shell_output_heap_validation(
 
 fn static_image_process_enter(
     source_bound: bool,
+    file_open_plan: bool,
     source_numeric: bool,
     source_image: bool,
     source_dispatch: bool,
@@ -16962,7 +16964,7 @@ fn static_image_process_enter(
     process_files::emit_transfer_services(&mut code)?;
     process_files::emit_reclamation(&mut code)?;
     process_runtime::signals::emit_services(&mut code)?;
-    process_runtime::namespace::emit_services(&mut code, source_bound)?;
+    process_runtime::namespace::emit_services(&mut code, source_bound, file_open_plan)?;
     process_runtime::realtime::emit_services(&mut code)?;
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
@@ -16974,7 +16976,7 @@ fn static_image_process_enter(
         structured_identity,
     )?;
     process_runtime::pipes::emit_services(&mut code)?;
-    process_runtime::volatile_files::emit_services(&mut code)?;
+    process_runtime::volatile_files::emit_services(&mut code, file_open_plan)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
 }

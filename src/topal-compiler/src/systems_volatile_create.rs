@@ -6,7 +6,10 @@ use super::super::{
 };
 use super::*;
 
-pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(super) fn emit(
+    code: &mut X86FunctionEncoder,
+    file_open_plan: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
     // R14 is a lowest-free descriptor; R15 is the checked directory identity.
     // BP retains flags and staging+248 retains the copied native mode word.
@@ -15,6 +18,14 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "namespace-enotdir");
     e.cmp(R15, 6);
     e.0.jump_if(0x85, "namespace-erofs");
+    if file_open_plan {
+        // Owned mutable directory was validated above. Anonymous creation asks
+        // for an absent regular target; O_EXCL is no-link intent, not EEXIST.
+        e.imm(Di, 1 | 8 | 32);
+        super::super::policy::emit_call(&mut e)?;
+        e.cmp(A, 6); // CreateDescription, never an object/descriptor grant.
+        e.0.jump_if(0x85, "fatal");
+    }
     e.mov(R13, R12);
     e.add(R13, OBJECTS);
     e.imm(C, 4);

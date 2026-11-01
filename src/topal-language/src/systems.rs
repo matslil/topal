@@ -623,7 +623,11 @@ fn parse_artifact_root(
             }
         } else if label_text == "kernel-library" {
             let requirement = source_library::parse_requirement(source, field)?;
-            if requirement.interface != CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1 {
+            if !matches!(
+                requirement.interface,
+                CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1
+                    | CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1
+            ) {
                 return Err(source_diagnostic(
                     source,
                     "E-SYSTEMS-LIBRARY",

@@ -4,6 +4,7 @@ use crate::SystemsModelError;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum SystemsSourceLibraryInterface {
     BootOpenDecisionV1,
+    FileOpenDecisionV1,
     RelativeSleepDeadlineV1,
     StaticElf64HeaderV1,
     StaticLinuxDispatchV1,
@@ -17,6 +18,7 @@ impl SystemsSourceLibraryInterface {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::BootOpenDecisionV1 => "boot-open-decision-v1",
+            Self::FileOpenDecisionV1 => "file-open-decision-v1",
             Self::RelativeSleepDeadlineV1 => "relative-sleep-deadline-v1",
             Self::StaticElf64HeaderV1 => "static-elf64-header-v1",
             Self::StaticLinuxDispatchV1 => "static-linux-dispatch-v1",
@@ -55,7 +57,8 @@ impl SystemsSourceLibraryRequirement {
                 .chars()
                 .any(|c| c.is_whitespace() || c.is_control())
             || !match self.interface {
-                SystemsSourceLibraryInterface::BootOpenDecisionV1 => {
+                SystemsSourceLibraryInterface::BootOpenDecisionV1
+                | SystemsSourceLibraryInterface::FileOpenDecisionV1 => {
                     self.stack_limit_bytes == 1024
                         && self.runtime_limit_bytes.is_none()
                         && self.state_limit_bytes.is_none()

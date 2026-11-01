@@ -22,9 +22,9 @@ pub(in super::super) fn emit_entry_validation(
     Ok(())
 }
 
-pub(super) fn emit_open_decision(e: &mut E<'_>) -> Result<(), CompileError> {
-    // Pack only three finite facts. No object, flags word or pointer crosses.
-    e.imm(Di, 0);
+pub(super) fn emit_open_decision(e: &mut E<'_>, file_open_plan: bool) -> Result<(), CompileError> {
+    // Pack the selected finite facts. No object, flags word or pointer crosses.
+    e.imm(Di, if file_open_plan { 16 } else { 0 });
     e.mov(A, Bp);
     e.arith(4, A, 3);
     e.cmp(A, 0);
@@ -41,7 +41,45 @@ pub(super) fn emit_open_decision(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "policy-open-facts");
     e.arith(1, Di, 4);
     e.0.bind("policy-open-facts")?;
+    if file_open_plan {
+        e.cmp(R15, 6);
+        e.0.jump_if(0x85, "policy-open-view-ready");
+        e.arith(1, Di, 8);
+        e.0.bind("policy-open-view-ready")?;
+    }
 
+    emit_call(e)?;
+    for (choice, label) in [
+        (1, "namespace-enotdir"),
+        (2, "namespace-eisdir"),
+        (3, "namespace-erofs"),
+    ] {
+        e.cmp(A, choice);
+        e.0.jump_if(0x84, label);
+    }
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "fatal");
+    if file_open_plan {
+        // A pure success cannot discard an owned directory-only precondition.
+        e.mov(A, Bp);
+        e.arith(4, A, 0x10000);
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "policy-open-owner-kind-ready");
+        e.cmp(R15, 5);
+        e.0.jump_if(0x84, "fatal");
+        e.0.bind("policy-open-owner-kind-ready")?;
+    }
+    // Pure policy cannot grant authority for a writable description.
+    e.mov(A, Bp);
+    e.arith(4, A, 3);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "fatal");
+    Ok(())
+}
+
+/// Invoke the selected pure policy; caller packs semantic facts, then validates
+/// its action against owned resources. No publication occurs in this shim.
+pub(super) fn emit_call(e: &mut E<'_>) -> Result<(), CompileError> {
     // Reserve the proved complete call path on the supervisor bootstrap stack.
     e.cmp(Sp, 0x107400);
     e.0.jump_if(0x82, "fatal");
@@ -59,20 +97,5 @@ pub(super) fn emit_open_decision(e: &mut E<'_>) -> Result<(), CompileError> {
     e.imm(D, 0);
     e.store(Sp, 0, D);
     e.mov(Sp, R11);
-    for (choice, label) in [
-        (1, "namespace-enotdir"),
-        (2, "namespace-eisdir"),
-        (3, "namespace-erofs"),
-    ] {
-        e.cmp(A, choice);
-        e.0.jump_if(0x84, label);
-    }
-    e.cmp(A, 0);
-    e.0.jump_if(0x85, "fatal");
-    // Pure policy cannot grant authority for a writable description.
-    e.mov(A, Bp);
-    e.arith(4, A, 3);
-    e.cmp(A, 0);
-    e.0.jump_if(0x85, "fatal");
     Ok(())
 }

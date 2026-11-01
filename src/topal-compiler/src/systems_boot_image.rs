@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/141";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/142";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -338,12 +338,21 @@ fn validate_artifact_input(
         ));
     }
     let file = object::File::parse(kernel).map_err(|e| CompileError::Tool(e.to_string()))?;
-    let has_library = file
-        .symbol_by_name(crate::systems_library::EXPORT_SYMBOL)
-        .is_some();
-    if has_library != artifact.kernel_library.is_some() {
+    let exports = [
+        crate::systems_library::EXPORT_SYMBOL,
+        "topal_kernel_file_open_policy_v1",
+    ];
+    let present: Vec<_> = exports
+        .into_iter()
+        .filter(|name| file.symbol_by_name(name).is_some())
+        .collect();
+    let expected = artifact
+        .kernel_library
+        .as_ref()
+        .map(|library| library.native_export.as_str());
+    if present.as_slice() != expected.as_slice() {
         return Err(CompileError::Tool(
-            "source-library code and artifact binding disagree".into(),
+            "source-library code and selected binding disagree".into(),
         ));
     }
     if let Some(library) = &artifact.kernel_library {
@@ -1106,8 +1115,14 @@ mod tests {
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
     fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
+        linked_kernel_source(parent, SOURCE)
+    }
+    fn linked_kernel_source(
+        parent: &Path,
+        source_text: &str,
+    ) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
         let program = analyze_systems_for_compiler(
-            SOURCE,
+            source_text,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
@@ -1170,6 +1185,42 @@ mod tests {
         path
     }
 
+    #[test]
+    fn file_open_binding_boots_only_with_its_exact_export_and_tag_vocabulary() {
+        // TOPAL-SYSTEMS-FILE-OPEN-PLAN-001: admission before boot publication.
+        let parent = temporary_parent();
+        let selected = SOURCE
+            .replace("policy/boot-open-access.t", "policy/file-open-access.t")
+            .replace(
+                "export is boot-open-decision",
+                "export is file-open-decision",
+            )
+            .replace(
+                "interface is boot-open-decision-v1",
+                "interface is file-open-decision-v1",
+            );
+        let (kernel, initial, user, artifact) = linked_kernel_source(&parent, &selected);
+        generate_x86_64_linux_boot_image(&kernel, &artifact, &initial, &user).unwrap();
+        for case in 0..5 {
+            let mut wrong = artifact.clone();
+            let binding = wrong.kernel_library.as_mut().unwrap();
+            match case {
+                0 => binding.interface = "boot-open-decision-v1".into(),
+                1 => binding.native_export = crate::systems_library::EXPORT_SYMBOL.into(),
+                2 => {
+                    binding.source_tags.pop();
+                }
+                3 => binding.source_tags[7] = binding.source_tags[0],
+                _ => wrong.kernel_library = None,
+            }
+            let output = parent.join(format!("rejected-{case}"));
+            assert!(
+                publish_x86_64_linux_boot_image(&kernel, &wrong, &initial, &user, &output).is_err()
+            );
+            assert!(!output.exists());
+        }
+        std::fs::remove_dir_all(parent).unwrap();
+    }
     #[test]
     fn rejects_truncated_or_user_visible_child_backing_before_boot() {
         // TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001

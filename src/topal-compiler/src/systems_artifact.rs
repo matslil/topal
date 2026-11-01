@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/241";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/227";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/242";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/228";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -4083,6 +4083,7 @@ enum NumericRootDependency {
 #[derive(Default)]
 struct RootEncoder {
     source_bound_library: bool,
+    source_library_export: &'static str,
     numeric_library: bool,
     image_library: bool,
     dispatch_library: bool,
@@ -10171,6 +10172,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
         source_bound_library: program.kernel_library.is_some(),
+        source_library_export: program.kernel_library.as_ref().map(|r| crate::systems_library::finite::FinitePolicy::from_interface(r.interface.as_str()).map(|p| p.export())).transpose()?.unwrap_or(crate::systems_library::EXPORT_SYMBOL),
         numeric_library: program.time_library.is_some(),
         image_library: program.image_library.is_some(),
         dispatch_library: program.dispatch_library.is_some(),
@@ -10833,7 +10835,7 @@ fn append_root(
     });
     if !encoded.source_library_relocations.is_empty() {
         let dependency = object.add_symbol(Symbol {
-            name: crate::systems_library::EXPORT_SYMBOL.as_bytes().to_vec(),
+            name: encoded.source_library_export.as_bytes().to_vec(),
             value: 0,
             size: 0,
             kind: SymbolKind::Text,

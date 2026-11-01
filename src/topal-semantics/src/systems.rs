@@ -2779,10 +2779,14 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     program.bootstrap_storage.validate()?;
     if let Some(library) = &program.kernel_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::BootOpenDecisionV1 {
+        if !matches!(
+            library.interface,
+            crate::SystemsSourceLibraryInterface::BootOpenDecisionV1
+                | crate::SystemsSourceLibraryInterface::FileOpenDecisionV1
+        ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
-                "kernel-library requires boot-open-decision-v1",
+                "kernel-library requires a qualified finite open interface",
             ));
         }
     }

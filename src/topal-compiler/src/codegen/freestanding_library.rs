@@ -14,13 +14,23 @@ pub(crate) fn emit_finite_kernel_library(unit: &crate::systems_library::CheckedF
     let mut module=format!("; qualified Topal kernel source library\nsource_filename = \"{}\"\ntarget datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n\n",
         llvm_string(generator.debug.filename()),crate::X86_SYSTEMS_DATA_LAYOUT);
     for function in &generator.functions { module.push_str(function); module.push('\n'); }
-    let _=writeln!(module,"define i64 @{}(i64 %facts) nounwind noinline noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {{",crate::systems_library::EXPORT_SYMBOL);
-    module.push_str("entry:\n  %valid = icmp ult i64 %facts, 8\n  br i1 %valid, label %invoke, label %invalid\ninvoke:\n  %directory.bits = lshr i64 %facts, 1\n  %required.bits = lshr i64 %facts, 2\n  %write = trunc i64 %facts to i1\n  %directory = trunc i64 %directory.bits to i1\n  %required = trunc i64 %required.bits to i1\n");
-    let _=writeln!(module,"  %decision = call fastcc i32 @{}(i1 %write, i1 %directory, i1 %required)",unit.entry_symbol());
+    let _=writeln!(module,"define i64 @{}(i64 %facts) nounwind noinline noredzone noimplicitfloat \"disable-tail-calls\"=\"true\" {{",unit.policy().export());
+    let count = unit.policy().arguments();
+    if count == 3 {
+        module.push_str("entry:\n  %valid = icmp ult i64 %facts, 8\n  br i1 %valid, label %invoke, label %invalid\ninvoke:\n  %directory.bits = lshr i64 %facts, 1\n  %required.bits = lshr i64 %facts, 2\n  %write = trunc i64 %facts to i1\n  %directory = trunc i64 %directory.bits to i1\n  %required = trunc i64 %required.bits to i1\n");
+        let _=writeln!(module,"  %decision = call fastcc i32 @{}(i1 %write, i1 %directory, i1 %required)",unit.entry_symbol());
+    } else {
+        let _=writeln!(module,"entry:\n  %valid = icmp ult i64 %facts, {}\n  br i1 %valid, label %invoke, label %invalid\ninvoke:", 1_u64 << count);
+        for bit in 0..count {
+            let _=writeln!(module,"  %fact.bits.{bit} = lshr i64 %facts, {bit}\n  %fact.{bit} = trunc i64 %fact.bits.{bit} to i1");
+    }
+        let arguments=(0..count).map(|bit| format!("i1 %fact.{bit}")).collect::<Vec<_>>().join(", ");
+        let _=writeln!(module,"  %decision = call fastcc i32 @{}({arguments})",unit.entry_symbol());
+    }
     module.push_str("  switch i32 %decision, label %invalid [\n");
     for (canonical,source) in unit.source_tags().iter().enumerate() { let _=writeln!(module,"    i32 {source}, label %choice.{canonical}"); }
     module.push_str("  ]\n");
-    for canonical in 0..4 { let _=writeln!(module,"choice.{canonical}:\n  ret i64 {canonical}"); }
+    for canonical in 0..unit.policy().choices().len() { let _=writeln!(module,"choice.{canonical}:\n  ret i64 {canonical}"); }
     module.push_str("invalid:\n  ret i64 -1\n}\n\n");
     module.push_str(&generator.debug.finish());
     Ok(module)

@@ -1,7 +1,7 @@
 //! LLVM production and inspection for the closed finite source-library profile.
 use super::{
-    EXPORT_SYMBOL, SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact,
-    SystemsSourceLibraryInput, check_source_library, invalid,
+    SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact, SystemsSourceLibraryInput,
+    check_source_library, invalid,
 };
 use crate::{CompileError, LlvmTools};
 use ::object::{
@@ -49,6 +49,7 @@ pub(crate) fn build_source_library(
     work: &Path,
 ) -> Result<CompiledSourceLibrary, CompileError> {
     let unit = check_source_library(requirement, input)?;
+    let export = unit.policy().export();
     let llvm = crate::codegen::emit_finite_kernel_library(&unit)?;
     let source = work.join("kernel-library.ll");
     let bitcode = work.join("kernel-library.bc");
@@ -94,7 +95,7 @@ pub(crate) fn build_source_library(
         }
     }
     let mut expected: BTreeSet<_> = unit.calls().keys().cloned().collect();
-    expected.insert(EXPORT_SYMBOL.into());
+    expected.insert(export.into());
     let mut found = BTreeSet::new();
     for symbol in file.symbols() {
         let name = symbol.name().map_err(|e| invalid(e.to_string()))?;
@@ -102,7 +103,7 @@ pub(crate) fn build_source_library(
             return Err(invalid(format!("undefined library symbol {name}")));
         }
         if symbol.kind() == SymbolKind::Text && symbol.is_definition() {
-            if symbol.is_global() && name != EXPORT_SYMBOL {
+            if symbol.is_global() && name != export {
                 return Err(invalid("unexpected public library code symbol"));
             }
             found.insert(name.to_owned());
@@ -138,7 +139,7 @@ pub(crate) fn build_source_library(
             callees: callees.iter().cloned().collect(),
         });
     }
-    let wrapper = frames[EXPORT_SYMBOL]
+    let wrapper = frames[export]
         .checked_add(8)
         .and_then(|v| v.checked_add(costs[unit.entry_symbol()]))
         .ok_or_else(|| invalid("adapter stack bound overflow"))?;
@@ -152,8 +153,8 @@ pub(crate) fn build_source_library(
         )));
     }
     records.push(SystemsLibraryFunctionStack {
-        symbol: EXPORT_SYMBOL.into(),
-        frame_bytes: frames[EXPORT_SYMBOL],
+        symbol: export.into(),
+        frame_bytes: frames[export],
         maximum_call_path_bytes: wrapper,
         callees: vec![unit.entry_symbol().into()],
     });
@@ -173,9 +174,9 @@ pub(crate) fn build_source_library(
         checked_client_sha256: digest(unit.program().source.as_str().as_bytes()),
         llvm_sha256: digest(llvm.as_bytes()),
         object_sha256: digest(&bytes),
-        native_export: EXPORT_SYMBOL.into(),
+        native_export: export.into(),
         source_export: requirement.export.clone(),
-        source_tags: *unit.source_tags(),
+        source_tags: unit.source_tags().to_vec(),
         llvm_version: tools.version.clone(),
         machine_profile: "x86_64-gpr-only-no-red-zone-acyclic/1".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
@@ -327,16 +328,18 @@ pub(crate) fn inspect_linked_library(
     record: &SystemsSourceLibraryArtifact,
 ) -> Result<(), CompileError> {
     let file = ::object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
+    let policy = super::finite::FinitePolicy::from_interface(&record.interface)?;
+    let export = policy.export();
     if record.schema != "topal.kernel-source-library/2"
-        || record.interface != "boot-open-decision-v1"
-        || record.native_export != EXPORT_SYMBOL
+        || record.native_export != export
         || record.machine_profile != "x86_64-gpr-only-no-red-zone-acyclic/1"
         || record.stack_limit_bytes != 1024
         || record.maximum_stack_bytes > record.stack_limit_bytes
         || record.native_alignment_reserve_bytes != NATIVE_SHIM_BYTES
         || record.source_tags.iter().copied().collect::<BTreeSet<_>>()
-            != BTreeSet::from([0, 1, 2, 3])
-        || !record.functions.iter().any(|f| f.symbol == EXPORT_SYMBOL)
+            != (0..policy.choices().len() as u32).collect()
+        || record.source_tags.len() != policy.choices().len()
+        || !record.functions.iter().any(|f| f.symbol == export)
     {
         return Err(invalid("incomplete or unqualified linked library binding"));
     }

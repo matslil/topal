@@ -75,7 +75,7 @@ clients and reversed Enum order; invalid masks must reject. Execute actual
 ordinary helper calls in QEMU for immutable/directory and temporary creation,
 check ABI/frame evidence and reclamation, and reject a deliberately wrong create
 plan before filesystem publication. Existing command, process, sparse storage
-and frozen policy qualifications remain regressions. Source source/profile
+and frozen policy qualifications remain regressions. Source/profile
 changes must not be described as qualifying named files or complete Linux.
 
 References: pinned Linux 7.2.9 `fs/namei.c` (`lookup_fast_for_open`, `do_open`,

@@ -73,6 +73,9 @@ pub(super) fn parse_requirement(
                 };
                 export = Some(source.slice(*value).to_owned());
             }
+            "interface" if identifier_is(source, &field.value, "file-open-decision-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1);
+            }
             "interface" if identifier_is(source, &field.value, "boot-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1);
             }

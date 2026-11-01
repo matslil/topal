@@ -1170,16 +1170,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/241")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/242")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/228")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/229")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/241",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/242",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/141",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/142",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1705,7 +1705,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/241")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/242")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -2332,3 +2332,40 @@ class TopalToolchainGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FileOpenPlanContractTests(unittest.TestCase):
+    def test_current_frozen_and_wrong_plan_evidence_has_exact_provenance(self):
+        lab = Path(__file__).resolve().parent
+        record = json.loads((lab / 'results/topal-file-open-plan-gate.json').read_text())
+        import hashlib
+        digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+        self.assertEqual(record['harness_sha256'], digest(lab / 'file_open_gate.py'))
+        self.assertEqual(record['inspector_sha256'], digest(lab / 'file_open_inspect.py'))
+        self.assertEqual(record['source_sha256'], digest(lab.parents[2] / 'kernel/policy/file-open-access.t'))
+        self.assertEqual(record['normal']['root_and_provider_inputs'], record['reversed']['root_and_provider_inputs'])
+        self.assertEqual(record['normal']['root_and_provider_inputs'], record['wrong']['root_and_provider_inputs'])
+        for name in ('normal', 'reversed'):
+            case = record[name]
+            binding = case['library']
+            self.assertEqual(binding['interface'], 'file-open-decision-v1')
+            self.assertEqual(binding['native_export'], 'topal_kernel_file_open_policy_v1')
+            self.assertEqual(set(binding['source_tags']), set(range(8)))
+            self.assertLessEqual(binding['maximum_stack_bytes'], 1024)
+            self.assertEqual(case['observation']['result'], 'pass')
+            self.assertTrue(case['observation']['binding_erased'])
+            self.assertTrue(case['observation']['complete_process_store_erased'])
+            self.assertEqual(case['actual_file_syscall_returns'], 130)
+            self.assertTrue(any(c['facts']==41 and c['choice']==6 for c in case['observation']['calls']))
+        self.assertTrue(all(a+b==7 for a,b in zip(record['normal']['library']['source_tags'], record['reversed']['library']['source_tags'])))
+        self.assertEqual(record['normal']['linked_kernel_sha256'], record['lifetime']['linked_kernel_sha256'])
+        self.assertEqual(len(record['lifetime']['observation']['calls']), 161)
+        self.assertTrue(record['lifetime']['observation']['complete_process_backing_erased'])
+        wrong = record['wrong']
+        self.assertIsNone(wrong['runtime'])
+        self.assertIsNone(wrong['actual_file_syscall_returns'])
+        self.assertEqual(wrong['observation']['result'], 'expected-wrong-create-plan-refusal')
+        self.assertTrue(wrong['observation']['native_branch_reached_fatal'])
+        self.assertTrue(wrong['observation']['object_page_and_payload_store_unchanged'])
+        self.assertFalse(wrong['observation']['terminal_cleanup_claimed'])
+        self.assertEqual(record['frozen']['library']['interface'], 'boot-open-decision-v1')
