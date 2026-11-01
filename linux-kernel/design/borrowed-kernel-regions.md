@@ -45,8 +45,8 @@ frame and view identities are never reused within their lifetime. Complete
 call depth and view budgets must be admitted before mutation, including aliases
 and derived windows, rather than relying on observed high-water marks.
 
-The initial model budgets at most 64 active frames and 256 live views per
-invocation. These are systems qualification limits, not core function or type
+The initial model budgets at most 64 selected function identities, 64 active
+frames and 256 live views per invocation. These are systems qualification limits, not core function or type
 limits. Native qualification must bind actual source/code identities and
 conservative stack/allocation/access bounds; accepting a string in a reference
 model does not constitute that evidence.
@@ -74,6 +74,17 @@ reach storage. A normal range/access refusal is a structured systems outcome;
 forged ownership/code/lifetime evidence is an invariant failure, not a Linux
 errno. General allocation failure and destructor policy retain their existing
 core meaning and are not extended by this boundary.
+
+## Architecture boundary
+
+The owner/window/rights/call protocol has the same meaning on x86-64, AArch64
+and RISC-V. No source ABI specifies a pointer, register, address tag, cache
+instruction or page-table encoding. Each target must separately validate its
+private pointer representation, representable extent, mapping rights and
+execution context before access. Native call transport, ordering and erasure
+proofs remain target obligations. This plain-memory loan cannot substitute for
+an architecture's device, atomic, user-access or DMA protocol. Only x86-64
+native implementation is in the current plan.
 
 ## Integration and acceptance
 

@@ -140,6 +140,10 @@ pub struct BootstrapRegion {
 }
 
 impl BootstrapRegion {
+    pub(crate) fn library_owner_identity(&self) -> (String, u64) {
+        (self.execution_identity.clone(), self.allocation_id)
+    }
+
     #[must_use]
     pub const fn offset_bytes(&self) -> u64 {
         self.offset_bytes
@@ -167,6 +171,7 @@ pub struct BootstrapStorageState {
     execution_identity: String,
     next_offset: u64,
     next_allocation_id: u64,
+    next_library_generation: u64,
     live_regions: BTreeMap<u64, (u64, u64)>,
     contents: BTreeMap<(u64, u64), u8>,
     transitions: Vec<BootstrapStorageTransition>,
@@ -200,6 +205,7 @@ impl BootstrapStorageState {
             execution_identity,
             next_offset: 0,
             next_allocation_id: 0,
+            next_library_generation: 0,
             live_regions: BTreeMap::new(),
             contents: BTreeMap::new(),
             complete: false,
@@ -354,6 +360,21 @@ impl BootstrapStorageState {
                 value,
             });
         Ok(value)
+    }
+
+    pub(crate) fn begin_library_generation(
+        &mut self,
+        region: &BootstrapRegion,
+    ) -> Result<u64, SystemsModelError> {
+        self.validate_byte_access(region, 0)?;
+        let generation = self.next_library_generation.checked_add(1).ok_or_else(|| {
+            SystemsModelError::new(
+                "E-SYSTEMS-REGION-LIBRARY-GENERATION",
+                "region-library invocation identity exhausted",
+            )
+        })?;
+        self.next_library_generation = generation;
+        Ok(generation)
     }
 
     fn validate_byte_access(
@@ -704,5 +725,27 @@ mod tests {
             .code,
             "E-SYSTEMS-STORAGE-PROVENANCE"
         );
+    }
+
+    #[test]
+    fn region_library_generation_exhaustion_preserves_storage() {
+        // TOPAL-SYSTEMS-REGION-LIBRARY-BINDING-001.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 4096,
+                alignment_bytes: 8,
+            },
+            "library-generations",
+        )
+        .unwrap();
+        let region = storage.allocate(request(16, 8)).unwrap();
+        storage.next_library_generation = u64::MAX - 1;
+        assert_eq!(storage.begin_library_generation(&region).unwrap(), u64::MAX);
+        let before = format!("{storage:?}");
+        assert_eq!(
+            storage.begin_library_generation(&region).unwrap_err().code,
+            "E-SYSTEMS-REGION-LIBRARY-GENERATION",
+        );
+        assert_eq!(format!("{storage:?}"), before);
     }
 }

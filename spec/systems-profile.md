@@ -9399,7 +9399,8 @@ region SHALL remain unavailable until invocation completion or cancellation.
 MMIO, device, atomic, DMA, firmware and user-memory authority SHALL NOT be
 derived by this boundary. Ordinary core Memory values SHALL retain immutable
 meaning. Native publication SHALL require separately qualified source/code,
-ownership, ABI, access, stack and allocation evidence.
+ownership, ABI, access, stack and allocation evidence. The initial model binding
+SHALL contain at most 64 selected function identities.
 
 ### TOPAL-SYSTEMS-REGION-LIBRARY-CALL-001 — Nested borrowing and alias effects
 
