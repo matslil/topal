@@ -282,6 +282,15 @@ fail without mutation. The model shall not assign authority to a selector or
 operation name, invent native tag encodings, or replace required source/ABI,
 resource-bound, before-handler and complete-erasure evidence.
 
+Under `TK-DEC-262`, the systems model shall retain the exact process-identity
+library obligation from `TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001`, model its
+copied cursor and named numeric outputs independently, reject invalid cursors,
+and cover initial, increment and wrap without granting ownership to numbers.
+Exclusive policy binding shall include this fourth selected domain and preserve
+independent/combined invocation, unchanged rejection and complete teardown.
+Actual aggregate adaptation, native ABI, before-commit state and full resource
+proofs shall remain publisher/provider obligations.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

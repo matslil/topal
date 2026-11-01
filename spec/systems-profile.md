@@ -3940,6 +3940,78 @@ changed-source rejection before handler execution, complete resource proofs and
 the previous runtime regression. This rule SHALL NOT claim broader handler or
 core-language support.
 
+### TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001 — Named scalar result extraction
+
+An owned numeric interface MAY qualify a flat ordinary Record result whose
+fields have the interface's exact primitive numeric types. The checked declared
+field identities and actual source order SHALL determine extraction; construction
+order SHALL NOT define a native ABI. Qualification SHALL retain that order in
+artifact metadata and adapt each field by semantic name. Missing, extra, duplicate,
+wrongly typed or nested result fields SHALL reject the selected interface.
+
+The private adapter SHALL validate every extracted numeric representation and
+the interface's complete result range without truncation. Only the qualified
+native scalar words SHALL leave the exclusive invocation. All Record transport,
+spills, extraction, source/runtime work, returns, native saves and alignment SHALL
+enter complete stack/allocation proofs under the unchanged 4096-byte stack and
+65536-byte temporary limits. The caller SHALL preserve both results through full
+arena/retired-stack erasure and readback before exposing them to the owner.
+
+Qualification SHALL prove the actual multiword private calling convention with
+an independent native client, reordered declared/constructed fields, actual
+source input/result/frame observations, malformed results and full cleanup. This
+rule SHALL NOT qualify general aggregate escape, persistent source objects,
+source pointers as results, effects or additional core-language semantics.
+
+### TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001 — Source identity-state transition
+
+An artifact MAY declare one `process-identity-library` with interface
+`process-identity-transition-v1`, a contained source path/public export,
+`stack-limit-bytes is 4096` and `runtime-limit-bytes is 65536`. Its ordinary
+declared type SHALL be `Record (next : Nat) -> Record (allocated : Nat, next : Nat)`.
+Result field order MAY vary under `TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001`.
+Missing, conflicting, escaping or unqualified declarations/snapshots SHALL fail
+publication/use; declared source SHALL NOT silently select native arithmetic.
+
+Input SHALL be one immutable copied next-ID cursor, zero or 2..2147483647. Zero
+SHALL denote initialization. Source SHALL return `allocated = 2` for zero and
+otherwise the input cursor; `next = 2` when allocated is 2147483647 and otherwise
+`allocated + 1`. Both results SHALL lie in 2..2147483647. Neither the snapshot
+nor result SHALL grant process, storage, owner or native-context authority.
+
+Invocation SHALL occur after existing empty-child-slot, parent-lifetime, argument
+and resource checks and temporary request staging, before child identity or
+retained cursor publication. The owner SHALL retain its existing construction,
+snapshot, inheritance, wait/reap and error/commit order. The initial parent SHALL
+retain PID one; reuse and wrap SHALL require the existing reaped/empty child slot.
+This SHALL NOT establish scalable process allocation or a general PID namespace.
+
+The private bridge SHALL validate copied facts before allocation, construct an
+ordinary owned input Record, invoke source and validate both scalar results.
+Only after complete invocation erasure/readback SHALL the owner publish the
+allocated identity and successor cursor. Invalid private fact/result, binding,
+ownership, reentry, exhaustion or incomplete erasure SHALL fail closed. Existing
+roots without this declaration SHALL retain their bounded behavior.
+
+The complete selected identity/dispatch/header/deadline policy set SHALL work
+independently and through sequential exclusive borrowing of shared storage with
+distinct bindings and active identities. Exec SHALL retain bindings and owned
+state. Terminal return SHALL erase/read back all selected bindings and backing.
+Exact source/module snapshots, result order, generated adapter, runtime, object,
+native ABI and complete resource proofs SHALL enter artifact provenance.
+
+Qualification SHALL cover initial/ordinary/wrap transitions, malformed private
+facts/results, exact signatures, field-order variants, actual copied Record and
+imported source frames, both scalar outputs, full native/SIMD preservation,
+unchanged owner state before commit, actual subsequent ID/cursor publication,
+reuse, independent policy selection and full regression. A changed helper SHALL
+be rejected after cleanup and before publication by an independent transition
+oracle with root/provider objects unchanged. Controlled copied facts MAY test
+wrap while leaving persistent state unchanged and SHALL be identified as such.
+Other architectures SHALL qualify their adapters while preserving this value
+transition. Persistent allocation, effectful source and broader Linux interfaces
+SHALL remain outside this qualification.
+
 ### TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001 — Source policy over owned header bytes
 
 An artifact MAY declare one `image-library` through `lang systems source-library`

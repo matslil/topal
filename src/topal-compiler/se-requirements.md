@@ -12105,6 +12105,20 @@ remain deferred. This realizes `TOPAL-COMPILER-SUM-EQUALITY-001`,
 `TOPAL-TYPE-SUM-EQUALITY-001`, and `TOPAL-TYPE-EQUALITY-001` for compiler
 increment 3b2-b5ah.
 
+Under `TK-DEC-262`, the owned numeric publisher and process provider shall realize
+`TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001` and
+`TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001` through exact declared Record types,
+name-based multiword extraction, recorded actual field order, bounded copied
+facts and independent native ABI evidence. Source and all imported helpers,
+adapter work, aggregate transport and native saves shall enter complete unchanged
+resource bounds. The owner shall apply both validated scalar outputs only after
+full invocation reclamation, preserving existing child-creation checks and commit
+order. Independent/combined bindings, exec retention, terminal erasure, reordered
+fields, initial/increment/wrap, malformed private facts/results, actual source
+frames and before-commit changed-helper rejection shall be qualified. This shall
+not qualify escaping source values, persistent allocation or a broader process
+model.
+
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical
