@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [named RAM files](step-4-named-volatile-files.md), independent reopens, unlink lifetimes and ordinary BusyBox shell redirection/listing/removal.
+The latest Step 4 increment qualifies [positional file transfers](step-4-positional-file-transfers.md): explicit offsets, unchanged shared positions, Linux append placement and complete owned-storage cleanup.
 
 ## Current phase
 

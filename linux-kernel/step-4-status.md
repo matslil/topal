@@ -9,6 +9,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Positional pread64/pwrite64 over sparse and immutable files, invocation-owned
+  offsets, Linux append placement and unchanged shared description positions.
 - Named RAM files with creation/exclusive/truncating opens, independent positions,
   unlink-open lifetime, exact long directory records and complete reclamation.
 - Versioned ordinary Topal file-open disposition for existing and missing targets,
@@ -25,8 +27,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
   allocation bounds and imported collection helpers using shared ordinary runtime.
 - Source ELF64 header interpretation over copied owned bytes, precommit exec
   refusal, independently selected header/time policies and complete reclamation.
-- Versioned ordinary source selection of 59 Linux operations plus Unsupported,
-  with frozen 55/57-operation compatibility, actual nominal tag adaptation and
+- Versioned ordinary source selection of 61 Linux operations plus Unsupported,
+  with frozen 55/57/59-operation compatibility, actual nominal tag adaptation and
   cleanup before native argument/handler access.
 - Source process-ID/cursor transitions over immutable Record snapshots, named
   scalar result extraction and owned state publication after complete cleanup.
@@ -56,16 +58,18 @@ systems abstractions; ARM64 implementation is outside the current focus.
   monotonic time/resolution and relative sleeps with source-defined saturation.
 - Unmodified pinned BusyBox utilities and interactive shell builtin/cwd/input
   cycles, file redirection/append/reopen/list/remove and command substitution through
-  shared services, including transfers beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
+  shared services, including transfers beyond FIFO capacity. Unknown syscall
+  selectors return ENOSYS.
 
-The [current runtime report](step-4-named-volatile-files.md) records linked-file
-creation/reopen/unlink, source plans and all three dispatch versions, exact
-pathname/directory observations, independent-description lifetime, native/Linux/VM
-evidence and unmodified BusyBox commands. The [source-plan report](step-4-source-file-open-plans.md)
-and [sparse-file report](step-4-owned-volatile-files.md) retain their earlier
-qualified identities and foundations. Earlier interfaces remain explicit
-compatibility controls. Each report identifies its scope and limitations.
-A successful bounded witness does not establish general Linux compatibility.
+The [current runtime report](step-4-positional-file-transfers.md) records supplied
+offsets, append/error ordering, exact native positions and bytes, all four source
+dispatch versions, active/inactive cleanup and independent model/native/Linux/VM
+evidence. The [named-file report](step-4-named-volatile-files.md),
+[source-plan report](step-4-source-file-open-plans.md) and
+[sparse-file report](step-4-owned-volatile-files.md) retain their earlier qualified
+identities and foundations. Earlier interfaces remain explicit compatibility
+controls. Each report identifies its scope and limitations. A successful bounded
+witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
@@ -74,7 +78,7 @@ A successful bounded witness does not establish general Linux compatibility.
 | Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
-| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink and dynamic directory records; no persistent storage, new directories, rename or hard links; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
+| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink, positional transfers and dynamic directory records; no persistent storage, new directories, rename or hard links; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
 | Networking and isolation | Network stack, namespaces, credentials/capabilities, cgroups and other retained UAPI contracts | Research/design plus bounded initial-process views |
 | Reference distribution | Replace the Step 3 kernel and run declared command-line corpus from its ordinary prompt | Toolchain-gate VM and static BusyBox corpus |
 | Containers | Docker and Podman acceptance in the replacement-kernel VM | Reference Linux controls only |

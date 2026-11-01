@@ -1,7 +1,7 @@
 # Positional regular-file transfers
 
 `TK-DEC-268`; systems-only refinement under standing authorization.
-Implementation and Topal qualification remain pending.
+The [qualified report](../step-4-positional-file-transfers.md) records implementation and executed evidence.
 
 ## Purpose and boundary
 
