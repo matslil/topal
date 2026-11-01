@@ -77,8 +77,12 @@ The next compiler milestone is ordinary effectful functions over
 [borrowed kernel regions](design/borrowed-kernel-regions.md). Its
 [model foundation](step-4-borrowed-region-model.md) validates scoped views,
 aliases, nested calls and owner resumption over the existing storage resource.
-Source/native compilation and physical qualification remain required; this is
-not an additional executed capability in the list above.
+The [source/object stage](step-4-source-region-functions.md) now compiles ordinary
+imported helpers with checked byte operations, transitive owner effects,
+nonescape, complete bounds and reproducible inspected object certificates.
+Independent native byte/debug tests qualify that standalone boundary. Kernel-root
+binding, physical invocation and reclamation remain required; this is not an
+additional executed kernel capability in the list above.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |

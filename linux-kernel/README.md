@@ -13,10 +13,10 @@ in this phase.
 
 The latest Step 4 increment qualifies [positional file transfers](step-4-positional-file-transfers.md): explicit offsets, unchanged shared positions, Linux append placement and complete owned-storage cleanup.
 
-The next compiler milestone is [ordinary effectful functions over borrowed
-kernel regions](design/borrowed-kernel-regions.md). Its
-[portable model foundation](step-4-borrowed-region-model.md) does not yet add
-source/native support or an executed kernel capability.
+The latest compiler milestone adds [ordinary source functions over borrowed
+kernel regions](step-4-source-region-functions.md), including imported helpers,
+checked byte operations, object proofs and independent native byte/debug tests.
+Kernel-root binding, physical invocation and reclamation remain required.
 
 ## Current phase
 
