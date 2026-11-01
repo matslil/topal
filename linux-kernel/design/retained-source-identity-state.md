@@ -1,7 +1,9 @@
 # Owned retention of an ordinary source state value
 
 `TK-DEC-263`; systems-only refinement adopted under standing authorization.
-Design adopted; implementation and physical qualification remain required.
+The [implementation report](../step-4-retained-source-identity.md) records the
+selected ordinary graph, native protocol, conservative bounds and physical
+qualification.
 
 The [source identity transition](source-process-identity-transition.md) computes
 the next process-ID state in Topal, but the owning resource retains that state
