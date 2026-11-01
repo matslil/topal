@@ -266,3 +266,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Bounded immutable numeric Arrays](freestanding-numeric-arrays.md)
 - [Source ELF64 header policy over owned snapshots](source-elf64-header-policy.md)
 - [Ordinary source selection of Linux syscall operations](source-linux-syscall-selection.md)
+- [Source transition of retained process-identity state](source-process-identity-transition.md)

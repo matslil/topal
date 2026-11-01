@@ -472,6 +472,20 @@ mechanism. Existing handler constraints and errors remain unchanged. This extend
 only systems qualification of ordinary nominal Enum values, not core type,
 effect, authority or error meaning; see `TK-DEC-261`.
 
+A further systems qualification may apply a pure source transition to the copied
+next-ID state of the existing bounded process resource. An ordinary
+`Record (next : Nat) -> Record (allocated : Nat, next : Nat)` export proposes the
+existing initial/increment/wrap transition. A qualified adapter extracts actual
+primitive fields by logical name and source layout, validates their numeric
+representation/range and returns only native scalar words. No source Record,
+allocated value, address or process authority escapes. The owning resource applies
+the result only after validation, complete temporary cleanup and preservation of
+its existing construction/lifetime protocol. All selected policies operate alone
+or through sequential exclusive borrowing, with complete transport/frame/copy
+bounds and terminal erasure. This qualifies a value-level state transition and
+flat numeric Record result, not general persistent allocation, mutation/effects
+or new core Record meaning; see `TK-DEC-262`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.

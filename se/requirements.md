@@ -1598,6 +1598,17 @@ bindings and complete bounds/erasure. Independent selector/representation,
 argument/state preservation, changed-source and full regression evidence shall
 qualify the boundary without changing core-language meaning.
 
+Under `TK-DEC-262`, a pure source function may transition the copied next-ID state
+of the existing bounded process owner and return named primitive Record fields.
+Actual field order, representation/range validation, complete transport/bridge/
+runtime bounds and erasure shall precede native state publication. No source
+allocation, pointer or authority shall escape, and the existing child lifetime,
+capacity, argument and failure protocol shall remain in force. Independent and
+shared policy operation, initial/increment/wrap arithmetic, reordered results,
+actual source facts/frames, before-commit preservation, later owned publication,
+changed-helper rejection and previous regressions shall qualify this systems-only
+extension without claiming general persistent allocation or core-language changes.
+
 The initial static-process child refinement shall realize `TK-DEC-254` under
 `TOPAL-REQ-SYSTEMS-ARTIFACT-001`: independently owned process/thread/image state,
 shared inherited open descriptions, checked native creation/wait boundaries,

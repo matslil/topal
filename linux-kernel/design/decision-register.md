@@ -282,6 +282,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-261` | select Linux syscall operations in ordinary source | direct native comparison of captured selectors keeps ABI dispatch policy outside Topal; unchecked callbacks, source pointers or reinterpretation of Enum order would weaken the boundary | systems-only design adopted under standing authorization; [source syscall selection](source-linux-syscall-selection.md) defines architecture ABI source mapping, normalized semantic facts, nominal operation choices, checked native adaptation, independent/shared runtime ownership, complete bounds and before-handler qualification; [report](../step-4-source-linux-syscall-selection.md) records nominal source selection, actual tag/ABI adaptation, complete before-handler preservation/erasure, independent/reordered configurations and changed-source rejection |
 
+| `TK-DEC-262` | transition retained process-identity state in ordinary source | native next-ID arithmetic keeps state policy outside Topal; returning source pointers, assuming Record layout or treating a PID as authority would weaken ownership | systems-only design adopted under standing authorization; [source process-identity transition](source-process-identity-transition.md) defines copied immutable state, named numeric Record results, checked scalar extraction, cleanup before owned publication, independent/shared invocation and complete evidence; implementation and physical qualification remain required |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
