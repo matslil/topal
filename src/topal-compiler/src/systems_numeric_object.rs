@@ -26,6 +26,7 @@ pub struct SystemsNumericLibraryArtifact {
     pub source_tags: Vec<u32>,
     pub result_field_order: Vec<String>,
     pub result_order_suffix: bool,
+    pub retained_state: Option<super::SystemsRetainedStateBound>,
     pub native_export: String,
     pub source_sha256: String,
     pub modules: Vec<crate::SystemsSourceModuleArtifact>,
@@ -246,14 +247,19 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/6".into(),
+        schema: "topal.kernel-numeric-source-library/7".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: requirement.export.clone(),
         source_tags: checked.source_tags.clone(),
         result_field_order: checked.result_field_order.clone(),
-        result_order_suffix: policy == super::NumericPolicy::ProcessIdentity,
+        result_order_suffix: matches!(
+            policy,
+            super::NumericPolicy::ProcessIdentity | super::NumericPolicy::RetainedIdentity
+        ),
+        retained_state: (policy == super::NumericPolicy::RetainedIdentity)
+            .then(super::SystemsRetainedStateBound::qualified),
         native_export: export.into(),
         source_sha256: digest(input.text.as_bytes()),
         modules: crate::systems_library::modules::records(input),
@@ -264,7 +270,7 @@ pub(crate) fn build_numeric_library(
         platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
         object_sha256: digest(&bytes),
         llvm_version: tools.version.clone(),
-        machine_profile: "x86_64-owned-numeric-gpr-only/6".into(),
+        machine_profile: "x86_64-owned-numeric-gpr-only/7".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
         native_alignment_reserve_bytes: policy.alignment_reserve(),
         native_invocation_save_bytes: policy.invocation_saves(),
@@ -402,6 +408,7 @@ pub(crate) fn inspect_linked_numeric_library(
         "static-elf64-header-v1" => super::NumericPolicy::Elf64Header,
         "static-linux-dispatch-v1" => super::NumericPolicy::LinuxDispatch,
         "process-identity-transition-v1" => super::NumericPolicy::ProcessIdentity,
+        "retained-process-identity-v1" => super::NumericPolicy::RetainedIdentity,
         _ => return Err(invalid("unqualified numeric binding interface")),
     };
     let tags_valid = if policy == super::NumericPolicy::LinuxDispatch {
@@ -411,14 +418,23 @@ pub(crate) fn inspect_linked_numeric_library(
     } else {
         record.source_tags.is_empty()
     };
-    let fields_valid = if policy == super::NumericPolicy::ProcessIdentity {
+    let fields_valid = if matches!(
+        policy,
+        super::NumericPolicy::ProcessIdentity | super::NumericPolicy::RetainedIdentity
+    ) {
         record.result_order_suffix && record.result_field_order == ["allocated", "next"]
     } else {
         !record.result_order_suffix && record.result_field_order.is_empty()
     };
-    if record.schema != "topal.kernel-numeric-source-library/6"
+    let state_valid = if policy == super::NumericPolicy::RetainedIdentity {
+        record.retained_state.as_ref() == Some(&super::SystemsRetainedStateBound::qualified())
+    } else {
+        record.retained_state.is_none()
+    };
+    if record.schema != "topal.kernel-numeric-source-library/7"
         || !tags_valid
         || !fields_valid
+        || !state_valid
         || record.native_export != policy.native_export()
         || record.stack_limit_bytes != 4096
         || record.maximum_stack_bytes > 4096
@@ -439,7 +455,7 @@ pub(crate) fn inspect_linked_numeric_library(
         || record.allocation.runtime_sha256 != super::CERTIFIED_RUNTIME_SHA256
         || record.allocation.collection_runtime_sha256 != collection_runtime
         || record.allocation.collection_layout_sha256 != collection_layout
-        || record.machine_profile != "x86_64-owned-numeric-gpr-only/6"
+        || record.machine_profile != "x86_64-owned-numeric-gpr-only/7"
         || !record
             .functions
             .iter()
@@ -448,6 +464,28 @@ pub(crate) fn inspect_linked_numeric_library(
         return Err(invalid(
             "incomplete numeric binding or resource certificate",
         ));
+    }
+    if policy == super::NumericPolicy::RetainedIdentity {
+        let symbol = file
+            .symbol_by_name(super::STATE_SYMBOL)
+            .ok_or_else(|| invalid("missing owned retained-state region"))?;
+        let section = file
+            .section_by_index(
+                symbol
+                    .section_index()
+                    .ok_or_else(|| invalid("unplaced retained-state region"))?,
+            )
+            .map_err(|e| invalid(e.to_string()))?;
+        if symbol.kind() != SymbolKind::Data
+            || symbol.size() != 4096
+            || symbol.address() % 4096 != 0
+            || section.kind() != object::SectionKind::UninitializedData
+            || !matches!(section.flags(),SectionFlags::Elf {sh_flags,..} if sh_flags.0&3==3 && sh_flags.0&4==0)
+        {
+            return Err(invalid(
+                "retained-state region lacks complete private placement",
+            ));
+        }
     }
     let mut seen = BTreeSet::new();
     let mut costs = BTreeMap::from([(ALLOCATE.to_owned(), 8_u64), (ABORT.to_owned(), 8_u64)]);

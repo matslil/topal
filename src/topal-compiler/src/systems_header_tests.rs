@@ -11,6 +11,7 @@ fn source() -> (
         interface: CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1,
         stack_limit_bytes: 4096,
         runtime_limit_bytes: Some(65536),
+        state_limit_bytes: None,
     };
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
     let input = crate::systems_library::load_source_library(&requirement, &root).unwrap();

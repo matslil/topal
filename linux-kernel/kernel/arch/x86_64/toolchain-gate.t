@@ -1953,7 +1953,8 @@ lang systems artifact (
   process-identity-library is lang systems source-library (
     source is "policy/process-identity.t",
     export is process-identity,
-    interface is process-identity-transition-v1,
+    interface is retained-process-identity-v1,
+    state-limit-bytes is 4096,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),

@@ -7,6 +7,7 @@ pub(crate) enum NumericPolicy {
     Elf64Header,
     LinuxDispatch,
     ProcessIdentity,
+    RetainedIdentity,
 }
 impl NumericPolicy {
     pub(crate) fn from_interface(
@@ -19,6 +20,9 @@ impl NumericPolicy {
             CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
                 Ok(Self::ProcessIdentity)
             }
+            CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1 => {
+                Ok(Self::RetainedIdentity)
+            }
             _ => Err(invalid("unqualified owned policy interface")),
         }
     }
@@ -28,6 +32,7 @@ impl NumericPolicy {
             Self::Elf64Header => "topal_kernel_static_elf64_header_policy_v1",
             Self::LinuxDispatch => "topal_kernel_static_linux_dispatch_policy_v1",
             Self::ProcessIdentity => "topal_kernel_process_identity_transition_v1",
+            Self::RetainedIdentity => "topal_kernel_retained_process_identity_policy_v1",
         }
     }
     pub(crate) fn function_prefix(self) -> &'static str {
@@ -35,7 +40,7 @@ impl NumericPolicy {
             Self::Deadline => FUNCTION_PREFIX,
             Self::Elf64Header => "topal.header.",
             Self::LinuxDispatch => "topal.dispatch.",
-            Self::ProcessIdentity => "topal.identity.",
+            Self::ProcessIdentity | Self::RetainedIdentity => "topal.identity.",
         }
     }
     pub(crate) fn stem(self) -> &'static str {
@@ -43,7 +48,7 @@ impl NumericPolicy {
             Self::Deadline => "time-library",
             Self::Elf64Header => "image-library",
             Self::LinuxDispatch => "dispatch-library",
-            Self::ProcessIdentity => "process-identity-library",
+            Self::ProcessIdentity | Self::RetainedIdentity => "process-identity-library",
         }
     }
     pub(crate) fn parameters(self) -> Vec<CompilerType> {
@@ -63,7 +68,7 @@ impl NumericPolicy {
                 CompilerType::Nat,
             ],
             Self::LinuxDispatch => vec![CompilerType::Nat],
-            Self::ProcessIdentity => vec![CompilerType::Record(vec![(
+            Self::ProcessIdentity | Self::RetainedIdentity => vec![CompilerType::Record(vec![(
                 "next".into(),
                 CompilerType::Nat,
             )])],
@@ -74,7 +79,7 @@ impl NumericPolicy {
             Self::Deadline => result == &CompilerType::Int,
             Self::Elf64Header => result == &CompilerType::Boolean,
             Self::LinuxDispatch => false,
-            Self::ProcessIdentity => {
+            Self::ProcessIdentity | Self::RetainedIdentity => {
                 if let CompilerType::Record(fields) = result {
                     fields.len() == 2
                         && ["allocated", "next"].iter().all(|expected| {
@@ -120,7 +125,7 @@ impl NumericPolicy {
             Self::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
             }
-            Self::ProcessIdentity => {
+            Self::ProcessIdentity | Self::RetainedIdentity => {
                 "identity interface requires Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
             }
             Self::LinuxDispatch => {
@@ -129,7 +134,7 @@ impl NumericPolicy {
         }))
     }
     pub(crate) fn result_field_order(self, result: &CompilerType) -> Vec<String> {
-        if self == Self::ProcessIdentity {
+        if matches!(self, Self::ProcessIdentity | Self::RetainedIdentity) {
             if let CompilerType::Record(fields) = result {
                 return fields.iter().map(|(name, _)| name.clone()).collect();
             }
@@ -140,7 +145,7 @@ impl NumericPolicy {
         match self {
             Self::Elf64Header => "topal.elf.",
             Self::LinuxDispatch => "topal.syscall.",
-            Self::ProcessIdentity => "topal.pid.",
+            Self::ProcessIdentity | Self::RetainedIdentity => "topal.pid.",
             Self::Deadline => "topal.",
         }
     }
@@ -160,10 +165,9 @@ impl NumericPolicy {
                 range(1, 65535),
             ],
             Self::LinuxDispatch => vec![range(0, u64::MAX)],
-            Self::ProcessIdentity => vec![Value::Record(BTreeMap::from([(
-                "next".into(),
-                range(0, i32::MAX as u64),
-            )]))],
+            Self::ProcessIdentity | Self::RetainedIdentity => vec![Value::Record(BTreeMap::from(
+                [("next".into(), range(0, i32::MAX as u64))],
+            ))],
         }
     }
     pub(crate) fn bridge_bytes(self) -> u64 {
@@ -171,7 +175,7 @@ impl NumericPolicy {
             Self::Deadline => 3 * 24,
             Self::Elf64Header => 64 * (24 + 16) + 16 + 2 * 24,
             Self::LinuxDispatch => 24,
-            Self::ProcessIdentity => 24,
+            Self::ProcessIdentity | Self::RetainedIdentity => 24,
         }
     }
     pub(crate) fn alignment_reserve(self) -> u64 {
@@ -182,7 +186,7 @@ impl NumericPolicy {
             Self::Deadline => 0,
             Self::Elf64Header => 64,
             Self::LinuxDispatch => 64,
-            Self::ProcessIdentity => 64,
+            Self::ProcessIdentity | Self::RetainedIdentity => 64,
         }
     }
     pub(super) fn client(self, export: &str) -> String {
@@ -202,7 +206,7 @@ impl NumericPolicy {
                 client
             }
             Self::LinuxDispatch => format!("\nselector : Nat is 0\n{export} selector\n"),
-            Self::ProcessIdentity => format!(
+            Self::ProcessIdentity | Self::RetainedIdentity => format!(
                 "\nidentity-probe : Record (next : Nat) is (next is 0)\n{export} identity-probe\n"
             ),
         }

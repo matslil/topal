@@ -560,9 +560,11 @@ fn parse_artifact_root(
         let label_text = source.slice(label);
         if label_text == "process-identity-library" {
             let requirement = source_library::parse_requirement(source, field)?;
-            if requirement.interface
-                != CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1
-            {
+            if !matches!(
+                requirement.interface,
+                CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+                    | CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+            ) {
                 return Err(source_diagnostic(
                     source,
                     "E-SYSTEMS-LIBRARY",

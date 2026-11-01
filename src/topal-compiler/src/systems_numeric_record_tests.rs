@@ -8,6 +8,7 @@ fn requirement() -> CompilerSystemsSourceLibraryRequirement {
         interface: CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
         stack_limit_bytes: 4096,
         runtime_limit_bytes: Some(65536),
+        state_limit_bytes: None,
     }
 }
 fn input(helpers: &str, body: &str) -> SystemsSourceLibraryInput {

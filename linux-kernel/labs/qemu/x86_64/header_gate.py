@@ -91,7 +91,7 @@ def observe(root, values, artifact, timeout, poison=False, counterexample=False)
                   counterexample=counterexample, source_line=source.index("  magic is read-magic bytes")+1,
                   header=list(values[5].read_bytes()[:64]), payload_offset=payload_offset(values[1]),
                   has_time=artifact.get("time_library") is not None,
-                  has_identity=artifact.get("process_identity_library") is not None, has_dispatch=artifact.get("dispatch_library") is not None,
+                  has_retained=bool((artifact.get("process_identity_library") or {}).get("retained_state")), identity_export=(artifact.get("process_identity_library") or {}).get("native_export","topal_kernel_process_identity_transition_v1"), has_identity=artifact.get("process_identity_library") is not None, has_dispatch=artifact.get("dispatch_library") is not None,
                   zero_addresses=NUMERIC.immutable_zero_addresses(elf),
                   stack_bound=library["maximum_stack_bytes"],
                   allocation_bound=library["allocation"]["maximum_bytes"])

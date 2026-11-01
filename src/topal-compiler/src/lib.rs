@@ -64,7 +64,9 @@ pub use systems_library::{
     SystemsLibraryFunctionStack, SystemsSourceLibraryArtifact, SystemsSourceLibraryInput,
     SystemsSourceModuleArtifact, SystemsSourceModuleInput,
 };
-pub use systems_numeric_library::{SystemsNumericAllocationBound, SystemsNumericLibraryArtifact};
+pub use systems_numeric_library::{
+    SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRetainedStateBound,
+};
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,
     X86_SYSTEMS_PLATFORM_ABI, X86_SYSTEMS_PROVIDER_REVISION, X86SystemsLowering,

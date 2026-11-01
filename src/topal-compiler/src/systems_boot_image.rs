@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/138";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/139";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -352,6 +352,35 @@ fn validate_artifact_input(
         )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
+    let retained_identity = artifact
+        .process_identity_library
+        .as_ref()
+        .is_some_and(|r| r.interface == "retained-process-identity-v1");
+    let identity_policy = if retained_identity {
+        crate::systems_numeric_library::NumericPolicy::RetainedIdentity
+    } else {
+        crate::systems_numeric_library::NumericPolicy::ProcessIdentity
+    };
+    let identity_interface = if retained_identity {
+        "retained-process-identity-v1"
+    } else {
+        "process-identity-transition-v1"
+    };
+    let alternate = if retained_identity {
+        crate::systems_numeric_library::NumericPolicy::ProcessIdentity
+    } else {
+        crate::systems_numeric_library::NumericPolicy::RetainedIdentity
+    };
+    if file.symbol_by_name(alternate.native_export()).is_some()
+        || file
+            .symbol_by_name(crate::systems_numeric_library::STATE_SYMBOL)
+            .is_some()
+            != retained_identity
+    {
+        return Err(CompileError::Tool(
+            "identity interface/store ownership bindings disagree".into(),
+        ));
+    }
     for (library, interface, policy, prefix, stem) in [
         (
             &artifact.time_library,
@@ -376,8 +405,8 @@ fn validate_artifact_input(
         ),
         (
             &artifact.process_identity_library,
-            "process-identity-transition-v1",
-            crate::systems_numeric_library::NumericPolicy::ProcessIdentity,
+            identity_interface,
+            identity_policy,
             "kernel-process-identity-source-module:",
             "process-identity-library",
         ),
@@ -1183,6 +1212,69 @@ mod tests {
                         .as_mut()
                         .unwrap()
                         .native_invocation_save_bytes = 0
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_incomplete_or_cross_policy_retained_state_certificates() {
+        // TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001; TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..12 {
+            let mut changed = artifact.clone();
+            let identity = changed.process_identity_library.as_mut().unwrap();
+            match mutation {
+                0 => identity.retained_state = None,
+                1 => identity.retained_state.as_mut().unwrap().schema.push('x'),
+                2 => identity.retained_state.as_mut().unwrap().limit_bytes = 8192,
+                3 => identity.retained_state.as_mut().unwrap().bank_count = 1,
+                4 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_retained_graph_bytes = 32
+                }
+                5 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_prepared_validation_words = 260
+                }
+                6 => identity
+                    .retained_state
+                    .as_mut()
+                    .unwrap()
+                    .store_symbol
+                    .push('x'),
+                7 => identity.interface = "process-identity-transition-v1".into(),
+                8 => identity.native_export = "topal_kernel_process_identity_transition_v1".into(),
+                9 => identity
+                    .retained_state
+                    .as_mut()
+                    .unwrap()
+                    .publication_protocol
+                    .push('x'),
+                10 => {
+                    changed.time_library.as_mut().unwrap().retained_state =
+                        identity.retained_state.clone();
+                }
+                11 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_retirement_words = 252
                 }
                 _ => unreachable!(),
             }

@@ -273,7 +273,7 @@ class Released(Checked):
     def inspect(self):
         sync();assert created and not streams and memory(table,0x43000)==bytes(0x43000)
         assert word(context+152)==0 and word(context+160)==0
-        assert all(word(context+i)==0 for i in (952,960,968,976,984,992))
+        assert all(word(context+i)==0 for i in (952,960,968,976,984,992,1000))
         if {terminate!r}:assert terminated and pending
         else:assert not pending and any(b["operation"]=="read" for b in blocks) and any(b["operation"]=="write" for b in blocks)
         if not {external!r} and not {terminate!r}:

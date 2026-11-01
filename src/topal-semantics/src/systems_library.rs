@@ -8,6 +8,7 @@ pub enum SystemsSourceLibraryInterface {
     StaticElf64HeaderV1,
     StaticLinuxDispatchV1,
     ProcessIdentityTransitionV1,
+    RetainedProcessIdentityV1,
 }
 impl SystemsSourceLibraryInterface {
     #[must_use]
@@ -18,6 +19,7 @@ impl SystemsSourceLibraryInterface {
             Self::StaticElf64HeaderV1 => "static-elf64-header-v1",
             Self::StaticLinuxDispatchV1 => "static-linux-dispatch-v1",
             Self::ProcessIdentityTransitionV1 => "process-identity-transition-v1",
+            Self::RetainedProcessIdentityV1 => "retained-process-identity-v1",
         }
     }
 }
@@ -29,6 +31,7 @@ pub struct SystemsSourceLibraryRequirement {
     pub interface: SystemsSourceLibraryInterface,
     pub stack_limit_bytes: u64,
     pub runtime_limit_bytes: Option<u64>,
+    pub state_limit_bytes: Option<u64>,
 }
 impl SystemsSourceLibraryRequirement {
     /// Check portable import metadata; source semantics remain a shared frontend
@@ -49,19 +52,28 @@ impl SystemsSourceLibraryRequirement {
                 .any(|c| c.is_whitespace() || c.is_control())
             || !match self.interface {
                 SystemsSourceLibraryInterface::BootOpenDecisionV1 => {
-                    self.stack_limit_bytes == 1024 && self.runtime_limit_bytes.is_none()
+                    self.stack_limit_bytes == 1024
+                        && self.runtime_limit_bytes.is_none()
+                        && self.state_limit_bytes.is_none()
                 }
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
                 | SystemsSourceLibraryInterface::StaticElf64HeaderV1
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                 | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
-                    self.stack_limit_bytes == 4096 && self.runtime_limit_bytes == Some(65536)
+                    self.stack_limit_bytes == 4096
+                        && self.runtime_limit_bytes == Some(65536)
+                        && self.state_limit_bytes.is_none()
+                }
+                SystemsSourceLibraryInterface::RetainedProcessIdentityV1 => {
+                    self.stack_limit_bytes == 4096
+                        && self.runtime_limit_bytes == Some(65536)
+                        && self.state_limit_bytes == Some(4096)
                 }
             }
         {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
-                "source library requires a contained relative .t unit, structural public export and the selected interface's exact stack/runtime reserves",
+                "source library requires a contained relative .t unit, structural public export and the selected interface's exact stack/runtime/state reserves",
             ));
         }
         Ok(())
@@ -184,6 +196,7 @@ mod tests {
             interface: SystemsSourceLibraryInterface::StaticElf64HeaderV1,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         requirement.validate().unwrap();
         assert_eq!(requirement.interface.as_str(), "static-elf64-header-v1");
@@ -242,6 +255,7 @@ mod tests {
             interface: SystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         valid.validate().unwrap();
         for runtime in [None, Some(0), Some(65535), Some(65537)] {
@@ -260,6 +274,7 @@ mod tests {
             interface: SystemsSourceLibraryInterface::BootOpenDecisionV1,
             stack_limit_bytes: 1024,
             runtime_limit_bytes: None,
+            state_limit_bytes: None,
         };
         valid.validate().unwrap();
         assert_eq!(valid.interface.as_str(), "boot-open-decision-v1");

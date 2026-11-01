@@ -33,14 +33,24 @@ impl SystemsNumericRuntimeArena {
         root_owner: &str,
     ) -> Result<Self, SystemsModelError> {
         let mut policies = BTreeSet::new();
+        let mut identity_selected = false;
         for requirement in requirements {
             requirement.validate()?;
+            if matches!(
+                requirement.interface,
+                SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+                    | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
+            ) && std::mem::replace(&mut identity_selected, true)
+            {
+                return Err(invalid());
+            }
             if !matches!(
                 requirement.interface,
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
                     | SystemsSourceLibraryInterface::StaticElf64HeaderV1
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+                    | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
             ) || !policies.insert(requirement.interface)
             {
                 return Err(invalid());
@@ -203,6 +213,55 @@ impl SystemsNumericRuntimeArena {
 mod tests {
     use super::*;
     #[test]
+    fn identity_versions_share_one_semantic_policy_slot() {
+        // TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001
+        use SystemsSourceLibraryInterface::*;
+        let policies = [
+            RelativeSleepDeadlineV1,
+            StaticElf64HeaderV1,
+            StaticLinuxDispatchV1,
+            ProcessIdentityTransitionV1,
+            RetainedProcessIdentityV1,
+        ];
+        let requirement = |interface| SystemsSourceLibraryRequirement {
+            source: "policy/identity.t".into(),
+            export: "process-identity".into(),
+            interface,
+            stack_limit_bytes: 4096,
+            runtime_limit_bytes: Some(65536),
+            state_limit_bytes: if interface == RetainedProcessIdentityV1 {
+                Some(4096)
+            } else {
+                None
+            },
+        };
+        let mut accepted = 0;
+        for mask in 1..32 {
+            let selected = policies
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| mask & (1 << i) != 0)
+                .map(|(_, interface)| requirement(*interface))
+                .collect::<Vec<_>>();
+            let result = SystemsNumericRuntimeArena::new_with_policies(&selected, "root");
+            if mask & 24 == 24 {
+                assert!(result.is_err());
+                continue;
+            }
+            accepted += 1;
+            let mut arena = result.unwrap();
+            arena.lend("root", "process").unwrap();
+            for policy in &selected {
+                arena.begin_policy("process", policy.interface).unwrap();
+                arena.allocate("process", 24).unwrap();
+                arena.finish_policy("process", policy.interface).unwrap();
+            }
+            arena.return_to_root("process").unwrap();
+            assert!(arena.is_reclaimed());
+        }
+        assert_eq!(accepted, 23);
+    }
+    #[test]
     fn distinct_numeric_policies_share_only_inactive_clean_storage() {
         // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
         let requirement = |interface| SystemsSourceLibraryRequirement {
@@ -211,6 +270,7 @@ mod tests {
             interface,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         let time = SystemsSourceLibraryInterface::RelativeSleepDeadlineV1;
         let header = SystemsSourceLibraryInterface::StaticElf64HeaderV1;
@@ -269,6 +329,7 @@ mod tests {
             interface: SystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         let mut arena = SystemsNumericRuntimeArena::new(&requirement, "root").unwrap();
         assert!(arena.is_reclaimed());

@@ -109,6 +109,7 @@ fn backing(e: &mut E<'_>, index: usize) -> Result<(), CompileError> {
 pub(in super::super) fn emit_services(
     code: &mut X86FunctionEncoder,
     source_identity: bool,
+    retained_identity: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     e.0.bind("child-register-tid")?;
@@ -194,11 +195,14 @@ pub(in super::super) fn emit_services(
     e.store(R15, HEADER + 32, R8);
     e.store(R15, HEADER + 40, R9);
     if source_identity {
-        super::identity::emit_invoke(e.0)?;
+        super::identity::emit_invoke(e.0, retained_identity)?;
         e.mov(R14, A);
         e.store(R15, HEADER + 16, R14);
         e.store(R15, HEADER + 88, R14);
         e.store(R15, HEADER + 8, D);
+        if retained_identity {
+            super::retained::emit_commit(e.0)?;
+        }
     } else {
         e.load(R14, R15, HEADER + 8);
         e.cmp(R14, 0);

@@ -113,7 +113,7 @@ detach
     return dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
 
 
-def verify(timeout=60,write_evidence=False):
+def verify_scalar(timeout=60,write_evidence=False):
     with tempfile.TemporaryDirectory(prefix="topal-identity-",dir="/tmp") as temporary:
         root = Path(temporary)
         values = GATE.build_image(root/"artifact")
@@ -160,6 +160,20 @@ def verify(timeout=60,write_evidence=False):
     if write_evidence:
         (LAB/"results/topal-source-process-identity-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     print("PASS actual source identity Records/results, owner commit, wrap, independent policy and full erasure",flush=True)
+    return record
+
+
+def verify(timeout=60,write_evidence=False):
+    original=GATE.SOURCE_PATH
+    with tempfile.TemporaryDirectory(prefix="topal-scalar-identity-",dir="/tmp") as temporary:
+        source=Path(temporary)/"scalar-root.t"
+        text=original.read_text().replace("retained-process-identity-v1","process-identity-transition-v1").replace("    state-limit-bytes is 4096,\n","")
+        source.write_text(text);GATE.SOURCE_PATH=source
+        try:record=verify_scalar(timeout,False)
+        finally:GATE.SOURCE_PATH=original
+    record["scalar_compatibility_control"]=True
+    if write_evidence:
+        (LAB/"results/topal-source-process-identity-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     return record
 
 

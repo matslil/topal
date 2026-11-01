@@ -63,7 +63,8 @@ def install(config):
         assert word(state.context + 976) == symbol("topal_kernel_static_elf64_header_policy_v1")
         expected_dispatch=symbol("topal_kernel_static_linux_dispatch_policy_v1") if config["has_dispatch"] else 0
         assert word(state.context+984)==expected_dispatch
-        assert word(state.context+992)==(symbol("topal_kernel_process_identity_transition_v1") if config["has_identity"] else 0)
+        assert word(state.context+992)==(symbol(config["identity_export"]) if config["has_identity"] else 0)
+        assert word(state.context+1000)==(symbol("topal_x86_systems_identity_value_store") if config["has_retained"] else 0)
 
     def write(result, **extra):
         record = dict(result=result, calls=state.calls, source_frames=state.frames, **extra)
@@ -94,8 +95,10 @@ def install(config):
                                 callee_saved={r: reg(r) for r in saved}, simd=simd(),
                                 table=memory(state.table, 0x43000),
                                 exec_snapshot=memory(word(state.context + 904), 0xa000),
-                                context=memory(state.context, 1000),
-                                clock=memory(word(state.context + 944), 24), returned=False)
+                                context=memory(state.context, 1008),
+                                clock=memory(word(state.context + 944), 24),
+                                retained=memory(symbol("topal_x86_systems_identity_value_store"),4096) if config["has_retained"] else None,
+                                returned=False)
             breakpoint(Returned, "*" + hex(word(stack)))
             return False
 
@@ -175,8 +178,10 @@ def install(config):
             assert memory(state.arena, 65536) == bytes(65536)
             assert memory(reg("rsp")-4096, 4096) == bytes(4096)
             assert memory(state.table, 0x43000) == active["table"]
-            assert memory(state.context, 1000) == active["context"]
+            assert memory(state.context, 1008) == active["context"]
             assert memory(word(state.context+944), 24) == active["clock"]
+            if config["has_retained"]:
+                assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==active["retained"]
             assert memory(active["input_address"], 64) == active["input_bytes"]
             bindings()
             record = dict(expected=active["expected"], observed=active["actual"] ,
@@ -208,9 +213,11 @@ def install(config):
             actual=memory(word(state.context+904),0xa000)
             assert actual == bytes(expected), ("exec_snapshot",[i for i,(a,b) in enumerate(zip(actual,expected)) if a!=b][:16])
             assert memory(state.table,0x43000) == active["table"]
-            actual_context=memory(state.context,1000)
+            actual_context=memory(state.context,1008)
             assert actual_context == active["context"], ("context",[i for i,(a,b) in enumerate(zip(actual_context,active["context"])) if a!=b][:16])
             assert memory(word(state.context+944), 24) == active["clock"], "clock"
+            if config["has_retained"]:
+                assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==active["retained"]
             assert memory(active["input_address"], 64) == active["input_bytes"]
             assert memory(state.arena, 65536) == bytes(65536)
             write("pass-controlled-refusal", native_error=8, staging_erased=True,
@@ -221,9 +228,11 @@ def install(config):
     class Released(gdb.Breakpoint):
         def stop(self):
             assert state.active is None and state.calls and state.frames
-            assert all(word(state.context+offset) == 0 for offset in (952, 960, 968, 976, 984, 992))
+            assert all(word(state.context+offset) == 0 for offset in (952, 960, 968, 976, 984, 992, 1000))
             assert memory(state.arena, 65536) == bytes(65536)
             assert memory(state.table, 0x43000) == bytes(0x43000)
+            if config["has_retained"]:
+                assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==bytes(4096)
             write("pass", binding_erased=True, terminal_arena_erased=True, backing_erased=True)
             return True
 

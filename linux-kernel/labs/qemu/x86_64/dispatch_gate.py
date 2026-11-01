@@ -98,7 +98,7 @@ def observe(root,values,artifact,timeout,counterexample=False):
         source_point=snapshot,
         readonly=readonly_sections(elf),source_line=source.index("  number = expected")+1,
         mapping=pairs,choices=choices,source_tags=library["source_tags"],
-        has_identity=artifact.get("process_identity_library") is not None,has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
+        has_retained=bool((artifact.get("process_identity_library") or {}).get("retained_state")),identity_export=(artifact.get("process_identity_library") or {}).get("native_export","topal_kernel_process_identity_transition_v1"),has_identity=artifact.get("process_identity_library") is not None,has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
         stack_bound=library["maximum_stack_bytes"],allocation_bound=library["allocation"]["maximum_bytes"],
         counterexample=counterexample)
     script.write_text(f'''set pagination off

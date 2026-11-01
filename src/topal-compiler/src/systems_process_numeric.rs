@@ -29,6 +29,7 @@ pub(in super::super) fn emit_entry_validation(
     image: bool,
     dispatch: bool,
     identity: bool,
+    retained: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     for (selected, argument, context, label) in [
@@ -105,6 +106,13 @@ pub(in super::super) fn emit_entry_validation(
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fail");
     e.store(R10, ARENA_CONTEXT as i32, R8);
+    if retained {
+        super::retained::emit_entry_validation(e.0)?;
+    } else if identity {
+        e.load(A, Sp, 0x90);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fail");
+    }
     Ok(())
 }
 

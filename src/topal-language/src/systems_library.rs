@@ -36,6 +36,7 @@ pub(super) fn parse_requirement(
     }
     let (mut path, mut export, mut interface, mut stack) = (None, None, None, None);
     let mut runtime = None;
+    let mut state = None;
     let mut seen = BTreeSet::new();
     for field in fields {
         let label = artifact_field_label(source, field)?;
@@ -90,6 +91,12 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
             }
+            "interface" if identifier_is(source, &field.value, "retained-process-identity-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1);
+            }
+            "state-limit-bytes" => {
+                state = Some(parse_storage_natural(source, &field.value)?);
+            }
             "runtime-limit-bytes" => {
                 runtime = Some(parse_storage_natural(source, &field.value)?);
             }
@@ -120,6 +127,7 @@ pub(super) fn parse_requirement(
         interface,
         stack_limit_bytes,
         runtime_limit_bytes: runtime,
+        state_limit_bytes: state,
     };
     result
         .validate()
@@ -130,10 +138,55 @@ pub(super) fn parse_requirement(
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    fn scalar_identity_root() -> String {
+        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+            .replace(
+                "retained-process-identity-v1",
+                "process-identity-transition-v1",
+            )
+            .replace("    state-limit-bytes is 4096,\n", "")
+    }
+    #[test]
+    fn retained_identity_requires_its_explicit_state_reserve_and_unique_slot() {
+        // TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001
+        let scalar_source = scalar_identity_root();
+        let source = scalar_source.as_str();
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let retained = source.replace(
+            "interface is process-identity-transition-v1,",
+            "interface is retained-process-identity-v1,\n    state-limit-bytes is 4096,",
+        );
+        let requirement = analyze_systems_for_compiler(&retained, &target)
+            .unwrap()
+            .process_identity_library
+            .unwrap();
+        assert_eq!(
+            requirement.interface,
+            CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+        );
+        assert_eq!(requirement.state_limit_bytes, Some(4096));
+        for invalid in [
+            retained.replace("    state-limit-bytes is 4096,\n", ""),
+            retained.replace("state-limit-bytes is 4096", "state-limit-bytes is 4095"),
+            retained.replace("state-limit-bytes is 4096", "state-limit-bytes is 4097"),
+            retained.replace(
+                "state-limit-bytes is 4096",
+                "state-limit-bytes is 4096, state-limit-bytes is 4096",
+            ),
+            retained.replace(
+                "retained-process-identity-v1",
+                "process-identity-transition-v1",
+            ),
+            retained.replace("retained-process-identity-v1", "static-elf64-header-v1"),
+        ] {
+            assert!(analyze_systems_for_compiler(&invalid, &target).is_err());
+        }
+    }
     #[test]
     fn identity_declaration_is_optional_unique_and_uses_its_exact_policy_slot() {
         // TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001
-        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let scalar_source = scalar_identity_root();
+        let source = scalar_source.as_str();
         let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
         let program = analyze_systems_for_compiler(source, &target).unwrap();
         let identity = program.process_identity_library.unwrap();

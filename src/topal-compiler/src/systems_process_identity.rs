@@ -5,7 +5,10 @@ use super::{CompileError, E, R::*, X86FunctionEncoder};
 
 pub(in super::super) const CODE_CONTEXT: u32 = 992;
 
-pub(in super::super) fn emit_invoke(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(in super::super) fn emit_invoke(
+    code: &mut X86FunctionEncoder,
+    retained: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
     e.load(R8, R15, 0x2008); // Immutable copied cursor; owner state stays untouched.
     e.cmp(Sp, 0x108000);
@@ -32,6 +35,13 @@ pub(in super::super) fn emit_invoke(code: &mut X86FunctionEncoder) -> Result<(),
     e.imm(A, 4);
     e.store(R11, 16, A);
     e.mov(Di, R8);
+    if retained {
+        e.gs(0x8b, Si, super::retained::STORE_CONTEXT);
+        e.cmp(Si, 0);
+        e.0.jump_if(0x84, "fatal");
+        e.gs(0x8b, D, 256);
+        e.gs(0x8b, C, CODE_CONTEXT);
+    }
     e.gs(0x8b, A, CODE_CONTEXT);
     e.cmp(A, 0);
     e.0.jump_if(0x84, "fatal");
@@ -50,6 +60,9 @@ pub(in super::super) fn emit_invoke(code: &mut X86FunctionEncoder) -> Result<(),
     }
     e.store(Sp, 0, A);
     e.store(Sp, 8, D);
+    if retained {
+        super::retained::emit_prepared_validation(e.0)?;
+    }
     e.gs(0x8b, R11, ARENA_CONTEXT);
     e.gs(0x8b, A, 256);
     e.load(R10, R11, 0);

@@ -18,6 +18,8 @@ pub(super) mod numeric;
 pub(super) mod pipes;
 #[path = "systems_process_policy.rs"]
 pub(super) mod policy;
+#[path = "systems_process_retained.rs"]
+pub(super) mod retained;
 use super::{CompileError, X86FunctionEncoder, emit_static_process_sysret};
 
 #[path = "systems_process_credentials.rs"]

@@ -20,6 +20,9 @@ mod header_tests;
 mod identity_tests;
 #[path = "systems_numeric_interface.rs"]
 mod interface;
+#[cfg(test)]
+#[path = "systems_retained_identity_tests.rs"]
+mod retained_identity_tests;
 pub(crate) use interface::NumericPolicy;
 #[path = "systems_numeric_object.rs"]
 mod native_object;
@@ -28,10 +31,14 @@ mod native_object;
 mod record_tests;
 use crate::{CompileError, SystemsSourceLibraryInput};
 pub use native_object::SystemsNumericLibraryArtifact;
+#[path = "systems_retained_state_bound.rs"]
+mod retained_state;
 pub(crate) use native_object::{
     build_numeric_library, inspect_linked_numeric_library, inspect_numeric_provider,
 };
 use num_bigint::BigInt;
+pub(crate) use retained_state::STATE_SYMBOL;
+pub use retained_state::SystemsRetainedStateBound;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
@@ -49,7 +56,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/6";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/7";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -69,6 +76,14 @@ pub struct SystemsNumericAllocationBound {
     pub header_bytes: u64,
     pub maximum_bytes: u64,
     pub limit_bytes: u64,
+}
+
+pub(crate) fn uses_retained_identity(
+    program: &topal_language::compiler::CompilerSystemsProgram,
+) -> bool {
+    program.process_identity_library.as_ref().is_some_and(|r| {
+        r.interface == CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+    })
 }
 
 pub(crate) struct CheckedNumericLibrary {
@@ -572,7 +587,7 @@ pub(crate) fn check_numeric_library(
             NumericPolicy::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
             }
-            NumericPolicy::ProcessIdentity => {
+            NumericPolicy::ProcessIdentity | NumericPolicy::RetainedIdentity => {
                 "identity interface is not declared-type Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
             }
             NumericPolicy::LinuxDispatch => {
@@ -633,6 +648,7 @@ mod tests {
             interface: CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         let text = include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t");
         let input = |text: String| SystemsSourceLibraryInput {
@@ -701,6 +717,7 @@ mod tests {
             interface: CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
         };
         let source = SystemsSourceLibraryInput {
             source: requirement.source.clone(),

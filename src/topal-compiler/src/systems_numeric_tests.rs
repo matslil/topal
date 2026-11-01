@@ -9,6 +9,7 @@ fn compiled_numeric_policy_uses_owned_arena_and_general_native_inputs() {
         interface: CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
         stack_limit_bytes: 4096,
         runtime_limit_bytes: Some(65536),
+        state_limit_bytes: None,
     };
     let source = SystemsSourceLibraryInput {
         source: requirement.source.clone(),

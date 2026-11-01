@@ -304,6 +304,7 @@ mod tests {
                 topal_language::compiler::CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1,
             stack_limit_bytes: 1024,
             runtime_limit_bytes: None,
+            state_limit_bytes: None,
         }
     }
     fn input() -> SystemsSourceLibraryInput {

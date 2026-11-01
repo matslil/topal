@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/217";
+    "topal.provider-object.x86_64-qemu-pc-q35/218";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1661,6 +1661,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.image_library.is_some(),
             program.dispatch_library.is_some(),
             program.process_identity_library.is_some(),
+            crate::systems_numeric_library::uses_retained_identity(program),
         )?,
     );
     append_encoded_function(
@@ -1886,6 +1887,26 @@ pub fn generate_x86_64_systems_provider_object(
             scope: SymbolScope::Linkage,
             weak: false,
             section: SymbolSection::Section(arena),
+            flags: SymbolFlags::None,
+        });
+    }
+    if crate::systems_numeric_library::uses_retained_identity(program) {
+        let state = object.add_section(
+            Vec::new(),
+            b".bss.topal.numeric-state".to_vec(),
+            SectionKind::UninitializedData,
+        );
+        let offset = object.append_section_bss(state, 4096, 4096);
+        object.add_symbol(Symbol {
+            name: crate::systems_numeric_library::STATE_SYMBOL
+                .as_bytes()
+                .to_vec(),
+            value: offset,
+            size: 4096,
+            kind: SymbolKind::Data,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Section(state),
             flags: SymbolFlags::None,
         });
     }
@@ -9501,6 +9522,7 @@ fn static_image_process_enter(
     source_image: bool,
     source_dispatch: bool,
     source_identity: bool,
+    retained_identity: bool,
 ) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -9550,6 +9572,7 @@ fn static_image_process_enter(
         process_runtime::header::CODE_CONTEXT,
         process_runtime::dispatch::CODE_CONTEXT,
         process_runtime::identity::CODE_CONTEXT,
+        process_runtime::retained::STORE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9568,6 +9591,7 @@ fn static_image_process_enter(
             source_image,
             source_dispatch,
             source_identity,
+            retained_identity,
         )?;
     }
     code.bytes(&[0x49, 0x8b, 0x82]);
@@ -16730,6 +16754,9 @@ fn static_image_process_enter(
     if source_numeric || source_image || source_dispatch || source_identity {
         process_runtime::numeric::emit_terminal_readback(&mut code)?;
     }
+    if retained_identity {
+        process_runtime::retained::emit_release(&mut code);
+    }
     for offset in [
         896_u32,
         904,
@@ -16744,6 +16771,7 @@ fn static_image_process_enter(
         process_runtime::header::CODE_CONTEXT,
         process_runtime::dispatch::CODE_CONTEXT,
         process_runtime::identity::CODE_CONTEXT,
+        process_runtime::retained::STORE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
@@ -16930,7 +16958,7 @@ fn static_image_process_enter(
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
     process_runtime::time::emit_services(&mut code, source_numeric)?;
-    process_runtime::children::emit_services(&mut code, source_identity)?;
+    process_runtime::children::emit_services(&mut code, source_identity, retained_identity)?;
     process_runtime::pipes::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
@@ -21843,6 +21871,17 @@ assert bytes(output) == block[32:]
                     .all(|window| window != [0x4d, 0x89, 0xc3]),
             "initial process-name output must require the writable stack leaf and preserve RFLAGS"
         );
+        let getuid_start = process_enter
+            .windows(9)
+            .position(|w| w == [0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 10])
+            .expect("initial getuid phase guard");
+        let getuid_end = getuid_start
+            + process_enter[getuid_start..]
+                .windows(3)
+                .position(|w| w == [0x48, 0x0f, 0x07])
+                .expect("initial getuid native return")
+            + 3;
+        let getuid_handler = &process_enter[getuid_start..getuid_end];
         for (offset, value) in [
             (0x0f18_u32, 11_u8),
             (0x0f20, 0),
@@ -21854,7 +21893,7 @@ assert bytes(output) == block[32:]
             (0x0f50, 0),
         ] {
             assert!(
-                process_enter.windows(8).any(|window| {
+                getuid_handler.windows(8).any(|window| {
                     window[..3] == [0x48, 0x83, 0xba]
                         && window[3..7] == offset.to_le_bytes()
                         && window[7] == value
@@ -21863,10 +21902,10 @@ assert bytes(output) == block[32:]
             );
         }
         assert!(
-            process_enter
+            getuid_handler
                 .windows(11)
                 .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 11, 0x31, 0xc0])
-                && process_enter
+                && getuid_handler
                     .windows(3)
                     .all(|window| window != [0x4d, 0x89, 0xc3]),
             "initial getuid must publish its phase, return zero, and preserve RFLAGS"
@@ -21886,19 +21925,32 @@ assert bytes(output) == block[32:]
                     .any(|window| window == [0x65, 0xc6, 0x04, 0x25, 0x68, 0, 0, 0, 12, 0x48, 0xc7]),
             "initial configuration-stat miss must bind both immutable paths and publish absence phase"
         );
+        let credential_tail_start = process_enter
+            .windows(14)
+            .position(|w| {
+                w[..7] == [0x3d, 104, 0, 0, 0, 0x0f, 0x84] && w[11..] == [0x48, 0x85, 0xff]
+            })
+            .expect("credential-tail dispatch guard");
+        let credential_tail_end = credential_tail_start
+            + process_enter[credential_tail_start..]
+                .windows(3)
+                .position(|w| w == [0x48, 0x0f, 0x07])
+                .expect("credential-tail native return")
+            + 3;
+        let credential_tail_handler = &process_enter[credential_tail_start..credential_tail_end];
         for phase in [13_u8, 14, 15] {
             assert!(
-                process_enter
+                credential_tail_handler
                     .windows(3)
                     .any(|window| window == [0x41, 0xb1, phase]),
                 "credential-tail operations must publish each exact ordered phase"
             );
         }
         assert!(
-            process_enter
+            credential_tail_handler
                 .windows(9)
                 .any(|window| window == [0x65, 0x44, 0x88, 0x0c, 0x25, 0x68, 0, 0, 0])
-                && process_enter
+                && credential_tail_handler
                     .windows(3)
                     .all(|window| window != [0x4d, 0x89, 0xc3]),
             "credential-tail operations must publish only private phase and preserve RFLAGS"

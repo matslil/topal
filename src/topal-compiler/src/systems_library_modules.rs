@@ -505,6 +505,7 @@ mod tests {
                 topal_language::compiler::CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1,
             stack_limit_bytes: 1024,
             runtime_limit_bytes: None,
+            state_limit_bytes: None,
         };
         let text = include_str!("../../../linux-kernel/kernel/policy/boot-open-access.t").into();
         let input=SystemsSourceLibraryInput {source:requirement.source.clone(),source_name:requirement.source.clone(),text,
@@ -608,7 +609,7 @@ mod tests {
         let requirement=topal_language::compiler::CompilerSystemsSourceLibraryRequirement {
             source:"policy/time.t".into(),export:"sleep-deadline".into(),
             interface:topal_language::compiler::CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1,
-            stack_limit_bytes:4096,runtime_limit_bytes:Some(65536),
+            stack_limit_bytes:4096,runtime_limit_bytes:Some(65536),state_limit_bytes:None,
         };
         let text =
             include_str!("../../../linux-kernel/kernel/policy/relative-sleep-deadline.t").into();

@@ -2806,7 +2806,11 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     }
     if let Some(library) = &program.process_identity_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::ProcessIdentityTransitionV1 {
+        if !matches!(
+            library.interface,
+            crate::SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+                | crate::SystemsSourceLibraryInterface::RetainedProcessIdentityV1
+        ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
                 "process-identity-library requires process-identity-transition-v1",

@@ -33,7 +33,8 @@ def install(config):
         for offset,selected,name in [(960,config["has_time"],"topal_kernel_sleep_deadline_policy_v1"),
                                     (976,config["has_image"],"topal_kernel_static_elf64_header_policy_v1"),
                                     (984,True,"topal_kernel_static_linux_dispatch_policy_v1"),
-                                    (992,config["has_identity"],"topal_kernel_process_identity_transition_v1")]:
+                                    (992,config["has_identity"],config["identity_export"]),
+                                    (1000,config["has_retained"],"topal_x86_systems_identity_value_store")]:
             assert word(state.context+offset)==(symbol(name) if selected else 0)
         assert word(state.context+968)==state.arena
     def owned(pointer,count):
@@ -70,8 +71,10 @@ def install(config):
                 expected=semantic.get(raw&0xffff_ffff,"Unsupported"),caller_stack=reg("rsp"),
                 facts={name:word(state.context+offset) for name,offset in captured.items()},
                 callee_saved={name:reg(name) for name in saved},simd=simd(),
-                context=memory(state.context,1000),table=memory(state.table,0x43000),
-                clock=memory(word(state.context+944),24),returned=False)
+                context=memory(state.context,1008),table=memory(state.table,0x43000),
+                clock=memory(word(state.context+944),24),
+                retained=memory(symbol("topal_x86_systems_identity_value_store"),4096) if config["has_retained"] else None,
+                returned=False)
             assert reg("eflags")&512==0
             assert memory(state.arena,65536)==bytes(65536)
             assert {name:reg(name) for name in captured}==state.pending["facts"]
@@ -145,9 +148,11 @@ def install(config):
             assert simd()==active["simd"] and reg("eflags")&512==0
             assert memory(state.arena,65536)==bytes(65536)
             assert memory(reg("rsp")-4096,4096)==bytes(4096)
-            assert memory(state.context,1000)==active["context"]
+            assert memory(state.context,1008)==active["context"]
             assert memory(state.table,0x43000)==active["table"]
             assert memory(word(state.context+944),24)==active["clock"]
+            if config["has_retained"]:
+                assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==active["retained"]
             bindings()
             state.calls.append(dict(raw_selector=active["raw_selector"],selector=active["selector"],
                 expected_operation=active["expected"],selected_operation=active["selected"],
@@ -172,9 +177,11 @@ def install(config):
     class Released(gdb.Breakpoint):
         def stop(self):
             assert state.pending is None and state.calls and state.frames
-            assert all(word(state.context+offset)==0 for offset in (952,960,968,976,984,992))
+            assert all(word(state.context+offset)==0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536)==bytes(65536)
             assert memory(state.table,0x43000)==bytes(0x43000)
+            if config["has_retained"]:
+                assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==bytes(4096)
             write("pass",bindings_erased=True,terminal_arena_erased=True,backing_erased=True)
             return True
 

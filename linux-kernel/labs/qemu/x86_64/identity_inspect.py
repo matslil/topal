@@ -34,6 +34,7 @@ def install(config):
         ]:
             assert word(state.context+offset) == (symbol(name) if selected else 0)
         assert word(state.context+968) == state.arena
+        assert word(state.context+1000) == 0
     def number(pointer):
         pointer = int(pointer)
         owned = state.arena+32 <= pointer < state.arena+word(state.arena+8)
@@ -78,7 +79,7 @@ def install(config):
             else: assert cursor == 0
             state.pending = dict(cursor=cursor, fact=cursor, caller_stack=reg("rsp"),
                 callee_saved={name:reg(name) for name in saved}, simd=simd(),
-                context=memory(state.context,1000), table=memory(state.table,0x43000),
+                context=memory(state.context,1008), table=memory(state.table,0x43000),
                 clock=memory(word(state.context+944),24), return_ip=word(state.context+296))
             return False
 
@@ -175,7 +176,7 @@ def install(config):
             assert all(reg(name) == 0 for name in ("rcx","rsi","rdi","r8","r9","r10","r11"))
             assert memory(state.arena,65536) == bytes(65536)
             assert memory(reg("rsp")-4096,4096) == bytes(4096)
-            assert memory(state.context,1000) == active["context"]
+            assert memory(state.context,1008) == active["context"]
             assert memory(state.table,0x43000) == active["table"]
             assert memory(word(state.context+944),24) == active["clock"]
             bindings()
@@ -230,7 +231,7 @@ def install(config):
         def inspect(self):
             assert state.pending is None and state.awaiting_child is None
             assert state.calls and state.frames and all(call["child_pid_published"] for call in state.calls)
-            assert all(word(state.context+offset) == 0 for offset in (952,960,968,976,984,992))
+            assert all(word(state.context+offset) == 0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536) == bytes(65536)
             assert memory(state.table,0x43000) == bytes(0x43000)
             write("pass",bindings_erased=True,terminal_arena_erased=True,backing_erased=True)
