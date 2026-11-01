@@ -9221,10 +9221,84 @@ and `UnlinkAt` (263), plus Unsupported for every other native selector. Its
 ordinary Nat -> nominal StaticLinuxOperation source, semantic-name adaptation,
 exclusive runtime domain, complete stack/allocation evidence and cleanup before
 native argument/handler access SHALL follow the existing dispatch rules.
-Exactly one of v1/v2/v3 MAY be selected. Each SHALL retain a distinct private
+At most one dispatch version MAY be selected. Each SHALL retain a distinct private
 export and exact vocabulary; mismatched or simultaneous version evidence SHALL
 reject. No Unsupported captured selector SHALL be redispatched natively.
 The three versions SHALL share the existing exact stack/runtime reserves.
+
+### TOPAL-SYSTEMS-LINUX-DISPATCH-V4-001 — Positional file operation selection
+
+An artifact MAY select `static-linux-dispatch-v4` in its unique dispatch slot.
+It SHALL retain v3's exact 59 operation meanings and add the following x86-64
+operations, plus Unsupported for every other source selector:
+
+```text
+17 ReadAt
+18 WriteAt
+```
+
+The source SHALL remain ordinary Nat -> nominal StaticLinuxOperation with exact
+semantic-name adaptation, complete stack/allocation evidence and cleanup before
+native argument/handler access. V1/v2/v3/v4 SHALL have distinct private exports
+and frozen exact vocabularies. Simultaneous or mismatched version evidence SHALL
+reject. All versions SHALL share the existing exclusive runtime domain and
+stack/runtime reserves. An Unsupported result SHALL NOT be redispatched through
+a captured native selector.
+
+### TOPAL-SYSTEMS-POSITIONAL-FILE-TRANSFER-001 — Invocation-owned regular position
+
+The selected positional profile SHALL implement pread64/pwrite64 using a captured
+signed offset owned by the invocation. A negative supplied offset SHALL return
+EINVAL before native descriptor lookup. A nonnegative offset SHALL require a
+live description or return EBADF. A live console or either FIFO endpoint SHALL
+return ESPIPE before access-direction, count or buffer validation and SHALL NOT
+block, consume or publish endpoint bytes.
+
+Seekable regular descriptors SHALL preserve their read/write access checks.
+Numerical native user-range admission SHALL precede signed full-request interval
+validation, which SHALL precede zero/EOF and transfer clipping. The interval
+SHALL use the supplied offset, not the shared description position. Directory
+pread SHALL apply numerical and signed interval admission before EISDIR; a
+read-only directory's pwrite SHALL return EBADF before buffer access. Pwrite
+through the immutable file's read-only description SHALL return EBADF. Pread of
+that immutable file SHALL use its checked retained bytes without changing its
+description position.
+
+Mutable regular transfers SHALL retain the existing returned-prefix/page-boundary
+limit, checked complete prefix, private staging, sparse-page ownership/capacity,
+timestamps and failure atomicity. Every positive, short, empty, EOF or rejected
+positional transfer SHALL leave all description positions unchanged. No temporary
+seek/install/restore of a shared description position MAY implement this rule.
+Zero/EOF SHALL NOT allocate pages or update mutation timestamps.
+
+For a nonempty O_APPEND pwrite, supplied-offset and full-request validation SHALL
+precede selecting current object EOF for placement, following the pinned Linux
+profile. Successful append SHALL still leave the description position unchanged.
+Names, independent opens, aliases, fork/exec and unlinked-object lifetime SHALL
+retain their existing ownership meanings. No offset or source result SHALL
+grant memory or storage authority. Vector I/O and RWF flags remain unqualified.
+
+### TOPAL-SYSTEMS-POSITIONAL-FILE-OBSERVATION-001 — Positional evidence and cleanup
+
+Artifact and boot validation SHALL bind the selected dispatch version/export and
+reject missing, mismatched, duplicate or incomplete evidence before publication.
+The positional mode SHALL preserve existing filesystem storage and native helper
+stack bounds; no extra invocation stack words MAY remain across clock sampling
+without inclusion in the complete bound. Invocation-private position/pointer
+facts and copied bytes SHALL NOT leak through native state or private staging.
+Return SHALL preserve the caller state required by the existing native ABI;
+restoring original captured argument bits SHALL NOT constitute a private leak.
+
+Independent qualification SHALL observe actual returned bytes, object metadata,
+unchanged shared/independent positions, sparse/page-boundary behavior, supplied
+interval and append ordering, zero/EOF, nonseekable/error admission, rejected-copy
+atomicity and unlinked/fork/exec lifetime. Active and inactive terminal cancellation
+SHALL reclaim all owned storage. A deliberately incorrect result or data case
+SHALL be rejected independently. Source native clients SHALL check all four
+vocabularies and nominal reordering; the shared numeric-runtime model SHALL
+retain exclusive policy ownership. Pinned Linux control and current physical
+evidence SHALL bind exact source, harness, artifact and caller identities; they
+SHALL NOT imply full filesystem-driver, distribution or VM-host compatibility.
 
 ### TOPAL-SYSTEMS-NAMED-FILE-OWNERSHIP-001 — Name and independent description lifetime
 
