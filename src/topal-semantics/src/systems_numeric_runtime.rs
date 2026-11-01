@@ -40,6 +40,7 @@ impl SystemsNumericRuntimeArena {
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
                     | SystemsSourceLibraryInterface::StaticElf64HeaderV1
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                    | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
             ) || !policies.insert(requirement.interface)
             {
                 return Err(invalid());
@@ -214,18 +215,19 @@ mod tests {
         let time = SystemsSourceLibraryInterface::RelativeSleepDeadlineV1;
         let header = SystemsSourceLibraryInterface::StaticElf64HeaderV1;
         let dispatch = SystemsSourceLibraryInterface::StaticLinuxDispatchV1;
-        for selected in [
-            vec![requirement(header)],
-            vec![requirement(time), requirement(header)],
-            vec![requirement(dispatch)],
-            vec![requirement(time), requirement(dispatch)],
-            vec![requirement(header), requirement(dispatch)],
-            vec![
-                requirement(time),
-                requirement(header),
-                requirement(dispatch),
-            ],
-        ] {
+        let policies = [
+            time,
+            header,
+            dispatch,
+            SystemsSourceLibraryInterface::ProcessIdentityTransitionV1,
+        ];
+        for mask in 1..16 {
+            let selected = policies
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| mask & (1 << i) != 0)
+                .map(|(_, interface)| requirement(*interface))
+                .collect::<Vec<_>>();
             let mut arena =
                 SystemsNumericRuntimeArena::new_with_policies(&selected, "root").unwrap();
             arena.lend("root", "process").unwrap();

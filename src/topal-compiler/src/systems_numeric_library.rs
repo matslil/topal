@@ -15,6 +15,9 @@ mod dispatch_tests;
 #[cfg(test)]
 #[path = "systems_header_tests.rs"]
 mod header_tests;
+#[cfg(test)]
+#[path = "systems_identity_tests.rs"]
+mod identity_tests;
 #[path = "systems_numeric_interface.rs"]
 mod interface;
 pub(crate) use interface::NumericPolicy;
@@ -46,7 +49,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/5";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/6";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -75,6 +78,7 @@ pub(crate) struct CheckedNumericLibrary {
     pub(crate) allocation: SystemsNumericAllocationBound,
     pub(crate) policy: NumericPolicy,
     pub(crate) source_tags: Vec<u32>,
+    pub(crate) result_field_order: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -568,12 +572,16 @@ pub(crate) fn check_numeric_library(
             NumericPolicy::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
             }
+            NumericPolicy::ProcessIdentity => {
+                "identity interface is not declared-type Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
+            }
             NumericPolicy::LinuxDispatch => {
                 "dispatch interface is not declared-type Nat -> StaticLinuxOperation"
             }
         }));
     }
     let source_tags = policy.source_tags(&entry.result_type)?;
+    let result_field_order = policy.result_field_order(&entry.result_type);
     let entry_symbol = symbol.clone();
     let mut bounds = Bounds {
         functions: program
@@ -608,6 +616,7 @@ pub(crate) fn check_numeric_library(
         allocation,
         policy,
         source_tags,
+        result_field_order,
     })
 }
 

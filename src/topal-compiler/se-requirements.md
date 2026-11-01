@@ -12108,7 +12108,8 @@ increment 3b2-b5ah.
 Under `TK-DEC-262`, the owned numeric publisher and process provider shall realize
 `TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001` and
 `TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001` through exact declared Record types,
-name-based multiword extraction, recorded actual field order, bounded copied
+name-based multiword extraction, recorded canonical slots and validated ordinary
+per-value construction-order suffix, bounded copied
 facts and independent native ABI evidence. Source and all imported helpers,
 adapter work, aggregate transport and native saves shall enter complete unchanged
 resource bounds. The owner shall apply both validated scalar outputs only after

@@ -144,6 +144,16 @@ mod tests {
                 text: include_str!("../../../kernel/support/syscall.t").into(),
             }],
         };
+        let process_identity = SystemsSourceLibraryInput {
+            source: "policy/process-identity.t".into(),
+            source_name: "policy/process-identity.t".into(),
+            text: include_str!("../../../kernel/policy/process-identity.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/process-identity.t".into(),
+                identity: vec!["support".into(), "process-identity".into()],
+                text: include_str!("../../../kernel/support/process-identity.t").into(),
+            }],
+        };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
@@ -154,6 +164,7 @@ mod tests {
                 time: Some(&time),
                 image: Some(&image),
                 dispatch: Some(&dispatch),
+                process_identity: Some(&process_identity),
             },
             &linked,
         )

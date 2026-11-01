@@ -26,6 +26,86 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_source_identity_records_are_reclaimed_before_owner_state_commit(self) -> None:
+        # TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001; TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001
+        proof=json.loads((LAB/"results/topal-source-process-identity-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-source-process-identity-qemu/1")
+        self.assertEqual(proof["harness_sha256"],sha256(LAB/"identity_gate.py"))
+        self.assertEqual(proof["inspector_sha256"],sha256(LAB/"identity_inspect.py"))
+        library=proof["library"]
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/6")
+        self.assertEqual(library["interface"],"process-identity-transition-v1")
+        self.assertEqual(library["result_field_order"],["allocated","next"])
+        self.assertTrue(library["result_order_suffix"])
+        self.assertEqual(library["source_tags"],[])
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/process-identity.t"))
+        self.assertEqual(library["modules"][0]["sha256"],sha256(GATE.LINUX_KERNEL/"kernel/support/process-identity.t"))
+        self.assertEqual(proof["module_publication"]["snapshot_sha256"],library["module_snapshot_sha256"])
+        allocation=library["allocation"]
+        self.assertEqual((allocation["source_evaluation_bytes"],allocation["bridge_bytes"],allocation["header_bytes"]),(256,24,32))
+        self.assertEqual(allocation["maximum_bytes"],312)
+        self.assertEqual(allocation["maximum_operand_bits"],32)
+        costs={"topal_kernel_numeric_allocate_v1":8,"topal_kernel_numeric_abort_v1":8}
+        for function in library["functions"]:
+            cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
+            self.assertEqual(cost,function["maximum_call_path_bytes"])
+            costs[function["symbol"]]=cost
+            self.assertFalse(function["symbol"].startswith(("topal.runtime.","topal.platform.")))
+        self.assertEqual(costs[library["native_export"]]+32+64,library["maximum_stack_bytes"])
+        self.assertLessEqual(library["maximum_stack_bytes"],4096)
+        self.assertEqual(proof["primary"]["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        for name,order in [("primary",[0,1]),("order_variant",[1,0]),("identity_only",[0,1])]:
+            case=proof[name];observation=case["observation"]
+            self.assertEqual(case["runtime"]["observations"]["result"],"pass")
+            self.assertEqual(observation["result"],"pass")
+            self.assertTrue(all(observation[k] for k in ("bindings_erased","terminal_arena_erased","backing_erased")))
+            self.assertEqual(len(observation["calls"]),9)
+            current=0
+            for call in observation["calls"]:
+                self.assertEqual((call["retained_cursor_before"],call["copied_cursor"]),(current,current))
+                allocated=current or 2
+                following=2 if allocated==2147483647 else allocated+1
+                self.assertEqual((call["allocated"],call["successor_cursor"]),(allocated,following))
+                self.assertEqual(call["actual_named_source_result"],dict(allocated=allocated,next=following))
+                self.assertEqual(call["actual_source_field_order"],order)
+                self.assertTrue(all(call[k] for k in ("ordinary_stack_record_decoded","arena_erased","retired_stack_erased",
+                    "native_callee_state_preserved","simd_preserved","volatile_pointers_cleared","retained_state_unchanged",
+                    "bindings_retained","owner_cursor_and_identity_committed","child_pid_published")))
+                self.assertEqual(call["observation_boundary"],"proposal cleaned; identity state not yet committed")
+                self.assertLessEqual(call["arena_highwater"],allocation["maximum_bytes"])
+                current=following
+            frame=observation["source_frames"][0]
+            self.assertEqual((frame["copied_next"],frame["allocated_input"]),(0,2))
+            self.assertTrue(frame["actual_record_matches_copied_fact"] and frame["values_invocation_owned_or_immutable"])
+            self.assertLessEqual(frame["source_stack_offset"],library["maximum_stack_bytes"])
+            self.assertIn("process-identity.t",frame["trace"])
+            self.assertIn("topal_kernel_process_identity_transition_v1",frame["trace"])
+        variant=proof["order_variant"]
+        self.assertTrue(variant["native_root_and_provider_unchanged"])
+        self.assertEqual(variant["library"]["allocation"],allocation)
+        self.assertEqual(variant["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertNotEqual(variant["library"]["source_sha256"],library["source_sha256"])
+        self.assertTrue(proof["identity_only"]["other_numeric_libraries_absent"])
+        for slot in ("time-library","image-library","dispatch-library"):
+            self.assertNotIn("  "+slot+" is",proof["identity_only"]["root_source"])
+        wrap=proof["wrap"]
+        self.assertIsNone(wrap["runtime"])
+        self.assertEqual(wrap["linked_kernel_sha256"],proof["primary"]["linked_kernel_sha256"])
+        self.assertEqual(wrap["observation"]["result"],"pass-controlled-wrap")
+        self.assertTrue(all(wrap["observation"][k] for k in ("controlled_copied_cursor","persistent_cursor_unchanged","owner_state_not_committed")))
+        call=wrap["observation"]["calls"][0]
+        self.assertEqual((call["retained_cursor_before"],call["copied_cursor"],call["allocated"],call["successor_cursor"]),(0,2147483647,2147483647,2))
+        wrong=proof["counterexample"]
+        self.assertIsNone(wrong["runtime"])
+        self.assertTrue(wrong["native_root_and_provider_unchanged"])
+        self.assertEqual(wrong["library"]["source_sha256"],library["source_sha256"])
+        self.assertNotEqual(wrong["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertEqual(wrong["observation"]["result"],"expected-identity-transition-rejection")
+        self.assertTrue(wrong["observation"]["independent_transition_rejection"] and wrong["observation"]["owner_state_not_committed"])
+        call=wrong["observation"]["calls"][0]
+        self.assertEqual((call["allocated"],call["successor_cursor"]),(2,2))
+        self.assertEqual(call["expected"],dict(allocated=2,next=3))
+
     def test_source_dispatch_binds_actual_nominal_choices_and_restores_before_handler_entry(self) -> None:
         # TOPAL-SYSTEMS-NUMERIC-ENUMS-001; TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
         proof=json.loads((LAB/"results/topal-source-linux-dispatch-gate.json").read_text())
@@ -38,7 +118,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         expected=dict(pairs);choices=[name for _,name in pairs]+["Unsupported"]
         self.assertEqual(len(expected),55)
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/5")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/6")
         self.assertEqual(library["interface"],"static-linux-dispatch-v1")
         self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch.t"))
         self.assertEqual(library["allocation"]["maximum_bytes"],56)
@@ -169,7 +249,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-ARRAYS-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/5")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/6")
         runtime=GATE.REPOSITORY/"src/topal-compiler/src/runtime"
         allocation=library["allocation"]
         self.assertEqual(allocation["collection_runtime_sha256"],sha256(runtime/"fundamental_containers.ll"))
@@ -198,8 +278,8 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-RECORDS-001, TOPAL-TYPE-RECONSTRUCT-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/5")
-        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/5")
+        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/6")
+        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/6")
         self.assertLessEqual(library["maximum_stack_bytes"],4096)
         self.assertEqual(library["allocation"]["maximum_bytes"],41624)
         variant=proof["order_variant"]
@@ -882,16 +962,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/237")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/238")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/224")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/225")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/237",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/238",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/137",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/138",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1417,7 +1497,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/237")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/238")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

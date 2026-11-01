@@ -23,7 +23,8 @@ def module_publication(directory, artifact, key, prefix):
     name = {"kernel_library": "kernel-library.modules.json",
             "time_library": "time-library.modules.json",
             "image_library": "image-library.modules.json",
-            "dispatch_library": "dispatch-library.modules.json"}[key]
+            "dispatch_library": "dispatch-library.modules.json",
+            "process_identity_library": "process-identity-library.modules.json"}[key]
     path = directory / name
     sources = json.loads(path.read_text())
     library = artifact[key]
@@ -192,6 +193,7 @@ def variants(root, primary, artifact, timeout):
         unit.write_text(text)
         shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
         copy_architecture_libraries(case)
+        (unit.parent / "process-identity.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/process-identity.t").read_bytes())
         (unit.parent / "static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/static-elf64-header.t").read_bytes())
         (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)

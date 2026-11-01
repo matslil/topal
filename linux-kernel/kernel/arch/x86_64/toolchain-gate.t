@@ -1950,6 +1950,13 @@ lang systems artifact (
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
+  process-identity-library is lang systems source-library (
+    source is "policy/process-identity.t",
+    export is process-identity,
+    interface is process-identity-transition-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096

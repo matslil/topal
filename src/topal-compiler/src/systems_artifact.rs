@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/237";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/223";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/238";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/224";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -427,6 +427,7 @@ pub struct SystemsArtifactProvenance {
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub dispatch_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub process_identity_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub inputs: Vec<DigestEntry>,
     pub outputs: Vec<DigestEntry>,
 }
@@ -577,6 +578,7 @@ pub struct SystemsKernelLibraries<'a> {
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
     pub dispatch: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub process_identity: Option<&'a crate::SystemsSourceLibraryInput>,
 }
 
 /// Publish both explicit source-library snapshots with their owned kernel root.
@@ -602,6 +604,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
             time: time_library,
             image: None,
             dispatch: None,
+            process_identity: None,
         },
         destination,
     )
@@ -624,7 +627,11 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
+        process_identity: process_identity_library,
     } = libraries;
+    if program.process_identity_library.is_some() != process_identity_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared process identity import requires its matching explicit source snapshot".into()));
+    }
     if program.dispatch_library.is_some() != dispatch_library.is_some() {
         return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared dispatch import requires its matching explicit source snapshot".into()));
     }
@@ -675,6 +682,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         time_library,
         image_library,
         dispatch_library,
+        process_identity_library,
         &stage,
     );
     let record = match result {
@@ -716,6 +724,7 @@ fn publish_in_stage(
     time_library: Option<&crate::SystemsSourceLibraryInput>,
     image_library: Option<&crate::SystemsSourceLibraryInput>,
     dispatch_library: Option<&crate::SystemsSourceLibraryInput>,
+    process_identity_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -737,6 +746,7 @@ fn publish_in_stage(
     if program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
+        || program.process_identity_library.is_some()
     {
         crate::systems_numeric_library::inspect_numeric_provider(tools, &provider_path)?;
     }
@@ -764,7 +774,21 @@ fn publish_in_stage(
             crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
         })
         .transpose()?;
+    let identity_numeric = program
+        .process_identity_library
+        .as_ref()
+        .zip(process_identity_library)
+        .map(|(requirement, input)| {
+            crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    if let Some(identity) = &identity_numeric {
+        crate::systems_numeric_library::inspect_linked_numeric_library(
+            &linked.kernel,
+            &identity.record,
+        )?;
+    }
     crate::systems_provider_object::inspect_linked_process_backing(&linked.kernel)?;
     if let Some(numeric) = &numeric {
         crate::systems_numeric_library::inspect_linked_numeric_library(
@@ -867,6 +891,11 @@ fn publish_in_stage(
         (numeric, "time-library", "kernel-time"),
         (image_numeric, "image-library", "kernel-image"),
         (dispatch_numeric, "dispatch-library", "kernel-dispatch"),
+        (
+            identity_numeric,
+            "process-identity-library",
+            "kernel-process-identity",
+        ),
     ] {
         if let Some(numeric) = numeric {
             for (name, bytes) in [
@@ -905,6 +934,8 @@ fn publish_in_stage(
                 record.time_library = Some(numeric.record);
             } else if stem == "image-library" {
                 record.image_library = Some(numeric.record);
+            } else if stem == "process-identity-library" {
+                record.process_identity_library = Some(numeric.record);
             } else {
                 record.dispatch_library = Some(numeric.record);
             }
@@ -2794,6 +2825,11 @@ fn build_linked_outputs(
                     .then_some("image-library.o"),
             )
             .args(
+                work.join("process-identity-library.o")
+                    .is_file()
+                    .then_some("process-identity-library.o"),
+            )
+            .args(
                 work.join("dispatch-library.o")
                     .is_file()
                     .then_some("dispatch-library.o"),
@@ -2917,6 +2953,7 @@ fn artifact_provenance(
         time_library: None,
         image_library: None,
         dispatch_library: None,
+        process_identity_library: None,
         inputs,
         outputs,
     })
@@ -4033,6 +4070,7 @@ enum NumericRootDependency {
     Code,
     ImageCode,
     DispatchCode,
+    ProcessIdentityCode,
     Arena,
 }
 
@@ -4042,6 +4080,7 @@ struct RootEncoder {
     numeric_library: bool,
     image_library: bool,
     dispatch_library: bool,
+    process_identity_library: bool,
     numeric_relocations: Vec<(u64, NumericRootDependency)>,
     source_library_relocations: Vec<u64>,
     bytes: Vec<u8>,
@@ -5999,7 +6038,17 @@ impl RootEncoder {
         }
         // Retain ABI stack alignment with one pad above the twelfth argument.
         // The process borrows the root's existing clock; it owns no new timeline.
-        if self.image_library || self.dispatch_library {
+        if self.process_identity_library {
+            // Pad argument nineteen; argument eighteen is the qualified code.
+            self.bytes.extend_from_slice(&[0x6a, 0, 0x48, 0x8d, 0x05]);
+            self.numeric_relocations.push((
+                self.bytes.len() as u64,
+                NumericRootDependency::ProcessIdentityCode,
+            ));
+            self.bytes.extend_from_slice(&[0; 4]);
+            self.bytes.push(0x50);
+        }
+        if self.image_library || self.dispatch_library || self.process_identity_library {
             if self.dispatch_library {
                 // The seventeenth code argument replaces the previous pad.
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
@@ -6008,7 +6057,7 @@ impl RootEncoder {
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
             } else {
-                self.bytes.extend_from_slice(&[0x48, 0x83, 0xec, 8]);
+                self.bytes.extend_from_slice(&[0x6a, 0]);
             }
             if self.image_library {
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
@@ -6020,7 +6069,11 @@ impl RootEncoder {
                 self.bytes.extend_from_slice(&[0x6a, 0]);
             }
         }
-        if self.numeric_library || self.image_library || self.dispatch_library {
+        if self.numeric_library
+            || self.image_library
+            || self.dispatch_library
+            || self.process_identity_library
+        {
             for dependency in [NumericRootDependency::Arena, NumericRootDependency::Code] {
                 if matches!(dependency, NumericRootDependency::Code) && !self.numeric_library {
                     self.bytes.extend_from_slice(&[0x6a, 0]);
@@ -6039,7 +6092,11 @@ impl RootEncoder {
                 .push(self.bytes.len() as u64);
             self.bytes.extend_from_slice(&[0; 4]);
             self.bytes.push(0x50); // thirteenth argument: artifact-owned pure code
-        } else if self.numeric_library || self.image_library || self.dispatch_library {
+        } else if self.numeric_library
+            || self.image_library
+            || self.dispatch_library
+            || self.process_identity_library
+        {
             self.bytes.extend_from_slice(&[0x6a, 0]); // no open policy binding
         } else {
             self.bytes.extend_from_slice(&[0x48, 0x83, 0xec, 8]);
@@ -6078,7 +6135,9 @@ impl RootEncoder {
             0x48,
             0x83,
             0xc4,
-            if self.image_library || self.dispatch_library {
+            if self.process_identity_library {
+                0x68
+            } else if self.image_library || self.dispatch_library {
                 0x58
             } else if self.numeric_library {
                 0x48
@@ -10083,6 +10142,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         numeric_library: program.time_library.is_some(),
         image_library: program.image_library.is_some(),
         dispatch_library: program.dispatch_library.is_some(),
+        process_identity_library: program.process_identity_library.is_some(),
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
@@ -10779,6 +10839,10 @@ fn append_root(
             ),
             NumericRootDependency::DispatchCode => (
                 crate::systems_numeric_library::NumericPolicy::LinuxDispatch.native_export(),
+                SymbolKind::Text,
+            ),
+            NumericRootDependency::ProcessIdentityCode => (
+                crate::systems_numeric_library::NumericPolicy::ProcessIdentity.native_export(),
                 SymbolKind::Text,
             ),
             NumericRootDependency::Arena => ("topal_x86_systems_numeric_arena", SymbolKind::Data),
@@ -11925,6 +11989,7 @@ mod tests {
         program.time_library = None;
         program.image_library = None;
         program.dispatch_library = None;
+        program.process_identity_library = None;
         program
     }
 
@@ -11964,6 +12029,11 @@ mod tests {
         )
         .unwrap();
         let destination = parent.join("invalid");
+        let process_identity = crate::systems_library::load_source_library(
+            program.process_identity_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
         let dispatch = crate::systems_library::load_source_library(
             program.dispatch_library.as_ref().unwrap(),
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
@@ -11980,6 +12050,7 @@ mod tests {
                     time: Some(&time),
                     image: Some(&image),
                     dispatch: Some(&dispatch),
+                    process_identity: Some(&process_identity),
                 },
                 &destination
             )

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/216";
+    "topal.provider-object.x86_64-qemu-pc-q35/217";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1660,6 +1660,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.time_library.is_some(),
             program.image_library.is_some(),
             program.dispatch_library.is_some(),
+            program.process_identity_library.is_some(),
         )?,
     );
     append_encoded_function(
@@ -1857,6 +1858,7 @@ pub fn generate_x86_64_systems_provider_object(
     if program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
+        || program.process_identity_library.is_some()
     {
         append_encoded_function(
             &mut object,
@@ -9498,6 +9500,7 @@ fn static_image_process_enter(
     source_numeric: bool,
     source_image: bool,
     source_dispatch: bool,
+    source_identity: bool,
 ) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -9546,6 +9549,7 @@ fn static_image_process_enter(
         process_runtime::numeric::ARENA_CONTEXT,
         process_runtime::header::CODE_CONTEXT,
         process_runtime::dispatch::CODE_CONTEXT,
+        process_runtime::identity::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9557,12 +9561,13 @@ fn static_image_process_enter(
     if source_bound {
         process_runtime::policy::emit_entry_validation(&mut code)?;
     }
-    if source_numeric || source_image || source_dispatch {
+    if source_numeric || source_image || source_dispatch || source_identity {
         process_runtime::numeric::emit_entry_validation(
             &mut code,
             source_numeric,
             source_image,
             source_dispatch,
+            source_identity,
         )?;
     }
     code.bytes(&[0x49, 0x8b, 0x82]);
@@ -16722,7 +16727,7 @@ fn static_image_process_enter(
     code.bytes(&((process_runtime::children::STORAGE_BYTES / 8) as u32).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
-    if source_numeric || source_image || source_dispatch {
+    if source_numeric || source_image || source_dispatch || source_identity {
         process_runtime::numeric::emit_terminal_readback(&mut code)?;
     }
     for offset in [
@@ -16738,6 +16743,7 @@ fn static_image_process_enter(
         process_runtime::numeric::ARENA_CONTEXT,
         process_runtime::header::CODE_CONTEXT,
         process_runtime::dispatch::CODE_CONTEXT,
+        process_runtime::identity::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());
@@ -16924,7 +16930,7 @@ fn static_image_process_enter(
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
     process_runtime::time::emit_services(&mut code, source_numeric)?;
-    process_runtime::children::emit_services(&mut code)?;
+    process_runtime::children::emit_services(&mut code, source_identity)?;
     process_runtime::pipes::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()

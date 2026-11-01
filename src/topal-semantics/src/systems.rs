@@ -1912,6 +1912,7 @@ pub struct SystemsProgram {
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub dispatch_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub process_identity_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub bootstrap_storage: BootstrapStorageDescriptor,
     pub bootstrap: SystemsEntry,
     pub debug_break: SystemsEntry,
@@ -2800,6 +2801,15 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
                 "image-library requires static-elf64-header-v1",
+            ));
+        }
+    }
+    if let Some(library) = &program.process_identity_library {
+        library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::ProcessIdentityTransitionV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-LIBRARY",
+                "process-identity-library requires process-identity-transition-v1",
             ));
         }
     }
@@ -9194,6 +9204,7 @@ mod tests {
             time_library: None,
             image_library: None,
             dispatch_library: None,
+            process_identity_library: None,
             bootstrap_storage: BootstrapStorageDescriptor {
                 capacity_bytes: 65_536,
                 alignment_bytes: 4096,

@@ -55,6 +55,7 @@ pub(crate) fn publish(
         || program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
+        || program.process_identity_library.is_some()
     {
         let source = program
             .kernel_library
@@ -76,6 +77,11 @@ pub(crate) fn publish(
             .as_ref()
             .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
             .transpose()?;
+        let process_identity = program
+            .process_identity_library
+            .as_ref()
+            .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
+            .transpose()?;
         return crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
@@ -86,6 +92,7 @@ pub(crate) fn publish(
                 time: time.as_ref(),
                 image: image.as_ref(),
                 dispatch: dispatch.as_ref(),
+                process_identity: process_identity.as_ref(),
             },
             &options.output,
         );

@@ -45,8 +45,9 @@ resource representation while preserving the value transition.
 
 The new result qualification admits exactly the selected interface's flat Record
 of primitive numeric fields. Ordinary semantic field identity and declared types
-remain authoritative. The compiler shall retain actual source field order and
-adapt by logical name; it shall not infer a native ABI from construction order.
+remain authoritative. The compiler shall retain actual construction order in the ordinary per-value
+order suffix and record the canonical field slots and suffix layout in artifact
+metadata. Extraction shall adapt by logical name, not construction order.
 Reversing declared/constructed output order must preserve the same logical result.
 This does not admit general aggregate escape, persistent source values, new core
 Record semantics, nominal payload interchange, callbacks or effects.
@@ -60,7 +61,7 @@ no source pointer, Record storage or allocated numeric object escapes the exclus
 invocation. The first x86-64 realization uses a qualified two-integer private C
 return convention, with independent C/native and actual frame evidence.
 
-Source/module snapshots, actual result field order, generated bridge, retained
+Source/module snapshots, canonical result slots/order-suffix layout, generated bridge, retained
 runtime, native object and resource proofs enter exact artifact provenance.
 Unknown, missing, mismatched or unqualified declared source must fail publication
 or use; it must not silently select native state arithmetic. Existing roots

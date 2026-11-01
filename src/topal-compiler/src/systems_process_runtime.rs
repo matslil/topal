@@ -10,6 +10,8 @@ pub(super) mod children;
 pub(super) mod dispatch;
 #[path = "systems_process_header.rs"]
 pub(super) mod header;
+#[path = "systems_process_identity.rs"]
+pub(super) mod identity;
 #[path = "systems_process_numeric.rs"]
 pub(super) mod numeric;
 #[path = "systems_process_pipes.rs"]

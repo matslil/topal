@@ -3944,10 +3944,13 @@ core-language support.
 
 An owned numeric interface MAY qualify a flat ordinary Record result whose
 fields have the interface's exact primitive numeric types. The checked declared
-field identities and actual source order SHALL determine extraction; construction
-order SHALL NOT define a native ABI. Qualification SHALL retain that order in
-artifact metadata and adapt each field by semantic name. Missing, extra, duplicate,
-wrongly typed or nested result fields SHALL reject the selected interface.
+field identities SHALL determine extraction from the ordinary canonical field
+slots. The per-value order suffix SHALL preserve actual construction order;
+construction order SHALL NOT define a native ABI. Artifact metadata SHALL record
+canonical slots and the suffix layout. The adapter SHALL validate the suffix as
+a complete field-index permutation and extract each field by semantic name.
+Missing, extra, duplicate, wrongly typed or nested result fields SHALL reject
+the selected interface.
 
 The private adapter SHALL validate every extracted numeric representation and
 the interface's complete result range without truncation. Only the qualified

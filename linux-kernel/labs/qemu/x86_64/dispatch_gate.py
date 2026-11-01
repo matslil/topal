@@ -98,7 +98,7 @@ def observe(root,values,artifact,timeout,counterexample=False):
         source_point=snapshot,
         readonly=readonly_sections(elf),source_line=source.index("  number = expected")+1,
         mapping=pairs,choices=choices,source_tags=library["source_tags"],
-        has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
+        has_identity=artifact.get("process_identity_library") is not None,has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
         stack_bound=library["maximum_stack_bytes"],allocation_bound=library["allocation"]["maximum_bytes"],
         counterexample=counterexample)
     script.write_text(f'''set pagination off
@@ -192,12 +192,12 @@ def verify(timeout=180,write_evidence=False):
             observation.update(library=changed_artifact["dispatch_library"],native_root_and_provider_unchanged=True)
             record["order_variant" if kind=="reordered" else "counterexample"]=observation
         original_source=GATE.SOURCE_PATH
-        only=without_import(without_import(original_source.read_text(),"time-library"),"image-library")
+        only=without_import(without_import(without_import(original_source.read_text(),"time-library"),"image-library"),"process-identity-library")
         only_source=root/"dispatch-only-root.t";only_source.write_text(only);GATE.SOURCE_PATH=only_source
         try:
             only_values=GATE.build_image(root/"dispatch-only-artifact")
             only_artifact=json.loads(only_values[3].read_text())
-            if any(only_artifact.get(key) is not None for key in ("time_library","image_library")):
+            if any(only_artifact.get(key) is not None for key in ("time_library","image_library","process_identity_library")):
                 raise GATE.GateError("dispatch-only numeric control retained another policy")
             single=observe(root/"dispatch-only",only_values,only_artifact,timeout)
             single.update(library=only_artifact["dispatch_library"],time_and_image_libraries_absent=True,root_source=only)

@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/137";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/138";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -374,6 +374,13 @@ fn validate_artifact_input(
             "kernel-dispatch-source-module:",
             "dispatch-library",
         ),
+        (
+            &artifact.process_identity_library,
+            "process-identity-transition-v1",
+            crate::systems_numeric_library::NumericPolicy::ProcessIdentity,
+            "kernel-process-identity-source-module:",
+            "process-identity-library",
+        ),
     ] {
         let has_numeric = file.symbol_by_name(policy.native_export()).is_some();
         if has_numeric != library.is_some() {
@@ -403,7 +410,8 @@ fn validate_artifact_input(
         .is_some()
         != (artifact.time_library.is_some()
             || artifact.image_library.is_some()
-            || artifact.dispatch_library.is_some())
+            || artifact.dispatch_library.is_some()
+            || artifact.process_identity_library.is_some())
     {
         return Err(CompileError::Tool(
             "numeric arena and complete policy set disagree".into(),
@@ -1050,6 +1058,11 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
         )
         .unwrap();
+        let process_identity = crate::systems_library::load_source_library(
+            program.process_identity_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
         let dispatch = crate::systems_library::load_source_library(
             program.dispatch_library.as_ref().unwrap(),
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
@@ -1065,6 +1078,7 @@ mod tests {
                 time: Some(&time),
                 image: Some(&image),
                 dispatch: Some(&dispatch),
+                process_identity: Some(&process_identity),
             },
             &parent.join("linked"),
         )
@@ -1170,6 +1184,77 @@ mod tests {
                         .unwrap()
                         .native_invocation_save_bytes = 0
                 }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_missing_cross_policy_or_incomplete_identity_record_binding() {
+        // TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001; TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..10 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.process_identity_library = None,
+                1 => std::mem::swap(
+                    &mut changed.process_identity_library,
+                    &mut changed.time_library,
+                ),
+                2 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .result_field_order
+                        .pop();
+                }
+                3 => changed
+                    .process_identity_library
+                    .as_mut()
+                    .unwrap()
+                    .result_field_order
+                    .reverse(),
+                4 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .result_order_suffix = false
+                }
+                5 => changed.time_library.as_mut().unwrap().result_order_suffix = true,
+                6 => changed.inputs.retain(|i| {
+                    !i.identity
+                        .starts_with("kernel-process-identity-source-module:")
+                }),
+                7 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes = 0
+                }
+                8 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                9 => changed
+                    .process_identity_library
+                    .as_mut()
+                    .unwrap()
+                    .source_tags
+                    .push(0),
                 _ => unreachable!(),
             }
             assert!(

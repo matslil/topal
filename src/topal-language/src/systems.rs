@@ -342,6 +342,7 @@ pub fn analyze_systems_for_compiler(
         time_library: root_entries.time_library,
         image_library: root_entries.image_library,
         dispatch_library: root_entries.dispatch_library,
+        process_identity_library: root_entries.process_identity_library,
         bootstrap_storage: root_entries.bootstrap_storage,
         bootstrap: CompilerSystemsEntry {
             kind: CompilerSystemsEntryKind::Bootstrap,
@@ -504,6 +505,7 @@ struct ArtifactEntries {
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
     image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     dispatch_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    process_identity_library: Option<CompilerSystemsSourceLibraryRequirement>,
     bootstrap_storage: CompilerBootstrapStorageDescriptor,
     bootstrap: String,
     debug_break: String,
@@ -551,11 +553,27 @@ fn parse_artifact_root(
     let mut time_library = None;
     let mut image_library = None;
     let mut dispatch_library = None;
+    let mut process_identity_library = None;
     let mut entries = BTreeMap::new();
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "dispatch-library" {
+        if label_text == "process-identity-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface
+                != CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-LIBRARY",
+                    label,
+                    "process-identity-library requires the process identity transition interface",
+                ));
+            }
+            if process_identity_library.replace(requirement).is_some() {
+                return Err(duplicate_artifact_field(source, label, label_text));
+            }
+        } else if label_text == "dispatch-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if requirement.interface != CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
             {
@@ -671,6 +689,7 @@ fn parse_artifact_root(
         time_library,
         image_library,
         dispatch_library,
+        process_identity_library,
         bootstrap_storage,
         bootstrap,
         debug_break,

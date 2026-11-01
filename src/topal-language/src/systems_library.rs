@@ -81,6 +81,12 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-elf64-header-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1);
             }
+            "interface"
+                if identifier_is(source, &field.value, "process-identity-transition-v1") =>
+            {
+                interface =
+                    Some(CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1);
+            }
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
             }
@@ -124,6 +130,40 @@ pub(super) fn parse_requirement(
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    #[test]
+    fn identity_declaration_is_optional_unique_and_uses_its_exact_policy_slot() {
+        // TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001
+        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let program = analyze_systems_for_compiler(source, &target).unwrap();
+        let identity = program.process_identity_library.unwrap();
+        assert_eq!(
+            identity.interface,
+            CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+        );
+        assert_eq!(identity.runtime_limit_bytes, Some(65536));
+        let start = source.find("  process-identity-library is").unwrap();
+        let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+        let declaration = &source[start..end];
+        let legacy = format!("{}{}", &source[..start], &source[end..]);
+        assert!(
+            analyze_systems_for_compiler(&legacy, &target)
+                .unwrap()
+                .process_identity_library
+                .is_none()
+        );
+        for changed in [
+            source.replace(declaration, &format!("{declaration}{declaration}")),
+            source.replace("process-identity-transition-v1", "static-linux-dispatch-v1"),
+            source.replace(declaration, &declaration.replace("65536", "65535")),
+            source.replace(
+                declaration,
+                &declaration.replace("policy/process-identity.t", "../process-identity.t"),
+            ),
+        ] {
+            assert!(analyze_systems_for_compiler(&changed, &target).is_err());
+        }
+    }
     #[test]
     fn dispatch_declarations_preserve_independent_policy_selection_and_closed_shape() {
         // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001

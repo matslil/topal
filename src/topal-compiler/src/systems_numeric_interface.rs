@@ -6,6 +6,7 @@ pub(crate) enum NumericPolicy {
     Deadline,
     Elf64Header,
     LinuxDispatch,
+    ProcessIdentity,
 }
 impl NumericPolicy {
     pub(crate) fn from_interface(
@@ -15,6 +16,9 @@ impl NumericPolicy {
             CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1 => Ok(Self::Deadline),
             CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1 => Ok(Self::Elf64Header),
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1 => Ok(Self::LinuxDispatch),
+            CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
+                Ok(Self::ProcessIdentity)
+            }
             _ => Err(invalid("unqualified owned policy interface")),
         }
     }
@@ -23,6 +27,7 @@ impl NumericPolicy {
             Self::Deadline => EXPORT_SYMBOL,
             Self::Elf64Header => "topal_kernel_static_elf64_header_policy_v1",
             Self::LinuxDispatch => "topal_kernel_static_linux_dispatch_policy_v1",
+            Self::ProcessIdentity => "topal_kernel_process_identity_transition_v1",
         }
     }
     pub(crate) fn function_prefix(self) -> &'static str {
@@ -30,6 +35,7 @@ impl NumericPolicy {
             Self::Deadline => FUNCTION_PREFIX,
             Self::Elf64Header => "topal.header.",
             Self::LinuxDispatch => "topal.dispatch.",
+            Self::ProcessIdentity => "topal.identity.",
         }
     }
     pub(crate) fn stem(self) -> &'static str {
@@ -37,6 +43,7 @@ impl NumericPolicy {
             Self::Deadline => "time-library",
             Self::Elf64Header => "image-library",
             Self::LinuxDispatch => "dispatch-library",
+            Self::ProcessIdentity => "process-identity-library",
         }
     }
     pub(crate) fn parameters(self) -> Vec<CompilerType> {
@@ -56,6 +63,10 @@ impl NumericPolicy {
                 CompilerType::Nat,
             ],
             Self::LinuxDispatch => vec![CompilerType::Nat],
+            Self::ProcessIdentity => vec![CompilerType::Record(vec![(
+                "next".into(),
+                CompilerType::Nat,
+            )])],
         }
     }
     pub(crate) fn source_tags(self, result: &CompilerType) -> Result<Vec<u32>, CompileError> {
@@ -63,6 +74,22 @@ impl NumericPolicy {
             Self::Deadline => result == &CompilerType::Int,
             Self::Elf64Header => result == &CompilerType::Boolean,
             Self::LinuxDispatch => false,
+            Self::ProcessIdentity => {
+                if let CompilerType::Record(fields) = result {
+                    fields.len() == 2
+                        && ["allocated", "next"].iter().all(|expected| {
+                            fields
+                                .iter()
+                                .filter(|(name, ty)| {
+                                    canonically_equal(name, expected) && ty == &CompilerType::Nat
+                                })
+                                .count()
+                                == 1
+                        })
+                } else {
+                    false
+                }
+            }
         };
         if valid {
             return Ok(Vec::new());
@@ -93,10 +120,29 @@ impl NumericPolicy {
             Self::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
             }
+            Self::ProcessIdentity => {
+                "identity interface requires Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
+            }
             Self::LinuxDispatch => {
                 "dispatch interface requires nominal StaticLinuxOperation with the exact semantic vocabulary"
             }
         }))
+    }
+    pub(crate) fn result_field_order(self, result: &CompilerType) -> Vec<String> {
+        if self == Self::ProcessIdentity {
+            if let CompilerType::Record(fields) = result {
+                return fields.iter().map(|(name, _)| name.clone()).collect();
+            }
+        }
+        Vec::new()
+    }
+    fn private_namespace(self) -> &'static str {
+        match self {
+            Self::Elf64Header => "topal.elf.",
+            Self::LinuxDispatch => "topal.syscall.",
+            Self::ProcessIdentity => "topal.pid.",
+            Self::Deadline => "topal.",
+        }
     }
     pub(super) fn arguments(self) -> Vec<Value> {
         let range =
@@ -114,6 +160,10 @@ impl NumericPolicy {
                 range(1, 65535),
             ],
             Self::LinuxDispatch => vec![range(0, u64::MAX)],
+            Self::ProcessIdentity => vec![Value::Record(BTreeMap::from([(
+                "next".into(),
+                range(0, i32::MAX as u64),
+            )]))],
         }
     }
     pub(crate) fn bridge_bytes(self) -> u64 {
@@ -121,6 +171,7 @@ impl NumericPolicy {
             Self::Deadline => 3 * 24,
             Self::Elf64Header => 64 * (24 + 16) + 16 + 2 * 24,
             Self::LinuxDispatch => 24,
+            Self::ProcessIdentity => 24,
         }
     }
     pub(crate) fn alignment_reserve(self) -> u64 {
@@ -131,6 +182,7 @@ impl NumericPolicy {
             Self::Deadline => 0,
             Self::Elf64Header => 64,
             Self::LinuxDispatch => 64,
+            Self::ProcessIdentity => 64,
         }
     }
     pub(super) fn client(self, export: &str) -> String {
@@ -150,6 +202,9 @@ impl NumericPolicy {
                 client
             }
             Self::LinuxDispatch => format!("\nselector : Nat is 0\n{export} selector\n"),
+            Self::ProcessIdentity => format!(
+                "\nidentity-probe : Record (next : Nat) is (next is 0)\n{export} identity-probe\n"
+            ),
         }
     }
     /// Only LLVM identifiers outside strings/comments are adapted. Debug paths
@@ -158,11 +213,7 @@ impl NumericPolicy {
         if self == Self::Deadline {
             return module.to_owned();
         }
-        let private = if self == Self::Elf64Header {
-            "topal.elf."
-        } else {
-            "topal.syscall."
-        };
+        let private = self.private_namespace();
         let mut result = String::with_capacity(module.len());
         let mut chars = module.chars().peekable();
         let (mut quoted, mut escaped, mut comment) = (false, false, false);
@@ -226,11 +277,7 @@ impl NumericPolicy {
     }
     pub(crate) fn canonical_name(self, name: &str) -> String {
         if self != Self::Deadline {
-            let private = if self == Self::Elf64Header {
-                "topal.elf."
-            } else {
-                "topal.syscall."
-            };
+            let private = self.private_namespace();
             if let Some(suffix) = name.strip_prefix(&format!("{private}runtime.")) {
                 return format!("topal.runtime.{suffix}");
             }

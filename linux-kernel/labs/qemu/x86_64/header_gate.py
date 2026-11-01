@@ -91,7 +91,7 @@ def observe(root, values, artifact, timeout, poison=False, counterexample=False)
                   counterexample=counterexample, source_line=source.index("  magic is read-magic bytes")+1,
                   header=list(values[5].read_bytes()[:64]), payload_offset=payload_offset(values[1]),
                   has_time=artifact.get("time_library") is not None,
-                  has_dispatch=artifact.get("dispatch_library") is not None,
+                  has_identity=artifact.get("process_identity_library") is not None, has_dispatch=artifact.get("dispatch_library") is not None,
                   zero_addresses=NUMERIC.immutable_zero_addresses(elf),
                   stack_bound=library["maximum_stack_bytes"],
                   allocation_bound=library["allocation"]["maximum_bytes"])
@@ -207,7 +207,7 @@ def verify(timeout=30, write_evidence=False):
         try:
             only_values = GATE.build_image(root/"header-only-artifact")
             only_artifact = json.loads(only_values[3].read_text())
-            if any(only_artifact.get(key) is not None for key in ("time_library","dispatch_library")):
+            if any(only_artifact.get(key) is not None for key in ("time_library","dispatch_library","process_identity_library")):
                 raise GATE.GateError("header-only control retained another numeric policy")
             single = observe(root/"header-only", only_values, only_artifact, timeout)
             single.update(library=only_artifact["image_library"], time_library_absent=True,

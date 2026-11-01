@@ -106,7 +106,10 @@ fn backing(e: &mut E<'_>, index: usize) -> Result<(), CompileError> {
     Ok(())
 }
 
-pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(in super::super) fn emit_services(
+    code: &mut X86FunctionEncoder,
+    source_identity: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
     e.0.bind("child-register-tid")?;
     e.gs(0x89, Di, 152);
@@ -190,24 +193,32 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.0.jump_if(0x85, "fatal");
     e.store(R15, HEADER + 32, R8);
     e.store(R15, HEADER + 40, R9);
-    e.load(R14, R15, HEADER + 8);
-    e.cmp(R14, 0);
-    e.0.jump_if(0x85, "child-pid-ready");
-    e.imm(R14, 2);
-    e.0.bind("child-pid-ready")?;
-    e.cmp(R14, 2);
-    e.0.jump_if(0x82, "fatal");
-    e.cmp(R14, i32::MAX);
-    e.0.jump_if(0x87, "fatal");
-    e.store(R15, HEADER + 16, R14);
-    e.store(R15, HEADER + 88, R14); // inactive parent's pending fork result
-    e.mov(A, R14);
-    e.add(A, 1);
-    e.cmp(R14, i32::MAX);
-    e.0.jump_if(0x85, "child-pid-next");
-    e.imm(A, 2);
-    e.0.bind("child-pid-next")?;
-    e.store(R15, HEADER + 8, A);
+    if source_identity {
+        super::identity::emit_invoke(e.0)?;
+        e.mov(R14, A);
+        e.store(R15, HEADER + 16, R14);
+        e.store(R15, HEADER + 88, R14);
+        e.store(R15, HEADER + 8, D);
+    } else {
+        e.load(R14, R15, HEADER + 8);
+        e.cmp(R14, 0);
+        e.0.jump_if(0x85, "child-pid-ready");
+        e.imm(R14, 2);
+        e.0.bind("child-pid-ready")?;
+        e.cmp(R14, 2);
+        e.0.jump_if(0x82, "fatal");
+        e.cmp(R14, i32::MAX);
+        e.0.jump_if(0x87, "fatal");
+        e.store(R15, HEADER + 16, R14);
+        e.store(R15, HEADER + 88, R14); // inactive parent's pending fork result
+        e.mov(A, R14);
+        e.add(A, 1);
+        e.cmp(R14, i32::MAX);
+        e.0.jump_if(0x85, "child-pid-next");
+        e.imm(A, 2);
+        e.0.bind("child-pid-next")?;
+        e.store(R15, HEADER + 8, A);
+    }
     e.gs(0x8b, R11, 256);
     copy(&mut e, R11, 0, R15, CONTEXT, 1024);
     // The entropy service is shared history, never a restorable old key.
