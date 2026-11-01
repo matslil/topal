@@ -9,6 +9,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Versioned ordinary Topal file-open disposition for existing targets and
+  anonymous creation, with eight semantic facts/plans and frozen compatibility.
 - An ordinary Topal Boolean/Enum policy library with source-bound code ownership,
   actual helper calls, native ABI and stack evidence, and representation adaptation.
 - Ordinary Topal numeric deadline policy using shared arbitrary-precision algorithms,
@@ -54,13 +56,13 @@ systems abstractions; ARM64 implementation is outside the current focus.
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-owned-volatile-files.md) records actual sparse
-file bytes, native interval validation before clipping/EOF, page/object budgets,
-shared alias and process history, exec filtering, private umask, complete
-reclamation and independent wrong-data rejection. A disposable pinned-Linux
-control checks the generic value/lifetime laws. Earlier dispatch and identity
-interfaces remain explicit compatibility controls. Each report identifies its
-scope, complete regression qualification and limitations.
+The [current runtime report](step-4-source-file-open-plans.md) records ordinary
+source disposition for existing and temporary opens, exact versioned binding,
+complete finite native and physical/helper evidence, ownership revalidation and
+prepublication wrong-plan refusal. The [sparse-file report](step-4-owned-volatile-files.md)
+records the underlying bytes, budgets, sharing, private umask and reclamation;
+its pinned-Linux control remains separate. Earlier interfaces remain explicit
+compatibility controls. Each report identifies its scope and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
