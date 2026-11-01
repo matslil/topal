@@ -531,6 +531,19 @@ references or a new core allocator. `TK-DEC-269` defines the boundary and budget
 its first implementation stage is a portable model. Source/native integration
 and physical erasure evidence remain unqualified.
 
+The source/object refinement in `TK-DEC-270` admits a sealed `KernelByteRegion`
+parameter in a qualified systems-library context. Ordinary functions may query
+its extent, perform checked byte reads/writes and derive contained views with
+narrowed rights. Dynamic Nat inputs retain arbitrary-precision meaning; failed
+loads/window derivations return None and failed stores return false without an
+access. Entry selection checks a declared `(KernelByteRegion) -> Unit` signature
+without constructing fake source authority. The complete closed call graph must
+prove nonescape and owner-relative Read/Write effects, reject false `Effects ()`
+bounds and retain complete resource/representation proofs. The first source
+object still requires qualified kernel-root binding and physical reclamation
+before being usable as a kernel capability. This adds systems qualification,
+not core mutable references, allocator syntax or new ordinary function meaning.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

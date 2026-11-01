@@ -1759,6 +1759,17 @@ shall remain explicitly unqualified until checked compilation, binding, complete
 resource proofs, physical execution and reclamation evidence exist. See
 [TK-DEC-269](../linux-kernel/design/borrowed-kernel-regions.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-SOURCE-001 — Checked region source objects
+
+Qualified systems libraries shall select ordinary region entry functions by
+declared signature without constructing source authority. Sealed region members
+shall preserve arbitrary-precision Nat, checked Optional/Boolean refusal,
+contained windows/rights, owner-relative effects and nonescaping direct helper
+calls. Compilation shall retain shared ordinary function/module semantics,
+complete resource proofs and inspected native/debug evidence. Source objects
+shall not imply kernel-root binding or physical reclamation qualification. See
+[TK-DEC-270](../linux-kernel/design/source-kernel-region-functions.md).
+
 ## TOPAL-REQ-NATIVE-ABI-001 — Target-qualified ABI lowering
 
 Every machine-code artifact shall record its target triple, data layout,

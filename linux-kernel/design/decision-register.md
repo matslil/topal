@@ -293,6 +293,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-269` | execute ordinary effectful functions over an owned plain-memory region | more native Linux handlers do not qualify source subsystems; raw addresses and mutable core locations would violate the approved boundary | systems-only direction adopted under standing authorization; [borrowed kernel regions](borrowed-kernel-regions.md) defines contained views, alias effects, nested calls, revocation and owner preservation; portable model is the first stage, with source/native/physical qualification still required |
 
+| `TK-DEC-270` | compile ordinary capability-bearing region functions | byte policies in native adapters and fake source authority do not qualify ordinary kernel subsystems | systems-only direction adopted under standing authorization; [source region functions](source-kernel-region-functions.md) defines declared entry selection, checked byte/window members, alias-relative effects, nonescape and source/object evidence; kernel-root/physical integration remains required |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
