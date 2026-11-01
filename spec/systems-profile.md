@@ -4123,6 +4123,118 @@ imported helper SHALL be rejected after cleanup and before publication by an
 independent oracle with root/provider objects unchanged. The scalar-only policy
 and complete previous runtime regression SHALL remain required.
 
+### TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001 — Whole source-produced values
+
+A separately selected systems profile MAY retain a complete ordinary nested
+state Record containing bounded Nat and Boolean fields. The selected interface
+SHALL fix its exact schema, finite domains and explicit capacity. This rule
+SHALL NOT qualify arbitrary stored types, resources, effects, containers,
+concurrent writers, mutable references, a general heap or new core semantics.
+
+An initialized invocation SHALL borrow the actual published ordinary aggregate
+and numeric graph through unchanged shared function lowering. It SHALL NOT box
+cached native facts into a replacement argument. Initial construction SHALL use
+the shared ordinary runtime. Source SHALL return its complete successor state;
+the adapter SHALL NOT reconstruct its history or value policy in native code.
+Native compatibility facts MAY be projected from actual named source results
+after complete validation, and SHALL confer no resource authority.
+
+A shared checked layout/projection description SHALL establish canonical field
+slots, nested aggregate types/alignment, all padding, per-value Record order and
+complete bounded numeric-node extents consistently with ordinary lowering. The
+projection and native prepared-graph validator SHALL use the same description.
+Private prototypes/layouts SHALL NOT silently replace the shared ordinary ABI.
+Actual aggregate argument/result and separate native scalar conventions SHALL
+receive independent execution and object/frame qualification.
+
+Before source use, every stored reference SHALL match its exact owned schema
+node, every numeric representation SHALL be normalized and in its complete
+finite domain, every Boolean SHALL have its qualified representation and every
+Record order suffix SHALL be a complete field permutation. All private padding
+and unused bank storage SHALL be clean. No stored pointer SHALL authorize a
+load outside its qualified graph. Source results SHALL receive full shape,
+field/order and payload validation before preparation mutates graph/header state.
+
+Projection SHALL preserve the complete actual successor value, including nested
+presentation order, Boolean meaning and all numeric limbs. It SHALL create an
+independently owned graph with deterministic padding and no reference into the
+invocation arena, stack, old bank or another store. Equal immutable numeric
+values MAY have distinct owned copies; addresses SHALL NOT become value identity.
+
+The owner protocol of `TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001` SHALL apply to
+preparation, unchanged published state, complete temporary cleanup before
+exclusive publication, one-use commit, last-borrow retirement, shared exec/child
+history and complete terminal reclamation. The new schema SHALL be separately
+qualified rather than weakening that rule's first-schema contract. Earlier
+interface versions SHALL retain their own schemas and limits in one semantic
+identity slot, with no ambient store or failure fallback.
+
+Exact schema/layout, checked projection, native validator, source/module/runtime
+and object bytes, store/code binding and complete persistent/temporary/stack,
+validation/copy/retirement work bounds SHALL enter provenance. State-region work
+and fixed binding/context bookkeeping SHALL have explicit scopes. Missing,
+swapped, stale, unqualified, conflicting, malformed or undercharged evidence SHALL
+reject publication/use. Another target SHALL qualify its own private layout,
+calling convention, placement and ordering while preserving ordinary meaning.
+
+### TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001 — Nested source identity history
+
+The `process-identity-library` slot MAY select `structured-process-identity-v1`
+with contained source/export and explicit state, invocation-stack and temporary
+reserves of 4096, 4096 and 65536 bytes. Exactly one of the three qualified
+identity interfaces SHALL occupy the semantic slot. Both earlier versions SHALL
+retain their source, value, lifetime and independent/combined-operation contracts.
+
+Let the selected ordinary state type be
+`S = Record(next:Nat, history:Record(creations:Nat, wrapped:Boolean))`. The
+declared ordinary export SHALL have type `S -> Record(allocated:Nat, state:S)`.
+It SHALL retain `TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001`'s allocation/successor
+law. Initial state SHALL be `(next=0, creations=0, wrapped=false)` through shared
+ordinary construction. An initialized published state SHALL have next in
+2..2147483647 and creations in 1..18446744073709551615. Another invocation SHALL
+require creations at most 18446744073709551614; exhausted history SHALL reject
+before source execution or allocation. The zero cursor SHALL be valid only in
+the exact initial state.
+
+For an admitted input let `a` be its allocated ID, `n` its successor and `c` its
+creation count. Source SHALL return allocated `a` and a complete ordinary state
+with next `n`, creations `c+1` and wrapped equal to the prior wrapped flag OR
+`a=2147483647`. Every returned field, range, normalization and Record order SHALL
+be validated before projection. The next state SHALL preserve full numeric
+meaning across the 32-bit limb boundary and through the maximum finite count;
+truncation SHALL NOT be admitted. History facts SHALL grant no process,
+generation, store or publication authority. Private owner generations/epochs
+SHALL retain their existing meanings independently of numeric equality.
+
+The native adapter MAY project allocated and `state.next` to the existing
+two-word private compatibility result. It SHALL retain the complete actual
+source-produced state through `TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001`,
+including both state Record order suffixes. The selected x86-64 store SHALL
+remain 4096 bytes with its 64-byte owner/version/preparation header and two
+2016-byte banks. Two complete numeric nodes SHALL each have a 24-byte reserved
+extent; the nested Record extent, canonical offsets, padding, Boolean placement
+and complete graph size SHALL follow shared ordinary lowering and exact checked
+layout evidence. The first-schema flat prototype SHALL NOT be assumed adequate.
+
+Existing creation prechecks SHALL precede preparation. Complete invocation
+erasure/readback SHALL precede owner publication of PID/cursor/structured state.
+Old-version retirement, subsequent child publication, exec/parent restoration
+and cancellation SHALL preserve shared history and complete reclamation. Wrong
+owners/schema/code, stale or overlapping preparations, malformed/exhausted state,
+overflow or incomplete erasure SHALL fail closed without a new Linux errno path.
+
+Qualification SHALL cover whole ordinary aggregate transport, actual published
+node borrowing, independent next-state ownership, repeated alternation, limb
+transitions/count exhaustion, cursor wrap/sticky Boolean history, nested/outer
+order permutations, malformed pointers/normalization/padding/results and altered
+schema/bounds/provenance. Independent model/native/physical oracles SHALL check
+unchanged published state during preparation, cleanup before publication, source
+state survival, old-version retirement and full terminal erasure. Controlled
+boundary facts SHALL be identified separately from naturally reached history.
+Standalone and combined policies, changed-helper prepublication rejection, both
+earlier identity versions and the complete primary runtime cohort SHALL remain
+required. This selected schema SHALL NOT claim additional Linux UAPI support.
+
 ### TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001 — Source policy over owned header bytes
 
 An artifact MAY declare one `image-library` through `lang systems source-library`

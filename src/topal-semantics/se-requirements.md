@@ -301,7 +301,9 @@ Repeated transitions, actual value-history expectations, exec/parent restoration
 and cancellation shall preserve the same semantic state law. These modeled
 values shall grant no address authority or machine-layout/ABI evidence.
 
-Under `TK-DEC-264`, the model shall represent selected nested identity state with
+Under `TK-DEC-264`, the model shall implement
+`TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001` and
+`TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001` and represent nested identity state with
 next-ID, creation count and sticky wrapped-history facts. Ordinary facts shall
 grant no store/process/generation authority. Exact initial/increment/wrap/count
 and exhaustion behavior, one unique identity interface version, exclusive

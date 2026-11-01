@@ -12136,7 +12136,9 @@ repeated alternation, invalid pointers/state, stale publication, standalone and
 combined operation, actual source graph survival/retirement and changed-helper
 precommit rejection. General persistent types/effects remain unqualified.
 
-Under `TK-DEC-264`, the selected structured identity interface shall transport
+Under `TK-DEC-264`, the selected structured identity interface shall implement
+`TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001` and
+`TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001` and transport
 ordinary nested state through the shared function/aggregate ABI and retain the
 actual complete source-produced successor. A shared checked layout/projection
 description shall cover canonical fields, nested alignment/padding, Boolean
