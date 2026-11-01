@@ -28,6 +28,7 @@ impl DebugInfo {
             error_code_type: 0,
             error_domain_type: 0,
             source_location_type: 0,
+            kernel_region_type: 0,
             int_range_type: 0,
             rational_range_type: 0,
             result_int_type: 0,
@@ -560,6 +561,14 @@ impl DebugInfo {
             CompilerType::Generator(generator) => self.generator_type(generator),
             CompilerType::Task(task) => self.task_type(task),
             CompilerType::ExternalLocation(location) => self.location_type(location),
+            CompilerType::KernelByteRegion => {
+                if self.kernel_region_type == 0 {
+                    let opaque = self.node("!DICompositeType(tag: DW_TAG_structure_type, name: \"TopalKernelRegionBorrow\", flags: DIFlagFwdDecl)".into());
+                    let pointer = self.node(format!("!DIDerivedType(tag: DW_TAG_pointer_type, baseType: !{opaque}, size: 64, align: 64)"));
+                    self.kernel_region_type = self.node(format!("!DIDerivedType(tag: DW_TAG_typedef, name: \"KernelByteRegion\", file: !{}, baseType: !{pointer})", self.file));
+                }
+                self.kernel_region_type
+            },
             CompilerType::Character => self.character_type,
             CompilerType::String => self.string_type,
             CompilerType::Range(endpoint)
@@ -1508,7 +1517,8 @@ pub(crate) fn target_value_layout(value_type: &CompilerType) -> TargetValueLayou
         | CompilerType::Character
         | CompilerType::String
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => TargetValueLayout {
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => TargetValueLayout {
             size: 64,
             alignment: 64,
         },

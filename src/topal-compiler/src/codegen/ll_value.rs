@@ -23,6 +23,7 @@ enum LlValue {
         value: String,
         location: CompilerLocationType,
     },
+    KernelRegion(String),
     Int(String),
     Modular {
         value: String,
@@ -485,6 +486,11 @@ impl LlValue {
         value
     }
 
+    fn kernel_region_pointer(&self) -> &str {
+        let Self::KernelRegion(value) = self else { unreachable!("checked systems region") };
+        value
+    }
+
     fn serialization_expected_pointer(&self) -> &str {
         let Self::SerializationStream { expected, .. } = self else {
             unreachable!("checked value is a SerializationStream")
@@ -511,6 +517,7 @@ impl LlValue {
             | Self::SerializationStream { stream: value, .. }
             | Self::Task { value, .. }
             | Self::ExternalLocation { value, .. }
+            | Self::KernelRegion(value)
             | Self::Int(value)
             | Self::Modular { value, .. }
             | Self::Rational(value)
@@ -564,6 +571,7 @@ fn zero_machine_value(value_type: &CompilerType) -> LlValue {
         CompilerType::ErrorCode => LlValue::ErrorCode("0".into()),
         CompilerType::ErrorDomain => LlValue::ErrorDomain("null".into()),
         CompilerType::SourceLocation => LlValue::SourceLocation("null".into()),
+        CompilerType::KernelByteRegion => LlValue::KernelRegion("null".into()),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value: "0".into(),
             enumeration: enumeration.clone(),
@@ -676,6 +684,7 @@ fn optional_payload_pointer(value: &LlValue) -> &str {
         | LlValue::Rational(value)
         | LlValue::Error(value)
         | LlValue::SourceLocation(value)
+        | LlValue::KernelRegion(value)
         | LlValue::List { value, .. }
         | LlValue::String(value) => value,
         _ => unreachable!("checked Optional payload has a pointer representation"),
@@ -689,6 +698,7 @@ fn optional_payload_value(value: String, value_type: &CompilerType) -> LlValue {
         CompilerType::Character | CompilerType::String => LlValue::String(value),
         CompilerType::Error => LlValue::Error(value),
         CompilerType::SourceLocation => LlValue::SourceLocation(value),
+        CompilerType::KernelByteRegion => LlValue::KernelRegion(value),
         CompilerType::List(element) => LlValue::List {
             value,
             element: element.as_ref().clone(),
@@ -844,6 +854,7 @@ impl FunctionBody {
             | LlValue::SerializationStream { stream: value, .. }
             | LlValue::Task { value, .. }
             | LlValue::ExternalLocation { value, .. }
+            | LlValue::KernelRegion(value)
             | LlValue::Int(value)
             | LlValue::Modular { value, .. }
             | LlValue::Rational(value)
@@ -918,6 +929,7 @@ struct DebugInfo {
     error_code_type: usize,
     error_domain_type: usize,
     source_location_type: usize,
+    kernel_region_type: usize,
     int_range_type: usize,
     rational_range_type: usize,
     result_int_type: usize,

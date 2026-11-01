@@ -46,6 +46,7 @@ fn evaluate(unit: &CheckedNumericLibrary) -> Evaluation {
         cache: BTreeMap::new(),
         active: BTreeSet::new(),
         maximum_bits: 0,
+        regions: false,
     };
     let number = |n| Value::Number(Range(BigInt::from(n), BigInt::from(n)));
     bounds

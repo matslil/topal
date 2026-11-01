@@ -42,6 +42,8 @@ use crate::source::{
 
 include!("compiler_model/model.rs");
 include!("compiler_model/analysis_setup.rs");
+include!("compiler_model/kernel_regions.rs");
+include!("compiler_model/kernel_region_closure.rs");
 include!("compiler_model/collect_interface_sources.rs");
 include!("compiler_model/exact_boolean_local_function_generator_body.rs");
 include!("compiler_model/exact_recursive_nominal_generator_body.rs");

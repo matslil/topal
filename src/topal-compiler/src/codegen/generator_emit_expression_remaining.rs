@@ -1456,7 +1456,8 @@ impl Generator<'_> {
                         | CompilerType::TraversalControl(_)
                         | CompilerType::TaskResponse(_)
                         | CompilerType::Task(_)
-                        | CompilerType::ExternalLocation(_) => {
+                        | CompilerType::ExternalLocation(_)
+                        | CompilerType::KernelByteRegion => {
                             unreachable!("checked functions do not return this static object kind")
                         }
                         CompilerType::Generator(ref generator) => LlValue::Generator {

@@ -200,7 +200,8 @@ pub(crate) fn llvm_value_type(value_type: &CompilerType) -> String {
         | CompilerType::Bag(_)
         | CompilerType::Map { .. }
         | CompilerType::Task(_)
-        | CompilerType::ExternalLocation(_) => "ptr".into(),
+        | CompilerType::ExternalLocation(_)
+        | CompilerType::KernelByteRegion => "ptr".into(),
         CompilerType::Type
         | CompilerType::Scope
         | CompilerType::Function
@@ -296,6 +297,7 @@ fn machine_value(value_type: &CompilerType, value: String) -> LlValue {
         CompilerType::ErrorCode => LlValue::ErrorCode(value),
         CompilerType::ErrorDomain => LlValue::ErrorDomain(value),
         CompilerType::SourceLocation => LlValue::SourceLocation(value),
+        CompilerType::KernelByteRegion => LlValue::KernelRegion(value),
         CompilerType::Enum(enumeration) => LlValue::Enum {
             value,
             enumeration: enumeration.clone(),

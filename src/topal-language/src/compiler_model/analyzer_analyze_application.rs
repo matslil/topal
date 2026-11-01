@@ -6,6 +6,9 @@ impl Analyzer {
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        if let Some(region) = self.analyze_kernel_region_member(items, span, environment)? {
+            return Ok(region);
+        }
         if items.len() >= 5
             && items.len() % 2 == 1
             && items[1..].chunks_exact(2).all(|pair| {

@@ -89,7 +89,9 @@ impl Bounds<'_> {
             }
             K::OptionalSome(value) => {
                 let value = self.expression(value, env)?;
-                value.value.number()?;
+                if !self.regions || !matches!(value.value, Value::Region) {
+                    value.value.number()?;
+                }
                 Ok((
                     Value::Optional {
                         some: Some(Box::new(value.value)),

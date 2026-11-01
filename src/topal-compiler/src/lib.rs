@@ -16,6 +16,11 @@ mod systems_boot_image;
 mod systems_boot_resource;
 mod systems_library;
 mod systems_numeric_library;
+mod systems_region_library;
+pub use systems_region_library::{
+    CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
+    build_systems_region_library, verify_systems_region_library,
+};
 mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
@@ -71,7 +76,8 @@ pub use systems_library::{
     SystemsSourceModuleArtifact, SystemsSourceModuleInput,
 };
 pub use systems_numeric_library::{
-    SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRetainedStateBound,
+    SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRegionAllocationBound,
+    SystemsRetainedStateBound,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,

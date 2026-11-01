@@ -299,7 +299,7 @@ pub(crate) fn build_numeric_library(
     })
 }
 
-fn object_calls(
+pub(crate) fn object_calls(
     file: &object::File<'_>,
     names: &BTreeSet<String>,
 ) -> Result<BTreeMap<String, BTreeSet<String>>, CompileError> {

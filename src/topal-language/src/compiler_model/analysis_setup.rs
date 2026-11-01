@@ -96,6 +96,7 @@ struct Analyzer {
     source: SourceText,
     language_version: LanguageVersion,
     language_features: Vec<String>,
+    kernel_region_sources: Vec<Span>,
     enums: EnumTypes,
     enum_alternatives: EnumAlternativeBindings,
     sums: SumTypes,
@@ -161,6 +162,7 @@ impl Analyzer {
             source,
             language_version,
             language_features,
+            kernel_region_sources: Vec::new(),
             enums,
             enum_alternatives,
             sums,
@@ -425,7 +427,7 @@ pub fn analyze_for_compiler_with_modules(
     text: &str,
     modules: &[CompilerSourceModule],
 ) -> Result<CompilerProgram, Diagnostic> {
-    analyze_for_compiler_options(text, modules, &[])
+    analyze_for_compiler_options(text, modules, &[], None)
 }
 
 /// Select checked export bodies without inheriting literal client refinements.
@@ -438,7 +440,7 @@ pub fn analyze_for_compiler_with_modules(
 pub fn analyze_for_compiler_with_declared_exports(
     text: &str, exports: &[String],
 ) -> Result<CompilerProgram, Diagnostic> {
-    analyze_for_compiler_options(text, &[], exports)
+    analyze_for_compiler_options(text, &[], exports, None)
 }
 
 /// Check declared-type exports with an explicit ordinary source-module snapshot.
@@ -450,11 +452,12 @@ pub fn analyze_for_compiler_with_declared_exports(
 pub fn analyze_for_compiler_with_modules_and_declared_exports(
     text: &str, modules: &[CompilerSourceModule], exports: &[String],
 ) -> Result<CompilerProgram, Diagnostic> {
-    analyze_for_compiler_options(text, modules, exports)
+    analyze_for_compiler_options(text, modules, exports, None)
 }
 
 fn analyze_for_compiler_options(
     text: &str, modules: &[CompilerSourceModule], generalized_exports: &[String],
+    region_entry: Option<&KernelRegionSelection<'_>>,
 ) -> Result<CompilerProgram, Diagnostic> {
     let primary_source_end = text.len();
     let mut combined = text.to_owned();
@@ -515,8 +518,16 @@ fn analyze_for_compiler_options(
         .filter(|statement| statement_span(statement).start < primary_source_end)
         .cloned()
         .collect::<Vec<_>>();
+    if matches!(region_entry, Some(KernelRegionSelection::Modules(_)))
+        && root_statements.iter().any(|statement| !matches!(statement,
+            Statement::LanguageSelection { .. } | Statement::LibrarySelection { .. })) {
+        return Err(unsupported(&source, Span::new(0, primary_source_end), "module-isolation scope must contain only language/library selections"));
+    }
     let (language_version, language_features) =
-        compiler_language_context(&source, &root_statements)?;
+        compiler_language_context(&source, &root_statements, region_entry.is_some())?;
+    if region_entry.is_some() && !language_features.iter().any(|f| f == "systems") {
+        return Err(unsupported(&source, Span::new(0, primary_source_end), "region library without feature systems"));
+    }
     reject_later_language_selections(&source, &root_statements)?;
     let available_libraries = modules
         .iter()
@@ -563,6 +574,9 @@ fn analyze_for_compiler_options(
         sum_alternatives,
     );
     analyzer.generalized_exports=generalized_exports.iter().cloned().collect();
+    if region_entry.is_some() {
+        analyzer.kernel_region_sources.push(Span::new(0, primary_source_end));
+    }
     analyzer.install_modular_types(&modular_sources)?;
     analyzer.install_interfaces(&interface_sources)?;
     analyzer.validate_interface_implementations(&root_statements)?;
@@ -586,7 +600,13 @@ fn analyze_for_compiler_options(
             })
             .cloned()
             .collect::<Vec<_>>();
-        let (module_version, _) = compiler_language_context(&source, &statements)?;
+        let (module_version, module_features) = compiler_language_context(&source, &statements, region_entry.is_some())?;
+        if region_entry.is_some() && statements.iter().any(|statement| !region_module_declaration(statement)) {
+            return Err(unsupported(&source, *range, "region-library module runtime/type initializer"));
+        }
+        if region_entry.is_some() && module_features.iter().any(|f| f == "systems") {
+            analyzer.kernel_region_sources.push(*range);
+        }
         reject_later_language_selections(&source, &statements)?;
         validate_compiler_library_selections(&source, &statements, &available_libraries)?;
         if module_version != language_version {
@@ -671,6 +691,17 @@ fn analyze_for_compiler_options(
         None,
     )?;
     require_runtime_main_result(&source, &main)?;
+    if let Some(entry) = region_entry {
+        if !main.statements.is_empty() || !matches!(main.result.kind, CompilerExpressionKind::Unit) {
+            return Err(unsupported(&source, main.result.span, "region-library runtime initializer"));
+        }
+        match entry {
+            KernelRegionSelection::Entry(entry) => analyzer.instantiate_kernel_region_entry(entry)?,
+            KernelRegionSelection::Modules(exports) => {
+                for export in *exports { analyzer.instantiate_kernel_region_module(export)?; }
+            }
+        }
+    }
     let function_value_names = compiler_function_value_names(&mut analyzer);
     let interfaces = analyzer
         .interfaces
@@ -1183,6 +1214,7 @@ fn validate_direct_task_handlers(
 fn compiler_language_context(
     source: &SourceText,
     statements: &[Statement],
+    region_library: bool,
 ) -> Result<(LanguageVersion, Vec<String>), Diagnostic> {
     let Some(Statement::LanguageSelection {
         version, features, ..
@@ -1210,7 +1242,7 @@ fn compiler_language_context(
     let mut language_features = BTreeSet::new();
     for feature in features {
         let feature_name = source.slice(*feature);
-        if !matches!(feature_name, "lint" | "abi") {
+        if !matches!(feature_name, "lint" | "abi") && !(region_library && feature_name == "systems") {
             return Err(source_diagnostic(
                 source,
                 "E-COMPILER-UNSUPPORTED",

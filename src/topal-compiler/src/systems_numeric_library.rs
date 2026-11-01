@@ -30,12 +30,17 @@ mod native_object;
 mod record_tests;
 use crate::{CompileError, SystemsSourceLibraryInput};
 pub use native_object::SystemsNumericLibraryArtifact;
+#[path = "systems_region_bounds.rs"]
+mod region_bounds;
 #[path = "systems_retained_state_bound.rs"]
 mod retained_state;
+pub(crate) use native_object::object_calls as numeric_object_calls;
 pub(crate) use native_object::{
     build_numeric_library, inspect_linked_numeric_library, inspect_numeric_provider,
 };
 use num_bigint::BigInt;
+pub use region_bounds::SystemsRegionAllocationBound;
+pub(crate) use region_bounds::bound_region_library;
 pub(crate) use retained_state::STATE_SYMBOL;
 pub use retained_state::SystemsRetainedStateBound;
 use serde::{Deserialize, Serialize};
@@ -125,6 +130,8 @@ impl Range {
 }
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum Value {
+    Unit,
+    Region,
     Boolean,
     Enum {
         name: String,
@@ -151,6 +158,8 @@ impl Value {
     }
     fn union(&self, other: &Self) -> Result<Self, CompileError> {
         match (self, other) {
+            (Self::Unit, Self::Unit) => Ok(Self::Unit),
+            (Self::Region, Self::Region) => Ok(Self::Region),
             (Self::Boolean, Self::Boolean) => Ok(Self::Boolean),
             (
                 Self::Enum {
@@ -215,6 +224,7 @@ struct Bounds<'a> {
     cache: BTreeMap<(String, Vec<Value>), Evaluation>,
     active: BTreeSet<String>,
     maximum_bits: u64,
+    regions: bool,
 }
 fn cost_add(a: u64, b: u64) -> Result<u64, CompileError> {
     let sum = a
@@ -242,6 +252,21 @@ fn plain_numeric_type(ty: &CompilerType) -> bool {
             if *count<=collections::MAX_ENTRIES && element.as_ref()==&CompilerType::Int)
 }
 impl Bounds<'_> {
+    fn admitted_type(&self, ty: &CompilerType) -> bool {
+        numeric_type(ty)
+            || (self.regions
+                && match ty {
+                    CompilerType::Unit | CompilerType::KernelByteRegion => true,
+                    CompilerType::Optional(payload) => matches!(
+                        payload.as_ref(),
+                        CompilerType::Nat | CompilerType::KernelByteRegion
+                    ),
+                    CompilerType::Record(fields) => {
+                        fields.iter().all(|(_, field)| self.admitted_type(field))
+                    }
+                    _ => false,
+                })
+    }
     fn function(
         &mut self,
         symbol: &str,
@@ -265,7 +290,7 @@ impl Bounds<'_> {
                 .declared_effects
                 .as_ref()
                 .is_some_and(|row| !row.identities.is_empty())
-            || !numeric_type(&function.result_type)
+            || !self.admitted_type(&function.result_type)
             || (function.module_identity.is_some()
                 && (matches!(&function.result_type, CompilerType::Enum(_))
                     || function
@@ -276,7 +301,7 @@ impl Bounds<'_> {
             || function
                 .parameters
                 .iter()
-                .any(|p| !numeric_type(&p.value_type))
+                .any(|p| !self.admitted_type(&p.value_type))
         {
             return Err(invalid("unqualified function interface/effect/capture"));
         }
@@ -318,10 +343,19 @@ impl Bounds<'_> {
         expr: &CompilerExpression,
         env: &BTreeMap<String, Value>,
     ) -> Result<Evaluation, CompileError> {
-        if !numeric_type(&expr.value_type) {
+        if !self.admitted_type(&expr.value_type) {
             return Err(invalid("non-numeric source value"));
         }
         let (value, bytes) = match &expr.kind {
+            K::Unit if self.regions => (Value::Unit, 0),
+            K::KernelRegion { .. } if self.regions => self.region_expression(expr, env)?,
+            K::Not(input) if self.regions => {
+                let input = self.expression(input, env)?;
+                if !matches!(input.value, Value::Boolean) {
+                    return Err(invalid("region Boolean negation type"));
+                }
+                (Value::Boolean, input.bytes)
+            }
             K::Boolean(_) => (Value::Boolean, 0),
             K::Enum(_) | K::EnumDecision { .. } => self.enum_expression(expr, env)?,
             K::Int(n) => (Value::Number(Range(n.clone(), n.clone())), 0),
@@ -624,6 +658,7 @@ pub(crate) fn check_numeric_library(
         cache: BTreeMap::new(),
         active: BTreeSet::new(),
         maximum_bits: 0,
+        regions: false,
     };
     let result = bounds.function(&entry_symbol, policy.arguments())?;
     let bridge_bytes = policy.bridge_bytes();

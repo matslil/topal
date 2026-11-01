@@ -342,6 +342,7 @@ impl<'a> Generator<'a> {
                 | LlValue::SerializationStream { stream: value, .. }
                 | LlValue::Task { value, .. }
                 | LlValue::ExternalLocation { value, .. }
+                | LlValue::KernelRegion(value)
                 | LlValue::Int(value)
                 | LlValue::Modular { value, .. }
                 | LlValue::Rational(value)
