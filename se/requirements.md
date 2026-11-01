@@ -1743,6 +1743,22 @@ library, foreign-language runtime, startup object, or dynamic loader. Direct
 operating-system mechanisms shall be isolated in a versioned platform layer
 with typed inputs, results, failures, effects, and target identity.
 
+## TOPAL-REQ-SYSTEMS-REGION-BORROW-001 — Ordinary functions over owned memory
+
+The systems profile shall support a separately qualified, synchronous borrowing
+boundary from an existing exclusively owned plain kernel region to a closed
+ordinary function graph. Views shall preserve owner identity, contained windows,
+narrowed rights and effect conflicts across aliases. Nested calls shall suspend
+caller access, revoke callee-local views on return and admit complete frame/view
+budgets before publication. Rejected access shall not change bytes, lifetime or
+storage observations. Completion/cancellation shall revoke all views without
+implying rollback of successful stores. No numeric address, core mutable
+reference, implicit allocator, suspension or concurrent authority is introduced.
+The first stage shall model the existing bootstrap owner; source/native support
+shall remain explicitly unqualified until checked compilation, binding, complete
+resource proofs, physical execution and reclamation evidence exist. See
+[TK-DEC-269](../linux-kernel/design/borrowed-kernel-regions.md).
+
 ## TOPAL-REQ-NATIVE-ABI-001 — Target-qualified ABI lowering
 
 Every machine-code artifact shall record its target triple, data layout,

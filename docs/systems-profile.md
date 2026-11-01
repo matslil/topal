@@ -514,6 +514,23 @@ This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.
 
+### Borrowed plain regions in ordinary functions
+
+A further systems qualification may lend an existing exclusively owned plain
+kernel region into a synchronous closed ordinary function graph. Sealed scoped
+views carry contained byte windows and narrowed read/write rights; aliases
+retain the same resource identity for effect ordering. The owner is unavailable
+until invocation completion. Helper entry suspends caller access; helper return
+revokes callee-local views before resuming the caller. Views cannot escape,
+become numeric addresses, acquire unrelated memory domains or outlive the
+invocation. Checked byte access precedes mutation. Completion and cancellation
+revoke views while preserving successful changes to the owner's bytes; they do
+not imply rollback. Initial qualification excludes concurrent access, suspension,
+callbacks and recursion. This is systems resource borrowing, not mutable core
+references or a new core allocator. `TK-DEC-269` defines the boundary and budgets;
+its first implementation stage is a portable model. Source/native integration
+and physical erasure evidence remain unqualified.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

@@ -291,6 +291,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-268` | read/write regular files at invocation-owned offsets | shared description positions cannot implement positional transfers through seek/restore without exposing transient state; append and full-request checks have independent native ordering | systems-only refinement under standing authorization; [positional file transfers](positional-file-transfers.md) defines unchanged shared positions, sparse/immutable backing, pinned append behavior, nonseekable/error ordering, frozen dispatch versions and unchanged bounds; implemented and [qualified](../step-4-positional-file-transfers.md) with model/native/Linux/physical oracles and position write watchpoints |
 
+| `TK-DEC-269` | execute ordinary effectful functions over an owned plain-memory region | more native Linux handlers do not qualify source subsystems; raw addresses and mutable core locations would violate the approved boundary | systems-only direction adopted under standing authorization; [borrowed kernel regions](borrowed-kernel-regions.md) defines contained views, alias effects, nested calls, revocation and owner preservation; portable model is the first stage, with source/native/physical qualification still required |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
