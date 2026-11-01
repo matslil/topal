@@ -289,6 +289,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-267` | create, reopen and unlink regular names over owned sparse objects | anonymous-only files cannot support shell redirection or reopened paths; links, descriptions and descriptor aliases have distinct lifetimes | systems-only refinement adopted under standing authorization; [named volatile files](named-volatile-files.md) defines namespace ownership, source open plans, frozen dispatch versions, parent/final lookup ordering, independent descriptions, exact directory records and full reclamation; implemented and [qualified](../step-4-named-volatile-files.md) with independent model/native/Linux/physical oracles and real BusyBox file commands |
 
+| `TK-DEC-268` | read/write regular files at invocation-owned offsets | shared description positions cannot implement positional transfers through seek/restore without exposing transient state; append and full-request checks have independent native ordering | systems-only refinement under standing authorization; [positional file transfers](positional-file-transfers.md) defines unchanged shared positions, sparse/immutable backing, pinned append behavior, nonseekable/error ordering, frozen dispatch versions and unchanged bounds; implementation and qualification pending |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.

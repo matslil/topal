@@ -12199,6 +12199,17 @@ owned action preconditions before allocating or mutating resources. Qualify
 all finite vectors, reversed source order, physical calls and prepublication
 wrong-plan refusal. See [design](../../linux-kernel/design/source-file-open-plans.md).
 
+## TOPAL-COMP-SYSTEMS-POSITIONAL-FILE-001 — Explicit-position regular transfers
+
+Implement the systems-only [positional transfer design](../../linux-kernel/design/positional-file-transfers.md)
+under `TK-DEC-268`: exact versioned ordinary source operation selection, negative
+offset/descriptor/nonseekable/access/copy/full-interval error ordering, independent
+positional reads and writes over sparse and immutable backing, Linux append
+placement, no shared-position publication, unchanged storage/stack bounds and
+complete cleanup. Qualify source versions/orders, actual contents and positions,
+capacity/copy failures, unlinked/fork/exec lifetime, active/inactive teardown and
+an independent wrong-data/result rejection; retain the existing command corpus.
+
 ## TOPAL-COMP-SYSTEMS-NAMED-FILE-001 — Named volatile files
 
 Realize named regular creation, independent reopening, truncating open, unlink and native directory/stat observations under the owned sparse filesystem. Bind selected open plans and versioned dispatch without changing frozen contracts. Keep names, objects, descriptions and descriptors distinct; preserve Linux lookup/admission ordering and complete failure atomicity; prove exact placement/helper bounds and terminal namespace-owner reclamation. Require independent native and pinned-Linux controls, source-policy execution and real shell/file-command evidence.

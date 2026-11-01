@@ -345,6 +345,16 @@ interface may occupy the single kernel-library slot. Document Linux error
 precedence and absent/existing, exclusive/create, directory and truncate cases
 without assigning native flags or code-pointer authority to ordinary values.
 
+## TOPAL-SEM-SYSTEMS-POSITIONAL-FILE-001 — Explicit-position regular transfers
+
+Model the approved [positional transfers](../../linux-kernel/design/positional-file-transfers.md)
+using object-owned sparse pages, explicit positions distinct from description
+positions, Linux append placement after supplied-interval admission, failure
+atomicity and existing name/description lifetime. Preserve all earlier dispatch
+versions and exclusive source-policy runtime ownership. Connect portable tests
+to native, pinned-Linux and physical evidence without treating modeled numeric
+offsets or descriptors as authority.
+
 ## TOPAL-SEM-SYSTEMS-NAMED-FILE-001 — Named volatile files
 
 Model linked names, object identity, independent descriptions/positions and aliases separately. Page ownership shall follow objects even across independent reopening. Preserve data after unlink until the last independent description closes, retain closed linked objects under namespace ownership, issue fresh identities on name recreation and erase complete storage on final release. Cover exact names/metadata, capacities, error-state preservation, source-plan obligations and terminal reclamation with independent model cases.
