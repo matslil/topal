@@ -43,7 +43,7 @@ def build(destination, lifetime):
 def observe(root, values, calls, timeout, *, lifetime=False, corrupt=False, terminate=False):
     root.mkdir(parents=True)
     artifact = json.loads(values[3].read_text())
-    if artifact['dispatch_library']['interface'] != 'static-linux-dispatch-v2':
+    if artifact['dispatch_library']['interface'] not in ('static-linux-dispatch-v2', 'static-linux-dispatch-v3'):
         raise GATE.GateError('file service needs the explicitly selected extended operation vocabulary')
     profile = artifact['volatile_files']
     if profile['private_umask_offset'] == 32 or profile['resident_pages'] != 8 or profile['object_count'] != 4:

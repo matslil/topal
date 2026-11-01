@@ -2828,6 +2828,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             library.interface,
             crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV2
+                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV3
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",

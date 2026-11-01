@@ -98,21 +98,10 @@ mod tests {
         let tools = LlvmTools::discover(None).unwrap();
         let linked = parent.join("linked");
         let source = SystemsSourceLibraryInput {
-            source: "policy/boot-open-access.t".into(),
-            source_name: "policy/boot-open-access.t".into(),
-            text: include_str!("../../../kernel/policy/boot-open-access.t").into(),
-            modules: vec![
-                SystemsSourceModuleInput {
-                    source: "support/boot.t".into(),
-                    identity: vec!["support".into(), "boot".into()],
-                    text: include_str!("../../../kernel/support/boot.t").into(),
-                },
-                SystemsSourceModuleInput {
-                    source: "support/logic.t".into(),
-                    identity: vec!["support".into(), "logic".into()],
-                    text: include_str!("../../../kernel/support/logic.t").into(),
-                },
-            ],
+            source: "policy/file-open-access.t".into(),
+            source_name: "policy/file-open-access.t".into(),
+            text: include_str!("../../../kernel/policy/file-open-access.t").into(),
+            modules: Vec::new(),
         };
         let time = SystemsSourceLibraryInput {
             source: "policy/relative-sleep-deadline.t".into(),
@@ -135,9 +124,9 @@ mod tests {
             }],
         };
         let dispatch = SystemsSourceLibraryInput {
-            source: "arch/x86_64/policy/static-linux-dispatch-v2.t".into(),
-            source_name: "arch/x86_64/policy/static-linux-dispatch-v2.t".into(),
-            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v2.t")
+            source: "arch/x86_64/policy/static-linux-dispatch-v3.t".into(),
+            source_name: "arch/x86_64/policy/static-linux-dispatch-v3.t".into(),
+            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v3.t")
                 .into(),
             modules: vec![SystemsSourceModuleInput {
                 source: "support/syscall.t".into(),

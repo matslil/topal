@@ -417,6 +417,7 @@ pub(crate) fn inspect_linked_numeric_library(
         "static-elf64-header-v1" => super::NumericPolicy::Elf64Header,
         "static-linux-dispatch-v1" => super::NumericPolicy::LinuxDispatch,
         "static-linux-dispatch-v2" => super::NumericPolicy::LinuxDispatchV2,
+        "static-linux-dispatch-v3" => super::NumericPolicy::LinuxDispatchV3,
         "process-identity-transition-v1" => super::NumericPolicy::ProcessIdentity,
         "retained-process-identity-v1" => super::NumericPolicy::RetainedIdentity,
         "structured-process-identity-v1" => super::NumericPolicy::StructuredIdentity,

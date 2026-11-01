@@ -134,24 +134,31 @@ fn extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_p
 
 #[test]
 fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs() {
-    for extended in [false, true] {
-        native_dispatch_profile(extended);
+    for version in 1..=3 {
+        native_dispatch_profile(version);
     }
 }
 
-fn native_dispatch_profile(extended: bool) {
+fn native_dispatch_profile(version: u8) {
     // TOPAL-SYSTEMS-NUMERIC-ENUMS-001; TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
     let (mut requirement, mut input) = source();
-    if extended {
+    if version >= 2 {
         requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2;
         requirement.source = "arch/x86_64/policy/static-linux-dispatch-v2.t".into();
         let root =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
         input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
     }
+    if version == 3 {
+        requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3;
+        requirement.source = "arch/x86_64/policy/static-linux-dispatch-v3.t".into();
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+        input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
+    }
     let tools = crate::LlvmTools::discover(None).unwrap();
     let directory = std::env::temp_dir().join(format!(
-        "topal-dispatch-object-{}-{extended}",
+        "topal-dispatch-object-{}-{version}",
         std::process::id()
     ));
     std::fs::create_dir_all(&directory).unwrap();
@@ -202,7 +209,7 @@ int main(void) {
   printf("%llu\n",(unsigned long long)highwater);return 0;
 }
 "#;
-    let driver_source = if extended {
+    let driver_source = if version >= 2 {
         driver_source
             .replace(
                 "static_linux_dispatch_policy_v1",
@@ -212,6 +219,17 @@ int main(void) {
             .replace("80,81,97", "80,81,95,97")
     } else {
         driver_source.to_owned()
+    };
+    let driver_source = if version == 3 {
+        driver_source
+            .replace(
+                "static_linux_dispatch_policy_v2",
+                "static_linux_dispatch_policy_v3",
+            )
+            .replace("80,81,95,97", "80,81,87,95,97")
+            .replace("257,262,267", "257,262,263,267")
+    } else {
+        driver_source
     };
     std::fs::write(&driver, driver_source).unwrap();
     let executable = directory.join("dispatch-policy");
@@ -270,7 +288,7 @@ int main(void) {
         .iter()
         .zip(&second.record.source_tags)
     {
-        assert_eq!(original + reversed, if extended { 57 } else { 55 });
+        assert_eq!(original + reversed, 55 + 2 * u32::from(version - 1));
     }
     let compiled = std::process::Command::new("cc")
         .arg("-no-pie")
@@ -299,4 +317,39 @@ int main(void) {
         String::from_utf8_lossy(&output.stdout).trim()
     );
     std::fs::remove_dir_all(directory).unwrap();
+}
+
+#[test]
+fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
+    // TOPAL-SYSTEMS-LINUX-DISPATCH-V3-001
+    let (legacy, _) = source();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+    let versions = [
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1,
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
+    ];
+    for (version, interface) in versions.iter().enumerate() {
+        let mut q = legacy.clone();
+        q.interface = *interface;
+        q.source = if version == 0 {
+            "arch/x86_64/policy/static-linux-dispatch.t".into()
+        } else {
+            format!(
+                "arch/x86_64/policy/static-linux-dispatch-v{}.t",
+                version + 1
+            )
+        };
+        let input = crate::systems_library::load_source_library(&q, &root).unwrap();
+        let checked = check_numeric_library(&q, &input).unwrap();
+        assert_eq!(checked.source_tags.len(), 56 + 2 * version);
+        for other in versions {
+            if other == *interface {
+                continue;
+            }
+            let mut wrong = q.clone();
+            wrong.interface = other;
+            assert!(check_numeric_library(&wrong, &input).is_err());
+        }
+    }
 }

@@ -33,13 +33,18 @@ def mapping(interface='static-linux-dispatch-v1'):
     pairs=[(int(number),name) for number,name in re.findall(r"\b(\d+)\s+([A-Za-z]+)",table)]
     if len(pairs)!=55 or len(set(number for number,_ in pairs))!=55:
         raise GATE.GateError("dispatch witness needs the complete independent normative map")
-    if interface=='static-linux-dispatch-v2':
+    if interface in ('static-linux-dispatch-v2','static-linux-dispatch-v3'):
         rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001',1)[1].split('### ',1)[0]
         added=[(int(number),name) for number,name in re.findall(r'\b(77|95)\s+(TruncateFile|FileCreationMask)',rule)]
         if len(added)!=2:raise GATE.GateError('extended dispatch witness needs the complete normative additions')
         pairs=sorted(pairs+added)
     elif interface!='static-linux-dispatch-v1':
         raise GATE.GateError('unqualified dispatch version')
+    if interface=='static-linux-dispatch-v3':
+        rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V3-001',1)[1].split('### ',1)[0]
+        if '`Unlink` (x86-64 87)' not in rule or '`UnlinkAt` (263)' not in rule:
+            raise GATE.GateError('named dispatch witness needs both normative additions')
+        pairs=sorted(pairs+[(87,'Unlink'),(263,'UnlinkAt')])
     return pairs
 
 
@@ -211,18 +216,19 @@ def verify(timeout=180,write_evidence=False):
             single.update(library=only_artifact["dispatch_library"],time_and_image_libraries_absent=True,root_source=only)
             record["dispatch_only"]=single
         finally:GATE.SOURCE_PATH=original_source
-        legacy=original_source.read_text().replace('policy/static-linux-dispatch-v2.t','policy/static-linux-dispatch.t').replace('interface is static-linux-dispatch-v2','interface is static-linux-dispatch-v1')
-        if legacy==original_source.read_text():raise GATE.GateError('legacy dispatch control did not select the frozen interface')
-        legacy_source=root/'legacy-dispatch-root.t';legacy_source.write_text(legacy);GATE.SOURCE_PATH=legacy_source
-        try:
-            legacy_values=GATE.build_image(root/'legacy-dispatch-artifact')
-            legacy_artifact=json.loads(legacy_values[3].read_text())
-            if legacy_artifact['dispatch_library']['interface']!='static-linux-dispatch-v1':
-                raise GATE.GateError('legacy control lost its explicit source interface')
-            compatibility=observe(root/'legacy-dispatch',legacy_values,legacy_artifact,timeout)
-            compatibility.update(library=legacy_artifact['dispatch_library'],explicit_legacy_dispatch_control=True,root_source=legacy)
-            record['legacy_compatibility']=compatibility
-        finally:GATE.SOURCE_PATH=original_source
+        for version,source_name,key in [(1,'static-linux-dispatch.t','legacy_compatibility'),(2,'static-linux-dispatch-v2.t','legacy_v2_compatibility')]:
+            legacy=original_source.read_text().replace('policy/static-linux-dispatch-v3.t','policy/'+source_name).replace('interface is static-linux-dispatch-v3',f'interface is static-linux-dispatch-v{version}')
+            if legacy==original_source.read_text():raise GATE.GateError('legacy dispatch control did not select the frozen interface')
+            legacy_source=root/f'legacy-dispatch-v{version}-root.t';legacy_source.write_text(legacy);GATE.SOURCE_PATH=legacy_source
+            try:
+                legacy_values=GATE.build_image(root/f'legacy-dispatch-v{version}-artifact')
+                legacy_artifact=json.loads(legacy_values[3].read_text())
+                if legacy_artifact['dispatch_library']['interface']!=f'static-linux-dispatch-v{version}':
+                    raise GATE.GateError('legacy control lost its explicit source interface')
+                compatibility=observe(root/f'legacy-dispatch-v{version}',legacy_values,legacy_artifact,timeout)
+                compatibility.update(library=legacy_artifact['dispatch_library'],explicit_legacy_dispatch_control=True,root_source=legacy)
+                record[key]=compatibility
+            finally:GATE.SOURCE_PATH=original_source
     if write_evidence:
         (LAB/"results/topal-source-linux-dispatch-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     print("PASS actual source selectors/tags, independent native adaptation, before-handler cleanup and policy lifetime",flush=True)

@@ -7,7 +7,7 @@ pub(in super::super) const CODE_CONTEXT: u32 = 984;
 
 pub(in super::super) fn emit_invoke(
     code: &mut X86FunctionEncoder,
-    extended: bool,
+    policy: crate::systems_numeric_library::NumericPolicy,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // The target ABI has already normalized A. Its original six argument words
@@ -48,11 +48,6 @@ pub(in super::super) fn emit_invoke(
     e.mov(Sp, R11);
     // These are the bridge's named operation encodings. Never route the
     // captured untrusted selector after this point, including unsupported input.
-    let policy = if extended {
-        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
-    } else {
-        crate::systems_numeric_library::NumericPolicy::LinuxDispatch
-    };
     for &(_, operation) in policy.dispatch_choices() {
         e.cmp(
             A,

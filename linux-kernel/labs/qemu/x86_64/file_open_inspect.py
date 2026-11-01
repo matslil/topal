@@ -66,8 +66,11 @@ def install(config):
                 # the CreateDescription code and branches to its actual fatal.
                 code = memory(reg('rip'), 96)
                 comparison = bytes.fromhex('4881f8060000000f85')
-                assert code.count(comparison) == 1, code.hex()
                 at = code.index(comparison)
+                # Named creation has later capacity/parent checks containing
+                # the same immediate. Bind the first comparison immediately
+                # after the invocation shim restores its caller stack.
+                assert code[:at].endswith(bytes.fromhex('4c89dc')), code.hex()
                 displacement = int.from_bytes(code[at+9:at+13], 'little', signed=True)
                 target = reg('rip') + at + 13 + displacement
                 config['refusal_pc'] = target

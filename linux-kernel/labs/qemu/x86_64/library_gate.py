@@ -48,6 +48,9 @@ def module_publication(directory, artifact, key, prefix):
 def copy_architecture_libraries(directory):
     relative = Path("arch/x86_64/policy")
     shutil.copytree(GATE.LINUX_KERNEL/"kernel"/relative, directory/relative)
+    policy=directory/'policy/file-open-access.t'
+    policy.parent.mkdir(parents=True,exist_ok=True)
+    policy.write_bytes((GATE.LINUX_KERNEL/'kernel/policy/file-open-access.t').read_bytes())
 
 
 def commands(elf, debug, result, helper):
@@ -119,55 +122,63 @@ Released("*"+hex(symbol("topal_x86_systems_static_image_process_restore_entry"))
 
 
 def verify(timeout=30, write_evidence=False):
+    original_source=GATE.SOURCE_PATH
     original_build = GATE.build_image
     original_command = GATE.qemu_command
     with tempfile.TemporaryDirectory(prefix="topal-library-", dir="/tmp") as directory:
         root = Path(directory)
-        values = original_build(root / "artifact")
-        artifact = json.loads(values[3].read_text())
-        library = artifact["kernel_library"]
-        functions = {f["symbol"]: f for f in library["functions"]}
-        entry = functions[library["native_export"]]["callees"][0]
-        helper = next(name for name in functions if "support_2elogic_2eabsent_3f" in name)
-        debug, result = root / "debug.sock", root / "library.json"
-        script = root / "library.gdb"
-        script.write_text(commands(root / "artifact/linked/kernel.elf", debug, result, helper))
-        outcome = []
-
-        def inspect():
-            try:
-                until = time.monotonic() + 5
-                while not debug.exists() and time.monotonic() < until:
-                    time.sleep(.02)
-                run = subprocess.run(["gdb", "-q", "-batch", "-x", str(script)],
-                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout+5)
-                (root / "debug.log").write_bytes(run.stdout)
-                outcome.append(run.returncode)
-            except BaseException as error:
-                outcome.append(str(error))
-
-        def command(*args):
-            threading.Thread(target=inspect, daemon=True).start()
-            return original_command(*args) + ["-S", "-gdb", f"unix:{debug},server=on,wait=off"]
-
-        GATE.build_image = lambda *_args, **_kwargs: values
-        GATE.qemu_command = command
+        legacy=root/'legacy-root.t'
+        legacy.write_text(original_source.read_text().replace('policy/file-open-access.t','policy/boot-open-access.t')
+            .replace('export is file-open-decision','export is boot-open-decision')
+            .replace('interface is file-open-decision-v1','interface is boot-open-decision-v1'))
+        GATE.SOURCE_PATH=legacy
         try:
-            runtime = GATE.verify(timeout, False)
-        except GATE.GateError as error:
-            log = (root / "debug.log").read_text() if (root / "debug.log").exists() else repr(outcome)
-            raise GATE.GateError(str(error) + "\nLibrary debugger:\n" + log) from error
-        finally:
-            GATE.build_image = original_build
-            GATE.qemu_command = original_command
-        if outcome != [0] or not result.exists():
-            raise GATE.GateError("library debugger did not finish: " + repr(outcome) + "\n" + (root/"debug.log").read_text())
-        observation = json.loads(result.read_text())
-        record = dict(schema="topal-kernel-source-library-qemu/1",
-                      harness_sha256=GATE.digest(Path(__file__)), library=library,
-                      observation=observation, runtime=runtime)
-        record["module_publication"] = module_publication(values[3].parent,artifact,"kernel_library","kernel-source-module:")
-        record["variants"] = variants(root, values, artifact, timeout)
+            values = original_build(root / "artifact")
+            artifact = json.loads(values[3].read_text())
+            library = artifact["kernel_library"]
+            functions = {f["symbol"]: f for f in library["functions"]}
+            entry = functions[library["native_export"]]["callees"][0]
+            helper = next(name for name in functions if "support_2elogic_2eabsent_3f" in name)
+            debug, result = root / "debug.sock", root / "library.json"
+            script = root / "library.gdb"
+            script.write_text(commands(root / "artifact/linked/kernel.elf", debug, result, helper))
+            outcome = []
+
+            def inspect():
+                try:
+                    until = time.monotonic() + 5
+                    while not debug.exists() and time.monotonic() < until:
+                        time.sleep(.02)
+                    run = subprocess.run(["gdb", "-q", "-batch", "-x", str(script)],
+                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout+5)
+                    (root / "debug.log").write_bytes(run.stdout)
+                    outcome.append(run.returncode)
+                except BaseException as error:
+                    outcome.append(str(error))
+
+            def command(*args):
+                threading.Thread(target=inspect, daemon=True).start()
+                return original_command(*args) + ["-S", "-gdb", f"unix:{debug},server=on,wait=off"]
+
+            GATE.build_image = lambda *_args, **_kwargs: values
+            GATE.qemu_command = command
+            try:
+                runtime = GATE.verify(timeout, False)
+            except GATE.GateError as error:
+                log = (root / "debug.log").read_text() if (root / "debug.log").exists() else repr(outcome)
+                raise GATE.GateError(str(error) + "\nLibrary debugger:\n" + log) from error
+            finally:
+                GATE.build_image = original_build
+                GATE.qemu_command = original_command
+            if outcome != [0] or not result.exists():
+                raise GATE.GateError("library debugger did not finish: " + repr(outcome) + "\n" + (root/"debug.log").read_text())
+            observation = json.loads(result.read_text())
+            record = dict(explicit_frozen_open_compatibility_control=True, schema="topal-kernel-source-library-qemu/1",
+                          harness_sha256=GATE.digest(Path(__file__)), library=library,
+                          observation=observation, runtime=runtime)
+            record["module_publication"] = module_publication(values[3].parent,artifact,"kernel_library","kernel-source-module:")
+            record["variants"] = variants(root, values, artifact, timeout)
+        finally:GATE.SOURCE_PATH=original_source
     if write_evidence:
         (LAB / "results/topal-kernel-source-library-gate.json").write_text(
             json.dumps(record, indent=2, sort_keys=True) + "\n")

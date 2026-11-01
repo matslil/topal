@@ -582,6 +582,7 @@ fn parse_artifact_root(
                 requirement.interface,
                 CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2
+                    | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3
             ) {
                 return Err(source_diagnostic(
                     source,
@@ -632,7 +633,7 @@ fn parse_artifact_root(
                     source,
                     "E-SYSTEMS-LIBRARY",
                     label,
-                    "kernel-library requires the boot open interface",
+                    "kernel-library requires a qualified finite open interface",
                 ));
             }
             if kernel_library.replace(requirement).is_some() {

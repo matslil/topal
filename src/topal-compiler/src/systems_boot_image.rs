@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/142";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/143";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -416,11 +416,15 @@ fn validate_artifact_input(
         "static-linux-dispatch-v2" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
         }
+        "static-linux-dispatch-v3" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
+        }
         _ => return Err(CompileError::Tool("unqualified dispatch interface".into())),
     };
     if [
         crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
     ]
     .into_iter()
     .any(|policy| {
@@ -1295,6 +1299,11 @@ mod tests {
             ("resident_pages", serde_json::json!(9)),
             ("page_bytes", serde_json::json!(2048)),
             ("payload_offset", serde_json::json!(2048)),
+            ("name_offset", serde_json::json!(1024)),
+            ("name_bytes", serde_json::json!(128)),
+            ("maximum_name_bytes", serde_json::json!(256)),
+            ("directory_staging_offset", serde_json::json!(1536)),
+            ("directory_staging_bytes", serde_json::json!(256)),
             ("private_umask_offset", serde_json::json!(32)),
             ("initial_umask", serde_json::json!(0)),
             ("transfer_staging_offset", serde_json::json!(1664)),

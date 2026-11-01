@@ -340,11 +340,14 @@ fn emit_stat(e: &mut E<'_>) -> Result<(), CompileError> {
     // The shared fstat path already admitted output and cleared native staging.
     e.0.bind("file-stat")?;
     e.0.call("file-object-lookup");
+    e.0.bind("file-stat-object")?;
+    e.imm(A, 4096);
+    e.store(R12, STAGING + 56, A);
     e.imm(A, 2);
     e.store(R12, STAGING, A);
     e.load(A, R10, 8);
     e.store(R12, STAGING + 8, A);
-    e.imm(A, 0);
+    e.load(A, R10, 56);
     e.store(R12, STAGING + 16, A);
     e.load(A, R10, 24);
     e.arith(1, A, 0o100000);

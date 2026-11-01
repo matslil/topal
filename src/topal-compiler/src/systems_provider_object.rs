@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/221";
+    "topal.provider-object.x86_64-qemu-pc-q35/222";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1665,7 +1665,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.time_library.is_some(),
             program.image_library.is_some(),
             program.dispatch_library.is_some(),
-            program.dispatch_library.as_ref().is_some_and(|library| library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2),
+            program.dispatch_library.as_ref().map(|r| crate::systems_numeric_library::NumericPolicy::from_interface(r.interface)).transpose()?.unwrap_or(crate::systems_numeric_library::NumericPolicy::LinuxDispatch),
             program.process_identity_library.is_some(),
             crate::systems_numeric_library::uses_retained_identity(program),
             crate::systems_numeric_library::uses_structured_identity(program),
@@ -9529,7 +9529,7 @@ fn static_image_process_enter(
     source_numeric: bool,
     source_image: bool,
     source_dispatch: bool,
-    extended_dispatch: bool,
+    dispatch_policy: crate::systems_numeric_library::NumericPolicy,
     source_identity: bool,
     retained_identity: bool,
     structured_identity: bool,
@@ -9824,11 +9824,15 @@ fn static_image_process_enter(
     // Linux x86-64 selects a syscall with the low native 32-bit number.
     code.bytes(&[0x89, 0xc0]);
     if source_dispatch {
-        process_runtime::dispatch::emit_invoke(&mut code, extended_dispatch)?;
+        process_runtime::dispatch::emit_invoke(&mut code, dispatch_policy)?;
     }
     process_files::emit_dispatch(&mut code)?;
     process_runtime::signals::emit_dispatch(&mut code)?;
-    process_runtime::namespace::emit_dispatch(&mut code)?;
+    process_runtime::namespace::emit_dispatch(
+        &mut code,
+        file_open_plan
+            || dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
+    )?;
     process_runtime::realtime::emit_dispatch(&mut code)?;
     process_runtime::credentials::emit_dispatch(&mut code)?;
     process_runtime::observations::emit_dispatch(&mut code)?;

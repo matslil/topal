@@ -41,6 +41,30 @@ INTERACTIVE_BANNER = (
     b"Enter 'help' for a list of built-in commands.\n\n"
 )
 PROCESS_WORKLOADS = {
+    "named-redirection": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/item; exec /bin/busybox head -c 6 /tmp/item'\n",
+        b"alpha\n", 0
+    ),
+    "named-append": (
+        b"exec /bin/busybox sh -c 'echo first >/tmp/item; echo second >>/tmp/item; exec /bin/busybox wc -c /tmp/item'\n",
+        b"13 /tmp/item\n", 0
+    ),
+    "named-truncate": (
+        b"exec /bin/busybox sh -c 'echo long-data >/tmp/item; : >/tmp/item; exec /bin/busybox wc -c /tmp/item'\n",
+        b"0 /tmp/item\n", 0
+    ),
+    "named-reopen": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/item; exec 4</tmp/item; exec 5</tmp/item; /bin/busybox head -c 2 <&4; exec /bin/busybox head -c 5 <&5'\n",
+        b"alalpha", 0
+    ),
+    "named-remove": (
+        b"exec /bin/busybox sh -c 'echo remove >/tmp/item; /bin/busybox rm /tmp/item; exec /bin/busybox ls -1 /tmp'\n",
+        b"", 0
+    ),
+    "named-list": (
+        b"exec /bin/busybox sh -c 'echo z >/tmp/z; echo a >/tmp/a; exec /bin/busybox ls -1 /tmp'\n",
+        b"a\nz\n", 0
+    ),
     "true": (PROCESS_COMMAND, b"", 0),
     "false": (b"exec /bin/busybox false\n", b"", 1),
     "echo": (b"exec /bin/busybox echo alpha beta\n", b"alpha beta\n", 0),
@@ -1348,7 +1372,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/242",
+        "schema": "topal-kernel-toolchain-gate-qemu/243",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1788,7 +1812,9 @@ def verify(
                                 "child-echo": 2, "child-status": 2, "child-repeated": 3,
                                 "child-cwd": 2, "child-offset": 3,
                                 "pipe-substitution":2,"pipe-substitution-changed":2,
-                                "pipe-substitution-large":2}.get(process_workload, 1)
+                                "pipe-substitution-large":2,
+                                "named-redirection":2,"named-append":2,"named-truncate":2,
+                                "named-reopen":3,"named-remove":3,"named-list":2}.get(process_workload, 1)
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

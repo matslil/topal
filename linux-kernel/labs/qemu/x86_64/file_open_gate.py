@@ -100,12 +100,17 @@ def verify(timeout=120,write_evidence=False):
                     record['lifetime']['actual_file_syscall_returns']=len(lifetime_calls)
                 print('PASS source open plan',name,flush=True)
         finally:GATE.SOURCE_PATH,GATE.build_image=original_source,original_build
-        # Default kernel still selects the frozen source interface; verify its
-        # complete fixture and byte identity instead of relabeling a variant.
-        frozen=original_build(root/'frozen-artifact')
-        GATE.build_image=lambda *_args,**_kwargs:frozen
-        try:runtime=GATE.verify(timeout,False)
-        finally:GATE.build_image=original_build
+        # The legacy open profile remains an explicitly selected compatibility run.
+        legacy=root/'frozen-root.t'
+        legacy.write_text(original_source.read_text().replace('policy/file-open-access.t','policy/boot-open-access.t')
+            .replace('export is file-open-decision','export is boot-open-decision')
+            .replace('interface is file-open-decision-v1','interface is boot-open-decision-v1'))
+        GATE.SOURCE_PATH=legacy
+        try:
+            frozen=original_build(root/'frozen-artifact')
+            GATE.build_image=lambda *_args,**_kwargs:frozen
+            runtime=GATE.verify(timeout,False)
+        finally:GATE.build_image,GATE.SOURCE_PATH=original_build,original_source
         record['frozen']=dict(runtime=runtime,library=json.loads(frozen[3].read_text())['kernel_library'],
             linked_kernel_sha256=GATE.digest(frozen[3].parent/'kernel.elf'))
     if write_evidence:(LAB/'results/topal-file-open-plan-gate.json').write_text(json.dumps(record,indent=2,sort_keys=True)+'\n')

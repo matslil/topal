@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/242";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/228";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/243";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/229";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -4072,7 +4072,6 @@ enum NumericRootDependency {
     Code,
     ImageCode,
     DispatchCode,
-    ExtendedDispatchCode,
     ProcessIdentityCode,
     RetainedIdentityCode,
     StructuredIdentityCode,
@@ -4087,7 +4086,7 @@ struct RootEncoder {
     numeric_library: bool,
     image_library: bool,
     dispatch_library: bool,
-    extended_dispatch: bool,
+    dispatch_policy: Option<crate::systems_numeric_library::NumericPolicy>,
     process_identity_library: bool,
     retained_identity: bool,
     structured_identity: bool,
@@ -6079,14 +6078,8 @@ impl RootEncoder {
             if self.dispatch_library {
                 // The seventeenth code argument replaces the previous pad.
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations.push((
-                    self.bytes.len() as u64,
-                    if self.extended_dispatch {
-                        NumericRootDependency::ExtendedDispatchCode
-                    } else {
-                        NumericRootDependency::DispatchCode
-                    },
-                ));
+                self.numeric_relocations
+                    .push((self.bytes.len() as u64, NumericRootDependency::DispatchCode));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
             } else {
@@ -10172,11 +10165,23 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     let mut bootstrap = RootEncoder {
         role: RootRole::BootstrapWithLocalNotification,
         source_bound_library: program.kernel_library.is_some(),
-        source_library_export: program.kernel_library.as_ref().map(|r| crate::systems_library::finite::FinitePolicy::from_interface(r.interface.as_str()).map(|p| p.export())).transpose()?.unwrap_or(crate::systems_library::EXPORT_SYMBOL),
+        source_library_export: program
+            .kernel_library
+            .as_ref()
+            .map(|r| {
+                crate::systems_library::finite::FinitePolicy::from_interface(r.interface.as_str())
+                    .map(|p| p.export())
+            })
+            .transpose()?
+            .unwrap_or(crate::systems_library::EXPORT_SYMBOL),
         numeric_library: program.time_library.is_some(),
         image_library: program.image_library.is_some(),
         dispatch_library: program.dispatch_library.is_some(),
-        extended_dispatch: program.dispatch_library.as_ref().is_some_and(|library| library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2),
+        dispatch_policy: program
+            .dispatch_library
+            .as_ref()
+            .map(|r| crate::systems_numeric_library::NumericPolicy::from_interface(r.interface))
+            .transpose()?,
         process_identity_library: program.process_identity_library.is_some(),
         retained_identity: crate::systems_numeric_library::uses_retained_identity(program),
         structured_identity: crate::systems_numeric_library::uses_structured_identity(program),
@@ -10875,11 +10880,12 @@ fn append_root(
                 SymbolKind::Text,
             ),
             NumericRootDependency::DispatchCode => (
-                crate::systems_numeric_library::NumericPolicy::LinuxDispatch.native_export(),
-                SymbolKind::Text,
-            ),
-            NumericRootDependency::ExtendedDispatchCode => (
-                crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2.native_export(),
+                encoded
+                    .dispatch_policy
+                    .ok_or_else(|| {
+                        CompileError::Tool("dispatch relocation requires selected policy".into())
+                    })?
+                    .native_export(),
                 SymbolKind::Text,
             ),
             NumericRootDependency::ProcessIdentityCode => (
@@ -12070,7 +12076,7 @@ mod tests {
         .unwrap();
         source.text = source
             .text
-            .replace("pub boot-open-decision", "boot-open-decision");
+            .replace("pub file-open-decision", "file-open-decision");
         let time = crate::systems_library::load_source_library(
             program.time_library.as_ref().unwrap(),
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),

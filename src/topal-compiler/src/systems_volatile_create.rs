@@ -16,6 +16,8 @@ pub(super) fn emit(
     e.0.bind("file-create-temporary")?;
     e.cmp(R15, 5);
     e.0.jump_if(0x84, "namespace-enotdir");
+    e.cmp(R15, 7);
+    e.0.jump_if(0x83, "namespace-enotdir");
     e.cmp(R15, 6);
     e.0.jump_if(0x85, "namespace-erofs");
     if file_open_plan {
@@ -25,6 +27,27 @@ pub(super) fn emit(
         super::super::policy::emit_call(&mut e)?;
         e.cmp(A, 6); // CreateDescription, never an object/descriptor grant.
         e.0.jump_if(0x85, "fatal");
+    }
+    if file_open_plan {
+        e.imm(A, 0);
+        e.store(R12, namespace::LENGTH, A);
+        e.0.jump("file-create-common");
+        e.0.bind("file-create-named")?;
+        e.cmp(R15, 0);
+        e.0.jump_if(0x85, "fatal");
+        e.load(A, R12, namespace::PARENT);
+        e.cmp(A, 6);
+        e.0.jump_if(0x85, "fatal");
+        e.load(A, R12, namespace::LENGTH);
+        e.cmp(A, 1);
+        e.0.jump_if(0x82, "fatal");
+        e.cmp(A, 255);
+        e.0.jump_if(0x87, "fatal");
+        e.mov(A, Bp);
+        e.arith(4, A, 0x40);
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "fatal");
+        e.0.bind("file-create-common")?;
     }
     e.mov(R13, R12);
     e.add(R13, OBJECTS);
@@ -42,6 +65,11 @@ pub(super) fn emit(
     e.mov(Di, R13);
     e.imm(A, 0);
     e.imm(C, 128 / 8);
+    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    e.0.jump_if(0x85, "fatal");
+    name_pointer(&mut e, Di, R13);
+    e.imm(A, 0);
+    e.imm(C, 32);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.load(R8, R12, BASE);
@@ -77,10 +105,30 @@ pub(super) fn emit(
     e.load(A, R12, UMASK);
     e.0.bytes(&[0x48, 0xf7, 0xd0]);
     e.rr(0x21, R9, A);
+    // RTC erases private staging. Preserve copied name facts in GPRs it saves.
+    if file_open_plan {
+        e.load(Si, R12, namespace::COMPONENT);
+        e.rr(0x01, Si, R12);
+        e.add(Si, namespace::PATH);
+        e.load(D, R12, namespace::LENGTH);
+    } else {
+        e.imm(D, 0);
+    }
     // Clock failure is recoverable before any resource has been installed.
     e.0.call("file-clock");
     e.0.jump_if(0x82, "namespace-eio");
     e.mov(R15, A);
+    e.cmp(D, 0);
+    e.0.jump_if(0x84, "file-create-name-ready");
+    name_pointer(&mut e, Di, R13);
+    e.mov(C, D);
+    e.0.bytes(&[0xfc, 0xf3, 0xa4]);
+    e.store(R13, 72, D);
+    e.imm(A, 1);
+    e.store(R13, 56, A);
+    e.store(R12, BASE + 8, R15);
+    e.store(R12, BASE + 16, R15);
+    e.0.bind("file-create-name-ready")?;
     namespace::wipe_name(&mut e);
     wipe_staging(&mut e);
     e.store(R12, BASE, B);
@@ -91,9 +139,13 @@ pub(super) fn emit(
     for offset in [32, 40, 48] {
         e.store(R13, offset, R15);
     }
+    e.imm(A, 0);
+    e.cmp(D, 0);
+    e.0.jump_if(0x85, "file-create-link-intent-ready");
     e.mov(A, Bp);
     shift(&mut e, A, false, 7);
     e.arith(4, A, 1);
+    e.0.bind("file-create-link-intent-ready")?;
     e.store(R13, 64, A);
     e.imm(A, KIND as u64);
     e.store(R10, 0, A);

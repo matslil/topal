@@ -3,6 +3,9 @@
 use crate::SystemsModelError;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+#[path = "systems_named_files.rs"]
+mod named;
+pub use named::*;
 
 const PAGE: usize = 4096;
 const PAGES: usize = 8;
@@ -61,6 +64,7 @@ impl SystemsFileUmask {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SystemsVolatileFileMetadata {
     pub identity: u64,
+    pub links: u64,
     pub size: u64,
     pub position: u64,
     pub allocated_bytes: usize,
@@ -73,6 +77,7 @@ pub struct SystemsVolatileFileMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Object {
     identity: u64,
+    name: Option<Vec<u8>>,
     size: u64,
     mode: u16,
     times: [u64; 3],
@@ -105,6 +110,8 @@ struct State {
     descriptions: BTreeMap<u64, Description>,
     references: BTreeMap<u64, u64>,
     next_identity: u64,
+    next_description: u64,
+    directory_times: [u64; 2],
     next_ticket: u64,
     live: bool,
 }
@@ -144,6 +151,8 @@ impl SystemsVolatileFilePool {
                 descriptions: BTreeMap::new(),
                 references: BTreeMap::new(),
                 next_identity: 7,
+                next_description: 1,
+                directory_times: [0; 2],
                 next_ticket: 1,
                 live: true,
             },
@@ -206,14 +215,19 @@ impl SystemsVolatileFilePool {
         let next_identity = identity
             .checked_add(1)
             .ok_or_else(|| error("object identity exhausted"))?;
+        let description = self.state.next_description;
+        let next_description = description
+            .checked_add(1)
+            .ok_or_else(|| error("description identity exhausted"))?;
         self.state.objects[index] = Some(Object {
             identity,
+            name: None,
             size: 0,
             mode: umask.apply(mode),
             times: [seconds; 3],
         });
         self.state.descriptions.insert(
-            identity,
+            description,
             Description {
                 object: index,
                 rights,
@@ -222,7 +236,8 @@ impl SystemsVolatileFilePool {
                 references: 1,
             },
         );
-        self.state.references.insert(ticket, identity);
+        self.state.references.insert(ticket, description);
+        self.state.next_description = next_description;
         self.state.next_identity = next_identity;
         self.state.next_ticket = next_ticket;
         Ok(SystemsVolatileFile {
@@ -257,23 +272,27 @@ impl SystemsVolatileFilePool {
     ) -> Result<SystemsVolatileFileMetadata, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
-        let o = self.state.objects[d.object].as_ref().unwrap();
-        Ok(SystemsVolatileFileMetadata {
-            identity,
+        Ok(self.object_metadata(d.object, d.position))
+    }
+    fn object_metadata(&self, object: usize, position: u64) -> SystemsVolatileFileMetadata {
+        let o = self.state.objects[object].as_ref().unwrap();
+        SystemsVolatileFileMetadata {
+            identity: o.identity,
+            links: u64::from(o.name.is_some()),
             size: o.size,
-            position: d.position,
+            position,
             mode: o.mode,
             allocated_bytes: self
                 .state
                 .pages
                 .iter()
-                .filter(|p| p.owner == Some(identity))
+                .filter(|p| p.owner == Some(o.identity))
                 .count()
                 * PAGE,
             accessed_seconds: o.times[0],
             modified_seconds: o.times[1],
             changed_seconds: o.times[2],
-        })
+        }
     }
     pub fn read(
         &mut self,
@@ -307,7 +326,7 @@ impl SystemsVolatileFilePool {
             .state
             .pages
             .iter()
-            .find(|p| p.owner == Some(identity) && p.index == d.position / PAGE as u64)
+            .find(|p| p.owner == Some(o.identity) && p.index == d.position / PAGE as u64)
         {
             Some(p) => p.bytes[offset..offset + length].to_vec(),
             None => vec![0; length],
@@ -337,6 +356,7 @@ impl SystemsVolatileFilePool {
         }
         let object = d.object;
         let o = self.state.objects[object].as_ref().unwrap();
+        let object_identity = o.identity;
         let position = if d.append { o.size } else { d.position };
         if position == MAX_OFFSET {
             return Err(error("EFBIG"));
@@ -352,13 +372,13 @@ impl SystemsVolatileFilePool {
             .state
             .pages
             .iter()
-            .position(|p| p.owner == Some(identity) && p.index == page_index)
+            .position(|p| p.owner == Some(object_identity) && p.index == page_index)
             .or_else(|| self.state.pages.iter().position(|p| p.owner.is_none()))
             .ok_or_else(|| error("ENOSPC"))?;
         let page = &mut self.state.pages[page];
         if page.owner.is_none() {
             debug_assert!(page.index == 0 && page.bytes.iter().all(|&b| b == 0));
-            page.owner = Some(identity);
+            page.owner = Some(object_identity);
             page.index = page_index;
         }
         page.bytes[offset..offset + length].copy_from_slice(&bytes[..length]);
@@ -379,7 +399,9 @@ impl SystemsVolatileFilePool {
     ) -> Result<u64, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
-        let size = self.state.objects[d.object].as_ref().unwrap().size;
+        let object = self.state.objects[d.object].as_ref().unwrap();
+        let size = object.size;
+        let object_identity = object.identity;
         let position = match whence {
             SystemsFileSeek::Set | SystemsFileSeek::Current | SystemsFileSeek::End => {
                 let base = match whence {
@@ -403,7 +425,7 @@ impl SystemsVolatileFilePool {
                     self.state
                         .pages
                         .iter()
-                        .any(|p| p.owner == Some(identity) && p.index == index)
+                        .any(|p| p.owner == Some(object_identity) && p.index == index)
                 };
                 match whence {
                     SystemsFileSeek::Data if has(index) => position,
@@ -411,7 +433,7 @@ impl SystemsVolatileFilePool {
                         .state
                         .pages
                         .iter()
-                        .filter(|p| p.owner == Some(identity) && p.index > index)
+                        .filter(|p| p.owner == Some(object_identity) && p.index > index)
                         .map(|p| p.index * PAGE as u64)
                         .filter(|&n| n < size)
                         .min()
@@ -443,7 +465,9 @@ impl SystemsVolatileFilePool {
             return Err(error("EINVAL"));
         }
         let object = d.object;
-        let old_size = self.state.objects[object].as_ref().unwrap().size;
+        let o = self.state.objects[object].as_ref().unwrap();
+        let old_size = o.size;
+        let object_identity = o.identity;
         let length = length as u64;
         if length == old_size {
             return Ok(());
@@ -453,7 +477,7 @@ impl SystemsVolatileFilePool {
                 .state
                 .pages
                 .iter_mut()
-                .filter(|p| p.owner == Some(identity))
+                .filter(|p| p.owner == Some(object_identity))
             {
                 let start = page.index * PAGE as u64;
                 if start >= length {
@@ -480,16 +504,8 @@ impl SystemsVolatileFilePool {
         d.references -= 1;
         if d.references == 0 {
             let object = d.object;
-            for page in self
-                .state
-                .pages
-                .iter_mut()
-                .filter(|p| p.owner == Some(identity))
-            {
-                page.erase();
-            }
-            self.state.objects[object] = None;
             self.state.descriptions.remove(&identity);
+            self.reclaim_unlinked(object);
         }
         Ok(())
     }
@@ -502,6 +518,8 @@ impl SystemsVolatileFilePool {
         self.state.descriptions.clear();
         self.state.references.clear();
         self.state.next_identity = 0;
+        self.state.next_description = 0;
+        self.state.directory_times = [0; 2];
         self.state.next_ticket = 0;
         self.state.live = false;
         Ok(())

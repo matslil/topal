@@ -604,7 +604,9 @@ pub(crate) fn check_numeric_library(
             NumericPolicy::ProcessIdentity | NumericPolicy::RetainedIdentity => {
                 "identity interface is not declared-type Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
             }
-            NumericPolicy::LinuxDispatch | NumericPolicy::LinuxDispatchV2 => {
+            NumericPolicy::LinuxDispatch
+            | NumericPolicy::LinuxDispatchV2
+            | NumericPolicy::LinuxDispatchV3 => {
                 "dispatch interface is not declared-type Nat -> StaticLinuxOperation"
             }
         }));

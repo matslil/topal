@@ -94,6 +94,9 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
             }
+            "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v3") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3);
+            }
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v2") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2);
             }
@@ -346,29 +349,33 @@ mod tests {
     #[test]
     fn extended_dispatch_occupies_the_same_unique_slot_and_rejects_wrong_reserves() {
         // TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001
-        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
-        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
-        let library = analyze_systems_for_compiler(source, &target)
-            .unwrap()
-            .dispatch_library
-            .unwrap();
-        assert_eq!(
-            library.interface,
-            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2
-        );
-        let start = source.find("  dispatch-library is").unwrap();
-        let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
-        let declaration = &source[start..end];
-        for changed in [
-            source.replace(declaration, &format!("{declaration}{declaration}")),
-            source.replace(declaration, &declaration.replace("4096", "4095")),
-            source.replace(declaration, &declaration.replace("65536", "65535")),
-            source.replace(
-                declaration,
-                &declaration.replace("static-linux-dispatch-v2", "structured-process-identity-v1"),
-            ),
+        let original = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        for interface in [
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
         ] {
-            assert!(analyze_systems_for_compiler(&changed, &target).is_err());
+            let selected = original.replace("static-linux-dispatch-v3", interface.as_str());
+            let source = selected.as_str();
+            let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+            let library = analyze_systems_for_compiler(source, &target)
+                .unwrap()
+                .dispatch_library
+                .unwrap();
+            assert_eq!(library.interface, interface);
+            let start = source.find("  dispatch-library is").unwrap();
+            let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+            let declaration = &source[start..end];
+            for changed in [
+                source.replace(declaration, &format!("{declaration}{declaration}")),
+                source.replace(declaration, &declaration.replace("4096", "4095")),
+                source.replace(declaration, &declaration.replace("65536", "65535")),
+                source.replace(
+                    declaration,
+                    &declaration.replace(interface.as_str(), "structured-process-identity-v1"),
+                ),
+            ] {
+                assert!(analyze_systems_for_compiler(&changed, &target).is_err());
+            }
         }
     }
 
@@ -454,13 +461,13 @@ mod tests {
         let program = analyze_systems_for_compiler(source, &target).unwrap();
         assert_eq!(
             program.kernel_library.unwrap().source,
-            "policy/boot-open-access.t"
+            "policy/file-open-access.t"
         );
         for (before, after) in [
-            ("policy/boot-open-access.t", "../policy.t"),
+            ("policy/file-open-access.t", "../policy.t"),
             ("stack-limit-bytes is 1024", "stack-limit-bytes is 1025"),
-            ("interface is boot-open-decision-v1", "interface is other"),
-            ("export is boot-open-decision", "export is 7"),
+            ("interface is file-open-decision-v1", "interface is other"),
+            ("export is file-open-decision", "export is 7"),
             (
                 "stack-limit-bytes is 1024",
                 "source is \"other.t\", stack-limit-bytes is 1024",

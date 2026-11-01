@@ -1924,9 +1924,9 @@ illegal-seek-error is 29
 
 lang systems artifact (
   kernel-library is lang systems source-library (
-    source is "policy/boot-open-access.t",
-    export is boot-open-decision,
-    interface is boot-open-decision-v1,
+    source is "policy/file-open-access.t",
+    export is file-open-decision,
+    interface is file-open-decision-v1,
     stack-limit-bytes is 1024
   ),
   time-library is lang systems source-library (
@@ -1944,9 +1944,9 @@ lang systems artifact (
     runtime-limit-bytes is 65536
   ),
   dispatch-library is lang systems source-library (
-    source is "arch/x86_64/policy/static-linux-dispatch-v2.t",
+    source is "arch/x86_64/policy/static-linux-dispatch-v3.t",
     export is select-operation,
-    interface is static-linux-dispatch-v2,
+    interface is static-linux-dispatch-v3,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
