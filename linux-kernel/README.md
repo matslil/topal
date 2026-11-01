@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [ordinary Topal file-open plans](step-4-source-file-open-plans.md) over the existing owned sparse file service.
+The latest Step 4 increment qualifies [named RAM files](step-4-named-volatile-files.md), independent reopens, unlink lifetimes and ordinary BusyBox shell redirection/listing/removal.
 
 ## Current phase
 

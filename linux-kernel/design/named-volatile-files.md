@@ -24,6 +24,18 @@ Unsupported operations/argument profiles must remain reported as unqualified;
 AT_REMOVEDIR may return ENOSYS and remains unqualified directory removal.
 No core language meaning or source assembly changes.
 
+## Alternatives
+
+Keeping anonymous files alone cannot support reopened paths or ordinary shell
+redirection. Sharing one description between independent opens would incorrectly
+share their positions. A separate object reference counter would duplicate the
+bounded description banks' ownership information; the implementation instead
+scans both sixteen-description banks when deciding unlinked-object lifetime.
+Name ownership remains a distinct link, so closed linked files retain contents.
+The existing 256-byte transfer buffer cannot hold a 280-byte directory record;
+separate bounded staging preserves both transfer and directory-copy obligations.
+Host filesystem delegation would not exercise the kernel's own storage lifetime.
+
 ## Names, objects and descriptions
 
 The filesystem keeps its four-object/eight-page budget. A linked name owns one
@@ -147,8 +159,8 @@ closed-linked capacity, object/page/descriptor exhaustion, rejected copies,
 relative/cwd/dot/trailing errors, exec/fork and both active/inactive cancellation.
 Run unmodified BusyBox shell redirection, reads/counts/listing/removal from its
 ordinary prompt. Complete reclamation and a deliberately wrong-data/association
-case must be observed independently. Until this evidence exists, named mutation
-remains planned rather than an executed compatibility claim.
+case must be observed independently. The [qualified report](../step-4-named-volatile-files.md)
+records the implemented bounds and executed evidence for this profile.
 
 References: pinned Linux 7.2.9 `fs/namei.c` (`lookup_fast_for_open`, `do_open`,
 `filename_unlinkat`, `vfs_unlink`), `fs/open.c` (`build_open_flags`, truncation),
