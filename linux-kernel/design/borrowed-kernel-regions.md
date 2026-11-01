@@ -46,8 +46,8 @@ call depth and view budgets must be admitted before mutation, including aliases
 and derived windows, rather than relying on observed high-water marks.
 
 The initial model budgets at most 64 selected function identities, 64 active
-frames and 256 live views per invocation. These are systems qualification limits, not core function or type
-limits. Native qualification must bind actual source/code identities and
+frames and 256 live views per invocation. These are systems qualification
+limits, not core function or type limits. Native qualification must bind actual source/code identities and
 conservative stack/allocation/access bounds; accepting a string in a reference
 model does not constitute that evidence.
 

@@ -73,6 +73,13 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
+The next compiler milestone is ordinary effectful functions over
+[borrowed kernel regions](design/borrowed-kernel-regions.md). Its
+[model foundation](step-4-borrowed-region-model.md) validates scoped views,
+aliases, nested calls and owner resumption over the existing storage resource.
+Source/native compilation and physical qualification remain required; this is
+not an additional executed capability in the list above.
+
 | Area | Required result | Current limit |
 | --- | --- | --- |
 | Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
