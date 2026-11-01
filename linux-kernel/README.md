@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [ordinary source syscall selection](step-4-source-linux-syscall-selection.md).
+The latest Step 4 increment qualifies [source process-identity transitions](step-4-source-process-identity.md).
 
 ## Current phase
 

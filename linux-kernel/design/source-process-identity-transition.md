@@ -1,7 +1,7 @@
 # Source transition of retained process-identity state
 
 `TK-DEC-262`; systems-only refinement adopted under standing authorization.
-Design adopted; implementation and physical qualification remain required.
+Implemented and qualified; see the [report](../step-4-source-process-identity.md).
 
 Step 2 puts kernel state policy in ordinary Topal modules over owned resources.
 Syscall selection and header/time policy now execute in source, but process-ID

@@ -23,6 +23,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
   refusal, independently selected header/time policies and complete reclamation.
 - Ordinary source selection of 55 existing Linux operations plus Unsupported,
   actual nominal tag adaptation and cleanup before native argument/handler access.
+- Source process-ID/cursor transitions over immutable Record snapshots, named
+  scalar result extraction and owned state publication after complete cleanup.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -41,19 +43,19 @@ systems abstractions; ARM64 implementation is outside the current focus.
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-source-linux-syscall-selection.md) records
-actual source selectors/tags, native argument/return preservation, dispatch-only
-operation, 3322 checked invocation boundaries, 58 successful physical runs on one
-primary kernel, five positive variants, 26 toolchain plus four reference-VM
-contracts and bounded workspace validation. Each report identifies its scope
-and limitations.
+The [current runtime report](step-4-source-process-identity.md) records actual
+source state/results, ordinary Record order, cleanup before owner publication,
+27 cleaned/committed transitions, independent identity-only/wrap/counterexample
+observations, 59 successful physical runs on one primary kernel, seven positive
+variants, 27 toolchain plus four reference-VM contracts and bounded workspace
+validation. Each report identifies its scope and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation and nominal syscall selection; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and pure identity-state proposals with named results; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects, four shared anonymous FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
