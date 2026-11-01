@@ -3,6 +3,10 @@
 mod artifact;
 mod backend;
 mod codegen;
+mod systems_retained_layout;
+pub use systems_retained_layout::{
+    RetainedBoolean, RetainedNumber, RetainedRecordOrder, RetainedValueLayout, RetainedZeroMask,
+};
 mod frontend;
 mod optimization;
 mod pipeline;

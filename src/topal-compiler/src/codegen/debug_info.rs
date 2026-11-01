@@ -1086,25 +1086,18 @@ impl DebugInfo {
             return *type_id;
         }
 
-        let mut offset = 0;
-        let mut aggregate_alignment = 8;
+        let record_layout = ordinary_record_layout(fields);
+        let size = record_layout.value.size;
+        let aggregate_alignment = record_layout.value.alignment;
         let mut members = Vec::with_capacity(fields.len());
-        for (label, field) in fields {
+        for ((label, field), offset) in fields.iter().zip(record_layout.fields) {
             let layout = target_value_layout(field);
-            offset = align_bits(offset, layout.alignment);
-            aggregate_alignment = aggregate_alignment.max(layout.alignment);
             let field_type = self.type_id(field);
             members.push(self.node(format!(
                 "!DIDerivedType(tag: DW_TAG_member, name: \"{}\", file: !{}, baseType: !{field_type}, size: {}, align: {}, offset: {offset})",
                 llvm_string(label), self.file, layout.size, layout.alignment
             )));
-            offset += layout.size;
         }
-        for _ in fields {
-            offset = align_bits(offset, 32) + 32;
-            aggregate_alignment = aggregate_alignment.max(32);
-        }
-        let size = align_bits(offset, aggregate_alignment);
         debug_assert_eq!(size, target_value_layout(&value_type).size);
         let elements = self.node(format!(
             "!{{{}}}",
@@ -1423,13 +1416,45 @@ fn function_llvm_return_type(function: &CompilerFunction) -> String {
 }
 
 #[derive(Clone, Copy)]
-struct TargetValueLayout {
-    size: u64,
-    alignment: u64,
+pub(crate) struct TargetValueLayout {
+    pub(crate) size: u64,
+    pub(crate) alignment: u64,
+}
+
+/// Ordinary Record representation shared by debug layout and owned systems
+/// projections. Offsets and extents are in bits, like TargetValueLayout.
+pub(crate) struct OrdinaryRecordLayout {
+    pub(crate) value: TargetValueLayout,
+    pub(crate) fields: Vec<u64>,
+    pub(crate) order: Vec<u64>,
+}
+
+pub(crate) fn ordinary_record_layout(fields: &[(String, CompilerType)]) -> OrdinaryRecordLayout {
+    let (mut size, mut alignment) = (0, 8);
+    let mut offsets = Vec::new();
+    let mut order = Vec::new();
+    for (_, field) in fields {
+        let layout = target_value_layout(field);
+        size = align_bits(size, layout.alignment);
+        offsets.push(size);
+        size += layout.size;
+        alignment = alignment.max(layout.alignment);
+    }
+    for _ in fields {
+        size = align_bits(size, 32);
+        order.push(size);
+        size += 32;
+        alignment = alignment.max(32);
+    }
+    OrdinaryRecordLayout {
+        value: TargetValueLayout { size: align_bits(size, alignment), alignment },
+        fields: offsets,
+        order,
+    }
 }
 
 #[allow(clippy::too_many_lines)] // Every semantic representation has an explicit target layout.
-fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
+pub(crate) fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
     match value_type {
         CompilerType::Unit
         | CompilerType::Completed
@@ -1502,21 +1527,7 @@ fn target_value_layout(value_type: &CompilerType) -> TargetValueLayout {
             }
         }
         CompilerType::Record(fields) => {
-            let mut size = 0;
-            let mut alignment = 8;
-            for (_, field) in fields {
-                let field = target_value_layout(field);
-                size = align_bits(size, field.alignment) + field.size;
-                alignment = alignment.max(field.alignment);
-            }
-            for _ in fields {
-                size = align_bits(size, 32) + 32;
-                alignment = alignment.max(32);
-            }
-            TargetValueLayout {
-                size: align_bits(size, alignment),
-                alignment,
-            }
+            ordinary_record_layout(fields).value
         }
         CompilerType::Sum(sum) => {
             let mut size = 32;

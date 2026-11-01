@@ -2810,6 +2810,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             library.interface,
             crate::SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                 | crate::SystemsSourceLibraryInterface::RetainedProcessIdentityV1
+                | crate::SystemsSourceLibraryInterface::StructuredProcessIdentityV1
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",

@@ -167,7 +167,7 @@ def verify(timeout=60,write_evidence=False):
     original=GATE.SOURCE_PATH
     with tempfile.TemporaryDirectory(prefix="topal-scalar-identity-",dir="/tmp") as temporary:
         source=Path(temporary)/"scalar-root.t"
-        text=original.read_text().replace("retained-process-identity-v1","process-identity-transition-v1").replace("    state-limit-bytes is 4096,\n","")
+        text=original.read_text().replace("structured-process-identity-v1","process-identity-transition-v1").replace("policy/structured-process-identity.t","policy/process-identity.t").replace("retained-process-identity-v1","process-identity-transition-v1").replace("    state-limit-bytes is 4096,\n","")
         source.write_text(text);GATE.SOURCE_PATH=source
         try:record=verify_scalar(timeout,False)
         finally:GATE.SOURCE_PATH=original

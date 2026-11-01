@@ -106,7 +106,7 @@ detach
     return dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
 
 
-def verify(timeout=60,write_evidence=False):
+def verify_retained(timeout=60,write_evidence=False):
     with tempfile.TemporaryDirectory(prefix="topal-retained-",dir="/tmp") as temporary:
         root=Path(temporary);values=GATE.build_image(root/"artifact");artifact=json.loads(values[3].read_text())
         primary=observe(root/"primary",values,artifact,timeout)
@@ -143,6 +143,20 @@ def verify(timeout=60,write_evidence=False):
     if write_evidence:
         (LAB/"results/topal-retained-source-identity-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     print("PASS actual retained source graphs, cleanup before publication, version retirement and full reclamation",flush=True)
+    return record
+
+
+def verify(timeout=60,write_evidence=False):
+    original=GATE.SOURCE_PATH
+    with tempfile.TemporaryDirectory(prefix="topal-retained-v1-",dir="/tmp") as temporary:
+        source=Path(temporary)/"retained-root.t"
+        text=original.read_text().replace("structured-process-identity-v1","retained-process-identity-v1").replace("policy/structured-process-identity.t","policy/process-identity.t")
+        source.write_text(text);GATE.SOURCE_PATH=source
+        try:record=verify_retained(timeout,False)
+        finally:GATE.SOURCE_PATH=original
+    record["retained_compatibility_control"]=True
+    if write_evidence:
+        (LAB/"results/topal-retained-source-identity-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")
     return record
 
 

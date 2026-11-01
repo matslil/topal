@@ -56,7 +56,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/7";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/8";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -82,7 +82,19 @@ pub(crate) fn uses_retained_identity(
     program: &topal_language::compiler::CompilerSystemsProgram,
 ) -> bool {
     program.process_identity_library.as_ref().is_some_and(|r| {
-        r.interface == CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+        matches!(
+            r.interface,
+            CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+                | CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1
+        )
+    })
+}
+
+pub(crate) fn uses_structured_identity(
+    program: &topal_language::compiler::CompilerSystemsProgram,
+) -> bool {
+    program.process_identity_library.as_ref().is_some_and(|r| {
+        r.interface == CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1
     })
 }
 
@@ -581,6 +593,9 @@ pub(crate) fn check_numeric_library(
         || entry.parameters.iter().any(|p| p.int_range.is_some())
     {
         return Err(invalid(match policy {
+            NumericPolicy::StructuredIdentity => {
+                "structured identity interface requires its exact ordinary nested state signature"
+            }
             NumericPolicy::Deadline => {
                 "numeric interface is not declared-type Nat/Nat/Nat/Boolean -> Int"
             }

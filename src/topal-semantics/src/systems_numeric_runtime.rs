@@ -40,6 +40,7 @@ impl SystemsNumericRuntimeArena {
                 requirement.interface,
                 SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
+                    | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
             ) && std::mem::replace(&mut identity_selected, true)
             {
                 return Err(invalid());
@@ -51,6 +52,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
+                    | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
             ) || !policies.insert(requirement.interface)
             {
                 return Err(invalid());
@@ -222,6 +224,7 @@ mod tests {
             StaticLinuxDispatchV1,
             ProcessIdentityTransitionV1,
             RetainedProcessIdentityV1,
+            StructuredProcessIdentityV1,
         ];
         let requirement = |interface| SystemsSourceLibraryRequirement {
             source: "policy/identity.t".into(),
@@ -229,14 +232,17 @@ mod tests {
             interface,
             stack_limit_bytes: 4096,
             runtime_limit_bytes: Some(65536),
-            state_limit_bytes: if interface == RetainedProcessIdentityV1 {
+            state_limit_bytes: if matches!(
+                interface,
+                RetainedProcessIdentityV1 | StructuredProcessIdentityV1
+            ) {
                 Some(4096)
             } else {
                 None
             },
         };
         let mut accepted = 0;
-        for mask in 1..32 {
+        for mask in 1u32..64 {
             let selected = policies
                 .iter()
                 .enumerate()
@@ -244,7 +250,7 @@ mod tests {
                 .map(|(_, interface)| requirement(*interface))
                 .collect::<Vec<_>>();
             let result = SystemsNumericRuntimeArena::new_with_policies(&selected, "root");
-            if mask & 24 == 24 {
+            if (mask & 56).count_ones() > 1 {
                 assert!(result.is_err());
                 continue;
             }
@@ -259,7 +265,7 @@ mod tests {
             arena.return_to_root("process").unwrap();
             assert!(arena.is_reclaimed());
         }
-        assert_eq!(accepted, 23);
+        assert_eq!(accepted, 31);
     }
     #[test]
     fn distinct_numeric_policies_share_only_inactive_clean_storage() {

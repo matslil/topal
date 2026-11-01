@@ -194,6 +194,7 @@ def variants(root, primary, artifact, timeout):
         shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
         copy_architecture_libraries(case)
         (unit.parent / "process-identity.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/process-identity.t").read_bytes())
+        (unit.parent / "structured-process-identity.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/structured-process-identity.t").read_bytes())
         (unit.parent / "static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/static-elf64-header.t").read_bytes())
         (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)

@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/139";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/140";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -352,30 +352,40 @@ fn validate_artifact_input(
         )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
-    let retained_identity = artifact
+    let identity_interface = artifact
         .process_identity_library
         .as_ref()
-        .is_some_and(|r| r.interface == "retained-process-identity-v1");
-    let identity_policy = if retained_identity {
-        crate::systems_numeric_library::NumericPolicy::RetainedIdentity
-    } else {
-        crate::systems_numeric_library::NumericPolicy::ProcessIdentity
+        .map_or("process-identity-transition-v1", |r| r.interface.as_str());
+    let identity_policy = match identity_interface {
+        "process-identity-transition-v1" => {
+            crate::systems_numeric_library::NumericPolicy::ProcessIdentity
+        }
+        "retained-process-identity-v1" => {
+            crate::systems_numeric_library::NumericPolicy::RetainedIdentity
+        }
+        "structured-process-identity-v1" => {
+            crate::systems_numeric_library::NumericPolicy::StructuredIdentity
+        }
+        _ => {
+            return Err(CompileError::Tool(
+                "unqualified process identity interface".into(),
+            ));
+        }
     };
-    let identity_interface = if retained_identity {
-        "retained-process-identity-v1"
-    } else {
-        "process-identity-transition-v1"
-    };
-    let alternate = if retained_identity {
-        crate::systems_numeric_library::NumericPolicy::ProcessIdentity
-    } else {
-        crate::systems_numeric_library::NumericPolicy::RetainedIdentity
-    };
-    if file.symbol_by_name(alternate.native_export()).is_some()
-        || file
-            .symbol_by_name(crate::systems_numeric_library::STATE_SYMBOL)
-            .is_some()
-            != retained_identity
+    let retained_identity =
+        identity_policy != crate::systems_numeric_library::NumericPolicy::ProcessIdentity;
+    if [
+        crate::systems_numeric_library::NumericPolicy::ProcessIdentity,
+        crate::systems_numeric_library::NumericPolicy::RetainedIdentity,
+        crate::systems_numeric_library::NumericPolicy::StructuredIdentity,
+    ]
+    .into_iter()
+    .any(|policy| {
+        policy != identity_policy && file.symbol_by_name(policy.native_export()).is_some()
+    }) || file
+        .symbol_by_name(crate::systems_numeric_library::STATE_SYMBOL)
+        .is_some()
+        != retained_identity
     {
         return Err(CompileError::Tool(
             "identity interface/store ownership bindings disagree".into(),
@@ -1213,6 +1223,60 @@ mod tests {
                         .unwrap()
                         .native_invocation_save_bytes = 0
                 }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_structured_layout_domain_projection_and_transport_evidence_tampering() {
+        // TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001; TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..24 {
+            let mut changed = artifact.clone();
+            let library = changed.process_identity_library.as_mut().unwrap();
+            let bound = library.retained_state.as_mut().unwrap();
+            macro_rules! layout {
+                () => {
+                    bound.value_layout.as_mut().unwrap()
+                };
+            }
+            match mutation {
+                0 => bound.value_layout = None,
+                1 => layout!().schema.push('x'),
+                2 => layout!().llvm_type = layout!().llvm_type.replace("i1", "i8"),
+                3 => layout!().numbers[0].minimum = 0,
+                4 => layout!().numbers[0].maximum = u32::MAX as u64,
+                5 => layout!().numbers[0].input_maximum = u64::MAX,
+                6 => layout!().numbers[0].node_offset += 8,
+                7 => layout!().numbers[1].pointer_offset += 8,
+                8 => layout!().booleans[0].offset += 1,
+                9 => layout!().booleans[0].indices.reverse(),
+                10 => layout!().orders[0].offsets.reverse(),
+                11 => layout!().orders[1].fields.reverse(),
+                12 => {
+                    layout!().zero_masks.pop();
+                }
+                13 => bound.maximum_prepared_validation_words = 261,
+                14 => bound.maximum_projection_words = 11,
+                15 => bound.maximum_value_bits = 32,
+                16 => bound.maximum_source_numeric_read_operations = 8,
+                17 => bound.maximum_source_result_record_words = 3,
+                18 => bound.source_result_order_values = 2,
+                19 => library.interface = "retained-process-identity-v1".into(),
+                20 => layout!().graph_bytes = 40,
+                21 => bound.source_result_boolean_values = 0,
+                22 => {
+                    layout!().numbers.remove(0);
+                }
+                23 => layout!().numbers[1].node_offset = layout!().numbers[0].node_offset,
                 _ => unreachable!(),
             }
             assert!(

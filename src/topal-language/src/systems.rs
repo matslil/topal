@@ -564,6 +564,7 @@ fn parse_artifact_root(
                 requirement.interface,
                 CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1
+                    | CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1
             ) {
                 return Err(source_diagnostic(
                     source,

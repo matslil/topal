@@ -8,6 +8,8 @@ use crate::{
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsRetainedIdentityStore {
+    interface: Interface,
+    graph_bytes: usize,
     root: String,
     process: Option<String>,
     temporary: SystemsNumericRuntimeArena,
@@ -30,15 +32,31 @@ impl SystemsRetainedIdentityStore {
         requirements: &[SystemsSourceLibraryRequirement],
         root: &str,
     ) -> Result<Self, SystemsModelError> {
+        Self::new_for_profile(requirements, root, Interface::RetainedProcessIdentityV1)
+    }
+    /// Shared owner/version protocol. The structured wrapper separately retains
+    /// its whole semantic value; this layer also checks its compatibility cursor.
+    pub(crate) fn new_for_profile(
+        requirements: &[SystemsSourceLibraryRequirement],
+        root: &str,
+        interface: Interface,
+    ) -> Result<Self, SystemsModelError> {
+        let graph_bytes = match interface {
+            Interface::RetainedProcessIdentityV1 => 40,
+            Interface::StructuredProcessIdentityV1 => 88,
+            _ => return Err(invalid()),
+        };
         if requirements
             .iter()
-            .filter(|r| r.interface == Interface::RetainedProcessIdentityV1)
+            .filter(|r| r.interface == interface)
             .count()
             != 1
         {
             return Err(invalid());
         }
         Ok(Self {
+            interface,
+            graph_bytes,
             root: root.into(),
             process: None,
             temporary: SystemsNumericRuntimeArena::new_with_policies(requirements, root)?,
@@ -60,6 +78,9 @@ impl SystemsRetainedIdentityStore {
     fn bank_range(bank: usize) -> std::ops::Range<usize> {
         let start = 64 + bank * 2016;
         start..start + 2016
+    }
+    pub(crate) fn published_bank(&self) -> usize {
+        self.published_bank
     }
     fn inactive_clean(&self) -> bool {
         let bank = 1 - self.published_bank;
@@ -98,8 +119,7 @@ impl SystemsRetainedIdentityStore {
             return Err(invalid());
         }
         let facts = self.published_facts(process)?;
-        self.temporary
-            .begin_policy(process, Interface::RetainedProcessIdentityV1)?;
+        self.temporary.begin_policy(process, self.interface)?;
         self.active = true;
         Ok(facts)
     }
@@ -124,7 +144,7 @@ impl SystemsRetainedIdentityStore {
         self.values[bank] = Some(proposal.next);
         // An abstract graph occupancy mark, deliberately not a native encoding.
         let range = Self::bank_range(bank);
-        self.storage[range.start..range.start + 40].fill(0x5a);
+        self.storage[range.start..range.start + self.graph_bytes].fill(0x5a);
         self.prepared = Some(proposal);
         Ok(())
     }
@@ -133,8 +153,7 @@ impl SystemsRetainedIdentityStore {
         if !self.active || self.prepared.is_none() {
             return Err(invalid());
         }
-        self.temporary
-            .finish_policy(process, Interface::RetainedProcessIdentityV1)?;
+        self.temporary.finish_policy(process, self.interface)?;
         self.active = false;
         Ok(())
     }
@@ -188,7 +207,7 @@ impl SystemsRetainedIdentityStore {
         policy: Interface,
     ) -> Result<(), SystemsModelError> {
         self.retain_across_exec(process)?;
-        if policy == Interface::RetainedProcessIdentityV1 {
+        if policy == self.interface {
             return Err(invalid());
         }
         self.temporary.begin_policy(process, policy)
@@ -199,7 +218,7 @@ impl SystemsRetainedIdentityStore {
         policy: Interface,
     ) -> Result<(), SystemsModelError> {
         self.owner(process)?;
-        if policy == Interface::RetainedProcessIdentityV1 {
+        if policy == self.interface {
             return Err(invalid());
         }
         self.temporary.finish_policy(process, policy)
@@ -209,9 +228,7 @@ impl SystemsRetainedIdentityStore {
         // Validate/clean a staged owner so a rejected return never mutates it.
         let mut returned = self.clone();
         if returned.active {
-            returned
-                .temporary
-                .finish_policy(process, Interface::RetainedProcessIdentityV1)?;
+            returned.temporary.finish_policy(process, self.interface)?;
             returned.active = false;
         }
         returned.temporary.return_to_root(process)?;

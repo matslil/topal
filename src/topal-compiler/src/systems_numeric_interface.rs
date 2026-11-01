@@ -8,6 +8,7 @@ pub(crate) enum NumericPolicy {
     LinuxDispatch,
     ProcessIdentity,
     RetainedIdentity,
+    StructuredIdentity,
 }
 impl NumericPolicy {
     pub(crate) fn from_interface(
@@ -23,6 +24,9 @@ impl NumericPolicy {
             CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1 => {
                 Ok(Self::RetainedIdentity)
             }
+            CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1 => {
+                Ok(Self::StructuredIdentity)
+            }
             _ => Err(invalid("unqualified owned policy interface")),
         }
     }
@@ -33,6 +37,7 @@ impl NumericPolicy {
             Self::LinuxDispatch => "topal_kernel_static_linux_dispatch_policy_v1",
             Self::ProcessIdentity => "topal_kernel_process_identity_transition_v1",
             Self::RetainedIdentity => "topal_kernel_retained_process_identity_policy_v1",
+            Self::StructuredIdentity => "topal_kernel_structured_process_identity_policy_v1",
         }
     }
     pub(crate) fn function_prefix(self) -> &'static str {
@@ -40,7 +45,9 @@ impl NumericPolicy {
             Self::Deadline => FUNCTION_PREFIX,
             Self::Elf64Header => "topal.header.",
             Self::LinuxDispatch => "topal.dispatch.",
-            Self::ProcessIdentity | Self::RetainedIdentity => "topal.identity.",
+            Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
+                "topal.identity."
+            }
         }
     }
     pub(crate) fn stem(self) -> &'static str {
@@ -48,11 +55,16 @@ impl NumericPolicy {
             Self::Deadline => "time-library",
             Self::Elf64Header => "image-library",
             Self::LinuxDispatch => "dispatch-library",
-            Self::ProcessIdentity | Self::RetainedIdentity => "process-identity-library",
+            Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
+                "process-identity-library"
+            }
         }
     }
     pub(crate) fn parameters(self) -> Vec<CompilerType> {
         match self {
+            Self::StructuredIdentity => {
+                vec![crate::systems_retained_layout::structured_state_type()]
+            }
             Self::Deadline => vec![
                 CompilerType::Nat,
                 CompilerType::Nat,
@@ -76,6 +88,9 @@ impl NumericPolicy {
     }
     pub(crate) fn source_tags(self, result: &CompilerType) -> Result<Vec<u32>, CompileError> {
         let valid = match self {
+            Self::StructuredIdentity => {
+                result == &crate::systems_retained_layout::structured_result_type()
+            }
             Self::Deadline => result == &CompilerType::Int,
             Self::Elf64Header => result == &CompilerType::Boolean,
             Self::LinuxDispatch => false,
@@ -121,6 +136,9 @@ impl NumericPolicy {
             }
         }
         Err(invalid(match self {
+            Self::StructuredIdentity => {
+                "structured identity interface requires the exact nested State -> Record(allocated:Nat,state:State)"
+            }
             Self::Deadline => "numeric interface is not declared-type Nat/Nat/Nat/Boolean -> Int",
             Self::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
@@ -134,7 +152,10 @@ impl NumericPolicy {
         }))
     }
     pub(crate) fn result_field_order(self, result: &CompilerType) -> Vec<String> {
-        if matches!(self, Self::ProcessIdentity | Self::RetainedIdentity) {
+        if matches!(
+            self,
+            Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity
+        ) {
             if let CompilerType::Record(fields) = result {
                 return fields.iter().map(|(name, _)| name.clone()).collect();
             }
@@ -145,7 +166,9 @@ impl NumericPolicy {
         match self {
             Self::Elf64Header => "topal.elf.",
             Self::LinuxDispatch => "topal.syscall.",
-            Self::ProcessIdentity | Self::RetainedIdentity => "topal.pid.",
+            Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
+                "topal.pid."
+            }
             Self::Deadline => "topal.",
         }
     }
@@ -153,6 +176,16 @@ impl NumericPolicy {
         let range =
             |low: u64, high: u64| Value::Number(Range(BigInt::from(low), BigInt::from(high)));
         match self {
+            Self::StructuredIdentity => vec![Value::Record(BTreeMap::from([
+                ("next".into(), range(0, i32::MAX as u64)),
+                (
+                    "history".into(),
+                    Value::Record(BTreeMap::from([
+                        ("creations".into(), range(0, u64::MAX - 1)),
+                        ("wrapped".into(), Value::Boolean),
+                    ])),
+                ),
+            ]))],
             Self::Deadline => vec![
                 range(0, i64::MAX as u64),
                 range(0, 999_999_999),
@@ -172,6 +205,7 @@ impl NumericPolicy {
     }
     pub(crate) fn bridge_bytes(self) -> u64 {
         match self {
+            Self::StructuredIdentity => 48,
             Self::Deadline => 3 * 24,
             Self::Elf64Header => 64 * (24 + 16) + 16 + 2 * 24,
             Self::LinuxDispatch => 24,
@@ -186,11 +220,14 @@ impl NumericPolicy {
             Self::Deadline => 0,
             Self::Elf64Header => 64,
             Self::LinuxDispatch => 64,
-            Self::ProcessIdentity | Self::RetainedIdentity => 64,
+            Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => 64,
         }
     }
     pub(super) fn client(self, export: &str) -> String {
         match self {
+            Self::StructuredIdentity => format!(
+                "\nidentity-probe-zero : Nat is 0\nidentity-probe : Record (next : Nat, history : Record (creations : Nat, wrapped : Boolean)) is (next is identity-probe-zero, history is (creations is identity-probe-zero, wrapped is false))\n{export} identity-probe\n"
+            ),
             Self::Deadline => format!(
                 "\nseconds : Nat is 0\nnanoseconds : Nat is 1\nticks : Nat is 0\n{export} (seconds, nanoseconds, ticks, false)\n"
             ),

@@ -21,6 +21,8 @@ mod systems_numeric_runtime;
 mod systems_process_identity;
 mod systems_retained_identity;
 mod systems_storage;
+mod systems_structured_identity;
+mod systems_structured_store;
 mod systems_translation;
 mod systems_user;
 pub mod tracing;
@@ -45,6 +47,8 @@ pub use systems_numeric_runtime::*;
 pub use systems_process_identity::*;
 pub use systems_retained_identity::*;
 pub use systems_storage::*;
+pub use systems_structured_identity::*;
+pub use systems_structured_store::*;
 pub use systems_translation::*;
 pub use systems_user::*;
 

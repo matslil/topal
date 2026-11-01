@@ -94,6 +94,12 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "retained-process-identity-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1);
             }
+            "interface"
+                if identifier_is(source, &field.value, "structured-process-identity-v1") =>
+            {
+                interface =
+                    Some(CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1);
+            }
             "state-limit-bytes" => {
                 state = Some(parse_storage_natural(source, &field.value)?);
             }
@@ -141,10 +147,53 @@ mod tests {
     fn scalar_identity_root() -> String {
         include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
             .replace(
+                "structured-process-identity-v1",
+                "process-identity-transition-v1",
+            )
+            .replace(
+                "policy/structured-process-identity.t",
+                "policy/process-identity.t",
+            )
+            .replace(
                 "retained-process-identity-v1",
                 "process-identity-transition-v1",
             )
             .replace("    state-limit-bytes is 4096,\n", "")
+    }
+    #[test]
+    fn structured_identity_keeps_the_explicit_reserve_and_existing_semantic_slot() {
+        // TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001
+        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+            .replace(
+                "retained-process-identity-v1",
+                "structured-process-identity-v1",
+            );
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let requirement = analyze_systems_for_compiler(&source, &target)
+            .unwrap()
+            .process_identity_library
+            .unwrap();
+        assert_eq!(
+            requirement.interface,
+            CompilerSystemsSourceLibraryInterface::StructuredProcessIdentityV1
+        );
+        assert_eq!(requirement.state_limit_bytes, Some(4096));
+        for changed in [
+            source.replace("    state-limit-bytes is 4096,\n", ""),
+            source.replace("state-limit-bytes is 4096", "state-limit-bytes is 4095"),
+            source.replace("state-limit-bytes is 4096", "state-limit-bytes is 4097"),
+            source.replace(
+                "state-limit-bytes is 4096",
+                "state-limit-bytes is 4096, state-limit-bytes is 4096",
+            ),
+            source.replace(
+                "structured-process-identity-v1",
+                "process-identity-transition-v1",
+            ),
+            source.replace("process-identity-library is", "image-library is"),
+        ] {
+            assert!(analyze_systems_for_compiler(&changed, &target).is_err());
+        }
     }
     #[test]
     fn retained_identity_requires_its_explicit_state_reserve_and_unique_slot() {

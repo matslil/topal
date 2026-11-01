@@ -145,14 +145,21 @@ mod tests {
             }],
         };
         let process_identity = SystemsSourceLibraryInput {
-            source: "policy/process-identity.t".into(),
-            source_name: "policy/process-identity.t".into(),
-            text: include_str!("../../../kernel/policy/process-identity.t").into(),
-            modules: vec![SystemsSourceModuleInput {
-                source: "support/process-identity.t".into(),
-                identity: vec!["support".into(), "process-identity".into()],
-                text: include_str!("../../../kernel/support/process-identity.t").into(),
-            }],
+            source: "policy/structured-process-identity.t".into(),
+            source_name: "policy/structured-process-identity.t".into(),
+            text: include_str!("../../../kernel/policy/structured-process-identity.t").into(),
+            modules: vec![
+                SystemsSourceModuleInput {
+                    source: "support/identity-history.t".into(),
+                    identity: vec!["support".into(), "identity-history".into()],
+                    text: include_str!("../../../kernel/support/identity-history.t").into(),
+                },
+                SystemsSourceModuleInput {
+                    source: "support/process-identity.t".into(),
+                    identity: vec!["support".into(), "process-identity".into()],
+                    text: include_str!("../../../kernel/support/process-identity.t").into(),
+                },
+            ],
         };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,

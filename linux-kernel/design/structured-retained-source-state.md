@@ -39,7 +39,9 @@ The existing next-ID law remains: zero initializes allocation to two, a legal
 nonzero cursor allocates itself, and the successor increments or wraps from
 2147483647 to two. Source additionally increments `history.creations` and retains
 whether any source allocation has wrapped. Initial ordinary state is zero cursor,
-zero creations and false wrapped flag. The first successful state has at least
+zero creations and false wrapped flag. Initial ordinary presentation order
+is `history,next`, with `creations,wrapped` inside history; later values preserve
+the actual source-produced orders. The first successful state has at least
 one creation and a legal nonzero successor. Initialized input has creations in
 1..18446744073709551614; a successor may reach 18446744073709551615, at which
 point another invocation fails before source execution. This bounded profile

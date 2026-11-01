@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/239";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/225";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/240";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/226";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -4072,6 +4072,7 @@ enum NumericRootDependency {
     DispatchCode,
     ProcessIdentityCode,
     RetainedIdentityCode,
+    StructuredIdentityCode,
     RetainedState,
     Arena,
 }
@@ -4084,6 +4085,7 @@ struct RootEncoder {
     dispatch_library: bool,
     process_identity_library: bool,
     retained_identity: bool,
+    structured_identity: bool,
     numeric_relocations: Vec<(u64, NumericRootDependency)>,
     source_library_relocations: Vec<u64>,
     bytes: Vec<u8>,
@@ -6057,7 +6059,9 @@ impl RootEncoder {
             self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
             self.numeric_relocations.push((
                 self.bytes.len() as u64,
-                if self.retained_identity {
+                if self.structured_identity {
+                    NumericRootDependency::StructuredIdentityCode
+                } else if self.retained_identity {
                     NumericRootDependency::RetainedIdentityCode
                 } else {
                     NumericRootDependency::ProcessIdentityCode
@@ -10162,6 +10166,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         dispatch_library: program.dispatch_library.is_some(),
         process_identity_library: program.process_identity_library.is_some(),
         retained_identity: crate::systems_numeric_library::uses_retained_identity(program),
+        structured_identity: crate::systems_numeric_library::uses_structured_identity(program),
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
@@ -10866,6 +10871,10 @@ fn append_root(
             ),
             NumericRootDependency::RetainedIdentityCode => (
                 crate::systems_numeric_library::NumericPolicy::RetainedIdentity.native_export(),
+                SymbolKind::Text,
+            ),
+            NumericRootDependency::StructuredIdentityCode => (
+                crate::systems_numeric_library::NumericPolicy::StructuredIdentity.native_export(),
                 SymbolKind::Text,
             ),
             NumericRootDependency::RetainedState => (

@@ -8,6 +8,7 @@ pub(in super::super) const CODE_CONTEXT: u32 = 992;
 pub(in super::super) fn emit_invoke(
     code: &mut X86FunctionEncoder,
     retained: bool,
+    structured: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     e.load(R8, R15, 0x2008); // Immutable copied cursor; owner state stays untouched.
@@ -61,7 +62,7 @@ pub(in super::super) fn emit_invoke(
     e.store(Sp, 0, A);
     e.store(Sp, 8, D);
     if retained {
-        super::retained::emit_prepared_validation(e.0)?;
+        super::retained::emit_prepared_validation(e.0, structured)?;
     }
     e.gs(0x8b, R11, ARENA_CONTEXT);
     e.gs(0x8b, A, 256);

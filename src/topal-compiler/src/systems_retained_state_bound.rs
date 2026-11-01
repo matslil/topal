@@ -31,11 +31,17 @@ pub struct SystemsRetainedStateBound {
     pub maximum_retirement_words: u64,
     pub maximum_terminal_words: u64,
     pub publication_protocol: String,
+    pub value_layout: Option<crate::systems_retained_layout::RetainedValueLayout>,
+    pub maximum_source_numeric_read_operations: u64,
+    pub maximum_source_result_record_words: u64,
+    pub source_result_order_values: u64,
+    pub maximum_source_result_order_checks: u64,
+    pub source_result_boolean_values: u64,
 }
 impl SystemsRetainedStateBound {
     pub(crate) fn qualified() -> Self {
         Self {
-            schema: "topal.retained-numeric-state/1".into(),
+            schema: "topal.retained-numeric-state/2".into(),
             semantic_state: "Record(next:Nat); zero-sentinel or 2..2147483647".into(),
             store_symbol: STATE_SYMBOL.into(),
             limit_bytes: 4096,
@@ -66,6 +72,35 @@ impl SystemsRetainedStateBound {
             maximum_retirement_words: 504,
             maximum_terminal_words: 1024,
             publication_protocol: "prepare-clean-publish-retire-v1".into(),
+            value_layout: None,
+            maximum_source_numeric_read_operations: 6,
+            maximum_source_result_record_words: 3,
+            source_result_order_values: 2,
+            maximum_source_result_order_checks: 3,
+            source_result_boolean_values: 0,
         }
+    }
+    pub(crate) fn structured() -> Result<Self, crate::CompileError> {
+        let layout = crate::systems_retained_layout::RetainedValueLayout::identity(true)?;
+        let mut result = Self::qualified();
+        result.schema = "topal.retained-structured-state/1".into();
+        result.semantic_state="Record(next:Nat,history:Record(creations:Nat,wrapped:Boolean)); initial (0,0,false), next 2..2147483647, creations 1..18446744073709551615".into();
+        result.record_bytes = layout.record_bytes;
+        result.maximum_retained_graph_bytes = layout.graph_bytes;
+        result.maximum_value_bits = 64;
+        result.maximum_prepared_validation_words = layout.prepared_validation_words();
+        result.maximum_input_record_words = layout.record_bytes / 8;
+        result.maximum_projection_words = layout.projection_words();
+        result.maximum_source_numeric_read_operations = 10;
+        result.maximum_source_result_record_words = crate::codegen::target_value_layout(
+            &crate::systems_retained_layout::structured_result_type(),
+        )
+        .size
+            / 64;
+        result.source_result_order_values = 6;
+        result.maximum_source_result_order_checks = 9;
+        result.source_result_boolean_values = 1;
+        result.value_layout = Some(layout);
+        Ok(result)
     }
 }

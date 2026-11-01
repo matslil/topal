@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/218";
+    "topal.provider-object.x86_64-qemu-pc-q35/219";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1662,6 +1662,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.dispatch_library.is_some(),
             program.process_identity_library.is_some(),
             crate::systems_numeric_library::uses_retained_identity(program),
+            crate::systems_numeric_library::uses_structured_identity(program),
         )?,
     );
     append_encoded_function(
@@ -9523,6 +9524,7 @@ fn static_image_process_enter(
     source_dispatch: bool,
     source_identity: bool,
     retained_identity: bool,
+    structured_identity: bool,
 ) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -16958,7 +16960,12 @@ fn static_image_process_enter(
     process_runtime::credentials::emit_services(&mut code)?;
     process_runtime::observations::emit_services(&mut code)?;
     process_runtime::time::emit_services(&mut code, source_numeric)?;
-    process_runtime::children::emit_services(&mut code, source_identity, retained_identity)?;
+    process_runtime::children::emit_services(
+        &mut code,
+        source_identity,
+        retained_identity,
+        structured_identity,
+    )?;
     process_runtime::pipes::emit_services(&mut code)?;
     process_runtime::environment::emit_copy(&mut code)?;
     code.finish()
@@ -17945,8 +17952,8 @@ fn translation_edit_commit() -> Result<Vec<u8>, CompileError> {
 #[derive(Default)]
 struct X86FunctionEncoder {
     bytes: Vec<u8>,
-    labels: BTreeMap<&'static str, usize>,
-    fixups: Vec<(usize, &'static str)>,
+    labels: BTreeMap<String, usize>,
+    fixups: Vec<(usize, String)>,
 }
 
 impl X86FunctionEncoder {
@@ -17954,8 +17961,12 @@ impl X86FunctionEncoder {
         self.bytes.extend_from_slice(bytes);
     }
 
-    fn bind(&mut self, label: &'static str) -> Result<(), CompileError> {
-        if self.labels.insert(label, self.bytes.len()).is_some() {
+    fn bind(&mut self, label: &str) -> Result<(), CompileError> {
+        if self
+            .labels
+            .insert(label.to_owned(), self.bytes.len())
+            .is_some()
+        {
             return Err(CompileError::Tool(format!(
                 "duplicate generated x86 label `{label}`"
             )));
@@ -17963,35 +17974,35 @@ impl X86FunctionEncoder {
         Ok(())
     }
 
-    fn jump_if(&mut self, condition: u8, label: &'static str) {
+    fn jump_if(&mut self, condition: u8, label: &str) {
         self.bytes.extend_from_slice(&[0x0f, condition]);
         self.fixup(label);
     }
 
-    fn jump(&mut self, label: &'static str) {
+    fn jump(&mut self, label: &str) {
         self.bytes.push(0xe9);
         self.fixup(label);
     }
 
-    fn call(&mut self, label: &'static str) {
+    fn call(&mut self, label: &str) {
         self.bytes.push(0xe8);
         self.fixup(label);
     }
 
-    fn rip_lea(&mut self, opcode: &[u8], label: &'static str) {
+    fn rip_lea(&mut self, opcode: &[u8], label: &str) {
         self.bytes.extend_from_slice(opcode);
         self.fixup(label);
     }
 
-    fn fixup(&mut self, label: &'static str) {
+    fn fixup(&mut self, label: &str) {
         let offset = self.bytes.len();
-        self.fixups.push((offset, label));
+        self.fixups.push((offset, label.to_owned()));
         self.bytes.extend_from_slice(&[0; 4]);
     }
 
     fn finish(mut self) -> Result<Vec<u8>, CompileError> {
         for (offset, label) in self.fixups {
-            let target = *self.labels.get(label).ok_or_else(|| {
+            let target = *self.labels.get(&label).ok_or_else(|| {
                 CompileError::Tool(format!("missing generated x86 label `{label}`"))
             })?;
             let displacement = i64::try_from(target).unwrap_or(i64::MAX)

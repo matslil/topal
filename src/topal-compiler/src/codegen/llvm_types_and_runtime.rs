@@ -162,7 +162,7 @@ fn private_aggregate_value_supported(value_type: &CompilerType) -> bool {
     }
 }
 
-fn llvm_value_type(value_type: &CompilerType) -> String {
+pub(crate) fn llvm_value_type(value_type: &CompilerType) -> String {
     match value_type {
         CompilerType::Identity
         | CompilerType::TypeView

@@ -1,6 +1,6 @@
 /// Private owned-store adaptation. Ordinary source borrows a published Record;
 /// only a checked copy into the inactive bank survives invocation reclamation.
-fn emit_retained_identity_bridge(unit:&crate::systems_numeric_library::CheckedNumericLibrary)->String {
+fn emit_retained_identity_prelude(unit:&crate::systems_numeric_library::CheckedNumericLibrary)->String {
     let mut bridge=format!(r#"define {{ i64, i64 }} @{}(i64 %cursor, ptr %store, i64 %owner, i64 %code) nounwind noinline noredzone noimplicitfloat "disable-tail-calls"="true" {{
 entry:
   %cursor.zero = icmp eq i64 %cursor, 0
@@ -54,6 +54,11 @@ header:
   %prepared.index = xor i64 %stored.bank, 1
 "#);
     emit_retained_zero_scan(&mut bridge,"inactive","prepared.bank",0,252,"banks","inactive.clean");
+    bridge
+}
+
+fn emit_retained_identity_bridge(unit:&crate::systems_numeric_library::CheckedNumericLibrary)->String {
+    let mut bridge=emit_retained_identity_prelude(unit);
     bridge.push_str(r#"  %uninitialized = icmp eq i64 %stored.initialized, 0
   br i1 %uninitialized, label %initial.guard, label %published.guard
 initial.guard:

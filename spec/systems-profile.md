@@ -4190,7 +4190,10 @@ Let the selected ordinary state type be
 declared ordinary export SHALL have type `S -> Record(allocated:Nat, state:S)`.
 It SHALL retain `TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001`'s allocation/successor
 law. Initial state SHALL be `(next=0, creations=0, wrapped=false)` through shared
-ordinary construction. An initialized published state SHALL have next in
+ordinary construction. Initial ordinary
+presentation order SHALL be `history,next`, with `creations,wrapped` inside
+history; later states SHALL retain their actual source-produced orders.
+An initialized published state SHALL have next in
 2..2147483647 and creations in 1..18446744073709551615. Another invocation SHALL
 require creations at most 18446744073709551614; exhausted history SHALL reject
 before source execution or allocation. The zero cursor SHALL be valid only in
