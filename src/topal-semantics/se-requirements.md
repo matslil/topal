@@ -291,6 +291,16 @@ independent/combined invocation, unchanged rejection and complete teardown.
 Actual aggregate adaptation, native ABI, before-commit state and full resource
 proofs shall remain publisher/provider obligations.
 
+Under `TK-DEC-263`, the model shall realize
+`TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001` and
+`TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001` through explicit store ownership,
+published/prepared versions, one-use commit and last-borrow retirement. Invalid
+owner/binding/version/overlap, duplicate identity interface versions, stale
+publication/resurrection and incomplete return shall reject without mutation.
+Repeated transitions, actual value-history expectations, exec/parent restoration
+and cancellation shall preserve the same semantic state law. These modeled
+values shall grant no address authority or machine-layout/ABI evidence.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

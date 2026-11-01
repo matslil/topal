@@ -4015,6 +4015,114 @@ Other architectures SHALL qualify their adapters while preserving this value
 transition. Persistent allocation, effectful source and broader Linux interfaces
 SHALL remain outside this qualification.
 
+### TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001 — Owned ordinary value versions
+
+A separately selected systems profile MAY retain a qualified ordinary immutable
+value in an explicitly owned bounded kernel store. It SHALL NOT weaken the
+temporary-only numeric profiles or qualify general persistent allocation. The
+first retained schema SHALL be exactly `Record (next : Nat)`, with published
+values in 2..2147483647 and an uninitialized zero sentinel. Source SHALL receive
+the ordinary value through the unchanged checked function/Record ABI, with no
+store, pointer, owner, code, layout or resource authority.
+
+The root SHALL explicitly bind one complete supervisor-owned store to the live
+process-identity resource. The caller SHALL establish its readable/writable
+extent, disjointness, selected type/code, owner and exclusive lifetime before
+access. Private extent, owner/code/version, order, graph and range checks SHALL
+precede source use. A graph reference SHALL match its exact owned node before
+dereference; numeric equality SHALL NOT create resource authority. No ambient
+store discovery, unqualified writable library global or hosted service SHALL
+be admitted.
+
+The store SHALL distinguish one immutable published version from one clean
+inactive preparation bank. An initialized invocation SHALL borrow the actual
+published ordinary Record and numeric object; it SHALL NOT reconstruct that
+argument by boxing a native cached cursor. Cached compatibility facts SHALL
+agree before invocation. The uninitialized invocation SHALL construct ordinary
+zero state through the shared runtime. Source SHALL return its ordinary named
+proposal; the generated adapter SHALL validate both numeric results and the
+complete ordinary order suffix before preparing retained state.
+
+Preparation SHALL make a checked semantic copy of the selected `next` value into
+an ordinary state Record in the inactive bank. Every retained reference SHALL
+belong to that prepared graph or a separately qualified immutable runtime value;
+none SHALL point into the invocation arena or stack. The previous version and
+published metadata SHALL remain unchanged during preparation. The adapter SHALL
+retain no source authority, truncate no value and substitute no native policy.
+
+Complete temporary allocation/active-state and retired-stack erasure/readback
+SHALL precede owner publication. The owner SHALL commit the prepared version and
+existing PID/cursor results through one exclusive construction transition. No
+observer SHALL see a partial version/PID combination. The old graph SHALL be
+erased/read back after its last borrow and before userspace or another source
+invocation resumes. Prepared publication obligations SHALL be consumed once and
+cleared. Reentry, overlap, stale preparation/publication, resurrection, malformed
+facts/graphs/results, wrong owner/type/code, overflow, exhaustion or incomplete
+erasure SHALL fail closed without a new recoverable Linux error path.
+
+The first x86-64 realization SHALL use one 4096-byte region with a private
+64-byte header and two 2016-byte banks. Each selected bank SHALL hold a complete
+16-byte ordinary Record and aligned 24-byte numeric object; all remaining
+storage SHALL be clean. These sizes SHALL describe qualified private layout,
+not a source ABI. Complete proofs SHALL separately cover persistent capacity,
+maximum graph/projection, preparation/retirement, temporary input/source/adapter
+work, actual aggregate/native frames, returns and alignment. Invocation stack
+4096 and temporary-runtime 65536 limits SHALL remain unchanged. Measurements
+SHALL NOT replace complete proofs. Another target SHALL qualify its realization.
+
+Exact interface/schema, owned storage binding, private layout/version protocol,
+checked projection, source/modules, bridge/runtime/native objects and complete
+resource proofs SHALL enter artifact/boot provenance. Missing, conflicting,
+swapped, stale, tampered, unqualified or undercharged evidence SHALL reject
+publication/use. Qualification SHALL independently execute native protocol and
+actual retained source arguments, result/order adaptation, precommit cleanup,
+successor survival, old-version retirement, malformed state and full reclamation.
+This rule SHALL NOT introduce core `AllocationRegion` syntax, a new language
+revision, mutable references, resource-bearing stored fields, concurrent writers
+or general source effects.
+
+### TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001 — Persistent source cursor value
+
+The `process-identity-library` slot MAY select interface
+`retained-process-identity-v1` with `state-limit-bytes is 4096`, a contained
+source/public export and unchanged `stack-limit-bytes is 4096` and
+`runtime-limit-bytes is 65536`. It SHALL retain the exact ordinary signature and
+initial/increment/wrap law of `TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001` and use
+`TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001` for its state lifetime. The previous
+scalar-only interface SHALL require no state reserve and retain its contract.
+Other interfaces SHALL NOT acquire retained storage implicitly. Exactly one
+identity interface version SHALL occupy that semantic policy slot.
+
+Existing empty-child-slot, parent-lifetime, argument/resource and abandoned-
+snapshot checks SHALL precede store preparation. Temporary request staging and
+native construction/commit/error ordering SHALL retain their existing meanings.
+After validated source execution and complete temporary cleanup, the owner SHALL
+publish the allocated ID/cursor and prepared ordinary state as one exclusive
+transition, retire the old version and continue existing child construction.
+The initial parent SHALL retain PID one. Reaping/empty-slot rules SHALL continue
+to govern reuse; no general PID namespace or scalable allocation is qualified.
+
+Published identity state SHALL be shared resource history. Child execution,
+exec and parent continuation restoration SHALL retain the selected store and
+current version; they SHALL NOT resurrect a snapshot of an old source value.
+Termination/cancellation SHALL end pending borrows/preparation, erase/read back
+both banks and complete ownership/version metadata, and consume the store binding
+once before root return. Every selected policy/arena binding SHALL also be erased.
+Identity, dispatch, header and deadline policies SHALL work independently or
+through their existing exclusive sequential invocation protocol.
+
+Qualification SHALL cover repeated alternation, actual borrowed source Records,
+copied next-state graphs, ordinary order variants, both scalar results, cleanup
+before publication, subsequent child IDs, exec/restoration history, standalone/
+combined policies and terminal cancellation. An independent native client/model
+SHALL reject malformed private facts, pointers/payloads, stale/overlapping
+preparation, duplicate semantic interface versions and incomplete reclamation.
+Controlled copied facts MAY exercise wrap, SHALL be identified separately and
+SHALL leave the published version unchanged until qualified commit. A changed
+imported helper SHALL be rejected after cleanup and before publication by an
+independent oracle with root/provider objects unchanged. The scalar-only policy
+and complete previous runtime regression SHALL remain required.
+
 ### TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001 — Source policy over owned header bytes
 
 An artifact MAY declare one `image-library` through `lang systems source-library`

@@ -12120,6 +12120,22 @@ frames and before-commit changed-helper rejection shall be qualified. This shall
 not qualify escaping source values, persistent allocation or a broader process
 model.
 
+Under `TK-DEC-263`, the selected retained identity profile shall realize
+`TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001` and
+`TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001`. The publisher shall bind the exact
+ordinary schema, complete explicit state reserve, checked semantic projection,
+private version/owner protocol and full bounds to source/module/adapter/native
+provenance. An initialized source call shall borrow the actual published Record
+graph rather than box cached state. Preparation shall preserve the old value and
+publish no pointers into temporary storage. Cleanup shall precede the exclusive
+owner commit; old-version retirement shall follow last borrow. Exec/restoration
+shall preserve shared history, and terminal cancellation shall reclaim the store
+and every selected binding. Scalar-only interfaces shall retain their contracts.
+Native/model/source-frame tests shall cover complete protocol/ranges/order,
+repeated alternation, invalid pointers/state, stale publication, standalone and
+combined operation, actual source graph survival/retirement and changed-helper
+precommit rejection. General persistent types/effects remain unqualified.
+
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical
