@@ -1870,6 +1870,18 @@ personality contracts. This introduces no core-language byte sharing or raw addr
 
 ## Storage, placement, and artifacts
 
+A separately qualified volatile-file service may retain owned sparse regular
+objects over an explicit filesystem page/object budget. Logical size, resident
+page ownership, open-description position and process descriptor authority stay
+distinct. Holes read as zero; writes and truncation publish only after complete
+checked admission, and removed bytes cannot reappear on regrowth or slot reuse.
+Aliases and inherited descriptions share live contents and position across exec
+and process restoration. Last-reference destruction and cancellation reclaim
+every page and identity exactly once. Native temporary-file creation, modes,
+umask, metadata and offset/error ordering remain Linux personality contracts.
+This service adds neither core mutable values nor a host allocation dependency;
+general writable namespace, mapping and device support need separate qualification.
+
 The systems root begins with bounded bootstrap storage and may later construct
 allocator capabilities. Allocation is fallible and names a region or pool,
 alignment, address family, context legality, reclaim policy, and any physical

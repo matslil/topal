@@ -314,6 +314,16 @@ mutation. Native layout, pointer borrowing, aggregate ABI and complete machine
 bounds remain separate qualification obligations; modeled values are not their
 evidence.
 
+Under `TK-DEC-265`, a volatile-file reference model shall distinguish owned
+filesystem/object/page identities from numeric slots, native descriptors and
+offsets. It shall model sparse zero reads, actual prefix publication, append,
+checked seek/truncate, page/object exhaustion, stable identity across aliases,
+shared contents/positions through fork/exec and complete last-reference release.
+Rejected owner, generation, rights, capacity or transfer operations shall leave
+the model unchanged. Truncated or freed bytes shall not reappear. Process umask
+shall be copied privately at fork and preserved by exec. Independent model
+transitions shall not serve as native allocation, layout or physical evidence.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

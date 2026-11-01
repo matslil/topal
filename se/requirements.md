@@ -614,6 +614,18 @@ atomicity, independent opens and aliases, native directory-record boundaries,
 cwd/exec lifetime and external file/directory consumers. Writable storage,
 links, mounts and broader VFS behavior remain separately required.
 
+A separately qualified volatile-file refinement shall provide owned sparse
+regular objects with an explicit shared page/object budget, checked logical
+size and shared description positions. Holes and truncated/regrown ranges shall
+read as zero. Writes, sparse allocation and truncation shall preserve all state
+on rejected admission and expose only actual returned progress. Qualified Linux
+temporary-file creation, access/mode/umask, seek, metadata and capacity errors
+shall agree with the pinned baseline. Aliases, fork/exec and process restoration
+shall preserve shared contents while process umask stays private. Last-reference
+destruction and terminal cancellation shall reclaim and erase all object/page
+state. Model, native boundary and physical evidence shall remain distinct;
+anonymous temporary files shall not imply linked-file or general VFS support.
+
 A separately qualified realtime-seconds refinement shall obtain actual epoch
 seconds from a declared platform clock, validate coherent calendar acquisition
 and conversion bounds, and publish the same returned/native-output value only

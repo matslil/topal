@@ -12154,6 +12154,19 @@ two-limb boundaries, order/Boolean/padding and malformed graphs/results,
 prepare-clean-publish-retire, shared history and complete reclamation. This
 qualifies no new core value or effect meaning.
 
+Under `TK-DEC-265`, the qualified volatile-file provider shall bind explicit
+supervisor-only object/page storage and capacity to artifact provenance. Its
+native personality shall preserve checked name/flag/mode and user-copy ordering,
+descriptor rights, sparse read/write/seek/truncate semantics, native umask and
+coherent metadata. Shared contents, allocation and positions shall survive
+process restoration; private umask shall follow fork/exec lifetime. Rejection
+shall preserve published state, while final description release and terminal
+cancellation shall erase all owned pages, metadata and staging. Model/native/
+physical cases shall independently qualify allocation exhaustion/reuse, holes,
+regrowth, aliases, inheritance, copy faults and complete cleanup. Until those
+checks pass this shall remain planned capability, without claiming general
+source effects, writable namespace or distribution compatibility.
+
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical
