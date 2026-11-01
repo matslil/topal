@@ -21,7 +21,7 @@ to `static-linux-dispatch-v3`, adding `Unlink` and `UnlinkAt` (x86-64 selectors
 87 and 263) to v2's exact 57 operations. V1 and v2 retain their exact vocabularies,
 exports and checked adaptation. All three occupy one exclusive dispatch slot.
 Unsupported operations/argument profiles must remain reported as unqualified;
-this increment does not claim directory removal through AT_REMOVEDIR.
+AT_REMOVEDIR may return ENOSYS and remains unqualified directory removal.
 No core language meaning or source assembly changes.
 
 ## Names, objects and descriptions
@@ -110,7 +110,9 @@ Directory records include linked names only, never anonymous or unlinked objects
 Use exact bounded raw names, aligned native records and zero padding. Cookies
 are filesystem-local opaque continuation values; aliases share the directory
 description position and independent directory opens start from the beginning.
-Document their selected slot-order, deletion/rewind and EOF policy. A largest
+The selected cookies enumerate dot/dot-dot, then four object slots and terminal
+cookie six; skipped unlinked/free slots emit nothing. Successful EOF may advance
+across holes. Rewind reads current entries; no cross-mutation snapshot is claimed. A largest
 255-byte name needs a 280-byte native record, so it cannot use the existing
 256-byte transfer staging. Provide separate bounded directory staging, erase it
 on every return/error and admit the complete returned output prefix before

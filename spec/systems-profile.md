@@ -9212,3 +9212,103 @@ Tests SHALL execute all 256 input masks, invalid native representations,
 reordered alternatives and real source/helper calls for existing and temporary
 opens. A wrong create plan SHALL be rejected before object/page publication;
 that counterexample SHALL remain separate from successful execution evidence.
+
+### TOPAL-SYSTEMS-LINUX-DISPATCH-V3-001 — Named-file operation selection
+
+An artifact MAY select `static-linux-dispatch-v3` in its unique dispatch slot.
+It SHALL retain v2's exact 57 operation meanings and add `Unlink` (x86-64 87)
+and `UnlinkAt` (263), plus Unsupported for every other native selector. Its
+ordinary Nat -> nominal StaticLinuxOperation source, semantic-name adaptation,
+exclusive runtime domain, complete stack/allocation evidence and cleanup before
+native argument/handler access SHALL follow the existing dispatch rules.
+Exactly one of v1/v2/v3 MAY be selected. Each SHALL retain a distinct private
+export and exact vocabulary; mismatched or simultaneous version evidence SHALL
+reject. No Unsupported captured selector SHALL be redispatched natively.
+The three versions SHALL share the existing exact stack/runtime reserves.
+
+### TOPAL-SYSTEMS-NAMED-FILE-OWNERSHIP-001 — Name and independent description lifetime
+
+The selected mutable `/tmp` view MAY own one regular name per sparse object.
+Names SHALL consist of one through 255 exact raw bytes excluding slash and NUL;
+dot/dot-dot SHALL retain pathname meaning. A linked name SHALL retain its object
+independently of open descriptions. Independent opens SHALL create distinct
+positions initially zero over shared object contents. Descriptor duplication
+and fork SHALL instead retain their original shared descriptions and positions.
+Page ownership SHALL use object identity, not description identity.
+
+Unlink SHALL erase the association and name, set link count zero, and retain the
+object while any live description references it. Final independent-description
+release SHALL erase an unlinked object's pages, metadata and slot. Closing all
+descriptions of a linked object SHALL retain namespace-owned contents. Recreating
+a removed spelling SHALL issue a fresh identity and SHALL NOT expose prior data.
+Both kinds SHALL share the declared object/page budgets. Failure SHALL preserve
+all previously owned names, contents, size, positions, allocation and descriptor
+installations. Process restoration SHALL NOT roll back shared namespace state.
+Terminal cancellation SHALL drop both active/inactive description owners, then
+reclaim namespace-only objects and erase/read back the complete store.
+
+### TOPAL-SYSTEMS-NAMED-FILE-PATH-001 — Checked creation, reopen and unlink
+
+The named-file profile SHALL use `file-open-decision-v1` after native admission,
+complete name copy, free-slot selection and applicable lookup. Parent and final
+component SHALL be distinct lookup facts. A missing prefix SHALL NOT authorize
+creation. A regular component SHALL reject further traversal. Absolute paths
+SHALL ignore dirfd; relative paths SHALL require cwd or a live directory view.
+The selected native flags SHALL support create/exclusive/truncate/append without
+granting mutation of the immutable view. O_EXCL alone SHALL have no create
+effect. O_CREAT|O_DIRECTORY SHALL fail native admission before copying. Normal
+final-component O_CREAT with trailing slash SHALL follow pinned Linux's EISDIR
+lookup ordering; root/dot/dot-dot SHALL retain their separate treatment.
+
+CreateDescription SHALL require an absent final name in the owned mutable view.
+Object/name/description capacity and a timestamp SHALL be admitted before name
+publication. OpenDescription SHALL require a compatible existing owned target;
+reopening SHALL NOT reapply mode/umask. TruncateDescription SHALL require an
+existing owned mutable regular target and requested truncation. Description
+reservation and clock observation SHALL precede irreversible truncation and
+publication. O_RDONLY|O_TRUNC SHALL truncate while retaining a read-only resulting
+description. Other descriptions' positions SHALL remain unchanged. Open
+truncation SHALL update object modification/change times, including zero size.
+All source plans SHALL remain subordinate to owned native preconditions.
+
+Qualified unlink/unlinkat SHALL resolve parent and last-component class before
+final child lookup/mutation, preserving pinned Linux parent-mount-write error
+ordering and dot/trailing errors. Invalid unlinkat flag bits SHALL yield EINVAL
+before copying. The unimplemented AT_REMOVEDIR suboperation MAY return ENOSYS
+and SHALL remain explicitly unqualified as directory removal. Success SHALL
+obtain its timestamp before erasing the link and SHALL update object change time
+and parent modification/change times. Relative aliases SHALL NOT grant write
+authority in an immutable view. Pending copied path/name state SHALL be erased
+before every recoverable return. Capacity/copy/clock/lookup rejection SHALL NOT
+publish a partial name, description or truncation.
+
+### TOPAL-SYSTEMS-NAMED-FILE-OBSERVATION-001 — Coherent metadata and directory records
+
+Path stat, fstat and directory entries SHALL agree on live object identity,
+mode, links, logical size, allocated blocks and selected timestamp policy.
+Regular names SHALL NOT increase `/tmp`'s directory link count. Linked create
+and unlink SHALL update directory modification/change times; anonymous creation
+SHALL NOT manufacture a directory entry/event. The selected noatime policy SHALL
+remain. Anonymous and unlinked objects SHALL NOT appear in getdents64 output.
+
+The initial `/tmp` directory SHALL use opaque slot-order cookies: zero before
+`.` and one before `..`; two through five select the four object slots, with
+six the terminal cookie. Skipped free/unlinked slots SHALL not emit records.
+Successful output SHALL advance the shared directory-description cursor past
+its last examined/emitted slot; successful EOF MAY advance across remaining
+holes. Independent directory opens SHALL have distinct cursors. Rewind SHALL
+permit rereading current entries. No-fit or output failure SHALL preserve the
+cursor and previously owned state. Directory mutation between calls SHALL NOT
+be claimed as a snapshot or stable insertion order beyond these cookie laws.
+
+Records SHALL use exact names, aligned native lengths and zero padding. The
+255-byte name case SHALL support a complete 280-byte x86-64 record. Separate
+bounded directory staging SHALL be disjoint from transfer/name/umask/signal state
+and SHALL be erased/read back on all returns. Admit the complete returned output
+prefix before publishing cursor progress. This rule SHALL NOT claim partial
+copy progress inside a faulting admitted prefix. Versioned artifact evidence
+SHALL bind exact name/staging placement, capacities and complete native helper
+bounds; altered, missing, overlapping or other-version evidence SHALL reject.
+Independent model/native/pinned-Linux/physical tests SHALL cover capacities,
+errors, alias/reopen/unlink/fork/exec lifetime, longest records, actual shell/file
+commands, active/inactive cancellation and complete namespace-owner reclamation.
