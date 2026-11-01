@@ -1,7 +1,9 @@
 # Source-produced structured retained state
 
 `TK-DEC-264`; systems-only refinement adopted under standing authorization.
-Design adopted; specification, implementation and qualification remain required.
+The [implementation report](../step-4-structured-source-state.md) records the
+selected nested graph, shared ordinary layout/projection, complete bounds and
+independent native/model/physical qualification.
 
 The [first retained schema](retained-source-identity-state.md) borrows an actual
 ordinary value but prepares a successor by constructing one fixed `next` Record

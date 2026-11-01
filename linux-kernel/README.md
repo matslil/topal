@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [retained ordinary source identity state](step-4-retained-source-identity.md).
+The latest Step 4 increment qualifies [whole source-produced structured state](step-4-structured-source-state.md).
 
 ## Current phase
 

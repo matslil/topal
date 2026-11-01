@@ -28,6 +28,9 @@ systems abstractions; ARM64 implementation is outside the current focus.
 - Actual ordinary identity-state Records retained between callbacks, with
   published graph borrowing, independent successor preparation, cleanup before
   publication, last-borrow retirement and complete store reclamation.
+- Complete source-produced nested state with Boolean history, full 64-bit
+  creation counts, ordinary nested presentation order and shared checked layout/
+  projection/native validation over independently owned successor graphs.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -46,19 +49,20 @@ systems abstractions; ARM64 implementation is outside the current focus.
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-retained-source-identity.md) records actual
-published source graphs, borrowed arguments and ordinary results, independent
-successor storage, cleanup before owner publication, 27 version publications and
-retirements, retained-only/reordered/wrap/counterexample observations and the
-scalar-only compatibility control. Each report identifies its scope, complete
-regression qualification and limitations.
+The [current runtime report](step-4-structured-source-state.md) records whole
+source-produced values, actual published node borrowing, nested order and full
+numeric/Boolean preservation, 27 version publications and retirements, controlled
+wide-count/wrap observations and wrong-history rejection that scalar-only
+checking would miss. Both earlier identity interfaces remain compatibility
+controls. Each report identifies its scope, complete regression qualification
+and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and owned persistent identity-state Records; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects, four shared anonymous FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
