@@ -13,7 +13,7 @@ systems abstractions; ARM64 implementation is outside the current focus.
   actual helper calls, native ABI and stack evidence, and representation adaptation.
 - Ordinary Topal numeric deadline policy using shared arbitrary-precision algorithms,
   exclusive owned arena lending, allocation/stack proofs and complete temporary erasure.
-- Closed ordinary source-module snapshots for both policy interfaces, including
+- Closed ordinary source-module snapshots for the selected policy interfaces, including
   transitive helpers, real module debug locations and digested dependency bytes.
 - Nested immutable numeric Records with named fields/reconstruction, complete
   aggregate stack/allocation bounds and an imported structured deadline policy.
@@ -21,6 +21,8 @@ systems abstractions; ARM64 implementation is outside the current focus.
   allocation bounds and imported collection helpers using shared ordinary runtime.
 - Source ELF64 header interpretation over copied owned bytes, precommit exec
   refusal, independently selected header/time policies and complete reclamation.
+- Ordinary source selection of 55 existing Linux operations plus Unsupported,
+  actual nominal tag adaptation and cleanup before native argument/handler access.
 - Generated privileged entry/return, checked memory/translation ownership,
   kernel contexts, notifications, clock/deadline preemption and complete rollback.
 - A supplied static ELF in the qualified mapping profile, real user execution,
@@ -39,18 +41,19 @@ systems abstractions; ARM64 implementation is outside the current focus.
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-source-elf64-header.md) records source byte
-ownership, refusal atomicity, header-only execution, 57 successful physical runs
-on one primary kernel, three positive variants, 25 toolchain contracts plus four
-reference-VM contracts and bounded workspace validation. Each report identifies
-its executed scope and limitations.
+The [current runtime report](step-4-source-linux-syscall-selection.md) records
+actual source selectors/tags, native argument/return preservation, dispatch-only
+operation, 3322 checked invocation boundaries, 58 successful physical runs on one
+primary kernel, five positive variants, 26 toolchain plus four reference-VM
+contracts and bounded workspace validation. Each report identifies its scope
+and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed source-module imports, recursive immutable Records, bounded integer Arrays/Optional reads and copied header interpretation; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation and nominal syscall selection; broader types, persistent allocation and subsystem state/effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects, four shared anonymous FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |

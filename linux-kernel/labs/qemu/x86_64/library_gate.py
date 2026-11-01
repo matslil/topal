@@ -22,7 +22,8 @@ def module_publication(directory, artifact, key, prefix):
     """Bind the emitted dependency bytes to both input and output provenance."""
     name = {"kernel_library": "kernel-library.modules.json",
             "time_library": "time-library.modules.json",
-            "image_library": "image-library.modules.json"}[key]
+            "image_library": "image-library.modules.json",
+            "dispatch_library": "dispatch-library.modules.json"}[key]
     path = directory / name
     sources = json.loads(path.read_text())
     library = artifact[key]
@@ -41,6 +42,11 @@ def module_publication(directory, artifact, key, prefix):
     if outputs != [dict(identity=name, sha256=digest)]:
         raise GATE.GateError("module snapshot output is missing or ambiguous")
     return dict(sources=sources, snapshot_sha256=digest, inputs=inputs, outputs=outputs)
+
+
+def copy_architecture_libraries(directory):
+    relative = Path("arch/x86_64/policy")
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel"/relative, directory/relative)
 
 
 def commands(elf, debug, result, helper):
@@ -185,6 +191,7 @@ def variants(root, primary, artifact, timeout):
         unit.parent.mkdir(parents=True)
         unit.write_text(text)
         shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
+        copy_architecture_libraries(case)
         (unit.parent / "static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/static-elf64-header.t").read_bytes())
         (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)

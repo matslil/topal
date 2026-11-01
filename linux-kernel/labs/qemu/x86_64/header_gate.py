@@ -91,6 +91,7 @@ def observe(root, values, artifact, timeout, poison=False, counterexample=False)
                   counterexample=counterexample, source_line=source.index("  magic is read-magic bytes")+1,
                   header=list(values[5].read_bytes()[:64]), payload_offset=payload_offset(values[1]),
                   has_time=artifact.get("time_library") is not None,
+                  has_dispatch=artifact.get("dispatch_library") is not None,
                   zero_addresses=NUMERIC.immutable_zero_addresses(elf),
                   stack_bound=library["maximum_stack_bytes"],
                   allocation_bound=library["allocation"]["maximum_bytes"])
@@ -173,6 +174,7 @@ def verify(timeout=30, write_evidence=False):
         case = root/"wrong-magic"
         shutil.copytree(GATE.LINUX_KERNEL/"kernel/policy", case/"policy")
         shutil.copytree(GATE.LINUX_KERNEL/"kernel/support", case/"support")
+        LIBRARY.copy_architecture_libraries(case)
         source = case/"support/elf.t"
         before = source.read_text()
         after = before.replace("  magic = 1179403647\n    true then check-ident (bytes, machine, maximum)\n    false then false",
@@ -196,16 +198,20 @@ def verify(timeout=30, write_evidence=False):
         start = text.index("  time-library is")
         end = text.index("  image-library is", start)
         only = root/"header-only-root.t"
-        only.write_text(text[:start]+text[end:])
+        only_text=text[:start]+text[end:]
+        dispatch_start=only_text.index("  dispatch-library is")
+        dispatch_end=only_text.index("  bootstrap-storage is",dispatch_start)
+        only_text=only_text[:dispatch_start]+only_text[dispatch_end:]
+        only.write_text(only_text)
         GATE.SOURCE_PATH = only
         try:
             only_values = GATE.build_image(root/"header-only-artifact")
             only_artifact = json.loads(only_values[3].read_text())
-            if only_artifact.get("time_library") is not None:
-                raise GATE.GateError("header-only control retained the time policy")
+            if any(only_artifact.get(key) is not None for key in ("time_library","dispatch_library")):
+                raise GATE.GateError("header-only control retained another numeric policy")
             single = observe(root/"header-only", only_values, only_artifact, timeout)
             single.update(library=only_artifact["image_library"], time_library_absent=True,
-                          root_source=text[:start]+text[end:])
+                          dispatch_library_absent=True, root_source=only_text)
             record["header_only"] = single
         finally:
             GATE.SOURCE_PATH = original_source

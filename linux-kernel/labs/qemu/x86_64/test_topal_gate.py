@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -25,6 +26,85 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_source_dispatch_binds_actual_nominal_choices_and_restores_before_handler_entry(self) -> None:
+        # TOPAL-SYSTEMS-NUMERIC-ENUMS-001; TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
+        proof=json.loads((LAB/"results/topal-source-linux-dispatch-gate.json").read_text())
+        self.assertEqual(proof["schema"],"topal-source-linux-dispatch-qemu/1")
+        self.assertEqual(proof["harness_sha256"],sha256(LAB/"dispatch_gate.py"))
+        self.assertEqual(proof["inspector_sha256"],sha256(LAB/"dispatch_inspect.py"))
+        text=(GATE.REPOSITORY/"spec/systems-profile.md").read_text().split("### TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001",1)[1]
+        table=text.split("```text\n",1)[1].split("```",1)[0]
+        pairs=[(int(number),name) for number,name in re.findall(r"\b(\d+)\s+([A-Za-z]+)",table)]
+        expected=dict(pairs);choices=[name for _,name in pairs]+["Unsupported"]
+        self.assertEqual(len(expected),55)
+        library=proof["library"]
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/5")
+        self.assertEqual(library["interface"],"static-linux-dispatch-v1")
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch.t"))
+        self.assertEqual(library["allocation"]["maximum_bytes"],56)
+        self.assertEqual(library["allocation"]["source_evaluation_bytes"],0)
+        self.assertEqual(library["allocation"]["bridge_bytes"],24)
+        self.assertEqual(library["allocation"]["maximum_operand_bits"],64)
+        self.assertEqual(library["native_invocation_save_bytes"],64)
+        self.assertEqual(set(library["source_tags"]),set(range(56)))
+        self.assertEqual(proof["module_publication"]["snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertEqual([m["source"] for m in library["modules"]],["support/syscall.t"])
+        self.assertEqual(library["modules"][0]["sha256"],sha256(GATE.LINUX_KERNEL/"kernel/support/syscall.t"))
+        costs={"topal_kernel_numeric_allocate_v1":8,"topal_kernel_numeric_abort_v1":8}
+        for function in library["functions"]:
+            cost=function["frame_bytes"]+8+max((costs[name] for name in function["callees"]),default=0)
+            self.assertEqual(cost,function["maximum_call_path_bytes"])
+            costs[function["symbol"]]=cost
+            self.assertFalse(function["symbol"].startswith(("topal.runtime.","topal.platform.")))
+        self.assertEqual(costs[library["native_export"]]+32+64,library["maximum_stack_bytes"])
+        self.assertLessEqual(library["maximum_stack_bytes"],4096)
+        primary=proof["primary"]
+        self.assertEqual(primary["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
+        for name in ("primary","order_variant","dispatch_only"):
+            case=proof[name];binding=case.get("library",library);observation=case["observation"]
+            self.assertEqual(case["runtime"]["observations"]["result"],"pass")
+            self.assertEqual(observation["result"],"pass")
+            self.assertTrue(all(observation[k] for k in ("bindings_erased","terminal_arena_erased","backing_erased")))
+            self.assertGreaterEqual(len(observation["calls"]),1000)
+            self.assertTrue(any(call["raw_selector"]>>32 for call in observation["calls"]))
+            for call in observation["calls"]:
+                self.assertEqual(call["selector"],call["raw_selector"]&0xffff_ffff)
+                operation=expected.get(call["selector"],"Unsupported")
+                self.assertEqual((call["expected_operation"],call["selected_operation"]),(operation,operation))
+                self.assertEqual(call["actual_source_tag"],binding["source_tags"][choices.index(operation)])
+                self.assertEqual(call["adapted_operation_code"],(1<<64)-1 if operation=="Unsupported" else call["selector"])
+                self.assertLessEqual(call["arena_highwater"],56)
+                self.assertLessEqual(call["allocation_count"],1)
+                self.assertTrue(all(call[k] for k in ("actual_nominal_result_adapted","arena_erased","retired_stack_erased",
+                    "native_callee_state_preserved","captured_argument_and_return_facts_restored","simd_preserved",
+                    "retained_state_unchanged","bindings_retained")))
+                self.assertEqual(call["observation_boundary"],"selection cleaned; handler not yet entered")
+            frame=observation["source_frames"][0]
+            self.assertEqual((frame["selector"],frame["comparison_candidate"]),(12,12))
+            self.assertLessEqual(frame["source_stack_offset"],binding["maximum_stack_bytes"])
+            self.assertTrue(frame["actual_fact_matches_captured_input"] and frame["source_value_invocation_owned_or_immutable"])
+            self.assertIn("support/syscall.t",frame["trace"])
+            self.assertIn("static-linux-dispatch.t",frame["trace"])
+        variant=proof["order_variant"]
+        self.assertTrue(variant["native_root_and_provider_unchanged"])
+        self.assertEqual(variant["library"]["allocation"],library["allocation"])
+        self.assertEqual(variant["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
+        self.assertNotEqual(variant["library"]["source_sha256"],library["source_sha256"])
+        self.assertTrue(all(a+b==55 for a,b in zip(library["source_tags"],variant["library"]["source_tags"])))
+        only=proof["dispatch_only"]
+        self.assertTrue(only["time_and_image_libraries_absent"])
+        self.assertNotIn("  time-library is",only["root_source"])
+        self.assertNotIn("  image-library is",only["root_source"])
+        self.assertIn("  dispatch-library is",only["root_source"])
+        wrong=proof["counterexample"]
+        self.assertIsNone(wrong["runtime"])
+        self.assertTrue(wrong["native_root_and_provider_unchanged"])
+        self.assertTrue(all(wrong["observation"][k] for k in ("independent_operation_rejection",
+            "native_routing_uses_actual_source_result","handler_not_entered")))
+        call=wrong["observation"]["calls"][0]
+        self.assertEqual((call["expected_operation"],call["selected_operation"]),("ProgramBreak","Unsupported"))
+        self.assertTrue(call["arena_erased"] and call["captured_argument_and_return_facts_restored"])
+
     def test_source_header_policy_owns_bytes_refuses_before_commit_and_runs_without_time(self) -> None:
         # TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
         proof=json.loads((LAB/"results/topal-source-elf64-header-gate.json").read_text())
@@ -89,7 +169,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-ARRAYS-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/4")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/5")
         runtime=GATE.REPOSITORY/"src/topal-compiler/src/runtime"
         allocation=library["allocation"]
         self.assertEqual(allocation["collection_runtime_sha256"],sha256(runtime/"fundamental_containers.ll"))
@@ -118,8 +198,8 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-RECORDS-001, TOPAL-TYPE-RECONSTRUCT-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/4")
-        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/4")
+        self.assertEqual(library["allocation"]["certificate"],"topal.numeric-allocation/5")
+        self.assertEqual(library["machine_profile"],"x86_64-owned-numeric-gpr-only/5")
         self.assertLessEqual(library["maximum_stack_bytes"],4096)
         self.assertEqual(library["allocation"]["maximum_bytes"],41624)
         variant=proof["order_variant"]
@@ -802,16 +882,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/236")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/237")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/223")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/224")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/236",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/237",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/136",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/137",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1337,7 +1417,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/236")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/237")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

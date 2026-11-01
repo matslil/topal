@@ -257,6 +257,7 @@ def order_variant(root,primary,timeout):
     case=root/"record-fields-reordered"
     (case/"policy").mkdir(parents=True)
     shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
+    LIBRARY.copy_architecture_libraries(case)
     original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
     changed=original.replace(
         "    interval is (seconds is seconds, nanoseconds is nanoseconds),\n    clock is (ticks is ticks, wrapped is wrapped)",
@@ -291,6 +292,7 @@ def wrong_policy(root,primary,timeout,module_body=False):
     (policy/"boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
     (policy/"static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t").read_bytes())
     shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
+    LIBRARY.copy_architecture_libraries(case)
     if module_body:
         module=case/"support/clock.t"
         before=module.read_text()

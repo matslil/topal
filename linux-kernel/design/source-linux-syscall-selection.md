@@ -1,7 +1,9 @@
 # Ordinary source selection of Linux syscall operations
 
 `TK-DEC-261`; systems-only refinement adopted under standing authorization.
-Design adopted; implementation and physical qualification remain required.
+Implemented; the [qualification report](../step-4-source-linux-syscall-selection.md)
+records actual source tags/facts, native adaptation and complete before-handler
+reclamation, including independent and reordered configurations.
 
 The Step 2 boundary assigns Linux policy to Topal modules. The current static
 process adapter still compares the captured selector directly in native code.
