@@ -134,6 +134,16 @@ mod tests {
                 text: include_str!("../../../kernel/support/elf.t").into(),
             }],
         };
+        let dispatch = SystemsSourceLibraryInput {
+            source: "arch/x86_64/policy/static-linux-dispatch.t".into(),
+            source_name: "arch/x86_64/policy/static-linux-dispatch.t".into(),
+            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/syscall.t".into(),
+                identity: vec!["support".into(), "syscall".into()],
+                text: include_str!("../../../kernel/support/syscall.t").into(),
+            }],
+        };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
@@ -143,6 +153,7 @@ mod tests {
                 policy: Some(&source),
                 time: Some(&time),
                 image: Some(&image),
+                dispatch: Some(&dispatch),
             },
             &linked,
         )

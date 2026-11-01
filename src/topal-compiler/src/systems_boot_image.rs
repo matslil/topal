@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/136";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/137";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -367,6 +367,13 @@ fn validate_artifact_input(
             "kernel-image-source-module:",
             "image-library",
         ),
+        (
+            &artifact.dispatch_library,
+            "static-linux-dispatch-v1",
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+            "kernel-dispatch-source-module:",
+            "dispatch-library",
+        ),
     ] {
         let has_numeric = file.symbol_by_name(policy.native_export()).is_some();
         if has_numeric != library.is_some() {
@@ -394,7 +401,9 @@ fn validate_artifact_input(
     if file
         .symbol_by_name("topal_x86_systems_numeric_arena")
         .is_some()
-        != (artifact.time_library.is_some() || artifact.image_library.is_some())
+        != (artifact.time_library.is_some()
+            || artifact.image_library.is_some()
+            || artifact.dispatch_library.is_some())
     {
         return Err(CompileError::Tool(
             "numeric arena and complete policy set disagree".into(),
@@ -1041,6 +1050,11 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
         )
         .unwrap();
+        let dispatch = crate::systems_library::load_source_library(
+            program.dispatch_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
         let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
@@ -1050,6 +1064,7 @@ mod tests {
                 policy: Some(&source),
                 time: Some(&time),
                 image: Some(&image),
+                dispatch: Some(&dispatch),
             },
             &parent.join("linked"),
         )
@@ -1114,6 +1129,53 @@ mod tests {
             assert!(
                 generate_x86_64_linux_boot_image(&changed, &provenance, &initial, &static_image)
                     .is_err()
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_missing_cross_policy_or_incomplete_nominal_dispatch_binding() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..8 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.dispatch_library = None,
+                1 => std::mem::swap(&mut changed.dispatch_library, &mut changed.time_library),
+                2 => {
+                    changed.dispatch_library.as_mut().unwrap().source_tags.pop();
+                }
+                3 => {
+                    let tags = &mut changed.dispatch_library.as_mut().unwrap().source_tags;
+                    tags[0] = tags[1];
+                }
+                4 => changed.time_library.as_mut().unwrap().source_tags.push(0),
+                5 => changed
+                    .inputs
+                    .retain(|i| !i.identity.starts_with("kernel-dispatch-source-module:")),
+                6 => {
+                    changed
+                        .dispatch_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes = 0
+                }
+                7 => {
+                    changed
+                        .dispatch_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
             );
         }
         fs::remove_dir_all(parent).unwrap();

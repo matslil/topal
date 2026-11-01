@@ -4,6 +4,14 @@
 mod array_tests;
 #[path = "systems_numeric_collections.rs"]
 mod collections;
+#[path = "systems_dispatch_choices.rs"]
+mod dispatch_choices;
+#[path = "systems_numeric_enums.rs"]
+mod enums;
+pub(crate) use dispatch_choices::DISPATCH_CHOICES;
+#[cfg(test)]
+#[path = "systems_dispatch_tests.rs"]
+mod dispatch_tests;
 #[cfg(test)]
 #[path = "systems_header_tests.rs"]
 mod header_tests;
@@ -38,7 +46,7 @@ pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_sleep_deadline_policy_v1";
 // than relying on measurements of the selected deadline implementation.
 const CERTIFIED_RUNTIME_SHA256: &str =
     "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6";
-pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/4";
+pub(crate) const ALLOCATION_CERTIFICATE: &str = "topal.numeric-allocation/5";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const HEADER_BYTES: u64 = 32;
 
@@ -66,6 +74,7 @@ pub(crate) struct CheckedNumericLibrary {
     pub(crate) entry_symbol: String,
     pub(crate) allocation: SystemsNumericAllocationBound,
     pub(crate) policy: NumericPolicy,
+    pub(crate) source_tags: Vec<u32>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -87,6 +96,11 @@ impl Range {
 #[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 enum Value {
     Boolean,
+    Enum {
+        name: String,
+        alternatives: Vec<String>,
+        tags: BTreeSet<u32>,
+    },
     Number(Range),
     Pair(Box<Value>, Box<Value>),
     Record(BTreeMap<String, Value>),
@@ -108,6 +122,22 @@ impl Value {
     fn union(&self, other: &Self) -> Result<Self, CompileError> {
         match (self, other) {
             (Self::Boolean, Self::Boolean) => Ok(Self::Boolean),
+            (
+                Self::Enum {
+                    name: a,
+                    alternatives: b,
+                    tags: c,
+                },
+                Self::Enum {
+                    name: d,
+                    alternatives: e,
+                    tags: f,
+                },
+            ) if a == d && b == e => Ok(Self::Enum {
+                name: a.clone(),
+                alternatives: b.clone(),
+                tags: c.union(f).copied().collect(),
+            }),
             (Self::Number(a), Self::Number(b)) => Ok(Self::Number(a.union(b))),
             (Self::Pair(a, b), Self::Pair(c, d)) => {
                 Ok(Self::Pair(Box::new(a.union(c)?), Box::new(b.union(d)?)))
@@ -168,11 +198,14 @@ fn cost_add(a: u64, b: u64) -> Result<u64, CompileError> {
     Ok(sum)
 }
 fn numeric_type(ty: &CompilerType) -> bool {
+    matches!(ty, CompilerType::Enum(_)) || plain_numeric_type(ty)
+}
+fn plain_numeric_type(ty: &CompilerType) -> bool {
     matches!(
         ty,
         CompilerType::Boolean | CompilerType::Nat | CompilerType::Int
     ) || matches!(ty,CompilerType::Tuple(fields) if fields.as_slice()==[CompilerType::Int,CompilerType::Int])
-        || matches!(ty,CompilerType::Record(fields) if fields.iter().all(|(_,field)|numeric_type(field)))
+        || matches!(ty,CompilerType::Record(fields) if fields.iter().all(|(_,field)|plain_numeric_type(field)))
         || matches!(ty,CompilerType::List(element) | CompilerType::Optional(element)
             if element.as_ref()==&CompilerType::Int)
         || matches!(ty,CompilerType::Array {count,element}
@@ -203,6 +236,12 @@ impl Bounds<'_> {
                 .as_ref()
                 .is_some_and(|row| !row.identities.is_empty())
             || !numeric_type(&function.result_type)
+            || (function.module_identity.is_some()
+                && (matches!(&function.result_type, CompilerType::Enum(_))
+                    || function
+                        .parameters
+                        .iter()
+                        .any(|p| matches!(&p.value_type, CompilerType::Enum(_)))))
             || function.parameters.len() != arguments.len()
             || function
                 .parameters
@@ -254,6 +293,7 @@ impl Bounds<'_> {
         }
         let (value, bytes) = match &expr.kind {
             K::Boolean(_) => (Value::Boolean, 0),
+            K::Enum(_) | K::EnumDecision { .. } => self.enum_expression(expr, env)?,
             K::Int(n) => (Value::Number(Range(n.clone(), n.clone())), 0),
             K::IntToNat(input) => {
                 let value = self.expression(input, env)?;
@@ -359,6 +399,30 @@ impl Bounds<'_> {
             } => {
                 let a = self.expression(left, env)?;
                 let b = self.expression(right, env)?;
+                if let (
+                    Value::Enum {
+                        name: a_name,
+                        alternatives: a_kind,
+                        ..
+                    },
+                    Value::Enum {
+                        name: b_name,
+                        alternatives: b_kind,
+                        ..
+                    },
+                ) = (&a.value, &b.value)
+                {
+                    if a_name != b_name
+                        || a_kind != b_kind
+                        || !matches!(operation, Op::Equal | Op::NotEqual)
+                    {
+                        return Err(invalid("unqualified or mismatched nominal operation"));
+                    }
+                    return Ok(Evaluation {
+                        value: Value::Boolean,
+                        bytes: cost_add(a.bytes, b.bytes)?,
+                    });
+                }
                 let left = a.value.number()?;
                 let right = b.value.number()?;
                 let bits = left.bits().max(right.bits());
@@ -495,7 +559,6 @@ pub(crate) fn check_numeric_library(
         .map(|p| p.value_type.clone())
         .collect::<Vec<_>>()
         != policy.parameters()
-        || entry.result_type != policy.result()
         || entry.parameters.iter().any(|p| p.int_range.is_some())
     {
         return Err(invalid(match policy {
@@ -505,8 +568,12 @@ pub(crate) fn check_numeric_library(
             NumericPolicy::Elf64Header => {
                 "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
             }
+            NumericPolicy::LinuxDispatch => {
+                "dispatch interface is not declared-type Nat -> StaticLinuxOperation"
+            }
         }));
     }
+    let source_tags = policy.source_tags(&entry.result_type)?;
     let entry_symbol = symbol.clone();
     let mut bounds = Bounds {
         functions: program
@@ -540,6 +607,7 @@ pub(crate) fn check_numeric_library(
         entry_symbol,
         allocation,
         policy,
+        source_tags,
     })
 }
 

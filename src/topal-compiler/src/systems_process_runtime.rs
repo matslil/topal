@@ -6,6 +6,8 @@
 
 #[path = "systems_process_children.rs"]
 pub(super) mod children;
+#[path = "systems_process_dispatch.rs"]
+pub(super) mod dispatch;
 #[path = "systems_process_header.rs"]
 pub(super) mod header;
 #[path = "systems_process_numeric.rs"]

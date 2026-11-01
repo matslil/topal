@@ -6,6 +6,7 @@ pub enum SystemsSourceLibraryInterface {
     BootOpenDecisionV1,
     RelativeSleepDeadlineV1,
     StaticElf64HeaderV1,
+    StaticLinuxDispatchV1,
 }
 impl SystemsSourceLibraryInterface {
     #[must_use]
@@ -14,6 +15,7 @@ impl SystemsSourceLibraryInterface {
             Self::BootOpenDecisionV1 => "boot-open-decision-v1",
             Self::RelativeSleepDeadlineV1 => "relative-sleep-deadline-v1",
             Self::StaticElf64HeaderV1 => "static-elf64-header-v1",
+            Self::StaticLinuxDispatchV1 => "static-linux-dispatch-v1",
         }
     }
 }
@@ -48,7 +50,8 @@ impl SystemsSourceLibraryRequirement {
                     self.stack_limit_bytes == 1024 && self.runtime_limit_bytes.is_none()
                 }
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
-                | SystemsSourceLibraryInterface::StaticElf64HeaderV1 => {
+                | SystemsSourceLibraryInterface::StaticElf64HeaderV1
+                | SystemsSourceLibraryInterface::StaticLinuxDispatchV1 => {
                     self.stack_limit_bytes == 4096 && self.runtime_limit_bytes == Some(65536)
                 }
             }

@@ -1943,6 +1943,13 @@ lang systems artifact (
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
+  dispatch-library is lang systems source-library (
+    source is "arch/x86_64/policy/static-linux-dispatch.t",
+    export is select-operation,
+    interface is static-linux-dispatch-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   bootstrap-storage is lang systems bounded-bootstrap-storage (
     capacity-bytes is 65536,
     alignment-bytes is 4096

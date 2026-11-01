@@ -27,6 +27,7 @@ pub(in super::super) fn emit_entry_validation(
     code: &mut X86FunctionEncoder,
     time: bool,
     image: bool,
+    dispatch: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     for (selected, argument, context, label) in [
@@ -36,6 +37,12 @@ pub(in super::super) fn emit_entry_validation(
             0x78,
             super::header::CODE_CONTEXT,
             "header-code-disjoint",
+        ),
+        (
+            dispatch,
+            0x80,
+            super::dispatch::CODE_CONTEXT,
+            "dispatch-code-disjoint",
         ),
     ] {
         if !selected {
@@ -55,6 +62,11 @@ pub(in super::super) fn emit_entry_validation(
     }
     if !time {
         e.load(A, Sp, 0x68);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fail");
+    }
+    if dispatch && !image {
+        e.load(A, Sp, 0x78);
         e.cmp(A, 0);
         e.0.jump_if(0x85, "fail");
     }
@@ -176,7 +188,12 @@ pub(in super::super) fn allocator() -> Result<Vec<u8>, CompileError> {
     e.cmp(R8, 1);
     e.0.jump_if(0x84, "numeric-time-binding");
     e.cmp(R8, 2);
+    e.0.jump_if(0x84, "numeric-header-binding");
+    e.cmp(R8, 3);
     e.0.jump_if(0x85, "fail");
+    e.gs(0x8b, R8, super::dispatch::CODE_CONTEXT);
+    e.0.jump("numeric-policy-binding-ready");
+    e.0.bind("numeric-header-binding")?;
     e.gs(0x8b, R8, super::header::CODE_CONTEXT);
     e.0.jump("numeric-policy-binding-ready");
     e.0.bind("numeric-time-binding")?;

@@ -81,6 +81,9 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-elf64-header-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1);
             }
+            "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
+            }
             "runtime-limit-bytes" => {
                 runtime = Some(parse_storage_natural(source, &field.value)?);
             }
@@ -121,6 +124,77 @@ pub(super) fn parse_requirement(
 #[cfg(test)]
 mod tests {
     use super::super::*;
+    #[test]
+    fn dispatch_declarations_preserve_independent_policy_selection_and_closed_shape() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
+        let full = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let remove = |source: &str, slot: &str| {
+            let start = source.find(&format!("  {slot} is")).unwrap();
+            let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+            format!("{}{}", &source[..start], &source[end..])
+        };
+        let base = remove(full, "dispatch-library");
+        let declaration = "  dispatch-library is lang systems source-library (\n    source is \"arch/x86_64/policy/static-linux-dispatch.t\",\n    export is select-operation,\n    interface is static-linux-dispatch-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
+        for without_time in [false, true] {
+            for without_image in [false, true] {
+                let mut source = base.clone();
+                if without_time {
+                    source = remove(&source, "time-library");
+                }
+                if without_image {
+                    source = remove(&source, "image-library");
+                }
+                let insert = |value: &str| {
+                    source.replacen(
+                        "  bootstrap-storage is",
+                        &format!("{value}  bootstrap-storage is"),
+                        1,
+                    )
+                };
+                let program = analyze_systems_for_compiler(
+                    &insert(declaration),
+                    &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+                )
+                .unwrap();
+                assert_eq!(program.time_library.is_none(), without_time);
+                assert_eq!(program.image_library.is_none(), without_image);
+                assert_eq!(
+                    program.dispatch_library.unwrap().interface,
+                    CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                );
+                for (before, after) in [
+                    ("static-linux-dispatch-v1", "static-elf64-header-v1"),
+                    (
+                        "arch/x86_64/policy/static-linux-dispatch.t",
+                        "../dispatch.t",
+                    ),
+                    ("select-operation", "0"),
+                    ("stack-limit-bytes is 4096", "stack-limit-bytes is 4095"),
+                    (
+                        "runtime-limit-bytes is 65536",
+                        "runtime-limit-bytes is 65535",
+                    ),
+                ] {
+                    assert!(
+                        analyze_systems_for_compiler(
+                            &insert(&declaration.replace(before, after)),
+                            &CompilerSystemsTargetSelection::initial_x86_64_qemu()
+                        )
+                        .is_err(),
+                        "{after}"
+                    );
+                }
+                assert!(
+                    analyze_systems_for_compiler(
+                        &insert(&declaration.repeat(2)),
+                        &CompilerSystemsTargetSelection::initial_x86_64_qemu()
+                    )
+                    .is_err()
+                );
+            }
+        }
+    }
+
     #[test]
     fn image_policy_declarations_are_independent_and_structurally_checked() {
         // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001

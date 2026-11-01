@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/215";
+    "topal.provider-object.x86_64-qemu-pc-q35/216";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1659,6 +1659,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.kernel_library.is_some(),
             program.time_library.is_some(),
             program.image_library.is_some(),
+            program.dispatch_library.is_some(),
         )?,
     );
     append_encoded_function(
@@ -1853,7 +1854,10 @@ pub fn generate_x86_64_systems_provider_object(
         ],
     );
 
-    if program.time_library.is_some() || program.image_library.is_some() {
+    if program.time_library.is_some()
+        || program.image_library.is_some()
+        || program.dispatch_library.is_some()
+    {
         append_encoded_function(
             &mut object,
             text,
@@ -9493,6 +9497,7 @@ fn static_image_process_enter(
     source_bound: bool,
     source_numeric: bool,
     source_image: bool,
+    source_dispatch: bool,
 ) -> Result<Vec<u8>, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -9540,6 +9545,7 @@ fn static_image_process_enter(
         process_runtime::numeric::CODE_CONTEXT,
         process_runtime::numeric::ARENA_CONTEXT,
         process_runtime::header::CODE_CONTEXT,
+        process_runtime::dispatch::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0x83, 0xba]);
         code.bytes(&offset.to_le_bytes());
@@ -9551,8 +9557,13 @@ fn static_image_process_enter(
     if source_bound {
         process_runtime::policy::emit_entry_validation(&mut code)?;
     }
-    if source_numeric || source_image {
-        process_runtime::numeric::emit_entry_validation(&mut code, source_numeric, source_image)?;
+    if source_numeric || source_image || source_dispatch {
+        process_runtime::numeric::emit_entry_validation(
+            &mut code,
+            source_numeric,
+            source_image,
+            source_dispatch,
+        )?;
     }
     code.bytes(&[0x49, 0x8b, 0x82]);
     code.bytes(&256_u32.to_le_bytes());
@@ -9773,6 +9784,9 @@ fn static_image_process_enter(
     code.jump_if(0x85, "fatal");
     // Linux x86-64 selects a syscall with the low native 32-bit number.
     code.bytes(&[0x89, 0xc0]);
+    if source_dispatch {
+        process_runtime::dispatch::emit_invoke(&mut code)?;
+    }
     process_files::emit_dispatch(&mut code)?;
     process_runtime::signals::emit_dispatch(&mut code)?;
     process_runtime::namespace::emit_dispatch(&mut code)?;
@@ -16708,7 +16722,7 @@ fn static_image_process_enter(
     code.bytes(&((process_runtime::children::STORAGE_BYTES / 8) as u32).to_le_bytes());
     code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     code.jump_if(0x85, "fatal");
-    if source_numeric || source_image {
+    if source_numeric || source_image || source_dispatch {
         process_runtime::numeric::emit_terminal_readback(&mut code)?;
     }
     for offset in [
@@ -16723,6 +16737,7 @@ fn static_image_process_enter(
         process_runtime::numeric::CODE_CONTEXT,
         process_runtime::numeric::ARENA_CONTEXT,
         process_runtime::header::CODE_CONTEXT,
+        process_runtime::dispatch::CODE_CONTEXT,
     ] {
         code.bytes(&[0x49, 0xc7, 0x82]);
         code.bytes(&offset.to_le_bytes());

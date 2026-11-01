@@ -5,6 +5,7 @@ use super::*;
 pub(crate) enum NumericPolicy {
     Deadline,
     Elf64Header,
+    LinuxDispatch,
 }
 impl NumericPolicy {
     pub(crate) fn from_interface(
@@ -13,6 +14,7 @@ impl NumericPolicy {
         match interface {
             CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1 => Ok(Self::Deadline),
             CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1 => Ok(Self::Elf64Header),
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1 => Ok(Self::LinuxDispatch),
             _ => Err(invalid("unqualified owned policy interface")),
         }
     }
@@ -20,18 +22,21 @@ impl NumericPolicy {
         match self {
             Self::Deadline => EXPORT_SYMBOL,
             Self::Elf64Header => "topal_kernel_static_elf64_header_policy_v1",
+            Self::LinuxDispatch => "topal_kernel_static_linux_dispatch_policy_v1",
         }
     }
     pub(crate) fn function_prefix(self) -> &'static str {
         match self {
             Self::Deadline => FUNCTION_PREFIX,
             Self::Elf64Header => "topal.header.",
+            Self::LinuxDispatch => "topal.dispatch.",
         }
     }
     pub(crate) fn stem(self) -> &'static str {
         match self {
             Self::Deadline => "time-library",
             Self::Elf64Header => "image-library",
+            Self::LinuxDispatch => "dispatch-library",
         }
     }
     pub(crate) fn parameters(self) -> Vec<CompilerType> {
@@ -50,13 +55,48 @@ impl NumericPolicy {
                 CompilerType::Nat,
                 CompilerType::Nat,
             ],
+            Self::LinuxDispatch => vec![CompilerType::Nat],
         }
     }
-    pub(crate) fn result(self) -> CompilerType {
-        match self {
-            Self::Deadline => CompilerType::Int,
-            Self::Elf64Header => CompilerType::Boolean,
+    pub(crate) fn source_tags(self, result: &CompilerType) -> Result<Vec<u32>, CompileError> {
+        let valid = match self {
+            Self::Deadline => result == &CompilerType::Int,
+            Self::Elf64Header => result == &CompilerType::Boolean,
+            Self::LinuxDispatch => false,
+        };
+        if valid {
+            return Ok(Vec::new());
         }
+        if self == Self::LinuxDispatch {
+            if let CompilerType::Enum(kind) = result {
+                let choices = &super::dispatch_choices::DISPATCH_CHOICES;
+                if canonically_equal(&kind.name, "StaticLinuxOperation")
+                    && kind.alternatives.len() == choices.len()
+                {
+                    return choices
+                        .iter()
+                        .map(|(name, _)| {
+                            kind.alternatives
+                                .iter()
+                                .position(|alternative| canonically_equal(alternative, name))
+                                .map(|n| n as u32)
+                                .ok_or_else(|| {
+                                    invalid(format!("missing semantic operation {name}"))
+                                })
+                        })
+                        .collect();
+                }
+            }
+        }
+        Err(invalid(match self {
+            Self::Deadline => "numeric interface is not declared-type Nat/Nat/Nat/Boolean -> Int",
+            Self::Elf64Header => {
+                "header interface is not declared-type Array(64,Int)/Nat/Nat -> Boolean"
+            }
+            Self::LinuxDispatch => {
+                "dispatch interface requires nominal StaticLinuxOperation with the exact semantic vocabulary"
+            }
+        }))
     }
     pub(super) fn arguments(self) -> Vec<Value> {
         let range =
@@ -73,12 +113,14 @@ impl NumericPolicy {
                 range(1, 65535),
                 range(1, 65535),
             ],
+            Self::LinuxDispatch => vec![range(0, u64::MAX)],
         }
     }
     pub(crate) fn bridge_bytes(self) -> u64 {
         match self {
             Self::Deadline => 3 * 24,
             Self::Elf64Header => 64 * (24 + 16) + 16 + 2 * 24,
+            Self::LinuxDispatch => 24,
         }
     }
     pub(crate) fn alignment_reserve(self) -> u64 {
@@ -88,6 +130,7 @@ impl NumericPolicy {
         match self {
             Self::Deadline => 0,
             Self::Elf64Header => 64,
+            Self::LinuxDispatch => 64,
         }
     }
     pub(super) fn client(self, export: &str) -> String {
@@ -106,6 +149,7 @@ impl NumericPolicy {
                 client.push_str(&format!("header-probe-array : Array (64, Int) is header-probe-list64 collect Array\nheader-probe-machine : Nat is 62\nheader-probe-maximum : Nat is 16\n{export} (header-probe-array, header-probe-machine, header-probe-maximum)\n"));
                 client
             }
+            Self::LinuxDispatch => format!("\nselector : Nat is 0\n{export} selector\n"),
         }
     }
     /// Only LLVM identifiers outside strings/comments are adapted. Debug paths
@@ -114,6 +158,11 @@ impl NumericPolicy {
         if self == Self::Deadline {
             return module.to_owned();
         }
+        let private = if self == Self::Elf64Header {
+            "topal.elf."
+        } else {
+            "topal.syscall."
+        };
         let mut result = String::with_capacity(module.len());
         let mut chars = module.chars().peekable();
         let (mut quoted, mut escaped, mut comment) = (false, false, false);
@@ -159,13 +208,16 @@ impl NumericPolicy {
             }
             result.push('@');
             if let Some(suffix) = name.strip_prefix("topal.runtime.") {
-                result.push_str("topal.elf.runtime.");
+                result.push_str(private);
+                result.push_str("runtime.");
                 result.push_str(suffix);
             } else if let Some(suffix) = name.strip_prefix("topal.platform.") {
-                result.push_str("topal.elf.platform.");
+                result.push_str(private);
+                result.push_str("platform.");
                 result.push_str(suffix);
             } else if name == "memset" {
-                result.push_str("topal.elf.memset");
+                result.push_str(private);
+                result.push_str("memset");
             } else {
                 result.push_str(&name);
             }
@@ -173,14 +225,19 @@ impl NumericPolicy {
         result
     }
     pub(crate) fn canonical_name(self, name: &str) -> String {
-        if self == Self::Elf64Header {
-            if let Some(suffix) = name.strip_prefix("topal.elf.runtime.") {
+        if self != Self::Deadline {
+            let private = if self == Self::Elf64Header {
+                "topal.elf."
+            } else {
+                "topal.syscall."
+            };
+            if let Some(suffix) = name.strip_prefix(&format!("{private}runtime.")) {
                 return format!("topal.runtime.{suffix}");
             }
-            if let Some(suffix) = name.strip_prefix("topal.elf.platform.") {
+            if let Some(suffix) = name.strip_prefix(&format!("{private}platform.")) {
                 return format!("topal.platform.{suffix}");
             }
-            if name == "topal.elf.memset" {
+            if name == format!("{private}memset") {
                 return "memset".into();
             }
             // Unadapted shared helpers are forbidden in the second unit.

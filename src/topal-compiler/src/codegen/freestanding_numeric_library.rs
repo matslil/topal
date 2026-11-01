@@ -27,8 +27,12 @@ pub(crate) fn emit_numeric_kernel_library(unit:&crate::systems_numeric_library::
     }
     for global in &generator.globals { let _=writeln!(module,"{global}"); }
     for function in &generator.functions { module.push_str(function);module.push('\n'); }
-    if unit.policy==crate::systems_numeric_library::NumericPolicy::Elf64Header {
-        module.push_str(&emit_owned_header_bridge(unit));
+    if unit.policy!=crate::systems_numeric_library::NumericPolicy::Deadline {
+        module.push_str(&match unit.policy {
+            crate::systems_numeric_library::NumericPolicy::Elf64Header=>emit_owned_header_bridge(unit),
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatch=>emit_owned_dispatch_bridge(unit),
+            _=>unreachable!(),
+        });
         module.push_str(&generator.debug.finish());
         return Ok(unit.policy.namespace(&module));
     }

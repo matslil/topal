@@ -23,6 +23,7 @@ pub struct SystemsNumericLibraryArtifact {
     pub source: String,
     pub source_name: String,
     pub source_export: String,
+    pub source_tags: Vec<u32>,
     pub native_export: String,
     pub source_sha256: String,
     pub modules: Vec<crate::SystemsSourceModuleArtifact>,
@@ -243,11 +244,12 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/4".into(),
+        schema: "topal.kernel-numeric-source-library/5".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: requirement.export.clone(),
+        source_tags: checked.source_tags.clone(),
         native_export: export.into(),
         source_sha256: digest(input.text.as_bytes()),
         modules: crate::systems_library::modules::records(input),
@@ -258,7 +260,7 @@ pub(crate) fn build_numeric_library(
         platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
         object_sha256: digest(&bytes),
         llvm_version: tools.version.clone(),
-        machine_profile: "x86_64-owned-numeric-gpr-only/4".into(),
+        machine_profile: "x86_64-owned-numeric-gpr-only/5".into(),
         disassembly_sha256: digest(disassembly.as_bytes()),
         native_alignment_reserve_bytes: policy.alignment_reserve(),
         native_invocation_save_bytes: policy.invocation_saves(),
@@ -394,9 +396,18 @@ pub(crate) fn inspect_linked_numeric_library(
     let policy = match record.interface.as_str() {
         "relative-sleep-deadline-v1" => super::NumericPolicy::Deadline,
         "static-elf64-header-v1" => super::NumericPolicy::Elf64Header,
+        "static-linux-dispatch-v1" => super::NumericPolicy::LinuxDispatch,
         _ => return Err(invalid("unqualified numeric binding interface")),
     };
-    if record.schema != "topal.kernel-numeric-source-library/4"
+    let tags_valid = if policy == super::NumericPolicy::LinuxDispatch {
+        record.source_tags.len() == super::DISPATCH_CHOICES.len()
+            && record.source_tags.iter().copied().collect::<BTreeSet<_>>()
+                == (0..super::DISPATCH_CHOICES.len() as u32).collect()
+    } else {
+        record.source_tags.is_empty()
+    };
+    if record.schema != "topal.kernel-numeric-source-library/5"
+        || !tags_valid
         || record.native_export != policy.native_export()
         || record.stack_limit_bytes != 4096
         || record.maximum_stack_bytes > 4096
@@ -417,7 +428,7 @@ pub(crate) fn inspect_linked_numeric_library(
         || record.allocation.runtime_sha256 != super::CERTIFIED_RUNTIME_SHA256
         || record.allocation.collection_runtime_sha256 != collection_runtime
         || record.allocation.collection_layout_sha256 != collection_layout
-        || record.machine_profile != "x86_64-owned-numeric-gpr-only/4"
+        || record.machine_profile != "x86_64-owned-numeric-gpr-only/5"
         || !record
             .functions
             .iter()
