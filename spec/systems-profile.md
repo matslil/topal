@@ -3727,7 +3727,9 @@ kernel evidence.
 
 An artifact MAY declare one `kernel-library` using
 `lang systems source-library (source is PATH, export is NAME, interface is
-boot-open-decision-v1, stack-limit-bytes is 1024)`. PATH SHALL identify a
+boot-open-decision-v1, stack-limit-bytes is 1024)` or the selected
+`file-open-decision-v1` interface under `TOPAL-SYSTEMS-FILE-OPEN-PLAN-001`.
+PATH SHALL identify a
 relative `.t` source unit within the explicitly selected library root. NAME
 SHALL be one structural identifier naming a public ordinary function in that
 unit. Duplicate fields, missing/unknown interface fields, escaping paths or
@@ -9164,3 +9166,49 @@ semantic transition.
 Atomic and external-observation rules extend the execution relation only in a
 selected systems context. They do not weaken ordinary Topal race rejection or
 permit an optimizer to choose an application-visible interleaving.
+
+### TOPAL-SYSTEMS-FILE-OPEN-PLAN-001 — Source-defined regular-file open plans
+
+An artifact MAY select `file-open-decision-v1` instead of the frozen
+`boot-open-decision-v1` in its unique `kernel-library` slot. The export SHALL
+accept exactly eight Boolean parameters in order: write access, directory,
+directory required, mutable view, exists, create, exclusive and truncate. Its
+result SHALL be nominal `FileOpenDecision` with exactly `OpenDescription`,
+`NotDirectory`, `DirectoryWrite`, `ReadOnlyView`, `Missing`, `AlreadyExists`,
+`CreateDescription` and `TruncateDescription`. Source alternative order SHALL
+remain private. The pure finite profile and exact 1024-byte stack-only reserve
+of `TOPAL-SYSTEMS-SOURCE-LIBRARY-001` SHALL apply.
+
+The source disposition SHALL be total. For an existing target, create with
+exclusive SHALL yield AlreadyExists; otherwise a directory requirement on a
+regular target SHALL yield NotDirectory; otherwise directory with write, create
+or truncate SHALL yield DirectoryWrite; otherwise a regular immutable target
+with write or truncate SHALL yield ReadOnlyView; otherwise truncate on a regular
+mutable target SHALL yield TruncateDescription; otherwise OpenDescription.
+For an absent target, no create SHALL yield Missing; otherwise an immutable view
+SHALL yield ReadOnlyView; otherwise directory required SHALL yield NotDirectory;
+otherwise CreateDescription. Native admission SHALL precede this disposition:
+unsupported flag combinations, prefix lookup failure, O_CREAT|O_DIRECTORY and
+applicable O_CREAT trailing-slash errors SHALL NOT become source facts that
+bypass those failures. Truncate SHALL remain distinct from description access.
+
+Native code SHALL derive facts from checked requests and owned resolved views,
+not user-supplied authority assertions. Plans SHALL NOT grant object, memory,
+write or code authority. Native consumers SHALL revalidate action preconditions
+before reservation, mutation or publication. Existing nonmutating opens SHALL
+accept OpenDescription only for an existing owned target without forbidden
+mutation. Temporary creation SHALL accept CreateDescription only for a checked
+mutable directory, admitted write access and anonymous creation request. A
+mismatched action SHALL fail closed before changing owned storage. This rule
+SHALL NOT by itself qualify linked creation, reopen, unlink or general filesystem
+mutation. Linux errors SHALL be translated only at the native boundary.
+
+Private export, parameter count, complete result vocabulary, source-tag
+permutation, generated object, measured acyclic stack and binding lifetime SHALL
+agree with the selected interface. Mismatched, duplicate, missing or other-version
+exports SHALL reject publication/boot. The code binding SHALL retain the
+exec/fork/terminal obligations of `TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001`.
+Tests SHALL execute all 256 input masks, invalid native representations,
+reordered alternatives and real source/helper calls for existing and temporary
+opens. A wrong create plan SHALL be rejected before object/page publication;
+that counterexample SHALL remain separate from successful execution evidence.
