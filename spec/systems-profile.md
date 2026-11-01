@@ -9441,3 +9441,67 @@ transaction rollback or payload erasure. Native temporary storage, stack,
 adapter and code-binding reclamation SHALL still precede owner resumption.
 The portable model SHALL borrow the existing bootstrap-storage owner and SHALL
 NOT be reported as source/compiler/native or physical-erasure qualification.
+
+### TOPAL-SYSTEMS-REGION-SOURCE-ENTRY-001 — Declared region export
+
+A region source-object context SHALL require language v0.1 with feature systems
+and a selected published ordinary `(KernelByteRegion) -> Unit` export. The
+frontend SHALL instantiate its declared types without constructing a region
+value in source or adding an executable source client. Ordinary application
+analysis SHALL NOT acquire this classifier or its members. Module selection,
+visibility, source identity and ordinary call/type checking SHALL remain in
+force. Selection SHALL grant vocabulary, not a live region or native authority.
+Runtime initializers, foreign/ambient services and region constructors SHALL
+remain unqualified. The selected entry view SHALL have at most 65536 bytes.
+
+### TOPAL-SYSTEMS-REGION-SOURCE-MEMBERS-001 — Checked ordinary byte members
+
+KernelByteRegion byte count SHALL return its view extent as Nat. Byte load with
+Nat offset SHALL return Some Nat in 0..255 for a contained byte and None
+otherwise. Byte store with Nat offset/value SHALL return true only after one
+authorized contained byte store; missing write rights, an invalid index or a
+value above 255 SHALL return false without storage access. Nat values SHALL NOT
+be truncated to native words. Checked window derivation SHALL return Some
+KernelByteRegion only for a contained nonwrapping interval and nonwidening
+read-only/read-write rights; otherwise it SHALL return None. Empty end windows
+SHALL be valid. Derivation/count SHALL retain owner identity and observe only
+immutable view metadata. Invalid lifetime/owner/code evidence SHALL fail closed
+as an invariant failure, not the normal Optional/Boolean refusal.
+Named argument expressions SHALL evaluate once in source field order before
+primitive validation. Canonical native parameter order SHALL NOT reorder their
+effects. Refusal SHALL NOT roll back argument-helper effects.
+
+### TOPAL-SYSTEMS-REGION-SOURCE-CLOSURE-001 — Effects and nonescape
+
+Every resource value in the closed instantiated source graph SHALL derive from
+the selected entry owner through parameters or checked window derivation.
+Function results, captures, persistent values, callbacks or serialized values
+SHALL NOT contain a view. Optional views MAY be consumed locally. The initial
+profile SHALL reject recursion, suspension, concurrency and unsupported resource
+containers. Every byte load/store SHALL infer Read/Write of that same owner;
+helper calls SHALL propagate those effects through aliases and derivations.
+A false empty `Effects ()` bound SHALL reject. An unsupported explicit effect bound
+SHALL diagnose before publication, not erase its obligation. Ordinary direct
+function lowering SHALL preserve helper frames, value semantics and debug
+source/parameter information. Private transport optimization SHALL preserve
+scoped caller suspension, callee revocation and nonescape observations.
+
+### TOPAL-SYSTEMS-REGION-SOURCE-OBJECT-001 — Qualified native object boundary
+
+The source object SHALL bind exact source/modules, checked export/types/effects,
+native adapter/representation, code/invocation protocol, shared runtime and
+complete stack/allocation/view proofs. Source and derived-view metadata SHALL
+fit the exclusively lent 65536-byte temporary arena. Observed high-water marks
+SHALL NOT replace conservative proofs. The initial monotonic realization SHALL
+admit at most 256 issued view nodes per invocation, including retired nodes
+awaiting erasure. Its existing numeric proof budget SHALL remain 256 bits;
+unsupported larger bounds SHALL diagnose without truncation. Source-visible addresses, unchecked
+objects, host allocation/syscalls, foreign runtimes and writable library globals
+SHALL remain forbidden. A qualified caller SHALL supply live mapped owner,
+control and temporary storage and validate region authority independently of
+numeric words. Generated code SHALL validate code/generation, extent/overflow,
+rights and active lifetime before use. Caller preservation and actual byte/
+source-frame observations SHALL be independently tested, including wrong or
+undercharged bindings. The standalone object phase SHALL NOT claim kernel-root
+publication, owner resumption or physical reclamation qualification without
+their separate integration evidence.

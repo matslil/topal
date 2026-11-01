@@ -12214,3 +12214,17 @@ an independent wrong-data/result rejection; retain the existing command corpus.
 
 Realize named regular creation, independent reopening, truncating open, unlink and native directory/stat observations under the owned sparse filesystem. Bind selected open plans and versioned dispatch without changing frozen contracts. Keep names, objects, descriptions and descriptors distinct; preserve Linux lookup/admission ordering and complete failure atomicity; prove exact placement/helper bounds and terminal namespace-owner reclamation. Require independent native and pinned-Linux controls, source-policy execution and real shell/file-command evidence.
 See [design](../../linux-kernel/design/named-volatile-files.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-SOURCE-001 — Ordinary region source objects
+
+Implement `TOPAL-SYSTEMS-REGION-SOURCE-ENTRY-001`,
+`TOPAL-SYSTEMS-REGION-SOURCE-MEMBERS-001`,
+`TOPAL-SYSTEMS-REGION-SOURCE-CLOSURE-001` and
+`TOPAL-SYSTEMS-REGION-SOURCE-OBJECT-001` using shared ordinary source/module,
+function and native lowering. Separate declared export typing from constructing
+source authority. Preserve resource-origin effects, empty-effect checks, nonescape
+and all checked refusal/identity distinctions. Prove complete source/runtime/
+view/stack bounds and inspect actual object/debug/calling evidence. Bind no host
+service or writable source global. Standalone object evidence shall remain
+distinct from kernel-root/QEMU integration and full reclamation. See
+[TK-DEC-270](../../linux-kernel/design/source-kernel-region-functions.md).
