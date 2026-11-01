@@ -11,7 +11,7 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [whole source-produced structured state](step-4-structured-source-state.md).
+The latest Step 4 increment qualifies [owned sparse volatile regular files](step-4-owned-volatile-files.md).
 
 ## Current phase
 

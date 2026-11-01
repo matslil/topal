@@ -1,7 +1,9 @@
 # Owned sparse volatile regular files
 
 `TK-DEC-265`; systems-only extension adopted under standing authorization.
-Design adopted; specification, implementation and qualification remain required.
+The [implementation report](../step-4-owned-volatile-files.md) records actual
+sparse bytes, signed interval/error ordering, shared process lifetime, complete
+owned storage evidence, Linux controls and physical reclamation qualification.
 
 ## Purpose and initial boundary
 

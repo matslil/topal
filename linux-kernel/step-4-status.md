@@ -21,8 +21,9 @@ systems abstractions; ARM64 implementation is outside the current focus.
   allocation bounds and imported collection helpers using shared ordinary runtime.
 - Source ELF64 header interpretation over copied owned bytes, precommit exec
   refusal, independently selected header/time policies and complete reclamation.
-- Ordinary source selection of 55 existing Linux operations plus Unsupported,
-  actual nominal tag adaptation and cleanup before native argument/handler access.
+- Versioned ordinary source selection of 57 Linux operations plus Unsupported,
+  with frozen 55-operation compatibility, actual nominal tag adaptation and
+  cleanup before native argument/handler access.
 - Source process-ID/cursor transitions over immutable Record snapshots, named
   scalar result extraction and owned state publication after complete cleanup.
 - Actual ordinary identity-state Records retained between callbacks, with
@@ -43,19 +44,23 @@ systems abstractions; ARM64 implementation is outside the current focus.
   read/write readiness, native metadata and blocked-owner cancellation.
 - Shared file descriptions and offsets, descriptor flags/aliases, an immutable
   boot-root namespace, cwd/directory observations and prepared root/PID/UTS views.
+- Owned sparse RAM-file storage reached by `O_TMPFILE` in `/tmp`: four anonymous
+  regular objects over eight shared pages, actual read/write/seek/truncate,
+  coherent directory/file metadata, private umask, alias/fork/exec sharing and
+  complete last-reference and active/inactive termination reclamation.
 - Signal registration/masks without user delivery; actual RTC seconds; borrowed
   monotonic time/resolution and relative sleeps with source-defined saturation.
 - Unmodified pinned BusyBox utilities and interactive shell builtin/cwd/input
   cycles and command substitution through shared services, including transfers
   beyond FIFO capacity. Unknown syscall selectors return ENOSYS.
 
-The [current runtime report](step-4-structured-source-state.md) records whole
-source-produced values, actual published node borrowing, nested order and full
-numeric/Boolean preservation, 27 version publications and retirements, controlled
-wide-count/wrap observations and wrong-history rejection that scalar-only
-checking would miss. Both earlier identity interfaces remain compatibility
-controls. Each report identifies its scope, complete regression qualification
-and limitations.
+The [current runtime report](step-4-owned-volatile-files.md) records actual sparse
+file bytes, native interval validation before clipping/EOF, page/object budgets,
+shared alias and process history, exec filtering, private umask, complete
+reclamation and independent wrong-data rejection. A disposable pinned-Linux
+control checks the generic value/lifetime laws. Earlier dispatch and identity
+interfaces remain explicit compatibility controls. Each report identifies its
+scope, complete regression qualification and limitations.
 A successful bounded witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
@@ -65,7 +70,7 @@ A successful bounded witness does not establish general Linux compatibility.
 | Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
-| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Three immutable namespace objects, four shared anonymous FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
+| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four anonymous sparse RAM files over eight shared pages; no linked-file mutation or persistent storage; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
 | Networking and isolation | Network stack, namespaces, credentials/capabilities, cgroups and other retained UAPI contracts | Research/design plus bounded initial-process views |
 | Reference distribution | Replace the Step 3 kernel and run declared command-line corpus from its ordinary prompt | Toolchain-gate VM and static BusyBox corpus |
 | Containers | Docker and Podman acceptance in the replacement-kernel VM | Reference Linux controls only |
