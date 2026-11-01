@@ -486,6 +486,18 @@ bounds and terminal erasure. This qualifies a value-level state transition and
 flat numeric Record result, not general persistent allocation, mutation/effects
 or new core Record meaning; see `TK-DEC-262`.
 
+A separately qualified systems profile may retain an ordinary immutable state
+value in an explicitly owned kernel store across source calls. The first schema
+is the existing process-identity `Record (next : Nat)`, with a separate bounded
+state reserve. Source borrows the published value and returns its ordinary named
+proposal; a checked semantic copy prepares an independently owned successor
+without retaining invocation pointers. Complete temporary cleanup precedes owned
+publication, and the old value is reclaimed after its last borrow. Creation,
+exec/child history, cancellation and terminal erasure retain explicit ownership.
+The temporary-only profiles remain unchanged. This qualifies kernel-owned value
+retention, not a general persistent heap, source mutation, core `AllocationRegion`
+syntax or a new language revision; see `TK-DEC-263`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.

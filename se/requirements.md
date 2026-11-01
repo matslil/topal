@@ -1525,6 +1525,21 @@ source-body changes and Enum reordering, malformed/escape inputs, native syscall
 boundaries and full rollback. Kernel policy shall reside in the kernel source
 tree; native adapters shall translate semantic choices and enforce authority.
 
+Under `TK-DEC-263`, a separately selected systems source-library profile may
+retain the existing ordinary process-identity state Record in an explicitly owned
+4096-byte store, alongside unchanged invocation stack/runtime reserves. Source
+shall borrow the published value; checked semantic copying shall prepare a
+successor without escaping temporary pointers. Complete temporary cleanup shall
+precede exclusive owner publication and last-borrow retirement of the old value.
+Exact state schema, binding, layout/version protocol, source/module provenance
+and complete bounds shall be qualified. Scalar-only profiles, existing process
+ownership/commit/error rules and core immutable/resource meanings shall remain
+unchanged. Exec/child restoration shall preserve shared version history, and
+terminal return shall reclaim the entire store and binding. Missing, malformed,
+stale, conflicting or unqualified state evidence shall fail closed. General
+persistent allocation, arbitrary stored types, concurrent writers and source
+effects remain outside the first qualification.
+
 The qualified source-module refinement (`TK-DEC-257`) shall admit closed ordinary
 dependencies for the finite and numeric policy interfaces, freeze exact logical
 identities/relative paths/source bytes and bind every dependency in provenance
