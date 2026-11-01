@@ -6,6 +6,8 @@ use std::sync::Arc;
 #[path = "systems_named_files.rs"]
 mod named;
 pub use named::*;
+#[path = "systems_positional_files.rs"]
+mod positional;
 
 const PAGE: usize = 4096;
 const PAGES: usize = 8;
@@ -301,6 +303,16 @@ impl SystemsVolatileFilePool {
         count: u64,
         admitted: SystemsFileUserAdmission,
     ) -> Result<Vec<u8>, SystemsModelError> {
+        self.read_position(owner, file, count, admitted, None)
+    }
+    pub(super) fn read_position(
+        &mut self,
+        owner: &str,
+        file: &SystemsVolatileFile,
+        count: u64,
+        admitted: SystemsFileUserAdmission,
+        supplied: Option<u64>,
+    ) -> Result<Vec<u8>, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
         if d.rights == SystemsFileRights::Write {
@@ -309,14 +321,15 @@ impl SystemsVolatileFilePool {
         if !admitted.numerical_range {
             return Err(error("EFAULT"));
         }
-        verify_range(d.position, count)?;
+        let position = supplied.unwrap_or(d.position);
+        verify_range(position, count)?;
         let o = self.state.objects[d.object].as_ref().unwrap();
-        if count == 0 || d.position >= o.size {
+        if count == 0 || position >= o.size {
             return Ok(vec![]);
         }
-        let offset = (d.position % PAGE as u64) as usize;
+        let offset = (position % PAGE as u64) as usize;
         let length = count
-            .min(o.size - d.position)
+            .min(o.size - position)
             .min(QUANTUM as u64)
             .min((PAGE - offset) as u64) as usize;
         if !admitted.complete_prefix {
@@ -326,12 +339,14 @@ impl SystemsVolatileFilePool {
             .state
             .pages
             .iter()
-            .find(|p| p.owner == Some(o.identity) && p.index == d.position / PAGE as u64)
+            .find(|p| p.owner == Some(o.identity) && p.index == position / PAGE as u64)
         {
             Some(p) => p.bytes[offset..offset + length].to_vec(),
             None => vec![0; length],
         };
-        self.state.descriptions.get_mut(&identity).unwrap().position += length as u64;
+        if supplied.is_none() {
+            self.state.descriptions.get_mut(&identity).unwrap().position = position + length as u64;
+        }
         Ok(bytes)
     }
     pub fn write(
@@ -342,6 +357,17 @@ impl SystemsVolatileFilePool {
         admitted: SystemsFileUserAdmission,
         seconds: u64,
     ) -> Result<usize, SystemsModelError> {
+        self.write_position(owner, file, bytes, admitted, seconds, None)
+    }
+    pub(super) fn write_position(
+        &mut self,
+        owner: &str,
+        file: &SystemsVolatileFile,
+        bytes: &[u8],
+        admitted: SystemsFileUserAdmission,
+        seconds: u64,
+        supplied: Option<u64>,
+    ) -> Result<usize, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
         if d.rights == SystemsFileRights::Read {
@@ -350,14 +376,15 @@ impl SystemsVolatileFilePool {
         if !admitted.numerical_range {
             return Err(error("EFAULT"));
         }
-        verify_range(d.position, bytes.len() as u64)?;
+        let supplied_position = supplied.unwrap_or(d.position);
+        verify_range(supplied_position, bytes.len() as u64)?;
         if bytes.is_empty() {
             return Ok(0);
         }
         let object = d.object;
         let o = self.state.objects[object].as_ref().unwrap();
         let object_identity = o.identity;
-        let position = if d.append { o.size } else { d.position };
+        let position = if d.append { o.size } else { supplied_position };
         if position == MAX_OFFSET {
             return Err(error("EFBIG"));
         }
@@ -387,7 +414,9 @@ impl SystemsVolatileFilePool {
         o.size = o.size.max(end);
         o.times[1] = seconds;
         o.times[2] = seconds;
-        self.state.descriptions.get_mut(&identity).unwrap().position = end;
+        if supplied.is_none() {
+            self.state.descriptions.get_mut(&identity).unwrap().position = end;
+        }
         Ok(length)
     }
     pub fn seek(

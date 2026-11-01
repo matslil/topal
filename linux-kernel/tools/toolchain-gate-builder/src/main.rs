@@ -124,9 +124,9 @@ mod tests {
             }],
         };
         let dispatch = SystemsSourceLibraryInput {
-            source: "arch/x86_64/policy/static-linux-dispatch-v3.t".into(),
-            source_name: "arch/x86_64/policy/static-linux-dispatch-v3.t".into(),
-            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v3.t")
+            source: "arch/x86_64/policy/static-linux-dispatch-v4.t".into(),
+            source_name: "arch/x86_64/policy/static-linux-dispatch-v4.t".into(),
+            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v4.t")
                 .into(),
             modules: vec![SystemsSourceModuleInput {
                 source: "support/syscall.t".into(),

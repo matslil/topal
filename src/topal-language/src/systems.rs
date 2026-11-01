@@ -583,6 +583,7 @@ fn parse_artifact_root(
                 CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3
+                    | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4
             ) {
                 return Err(source_diagnostic(
                     source,

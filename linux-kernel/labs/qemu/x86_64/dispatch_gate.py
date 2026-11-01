@@ -33,18 +33,23 @@ def mapping(interface='static-linux-dispatch-v1'):
     pairs=[(int(number),name) for number,name in re.findall(r"\b(\d+)\s+([A-Za-z]+)",table)]
     if len(pairs)!=55 or len(set(number for number,_ in pairs))!=55:
         raise GATE.GateError("dispatch witness needs the complete independent normative map")
-    if interface in ('static-linux-dispatch-v2','static-linux-dispatch-v3'):
+    if interface in ('static-linux-dispatch-v2','static-linux-dispatch-v3','static-linux-dispatch-v4'):
         rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001',1)[1].split('### ',1)[0]
         added=[(int(number),name) for number,name in re.findall(r'\b(77|95)\s+(TruncateFile|FileCreationMask)',rule)]
         if len(added)!=2:raise GATE.GateError('extended dispatch witness needs the complete normative additions')
         pairs=sorted(pairs+added)
     elif interface!='static-linux-dispatch-v1':
         raise GATE.GateError('unqualified dispatch version')
-    if interface=='static-linux-dispatch-v3':
+    if interface in ('static-linux-dispatch-v3','static-linux-dispatch-v4'):
         rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V3-001',1)[1].split('### ',1)[0]
         if '`Unlink` (x86-64 87)' not in rule or '`UnlinkAt` (263)' not in rule:
             raise GATE.GateError('named dispatch witness needs both normative additions')
         pairs=sorted(pairs+[(87,'Unlink'),(263,'UnlinkAt')])
+    if interface=='static-linux-dispatch-v4':
+        rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V4-001',1)[1].split('### ',1)[0]
+        added=[(int(number),name) for number,name in re.findall(r'\b(17|18)\s+(ReadAt|WriteAt)',rule)]
+        if len(added)!=2:raise GATE.GateError('positional dispatch witness needs both normative additions')
+        pairs=sorted(pairs+added)
     return pairs
 
 
@@ -216,8 +221,8 @@ def verify(timeout=180,write_evidence=False):
             single.update(library=only_artifact["dispatch_library"],time_and_image_libraries_absent=True,root_source=only)
             record["dispatch_only"]=single
         finally:GATE.SOURCE_PATH=original_source
-        for version,source_name,key in [(1,'static-linux-dispatch.t','legacy_compatibility'),(2,'static-linux-dispatch-v2.t','legacy_v2_compatibility')]:
-            legacy=original_source.read_text().replace('policy/static-linux-dispatch-v3.t','policy/'+source_name).replace('interface is static-linux-dispatch-v3',f'interface is static-linux-dispatch-v{version}')
+        for version,source_name,key in [(1,'static-linux-dispatch.t','legacy_compatibility'),(2,'static-linux-dispatch-v2.t','legacy_v2_compatibility'),(3,'static-linux-dispatch-v3.t','legacy_v3_compatibility')]:
+            legacy=original_source.read_text().replace('policy/static-linux-dispatch-v4.t','policy/'+source_name).replace('interface is static-linux-dispatch-v4',f'interface is static-linux-dispatch-v{version}')
             if legacy==original_source.read_text():raise GATE.GateError('legacy dispatch control did not select the frozen interface')
             legacy_source=root/f'legacy-dispatch-v{version}-root.t';legacy_source.write_text(legacy);GATE.SOURCE_PATH=legacy_source
             try:

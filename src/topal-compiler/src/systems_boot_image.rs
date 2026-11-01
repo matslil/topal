@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/143";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/144";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -416,6 +416,9 @@ fn validate_artifact_input(
         "static-linux-dispatch-v2" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
         }
+        "static-linux-dispatch-v4" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
+        }
         "static-linux-dispatch-v3" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
         }
@@ -425,6 +428,7 @@ fn validate_artifact_input(
         crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4,
     ]
     .into_iter()
     .any(|policy| {

@@ -23,7 +23,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/222";
+    "topal.provider-object.x86_64-qemu-pc-q35/223";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -9831,7 +9831,11 @@ fn static_image_process_enter(
     process_runtime::namespace::emit_dispatch(
         &mut code,
         file_open_plan
-            || dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
+            || matches!(
+                dispatch_policy,
+                crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
+                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
+            ),
     )?;
     process_runtime::realtime::emit_dispatch(&mut code)?;
     process_runtime::credentials::emit_dispatch(&mut code)?;

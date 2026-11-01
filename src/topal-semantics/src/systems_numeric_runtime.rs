@@ -42,6 +42,7 @@ impl SystemsNumericRuntimeArena {
                 SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
             ) && std::mem::replace(&mut dispatch_selected, true)
             {
                 return Err(invalid());
@@ -62,6 +63,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
                     | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
@@ -239,6 +241,7 @@ mod tests {
             StructuredProcessIdentityV1,
             StaticLinuxDispatchV2,
             StaticLinuxDispatchV3,
+            StaticLinuxDispatchV4,
         ];
         let requirement = |interface| SystemsSourceLibraryRequirement {
             source: "policy/identity.t".into(),
@@ -256,7 +259,7 @@ mod tests {
             },
         };
         let mut accepted = 0;
-        for mask in 1u32..256 {
+        for mask in 1u32..512 {
             let selected = policies
                 .iter()
                 .enumerate()
@@ -264,7 +267,7 @@ mod tests {
                 .map(|(_, interface)| requirement(*interface))
                 .collect::<Vec<_>>();
             let result = SystemsNumericRuntimeArena::new_with_policies(&selected, "root");
-            if (mask & 56).count_ones() > 1 || (mask & 196).count_ones() > 1 {
+            if (mask & 56).count_ones() > 1 || (mask & 452).count_ones() > 1 {
                 assert!(result.is_err());
                 continue;
             }
@@ -279,7 +282,7 @@ mod tests {
             arena.return_to_root("process").unwrap();
             assert!(arena.is_reclaimed());
         }
-        assert_eq!(accepted, 63);
+        assert_eq!(accepted, 79);
     }
     #[test]
     fn distinct_numeric_policies_share_only_inactive_clean_storage() {

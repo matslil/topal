@@ -30,7 +30,7 @@ pub(crate) fn emit_numeric_kernel_library(unit:&crate::systems_numeric_library::
     if unit.policy!=crate::systems_numeric_library::NumericPolicy::Deadline {
         module.push_str(&match unit.policy {
             crate::systems_numeric_library::NumericPolicy::Elf64Header=>emit_owned_header_bridge(unit),
-            crate::systems_numeric_library::NumericPolicy::LinuxDispatch | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2 | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3=>emit_owned_dispatch_bridge(unit),
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatch | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2 | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3 | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4=>emit_owned_dispatch_bridge(unit),
             crate::systems_numeric_library::NumericPolicy::ProcessIdentity=>emit_owned_identity_bridge(unit),
             crate::systems_numeric_library::NumericPolicy::RetainedIdentity=>emit_retained_identity_bridge(unit),
             crate::systems_numeric_library::NumericPolicy::StructuredIdentity=>emit_structured_identity_bridge(unit)?,

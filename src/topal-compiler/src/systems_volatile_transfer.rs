@@ -25,9 +25,13 @@ fn clipped(e: &mut E<'_>, prefix: &str, remaining: super::super::R) -> Result<()
     e.0.bind(&end)?;
     Ok(())
 }
-pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
-    let mut e = E(code);
-    e.0.bind("file-read")?;
+fn emit_read(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
+    let prefix = if positional {
+        "file-pread"
+    } else {
+        "file-read"
+    };
+    e.0.bind(prefix)?;
     e.load(A, R14, 16);
     e.arith(4, A, 3);
     e.cmp(A, 1);
@@ -38,23 +42,27 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.0.jump_if(0x82, "file-efault");
     e.0.call("file-object-lookup");
     e.mov(B, R10);
-    e.load(R15, R14, 24);
-    verify_native_range(&mut e, R15, R9, "file-einval");
+    if positional {
+        e.gs(0x8b, R15, 336);
+    } else {
+        e.load(R15, R14, 24);
+    }
+    verify_native_range(e, R15, R9, "file-einval");
     e.cmp(R9, 0);
     e.0.jump_if(0x84, "file-zero");
     e.load(R13, R10, 16);
     e.rr(0x39, R15, R13);
     e.0.jump_if(0x83, "file-zero");
     e.rr(0x29, R13, R15);
-    clipped(&mut e, "file-read", R13)?;
+    clipped(e, prefix, R13)?;
     e.mov(R9, Bp);
     e.0.call("runtime-writable-extent");
     e.0.jump_if(0x82, "file-efault");
-    wipe_staging(&mut e);
+    wipe_staging(e);
     e.mov(R10, B);
     e.0.call("file-page-lookup");
-    e.0.jump_if(0x82, "file-read-staged");
-    payload(&mut e, Si, C);
+    e.0.jump_if(0x82, &format!("{prefix}-staged"));
+    payload(e, Si, C);
     e.mov(A, R15);
     e.arith(4, A, 4095);
     e.rr(0x01, Si, A);
@@ -62,19 +70,30 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.add(Di, STAGING);
     e.mov(C, Bp);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
-    e.0.bind("file-read-staged")?;
+    e.0.bind(&format!("{prefix}-staged"))?;
     e.mov(Di, R8);
     e.mov(Si, R12);
     e.add(Si, STAGING);
     e.mov(C, Bp);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
     e.rr(0x01, R15, Bp);
-    e.store(R14, 24, R15);
-    wipe_staging(&mut e);
+    if !positional {
+        e.store(R14, 24, R15);
+    }
+    wipe_staging(e);
     e.mov(A, Bp);
     emit_static_process_sysret(e.0);
 
-    e.0.bind("file-write")?;
+    Ok(())
+}
+
+fn emit_write(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
+    let prefix = if positional {
+        "file-pwrite"
+    } else {
+        "file-write"
+    };
+    e.0.bind(prefix)?;
     e.load(A, R14, 16);
     e.arith(4, A, 3);
     e.cmp(A, 0);
@@ -85,48 +104,52 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.0.jump_if(0x82, "file-efault");
     e.0.call("file-object-lookup");
     e.mov(B, R10);
-    e.load(R15, R14, 24);
-    verify_native_range(&mut e, R15, R9, "file-einval");
+    if positional {
+        e.gs(0x8b, R15, 336);
+    } else {
+        e.load(R15, R14, 24);
+    }
+    verify_native_range(e, R15, R9, "file-einval");
     e.cmp(R9, 0);
     e.0.jump_if(0x84, "file-zero");
     e.load(A, R14, 16);
     e.arith(4, A, 0x400);
     e.cmp(A, 0);
-    e.0.jump_if(0x84, "file-write-position");
+    e.0.jump_if(0x84, &format!("{prefix}-position"));
     e.load(R15, R10, 16);
-    e.0.bind("file-write-position")?;
+    e.0.bind(&format!("{prefix}-position"))?;
     e.imm(R13, i64::MAX as u64);
     e.rr(0x39, R15, R13);
     e.0.jump_if(0x84, "file-efbig");
     e.rr(0x29, R13, R15);
-    clipped(&mut e, "file-write", R13)?;
+    clipped(e, prefix, R13)?;
     e.mov(R9, Bp);
     e.0.call("runtime-readable-extent");
     e.0.jump_if(0x82, "file-efault");
     e.mov(R10, B);
     e.0.call("file-page-lookup");
-    e.0.jump_if(0x83, "file-write-page-ready");
+    e.0.jump_if(0x83, &format!("{prefix}-page-ready"));
     e.mov(R11, R12);
     e.add(R11, PAGES);
     e.imm(R9, 0);
-    e.0.bind("file-write-free-page")?;
+    e.0.bind(&format!("{prefix}-free-page"))?;
     e.load(A, R11, 0);
     e.cmp(A, 0);
-    e.0.jump_if(0x84, "file-write-free-ready");
+    e.0.jump_if(0x84, &format!("{prefix}-free-ready"));
     e.add(R11, 32);
     e.add(R9, 1);
     e.cmp(R9, 8);
-    e.0.jump_if(0x82, "file-write-free-page");
+    e.0.jump_if(0x82, &format!("{prefix}-free-page"));
     e.0.jump("file-enospc");
-    e.0.bind("file-write-free-ready")?;
+    e.0.bind(&format!("{prefix}-free-ready"))?;
     e.mov(C, R9);
-    e.0.bind("file-write-page-ready")?;
-    payload(&mut e, Di, C);
+    e.0.bind(&format!("{prefix}-page-ready"))?;
+    payload(e, Di, C);
     e.mov(Si, R11);
     // A free association's payload is clean before it receives an identity.
     e.load(A, Si, 0);
     e.cmp(A, 0);
-    e.0.jump_if(0x85, "file-write-page-checked");
+    e.0.jump_if(0x85, &format!("{prefix}-page-checked"));
     e.0.bytes(&[0x57]);
     e.imm(A, 0);
     e.imm(C, 4096 / 8);
@@ -137,7 +160,7 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
         e.cmp(A, 0);
         e.0.jump_if(0x85, "fatal");
     }
-    e.0.bind("file-write-page-checked")?;
+    e.0.bind(&format!("{prefix}-page-checked"))?;
     e.0.call("file-clock");
     e.0.jump_if(0x82, "file-eio");
     e.mov(R13, A);
@@ -153,7 +176,7 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.load(A, B, 8);
     e.store(R11, 0, A);
     e.mov(A, R15);
-    shift(&mut e, A, false, 12);
+    shift(e, A, false, 12);
     e.store(R11, 8, A);
     e.mov(A, R15);
     e.arith(4, A, 4095);
@@ -163,17 +186,28 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     e.mov(C, Bp);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
     e.rr(0x01, R15, Bp);
-    e.store(R14, 24, R15);
+    if !positional {
+        e.store(R14, 24, R15);
+    }
     e.load(A, B, 16);
     e.rr(0x39, R15, A);
-    e.0.jump_if(0x86, "file-write-size-ready");
+    e.0.jump_if(0x86, &format!("{prefix}-size-ready"));
     e.store(B, 16, R15);
-    e.0.bind("file-write-size-ready")?;
+    e.0.bind(&format!("{prefix}-size-ready"))?;
     e.store(B, 40, R13);
     e.store(B, 48, R13);
-    wipe_staging(&mut e);
+    wipe_staging(e);
     e.mov(A, Bp);
     emit_static_process_sysret(e.0);
+    Ok(())
+}
+
+pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+    let mut e = E(code);
+    emit_read(&mut e, false)?;
+    emit_read(&mut e, true)?;
+    emit_write(&mut e, false)?;
+    emit_write(&mut e, true)?;
     e.0.bind("file-zero")?;
     e.imm(A, 0);
     emit_static_process_sysret(e.0);

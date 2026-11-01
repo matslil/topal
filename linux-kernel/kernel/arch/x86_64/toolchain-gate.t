@@ -1944,9 +1944,9 @@ lang systems artifact (
     runtime-limit-bytes is 65536
   ),
   dispatch-library is lang systems source-library (
-    source is "arch/x86_64/policy/static-linux-dispatch-v3.t",
+    source is "arch/x86_64/policy/static-linux-dispatch-v4.t",
     export is select-operation,
-    interface is static-linux-dispatch-v3,
+    interface is static-linux-dispatch-v4,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),

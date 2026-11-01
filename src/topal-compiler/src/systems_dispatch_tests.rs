@@ -134,7 +134,7 @@ fn extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_p
 
 #[test]
 fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs() {
-    for version in 1..=3 {
+    for version in 1..=4 {
         native_dispatch_profile(version);
     }
 }
@@ -152,6 +152,13 @@ fn native_dispatch_profile(version: u8) {
     if version == 3 {
         requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3;
         requirement.source = "arch/x86_64/policy/static-linux-dispatch-v3.t".into();
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+        input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
+    }
+    if version == 4 {
+        requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
+        requirement.source = "arch/x86_64/policy/static-linux-dispatch-v4.t".into();
         let root =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
         input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
@@ -220,7 +227,7 @@ int main(void) {
     } else {
         driver_source.to_owned()
     };
-    let driver_source = if version == 3 {
+    let driver_source = if version >= 3 {
         driver_source
             .replace(
                 "static_linux_dispatch_policy_v2",
@@ -228,6 +235,16 @@ int main(void) {
             )
             .replace("80,81,95,97", "80,81,87,95,97")
             .replace("257,262,267", "257,262,263,267")
+    } else {
+        driver_source
+    };
+    let driver_source = if version == 4 {
+        driver_source
+            .replace(
+                "static_linux_dispatch_policy_v3",
+                "static_linux_dispatch_policy_v4",
+            )
+            .replace("13,14,16,22", "13,14,16,17,18,22")
     } else {
         driver_source
     };
@@ -328,6 +345,7 @@ fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4,
     ];
     for (version, interface) in versions.iter().enumerate() {
         let mut q = legacy.clone();

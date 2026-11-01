@@ -94,6 +94,9 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
             }
+            "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v4") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4);
+            }
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v3") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3);
             }
@@ -353,8 +356,9 @@ mod tests {
         for interface in [
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4,
         ] {
-            let selected = original.replace("static-linux-dispatch-v3", interface.as_str());
+            let selected = original.replace("static-linux-dispatch-v4", interface.as_str());
             let source = selected.as_str();
             let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
             let library = analyze_systems_for_compiler(source, &target)

@@ -27,6 +27,8 @@ pub enum SystemsStaticLinuxOperation {
     Wait,
     KernelIdentity,
     FileControl,
+    ReadAt,
+    WriteAt,
     Unlink,
     UnlinkAt,
     TruncateFile,
@@ -150,6 +152,13 @@ mod tests {
 }
 impl SystemsStaticLinuxOperation {
     #[must_use]
+    pub const fn from_selector_v4(selector: u64) -> Self {
+        match selector {
+            17 => Self::ReadAt,
+            18 => Self::WriteAt,
+            _ => Self::from_selector_v3(selector),
+        }
+    }
     pub const fn from_selector_v3(selector: u64) -> Self {
         match selector {
             87 => Self::Unlink,
@@ -253,6 +262,8 @@ impl SystemsStaticLinuxOperation {
             Self::Wait => "Wait",
             Self::KernelIdentity => "KernelIdentity",
             Self::FileControl => "FileControl",
+            Self::ReadAt => "ReadAt",
+            Self::WriteAt => "WriteAt",
             Self::Unlink => "Unlink",
             Self::UnlinkAt => "UnlinkAt",
             Self::TruncateFile => "TruncateFile",
@@ -320,6 +331,45 @@ mod named_file_tests {
             for high in [1_u64 << 32, 1_u64 << 63] {
                 assert_eq!(
                     SystemsStaticLinuxOperation::from_selector_v3(high | selector),
+                    SystemsStaticLinuxOperation::Unsupported
+                );
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod positional_tests {
+    use super::*;
+    #[test]
+    fn v4_only_adds_positional_operations_and_preserves_all_frozen_sets() {
+        for selector in 0..65536 {
+            let expected = match selector {
+                17 => SystemsStaticLinuxOperation::ReadAt,
+                18 => SystemsStaticLinuxOperation::WriteAt,
+                _ => SystemsStaticLinuxOperation::from_selector_v3(selector),
+            };
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector_v4(selector),
+                expected
+            );
+        }
+        for selector in [17, 18] {
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector(selector),
+                SystemsStaticLinuxOperation::Unsupported
+            );
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector_v2(selector),
+                SystemsStaticLinuxOperation::Unsupported
+            );
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector_v3(selector),
+                SystemsStaticLinuxOperation::Unsupported
+            );
+            for high in [1_u64 << 32, 1_u64 << 63] {
+                assert_eq!(
+                    SystemsStaticLinuxOperation::from_selector_v4(high | selector),
                     SystemsStaticLinuxOperation::Unsupported
                 );
             }

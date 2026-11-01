@@ -7,6 +7,8 @@ use super::super::{
 };
 use super::R::_Sp as Sp;
 use super::{CompileError, E, R::*, X86FunctionEncoder};
+#[path = "systems_positional_transfer.rs"]
+mod positional;
 
 pub(in super::super) const TABLE_CONTEXT: u32 = 928;
 pub(in super::super) const ARCHIVE_CONTEXT: u32 = 936;
@@ -80,6 +82,8 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
         (5, "fd-stat"),
         (8, "fd-seek"),
         (16, "fd-ioctl"),
+        (17, "fd-pread"),
+        (18, "fd-pwrite"),
         (32, "fd-dup"),
         (33, "fd-dup2"),
         (72, "fd-fcntl"),
@@ -401,6 +405,7 @@ pub(in super::super) fn emit_transfer_services(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
+    positional::emit(&mut e)?;
     // Numerical access_ok-style range admission precedes a zero/EOF result.
     // Live page permissions are checked separately for the bytes transferred.
     e.0.bind("fd-native-range")?;

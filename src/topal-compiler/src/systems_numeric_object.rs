@@ -418,6 +418,7 @@ pub(crate) fn inspect_linked_numeric_library(
         "static-linux-dispatch-v1" => super::NumericPolicy::LinuxDispatch,
         "static-linux-dispatch-v2" => super::NumericPolicy::LinuxDispatchV2,
         "static-linux-dispatch-v3" => super::NumericPolicy::LinuxDispatchV3,
+        "static-linux-dispatch-v4" => super::NumericPolicy::LinuxDispatchV4,
         "process-identity-transition-v1" => super::NumericPolicy::ProcessIdentity,
         "retained-process-identity-v1" => super::NumericPolicy::RetainedIdentity,
         "structured-process-identity-v1" => super::NumericPolicy::StructuredIdentity,
