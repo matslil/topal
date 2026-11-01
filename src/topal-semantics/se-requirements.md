@@ -359,3 +359,16 @@ offsets or descriptors as authority.
 
 Model linked names, object identity, independent descriptions/positions and aliases separately. Page ownership shall follow objects even across independent reopening. Preserve data after unlink until the last independent description closes, retain closed linked objects under namespace ownership, issue fresh identities on name recreation and erase complete storage on final release. Cover exact names/metadata, capacities, error-state preservation, source-plan obligations and terminal reclamation with independent model cases.
 See [design](../../linux-kernel/design/named-volatile-files.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-BORROW-001 — Scoped region calls
+
+Model `TOPAL-SYSTEMS-REGION-LIBRARY-BINDING-001`,
+`TOPAL-SYSTEMS-REGION-LIBRARY-CALL-001`,
+`TOPAL-SYSTEMS-REGION-LIBRARY-ACCESS-001` and
+`TOPAL-SYSTEMS-REGION-LIBRARY-LIFETIME-001` over the existing bootstrap-storage
+resource. Cover exact owner/code/generation, contained/narrowed alias views,
+current-frame access, all-argument prevalidation, nested revocation, budget and
+identity exhaustion, bounds/value refusal, actual owner bytes and cancellation.
+Rejected operations shall preserve underlying storage observations and model
+state. Lifetime enforcement in a reference model shall not imply source/native
+support or physical erasure. See [TK-DEC-269](../../linux-kernel/design/borrowed-kernel-regions.md).

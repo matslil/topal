@@ -9386,3 +9386,57 @@ bounds; altered, missing, overlapping or other-version evidence SHALL reject.
 Independent model/native/pinned-Linux/physical tests SHALL cover capacities,
 errors, alias/reopen/unlink/fork/exec lifetime, longest records, actual shell/file
 commands, active/inactive cancellation and complete namespace-owner reclamation.
+
+### TOPAL-SYSTEMS-REGION-LIBRARY-BINDING-001 — Scoped plain-memory authority
+
+A qualified region-library invocation SHALL exclusively borrow an existing
+live ordinary kernel region from its exact owner. It SHALL bind selected code,
+a fresh nonwrapping invocation generation and complete resource limits before
+source access. A scoped view SHALL identify that invocation, its current call
+frame, a contained byte window and read or read/write rights. Neither a numeric
+address nor a model identity label SHALL create native authority. The owning
+region SHALL remain unavailable until invocation completion or cancellation.
+MMIO, device, atomic, DMA, firmware and user-memory authority SHALL NOT be
+derived by this boundary. Ordinary core Memory values SHALL retain immutable
+meaning. Native publication SHALL require separately qualified source/code,
+ownership, ABI, access, stack and allocation evidence.
+
+### TOPAL-SYSTEMS-REGION-LIBRARY-CALL-001 — Nested borrowing and alias effects
+
+The initial invocation SHALL be synchronous and nonrecursive, with no callback,
+suspension or concurrent access. Helper entry SHALL validate every argument and
+all frame/view/counter limits before suspending the caller and publishing a
+fresh callee frame. Only the active frame MAY access its views. Caller arguments
+SHALL produce callee-local views of the same contained windows and rights.
+Derived views MAY narrow a window or rights and SHALL NOT widen either. Aliases
+SHALL retain the owner's resource identity for effect conflicts; byte-window
+derivation SHALL NOT claim independent effects. Initial model limits SHALL be
+64 active frames and 256 live views per invocation. These SHALL NOT be treated
+as core-language limits. Return SHALL revoke all callee-local views before
+restoring caller access; it SHALL NOT permit a view-valued result or capture.
+Frame/view identities SHALL NOT be reused within an invocation.
+
+### TOPAL-SYSTEMS-REGION-LIBRARY-ACCESS-001 — Checked byte access
+
+Byte load SHALL require a live current-frame view and an offset within its
+window. Store SHALL additionally require write rights and a value in 0..255.
+Contained extent derivation SHALL admit an empty view at the end but SHALL
+reject overflow, out-of-window intervals and rights escalation. Every complete
+access SHALL be validated before reaching underlying storage. Rejection SHALL
+preserve bytes, underlying storage observations, active frames, view registry
+and identity counters. Successful alias accesses SHALL observe the same owned
+bytes in effect order. A normal bounds/rights refusal SHALL be distinguishable
+from invalid owner/code/generation/frame evidence; the latter SHALL fail closed
+as an invariant failure and SHALL NOT become a Linux errno.
+
+### TOPAL-SYSTEMS-REGION-LIBRARY-LIFETIME-001 — Owner resumption and revocation
+
+Normal invocation completion SHALL require the root frame, revoke all remaining
+views and return exclusive region access to its owner. Cancellation MAY unwind
+nested frames but SHALL revoke every invocation view before owner resumption.
+Stale views SHALL remain invalid after later invocations on the same region.
+Completion/cancellation SHALL preserve successful stores and SHALL NOT imply
+transaction rollback or payload erasure. Native temporary storage, stack,
+adapter and code-binding reclamation SHALL still precede owner resumption.
+The portable model SHALL borrow the existing bootstrap-storage owner and SHALL
+NOT be reported as source/compiler/native or physical-erasure qualification.
