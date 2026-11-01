@@ -269,3 +269,4 @@ grammar; its sealed vocabulary uses ordinary Topal construction syntax.
 - [Ordinary source selection of Linux syscall operations](source-linux-syscall-selection.md)
 - [Source transition of retained process-identity state](source-process-identity-transition.md)
 - [Owned retention of ordinary source identity-state values](retained-source-identity-state.md)
+- [Source-produced structured retained state](structured-retained-source-state.md)

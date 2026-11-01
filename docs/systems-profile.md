@@ -498,6 +498,18 @@ The temporary-only profiles remain unchanged. This qualifies kernel-owned value
 retention, not a general persistent heap, source mutation, core `AllocationRegion`
 syntax or a new language revision; see `TK-DEC-263`.
 
+A further selected systems interface may retain a complete source-produced
+nested state Record containing bounded Nat and Boolean fields. The checked
+projection must follow ordinary aggregate layout and preserve all value fields,
+numeric limbs and per-value Record order, with complete private bounds. Source
+borrows the actual published graph and returns its complete successor; temporary
+cleanup, exclusive owner publication and last-borrow retirement retain their
+existing meanings. The first structured identity schema adds ordinary creation
+count/wrap history without granting authority to those facts. Earlier identity
+interfaces retain their contracts and share one semantic slot. This qualifies
+only the selected systems schema, not arbitrary persistent types, effects or
+core Record/Boolean/Nat changes; see `TK-DEC-264`.
+
 This is a systems-only runtime qualification. It changes no core numeric,
 function, effect, type or error semantics and grants no general allocator,
 general-container, concurrent invocation or general module support.

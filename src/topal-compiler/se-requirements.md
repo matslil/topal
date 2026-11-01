@@ -12136,6 +12136,22 @@ repeated alternation, invalid pointers/state, stale publication, standalone and
 combined operation, actual source graph survival/retirement and changed-helper
 precommit rejection. General persistent types/effects remain unqualified.
 
+Under `TK-DEC-264`, the selected structured identity interface shall transport
+ordinary nested state through the shared function/aggregate ABI and retain the
+actual complete source-produced successor. A shared checked layout/projection
+description shall cover canonical fields, nested alignment/padding, Boolean
+representation, per-value Record order and full bounded Nat nodes; incompatible
+or unqualified layouts shall fail closed. Projection and native prepared-graph
+validation shall agree on this description. Borrowed input shall use both actual
+published numeric nodes; copied state shall retain no temporary or old-bank
+reference. Complete persistent/temporary/stack and projection/validation/retirement
+bounds shall enter source/module/runtime/native provenance. Earlier scalar and
+retained interfaces shall remain independently supported in one semantic slot.
+Native/model/physical qualification shall exercise whole aggregate transport,
+two-limb boundaries, order/Boolean/padding and malformed graphs/results,
+prepare-clean-publish-retire, shared history and complete reclamation. This
+qualifies no new core value or effect meaning.
+
 ## TOPAL-COMP-ARTIFACT-001 — Canonical sidecar metadata
 
 Every requested output shall receive a canonical

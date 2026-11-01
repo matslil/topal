@@ -301,6 +301,17 @@ Repeated transitions, actual value-history expectations, exec/parent restoration
 and cancellation shall preserve the same semantic state law. These modeled
 values shall grant no address authority or machine-layout/ABI evidence.
 
+Under `TK-DEC-264`, the model shall represent selected nested identity state with
+next-ID, creation count and sticky wrapped-history facts. Ordinary facts shall
+grant no store/process/generation authority. Exact initial/increment/wrap/count
+and exhaustion behavior, one unique identity interface version, exclusive
+preparation, cleanup before publication, last-borrow retirement and full return
+shall be modeled independently. Invalid owners, stale/overlapping transitions,
+malformed or exhausted state and invalid publication shall reject without
+mutation. Native layout, pointer borrowing, aggregate ABI and complete machine
+bounds remain separate qualification obligations; modeled values are not their
+evidence.
+
 ## TOPAL-SEM-INTEGRATION-001 — Explicit completion boundary
 
 Reference-model unit tests establish the behavior of the shared algorithms but

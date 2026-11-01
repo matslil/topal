@@ -1540,6 +1540,21 @@ stale, conflicting or unqualified state evidence shall fail closed. General
 persistent allocation, arbitrary stored types, concurrent writers and source
 effects remain outside the first qualification.
 
+Under `TK-DEC-264`, a separately selected identity interface may return its entire
+nested ordinary state value for owned retention. The selected schema shall hold
+next-ID, creation-count and wrapped-history facts without conferring resource
+authority. Schema-directed projection shall preserve actual nested Record order,
+Boolean meaning, complete bounded numeric payloads and independently owned graph
+references. Shared ordinary lowering, complete resource/work bounds and actual
+aggregate/native ABI evidence shall establish representation compatibility.
+Initialized source shall borrow the published graph; complete temporary cleanup,
+exclusive publication, last-borrow retirement and terminal reclamation remain
+mandatory. Both earlier identity versions shall retain their contracts in the
+same unique semantic slot. General stored types/effects and core language meaning
+remain unchanged. Qualification shall include limb/range/order boundaries,
+malformed state/results/provenance, repeated history, independent/combined
+selection and full physical regression.
+
 The qualified source-module refinement (`TK-DEC-257`) shall admit closed ordinary
 dependencies for the finite and numeric policy interfaces, freeze exact logical
 identities/relative paths/source bytes and bind every dependency in provenance
