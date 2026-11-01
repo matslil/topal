@@ -344,3 +344,8 @@ older kernel-library interface and exact stack-only requirements; either
 interface may occupy the single kernel-library slot. Document Linux error
 precedence and absent/existing, exclusive/create, directory and truncate cases
 without assigning native flags or code-pointer authority to ordinary values.
+
+## TOPAL-SEM-SYSTEMS-NAMED-FILE-001 — Named volatile files
+
+Model linked names, object identity, independent descriptions/positions and aliases separately. Page ownership shall follow objects even across independent reopening. Preserve data after unlink until the last independent description closes, retain closed linked objects under namespace ownership, issue fresh identities on name recreation and erase complete storage on final release. Cover exact names/metadata, capacities, error-state preservation, source-plan obligations and terminal reclamation with independent model cases.
+See [design](../../linux-kernel/design/named-volatile-files.md).

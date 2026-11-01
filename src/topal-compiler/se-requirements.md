@@ -12198,3 +12198,8 @@ export exactly and reject version confusion. Native consumers shall validate
 owned action preconditions before allocating or mutating resources. Qualify
 all finite vectors, reversed source order, physical calls and prepublication
 wrong-plan refusal. See [design](../../linux-kernel/design/source-file-open-plans.md).
+
+## TOPAL-COMP-SYSTEMS-NAMED-FILE-001 — Named volatile files
+
+Realize named regular creation, independent reopening, truncating open, unlink and native directory/stat observations under the owned sparse filesystem. Bind selected open plans and versioned dispatch without changing frozen contracts. Keep names, objects, descriptions and descriptors distinct; preserve Linux lookup/admission ordering and complete failure atomicity; prove exact placement/helper bounds and terminal namespace-owner reclamation. Require independent native and pinned-Linux controls, source-policy execution and real shell/file-command evidence.
+See [design](../../linux-kernel/design/named-volatile-files.md).

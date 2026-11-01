@@ -287,6 +287,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-266` | express reusable file-open disposition in ordinary Topal | immutable-only policy cannot distinguish create, exclusive create and truncate; a pure plan cannot grant storage authority | systems-only refinement adopted under standing authorization; [source open plans](source-file-open-plans.md) defines eight semantic facts, eight nominal choices, frozen compatibility, exact binding/stack qualification and native revalidation; [report](../step-4-source-file-open-plans.md) records full finite native and reordered clients, 388-byte stack proof, physical helper calls, exec/fork storage lifetime, frozen compatibility and prepublication wrong-create refusal |
 
+| `TK-DEC-267` | create, reopen and unlink regular names over owned sparse objects | anonymous-only files cannot support shell redirection or reopened paths; links, descriptions and descriptor aliases have distinct lifetimes | systems-only refinement adopted under standing authorization; [named volatile files](named-volatile-files.md) defines namespace ownership, source open plans, frozen dispatch versions, parent/final lookup ordering, independent descriptions, exact directory records and full reclamation; specification, implementation and qualification pending |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
