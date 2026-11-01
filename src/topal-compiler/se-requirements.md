@@ -12187,3 +12187,14 @@ sources listed by `topalc test --list`, compare output to the interpreter, and
 verify freestanding ELF and GDB properties. Resource tooling shall measure
 compiler builds and executable runs under identities separate from the
 interpreter baseline.
+
+## TOPAL-COMP-SYSTEMS-FILE-OPEN-PLAN-001 — Source-defined open plans
+
+The publisher shall implement `TOPAL-SYSTEMS-FILE-OPEN-PLAN-001`: select the
+eight-Boolean/eight-choice pure interface in the unique kernel-library slot,
+preserve the frozen three-Boolean interface, prove the complete 1024-byte stack
+limit, adapt nominal alternatives by semantic name, bind the selected native
+export exactly and reject version confusion. Native consumers shall validate
+owned action preconditions before allocating or mutating resources. Qualify
+all finite vectors, reversed source order, physical calls and prepublication
+wrong-plan refusal. See [design](../../linux-kernel/design/source-file-open-plans.md).

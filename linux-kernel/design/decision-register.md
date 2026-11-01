@@ -285,6 +285,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-265` | provide shared writable sparse regular-file storage | immutable archive views cannot retain application-created bytes; per-command buffers, retained user pointers and copied per-alias contents would break authority and lifetime | systems-only design adopted under standing authorization; [owned volatile files](owned-volatile-files.md) defines an explicit sparse page/object budget, temporary files, access/mode/umask, source dispatch versioning, native interval admission, shared history and reclamation; [report](../step-4-owned-volatile-files.md) records four objects/eight pages, a 36864-byte owned store and 112-byte helper call bound, 291 actual syscall-return observations, sparse/range/capacity and exec/fork behavior, pinned-Linux controls, active/inactive terminal reclamation, independent wrong-data rejection and complete regression |
 
+| `TK-DEC-266` | express reusable file-open disposition in ordinary Topal | immutable-only policy cannot distinguish create, exclusive create and truncate; a pure plan cannot grant storage authority | systems-only refinement adopted under standing authorization; [source open plans](source-file-open-plans.md) defines eight semantic facts, eight nominal choices, frozen compatibility, exact binding/stack qualification and native revalidation; implementation/evidence pending |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.

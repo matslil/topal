@@ -335,3 +335,12 @@ shall not be reported as complete source-language, interpreter, debugger, or
 compiler conformance. Each specification domain remains `planned` in
 `se/core-language-coverage.md` until its source forms, tool integrations, and
 applicable compiled evidence satisfy the terminal disposition recorded there.
+
+## TOPAL-SEM-SYSTEMS-FILE-OPEN-PLAN-001 — Finite open disposition
+
+Model `TOPAL-SYSTEMS-FILE-OPEN-PLAN-001` as eight copied Boolean facts and a
+nominal plan, separate from filesystem authority and publication. Preserve the
+older kernel-library interface and exact stack-only requirements; either
+interface may occupy the single kernel-library slot. Document Linux error
+precedence and absent/existing, exclusive/create, directory and truncate cases
+without assigning native flags or code-pointer authority to ordinary values.
