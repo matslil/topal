@@ -101,12 +101,59 @@ fn nominal_decisions_bound_reachable_actions_and_reject_unqualified_dead_forms()
 }
 
 #[test]
+fn extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_profile() {
+    // TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001
+    let (legacy, old_input) = source();
+    let mut extended = legacy.clone();
+    extended.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2;
+    extended.source = "arch/x86_64/policy/static-linux-dispatch-v2.t".into();
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+    let input = crate::systems_library::load_source_library(&extended, &root).unwrap();
+    assert_eq!(
+        check_numeric_library(&extended, &input)
+            .unwrap()
+            .source_tags
+            .len(),
+        58
+    );
+    assert_eq!(
+        check_numeric_library(&legacy, &old_input)
+            .unwrap()
+            .source_tags
+            .len(),
+        56
+    );
+    assert!(check_numeric_library(&legacy, &input).is_err());
+    assert!(check_numeric_library(&extended, &old_input).is_err());
+    for name in ["TruncateFile", "FileCreationMask"] {
+        let mut bad = input.clone();
+        bad.text = bad.text.replace(name, "UnqualifiedOperation");
+        assert!(check_numeric_library(&extended, &bad).is_err());
+    }
+}
+
+#[test]
 fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs() {
+    for extended in [false, true] {
+        native_dispatch_profile(extended);
+    }
+}
+
+fn native_dispatch_profile(extended: bool) {
     // TOPAL-SYSTEMS-NUMERIC-ENUMS-001; TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
-    let (requirement, input) = source();
+    let (mut requirement, mut input) = source();
+    if extended {
+        requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2;
+        requirement.source = "arch/x86_64/policy/static-linux-dispatch-v2.t".into();
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+        input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
+    }
     let tools = crate::LlvmTools::discover(None).unwrap();
-    let directory =
-        std::env::temp_dir().join(format!("topal-dispatch-object-{}", std::process::id()));
+    let directory = std::env::temp_dir().join(format!(
+        "topal-dispatch-object-{}-{extended}",
+        std::process::id()
+    ));
     std::fs::create_dir_all(&directory).unwrap();
     let library = build_numeric_library(&requirement, &input, &tools, &directory).unwrap();
     assert!(library.record.maximum_stack_bytes <= 4096);
@@ -120,7 +167,7 @@ fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs
             .all(|f| !f.symbol.starts_with("topal.runtime.") && f.symbol != "memset")
     );
     let driver = directory.join("driver.c");
-    std::fs::write(&driver,r#"
+    let driver_source = r#"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -154,7 +201,19 @@ int main(void) {
   for(unsigned i=0;i<sizeof(wide)/sizeof(wide[0]);i++)if(check(wide[i]))return 3;
   printf("%llu\n",(unsigned long long)highwater);return 0;
 }
-"#).unwrap();
+"#;
+    let driver_source = if extended {
+        driver_source
+            .replace(
+                "static_linux_dispatch_policy_v1",
+                "static_linux_dispatch_policy_v2",
+            )
+            .replace("63,72,79", "63,72,77,79")
+            .replace("80,81,97", "80,81,95,97")
+    } else {
+        driver_source.to_owned()
+    };
+    std::fs::write(&driver, driver_source).unwrap();
     let executable = directory.join("dispatch-policy");
     let compiled = std::process::Command::new("cc")
         .arg("-no-pie")
@@ -211,7 +270,7 @@ int main(void) {
         .iter()
         .zip(&second.record.source_tags)
     {
-        assert_eq!(original + reversed, 55);
+        assert_eq!(original + reversed, if extended { 57 } else { 55 });
     }
     let compiled = std::process::Command::new("cc")
         .arg("-no-pie")

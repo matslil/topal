@@ -4,8 +4,8 @@
 use super::file_descriptions::{STAGING, TABLE_CONTEXT, wipe_staging};
 use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysret};
 
-const ACTIONS: i32 = 1792;
-const BLOCKED: i32 = 32;
+pub(super) const ACTIONS: i32 = 1792;
+pub(super) const BLOCKED: i32 = 32;
 const MASK: u64 = !0x40100_u64;
 
 pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {

@@ -27,7 +27,7 @@ def install(config):
     def bindings():
         for offset,selected,name in [(960,config["has_time"],"topal_kernel_sleep_deadline_policy_v1"),
             (976,config["has_image"],"topal_kernel_static_elf64_header_policy_v1"),
-            (984,config["has_dispatch"],"topal_kernel_static_linux_dispatch_policy_v1"),
+            (984,config["has_dispatch"],config["dispatch_export"]),
             (992,True,"topal_kernel_retained_process_identity_policy_v1")]:
             assert word(state.context+offset)==(symbol(name) if selected else 0)
         assert word(state.context+968)==state.arena and word(state.context+1000)==state.cell
@@ -89,7 +89,7 @@ def install(config):
                 assert memory(state.cell+64,4032)==bytes(4032)
             state.pending=dict(cursor=cursor,fact=cursor,initialized=initialized,old_bank=index,epoch=epoch,
                 caller_stack=reg("rsp"),callee_saved={name:reg(name) for name in saved},simd=simd(),
-                context=memory(state.context,1008),table=memory(state.table,0x43000),
+                context=memory(state.context,1008),table=memory(state.table,0x4c000),
                 cell=memory(state.cell,4096),clock=memory(word(state.context+944),24),return_ip=word(state.context+296))
             return False
 
@@ -188,7 +188,7 @@ def install(config):
             assert {name:reg(name) for name in saved}==active["callee_saved"] and simd()==active["simd"]
             assert all(reg(name)==0 for name in ("rcx","rsi","rdi","r8","r9","r10","r11"))
             assert memory(state.arena,65536)==bytes(65536) and memory(reg("rsp")-4096,4096)==bytes(4096)
-            assert memory(state.context,1008)==active["context"] and memory(state.table,0x43000)==active["table"]
+            assert memory(state.context,1008)==active["context"] and memory(state.table,0x4c000)==active["table"]
             assert memory(word(state.context+944),24)==active["clock"] and memory(state.cell,4096)==active["prepared"]
             bindings()
             allocated=active["fact"] or 2
@@ -246,7 +246,7 @@ def install(config):
             assert len(state.frames)==9 and all(c["child_pid_published"] for c in state.calls)
             assert all(word(state.context+offset)==0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536)==bytes(65536) and memory(state.cell,4096)==bytes(4096)
-            assert memory(state.table,0x43000)==bytes(0x43000)
+            assert memory(state.table,0x4c000)==bytes(0x4c000)
             write("pass",complete_store_erased=True,all_bindings_erased=True,terminal_arena_erased=True,
                 process_backing_erased=True,published_history_preserved_across_child_and_exec=True)
             return True

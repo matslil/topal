@@ -178,7 +178,7 @@ class Incoming(Checked):
 class Released(Checked):
     def inspect(self):
         assert records
-        assert memory(table,0x43000)==bytes(0x43000)
+        assert memory(table,0x4c000)==bytes(0x4c000)
         assert word(context+152)==0 and word(context+160)==0
         assert all(word(context+i)==0 for i in (952,960,968,976,984,992,1000))
         if {terminate!r}:assert terminated_live and pending and second_bank_retained

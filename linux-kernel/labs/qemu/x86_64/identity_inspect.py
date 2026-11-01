@@ -29,7 +29,7 @@ def install(config):
         for offset, selected, name in [
             (960, config["has_time"], "topal_kernel_sleep_deadline_policy_v1"),
             (976, config["has_image"], "topal_kernel_static_elf64_header_policy_v1"),
-            (984, config["has_dispatch"], "topal_kernel_static_linux_dispatch_policy_v1"),
+            (984, config["has_dispatch"], config["dispatch_export"]),
             (992, True, "topal_kernel_process_identity_transition_v1"),
         ]:
             assert word(state.context+offset) == (symbol(name) if selected else 0)
@@ -79,7 +79,7 @@ def install(config):
             else: assert cursor == 0
             state.pending = dict(cursor=cursor, fact=cursor, caller_stack=reg("rsp"),
                 callee_saved={name:reg(name) for name in saved}, simd=simd(),
-                context=memory(state.context,1008), table=memory(state.table,0x43000),
+                context=memory(state.context,1008), table=memory(state.table,0x4c000),
                 clock=memory(word(state.context+944),24), return_ip=word(state.context+296))
             return False
 
@@ -177,7 +177,7 @@ def install(config):
             assert memory(state.arena,65536) == bytes(65536)
             assert memory(reg("rsp")-4096,4096) == bytes(4096)
             assert memory(state.context,1008) == active["context"]
-            assert memory(state.table,0x43000) == active["table"]
+            assert memory(state.table,0x4c000) == active["table"]
             assert memory(word(state.context+944),24) == active["clock"]
             bindings()
             state.calls.append(dict(retained_cursor_before=active["cursor"], copied_cursor=active["fact"],
@@ -233,7 +233,7 @@ def install(config):
             assert state.calls and state.frames and all(call["child_pid_published"] for call in state.calls)
             assert all(word(state.context+offset) == 0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536) == bytes(65536)
-            assert memory(state.table,0x43000) == bytes(0x43000)
+            assert memory(state.table,0x4c000) == bytes(0x4c000)
             write("pass",bindings_erased=True,terminal_arena_erased=True,backing_erased=True)
             return True
 

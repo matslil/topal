@@ -36,6 +36,8 @@ pub(super) mod realtime;
 pub(super) mod signals;
 #[path = "systems_process_time.rs"]
 pub(super) mod time;
+#[path = "systems_volatile_files.rs"]
+pub(super) mod volatile_files;
 
 // The pristine segment ends at 0x9728; the rollback stack starts at 0xa000.
 // Strings [0,256), pointer offsets [256,320), argc at 320, size at 328.

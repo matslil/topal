@@ -25,6 +25,7 @@ mod systems_structured_identity;
 mod systems_structured_store;
 mod systems_translation;
 mod systems_user;
+mod systems_volatile_files;
 pub mod tracing;
 
 pub use architecture::*;
@@ -51,6 +52,7 @@ pub use systems_structured_identity::*;
 pub use systems_structured_store::*;
 pub use systems_translation::*;
 pub use systems_user::*;
+pub use systems_volatile_files::*;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;

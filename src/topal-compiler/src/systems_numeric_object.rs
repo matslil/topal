@@ -416,15 +416,16 @@ pub(crate) fn inspect_linked_numeric_library(
         "relative-sleep-deadline-v1" => super::NumericPolicy::Deadline,
         "static-elf64-header-v1" => super::NumericPolicy::Elf64Header,
         "static-linux-dispatch-v1" => super::NumericPolicy::LinuxDispatch,
+        "static-linux-dispatch-v2" => super::NumericPolicy::LinuxDispatchV2,
         "process-identity-transition-v1" => super::NumericPolicy::ProcessIdentity,
         "retained-process-identity-v1" => super::NumericPolicy::RetainedIdentity,
         "structured-process-identity-v1" => super::NumericPolicy::StructuredIdentity,
         _ => return Err(invalid("unqualified numeric binding interface")),
     };
-    let tags_valid = if policy == super::NumericPolicy::LinuxDispatch {
-        record.source_tags.len() == super::DISPATCH_CHOICES.len()
+    let tags_valid = if policy.is_dispatch() {
+        record.source_tags.len() == policy.dispatch_choices().len()
             && record.source_tags.iter().copied().collect::<BTreeSet<_>>()
-                == (0..super::DISPATCH_CHOICES.len() as u32).collect()
+                == (0..policy.dispatch_choices().len() as u32).collect()
     } else {
         record.source_tags.is_empty()
     };

@@ -32,7 +32,7 @@ def install(config):
     def bindings():
         for offset,selected,name in [(960,config["has_time"],"topal_kernel_sleep_deadline_policy_v1"),
                                     (976,config["has_image"],"topal_kernel_static_elf64_header_policy_v1"),
-                                    (984,True,"topal_kernel_static_linux_dispatch_policy_v1"),
+                                    (984,True,config['dispatch_export']),
                                     (992,config["has_identity"],config["identity_export"]),
                                     (1000,config["has_retained"],"topal_x86_systems_identity_value_store")]:
             assert word(state.context+offset)==(symbol(name) if selected else 0)
@@ -71,7 +71,7 @@ def install(config):
                 expected=semantic.get(raw&0xffff_ffff,"Unsupported"),caller_stack=reg("rsp"),
                 facts={name:word(state.context+offset) for name,offset in captured.items()},
                 callee_saved={name:reg(name) for name in saved},simd=simd(),
-                context=memory(state.context,1008),table=memory(state.table,0x43000),
+                context=memory(state.context,1008),table=memory(state.table,0x4c000),
                 clock=memory(word(state.context+944),24),
                 retained=memory(symbol("topal_x86_systems_identity_value_store"),4096) if config["has_retained"] else None,
                 returned=False)
@@ -103,7 +103,7 @@ def install(config):
             expected=number(frame.read_var("expected"))
             assert actual==active["selector"] and expected in semantic
             trace=gdb.execute("bt 3",to_string=True)
-            assert "support/syscall.t" in trace and "static-linux-dispatch.t" in trace
+            assert "support/syscall.t" in trace and config['source_basename'] in trace
             depth=active["caller_stack"]-reg("rsp")
             assert 0<depth<=config["stack_bound"]
             state.frames.append(dict(selector=actual,comparison_candidate=expected,
@@ -149,7 +149,7 @@ def install(config):
             assert memory(state.arena,65536)==bytes(65536)
             assert memory(reg("rsp")-4096,4096)==bytes(4096)
             assert memory(state.context,1008)==active["context"]
-            assert memory(state.table,0x43000)==active["table"]
+            assert memory(state.table,0x4c000)==active["table"]
             assert memory(word(state.context+944),24)==active["clock"]
             if config["has_retained"]:
                 assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==active["retained"]
@@ -179,7 +179,7 @@ def install(config):
             assert state.pending is None and state.calls and state.frames
             assert all(word(state.context+offset)==0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536)==bytes(65536)
-            assert memory(state.table,0x43000)==bytes(0x43000)
+            assert memory(state.table,0x4c000)==bytes(0x4c000)
             if config["has_retained"]:
                 assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==bytes(4096)
             write("pass",bindings_erased=True,terminal_arena_erased=True,backing_erased=True)
@@ -187,7 +187,7 @@ def install(config):
 
     state.image=Path(config["elf"]).read_bytes()
     breakpoint(Raw,"*"+hex(config["raw_point"]))
-    state.entry=breakpoint(Enter,"*"+hex(symbol("topal_kernel_static_linux_dispatch_policy_v1")))
+    state.entry=breakpoint(Enter,"*"+hex(symbol(config['dispatch_export'])))
     # One exact location avoids multiplying one source-line breakpoint across
     # the compiler's separate helper instantiations and exceeding four slots.
     breakpoint(Source,"*"+hex(config["source_point"]))

@@ -61,7 +61,7 @@ def install(config):
         assert word(state.context + 960) == expected_time
         assert word(state.context + 968) == state.arena
         assert word(state.context + 976) == symbol("topal_kernel_static_elf64_header_policy_v1")
-        expected_dispatch=symbol("topal_kernel_static_linux_dispatch_policy_v1") if config["has_dispatch"] else 0
+        expected_dispatch=symbol(config["dispatch_export"]) if config["has_dispatch"] else 0
         assert word(state.context+984)==expected_dispatch
         assert word(state.context+992)==(symbol(config["identity_export"]) if config["has_identity"] else 0)
         assert word(state.context+1000)==(symbol("topal_x86_systems_identity_value_store") if config["has_retained"] else 0)
@@ -93,7 +93,7 @@ def install(config):
                                 machine=machine, maximum=maximum, expected=1,
                                 entry_stack=stack, caller_stack=word(stack + 8) + 64,
                                 callee_saved={r: reg(r) for r in saved}, simd=simd(),
-                                table=memory(state.table, 0x43000),
+                                table=memory(state.table, 0x4c000),
                                 exec_snapshot=memory(word(state.context + 904), 0xa000),
                                 context=memory(state.context, 1008),
                                 clock=memory(word(state.context + 944), 24),
@@ -177,7 +177,7 @@ def install(config):
             assert all(reg(r) == 0 for r in ("rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r11"))
             assert memory(state.arena, 65536) == bytes(65536)
             assert memory(reg("rsp")-4096, 4096) == bytes(4096)
-            assert memory(state.table, 0x43000) == active["table"]
+            assert memory(state.table, 0x4c000) == active["table"]
             assert memory(state.context, 1008) == active["context"]
             assert memory(word(state.context+944), 24) == active["clock"]
             if config["has_retained"]:
@@ -212,7 +212,7 @@ def install(config):
             expected[0x9800:0xa000] = bytes(0x800)
             actual=memory(word(state.context+904),0xa000)
             assert actual == bytes(expected), ("exec_snapshot",[i for i,(a,b) in enumerate(zip(actual,expected)) if a!=b][:16])
-            assert memory(state.table,0x43000) == active["table"]
+            assert memory(state.table,0x4c000) == active["table"]
             actual_context=memory(state.context,1008)
             assert actual_context == active["context"], ("context",[i for i,(a,b) in enumerate(zip(actual_context,active["context"])) if a!=b][:16])
             assert memory(word(state.context+944), 24) == active["clock"], "clock"
@@ -230,7 +230,7 @@ def install(config):
             assert state.active is None and state.calls and state.frames
             assert all(word(state.context+offset) == 0 for offset in (952, 960, 968, 976, 984, 992, 1000))
             assert memory(state.arena, 65536) == bytes(65536)
-            assert memory(state.table, 0x43000) == bytes(0x43000)
+            assert memory(state.table, 0x4c000) == bytes(0x4c000)
             if config["has_retained"]:
                 assert memory(symbol("topal_x86_systems_identity_value_store"),4096)==bytes(4096)
             write("pass", binding_erased=True, terminal_arena_erased=True, backing_erased=True)

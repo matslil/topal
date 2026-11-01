@@ -27,6 +27,8 @@ pub enum SystemsStaticLinuxOperation {
     Wait,
     KernelIdentity,
     FileControl,
+    TruncateFile,
+    FileCreationMask,
     WorkingDirectory,
     ChangeDirectory,
     ChangeDirectoryByFile,
@@ -63,6 +65,33 @@ pub enum SystemsStaticLinuxOperation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn extended_dispatch_adds_only_two_selectors_and_preserves_full_width_rejection() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001
+        for selector in 0..65536 {
+            let expected = match selector {
+                77 => SystemsStaticLinuxOperation::TruncateFile,
+                95 => SystemsStaticLinuxOperation::FileCreationMask,
+                _ => SystemsStaticLinuxOperation::from_selector(selector),
+            };
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector_v2(selector),
+                expected
+            );
+        }
+        for selector in [77, 95] {
+            assert_eq!(
+                SystemsStaticLinuxOperation::from_selector(selector),
+                SystemsStaticLinuxOperation::Unsupported
+            );
+            for high in [1u64 << 32, 1u64 << 63] {
+                assert_eq!(
+                    SystemsStaticLinuxOperation::from_selector_v2(high | selector),
+                    SystemsStaticLinuxOperation::Unsupported
+                );
+            }
+        }
+    }
     #[test]
     fn normalized_selector_model_matches_normative_mapping_and_preserves_wide_facts() {
         // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
@@ -118,6 +147,14 @@ mod tests {
     }
 }
 impl SystemsStaticLinuxOperation {
+    #[must_use]
+    pub const fn from_selector_v2(selector: u64) -> Self {
+        match selector {
+            77 => Self::TruncateFile,
+            95 => Self::FileCreationMask,
+            _ => Self::from_selector(selector),
+        }
+    }
     #[must_use]
     pub const fn from_selector(selector: u64) -> Self {
         match selector {
@@ -207,6 +244,8 @@ impl SystemsStaticLinuxOperation {
             Self::Wait => "Wait",
             Self::KernelIdentity => "KernelIdentity",
             Self::FileControl => "FileControl",
+            Self::TruncateFile => "TruncateFile",
+            Self::FileCreationMask => "FileCreationMask",
             Self::WorkingDirectory => "WorkingDirectory",
             Self::ChangeDirectory => "ChangeDirectory",
             Self::ChangeDirectoryByFile => "ChangeDirectoryByFile",

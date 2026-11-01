@@ -34,8 +34,17 @@ impl SystemsNumericRuntimeArena {
     ) -> Result<Self, SystemsModelError> {
         let mut policies = BTreeSet::new();
         let mut identity_selected = false;
+        let mut dispatch_selected = false;
         for requirement in requirements {
             requirement.validate()?;
+            if matches!(
+                requirement.interface,
+                SystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
+            ) && std::mem::replace(&mut dispatch_selected, true)
+            {
+                return Err(invalid());
+            }
             if matches!(
                 requirement.interface,
                 SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
@@ -50,6 +59,7 @@ impl SystemsNumericRuntimeArena {
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
                     | SystemsSourceLibraryInterface::StaticElf64HeaderV1
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
                     | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
@@ -215,7 +225,7 @@ impl SystemsNumericRuntimeArena {
 mod tests {
     use super::*;
     #[test]
-    fn identity_versions_share_one_semantic_policy_slot() {
+    fn interface_versions_share_their_semantic_policy_slots() {
         // TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001
         use SystemsSourceLibraryInterface::*;
         let policies = [
@@ -225,6 +235,7 @@ mod tests {
             ProcessIdentityTransitionV1,
             RetainedProcessIdentityV1,
             StructuredProcessIdentityV1,
+            StaticLinuxDispatchV2,
         ];
         let requirement = |interface| SystemsSourceLibraryRequirement {
             source: "policy/identity.t".into(),
@@ -242,7 +253,7 @@ mod tests {
             },
         };
         let mut accepted = 0;
-        for mask in 1u32..64 {
+        for mask in 1u32..128 {
             let selected = policies
                 .iter()
                 .enumerate()
@@ -250,7 +261,7 @@ mod tests {
                 .map(|(_, interface)| requirement(*interface))
                 .collect::<Vec<_>>();
             let result = SystemsNumericRuntimeArena::new_with_policies(&selected, "root");
-            if (mask & 56).count_ones() > 1 {
+            if (mask & 56).count_ones() > 1 || (mask & 68).count_ones() > 1 {
                 assert!(result.is_err());
                 continue;
             }
@@ -265,7 +276,7 @@ mod tests {
             arena.return_to_root("process").unwrap();
             assert!(arena.is_reclaimed());
         }
-        assert_eq!(accepted, 31);
+        assert_eq!(accepted, 47);
     }
     #[test]
     fn distinct_numeric_policies_share_only_inactive_clean_storage() {

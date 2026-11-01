@@ -186,6 +186,7 @@ pub(in super::super) fn emit_initialize(code: &mut X86FunctionEncoder) -> Result
     e.0.bytes(&737_u32.to_le_bytes());
     e.0.bytes(&[0]);
     e.0.call("process-signals-import");
+    super::volatile_files::emit_initialize(e.0);
     e.imm(A, 1);
     e.store(R12, 0, A);
     e.0.bytes(&[0xc3]);
@@ -231,6 +232,11 @@ fn emit_lookup_and_release(e: &mut E<'_>) -> Result<(), CompileError> {
     e.cmp(A, 0);
     e.0.jump_if(0x85, "fd-drop-slot");
     e.load(A, R14, 0);
+    e.cmp(A, super::volatile_files::KIND);
+    e.0.jump_if(0x85, "fd-drop-check-pipe");
+    e.0.call("file-last-description");
+    e.0.jump("fd-drop-description");
+    e.0.bind("fd-drop-check-pipe")?;
     e.cmp(A, 5);
     e.0.jump_if(0x84, "fd-drop-pipe");
     e.cmp(A, 6);
@@ -412,6 +418,8 @@ pub(in super::super) fn emit_transfer_services(
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
     e.load(A, R14, 0);
+    e.cmp(A, super::volatile_files::KIND);
+    e.0.jump_if(0x84, "file-write");
     e.cmp(A, 6);
     e.0.jump_if(0x84, "pipe-write");
     e.cmp(A, 2);
@@ -422,6 +430,8 @@ pub(in super::super) fn emit_transfer_services(
     e.0.call("fd-lookup");
     e.0.jump_if(0x82, "fd-ebadf");
     e.load(B, R14, 0);
+    e.cmp(B, super::volatile_files::KIND);
+    e.0.jump_if(0x84, "file-read");
     e.cmp(B, 6);
     e.0.jump_if(0x84, "fd-ebadf");
     e.cmp(B, 5);
@@ -441,6 +451,7 @@ pub(in super::super) fn emit_transfer_services(
     e.cmp(B, 3);
     e.0.jump_if(0x85, "fd-eisdir");
     e.load(R15, R14, 24);
+    super::volatile_files::verify_native_range(&mut e, R15, R9, "fd-einval");
     e.load(A, R12, 24);
     e.rr(0x39, R15, A);
     e.0.jump_if(0x83, "fd-read-zero");
@@ -517,6 +528,8 @@ pub(in super::super) fn emit_transfer_services(
     e.cmp(D, 4);
     e.0.jump_if(0x87, "fd-einval");
     e.load(A, R14, 0);
+    e.cmp(A, super::volatile_files::KIND);
+    e.0.jump_if(0x84, "file-seek");
     e.cmp(A, 3);
     e.0.jump_if(0x84, "fd-seek-kind-ready");
     e.cmp(A, 4);
@@ -561,6 +574,8 @@ pub(in super::super) fn emit_transfer_services(
     e.imm(A, 4096);
     e.store(R12, STAGING + 56, A);
     e.load(A, R14, 0);
+    e.cmp(A, super::volatile_files::KIND);
+    e.0.jump_if(0x84, "file-stat");
     e.cmp(A, 3);
     e.0.jump_if(0x84, "fd-stat-file");
     e.cmp(A, 4);
@@ -689,6 +704,7 @@ pub(in super::super) fn emit_reclamation(
     e.0.bytes(&[0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.0.call("pipe-terminal-release");
+    e.0.call("file-terminal-release");
     e.mov(Di, R12);
     e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xf3, 0x48, 0xab]);

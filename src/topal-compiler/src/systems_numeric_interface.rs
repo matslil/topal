@@ -6,6 +6,7 @@ pub(crate) enum NumericPolicy {
     Deadline,
     Elf64Header,
     LinuxDispatch,
+    LinuxDispatchV2,
     ProcessIdentity,
     RetainedIdentity,
     StructuredIdentity,
@@ -18,6 +19,9 @@ impl NumericPolicy {
             CompilerSystemsSourceLibraryInterface::RelativeSleepDeadlineV1 => Ok(Self::Deadline),
             CompilerSystemsSourceLibraryInterface::StaticElf64HeaderV1 => Ok(Self::Elf64Header),
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1 => Ok(Self::LinuxDispatch),
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2 => {
+                Ok(Self::LinuxDispatchV2)
+            }
             CompilerSystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
                 Ok(Self::ProcessIdentity)
             }
@@ -30,11 +34,22 @@ impl NumericPolicy {
             _ => Err(invalid("unqualified owned policy interface")),
         }
     }
+    pub(crate) fn is_dispatch(self) -> bool {
+        matches!(self, Self::LinuxDispatch | Self::LinuxDispatchV2)
+    }
+    pub(crate) fn dispatch_choices(self) -> &'static [(&'static str, u64)] {
+        match self {
+            Self::LinuxDispatch => &super::dispatch_choices::DISPATCH_CHOICES,
+            Self::LinuxDispatchV2 => &super::dispatch_choices::DISPATCH_V2_CHOICES,
+            _ => &[],
+        }
+    }
     pub(crate) fn native_export(self) -> &'static str {
         match self {
             Self::Deadline => EXPORT_SYMBOL,
             Self::Elf64Header => "topal_kernel_static_elf64_header_policy_v1",
             Self::LinuxDispatch => "topal_kernel_static_linux_dispatch_policy_v1",
+            Self::LinuxDispatchV2 => "topal_kernel_static_linux_dispatch_policy_v2",
             Self::ProcessIdentity => "topal_kernel_process_identity_transition_v1",
             Self::RetainedIdentity => "topal_kernel_retained_process_identity_policy_v1",
             Self::StructuredIdentity => "topal_kernel_structured_process_identity_policy_v1",
@@ -44,7 +59,7 @@ impl NumericPolicy {
         match self {
             Self::Deadline => FUNCTION_PREFIX,
             Self::Elf64Header => "topal.header.",
-            Self::LinuxDispatch => "topal.dispatch.",
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => "topal.dispatch.",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "topal.identity."
             }
@@ -54,7 +69,7 @@ impl NumericPolicy {
         match self {
             Self::Deadline => "time-library",
             Self::Elf64Header => "image-library",
-            Self::LinuxDispatch => "dispatch-library",
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => "dispatch-library",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "process-identity-library"
             }
@@ -79,7 +94,7 @@ impl NumericPolicy {
                 CompilerType::Nat,
                 CompilerType::Nat,
             ],
-            Self::LinuxDispatch => vec![CompilerType::Nat],
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => vec![CompilerType::Nat],
             Self::ProcessIdentity | Self::RetainedIdentity => vec![CompilerType::Record(vec![(
                 "next".into(),
                 CompilerType::Nat,
@@ -93,7 +108,7 @@ impl NumericPolicy {
             }
             Self::Deadline => result == &CompilerType::Int,
             Self::Elf64Header => result == &CompilerType::Boolean,
-            Self::LinuxDispatch => false,
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => false,
             Self::ProcessIdentity | Self::RetainedIdentity => {
                 if let CompilerType::Record(fields) = result {
                     fields.len() == 2
@@ -114,9 +129,9 @@ impl NumericPolicy {
         if valid {
             return Ok(Vec::new());
         }
-        if self == Self::LinuxDispatch {
+        if self.is_dispatch() {
             if let CompilerType::Enum(kind) = result {
-                let choices = &super::dispatch_choices::DISPATCH_CHOICES;
+                let choices = self.dispatch_choices();
                 if canonically_equal(&kind.name, "StaticLinuxOperation")
                     && kind.alternatives.len() == choices.len()
                 {
@@ -146,7 +161,7 @@ impl NumericPolicy {
             Self::ProcessIdentity | Self::RetainedIdentity => {
                 "identity interface requires Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
             }
-            Self::LinuxDispatch => {
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => {
                 "dispatch interface requires nominal StaticLinuxOperation with the exact semantic vocabulary"
             }
         }))
@@ -165,7 +180,7 @@ impl NumericPolicy {
     fn private_namespace(self) -> &'static str {
         match self {
             Self::Elf64Header => "topal.elf.",
-            Self::LinuxDispatch => "topal.syscall.",
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => "topal.syscall.",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "topal.pid."
             }
@@ -197,7 +212,7 @@ impl NumericPolicy {
                 range(1, 65535),
                 range(1, 65535),
             ],
-            Self::LinuxDispatch => vec![range(0, u64::MAX)],
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => vec![range(0, u64::MAX)],
             Self::ProcessIdentity | Self::RetainedIdentity => vec![Value::Record(BTreeMap::from(
                 [("next".into(), range(0, i32::MAX as u64))],
             ))],
@@ -208,7 +223,7 @@ impl NumericPolicy {
             Self::StructuredIdentity => 48,
             Self::Deadline => 3 * 24,
             Self::Elf64Header => 64 * (24 + 16) + 16 + 2 * 24,
-            Self::LinuxDispatch => 24,
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => 24,
             Self::ProcessIdentity | Self::RetainedIdentity => 24,
         }
     }
@@ -219,7 +234,7 @@ impl NumericPolicy {
         match self {
             Self::Deadline => 0,
             Self::Elf64Header => 64,
-            Self::LinuxDispatch => 64,
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => 64,
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => 64,
         }
     }
@@ -242,7 +257,9 @@ impl NumericPolicy {
                 client.push_str(&format!("header-probe-array : Array (64, Int) is header-probe-list64 collect Array\nheader-probe-machine : Nat is 62\nheader-probe-maximum : Nat is 16\n{export} (header-probe-array, header-probe-machine, header-probe-maximum)\n"));
                 client
             }
-            Self::LinuxDispatch => format!("\nselector : Nat is 0\n{export} selector\n"),
+            Self::LinuxDispatch | Self::LinuxDispatchV2 => {
+                format!("\nselector : Nat is 0\n{export} selector\n")
+            }
             Self::ProcessIdentity | Self::RetainedIdentity => format!(
                 "\nidentity-probe : Record (next : Nat) is (next is 0)\n{export} identity-probe\n"
             ),

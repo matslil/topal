@@ -7,6 +7,7 @@ pub enum SystemsSourceLibraryInterface {
     RelativeSleepDeadlineV1,
     StaticElf64HeaderV1,
     StaticLinuxDispatchV1,
+    StaticLinuxDispatchV2,
     ProcessIdentityTransitionV1,
     RetainedProcessIdentityV1,
     StructuredProcessIdentityV1,
@@ -19,6 +20,7 @@ impl SystemsSourceLibraryInterface {
             Self::RelativeSleepDeadlineV1 => "relative-sleep-deadline-v1",
             Self::StaticElf64HeaderV1 => "static-elf64-header-v1",
             Self::StaticLinuxDispatchV1 => "static-linux-dispatch-v1",
+            Self::StaticLinuxDispatchV2 => "static-linux-dispatch-v2",
             Self::ProcessIdentityTransitionV1 => "process-identity-transition-v1",
             Self::RetainedProcessIdentityV1 => "retained-process-identity-v1",
             Self::StructuredProcessIdentityV1 => "structured-process-identity-v1",
@@ -61,6 +63,7 @@ impl SystemsSourceLibraryRequirement {
                 SystemsSourceLibraryInterface::RelativeSleepDeadlineV1
                 | SystemsSourceLibraryInterface::StaticElf64HeaderV1
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                 | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
                     self.stack_limit_bytes == 4096
                         && self.runtime_limit_bytes == Some(65536)

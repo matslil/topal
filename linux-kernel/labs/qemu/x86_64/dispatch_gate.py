@@ -26,13 +26,20 @@ GATE=module("topal_gate")
 LIBRARY=module("library_gate")
 
 
-def mapping():
+def mapping(interface='static-linux-dispatch-v1'):
     specification=(GATE.REPOSITORY/"spec/systems-profile.md").read_text()
     rule=specification.split("### TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001",1)[1]
     table=rule.split("```text\n",1)[1].split("```",1)[0]
     pairs=[(int(number),name) for number,name in re.findall(r"\b(\d+)\s+([A-Za-z]+)",table)]
     if len(pairs)!=55 or len(set(number for number,_ in pairs))!=55:
         raise GATE.GateError("dispatch witness needs the complete independent normative map")
+    if interface=='static-linux-dispatch-v2':
+        rule=specification.split('### TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001',1)[1].split('### ',1)[0]
+        added=[(int(number),name) for number,name in re.findall(r'\b(77|95)\s+(TruncateFile|FileCreationMask)',rule)]
+        if len(added)!=2:raise GATE.GateError('extended dispatch witness needs the complete normative additions')
+        pairs=sorted(pairs+added)
+    elif interface!='static-linux-dispatch-v1':
+        raise GATE.GateError('unqualified dispatch version')
     return pairs
 
 
@@ -50,7 +57,7 @@ def points(elf,library):
          if re.search(r"\bmov\s+%eax,%eax",line) and re.search(r"\bmov\s+%rax,%r8",lines[i+1])]
     clean=[address(lines[i+1]) for i,line in enumerate(lines[:-1])
            if re.search(r"%gs:0x160,\s*%r9",line) and re.search(r"%gs:0x3a0,\s*%r11",lines[i+1])]
-    bridge=disassemble(elf,"topal_kernel_static_linux_dispatch_policy_v1")
+    bridge=disassemble(elf,library['native_export'])
     tag=[address(bridge[i+1]) for i,line in enumerate(bridge[:-1])
          if re.search(r"\bcall\s+.*<topal\.dispatch\.",line)]
     if len(raw)!=1 or len(clean)!=1 or len(tag)!=1:
@@ -86,7 +93,7 @@ def observe(root,values,artifact,timeout,counterexample=False):
     elf=values[3].parent/"kernel.elf"
     library=artifact["dispatch_library"]
     raw,tag,clean,snapshot=points(elf,library)
-    pairs=mapping();choices=[name for _,name in pairs]+["Unsupported"]
+    pairs=mapping(library['interface']);choices=[name for _,name in pairs]+["Unsupported"]
     text=(values[3].parent/"dispatch-library.t").read_text()
     declaration=next(line for line in text.splitlines() if line.startswith("pub StaticLinuxOperation is Enum ("))
     alternatives=declaration.split("Enum (",1)[1][:-1].split(", ")
@@ -98,6 +105,7 @@ def observe(root,values,artifact,timeout,counterexample=False):
         source_point=snapshot,
         readonly=readonly_sections(elf),source_line=source.index("  number = expected")+1,
         mapping=pairs,choices=choices,source_tags=library["source_tags"],
+        dispatch_export=library['native_export'],source_basename=Path(library['source']).name,
         has_retained=bool((artifact.get("process_identity_library") or {}).get("retained_state")),identity_export=(artifact.get("process_identity_library") or {}).get("native_export","topal_kernel_process_identity_transition_v1"),has_identity=artifact.get("process_identity_library") is not None,has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
         stack_bound=library["maximum_stack_bytes"],allocation_bound=library["allocation"]["maximum_bytes"],
         counterexample=counterexample)
@@ -178,7 +186,7 @@ def verify(timeout=180,write_evidence=False):
             module_publication=LIBRARY.module_publication(values[3].parent,artifact,"dispatch_library","kernel-dispatch-source-module:"))
         for kind in ("reordered","wrong-selection"):
             case=root/kind;copy_libraries(case)
-            source=case/"arch/x86_64/policy/static-linux-dispatch.t";text=source.read_text()
+            source=case/artifact['dispatch_library']['source'];text=source.read_text()
             if kind=="reordered":
                 declaration=next(line for line in text.splitlines() if line.startswith("pub StaticLinuxOperation is Enum ("))
                 alternatives=declaration.split("Enum (",1)[1][:-1].split(", ")
@@ -202,6 +210,18 @@ def verify(timeout=180,write_evidence=False):
             single=observe(root/"dispatch-only",only_values,only_artifact,timeout)
             single.update(library=only_artifact["dispatch_library"],time_and_image_libraries_absent=True,root_source=only)
             record["dispatch_only"]=single
+        finally:GATE.SOURCE_PATH=original_source
+        legacy=original_source.read_text().replace('policy/static-linux-dispatch-v2.t','policy/static-linux-dispatch.t').replace('interface is static-linux-dispatch-v2','interface is static-linux-dispatch-v1')
+        if legacy==original_source.read_text():raise GATE.GateError('legacy dispatch control did not select the frozen interface')
+        legacy_source=root/'legacy-dispatch-root.t';legacy_source.write_text(legacy);GATE.SOURCE_PATH=legacy_source
+        try:
+            legacy_values=GATE.build_image(root/'legacy-dispatch-artifact')
+            legacy_artifact=json.loads(legacy_values[3].read_text())
+            if legacy_artifact['dispatch_library']['interface']!='static-linux-dispatch-v1':
+                raise GATE.GateError('legacy control lost its explicit source interface')
+            compatibility=observe(root/'legacy-dispatch',legacy_values,legacy_artifact,timeout)
+            compatibility.update(library=legacy_artifact['dispatch_library'],explicit_legacy_dispatch_control=True,root_source=legacy)
+            record['legacy_compatibility']=compatibility
         finally:GATE.SOURCE_PATH=original_source
     if write_evidence:
         (LAB/"results/topal-source-linux-dispatch-gate.json").write_text(json.dumps(record,indent=2,sort_keys=True)+"\n")

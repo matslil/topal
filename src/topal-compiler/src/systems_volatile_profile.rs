@@ -1,0 +1,27 @@
+//! Versioned selected filesystem evidence, checked before boot adaptation.
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct SystemsVolatileFileProfile {
+    pub schema: String,
+    pub process_storage_symbol: String,
+    pub process_storage_bytes: u64,
+    pub filesystem_offset: u64,
+    pub filesystem_bytes: u64,
+    pub object_offset: u64,
+    pub object_count: u64,
+    pub object_bytes: u64,
+    pub page_metadata_offset: u64,
+    pub page_metadata_bytes: u64,
+    pub resident_pages: u64,
+    pub page_bytes: u64,
+    pub payload_offset: u64,
+    pub private_umask_offset: u64,
+    pub initial_umask: u32,
+    pub transfer_staging_offset: u64,
+    pub transfer_quantum: u64,
+    pub maximum_file_offset: u64,
+    pub maximum_native_helper_stack_bytes: u64,
+    pub timestamp_policy: String,
+}

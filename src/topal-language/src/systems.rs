@@ -578,8 +578,11 @@ fn parse_artifact_root(
             }
         } else if label_text == "dispatch-library" {
             let requirement = source_library::parse_requirement(source, field)?;
-            if requirement.interface != CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
-            {
+            if !matches!(
+                requirement.interface,
+                CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                    | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2
+            ) {
                 return Err(source_diagnostic(
                     source,
                     "E-SYSTEMS-LIBRARY",

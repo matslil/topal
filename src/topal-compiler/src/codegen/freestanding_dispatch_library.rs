@@ -7,7 +7,7 @@ fn emit_owned_dispatch_bridge(unit:&crate::systems_numeric_library::CheckedNumer
         let _=writeln!(bridge,"    i32 {tag}, label %operation.{index}");
     }
     bridge.push_str("  ]\n");
-    for (index,(_,code)) in crate::systems_numeric_library::DISPATCH_CHOICES.iter().enumerate() {
+    for (index,(_,code)) in unit.policy.dispatch_choices().iter().enumerate() {
         let _=writeln!(bridge,"operation.{index}:\n  ret i64 {code}");
     }
     bridge.push_str("invalid:\n  call void @topal_kernel_numeric_abort_v1()\n  unreachable\n}\n\n");

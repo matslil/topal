@@ -44,7 +44,7 @@ fn byte(e: &mut E<'_>, dst: super::R, base: super::R, offset: i32) {
     }
     e.0.bytes(&offset.to_le_bytes());
 }
-fn wipe_name(e: &mut E<'_>) {
+pub(super) fn wipe_name(e: &mut E<'_>) {
     e.mov(Di, R12);
     e.add(Di, PATH);
     e.imm(A, 0);
@@ -163,6 +163,9 @@ fn emit_copy_and_walk(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x85, "namespace-check-busybox");
     e.cmp(D, 3);
     e.0.jump_if(0x85, "namespace-enoent");
+    byte(e, A, Si, 0);
+    e.cmp(A, i32::from(b'b'));
+    e.0.jump_if(0x85, "namespace-check-tmp");
     for (offset, ch) in b"bin".iter().enumerate() {
         byte(e, A, Si, offset as i32);
         e.cmp(A, i32::from(*ch));
@@ -170,7 +173,17 @@ fn emit_copy_and_walk(e: &mut E<'_>) -> Result<(), CompileError> {
     }
     e.imm(R15, 4);
     e.0.jump("namespace-component");
+    e.0.bind("namespace-check-tmp")?;
+    for (offset, ch) in b"tmp".iter().enumerate() {
+        byte(e, A, Si, offset as i32);
+        e.cmp(A, i32::from(*ch));
+        e.0.jump_if(0x85, "namespace-enoent");
+    }
+    e.imm(R15, 6);
+    e.0.jump("namespace-component");
     e.0.bind("namespace-check-busybox")?;
+    e.cmp(R15, 6);
+    e.0.jump_if(0x84, "namespace-enoent");
     e.cmp(R15, 4);
     e.0.jump_if(0x85, "fatal");
     e.cmp(D, 7);
@@ -191,15 +204,25 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-open")?;
     e.mov(R8, Di);
     e.mov(Bp, Si);
+    e.mov(R9, D);
     e.imm(B, 0xffff_ff9c);
     e.0.jump("namespace-open-common");
     e.0.bind("namespace-openat")?;
     e.mov(R8, Si);
     e.mov(Bp, D);
     e.mov(B, Di);
+    e.mov(R9, R10);
     e.0.bind("namespace-open-common")?;
     // Native flags request access; no writable authority follows from them.
     e.0.bytes(&[0x89, 0xed]);
+    e.mov(A, Bp);
+    e.arith(4, A, 0x10040);
+    e.cmp(A, 0x10040);
+    e.0.jump_if(0x84, "namespace-einval");
+    e.mov(A, Bp);
+    e.arith(4, A, 0x400000);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "namespace-open-temporary-flags");
     e.mov(A, Bp);
     e.arith(4, A, !0x000b_8903);
     e.cmp(A, 0);
@@ -208,6 +231,25 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.arith(4, A, 3);
     e.cmp(A, 3); // nonstandard access-mode-three remains unqualified
     e.0.jump_if(0x84, "fatal");
+    e.0.jump("namespace-open-copy");
+    e.0.bind("namespace-open-temporary-flags")?;
+    e.mov(A, Bp);
+    e.arith(4, A, !0x004b_8d83);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "namespace-einval");
+    e.mov(A, Bp);
+    e.arith(4, A, 0x10000);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "namespace-einval");
+    e.mov(A, Bp);
+    e.arith(4, A, 3);
+    e.cmp(A, 0);
+    e.0.jump_if(0x84, "namespace-einval");
+    e.cmp(A, 3);
+    e.0.jump_if(0x84, "namespace-einval");
+    table(e);
+    e.store(R12, STAGING + 248, R9);
+    e.0.bind("namespace-open-copy")?;
     e.0.call("namespace-copy-name");
     e.cmp(R13, 0);
     e.0.jump_if(0x84, "namespace-enoent");
@@ -227,6 +269,10 @@ fn emit_open(e: &mut E<'_>, source_bound: bool) -> Result<(), CompileError> {
     e.0.bytes(&[0x41, 0x56]);
     e.0.call("namespace-walk");
     e.0.bytes(&[0x41, 0x5e]);
+    e.mov(A, Bp);
+    e.arith(4, A, 0x400000);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "file-create-temporary");
     if source_bound {
         super::policy::emit_open_decision(e)?;
     } else {
@@ -368,6 +414,8 @@ fn emit_metadata(e: &mut E<'_>) -> Result<(), CompileError> {
     }
     e.0.bytes(&[0xc3]);
     e.0.bind("namespace-stat-directory")?;
+    e.cmp(R15, 6);
+    e.0.jump_if(0x84, "namespace-stat-tmp");
     e.imm(A, 0o40755);
     e.store(R12, STAGING + 24, A);
     e.imm(A, 2);
@@ -375,9 +423,16 @@ fn emit_metadata(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "namespace-stat-directory-links");
     e.cmp(R15, 3);
     e.0.jump_if(0x85, "fatal");
-    e.imm(A, 3);
+    e.imm(A, 4);
     e.0.bind("namespace-stat-directory-links")?;
     e.store(R12, STAGING + 16, A);
+    e.0.bytes(&[0xc3]);
+    e.0.bind("namespace-stat-tmp")?;
+    e.imm(A, 2);
+    e.store(R12, STAGING, A);
+    e.store(R12, STAGING + 16, A);
+    e.imm(A, 0o41777);
+    e.store(R12, STAGING + 24, A);
     e.0.bytes(&[0xc3]);
     Ok(())
 }
@@ -410,7 +465,10 @@ fn emit_cwd(e: &mut E<'_>) -> Result<(), CompileError> {
     e.cmp(A, 3);
     e.0.jump_if(0x84, "namespace-cwd-length");
     e.cmp(A, 4);
+    e.0.jump_if(0x84, "namespace-cwd-tmp-or-bin");
+    e.cmp(A, 6);
     e.0.jump_if(0x85, "fatal");
+    e.0.bind("namespace-cwd-tmp-or-bin")?;
     e.imm(R15, 5);
     e.0.bind("namespace-cwd-length")?;
     e.rr(0x39, Si, R15);
@@ -424,6 +482,11 @@ fn emit_cwd(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "namespace-cwd-bytes");
     e.imm(A, 47);
     e.0.bind("namespace-cwd-bytes")?;
+    e.load(C, R12, CWD);
+    e.cmp(C, 6);
+    e.0.jump_if(0x85, "namespace-cwd-selected");
+    e.imm(A, u64::from_le_bytes(*b"/tmp\0\0\0\0"));
+    e.0.bind("namespace-cwd-selected")?;
     e.store(R12, STAGING, A);
     e.mov(Di, R8);
     e.mov(Si, R12);
@@ -457,6 +520,8 @@ pub(in super::super) fn emit_services(
         ("namespace-eisdir", 21),
         ("namespace-erofs", 30),
         ("namespace-emfile", 24),
+        ("namespace-enospc", 28),
+        ("namespace-eio", 5),
         ("namespace-einval", 22),
         ("namespace-erange", 34),
     ] {
@@ -482,8 +547,17 @@ fn emit_directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.imm(R15, 0);
     wipe_staging(e);
     e.0.bind("namespace-directory-record")?;
+    e.cmp(R13, 2);
+    e.0.jump_if(0x82, "namespace-directory-available");
+    e.cmp(B, 6);
+    e.0.jump_if(0x84, "namespace-directory-publish");
     e.cmp(R13, 3);
+    e.0.jump_if(0x82, "namespace-directory-available");
+    e.cmp(B, 3);
+    e.0.jump_if(0x85, "namespace-directory-publish");
+    e.cmp(R13, 4);
     e.0.jump_if(0x83, "namespace-directory-publish");
+    e.0.bind("namespace-directory-available")?;
     e.imm(R9, 24);
     e.cmp(R13, 2);
     e.0.jump_if(0x85, "namespace-directory-length");
@@ -506,6 +580,9 @@ fn emit_directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "namespace-directory-inode");
     e.mov(A, B);
     e.add(A, 1);
+    e.cmp(R13, 3);
+    e.0.jump_if(0x85, "namespace-directory-inode");
+    e.imm(A, 6);
     e.0.bind("namespace-directory-inode")?;
     e.store(R10, 0, A);
     e.mov(A, R13);
@@ -521,9 +598,14 @@ fn emit_directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.imm(A, u64::from_le_bytes([24, 0, 4, b'.', b'.', 0, 0, 0]));
     e.0.jump("namespace-directory-name");
     e.0.bind("namespace-directory-child")?;
+    e.cmp(R13, 3);
+    e.0.jump_if(0x84, "namespace-directory-tmp");
     e.cmp(B, 4);
     e.0.jump_if(0x84, "namespace-directory-busybox");
     e.imm(A, u64::from_le_bytes([24, 0, 4, b'b', b'i', b'n', 0, 0]));
+    e.0.jump("namespace-directory-name");
+    e.0.bind("namespace-directory-tmp")?;
+    e.imm(A, u64::from_le_bytes([24, 0, 4, b't', b'm', b'p', 0, 0]));
     e.0.jump("namespace-directory-name");
     e.0.bind("namespace-directory-busybox")?;
     e.imm(A, u64::from_le_bytes([b'o', b'x', 0, 0, 0, 0, 0, 0]));
@@ -540,7 +622,16 @@ fn emit_directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bind("namespace-directory-publish")?;
     e.cmp(R15, 0);
     e.0.jump_if(0x85, "namespace-directory-copy");
-    e.cmp(R13, 3);
+    e.imm(R9, 3);
+    e.cmp(B, 6);
+    e.0.jump_if(0x85, "namespace-directory-limit-root");
+    e.imm(R9, 2);
+    e.0.bind("namespace-directory-limit-root")?;
+    e.cmp(B, 3);
+    e.0.jump_if(0x85, "namespace-directory-limit-ready");
+    e.imm(R9, 4);
+    e.0.bind("namespace-directory-limit-ready")?;
+    e.rr(0x39, R13, R9);
     e.0.jump_if(0x82, "namespace-einval");
     finish(e, 0);
     e.0.bind("namespace-directory-copy")?;

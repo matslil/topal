@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/140";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/141";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -308,6 +308,11 @@ fn validate_artifact_input(
         ));
     }
     crate::systems_provider_object::inspect_linked_process_backing(kernel)?;
+    if artifact.volatile_files != crate::systems_provider_object::volatile_file_profile() {
+        return Err(CompileError::Tool(
+            "unqualified volatile filesystem ownership/capacity evidence".into(),
+        ));
+    }
     let expected = artifact
         .outputs
         .iter()
@@ -391,6 +396,31 @@ fn validate_artifact_input(
             "identity interface/store ownership bindings disagree".into(),
         ));
     }
+    let dispatch_interface = artifact
+        .dispatch_library
+        .as_ref()
+        .map_or("static-linux-dispatch-v1", |library| {
+            library.interface.as_str()
+        });
+    let dispatch_policy = match dispatch_interface {
+        "static-linux-dispatch-v1" => crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+        "static-linux-dispatch-v2" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
+        }
+        _ => return Err(CompileError::Tool("unqualified dispatch interface".into())),
+    };
+    if [
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2,
+    ]
+    .into_iter()
+    .any(|policy| {
+        policy != dispatch_policy && file.symbol_by_name(policy.native_export()).is_some()
+    }) {
+        return Err(CompileError::Tool(
+            "duplicate or cross-version dispatch code binding".into(),
+        ));
+    }
     for (library, interface, policy, prefix, stem) in [
         (
             &artifact.time_library,
@@ -408,8 +438,8 @@ fn validate_artifact_input(
         ),
         (
             &artifact.dispatch_library,
-            "static-linux-dispatch-v1",
-            crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+            dispatch_interface,
+            dispatch_policy,
             "kernel-dispatch-source-module:",
             "dispatch-library",
         ),
@@ -1158,10 +1188,11 @@ mod tests {
             .file_range()
             .unwrap();
         let entry = start as usize + symbol.index().0 * 24;
-        assert_eq!(symbol.size(), 0x43000);
+        assert_eq!(symbol.size(), 0x4c000);
         for (field, value) in [
             (16, 8192_u64),
             (16, 0x3e000),
+            (16, 0x43000),
             (16, u64::MAX),
             (8, 0x3ff000),
             (8, 0x400000),
@@ -1182,6 +1213,53 @@ mod tests {
             assert!(
                 generate_x86_64_linux_boot_image(&changed, &provenance, &initial, &static_image)
                     .is_err()
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_wrong_sparse_filesystem_capacity_private_layout_and_profile_evidence() {
+        // TOPAL-SYSTEMS-VOLATILE-FILE-{OWNERSHIP,PERSONALITY}-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        assert_eq!(artifact.volatile_files.private_umask_offset, 1664);
+        assert_eq!(artifact.volatile_files.filesystem_bytes, 0x9000);
+        assert_eq!(artifact.volatile_files.process_storage_bytes, 0x4c000);
+        let value = serde_json::to_value(&artifact).unwrap();
+        let mut missing = value.clone();
+        missing.as_object_mut().unwrap().remove("volatile_files");
+        assert!(serde_json::from_value::<SystemsArtifactProvenance>(missing).is_err());
+        let changes = [
+            ("schema", serde_json::json!("topal.volatile-file.x86_64/0")),
+            ("process_storage_symbol", serde_json::json!("unowned")),
+            ("process_storage_bytes", serde_json::json!(0x43000)),
+            ("filesystem_offset", serde_json::json!(0x3e000)),
+            ("filesystem_bytes", serde_json::json!(0x8000)),
+            ("object_offset", serde_json::json!(0)),
+            ("object_count", serde_json::json!(5)),
+            ("object_bytes", serde_json::json!(120)),
+            ("page_metadata_offset", serde_json::json!(256)),
+            ("page_metadata_bytes", serde_json::json!(24)),
+            ("resident_pages", serde_json::json!(9)),
+            ("page_bytes", serde_json::json!(2048)),
+            ("payload_offset", serde_json::json!(2048)),
+            ("private_umask_offset", serde_json::json!(32)),
+            ("initial_umask", serde_json::json!(0)),
+            ("transfer_staging_offset", serde_json::json!(1664)),
+            ("transfer_quantum", serde_json::json!(4096)),
+            ("maximum_file_offset", serde_json::json!(u64::MAX)),
+            ("maximum_native_helper_stack_bytes", serde_json::json!(111)),
+            ("timestamp_policy", serde_json::json!("constant")),
+        ];
+        for (field, changed) in changes {
+            let mut altered = value.clone();
+            altered["volatile_files"][field] = changed;
+            let altered: SystemsArtifactProvenance = serde_json::from_value(altered).unwrap();
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &altered, &initial, &static_image)
+                    .is_err(),
+                "{field}"
             );
         }
         fs::remove_dir_all(parent).unwrap();

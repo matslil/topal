@@ -160,7 +160,7 @@ pub(in super::super) fn code() -> Vec<u8> {
     w.call(8, &[3, u64::MAX, 0], -22);
     w.call(8, &[3, i64::MAX as u64, 0], i64::MAX);
     w.call(8, &[3, 1, 1], -22);
-    w.call(0, &[3, BUF, 1], 0);
+    w.call(0, &[3, BUF, 1], -22);
     w.call(8, &[3, (-2_i64) as u64, 2], 2_024_542);
     w.call(0, &[3, BUF, 256], 2);
     w.call(0, &[3, BUF, 256], 0);

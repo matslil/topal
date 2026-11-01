@@ -2820,7 +2820,11 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     }
     if let Some(library) = &program.dispatch_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV1 {
+        if !matches!(
+            library.interface,
+            crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV1
+                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV2
+        ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",
                 "dispatch-library requires static-linux-dispatch-v1",

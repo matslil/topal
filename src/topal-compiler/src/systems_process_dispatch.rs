@@ -5,7 +5,10 @@ use super::{CompileError, E, R::*, X86FunctionEncoder};
 
 pub(in super::super) const CODE_CONTEXT: u32 = 984;
 
-pub(in super::super) fn emit_invoke(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(in super::super) fn emit_invoke(
+    code: &mut X86FunctionEncoder,
+    extended: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
     // The target ABI has already normalized A. Its original six argument words
     // and complete user continuation are retained in the captured context.
@@ -45,7 +48,12 @@ pub(in super::super) fn emit_invoke(code: &mut X86FunctionEncoder) -> Result<(),
     e.mov(Sp, R11);
     // These are the bridge's named operation encodings. Never route the
     // captured untrusted selector after this point, including unsupported input.
-    for (_, operation) in crate::systems_numeric_library::DISPATCH_CHOICES {
+    let policy = if extended {
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
+    } else {
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatch
+    };
+    for &(_, operation) in policy.dispatch_choices() {
         e.cmp(
             A,
             if operation == u64::MAX {

@@ -30,7 +30,7 @@ def install(config):
     def bindings():
         for offset,selected,name in [(960,config["has_time"],"topal_kernel_sleep_deadline_policy_v1"),
             (976,config["has_image"],"topal_kernel_static_elf64_header_policy_v1"),
-            (984,config["has_dispatch"],"topal_kernel_static_linux_dispatch_policy_v1"),(992,True,config["export"])]:
+            (984,config["has_dispatch"],config["dispatch_export"]),(992,True,config["export"])]:
             assert word(state.context+offset)==(symbol(name) if selected else 0)
         assert word(state.context+968)==state.arena and word(state.context+1000)==state.cell
     def readonly(pointer,count):
@@ -114,7 +114,7 @@ def install(config):
                 facts=dict(next=0,history=dict(creations=0,wrapped=False));presentation=dict(state=[0,1],history=[0,1])
             state.pending=dict(cursor=cursor,facts=facts,input_orders=presentation,initialized=initialized,old_bank=index,epoch=epoch,
                 caller_stack=reg("rsp"),callee_saved={name:reg(name) for name in saved},simd=simd(),
-                context=memory(state.context,1008),table=memory(state.table,0x43000),cell=memory(state.cell,4096),
+                context=memory(state.context,1008),table=memory(state.table,0x4c000),cell=memory(state.cell,4096),
                 clock=memory(word(state.context+944),24),return_ip=word(state.context+296))
             return False
     class Enter(Checked):
@@ -192,7 +192,7 @@ def install(config):
             assert {name:reg(name) for name in saved}==active["callee_saved"] and simd()==active["simd"]
             assert all(reg(name)==0 for name in ("rcx","rsi","rdi","r8","r9","r10","r11"))
             assert memory(state.arena,65536)==bytes(65536) and memory(reg("rsp")-4096,4096)==bytes(4096)
-            assert memory(state.context,1008)==active["context"] and memory(state.table,0x43000)==active["table"]
+            assert memory(state.context,1008)==active["context"] and memory(state.table,0x4c000)==active["table"]
             assert memory(word(state.context+944),24)==active["clock"] and memory(state.cell,4096)==active["prepared"]
             bindings();facts=active["facts"];allocated=facts["next"] or 2
             expected=dict(allocated=allocated,state=dict(next=2 if allocated==2147483647 else allocated+1,
@@ -245,7 +245,7 @@ def install(config):
             assert all(c["child_pid_published"] for c in state.calls)
             assert all(word(state.context+offset)==0 for offset in (952,960,968,976,984,992,1000))
             assert memory(state.arena,65536)==bytes(65536) and memory(state.cell,4096)==bytes(4096)
-            assert memory(state.table,0x43000)==bytes(0x43000)
+            assert memory(state.table,0x4c000)==bytes(0x4c000)
             write("pass",complete_store_erased=True,all_bindings_erased=True,terminal_arena_erased=True,
                 process_backing_erased=True,whole_history_preserved_across_child_and_exec=True);return True
 

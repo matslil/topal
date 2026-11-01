@@ -1348,7 +1348,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/240",
+        "schema": "topal-kernel-toolchain-gate-qemu/241",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),

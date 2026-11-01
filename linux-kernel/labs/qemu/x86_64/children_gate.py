@@ -162,10 +162,10 @@ class Released(Checked):
     def inspect(self):
         assert active is None and records
         assert len(records)=={1 if external else 4}
-        assert memory(table,0x43000)==bytes(0x43000)
+        assert memory(table,0x4c000)==bytes(0x4c000)
         assert word(context+152)==0 and word(context+160)==0
         assert all(word(context+i)==0 for i in (952,960,968,976,984,992,1000))
-        Path({str(result)!r}).write_text(json.dumps(dict(calls=records,process_backing_bytes=0x43000,
+        Path({str(result)!r}).write_text(json.dumps(dict(calls=records,process_backing_bytes=0x4c000,
             terminal_storage_erased=True,terminal_thread_registrations_erased=True,
             terminal_library_bindings_erased=True,result="pass"),indent=2,sort_keys=True))
         return True

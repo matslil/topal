@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/240";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/226";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/241";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/227";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -428,6 +428,7 @@ pub struct SystemsArtifactProvenance {
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub dispatch_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub process_identity_library: Option<crate::SystemsNumericLibraryArtifact>,
+    pub volatile_files: crate::SystemsVolatileFileProfile,
     pub inputs: Vec<DigestEntry>,
     pub outputs: Vec<DigestEntry>,
 }
@@ -2954,6 +2955,7 @@ fn artifact_provenance(
         image_library: None,
         dispatch_library: None,
         process_identity_library: None,
+        volatile_files: crate::systems_provider_object::volatile_file_profile(),
         inputs,
         outputs,
     })
@@ -4070,6 +4072,7 @@ enum NumericRootDependency {
     Code,
     ImageCode,
     DispatchCode,
+    ExtendedDispatchCode,
     ProcessIdentityCode,
     RetainedIdentityCode,
     StructuredIdentityCode,
@@ -4083,6 +4086,7 @@ struct RootEncoder {
     numeric_library: bool,
     image_library: bool,
     dispatch_library: bool,
+    extended_dispatch: bool,
     process_identity_library: bool,
     retained_identity: bool,
     structured_identity: bool,
@@ -6074,8 +6078,14 @@ impl RootEncoder {
             if self.dispatch_library {
                 // The seventeenth code argument replaces the previous pad.
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations
-                    .push((self.bytes.len() as u64, NumericRootDependency::DispatchCode));
+                self.numeric_relocations.push((
+                    self.bytes.len() as u64,
+                    if self.extended_dispatch {
+                        NumericRootDependency::ExtendedDispatchCode
+                    } else {
+                        NumericRootDependency::DispatchCode
+                    },
+                ));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
             } else {
@@ -10164,6 +10174,7 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         numeric_library: program.time_library.is_some(),
         image_library: program.image_library.is_some(),
         dispatch_library: program.dispatch_library.is_some(),
+        extended_dispatch: program.dispatch_library.as_ref().is_some_and(|library| library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2),
         process_identity_library: program.process_identity_library.is_some(),
         retained_identity: crate::systems_numeric_library::uses_retained_identity(program),
         structured_identity: crate::systems_numeric_library::uses_structured_identity(program),
@@ -10863,6 +10874,10 @@ fn append_root(
             ),
             NumericRootDependency::DispatchCode => (
                 crate::systems_numeric_library::NumericPolicy::LinuxDispatch.native_export(),
+                SymbolKind::Text,
+            ),
+            NumericRootDependency::ExtendedDispatchCode => (
+                crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2.native_export(),
                 SymbolKind::Text,
             ),
             NumericRootDependency::ProcessIdentityCode => (

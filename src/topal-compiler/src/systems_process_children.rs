@@ -5,7 +5,8 @@ use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysre
 #[path = "systems_process_pair.rs"]
 mod pair;
 
-pub(in super::super) const STORAGE_BYTES: u64 = super::pipes::BASE as u64 + super::pipes::BYTES;
+pub(in super::super) const STORAGE_BYTES: u64 =
+    super::volatile_files::BASE as u64 + super::volatile_files::BYTES;
 const HEADER: i32 = 0x2000;
 const CONTEXT: i32 = 0x2100;
 const SIMD: i32 = 0x2800;

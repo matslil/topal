@@ -19,6 +19,8 @@ mod systems_numeric_library;
 mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
+mod systems_volatile_profile;
+pub use systems_volatile_profile::SystemsVolatileFileProfile;
 mod toolchain;
 
 use std::fmt;

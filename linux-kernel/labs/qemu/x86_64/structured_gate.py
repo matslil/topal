@@ -54,7 +54,7 @@ def observe(root,values,artifact,timeout,mode=None,counterexample=False,reordere
         expected_history=[1,0] if reordered else [0,1],stack_bound=library["maximum_stack_bytes"],
         allocation_bound=library["allocation"]["maximum_bytes"],
         has_time=artifact.get("time_library") is not None,has_image=artifact.get("image_library") is not None,
-        has_dispatch=artifact.get("dispatch_library") is not None)
+        dispatch_export=(artifact.get("dispatch_library") or {}).get("native_export","topal_kernel_static_linux_dispatch_policy_v1"), has_dispatch=artifact.get("dispatch_library") is not None)
     script.write_text(f'''set pagination off
 file {elf}
 target remote {debug}

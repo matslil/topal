@@ -6,12 +6,11 @@ mod array_tests;
 mod collections;
 #[path = "systems_dispatch_choices.rs"]
 mod dispatch_choices;
-#[path = "systems_numeric_enums.rs"]
-mod enums;
-pub(crate) use dispatch_choices::DISPATCH_CHOICES;
 #[cfg(test)]
 #[path = "systems_dispatch_tests.rs"]
 mod dispatch_tests;
+#[path = "systems_numeric_enums.rs"]
+mod enums;
 #[cfg(test)]
 #[path = "systems_header_tests.rs"]
 mod header_tests;
@@ -605,7 +604,7 @@ pub(crate) fn check_numeric_library(
             NumericPolicy::ProcessIdentity | NumericPolicy::RetainedIdentity => {
                 "identity interface is not declared-type Record(next:Nat) -> Record(allocated:Nat,next:Nat)"
             }
-            NumericPolicy::LinuxDispatch => {
+            NumericPolicy::LinuxDispatch | NumericPolicy::LinuxDispatchV2 => {
                 "dispatch interface is not declared-type Nat -> StaticLinuxOperation"
             }
         }));

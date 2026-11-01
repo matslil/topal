@@ -91,6 +91,9 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV1);
             }
+            "interface" if identifier_is(source, &field.value, "static-linux-dispatch-v2") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2);
+            }
             "interface" if identifier_is(source, &field.value, "retained-process-identity-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::RetainedProcessIdentityV1);
             }
@@ -334,6 +337,35 @@ mod tests {
                     .is_err()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn extended_dispatch_occupies_the_same_unique_slot_and_rejects_wrong_reserves() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001
+        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let library = analyze_systems_for_compiler(source, &target)
+            .unwrap()
+            .dispatch_library
+            .unwrap();
+        assert_eq!(
+            library.interface,
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2
+        );
+        let start = source.find("  dispatch-library is").unwrap();
+        let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+        let declaration = &source[start..end];
+        for changed in [
+            source.replace(declaration, &format!("{declaration}{declaration}")),
+            source.replace(declaration, &declaration.replace("4096", "4095")),
+            source.replace(declaration, &declaration.replace("65536", "65535")),
+            source.replace(
+                declaration,
+                &declaration.replace("static-linux-dispatch-v2", "structured-process-identity-v1"),
+            ),
+        ] {
+            assert!(analyze_systems_for_compiler(&changed, &target).is_err());
         }
     }
 
