@@ -372,3 +372,15 @@ identity exhaustion, bounds/value refusal, actual owner bytes and cancellation.
 Rejected operations shall preserve underlying storage observations and model
 state. Lifetime enforcement in a reference model shall not imply source/native
 support or physical erasure. See [TK-DEC-269](../../linux-kernel/design/borrowed-kernel-regions.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-ROOT-001 — Root loan and byte knowledge
+
+Model `TOPAL-SYSTEMS-REGION-ROOT-BINDING-001`,
+`TOPAL-SYSTEMS-REGION-ROOT-CALL-001` and
+`TOPAL-SYSTEMS-REGION-ROOT-RECLAIM-001` as explicit ownership/proof obligations.
+Distinguish known bytes from unknown results of an opaque ordinary source call.
+After such a call, keep extent/lifetime/rights checks while recording byte guards
+as dynamic obligations, without claiming the model executed source or proved
+unchanged contents. A store may restore knowledge of its overwritten byte.
+Keep source/object and physical reclamation qualification distinct from the
+resource model. See [TK-DEC-271](../../linux-kernel/design/root-borrowed-region-invocation.md).

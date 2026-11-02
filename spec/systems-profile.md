@@ -9505,3 +9505,52 @@ source-frame observations SHALL be independently tested, including wrong or
 undercharged bindings. The standalone object phase SHALL NOT claim kernel-root
 publication, owner resumption or physical reclamation qualification without
 their separate integration evidence.
+
+### TOPAL-SYSTEMS-REGION-ROOT-BINDING-001 — Root-bound region source
+
+A systems-root `region-library` declaration SHALL select a contained source
+unit, published `(KernelByteRegion) -> Unit` export, interface
+`borrowed-byte-region-v1`, 4096-byte stack and 65536-byte temporary-runtime
+reserves, with no retained source-state reserve. The source/object obligations
+of `TOPAL-SYSTEMS-REGION-SOURCE-ENTRY-001` through
+`TOPAL-SYSTEMS-REGION-SOURCE-OBJECT-001` SHALL apply. Publication SHALL bind the
+exact frozen source/module closure, checked types/effects, private ABI/hooks,
+complete bounds, linked code/data extents, relocations and root/provider/target
+identities. A standalone certificate SHALL NOT qualify a different linked
+executable or confer owner authority. Missing, extra, tampered or undercharged
+bindings SHALL reject before atomic publication.
+
+### TOPAL-SYSTEMS-REGION-ROOT-CALL-001 — Exclusive root region loan
+
+`region library apply` SHALL synchronously lend its live plain bootstrap-region
+owner to the selected ordinary source entry. The initial root profile SHALL
+admit one invocation in its 64-byte bootstrap-region witness before atomic
+derivation, with no overlapping owner access, suspension, callbacks or nested
+native invocation. Missing declarations, duplicate invocation and invalid
+scope/order SHALL reject. The qualified root caller SHALL validate actual owner
+and extent, code, nonwrapping generation, rights, inactive/zero temporary state,
+disjoint storage and complete stack/arena bounds before source entry. Source
+views SHALL NOT include provider-private event or context-control bytes.
+Provider placement padding SHALL fit the declared pool before publication;
+subsequent atomic access SHALL derive its address from the actual owner base.
+Source SHALL acquire no address, constructor or additional owning resource. Temporary
+hooks SHALL use the explicitly lent root invocation context; a distinct process
+context SHALL NOT substitute for it. An opaque call SHALL make affected owner
+bytes unknown to static prediction. Later byte guards over unknown contents
+SHALL remain checked runtime obligations; a model SHALL NOT claim unchanged
+bytes or actual helper execution. Explicit stores MAY restore knowledge of
+their overwritten bytes.
+
+### TOPAL-SYSTEMS-REGION-ROOT-RECLAIM-001 — Physical owner resumption
+
+Before ordinary root-owner access resumes, the invocation SHALL revoke every
+source view and clear source/owner/code/address bindings, erase and read back
+the complete temporary arena and retired helper-stack reserve, and clear
+transient pointer-bearing registers. It SHALL preserve live root frames,
+required caller registers and successful stores in the owner's payload. A
+separately owned nonwrapping scalar generation history MAY remain without any
+access, pointer or code binding; terminal cleanup SHALL retire it. An invariant
+failure SHALL NOT resume the owner. Target qualification SHALL independently
+observe actual helper/source frames, owner bytes, caller preservation and
+complete reclamation before the resumed owner's byte guard. Model, standalone
+native-client, structural/link and physical evidence SHALL remain distinct.
