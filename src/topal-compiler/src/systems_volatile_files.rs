@@ -337,11 +337,12 @@ fn emit_lifetime(e: &mut E<'_>) -> Result<(), CompileError> {
 pub(in super::super) fn emit_services(
     code: &mut X86FunctionEncoder,
     file_open_plan: bool,
+    source_position: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     emit_lookup(&mut e)?;
     emit_lifetime(&mut e)?;
-    transfer::emit(e.0)?;
+    transfer::emit(e.0, source_position)?;
     create::emit(e.0, file_open_plan)?;
     e.0.bind("file-umask")?;
     e.gs(0x8b, R12, TABLE_CONTEXT);

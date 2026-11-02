@@ -161,12 +161,23 @@ mod tests {
                 text: include_str!("../../../kernel/support/bytes.t").into(),
             }],
         };
+        let position = SystemsSourceLibraryInput {
+            source: "policy/file-position.t".into(),
+            source_name: "policy/file-position.t".into(),
+            text: include_str!("../../../kernel/policy/file-position.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/word-bytes.t".into(),
+                identity: vec!["support".into(), "word-bytes".into()],
+                text: include_str!("../../../kernel/support/word-bytes.t").into(),
+            }],
+        };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
+                file_position: Some(&position),
                 region: Some(&region),
                 policy: Some(&source),
                 time: Some(&time),

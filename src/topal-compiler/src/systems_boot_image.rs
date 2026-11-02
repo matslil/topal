@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/145";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/146";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -366,6 +366,7 @@ fn validate_artifact_input(
         )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
+    crate::systems_file_region_boot::validate(kernel, artifact)?;
     let has_region = file
         .symbol_by_name(crate::systems_region_library::EXPORT)
         .is_some();
@@ -1256,12 +1257,20 @@ mod tests {
             )
             .unwrap()
         });
+        let position = program.file_position_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
         let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             crate::SystemsKernelLibraries {
+                file_position: position.as_ref(),
                 region: region.as_ref(),
                 policy: Some(&source),
                 time: Some(&time),

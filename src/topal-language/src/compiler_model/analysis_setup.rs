@@ -438,7 +438,8 @@ pub fn analyze_for_compiler_with_modules(
 /// # Errors
 /// Returns the ordinary shared diagnostic for invalid or unsupported source.
 pub fn analyze_for_compiler_with_declared_exports(
-    text: &str, exports: &[String],
+    text: &str,
+    exports: &[String],
 ) -> Result<CompilerProgram, Diagnostic> {
     analyze_for_compiler_options(text, &[], exports, None)
 }
@@ -450,13 +451,17 @@ pub fn analyze_for_compiler_with_declared_exports(
 /// # Errors
 /// Returns the ordinary shared source diagnostic for invalid/unsupported input.
 pub fn analyze_for_compiler_with_modules_and_declared_exports(
-    text: &str, modules: &[CompilerSourceModule], exports: &[String],
+    text: &str,
+    modules: &[CompilerSourceModule],
+    exports: &[String],
 ) -> Result<CompilerProgram, Diagnostic> {
     analyze_for_compiler_options(text, modules, exports, None)
 }
 
 fn analyze_for_compiler_options(
-    text: &str, modules: &[CompilerSourceModule], generalized_exports: &[String],
+    text: &str,
+    modules: &[CompilerSourceModule],
+    generalized_exports: &[String],
     region_entry: Option<&KernelRegionSelection<'_>>,
 ) -> Result<CompilerProgram, Diagnostic> {
     let primary_source_end = text.len();
@@ -519,14 +524,27 @@ fn analyze_for_compiler_options(
         .cloned()
         .collect::<Vec<_>>();
     if matches!(region_entry, Some(KernelRegionSelection::Modules(_)))
-        && root_statements.iter().any(|statement| !matches!(statement,
-            Statement::LanguageSelection { .. } | Statement::LibrarySelection { .. })) {
-        return Err(unsupported(&source, Span::new(0, primary_source_end), "module-isolation scope must contain only language/library selections"));
+        && root_statements.iter().any(|statement| {
+            !matches!(
+                statement,
+                Statement::LanguageSelection { .. } | Statement::LibrarySelection { .. }
+            )
+        })
+    {
+        return Err(unsupported(
+            &source,
+            Span::new(0, primary_source_end),
+            "module-isolation scope must contain only language/library selections",
+        ));
     }
     let (language_version, language_features) =
         compiler_language_context(&source, &root_statements, region_entry.is_some())?;
     if region_entry.is_some() && !language_features.iter().any(|f| f == "systems") {
-        return Err(unsupported(&source, Span::new(0, primary_source_end), "region library without feature systems"));
+        return Err(unsupported(
+            &source,
+            Span::new(0, primary_source_end),
+            "region library without feature systems",
+        ));
     }
     reject_later_language_selections(&source, &root_statements)?;
     let available_libraries = modules
@@ -573,9 +591,11 @@ fn analyze_for_compiler_options(
         sums,
         sum_alternatives,
     );
-    analyzer.generalized_exports=generalized_exports.iter().cloned().collect();
+    analyzer.generalized_exports = generalized_exports.iter().cloned().collect();
     if region_entry.is_some() {
-        analyzer.kernel_region_sources.push(Span::new(0, primary_source_end));
+        analyzer
+            .kernel_region_sources
+            .push(Span::new(0, primary_source_end));
     }
     analyzer.install_modular_types(&modular_sources)?;
     analyzer.install_interfaces(&interface_sources)?;
@@ -600,9 +620,18 @@ fn analyze_for_compiler_options(
             })
             .cloned()
             .collect::<Vec<_>>();
-        let (module_version, module_features) = compiler_language_context(&source, &statements, region_entry.is_some())?;
-        if region_entry.is_some() && statements.iter().any(|statement| !region_module_declaration(statement)) {
-            return Err(unsupported(&source, *range, "region-library module runtime/type initializer"));
+        let (module_version, module_features) =
+            compiler_language_context(&source, &statements, region_entry.is_some())?;
+        if region_entry.is_some()
+            && statements
+                .iter()
+                .any(|statement| !region_module_declaration(statement))
+        {
+            return Err(unsupported(
+                &source,
+                *range,
+                "region-library module runtime/type initializer",
+            ));
         }
         if region_entry.is_some() && module_features.iter().any(|f| f == "systems") {
             analyzer.kernel_region_sources.push(*range);
@@ -692,13 +721,22 @@ fn analyze_for_compiler_options(
     )?;
     require_runtime_main_result(&source, &main)?;
     if let Some(entry) = region_entry {
-        if !main.statements.is_empty() || !matches!(main.result.kind, CompilerExpressionKind::Unit) {
-            return Err(unsupported(&source, main.result.span, "region-library runtime initializer"));
+        if !main.statements.is_empty() || !matches!(main.result.kind, CompilerExpressionKind::Unit)
+        {
+            return Err(unsupported(
+                &source,
+                main.result.span,
+                "region-library runtime initializer",
+            ));
         }
         match entry {
-            KernelRegionSelection::Entry(entry) => analyzer.instantiate_kernel_region_entry(entry)?,
+            KernelRegionSelection::Entry(entry, profile) => {
+                analyzer.instantiate_kernel_region_entry(entry, *profile)?
+            }
             KernelRegionSelection::Modules(exports) => {
-                for export in *exports { analyzer.instantiate_kernel_region_module(export)?; }
+                for export in *exports {
+                    analyzer.instantiate_kernel_region_module(export)?;
+                }
             }
         }
     }
@@ -1242,7 +1280,8 @@ fn compiler_language_context(
     let mut language_features = BTreeSet::new();
     for feature in features {
         let feature_name = source.slice(*feature);
-        if !matches!(feature_name, "lint" | "abi") && !(region_library && feature_name == "systems") {
+        if !matches!(feature_name, "lint" | "abi") && !(region_library && feature_name == "systems")
+        {
             return Err(source_diagnostic(
                 source,
                 "E-COMPILER-UNSUPPORTED",

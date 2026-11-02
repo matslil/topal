@@ -2,6 +2,8 @@
 
 use std::collections::BTreeMap;
 
+#[path = "systems_file_region.rs"]
+pub(crate) mod file_region;
 #[path = "systems_process_runtime.rs"]
 mod process_runtime;
 #[path = "systems_root_region.rs"]
@@ -27,7 +29,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/224";
+    "topal.provider-object.x86_64-qemu-pc-q35/225";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1659,7 +1661,10 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
         &static_image_deliver_entropy_initial_random()?,
     );
-    append_encoded_function(
+    if program.file_position_library.is_some() {
+        file_region::append(&mut object, text)?;
+    }
+    append_linkable_function(
         &mut object,
         text,
         X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
@@ -1673,8 +1678,9 @@ pub fn generate_x86_64_systems_provider_object(
             program.process_identity_library.is_some(),
             crate::systems_numeric_library::uses_retained_identity(program),
             crate::systems_numeric_library::uses_structured_identity(program),
+            program.file_position_library.is_some(),
         )?,
-    );
+    )?;
     append_encoded_function(
         &mut object,
         text,
@@ -6319,6 +6325,48 @@ fn append_encoded_function(
     });
 }
 
+fn append_linkable_function(
+    object: &mut Object<'_>,
+    section: object::write::SectionId,
+    name: &str,
+    encoded: &LinkableX86Function,
+) -> Result<(), CompileError> {
+    append_encoded_function(object, section, name, &encoded.bytes);
+    let start = object
+        .symbol(object.symbol_id(name.as_bytes()).unwrap())
+        .value;
+    for (offset, target) in &encoded.calls {
+        let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
+            object.add_symbol(Symbol {
+                name: target.as_bytes().to_vec(),
+                value: 0,
+                size: 0,
+                kind: SymbolKind::Text,
+                scope: SymbolScope::Unknown,
+                weak: false,
+                section: SymbolSection::Undefined,
+                flags: SymbolFlags::None,
+            })
+        });
+        object
+            .add_relocation(
+                section,
+                object::write::Relocation {
+                    offset: start + offset,
+                    symbol,
+                    addend: -4,
+                    flags: object::RelocationFlags::Generic {
+                        kind: object::RelocationKind::PltRelative,
+                        encoding: object::RelocationEncoding::X86Branch,
+                        size: 32,
+                    },
+                },
+            )
+            .map_err(|e| CompileError::Tool(format!("native service call relocation: {e}")))?;
+    }
+    Ok(())
+}
+
 fn emit_initial_boot_resource_handoff_validation(
     code: &mut X86FunctionEncoder,
 ) -> Result<(), CompileError> {
@@ -9540,7 +9588,8 @@ fn static_image_process_enter(
     source_identity: bool,
     retained_identity: bool,
     structured_identity: bool,
-) -> Result<Vec<u8>, CompileError> {
+    source_position: bool,
+) -> Result<LinkableX86Function, CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
     const VALUE: u32 = 0x0fd0;
@@ -16976,8 +17025,8 @@ fn static_image_process_enter(
     process_runtime::emit_extent_subroutine(&mut code)?;
     process_files::emit_initialize(&mut code)?;
     process_files::emit_lifetime_services(&mut code)?;
-    process_files::emit_transfer_services(&mut code)?;
-    process_files::emit_reclamation(&mut code)?;
+    process_files::emit_transfer_services(&mut code, source_position)?;
+    process_files::emit_reclamation(&mut code, source_position)?;
     process_runtime::signals::emit_services(&mut code)?;
     process_runtime::namespace::emit_services(&mut code, source_bound, file_open_plan)?;
     process_runtime::realtime::emit_services(&mut code)?;
@@ -16991,9 +17040,9 @@ fn static_image_process_enter(
         structured_identity,
     )?;
     process_runtime::pipes::emit_services(&mut code)?;
-    process_runtime::volatile_files::emit_services(&mut code, file_open_plan)?;
+    process_runtime::volatile_files::emit_services(&mut code, file_open_plan, source_position)?;
     process_runtime::environment::emit_copy(&mut code)?;
-    code.finish()
+    code.finish_linkable()
 }
 
 fn static_image_process_restore_entry() -> Result<Vec<u8>, CompileError> {
@@ -17974,11 +18023,17 @@ fn translation_edit_commit() -> Result<Vec<u8>, CompileError> {
     code.finish()
 }
 
+struct LinkableX86Function {
+    bytes: Vec<u8>,
+    calls: Vec<(u64, &'static str)>,
+}
+
 #[derive(Default)]
 struct X86FunctionEncoder {
     bytes: Vec<u8>,
     labels: BTreeMap<String, usize>,
     fixups: Vec<(usize, String)>,
+    external_calls: Vec<(u64, &'static str)>,
 }
 
 impl X86FunctionEncoder {
@@ -18025,7 +18080,26 @@ impl X86FunctionEncoder {
         self.bytes.extend_from_slice(&[0; 4]);
     }
 
+    fn external_call(&mut self, symbol: &'static str) {
+        self.bytes.push(0xe8);
+        self.external_calls.push((self.bytes.len() as u64, symbol));
+        self.bytes.extend_from_slice(&[0; 4]);
+    }
+
+    fn finish_linkable(mut self) -> Result<LinkableX86Function, CompileError> {
+        let calls = std::mem::take(&mut self.external_calls);
+        Ok(LinkableX86Function {
+            bytes: self.finish()?,
+            calls,
+        })
+    }
+
     fn finish(mut self) -> Result<Vec<u8>, CompileError> {
+        if !self.external_calls.is_empty() {
+            return Err(CompileError::Tool(
+                "external native calls require relocation-aware publication".into(),
+            ));
+        }
         for (offset, label) in self.fixups {
             let target = *self.labels.get(&label).ok_or_else(|| {
                 CompileError::Tool(format!("missing generated x86 label `{label}`"))
@@ -18061,6 +18135,10 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
     );
     if let Some(interface) = plan.time_library_interface {
         note.push_str(&format!("time-library-interface={interface}\nnumeric-runtime-bytes=65536\nnumeric-stack-reserve=4096\n"));
+    }
+    if let Some(interface) = plan.file_position_library_interface {
+        note.push_str(&format!("file-position-library-interface={interface}\nfile-position-runtime-bytes=65536\nfile-position-control-bytes=64\nfile-position-history-bytes=8\nfile-position-field-bytes=8\nfile-position-retired-stack-bytes=4096\nfile-position-live-frame-bytes={}\nfile-position-call-alignment-bytes={}\nfile-position-domain=serialized-single-processor-masked\n",
+            file_region::LIVE_FRAME_BYTES, file_region::CALL_ALIGNMENT_BYTES));
     }
     if let Some(interface) = plan.region_library_interface {
         note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
@@ -18244,14 +18322,17 @@ assert bytes(output) == block[32:]
             file.sections()
                 .flat_map(|section| section.relocations())
                 .count(),
-            24
+            51
         );
         assert_eq!(
             file.symbols()
                 .filter(object::ObjectSymbol::is_undefined)
                 .map(|symbol| symbol.name().unwrap())
-                .collect::<Vec<_>>(),
-            [crate::systems_region_library::EXPORT]
+                .collect::<std::collections::BTreeSet<_>>(),
+            std::collections::BTreeSet::from([
+                crate::systems_region_library::EXPORT,
+                crate::systems_region_library::ACTION_EXPORT,
+            ])
         );
         let frames = file.section_by_name(".debug_frame").unwrap();
         // ELF readers classify nonallocated debugger sections as Other.

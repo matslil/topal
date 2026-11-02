@@ -1913,6 +1913,7 @@ pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub region_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub file_position_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub dispatch_library: Option<crate::SystemsSourceLibraryRequirement>,
@@ -2813,6 +2814,15 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ROOT",
                 "region-library requires borrowed-byte-region-v1",
+            ));
+        }
+    }
+    if let Some(library) = &program.file_position_library {
+        library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::BorrowedByteRegionActionV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-REGION-ACTION",
+                "file-position-library requires borrowed-byte-region-action-v1",
             ));
         }
     }
@@ -9469,6 +9479,7 @@ mod tests {
             target,
             kernel_library: None,
             region_library: None,
+            file_position_library: None,
             time_library: None,
             image_library: None,
             dispatch_library: None,

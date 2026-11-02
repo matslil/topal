@@ -8,6 +8,9 @@ mod named;
 pub use named::*;
 #[path = "systems_positional_files.rs"]
 mod positional;
+#[path = "systems_file_region_actions.rs"]
+mod region_actions;
+pub use region_actions::SystemsPositionTransfer;
 
 const PAGE: usize = 4096;
 const PAGES: usize = 8;
@@ -89,8 +92,16 @@ struct Description {
     object: usize,
     rights: SystemsFileRights,
     append: bool,
-    position: u64,
+    position: [u8; 8],
     references: usize,
+}
+impl Description {
+    fn position(&self) -> u64 {
+        u64::from_le_bytes(self.position)
+    }
+    fn set_position(&mut self, value: u64) {
+        self.position = value.to_le_bytes();
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Page {
@@ -116,6 +127,7 @@ struct State {
     directory_times: [u64; 2],
     next_ticket: u64,
     live: bool,
+    position_actions: crate::systems_region_library::ControllerActionState,
 }
 
 #[derive(Debug)]
@@ -157,11 +169,16 @@ impl SystemsVolatileFilePool {
                 directory_times: [0; 2],
                 next_ticket: 1,
                 live: true,
+                position_actions: Default::default(),
             },
         })
     }
     fn owned(&self, owner: &str) -> Result<(), SystemsModelError> {
-        if !self.state.live || self.owner != owner {
+        if !self.state.live
+            || self.owner != owner
+            || self.state.position_actions.active
+            || self.state.position_actions.poisoned
+        {
             return Err(error("wrong or released filesystem owner"));
         }
         Ok(())
@@ -234,7 +251,7 @@ impl SystemsVolatileFilePool {
                 object: index,
                 rights,
                 append,
-                position: 0,
+                position: [0; 8],
                 references: 1,
             },
         );
@@ -274,7 +291,7 @@ impl SystemsVolatileFilePool {
     ) -> Result<SystemsVolatileFileMetadata, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
-        Ok(self.object_metadata(d.object, d.position))
+        Ok(self.object_metadata(d.object, d.position()))
     }
     fn object_metadata(&self, object: usize, position: u64) -> SystemsVolatileFileMetadata {
         let o = self.state.objects[object].as_ref().unwrap();
@@ -321,7 +338,7 @@ impl SystemsVolatileFilePool {
         if !admitted.numerical_range {
             return Err(error("EFAULT"));
         }
-        let position = supplied.unwrap_or(d.position);
+        let position = supplied.unwrap_or(d.position());
         verify_range(position, count)?;
         let o = self.state.objects[d.object].as_ref().unwrap();
         if count == 0 || position >= o.size {
@@ -345,7 +362,11 @@ impl SystemsVolatileFilePool {
             None => vec![0; length],
         };
         if supplied.is_none() {
-            self.state.descriptions.get_mut(&identity).unwrap().position = position + length as u64;
+            self.state
+                .descriptions
+                .get_mut(&identity)
+                .unwrap()
+                .set_position(position + length as u64);
         }
         Ok(bytes)
     }
@@ -376,7 +397,7 @@ impl SystemsVolatileFilePool {
         if !admitted.numerical_range {
             return Err(error("EFAULT"));
         }
-        let supplied_position = supplied.unwrap_or(d.position);
+        let supplied_position = supplied.unwrap_or(d.position());
         verify_range(supplied_position, bytes.len() as u64)?;
         if bytes.is_empty() {
             return Ok(0);
@@ -415,7 +436,11 @@ impl SystemsVolatileFilePool {
         o.times[1] = seconds;
         o.times[2] = seconds;
         if supplied.is_none() {
-            self.state.descriptions.get_mut(&identity).unwrap().position = end;
+            self.state
+                .descriptions
+                .get_mut(&identity)
+                .unwrap()
+                .set_position(end);
         }
         Ok(length)
     }
@@ -434,7 +459,7 @@ impl SystemsVolatileFilePool {
         let position = match whence {
             SystemsFileSeek::Set | SystemsFileSeek::Current | SystemsFileSeek::End => {
                 let base = match whence {
-                    SystemsFileSeek::Current => d.position,
+                    SystemsFileSeek::Current => d.position(),
                     SystemsFileSeek::End => size,
                     _ => 0,
                 };
@@ -478,7 +503,11 @@ impl SystemsVolatileFilePool {
                 }
             }
         };
-        self.state.descriptions.get_mut(&identity).unwrap().position = position;
+        self.state
+            .descriptions
+            .get_mut(&identity)
+            .unwrap()
+            .set_position(position);
         Ok(position)
     }
     pub fn truncate(
@@ -539,7 +568,11 @@ impl SystemsVolatileFilePool {
         Ok(())
     }
     pub fn terminate(&mut self, owner: &str) -> Result<(), SystemsModelError> {
-        self.owned(owner)?;
+        // Terminal erasure never resumes a poisoned controller. A live Rust
+        // field loan still exclusively borrows this pool and prevents entry.
+        if !self.state.live || self.owner != owner {
+            return Err(error("wrong or released filesystem owner"));
+        }
         for page in &mut self.state.pages {
             page.erase();
         }
@@ -550,6 +583,7 @@ impl SystemsVolatileFilePool {
         self.state.next_description = 0;
         self.state.directory_times = [0; 2];
         self.state.next_ticket = 0;
+        self.state.position_actions = Default::default();
         self.state.live = false;
         Ok(())
     }

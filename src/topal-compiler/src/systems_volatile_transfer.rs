@@ -25,7 +25,7 @@ fn clipped(e: &mut E<'_>, prefix: &str, remaining: super::super::R) -> Result<()
     e.0.bind(&end)?;
     Ok(())
 }
-fn emit_read(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
+fn emit_read(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<(), CompileError> {
     let prefix = if positional {
         "file-pread"
     } else {
@@ -76,9 +76,13 @@ fn emit_read(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
     e.add(Si, STAGING);
     e.mov(C, Bp);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
-    e.rr(0x01, R15, Bp);
-    if !positional {
-        e.store(R14, 24, R15);
+    if source_position && !positional {
+        super::super::super::file_region::emit_position_update(e.0, Bp);
+    } else {
+        e.rr(0x01, R15, Bp);
+        if !positional {
+            e.store(R14, 24, R15);
+        }
     }
     wipe_staging(e);
     e.mov(A, Bp);
@@ -87,7 +91,7 @@ fn emit_read(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn emit_write(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
+fn emit_write(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<(), CompileError> {
     let prefix = if positional {
         "file-pwrite"
     } else {
@@ -185,9 +189,13 @@ fn emit_write(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
     e.add(Si, STAGING);
     e.mov(C, Bp);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
-    e.rr(0x01, R15, Bp);
-    if !positional {
-        e.store(R14, 24, R15);
+    if source_position && !positional {
+        super::super::super::file_region::emit_position_update(e.0, Bp);
+    } else {
+        e.rr(0x01, R15, Bp);
+        if !positional {
+            e.store(R14, 24, R15);
+        }
     }
     e.load(A, B, 16);
     e.rr(0x39, R15, A);
@@ -202,12 +210,15 @@ fn emit_write(e: &mut E<'_>, positional: bool) -> Result<(), CompileError> {
     Ok(())
 }
 
-pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(super) fn emit(
+    code: &mut X86FunctionEncoder,
+    source_position: bool,
+) -> Result<(), CompileError> {
     let mut e = E(code);
-    emit_read(&mut e, false)?;
-    emit_read(&mut e, true)?;
-    emit_write(&mut e, false)?;
-    emit_write(&mut e, true)?;
+    emit_read(&mut e, false, source_position)?;
+    emit_read(&mut e, true, source_position)?;
+    emit_write(&mut e, false, source_position)?;
+    emit_write(&mut e, true, source_position)?;
     e.0.bind("file-zero")?;
     e.imm(A, 0);
     emit_static_process_sysret(e.0);

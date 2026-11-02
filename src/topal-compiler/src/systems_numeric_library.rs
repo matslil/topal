@@ -22,7 +22,7 @@ mod interface;
 #[cfg(test)]
 #[path = "systems_retained_identity_tests.rs"]
 mod retained_identity_tests;
-pub(crate) use interface::{NumericPolicy, namespace_llvm};
+pub(crate) use interface::{NumericPolicy, namespace_llvm, namespace_llvm_symbols};
 #[path = "systems_numeric_object.rs"]
 mod native_object;
 #[cfg(test)]
@@ -40,7 +40,7 @@ pub(crate) use native_object::{
 };
 use num_bigint::BigInt;
 pub use region_bounds::SystemsRegionAllocationBound;
-pub(crate) use region_bounds::bound_region_library;
+pub(crate) use region_bounds::bound_region_library_profile;
 pub(crate) use retained_state::STATE_SYMBOL;
 pub use retained_state::SystemsRetainedStateBound;
 use serde::{Deserialize, Serialize};
@@ -366,6 +366,19 @@ impl Bounds<'_> {
                 }
                 (value.value, value.bytes)
             }
+            K::Absolute(input) if self.regions => {
+                let value = self.expression(input, env)?;
+                let range = value.value.number()?;
+                let maximum = range.maximum_absolute();
+                // The shared finite integer absolute path either returns its
+                // input or copies it with sign zero. Eight complete ordinary
+                // integer allocations conservatively cover that one-copy path.
+                let cost = self.operation_cost(range.bits(), false)?;
+                (
+                    Value::Number(Range(BigInt::from(0), maximum)),
+                    cost_add(value.bytes, cost)?,
+                )
+            }
             K::Local(name) => (
                 env.get(name)
                     .ok_or_else(|| invalid(format!("unbound {name}")))?
@@ -517,8 +530,19 @@ impl Bounds<'_> {
                             return Err(invalid("unproven nonzero divisor"));
                         }
                         bytes = cost_add(bytes, self.operation_cost(bits, true)?)?;
-                        let q = left.maximum_absolute() + BigInt::from(1);
-                        let quotient = Value::Number(Range(-q.clone(), q));
+                        let quotient = if self.regions
+                            && left.0 >= BigInt::from(0)
+                            && right.0 > BigInt::from(0)
+                        {
+                            // Euclidean quotient over nonnegative operands is
+                            // monotone in the numerator and antitone in the
+                            // positive divisor. Keep the shrinking range; do
+                            // not charge every byte extraction as the full word.
+                            Value::Number(Range(&left.0 / &right.1, &left.1 / &right.0))
+                        } else {
+                            let q = left.maximum_absolute() + BigInt::from(1);
+                            Value::Number(Range(-q.clone(), q))
+                        };
                         let remainder = Value::Number(Range(
                             BigInt::from(0),
                             right.maximum_absolute() - BigInt::from(1),

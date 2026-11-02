@@ -14,17 +14,21 @@ mod standard_library;
 mod systems_artifact;
 mod systems_boot_image;
 mod systems_boot_resource;
+mod systems_file_region_boot;
 mod systems_library;
 mod systems_numeric_library;
 mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
+pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
 pub use systems_provider_object::root_region::{
     SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
 };
 pub use systems_region_library::{
     CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
-    build_systems_region_library, verify_systems_region_library,
+    SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, build_systems_region_action_library,
+    build_systems_region_library, inspect_systems_region_action_data,
+    verify_systems_region_action_library, verify_systems_region_library,
 };
 mod systems_pipeline;
 mod systems_provider;

@@ -1,3 +1,5 @@
+use topal_language::compiler::CompilerKernelRegionProfile;
+
 pub(crate) fn region_adapter_sha256() -> String {
     use sha2::{Digest, Sha256};
     let mut hash = Sha256::new();
@@ -13,7 +15,7 @@ pub(crate) fn emit_region_kernel_library(
     let mut generator = Generator::new(&unit.program, &unit.source_name);
     generator.kernel_library_mode = true;
     generator.kernel_parameter_debug_storage = true;
-    generator.kernel_function_prefix = crate::systems_region_library::PREFIX;
+    generator.kernel_function_prefix = unit.prefix();
     generator
         .debug
         .install_source_modules(&unit.program.dependencies);
@@ -66,16 +68,63 @@ pub(crate) fn emit_region_kernel_library(
         module.push_str(function);
         module.push('\n');
     }
-    module.push_str(REGION_BRIDGE_HEAD);
-    let _ = writeln!(
-        module,
-        "  call fastcc void @{}{}(ptr %view)",
-        crate::systems_region_library::PREFIX,
-        unit.entry_symbol
-    );
-    module.push_str(REGION_BRIDGE_TAIL);
+    module.push_str(&region_bridge_head(unit.profile));
+    match unit.profile {
+        CompilerKernelRegionProfile::Unit => {
+            let _ = writeln!(
+                module,
+                "  call fastcc void @{}{}(ptr %view)",
+                unit.prefix(),
+                unit.entry_symbol
+            );
+        }
+        CompilerKernelRegionProfile::Action => {
+            module.push_str(REGION_ACTION_INPUTS);
+            let _ = writeln!(
+                module,
+                "  %accepted = call fastcc i1 @{}{}(ptr %view, ptr %first.value, ptr %second.value)",
+                unit.prefix(),
+                unit.entry_symbol
+            );
+        }
+    }
+    module.push_str(&region_bridge_tail(unit.profile));
     module.push_str(&generator.debug.finish());
-    Ok(crate::systems_numeric_library::namespace_llvm(&module, "topal.region."))
+    let module = crate::systems_numeric_library::namespace_llvm(&module, unit.prefix());
+    Ok(match unit.profile {
+        CompilerKernelRegionProfile::Unit => module,
+        CompilerKernelRegionProfile::Action => {
+            // Named local constants permit exact object-to-linked data binding.
+            // They remain immutable and module-owned; no extra global export.
+            let module = module
+                .lines()
+                .map(|line| {
+                    if line.starts_with('@') {
+                        line.replacen(" = private ", " = internal ", 1)
+                    } else {
+                        line.to_owned()
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n";
+            crate::systems_numeric_library::namespace_llvm_symbols(&module, |name| {
+                use crate::systems_region_library as region;
+                match name {
+                    region::EXPORT => region::ACTION_EXPORT.into(),
+                    region::ALLOCATE => region::ACTION_ALLOCATE.into(),
+                    region::ABORT => region::ACTION_ABORT.into(),
+                    _ => match name.strip_prefix("topal.kernel.region.") {
+                        Some(suffix) => format!("{}primitive.{suffix}", region::ACTION_PREFIX),
+                        None => match name.strip_prefix(".topal.") {
+                            Some(suffix) => format!("{}literal.{suffix}", region::ACTION_PREFIX),
+                            None => name.into(),
+                        },
+                    },
+                }
+            })
+        }
+    })
 }
 
 // The caller's region/control/temporary extents are live, mapped and disjoint.
@@ -166,3 +215,37 @@ invalid:
   unreachable
 }
 "#;
+
+// Only explicit, compiler-owned adapter syntax is adapted here. All source and
+// debug text is preserved; global renaming uses the LLVM identifier scanner.
+fn region_bridge_head(profile: CompilerKernelRegionProfile) -> String {
+    match profile {
+        CompilerKernelRegionProfile::Unit => REGION_BRIDGE_HEAD.into(),
+        CompilerKernelRegionProfile::Action => REGION_BRIDGE_HEAD.replacen(
+            "define void @topal_kernel_region_apply_v1(ptr %control, i64 %expected.owner, i64 %next.epoch)",
+            "define i64 @topal_kernel_region_apply_v1(ptr %control, i64 %expected.owner, i64 %next.epoch, i64 %first, i64 %second)", 1),
+    }
+}
+fn region_bridge_tail(profile: CompilerKernelRegionProfile) -> String {
+    match profile {
+        CompilerKernelRegionProfile::Unit => REGION_BRIDGE_TAIL.into(),
+        CompilerKernelRegionProfile::Action => REGION_BRIDGE_TAIL.replacen(
+            "  ret void",
+            "  %result = zext i1 %accepted to i64\n  ret i64 %result",
+            1,
+        ),
+    }
+}
+const REGION_ACTION_INPUTS: &str = r#"
+  %first.value = call ptr @topal.runtime.int.from.u64(i64 %first)
+  %second.value = call ptr @topal.runtime.int.from.u64(i64 %second)
+"#;
+
+pub(crate) fn region_action_adapter_sha256() -> String {
+    use sha2::{Digest, Sha256};
+    let mut hash = Sha256::new();
+    hash.update(region_bridge_head(CompilerKernelRegionProfile::Action).as_bytes());
+    hash.update(REGION_ACTION_INPUTS.as_bytes());
+    hash.update(region_bridge_tail(CompilerKernelRegionProfile::Action).as_bytes());
+    format!("{:x}", hash.finalize())
+}

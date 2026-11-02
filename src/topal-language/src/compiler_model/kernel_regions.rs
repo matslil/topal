@@ -7,8 +7,15 @@ pub enum CompilerKernelRegionOperation {
     Window { write: bool },
 }
 
+/// Systems callable contexts, not new source types or live resource grants.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CompilerKernelRegionProfile {
+    Unit,
+    Action,
+}
+
 enum KernelRegionSelection<'a> {
-    Entry(&'a str),
+    Entry(&'a str, CompilerKernelRegionProfile),
     Modules(&'a [CompilerKernelRegionModuleExport]),
 }
 
@@ -31,7 +38,25 @@ pub fn analyze_kernel_region_library(
     modules: &[CompilerSourceModule],
     entry: &str,
 ) -> Result<CompilerProgram, Diagnostic> {
-    let selection = KernelRegionSelection::Entry(entry);
+    analyze_kernel_region_profile(text, modules, entry, CompilerKernelRegionProfile::Unit)
+}
+
+/// Declared ordinary action inputs supply types, never source authority.
+pub fn analyze_kernel_region_action_library(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_kernel_region_profile(text, modules, entry, CompilerKernelRegionProfile::Action)
+}
+
+fn analyze_kernel_region_profile(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+    profile: CompilerKernelRegionProfile,
+) -> Result<CompilerProgram, Diagnostic> {
+    let selection = KernelRegionSelection::Entry(entry, profile);
     let program = analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
     if !crate::published_function_names(text)
         .iter()
@@ -231,7 +256,11 @@ impl Analyzer {
             .any(|range| range.start <= span.start && span.end <= range.end)
     }
 
-    fn instantiate_kernel_region_entry(&mut self, entry: &str) -> Result<(), Diagnostic> {
+    fn instantiate_kernel_region_entry(
+        &mut self,
+        entry: &str,
+        profile: CompilerKernelRegionProfile,
+    ) -> Result<(), Diagnostic> {
         let matches = self
             .functions
             .iter()
@@ -252,43 +281,93 @@ impl Analyzer {
             ));
         };
         let name = (*name).clone();
-        let declaration = declaration.clone();
-        if declaration.is_static
-            || declaration.parameters.len() != 1
-            || self.parse_classifier(declaration.parameters[0].classifier)?
-                != CompilerType::KernelByteRegion
-            || self.parse_classifier(declaration.result)? != CompilerType::Unit
-        {
-            return Err(unsupported(
-                &self.source,
-                declaration.span,
-                "region entry requires (KernelByteRegion) -> Unit",
-            ));
+        let mut declaration = declaration.clone();
+        if profile == CompilerKernelRegionProfile::Action {
+            let mut parameters = Vec::new();
+            for parameter in &declaration.parameters {
+                if parameter.qualifier.is_some() || parameter.default.is_some() {
+                    return Err(unsupported(
+                        &self.source,
+                        parameter.name,
+                        "qualified/defaulted region action input",
+                    ));
+                }
+                if parameter.fields.is_empty() {
+                    parameters.push(parameter.clone());
+                } else {
+                    if parameter.fields.iter().any(|field| {
+                        !field.fields.is_empty()
+                            || field.qualifier.is_some()
+                            || field.default.is_some()
+                    }) {
+                        return Err(unsupported(
+                            &self.source,
+                            parameter.name,
+                            "nested/qualified/defaulted region action input",
+                        ));
+                    }
+                    parameters.extend(parameter.fields.iter().cloned());
+                }
+            }
+            declaration.parameters = parameters;
         }
-        let argument = CompilerExpression {
-            kind: CompilerExpressionKind::Local("<qualified-region-input>".into()),
-            value_type: CompilerType::KernelByteRegion,
-            int_range: None,
-            rational_value: None,
-            span: declaration.parameters[0].name,
+        let (types, result, signature) = match profile {
+            CompilerKernelRegionProfile::Unit => (
+                vec![CompilerType::KernelByteRegion],
+                CompilerType::Unit,
+                "region entry requires (KernelByteRegion) -> Unit",
+            ),
+            CompilerKernelRegionProfile::Action => (
+                vec![
+                    CompilerType::KernelByteRegion,
+                    CompilerType::Nat,
+                    CompilerType::Nat,
+                ],
+                CompilerType::Boolean,
+                "region action requires (KernelByteRegion, Nat, Nat) -> Boolean",
+            ),
         };
+        let actual = declaration
+            .parameters
+            .iter()
+            .map(|p| self.parse_classifier(p.classifier))
+            .collect::<Result<Vec<_>, _>>()?;
+        if declaration.is_static
+            || actual != types
+            || self.parse_classifier(declaration.result)? != result
+        {
+            return Err(unsupported(&self.source, declaration.span, signature));
+        }
+        let arguments = declaration
+            .parameters
+            .iter()
+            .zip(types)
+            .enumerate()
+            .map(|(index, (parameter, value_type))| CompilerExpression {
+                kind: CompilerExpressionKind::Local(match profile {
+                    CompilerKernelRegionProfile::Unit => "<qualified-region-input>".into(),
+                    CompilerKernelRegionProfile::Action => {
+                        format!("<qualified-region-input-{index}>")
+                    }
+                }),
+                value_type,
+                int_range: None,
+                rational_value: None,
+                span: parameter.name,
+            })
+            .collect::<Vec<_>>();
+        let count = arguments.len();
         let metadata = CompilerCallMetadata {
-            callable_arguments: vec![None],
-            aggregate_arguments: vec![StaticValueFacts::default()],
+            callable_arguments: vec![None; count],
+            aggregate_arguments: vec![StaticValueFacts::default(); count],
             callable_captures: Vec::new(),
             aggregate_captures: Vec::new(),
-            scope_arguments: vec![None],
+            scope_arguments: vec![None; count],
             scope_captures: Vec::new(),
             lexical_captures: Vec::new(),
             context_captures: Vec::new(),
         };
-        self.finish_selected_call(
-            &name,
-            &declaration,
-            vec![argument],
-            &metadata,
-            declaration.span,
-        )?;
+        self.finish_selected_call(&name, &declaration, arguments, &metadata, declaration.span)?;
         Ok(())
     }
 

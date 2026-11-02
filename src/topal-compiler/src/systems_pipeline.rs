@@ -51,13 +51,21 @@ pub(crate) fn publish(
             })
         })
         .transpose()?;
-    if program.region_library.is_some()
+    if program.file_position_library.is_some()
+        || program.region_library.is_some()
         || program.kernel_library.is_some()
         || program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
         || program.process_identity_library.is_some()
     {
+        let file_position = program
+            .file_position_library
+            .as_ref()
+            .map(|requirement| {
+                crate::systems_library::load_source_library(requirement, &options.library_root)
+            })
+            .transpose()?;
         let region = program
             .region_library
             .as_ref()
@@ -96,6 +104,7 @@ pub(crate) fn publish(
             initial_user_image.as_deref(),
             static_user_image.as_deref(),
             crate::SystemsKernelLibraries {
+                file_position: file_position.as_ref(),
                 region: region.as_ref(),
                 policy: source.as_ref(),
                 time: time.as_ref(),

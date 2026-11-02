@@ -1,6 +1,11 @@
 //! Portable scoped-borrow model; no source/native authority or erasure evidence.
 use crate::{BootstrapRegion, BootstrapStorageState, QualifiedName, ResourceIdentity};
 use std::collections::{BTreeMap, BTreeSet};
+#[path = "systems_region_owner.rs"]
+mod owner;
+pub(crate) use owner::ControllerActionState;
+pub use owner::RegionActionReclamation;
+use owner::Storage;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegionLibraryError {
@@ -15,6 +20,7 @@ pub enum RegionLibraryError {
     IdentityExhausted,
     NotRoot,
     Ended,
+    Invariant,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -91,6 +97,7 @@ impl RegionLibraryBinding {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegionLibraryView {
     owner: (String, u64),
+    scope: Option<owner::ControllerOwner>,
     generation: u64,
     binding: String,
     frame: u64,
@@ -114,8 +121,7 @@ struct Frame {
 /// Exclusively borrows the actual existing storage owner until dropped.
 #[derive(Debug)]
 pub struct RegionLibraryInvocation<'a> {
-    storage: &'a mut BootstrapStorageState,
-    region: &'a BootstrapRegion,
+    storage: Storage<'a>,
     binding: &'a RegionLibraryBinding,
     generation: u64,
     frames: Vec<Frame>,
@@ -139,9 +145,23 @@ impl<'a> RegionLibraryInvocation<'a> {
                 RegionLibraryError::Owner
             }
         })?;
+        Ok(Self::from_storage(
+            Storage::Bootstrap { storage, region },
+            binding,
+            generation,
+            access,
+        ))
+    }
+
+    fn from_storage(
+        storage: Storage<'a>,
+        binding: &'a RegionLibraryBinding,
+        generation: u64,
+        access: RegionLibraryAccess,
+    ) -> (Self, RegionLibraryView) {
+        let count = storage.count();
         let invocation = Self {
             storage,
-            region,
             binding,
             generation,
             frames: vec![Frame {
@@ -153,7 +173,7 @@ impl<'a> RegionLibraryInvocation<'a> {
                 Window {
                     frame: 1,
                     start: 0,
-                    count: region.byte_count(),
+                    count,
                     access,
                 },
             )]),
@@ -162,12 +182,83 @@ impl<'a> RegionLibraryInvocation<'a> {
             ended: false,
         };
         let view = invocation.token(1, 1);
-        Ok((invocation, view))
+        (invocation, view)
+    }
+
+    pub(crate) fn begin_position(
+        field: &'a mut [u8; 8],
+        domain: &'a mut ControllerActionState,
+        controller: &str,
+        identity: std::sync::Arc<()>,
+        binding: &'a RegionLibraryBinding,
+        base: u64,
+        count: u64,
+    ) -> Result<(Self, RegionLibraryView), RegionLibraryError> {
+        if domain.active || domain.poisoned {
+            return Err(RegionLibraryError::Owner);
+        }
+        let expected = base
+            .checked_add(count)
+            .filter(|value| *value <= i64::MAX as u64)
+            .ok_or(RegionLibraryError::Bounds)?;
+        let generation = domain
+            .generation
+            .checked_add(1)
+            .ok_or(RegionLibraryError::IdentityExhausted)?;
+        domain.generation = generation;
+        domain.active = true;
+        let storage = Storage::Position {
+            field,
+            domain,
+            owner: (controller.into(), 0),
+            scope: owner::ControllerOwner(identity),
+            resource: ResourceIdentity(QualifiedName(vec![
+                "systems".into(),
+                "file-controller".into(),
+                controller.into(),
+            ])),
+            inputs: (base, count),
+            expected,
+        };
+        Ok(Self::from_storage(
+            storage,
+            binding,
+            generation,
+            RegionLibraryAccess::ReadWrite,
+        ))
+    }
+
+    /// Copied facts only. The model does not execute a compiled source body.
+    pub fn position_action_inputs(&self) -> Result<(u64, u64), RegionLibraryError> {
+        self.active()?;
+        match &self.storage {
+            Storage::Position { inputs, .. } => Ok(*inputs),
+            _ => Err(RegionLibraryError::Binding),
+        }
+    }
+
+    /// Independent field refinement and explicit model cleanup obligations.
+    /// Native source execution and physical cleanup need their own evidence.
+    pub fn complete_position_action(
+        &mut self,
+        result: bool,
+        proof: RegionActionReclamation,
+    ) -> Result<(), RegionLibraryError> {
+        self.active()?;
+        if self.frames.len() != 1 {
+            return Err(RegionLibraryError::NotRoot);
+        }
+        let completion = self.storage.finish_position(result, proof);
+        if self.storage.is_position() {
+            self.revoke();
+        }
+        completion
     }
 
     fn token(&self, frame: u64, identity: u64) -> RegionLibraryView {
         RegionLibraryView {
-            owner: self.region.library_owner_identity(),
+            owner: self.storage.owner(),
+            scope: self.storage.scope(),
             generation: self.generation,
             binding: self.binding.identity.clone(),
             frame,
@@ -184,7 +275,8 @@ impl<'a> RegionLibraryInvocation<'a> {
 
     fn window(&self, view: &RegionLibraryView) -> Result<Window, RegionLibraryError> {
         let active = self.active()?;
-        if view.owner != self.region.library_owner_identity()
+        if view.owner != self.storage.owner()
+            || view.scope != self.storage.scope()
             || view.generation != self.generation
             || view.binding != self.binding.identity
         {
@@ -217,13 +309,7 @@ impl<'a> RegionLibraryInvocation<'a> {
         view: &RegionLibraryView,
     ) -> Result<ResourceIdentity, RegionLibraryError> {
         self.window(view)?;
-        let (execution, allocation) = self.region.library_owner_identity();
-        Ok(ResourceIdentity(QualifiedName(vec![
-            "systems".into(),
-            "borrowed-region".into(),
-            execution,
-            allocation.to_string(),
-        ])))
+        Ok(self.storage.resource())
     }
 
     pub fn derive(
@@ -322,7 +408,7 @@ impl<'a> RegionLibraryInvocation<'a> {
         window
             .start
             .checked_add(offset)
-            .filter(|offset| *offset < self.region.byte_count())
+            .filter(|offset| *offset < self.storage.count())
             .ok_or(RegionLibraryError::Bounds)
     }
 
@@ -332,9 +418,7 @@ impl<'a> RegionLibraryInvocation<'a> {
         offset: u64,
     ) -> Result<u8, RegionLibraryError> {
         let offset = self.byte_offset(self.window(view)?, offset)?;
-        self.storage
-            .load_byte(self.region, offset)
-            .map_err(|_| RegionLibraryError::Owner)
+        self.storage.load(offset)
     }
 
     pub fn store_byte(
@@ -349,13 +433,14 @@ impl<'a> RegionLibraryInvocation<'a> {
         }
         let offset = self.byte_offset(window, offset)?;
         let value = u8::try_from(value).map_err(|_| RegionLibraryError::ByteValue)?;
-        self.storage
-            .store_byte(self.region, offset, value)
-            .map_err(|_| RegionLibraryError::Owner)
+        self.storage.store(offset, value)
     }
 
     pub fn complete(&mut self) -> Result<(), RegionLibraryError> {
         self.active()?;
+        if self.storage.is_position() {
+            return Err(RegionLibraryError::Invariant);
+        }
         if self.frames.len() != 1 {
             return Err(RegionLibraryError::NotRoot);
         }
@@ -365,6 +450,9 @@ impl<'a> RegionLibraryInvocation<'a> {
 
     pub fn cancel(&mut self) -> Result<(), RegionLibraryError> {
         self.active()?;
+        if self.storage.is_position() {
+            return Err(RegionLibraryError::Invariant);
+        }
         self.revoke();
         Ok(())
     }
@@ -378,6 +466,7 @@ impl<'a> RegionLibraryInvocation<'a> {
 
 impl Drop for RegionLibraryInvocation<'_> {
     fn drop(&mut self) {
+        self.storage.abandon();
         self.revoke();
     }
 }

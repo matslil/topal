@@ -41,6 +41,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
         .unwrap();
     let policy = load(&program.kernel_library, &root);
     let region = load(&program.region_library, &root);
+    let position = load(&program.file_position_library, &root);
     let time = load(&program.time_library, &root);
     let image = load(&program.image_library, &root);
     let dispatch = load(&program.dispatch_library, &root);
@@ -52,6 +53,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
         None,
         Some(&qualified_x86_64_static_user_image_fixture()),
         SystemsKernelLibraries {
+            file_position: position.as_ref(),
             region: region.as_ref(),
             policy: policy.as_ref(),
             time: time.as_ref(),
@@ -138,6 +140,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
         None,
         Some(&qualified_x86_64_static_user_image_fixture()),
         SystemsKernelLibraries {
+            file_position: position.as_ref(),
             region: Some(&invalid),
             policy: policy.as_ref(),
             time: time.as_ref(),

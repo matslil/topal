@@ -6,12 +6,39 @@ use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
-use topal_language::compiler::{CompilerKernelRegionEffects, CompilerProgram};
+use topal_language::compiler::{
+    CompilerKernelRegionEffects, CompilerKernelRegionProfile, CompilerProgram,
+};
+
+#[path = "systems_region_data.rs"]
+mod data;
+pub use data::{
+    SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, inspect_systems_region_action_data,
+};
 
 pub(crate) const EXPORT: &str = "topal_kernel_region_apply_v1";
 pub(crate) const PREFIX: &str = "topal.region.";
 pub(crate) const ALLOCATE: &str = "topal_kernel_region_allocate_v1";
 pub(crate) const ABORT: &str = "topal_kernel_region_abort_v1";
+pub(crate) const ACTION_EXPORT: &str = "topal_kernel_region_action_apply_v1";
+pub(crate) const ACTION_PREFIX: &str = "topal.region.action.";
+pub(crate) const ACTION_ALLOCATE: &str = "topal_kernel_region_action_allocate_v1";
+pub(crate) const ACTION_ABORT: &str = "topal_kernel_region_action_abort_v1";
+
+impl CheckedRegionLibrary {
+    pub(crate) fn native_export(&self) -> &'static str {
+        match self.profile {
+            CompilerKernelRegionProfile::Unit => EXPORT,
+            CompilerKernelRegionProfile::Action => ACTION_EXPORT,
+        }
+    }
+    pub(crate) fn prefix(&self) -> &'static str {
+        match self.profile {
+            CompilerKernelRegionProfile::Unit => PREFIX,
+            CompilerKernelRegionProfile::Action => ACTION_PREFIX,
+        }
+    }
+}
 
 fn invalid(message: impl Into<String>) -> CompileError {
     CompileError::Tool(format!("E-SYSTEMS-REGION-LIBRARY: {}", message.into()))
@@ -70,6 +97,9 @@ pub struct SystemsRegionLibraryArtifact {
     pub imported_hook_stack_bytes: u64,
     pub imported_hooks: Vec<String>,
     pub functions: Vec<SystemsLibraryFunctionStack>,
+    /// New action-only evidence; the Unit schema/serialization stays unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub read_only_data: Vec<SystemsRegionReadOnlyData>,
 }
 
 #[derive(Clone)]
@@ -86,6 +116,7 @@ pub(crate) struct CheckedRegionLibrary {
     pub(crate) program: CompilerProgram,
     pub(crate) source_name: String,
     pub(crate) entry_symbol: String,
+    pub(crate) profile: CompilerKernelRegionProfile,
 }
 
 fn check_region_isolation(
@@ -146,10 +177,49 @@ pub fn build_systems_region_library(
     tools: &LlvmTools,
     work: &Path,
 ) -> Result<CompiledSystemsRegionLibrary, CompileError> {
+    build_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        CompilerKernelRegionProfile::Unit,
+    )
+}
+
+/// Compile a separate action context; this grants no persistent field authority.
+pub fn build_systems_region_action_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    tools: &LlvmTools,
+    work: &Path,
+) -> Result<CompiledSystemsRegionLibrary, CompileError> {
+    build_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        CompilerKernelRegionProfile::Action,
+    )
+}
+
+fn build_region_profile(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    tools: &LlvmTools,
+    work: &Path,
+    profile: CompilerKernelRegionProfile,
+) -> Result<CompiledSystemsRegionLibrary, CompileError> {
     let modules = crate::systems_library::modules::validate(input)?;
-    let program =
-        topal_language::compiler::analyze_kernel_region_library(&input.text, &modules, export)
-            .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
+    let analyze = match profile {
+        CompilerKernelRegionProfile::Unit => {
+            topal_language::compiler::analyze_kernel_region_library
+        }
+        CompilerKernelRegionProfile::Action => {
+            topal_language::compiler::analyze_kernel_region_action_library
+        }
+    };
+    let program = analyze(&input.text, &modules, export)
+        .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
     check_region_isolation(input, &program, &modules)?;
     let effects = topal_language::compiler::kernel_region_function_effects(&program)
         .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
@@ -164,11 +234,21 @@ pub fn build_systems_region_library(
         return Err(invalid("missing or duplicate region entry specialization"));
     };
     let entry_symbol = entry.symbol.clone();
-    let allocation = crate::systems_numeric_library::bound_region_library(&program, &entry_symbol)?;
+    let allocation = crate::systems_numeric_library::bound_region_library_profile(
+        &program,
+        &entry_symbol,
+        profile,
+    )?;
     let checked = CheckedRegionLibrary {
         program,
         source_name: input.source_name.clone(),
         entry_symbol,
+        profile,
+    };
+    let (native_export, prefix) = (checked.native_export(), checked.prefix());
+    let (allocate, abort) = match profile {
+        CompilerKernelRegionProfile::Unit => (ALLOCATE, ABORT),
+        CompilerKernelRegionProfile::Action => (ACTION_ALLOCATE, ACTION_ABORT),
     };
     let llvm = crate::codegen::emit_region_kernel_library(&checked)?;
     let source = work.join("kernel-region.ll");
@@ -241,7 +321,7 @@ pub fn build_systems_region_library(
         .program
         .functions
         .iter()
-        .map(|f| format!("{PREFIX}{}", f.symbol))
+        .map(|f| format!("{prefix}{}", f.symbol))
         .collect::<BTreeSet<_>>();
     let mut names = BTreeSet::new();
     let mut undefined = BTreeSet::new();
@@ -251,33 +331,36 @@ pub fn build_systems_region_library(
             undefined.insert(name.to_owned());
         }
         if symbol.kind() == SymbolKind::Text && symbol.is_definition() {
-            if symbol.is_global() && name != EXPORT {
+            if symbol.is_global() && name != native_export {
                 return Err(invalid(format!("unexpected region export {name}")));
             }
-            if name != EXPORT
+            if name != native_export
                 && !expected_source.contains(name)
-                && !name.starts_with("topal.region.runtime.int.")
-                && !name.starts_with("topal.kernel.region.")
-                && !name.starts_with("topal.region.runtime.optional.")
-                && !name.starts_with("topal.region.runtime.list.")
+                && !name.starts_with(&format!("{prefix}runtime.int."))
+                && !(profile == CompilerKernelRegionProfile::Unit
+                    && name.starts_with("topal.kernel.region."))
+                && !(profile == CompilerKernelRegionProfile::Action
+                    && name.starts_with("topal.region.action.primitive."))
+                && !name.starts_with(&format!("{prefix}runtime.optional."))
+                && !name.starts_with(&format!("{prefix}runtime.list."))
                 && !matches!(
-                    name,
-                    "topal.region.runtime.container.list.count"
-                        | "topal.region.runtime.container.array.int.collect"
-                        | "topal.region.runtime.container.array.int.at"
-                        | "topal.region.runtime.container.entry.count"
-                        | "topal.region.runtime.container.empty"
+                    name.strip_prefix(prefix).unwrap_or(""),
+                    "runtime.container.list.count"
+                        | "runtime.container.array.int.collect"
+                        | "runtime.container.array.int.at"
+                        | "runtime.container.entry.count"
+                        | "runtime.container.empty"
                 )
-                && !name.starts_with("topal.region.platform.")
-                && name != "topal.region.memset"
+                && !name.starts_with(&format!("{prefix}platform."))
+                && name != format!("{prefix}memset")
             {
                 return Err(invalid(format!("unqualified region code {name}")));
             }
             names.insert(name.into());
         }
     }
-    if undefined != BTreeSet::from([ALLOCATE.into(), ABORT.into()])
-        || !names.contains(EXPORT)
+    if undefined != BTreeSet::from([allocate.into(), abort.into()])
+        || !names.contains(native_export)
         || !expected_source.iter().all(|name| names.contains(name))
     {
         return Err(invalid(format!(
@@ -289,8 +372,9 @@ pub fn build_systems_region_library(
         return Err(invalid("incomplete region stack metadata"));
     }
     let calls =
-        crate::systems_numeric_library::library_object_calls(&file, &names, &[ALLOCATE, ABORT])?;
-    let (maximum_stack_bytes, functions) = bound_stack(&names, &frames, &calls)?;
+        crate::systems_numeric_library::library_object_calls(&file, &names, &[allocate, abort])?;
+    let (maximum_stack_bytes, functions) =
+        bound_stack(&names, &frames, &calls, native_export, allocate, abort)?;
     let disassembly = run(Command::new(tools.tool_path("llvm-objdump"))
         .args(["-d", "--no-show-raw-insn"])
         .arg(&object))?
@@ -298,15 +382,25 @@ pub fn build_systems_region_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let snapshot = crate::systems_library::modules::snapshot(input)?;
     let record = SystemsRegionLibraryArtifact {
-        schema: "topal.kernel-region-source-object.x86_64/2".into(),
+        schema: match profile {
+            CompilerKernelRegionProfile::Unit => "topal.kernel-region-source-object.x86_64/2",
+            CompilerKernelRegionProfile::Action => {
+                "topal.kernel-region-action-source-object.x86_64/1"
+            }
+        }
+        .into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: export.into(),
-        native_export: EXPORT.into(),
+        native_export: native_export.into(),
         source_sha256: digest(input.text.as_bytes()),
         modules: crate::systems_library::modules::records(input),
         module_snapshot_sha256: digest(&snapshot),
-        declared_entry: "(KernelByteRegion) -> Unit".into(),
+        declared_entry: match profile {
+            CompilerKernelRegionProfile::Unit => "(KernelByteRegion) -> Unit",
+            CompilerKernelRegionProfile::Action => "(KernelByteRegion, Nat, Nat) -> Boolean",
+        }
+        .into(),
         effects: effects
             .into_iter()
             .map(
@@ -332,12 +426,22 @@ pub fn build_systems_region_library(
         allocation,
         target: "x86_64-unknown-none".into(),
         data_layout: crate::X86_SYSTEMS_DATA_LAYOUT.into(),
-        native_abi: "topal.kernel-region-control-view64.x86_64-sysv/1".into(),
+        native_abi: match profile {
+            CompilerKernelRegionProfile::Unit => "topal.kernel-region-control-view64.x86_64-sysv/1",
+            CompilerKernelRegionProfile::Action => {
+                "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1"
+            }
+        }
+        .into(),
         maximum_stack_bytes,
         stack_limit_bytes: 4096,
         imported_hook_stack_bytes: 8,
-        imported_hooks: vec![ALLOCATE.into(), ABORT.into()],
+        imported_hooks: vec![allocate.into(), abort.into()],
         functions,
+        read_only_data: match profile {
+            CompilerKernelRegionProfile::Unit => Vec::new(),
+            CompilerKernelRegionProfile::Action => data::object_data(&bytes, ACTION_PREFIX)?,
+        },
     };
     Ok(CompiledSystemsRegionLibrary {
         source: input.text.clone(),
@@ -359,7 +463,42 @@ pub fn verify_systems_region_library(
     work: &Path,
     candidate: &CompiledSystemsRegionLibrary,
 ) -> Result<(), CompileError> {
-    let expected = build_systems_region_library(input, export, tools, work)?;
+    verify_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        candidate,
+        CompilerKernelRegionProfile::Unit,
+    )
+}
+
+pub fn verify_systems_region_action_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    tools: &LlvmTools,
+    work: &Path,
+    candidate: &CompiledSystemsRegionLibrary,
+) -> Result<(), CompileError> {
+    verify_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        candidate,
+        CompilerKernelRegionProfile::Action,
+    )
+}
+
+fn verify_region_profile(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    tools: &LlvmTools,
+    work: &Path,
+    candidate: &CompiledSystemsRegionLibrary,
+    profile: CompilerKernelRegionProfile,
+) -> Result<(), CompileError> {
+    let expected = build_region_profile(input, export, tools, work, profile)?;
     if candidate.source != expected.source
         || candidate.module_snapshot != expected.module_snapshot
         || candidate.llvm != expected.llvm
@@ -378,6 +517,9 @@ fn bound_stack(
     names: &BTreeSet<String>,
     frames: &BTreeMap<String, u64>,
     calls: &BTreeMap<String, BTreeSet<String>>,
+    export: &str,
+    allocate: &str,
+    abort: &str,
 ) -> Result<(u64, Vec<SystemsLibraryFunctionStack>), CompileError> {
     fn visit(
         name: &str,
@@ -411,13 +553,13 @@ fn bound_stack(
         });
         Ok(total)
     }
-    let mut cache = BTreeMap::from([(ALLOCATE.into(), 8), (ABORT.into(), 8)]);
+    let mut cache = BTreeMap::from([(allocate.into(), 8), (abort.into(), 8)]);
     let mut records = Vec::new();
     let mut active = BTreeSet::new();
     for name in names {
         visit(name, frames, calls, &mut cache, &mut active, &mut records)?;
     }
-    let maximum = cache[EXPORT]
+    let maximum = cache[export]
         .checked_add(8)
         .ok_or_else(|| invalid("region caller alignment overflow"))?;
     if maximum > 4096 {

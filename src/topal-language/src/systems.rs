@@ -362,6 +362,7 @@ pub fn analyze_systems_for_compiler(
         target: target.clone(),
         kernel_library: root_entries.kernel_library,
         region_library: root_entries.region_library,
+        file_position_library: root_entries.file_position_library,
         time_library: root_entries.time_library,
         image_library: root_entries.image_library,
         dispatch_library: root_entries.dispatch_library,
@@ -526,6 +527,7 @@ fn validate_language_selection(
 struct ArtifactEntries {
     kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
     region_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    file_position_library: Option<CompilerSystemsSourceLibraryRequirement>,
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
     image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     dispatch_library: Option<CompilerSystemsSourceLibraryRequirement>,
@@ -575,6 +577,7 @@ fn parse_artifact_root(
     let mut bootstrap_storage = None;
     let mut kernel_library = None;
     let mut region_library = None;
+    let mut file_position_library = None;
     let mut time_library = None;
     let mut image_library = None;
     let mut dispatch_library = None;
@@ -583,7 +586,21 @@ fn parse_artifact_root(
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "region-library" {
+        if label_text == "file-position-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface
+                != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionActionV1
+                || file_position_library.replace(requirement).is_some()
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-REGION-ACTION",
+                    label,
+                    "file-position-library requires one borrowed-byte-region-action-v1 entry",
+                ));
+            }
+            continue;
+        } else if label_text == "region-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if requirement.interface != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
                 || region_library.replace(requirement).is_some()
@@ -737,6 +754,7 @@ fn parse_artifact_root(
     Ok(ArtifactEntries {
         kernel_library,
         region_library,
+        file_position_library,
         time_library,
         image_library,
         dispatch_library,

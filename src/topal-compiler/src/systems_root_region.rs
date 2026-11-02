@@ -25,12 +25,12 @@ pub(crate) use inspection::inspect_linked;
 pub use inspection::{SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage};
 
 #[derive(Default)]
-struct Code {
-    encoder: X86FunctionEncoder,
-    references: Vec<(u64, &'static str, bool)>,
-    unwind: Vec<(u32, Vec<u8>)>,
+pub(super) struct Code {
+    pub(super) encoder: X86FunctionEncoder,
+    pub(super) references: Vec<(u64, &'static str, bool)>,
+    pub(super) unwind: Vec<(u32, Vec<u8>)>,
 }
-fn address(
+pub(super) fn address(
     e: &mut E<'_>,
     references: &mut Vec<(u64, &'static str, bool)>,
     register: R,
@@ -39,7 +39,7 @@ fn address(
     e.imm(register, 0);
     references.push(((e.0.bytes.len() - 8) as u64, symbol, false));
 }
-fn branch(
+pub(super) fn branch(
     e: &mut E<'_>,
     references: &mut Vec<(u64, &'static str, bool)>,
     symbol: &'static str,
@@ -49,21 +49,21 @@ fn branch(
     references.push((e.0.bytes.len() as u64, symbol, true));
     e.0.bytes(&[0; 4]);
 }
-fn zero_readback(e: &mut E<'_>, base: R, bytes: u64) {
+pub(super) fn zero_readback(e: &mut E<'_>, base: R, bytes: u64) {
     e.mov(Di, base);
     e.imm(A, 0);
     e.imm(C, bytes / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fail");
 }
-fn erase(e: &mut E<'_>, base: R, bytes: u64) {
+pub(super) fn erase(e: &mut E<'_>, base: R, bytes: u64) {
     e.mov(Di, base);
     e.imm(A, 0);
     e.imm(C, bytes / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xab]);
     zero_readback(e, base, bytes);
 }
-fn clear_temporaries(e: &mut E<'_>) {
+pub(super) fn clear_temporaries(e: &mut E<'_>) {
     for register in [A, C, D, Si, Di, R8, R9, R10, R11] {
         e.imm(register, 0);
     }
@@ -243,33 +243,56 @@ fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
 /// Leaf temporary hook: exactly the caller's eight-byte return address, with
 /// no stack use, callee-saved changes, process state, host service or callback.
 fn allocator() -> Result<Code, CompileError> {
+    allocator_for(
+        CONTROL,
+        ARENA,
+        crate::systems_region_library::EXPORT,
+        crate::systems_region_library::ABORT,
+        false,
+    )
+}
+
+/// The repeated action context shares this inspected leaf algorithm, with its
+/// own symbols and generation history. The old Unit template stays byte exact.
+pub(super) fn allocator_for(
+    control: &'static str,
+    arena: &'static str,
+    export: &'static str,
+    abort: &'static str,
+    repeated: bool,
+) -> Result<Code, CompileError> {
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
-    address(&mut e, &mut code.references, R11, CONTROL);
+    address(&mut e, &mut code.references, R11, control);
     e.load(A, R11, 24);
     e.cmp(A, 1);
     e.0.jump_if(0x85, "fail");
     e.load(A, R11, 8);
     e.cmp(A, 0);
     e.0.jump_if(0x84, "fail");
-    e.load(A, R11, 16);
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fail");
-    address(
-        &mut e,
-        &mut code.references,
-        R8,
-        crate::systems_region_library::EXPORT,
-    );
+    if repeated {
+        e.load(R9, R11, 16);
+        e.cmp(R9, 0);
+        e.0.jump_if(0x84, "fail");
+    } else {
+        e.load(A, R11, 16);
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fail");
+    }
+    address(&mut e, &mut code.references, R8, export);
     e.load(A, R11, 0);
     e.rr(0x39, A, R8);
     e.0.jump_if(0x85, "fail");
-    address(&mut e, &mut code.references, R8, ARENA);
+    address(&mut e, &mut code.references, R8, arena);
     e.load(A, R8, 0);
     e.rr(0x39, A, R11);
     e.0.jump_if(0x85, "fail");
     e.load(A, R8, 16);
-    e.cmp(A, 1);
+    if repeated {
+        e.rr(0x39, A, R9);
+    } else {
+        e.cmp(A, 1);
+    }
     e.0.jump_if(0x85, "fail");
     e.mov(A, Di);
     e.add(A, 7);
@@ -299,12 +322,7 @@ fn allocator() -> Result<Code, CompileError> {
     e.rr(0x01, A, R9);
     e.0.bytes(&[0xc3]);
     e.0.bind("fail")?;
-    branch(
-        &mut e,
-        &mut code.references,
-        crate::systems_region_library::ABORT,
-        false,
-    );
+    branch(&mut e, &mut code.references, abort, false);
     Ok(code)
 }
 
@@ -372,61 +390,72 @@ pub(super) fn append(
         (crate::systems_region_library::ALLOCATE, allocator()?),
         (FINALIZE, finalize()?),
     ] {
-        let Code {
-            encoder,
-            references,
-            unwind: rows,
-        } = code;
-        let bytes = encoder.finish()?;
-        let start = object.append_section_data(text, &bytes, 16);
-        let function = object.add_symbol(Symbol {
-            name: name.as_bytes().to_vec(),
-            value: start,
-            size: bytes.len() as u64,
-            kind: SymbolKind::Text,
-            scope: SymbolScope::Linkage,
-            weak: false,
-            section: SymbolSection::Section(text),
-            flags: SymbolFlags::None,
+        append_code(object, text, debug_frame, name, code)?;
+    }
+    Ok(())
+}
+
+pub(super) fn append_code(
+    object: &mut Object<'_>,
+    text: SectionId,
+    debug_frame: SectionId,
+    name: &str,
+    code: Code,
+) -> Result<(), CompileError> {
+    let Code {
+        encoder,
+        references,
+        unwind: rows,
+    } = code;
+    let bytes = encoder.finish()?;
+    let start = object.append_section_data(text, &bytes, 16);
+    let function = object.add_symbol(Symbol {
+        name: name.as_bytes().to_vec(),
+        value: start,
+        size: bytes.len() as u64,
+        kind: SymbolKind::Text,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(text),
+        flags: SymbolFlags::None,
+    });
+    unwind::append(object, debug_frame, function, bytes.len() as u64, &rows)?;
+    for (offset, target, relative) in references {
+        let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
+            object.add_symbol(Symbol {
+                name: target.as_bytes().to_vec(),
+                value: 0,
+                size: 0,
+                kind: SymbolKind::Text,
+                scope: SymbolScope::Unknown,
+                weak: false,
+                section: SymbolSection::Undefined,
+                flags: SymbolFlags::None,
+            })
         });
-        unwind::append(object, debug_frame, function, bytes.len() as u64, &rows)?;
-        for (offset, target, relative) in references {
-            let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
-                object.add_symbol(Symbol {
-                    name: target.as_bytes().to_vec(),
-                    value: 0,
-                    size: 0,
-                    kind: SymbolKind::Text,
-                    scope: SymbolScope::Unknown,
-                    weak: false,
-                    section: SymbolSection::Undefined,
-                    flags: SymbolFlags::None,
-                })
-            });
-            object
-                .add_relocation(
-                    text,
-                    Relocation {
-                        offset: start + offset,
-                        symbol,
-                        addend: if relative { -4 } else { 0 },
-                        flags: RelocationFlags::Generic {
-                            kind: if relative {
-                                RelocationKind::PltRelative
-                            } else {
-                                RelocationKind::Absolute
-                            },
-                            encoding: if relative {
-                                RelocationEncoding::X86Branch
-                            } else {
-                                RelocationEncoding::Generic
-                            },
-                            size: if relative { 32 } else { 64 },
+        object
+            .add_relocation(
+                text,
+                Relocation {
+                    offset: start + offset,
+                    symbol,
+                    addend: if relative { -4 } else { 0 },
+                    flags: RelocationFlags::Generic {
+                        kind: if relative {
+                            RelocationKind::PltRelative
+                        } else {
+                            RelocationKind::Absolute
                         },
+                        encoding: if relative {
+                            RelocationEncoding::X86Branch
+                        } else {
+                            RelocationEncoding::Generic
+                        },
+                        size: if relative { 32 } else { 64 },
                     },
-                )
-                .map_err(|error| CompileError::Tool(format!("root region relocation: {error}")))?;
-        }
+                },
+            )
+            .map_err(|error| CompileError::Tool(format!("root region relocation: {error}")))?;
     }
     Ok(())
 }

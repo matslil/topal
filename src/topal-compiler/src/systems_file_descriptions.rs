@@ -403,6 +403,7 @@ pub(in super::super) fn emit_lifetime_services(
 
 pub(in super::super) fn emit_transfer_services(
     code: &mut X86FunctionEncoder,
+    source_position: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     positional::emit(&mut e)?;
@@ -483,8 +484,14 @@ pub(in super::super) fn emit_transfer_services(
     e.gs(0x8b, Di, 320);
     e.mov(C, R9);
     e.0.bytes(&[0xf3, 0xa4]);
-    e.rr(0x01, R15, R9);
-    e.store(R14, 24, R15);
+    if source_position {
+        e.0.bytes(&[0x41, 0x51]); // live scalar count outside the erased source reserve
+        super::super::file_region::emit_position_update(e.0, R9);
+        e.0.bytes(&[0x41, 0x59]);
+    } else {
+        e.rr(0x01, R15, R9);
+        e.store(R14, 24, R15);
+    }
     wipe_staging(&mut e);
     e.mov(A, R9);
     return_value(&mut e);
@@ -645,6 +652,7 @@ pub(in super::super) fn emit_transfer_services(
 
 pub(in super::super) fn emit_reclamation(
     code: &mut X86FunctionEncoder,
+    source_position: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // An inactive parent retains references in this same description store.
@@ -717,6 +725,10 @@ pub(in super::super) fn emit_reclamation(
     e.imm(C, TABLE_BYTES / 8);
     e.0.bytes(&[0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
+    if source_position {
+        // Both banks, all references and the controller storage are now erased.
+        e.0.external_call(super::super::file_region::FINALIZE);
+    }
     e.0.bind("fd-release-return")?;
     e.0.bytes(&[0xc3]);
     Ok(())

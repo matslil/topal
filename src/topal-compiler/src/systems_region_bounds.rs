@@ -1,6 +1,8 @@
 //! Source-region costs reuse the reviewed ordinary numeric/collection model.
 use super::*;
-use topal_language::compiler::CompilerKernelRegionOperation as RegionOp;
+use topal_language::compiler::{
+    CompilerKernelRegionOperation as RegionOp, CompilerKernelRegionProfile,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -63,9 +65,10 @@ impl Bounds<'_> {
     }
 }
 
-pub(crate) fn bound_region_library(
+pub(crate) fn bound_region_library_profile(
     program: &CompilerProgram,
     entry: &str,
+    profile: CompilerKernelRegionProfile,
 ) -> Result<SystemsRegionAllocationBound, CompileError> {
     // Reviewed count/load/store/window costs: 24/40/0/80 bytes; root 64.
     // Changes to the primitive algorithms require re-review of these bounds.
@@ -78,17 +81,26 @@ pub(crate) fn bound_region_library(
             "region primitive allocation certificate requires review",
         ));
     }
-    let adapter_sha256 = crate::codegen::region_adapter_sha256();
+    let (adapter_sha256, certified_adapter) = match profile {
+        CompilerKernelRegionProfile::Unit => (
+            crate::codegen::region_adapter_sha256(),
+            "4ed4e32d16f151d0ede0bd06e58673a4e502506301c57f2b71ed0b4ada80de1e",
+        ),
+        CompilerKernelRegionProfile::Action => (
+            crate::codegen::region_action_adapter_sha256(),
+            "6b8e0e8d4b234aeae8c6d666c3db66854bb91b1031fc8c603feb76d424aaa058",
+        ),
+    };
     let hooks_sha256 = format!(
         "{:x}",
         Sha256::digest(include_bytes!("runtime/kernel_region_platform.ll"))
     );
-    if adapter_sha256 != "4ed4e32d16f151d0ede0bd06e58673a4e502506301c57f2b71ed0b4ada80de1e"
+    if adapter_sha256 != certified_adapter
         || hooks_sha256 != "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e"
     {
-        return Err(invalid(
-            "region adapter/hook allocation certificate requires review",
-        ));
+        return Err(invalid(format!(
+            "region adapter/hook allocation certificate requires review: {adapter_sha256}"
+        )));
     }
     let runtime_sha256 = format!(
         "{:x}",
@@ -112,12 +124,28 @@ pub(crate) fn bound_region_library(
         maximum_bits: 0,
         regions: true,
     };
-    let result = bounds.function(entry, vec![Value::Region])?;
-    if !matches!(result.value, Value::Unit) {
-        return Err(invalid("region entry result is not Unit"));
+    let (inputs, bridge_bytes) = match profile {
+        CompilerKernelRegionProfile::Unit => (vec![Value::Region], 64),
+        CompilerKernelRegionProfile::Action => {
+            let scalar = Value::Number(Range(BigInt::from(0), BigInt::from(u64::MAX)));
+            (vec![Value::Region, scalar.clone(), scalar], 112)
+        }
+    };
+    let result = bounds.function(entry, inputs)?;
+    if !matches!(
+        (&profile, &result.value),
+        (CompilerKernelRegionProfile::Unit, Value::Unit)
+            | (CompilerKernelRegionProfile::Action, Value::Boolean)
+    ) {
+        return Err(invalid(
+            "region entry result does not match the selected context",
+        ));
     }
     let source_evaluation_bytes = result.bytes;
-    let maximum_bytes = cost_add(cost_add(source_evaluation_bytes, 64)?, HEADER_BYTES)?;
+    let maximum_bytes = cost_add(
+        cost_add(source_evaluation_bytes, bridge_bytes)?,
+        HEADER_BYTES,
+    )?;
     let mut views = ViewBounds {
         functions,
         cache: BTreeMap::new(),
@@ -129,13 +157,17 @@ pub(crate) fn bound_region_library(
     }
     Ok(SystemsRegionAllocationBound {
         numeric: SystemsNumericAllocationBound {
-            certificate: "topal.kernel-region-allocation/1".into(),
+            certificate: match profile {
+                CompilerKernelRegionProfile::Unit => "topal.kernel-region-allocation/1",
+                CompilerKernelRegionProfile::Action => "topal.kernel-region-action-allocation/1",
+            }
+            .into(),
             runtime_sha256,
             collection_runtime_sha256,
             collection_layout_sha256,
             maximum_operand_bits: bounds.maximum_bits,
             source_evaluation_bytes,
-            bridge_bytes: 64,
+            bridge_bytes,
             header_bytes: HEADER_BYTES,
             maximum_bytes,
             limit_bytes: ARENA_BYTES,
@@ -187,6 +219,7 @@ impl ViewBounds<'_> {
                 Ok(0)
             }
             K::IntToNat(input)
+            | K::Absolute(input)
             | K::Not(input)
             | K::OptionalSome(input)
             | K::ContainerEntryCount(input)

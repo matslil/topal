@@ -76,6 +76,11 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "file-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1);
             }
+            "interface"
+                if identifier_is(source, &field.value, "borrowed-byte-region-action-v1") =>
+            {
+                interface = Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionActionV1);
+            }
             "interface" if identifier_is(source, &field.value, "borrowed-byte-region-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1);
             }

@@ -126,7 +126,7 @@ impl SystemsVolatileFilePool {
                 object,
                 rights: request.rights,
                 append: request.append,
-                position: 0,
+                position: [0; 8],
                 references: 1,
             },
         );

@@ -351,6 +351,21 @@ impl NumericPolicy {
 }
 
 pub(crate) fn namespace_llvm(module: &str, private: &str) -> String {
+    namespace_llvm_symbols(module, |name| {
+        if let Some(suffix) = name.strip_prefix("topal.runtime.") {
+            format!("{private}runtime.{suffix}")
+        } else if let Some(suffix) = name.strip_prefix("topal.platform.") {
+            format!("{private}platform.{suffix}")
+        } else if name == "memset" {
+            format!("{private}memset")
+        } else {
+            name.into()
+        }
+    })
+}
+
+/// Rewrite only unquoted LLVM global identifiers, preserving source/debug text.
+pub(crate) fn namespace_llvm_symbols(module: &str, rename: impl Fn(&str) -> String) -> String {
     let mut result = String::with_capacity(module.len());
     let mut chars = module.chars().peekable();
     let (mut quoted, mut escaped, mut comment) = (false, false, false);
@@ -395,20 +410,7 @@ pub(crate) fn namespace_llvm(module: &str, private: &str) -> String {
             name.push(chars.next().unwrap());
         }
         result.push('@');
-        if let Some(suffix) = name.strip_prefix("topal.runtime.") {
-            result.push_str(private);
-            result.push_str("runtime.");
-            result.push_str(suffix);
-        } else if let Some(suffix) = name.strip_prefix("topal.platform.") {
-            result.push_str(private);
-            result.push_str("platform.");
-            result.push_str(suffix);
-        } else if name == "memset" {
-            result.push_str(private);
-            result.push_str("memset");
-        } else {
-            result.push_str(&name);
-        }
+        result.push_str(&rename(&name));
     }
     result
 }

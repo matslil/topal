@@ -217,3 +217,70 @@ fn isolated_module_exports_use_symbolic_declared_inputs_and_no_caller_bindings()
     private.source = text.replace("pub copy-byte", "copy-byte");
     assert!(analyze_kernel_region_module_exports(&[private], &[export]).is_err());
 }
+
+#[test]
+fn action_selection_preserves_declared_nat_inputs_and_persistent_owner_effects() {
+    // TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001; this supplies no live owner grant.
+    let text = include_str!("../../../../linux-kernel/kernel/policy/file-position.t");
+    let helper = include_str!("../../../../linux-kernel/kernel/support/word-bytes.t");
+    let module = CompilerSourceModule {
+        identity: vec!["support".into(), "word-bytes".into()],
+        source_name: "support/word-bytes.t".into(),
+        source: helper.into(),
+    };
+    let program = analyze_kernel_region_action_library(text, &[module], "advance").unwrap();
+    let entry = program
+        .functions
+        .iter()
+        .find(|f| f.source_name == "advance")
+        .unwrap();
+    assert_eq!(
+        entry
+            .parameters
+            .iter()
+            .map(|p| p.value_type.clone())
+            .collect::<Vec<_>>(),
+        [
+            CompilerType::KernelByteRegion,
+            CompilerType::Nat,
+            CompilerType::Nat
+        ]
+    );
+    assert_eq!(entry.result_type, CompilerType::Boolean);
+    assert!(program.main.statements.is_empty());
+    assert!(matches!(
+        program.main.result.kind,
+        CompilerExpressionKind::Unit
+    ));
+    assert_eq!(program.primary_source_end, text.len());
+    assert!(
+        kernel_region_function_effects(&program)
+            .unwrap()
+            .iter()
+            .find(|e| e.symbol == entry.symbol)
+            .unwrap()
+            .write
+    );
+    assert!(analyze_for_compiler(text).is_err());
+    assert!(analyze_kernel_region_library(text, &[], "advance").is_err());
+}
+
+#[test]
+fn action_context_rejects_wrong_shapes_private_entries_and_false_effects() {
+    // TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001.
+    let source = "use language (version is v0.1, features is (systems))\npub apply is fn ((region : KernelByteRegion, a : Nat, b : Nat)) -> Boolean\n  region byte store (offset-bytes is a, value is b)\n";
+    analyze_kernel_region_action_library(source, &[], "apply").unwrap();
+    for (old, new) in [
+        ("a : Nat", "a : Int"),
+        ("b : Nat", "b : Boolean"),
+        ("pub apply", "apply"),
+        ("-> Boolean", "-> Boolean : Effects ()"),
+        (", features is (systems)", ""),
+    ] {
+        assert!(
+            analyze_kernel_region_action_library(&source.replace(old, new), &[], "apply").is_err(),
+            "{new}"
+        );
+    }
+    assert!(analyze_kernel_region_action_library(SOURCE, &[], "apply").is_err());
+}

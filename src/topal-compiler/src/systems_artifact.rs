@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/245";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/231";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/246";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/232";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -428,6 +428,10 @@ pub struct SystemsArtifactProvenance {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region_runtime: Option<crate::SystemsRootRegionBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_position_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file_position_runtime: Option<crate::SystemsFilePositionRegionBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub dispatch_library: Option<crate::SystemsNumericLibraryArtifact>,
@@ -580,6 +584,7 @@ pub fn publish_x86_64_systems_artifact_with_source_library(
 #[derive(Clone, Copy, Default)]
 pub struct SystemsKernelLibraries<'a> {
     pub region: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub file_position: Option<&'a crate::SystemsSourceLibraryInput>,
     pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
@@ -606,6 +611,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
         initial_user_image,
         static_user_image,
         SystemsKernelLibraries {
+            file_position: None,
             region: None,
             policy: source_library,
             time: time_library,
@@ -631,12 +637,16 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
 ) -> Result<PublishedSystemsArtifact, CompileError> {
     let SystemsKernelLibraries {
         region: region_library,
+        file_position: file_position_library,
         policy: source_library,
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if program.file_position_library.is_some() != file_position_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-ACTION: declaration requires its matching explicit action source snapshot".into()));
+    }
     if program.region_library.is_some() != region_library.is_some() {
         return Err(CompileError::Tool("E-SYSTEMS-REGION-ROOT: declaration requires its matching explicit region source snapshot".into()));
     }
@@ -695,6 +705,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         dispatch_library,
         process_identity_library,
         region_library,
+        file_position_library,
         &stage,
     );
     let record = match result {
@@ -738,6 +749,7 @@ fn publish_in_stage(
     dispatch_library: Option<&crate::SystemsSourceLibraryInput>,
     process_identity_library: Option<&crate::SystemsSourceLibraryInput>,
     region_library: Option<&crate::SystemsSourceLibraryInput>,
+    file_position_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -771,6 +783,27 @@ fn publish_in_stage(
                 &requirement.export,
                 tools,
                 &work,
+            )
+        })
+        .transpose()?;
+    let file_position = program
+        .file_position_library
+        .as_ref()
+        .zip(file_position_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-ACTION: source path does not match the declared entry".into(),
+                ));
+            }
+            let action_work = work.join("file-position");
+            fs::create_dir(&action_work)
+                .map_err(io_error("create action object work space", &action_work))?;
+            crate::build_systems_region_action_library(
+                input,
+                &requirement.export,
+                tools,
+                &action_work,
             )
         })
         .transpose()?;
@@ -814,6 +847,15 @@ fn publish_in_stage(
         })
         .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    let file_position_runtime = file_position
+        .as_ref()
+        .map(|action| {
+            crate::systems_provider_object::file_region::inspect_linked(
+                &linked.kernel,
+                &action.record,
+            )
+        })
+        .transpose()?;
     let region_runtime = region
         .as_ref()
         .map(|region| {
@@ -897,6 +939,42 @@ fn publish_in_stage(
         static_user_image,
         placements,
     )?;
+    if let Some(action) = file_position {
+        for (name, bytes) in [
+            ("file-position-library.t", action.source.as_bytes()),
+            ("file-position-library.ll", action.llvm.as_bytes()),
+            (
+                "file-position-library.retained.ll",
+                action.retained_llvm.as_bytes(),
+            ),
+            ("file-position-library.o", action.object.as_slice()),
+            (
+                "file-position-library.modules.json",
+                action.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write action source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-file-position-source:{}", action.record.source),
+            sha256: action.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(action.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-file-position-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.file_position_library = Some(action.record);
+        record.file_position_runtime = file_position_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
     if let Some(region) = region {
         for (name, bytes) in [
             ("region-library.t", region.source.as_bytes()),
@@ -2892,6 +2970,11 @@ fn build_linked_outputs(
             .arg("root.o")
             .arg("provider.o")
             .args(
+                work.join("file-position/kernel-region.o")
+                    .is_file()
+                    .then_some("file-position/kernel-region.o"),
+            )
+            .args(
                 work.join("kernel-region.o")
                     .is_file()
                     .then_some("kernel-region.o"),
@@ -3033,6 +3116,8 @@ fn artifact_provenance(
         semantic_trace: semantic_trace(program)?,
         kernel_library: None,
         region_library: None,
+        file_position_library: None,
+        file_position_runtime: None,
         region_runtime: None,
         time_library: None,
         image_library: None,
@@ -12217,6 +12302,7 @@ mod tests {
         // The existing structural corpus explicitly exercises the retained
         // closed profile; source-bound publication is covered independently.
         program.region_library = None;
+        program.file_position_library = None;
         program
             .bootstrap
             .handler
@@ -12296,6 +12382,7 @@ mod tests {
                 None,
                 None,
                 SystemsKernelLibraries {
+                    file_position: None,
                     region: None,
                     policy: Some(&source),
                     time: Some(&time),

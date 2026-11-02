@@ -73,6 +73,7 @@ pub fn kernel_region_function_effects(
                 Ok(())
             }
             K::IntToNat(input)
+            | K::Absolute(input)
             | K::Not(input)
             | K::OptionalSome(input)
             | K::ContainerEntryCount(input)

@@ -68,6 +68,7 @@ pub(crate) fn inspect_linked(
         || library.data_layout != crate::X86_SYSTEMS_DATA_LAYOUT
         || library.native_export != crate::systems_region_library::EXPORT
         || library.declared_entry != "(KernelByteRegion) -> Unit"
+        || !library.read_only_data.is_empty()
         || library.imported_hooks
             != [
                 crate::systems_region_library::ALLOCATE,
