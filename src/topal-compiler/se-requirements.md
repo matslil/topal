@@ -12242,3 +12242,18 @@ Preserve source stores and native callers; test actual helper frames and cleanup
 under pinned QEMU. Static owner modeling shall record unknown helper-written
 bytes and dynamic byte guards without claiming source execution. See
 [TK-DEC-271](../../linux-kernel/design/root-borrowed-region-invocation.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-ACTION-001 — Persistent source actions
+
+Implement `TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001`,
+`TOPAL-SYSTEMS-REGION-ACTION-OWNER-001`,
+`TOPAL-SYSTEMS-REGION-ACTION-RETURN-001` and
+`TOPAL-SYSTEMS-REGION-ACTION-POSITION-001` through shared ordinary source,
+module, effect and native lowering. Keep the old Unit context intact. Bind exact
+scalar/result transport, unique private namespaces/hooks, complete costs,
+controller/actual field ownership and linked code/storage before publication.
+Invoke the selected action on real successful ordinary file transfers and omit
+the native duplicate update. Reclaim all temporaries before owner resumption;
+qualify aliases/append/positional noncalls, active/inactive retirement, negative
+code/bounds controls and the full physical cohort. See
+[TK-DEC-272](../../linux-kernel/design/persistent-region-actions.md).

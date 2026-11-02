@@ -401,3 +401,9 @@ and deterministic physical execution without admitting a general loader.
 | Goal and requirements | Rules | Evidence | Scope |
 | --- | --- | --- | --- |
 | `TK-DEC-271`, `TOPAL-REQ-SYSTEMS-REGION-ROOT-001`, `TOPAL-COMP-SYSTEMS-REGION-ROOT-001`, `TOPAL-SEM-SYSTEMS-REGION-ROOT-001` | `TOPAL-SYSTEMS-REGION-ROOT-BINDING-001`, `TOPAL-SYSTEMS-REGION-ROOT-CALL-001`, `TOPAL-SYSTEMS-REGION-ROOT-RECLAIM-001` | [design](design/root-borrowed-region-invocation.md), [report](step-4-root-region-invocation.md), [actual source](kernel/policy/bootstrap-byte-copy.t), [QEMU record](labs/qemu/x86_64/results/topal-root-region-gate.json), frontend/model/native/artifact tests | one synchronous actual 64-byte root loan, dynamic byte guard, ordinary module frames, preserved caller, full arena/control/retired-stack cleanup; general subsystems remain required |
+
+## Ordinary source actions on persistent fields
+
+| Goal and requirements | Rules | Planned evidence | Scope |
+| --- | --- | --- | --- |
+| `TOPAL-REQ-SYSTEMS-REGION-ACTION-001`, `TOPAL-COMP-SYSTEMS-REGION-ACTION-001`, `TOPAL-SEM-SYSTEMS-REGION-ACTION-001` | `TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001`, `TOPAL-SYSTEMS-REGION-ACTION-OWNER-001`, `TOPAL-SYSTEMS-REGION-ACTION-RETURN-001`, `TOPAL-SYSTEMS-REGION-ACTION-POSITION-001` | [persistent region actions](design/persistent-region-actions.md); actual field/domain, scalar/result ABI, complete costs/cleanup, append/alias/positional and binding controls | specified; implementation and physical qualification pending |

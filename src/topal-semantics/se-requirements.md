@@ -384,3 +384,16 @@ as dynamic obligations, without claiming the model executed source or proved
 unchanged contents. A store may restore knowledge of its overwritten byte.
 Keep source/object and physical reclamation qualification distinct from the
 resource model. See [TK-DEC-271](../../linux-kernel/design/root-borrowed-region-invocation.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-ACTION-001 — Persistent field loan obligations
+
+Model `TOPAL-SYSTEMS-REGION-ACTION-OWNER-001`,
+`TOPAL-SYSTEMS-REGION-ACTION-RETURN-001` and
+`TOPAL-SYSTEMS-REGION-ACTION-POSITION-001` with actual controller-owned field
+loans, same-owner alias effects, exclusive access, fresh code/generation and
+complete reclamation before resumption. Retain the independent Linux position
+reference laws, including append's effective base and positional nonmutation.
+Do not claim opaque helper execution, unchanged source-written bytes or physical
+qualification from a detached bootstrap buffer. Distinguish post-admission
+invariant failure from ordinary Linux errors and rollback. See
+[TK-DEC-272](../../linux-kernel/design/persistent-region-actions.md).

@@ -9554,3 +9554,99 @@ failure SHALL NOT resume the owner. Target qualification SHALL independently
 observe actual helper/source frames, owner bytes, caller preservation and
 complete reclamation before the resumed owner's byte guard. Model, standalone
 native-client, structural/link and physical evidence SHALL remain distinct.
+
+### TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001 — Declared ordinary region action
+
+The separately selected `borrowed-byte-region-action-v1` context SHALL require
+language v0.1 with feature systems and one published ordinary
+`(KernelByteRegion, Nat, Nat) -> Boolean` export. Both scalar inputs SHALL be
+independently admitted in 0..2^64-1 and constructed as ordinary Nat values by
+its private adapter; subsequent arithmetic SHALL retain arbitrary precision.
+Selection SHALL instantiate declared types without a source constructor or an
+executable client. Ordinary application analysis SHALL gain no region vocabulary.
+The byte-member, closure/effect and object-proof obligations of
+`TOPAL-SYSTEMS-REGION-SOURCE-MEMBERS-001` through
+`TOPAL-SYSTEMS-REGION-SOURCE-OBJECT-001` SHALL apply. Only the entry signature,
+scalar/result adapter and distinct context-qualified private ABI differ from
+the Unit profile; its prior contracts SHALL remain unchanged. Complete proofs
+SHALL charge both scalar constructions, all argument/helper evaluation, the
+entry view, runtime/header and native caller. The initial action SHALL retain
+64 selected functions, 256 issued views, 4096 complete stack bytes, 65536 arena
+bytes and the existing 256-bit numeric proof budget. All private runtime,
+primitive, helper/global and hook names SHALL remain unambiguous when linked
+alongside the Unit source object and existing source libraries. Frozen source,
+modules, types/effects, exact code/storage, native transport and complete bounds
+SHALL be bound and checked before atomic publication and boot packaging.
+
+### TOPAL-SYSTEMS-REGION-ACTION-OWNER-001 — Persistent controller field loan
+
+A persistent field action SHALL borrow the actual contained plain-byte field of
+an existing live kernel owner under an exclusive controller-domain grant.
+Service aliases SHALL retain that owner's effect identity and SHALL NOT confer
+plain-memory authority. All controller access SHALL be suspended for the loan;
+all native writers, including close/exec/inactive teardown, SHALL participate in
+the same exclusion domain. The first qualified service SHALL execute serially
+on one processor with interrupts masked, no callbacks, suspension or concurrent
+AP/interrupt access to that domain. Local interrupt masking alone SHALL NOT
+qualify exclusion in a concurrent implementation. Admission SHALL validate live
+owner/field identity, kind, extent/rights, code, fresh nonwrapping generation,
+actual stack context, inactive/clean control and disjoint temporary storage.
+Numeric identities/addresses SHALL validate an existing grant and SHALL NOT
+create one. Source SHALL acquire neither adjacent control/reference-count data
+nor native pointers. MMIO, atomic, device, DMA, firmware, user memory, core Memory,
+resource destruction and AllocationRegion meaning SHALL retain their domains.
+
+### TOPAL-SYSTEMS-REGION-ACTION-RETURN-001 — Repeated action reclamation
+
+Each action SHALL use its own caller-owned arena/control/history and SHALL NOT
+borrow a process numeric context or a still-live root invocation's history.
+Before resuming any owner access, completion SHALL revoke all views, erase and
+read back the entire temporary arena/control/retired helper-stack reserve,
+clear pointer/code/owner bindings and transient pointer-bearing registers,
+restore required caller registers/RSP and transport the actual Boolean result.
+Successful field stores SHALL survive. Live caller data SHALL remain outside
+the erased reserve. Only a separately owned nonwrapping scalar generation
+history MAY persist between calls; last-owner termination SHALL retire it after
+active/inactive process references and loans are gone. Invalid evidence or fatal
+failure SHALL NOT resume the owner. A Boolean false SHALL NOT imply rollback
+of earlier successful stores. Models SHALL distinguish independent reference
+behavior, actual field loans and opaque source effects; a detached copied
+bootstrap buffer or predicted unchanged bytes SHALL NOT qualify source execution
+on persistent storage. Physical evidence SHALL independently observe actual
+source/helper/native caller frames, inputs/result, field bytes, caller
+preservation and complete cleanup before resumption.
+
+### TOPAL-SYSTEMS-REGION-ACTION-POSITION-001 — Source file-position updates
+
+A systems-root `file-position-library` declaration MAY select one action source
+unit/export with interface `borrowed-byte-region-action-v1`, stack limit 4096,
+runtime limit 65536 and no retained source-state reserve. For selected ordinary
+immutable-file reads and volatile regular-file reads/writes, the native service
+SHALL completely admit recoverable request/rights/user-prefix/capacity/clock
+conditions and perform the actual nonempty data transfer before lending the
+existing eight-byte description-position field. It SHALL supply the effective
+transfer base and actual returned prefix length. Append SHALL supply actual EOF,
+even when the old shared position differs. Ordinary source SHALL check complete
+field/value bounds, compute base + count without truncation, admit the signed
+file-offset limit and encode that result into the same little-endian field
+using checked byte operations. The reusable codec SHALL establish complete
+extent/value conditions before its first mutation; read-only refusal SHALL
+leave all bytes unchanged. Generic source type/effect checking SHALL NOT be
+reported as proof of this application-specific arithmetic contract.
+
+The selected native path SHALL perform no duplicate position addition/store or
+native fallback. Subsequent file-size growth SHALL reload the actual updated
+field. Positional reads/writes, zero/EOF/error paths SHALL invoke no action and
+SHALL preserve their existing position contracts. Other native seek/directory
+paths and positional-write size calculations SHALL retain their current laws.
+Without selection, the existing native update SHALL remain a separately tested
+compatibility control. In-place preparation SHALL remain private to the
+exclusive controller operation until source completion/reclamation and owner
+publication; no handler or user execution MAY observe it earlier. A valid
+admitted transfer SHALL require true. False/invalid evidence thereafter SHALL
+be an invariant failure with no owner resumption, new Linux errno or promised
+rollback. Qualification SHALL include append with a different old position,
+shared alias/fork/exec state, negative bounds/rights/body/binding controls,
+noninvocation paths, source absence, terminal active/inactive reclamation and
+the full preceding VFS/BusyBox/root-source cohort against independent reference
+and pinned Linux oracles.
