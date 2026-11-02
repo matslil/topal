@@ -1939,6 +1939,22 @@ Source/object qualification, root ownership, linked code and physical cleanup
 require separate evidence. See
 [root region invocation](../linux-kernel/design/root-borrowed-region-invocation.md).
 
+A separately qualified region-action context may select an ordinary
+`(KernelByteRegion, Nat, Nat) -> Boolean` function over an existing persistent
+kernel field. The controller retains ownership and lends a contained plain-byte
+window only while its entire synchronization domain is exclusive. Descriptor
+aliases retain that same owner for effects; service handles grant no raw memory
+access. Immutable scalar inputs and the Boolean result use explicit private
+transport, with complete bounds and temporary reclamation before owner access
+resumes. The initial file-position application supplies the effective transfer
+base and actual count after admitted data transfer; source performs checked
+arithmetic and mutation of the actual shared field. Positional/zero/EOF/error
+paths do not invoke it. Operation-private preparation stays inaccessible until
+commit; an admitted action failure never resumes the owner or becomes a new
+Linux error. This does not imply rollback of successful stores or new core
+Memory/resource semantics. Existing Unit region profiles retain their contracts.
+See [persistent region actions](../linux-kernel/design/persistent-region-actions.md).
+
 Static placement is semantic evidence such as special-entry text, read-only
 data, mutable data, per-CPU template, bootstrap-reclaimable data, page-aligned
 table, or boot-adapter requirement. Source does not spell object-section names

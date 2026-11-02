@@ -1815,6 +1815,22 @@ generation, hook and bound evidence. Pinned physical qualification shall observe
 actual helper frames/bytes, caller preservation and complete cleanup before
 owner resumption. See [TK-DEC-271](../linux-kernel/design/root-borrowed-region-invocation.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-ACTION-001 — Persistent owner region actions
+
+A qualified ordinary region action shall borrow the actual contained plain-byte
+field of a live persistent kernel owner under complete controller-domain
+exclusion. Immutable scalar inputs and Boolean results shall retain ordinary
+source semantics through checked private transport. Shared aliases shall retain
+one owner identity for effects. Complete lifetime, bounds, code/generation,
+caller preservation and reclamation evidence shall precede owner resumption.
+The initial file-position application shall perform checked source arithmetic
+and byte mutation on actual read/write state, including append's effective base,
+without a duplicate native update; positional and unsuccessful/empty paths shall
+not invoke it. Independent Linux/reference and physical source/field oracles
+shall qualify behavior, bindings and teardown. Existing Unit profiles and core
+Memory/resource meanings shall remain intact. See
+[TK-DEC-272](../linux-kernel/design/persistent-region-actions.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

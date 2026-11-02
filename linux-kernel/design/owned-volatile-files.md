@@ -142,6 +142,11 @@ bytes, extends size only as required and advances the shared position to the
 actual end. Gaps remain zero. Failure cannot consume a page reservation or
 publish a partially installed object/page association. Source/library evaluation,
 if selected, must finish and reclaim temporaries before storage publication.
+Under the [persistent region-action refinement](persistent-region-actions.md),
+in-place payload/position preparation remains private to the exclusive controller
+operation until completion and reclamation. No other handler or user execution
+may observe it. Recoverable admission failures precede mutation; an invariant
+failure after admission never resumes the controller and promises no rollback.
 
 `lseek` set/current/end uses checked signed arithmetic and leaves position
 unchanged on rejection. Seek beyond EOF does not allocate or extend size.
