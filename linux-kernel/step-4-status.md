@@ -9,6 +9,10 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Complete immutable Unit/action region inputs bound independently of code,
+  with exact object-to-linked comparison and changed-literal boot refusal;
+  Unit entry ABI and empty-data functions retain their contracts.
+
 - Ordinary Topal arithmetic and imported byte codecs update actual persistent
   shared file-position fields under an exclusive controller grant. Real syscall
   integration supplies effective base/count, preserves append/alias/fork/exec

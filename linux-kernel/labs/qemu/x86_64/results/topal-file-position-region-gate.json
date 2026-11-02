@@ -1,14 +1,14 @@
 {
   "absent": {
-    "artifact_provenance_sha256": "937f2b731ee3c7a68321840e240610eb218dc8147fdbeb970175f286c636007b",
-    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/246",
-    "boot_image_sha256": "7473ff07fa4acc6e479c62db49a953f101481847c2d42dc183dd13de6f5c5c06",
-    "boot_provenance_sha256": "a132a94a1ea03268f71b40d64580f4022aa491b1915c8b469cd4db4f93fdcb43",
+    "artifact_provenance_sha256": "4342d13cf19c93787f41821db311006bd95e3b30778243c8f0ffdeb21c4a9657",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/247",
+    "boot_image_sha256": "4c775b0cb8364846a77509b13e851f449424324f9a69d92e9bcc3823ee98448c",
+    "boot_provenance_sha256": "90f90a38cb68edf62ebdb6eda722c5cbc11b3d8bb045f79570d6c6014cb0c5e1",
     "boot_resource_bytes": 2037200,
     "boot_resource_member": "init",
     "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
     "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/146",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
     "clean_environment_mode": "maximum",
     "cpu": "qemu64-v1",
     "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -16,7 +16,7 @@
     "initial_user_image_bytes": 12288,
     "initial_user_image_input": "supplied",
     "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-    "linked_kernel_sha256": "9b85487808c749f56ec82438c37b8baa4878c507d47efa59fa9cbbf6debd309e",
+    "linked_kernel_sha256": "e3c34e1779b9ade76c4b5113db86c9995a335a21f61cbd2f960b6d991bb7efab",
     "machine": "pc-q35-10.2",
     "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
     "observations": {
@@ -284,10 +284,10 @@
     "process_exit_status": 35,
     "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
     "process_workload": "true",
-    "provider": "topal.provider.x86_64-qemu-pc-q35/233",
+    "provider": "topal.provider.x86_64-qemu-pc-q35/234",
     "publication": "topalc-target-interface/1",
     "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-    "schema": "topal-kernel-toolchain-gate-qemu/246",
+    "schema": "topal-kernel-toolchain-gate-qemu/247",
     "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
     "serial_input_utf8": "read",
     "source_sha256": "f927bfc27136e73122d156fd0be772f54c09c54457cd4bf39de294897d696a26",
@@ -854,7 +854,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [],
       "captured_storage_unchanged": true,
@@ -2227,7 +2227,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "3ac4823dcf68fe0f2b9a9b3feee69177cd38421ea0e668efce271c9e67924c4f",
+    "linked_kernel_sha256": "269641be7db976601ab46b716e72801d2768a0468c40d4f72758604fb2199460",
     "observation": {
       "calls": [],
       "finalized": false,
@@ -2878,7 +2878,7 @@
         "topal_kernel_region_action_allocate_v1",
         "topal_kernel_region_action_abort_v1"
       ],
-      "llvm_sha256": "3adfc4d02a256700d1f813450495101433765b2bf7cb6d45e4654b8ede8dcdd6",
+      "llvm_sha256": "e7e1b41a2d23343ae27c8bee78c39b7339868a15fc08b8c0de4a76123f218977",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-region-gpr-only/1",
       "maximum_stack_bytes": 1856,
@@ -2895,7 +2895,7 @@
       ],
       "native_abi": "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1",
       "native_export": "topal_kernel_region_action_apply_v1",
-      "object_sha256": "a1790c44f59854495977c05dcca55ba97520096d9cf2a5171a866412712276bc",
+      "object_sha256": "7ccd2e33622e96d9d2529115b5ab4f0a2de8eef8713059ec6330d7d7d64f822d",
       "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
       "read_only_data": [
         {
@@ -3031,12 +3031,12 @@
           "symbol": "topal.region.action.runtime.int.zero"
         }
       ],
-      "retained_llvm_sha256": "61d78bc523652719b830c00067bf1e3634073f370bc1de1264c7462089f33f1c",
+      "retained_llvm_sha256": "0fd0bbabeafcc60e96e4811ba7a24869443d643ae3b2a9c93c6a0a32046c4007",
       "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
       "schema": "topal.kernel-region-action-source-object.x86_64/1",
       "source": "policy/file-position.t",
       "source_export": "advance",
-      "source_name": "/tmp/topal-file-region-nz8t2iki/false-action/library/policy/file-position.t",
+      "source_name": "/tmp/topal-file-region-ywyuk8nq/false-action/library/policy/file-position.t",
       "source_sha256": "5415265d56779877ae6040f4c65c65ff9a610d1ff09eb141cf701a0d65a465bb",
       "stack_limit_bytes": 4096,
       "target": "x86_64-unknown-none"
@@ -3599,7 +3599,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [],
       "captured_storage_unchanged": true,
@@ -4972,7 +4972,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [],
       "captured_storage_unchanged": true,
@@ -6346,7 +6346,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [
         {
@@ -11472,7 +11472,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [],
       "captured_storage_unchanged": true,
@@ -12844,7 +12844,7 @@
         }
       ]
     },
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [
         {
@@ -18089,7 +18089,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [],
       "captured_storage_unchanged": true,
@@ -19461,7 +19461,7 @@
         }
       ]
     },
-    "linked_kernel_sha256": "ccb41e7735d4962b43d2e0213608518252402b067ca9e07e8b50188681a79827",
+    "linked_kernel_sha256": "782152760ffaa32e060cc987d77090dd67004cef5bc00f0ab83102aba447f3d2",
     "observation": {
       "calls": [
         {
@@ -24434,7 +24434,7 @@
       ]
     },
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "d4b1ce62bdd6d0130eb6a061fc743d3f7901b95860dcdf18317c9331ec8be051",
+    "linked_kernel_sha256": "da7693b0618b3ba1aa2835baf8848646c069e375f7933dc4ff7122c058565038",
     "observation": {
       "actual_field": [
         0,
@@ -25103,7 +25103,7 @@
         "topal_kernel_region_action_allocate_v1",
         "topal_kernel_region_action_abort_v1"
       ],
-      "llvm_sha256": "b93fa2b6c9ca568d531884f596c6490e2f87117113ab3c7ac315bf23f59212ef",
+      "llvm_sha256": "bda5c06b5b8f9bf59693cacbbda94bb1df56c2ab45ce2b801570ce30ccf9ad4c",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-region-gpr-only/1",
       "maximum_stack_bytes": 1856,
@@ -25120,7 +25120,7 @@
       ],
       "native_abi": "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1",
       "native_export": "topal_kernel_region_action_apply_v1",
-      "object_sha256": "21f612408497d140f943e4580fd1045a53d0033bea2f3c317db1856201e2665c",
+      "object_sha256": "0cb61634c098c3345b4d03d3d82c514752297a9b6d1891cbab0f478d6bc7ec70",
       "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
       "read_only_data": [
         {
@@ -25262,12 +25262,12 @@
           "symbol": "topal.region.action.runtime.int.zero"
         }
       ],
-      "retained_llvm_sha256": "f36ceb9088eae691ff079518cb74e68c59a3196be24ba63bf28ec0ef0bd1dd23",
+      "retained_llvm_sha256": "8c4f125b331e19896f920e5f20da262bfb22a17ce6408789a2479d35aa9c6338",
       "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
       "schema": "topal.kernel-region-action-source-object.x86_64/1",
       "source": "policy/file-position.t",
       "source_export": "advance",
-      "source_name": "/tmp/topal-file-region-nz8t2iki/wrong-codec/library/policy/file-position.t",
+      "source_name": "/tmp/topal-file-region-ywyuk8nq/wrong-codec/library/policy/file-position.t",
       "source_sha256": "5415265d56779877ae6040f4c65c65ff9a610d1ff09eb141cf701a0d65a465bb",
       "stack_limit_bytes": 4096,
       "target": "x86_64-unknown-none"

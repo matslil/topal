@@ -5,6 +5,12 @@ and `TOPAL-SYSTEMS-REGION-ROOT-{BINDING,CALL,RECLAIM}-001`. Step 4 remains
 in progress; distribution replacement, Docker/Podman and VM hosting remain
 unqualified.
 
+The later [immutable-input qualification](step-4-region-immutable-data.md)
+closes a gap in this first binding: source/object and instruction hashes did
+not independently check the actual linked read-only literals. The execution
+and cleanup observations below retain their historical scope and identities.
+The current Unit entry ABI is preserved with a complete newer private binding.
+
 ## Executed boundary
 
 The [primary root](kernel/arch/x86_64/toolchain-gate.t) selects

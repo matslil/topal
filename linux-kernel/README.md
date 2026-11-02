@@ -11,7 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment executes [ordinary source actions on persistent
+The latest Step 4 increment completes
+[immutable region-source inputs](step-4-region-immutable-data.md): exact linked
+literal binding, preserved Unit/action entry ABIs and pre-boot rejection of
+altered data.
+
+The preceding increment executes [ordinary source actions on persistent
 file positions](step-4-persistent-region-actions.md): actual shared description
 fields, ordinary arbitrary-precision arithmetic and imported byte codecs,
 append/alias/fork/exec behavior, exclusive controller loans and physical

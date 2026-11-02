@@ -16,7 +16,7 @@ digest does not close that gap after linking.
 An independent disassembly identifies the root entry's immutable Nat literal
 for destination byte 1. Changing only its limb from 1 to 2, then correcting the
 outer kernel checksum, leaves source snapshots, instructions, symbols and all
-inner bindings unchanged. Current boot packaging accepts that artifact.
+inner bindings unchanged. The earlier boot packager accepted that artifact.
 Pinned QEMU/GDB then observes the ordinary helper copying to byte 2 and the
 resumed owner's byte-1 guard refusing. This is a confirmed qualification gap,
 with a functional consequence, rather than a proposed change to source meaning.
