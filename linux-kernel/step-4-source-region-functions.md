@@ -6,6 +6,10 @@ over the [borrowed-region model](step-4-borrowed-region-model.md). Kernel-root
 binding, invocation and physical reclamation remain required. Step 4 remains
 in progress.
 
+The subsequent [root integration report](step-4-root-region-invocation.md)
+qualifies actual kernel invocation and reclamation. This report retains the
+standalone stage's historical identities and evidence.
+
 ## Source and object boundary
 
 The qualified compiler context selects one published ordinary

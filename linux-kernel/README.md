@@ -13,10 +13,11 @@ in this phase.
 
 The latest Step 4 increment qualifies [positional file transfers](step-4-positional-file-transfers.md): explicit offsets, unchanged shared positions, Linux append placement and complete owned-storage cleanup.
 
-The latest compiler milestone adds [ordinary source functions over borrowed
-kernel regions](step-4-source-region-functions.md), including imported helpers,
-checked byte operations, object proofs and independent native byte/debug tests.
-Kernel-root binding, physical invocation and reclamation remain required.
+The latest compiler milestone executes [ordinary source helpers on actual
+kernel-owned bytes](step-4-root-region-invocation.md), with imported helper
+frames, suspended ownership, dynamic result guards and physical temporary
+reclamation. The [standalone source/object stage](step-4-source-region-functions.md)
+retains its independent byte and certificate evidence.
 
 ## Current phase
 

@@ -518,3 +518,14 @@ QTest HPET inputs disable the counter for setup writes and restore/verify its
 configuration. Saturated waits are accelerated to the observed target; these
 records do not claim that centuries passed in real time. They retain actual
 counter readback, CPU-register preservation and the complete runtime rollback.
+
+## Ordinary borrowed-region root invocation
+
+Run `python linux-kernel/labs/qemu/x86_64/region_gate.py --write-evidence`
+inside `scripts/run_bounded.py --` with serial Cargo builds. The
+[root report](../../../step-4-root-region-invocation.md) describes the actual
+root/helper/frame and full owner/control/arena/retired-stack checks. The harness
+runs seven physical cases, including changed source, absence and pre-entry
+controls; its record is `results/topal-root-region-gate.json`. It supplements
+the preceding full runtime/BusyBox cohort. A passing region witness alone does
+not qualify distribution replacement, containers or VM hosting.

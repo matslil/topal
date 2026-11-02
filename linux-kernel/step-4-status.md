@@ -9,6 +9,10 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Ordinary effectful Topal byte helpers on actual root-owned storage, suspended
+  owner access, dynamic output guards and complete arena/control/retired-stack
+  erasure before owner resumption, with physical debugger/refusal evidence.
+
 - Positional pread64/pwrite64 over sparse and immutable files, invocation-owned
   offsets, Linux append placement and unchanged shared description positions.
 - Named RAM files with creation/exclusive/truncating opens, independent positions,
@@ -73,23 +77,22 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
-The next compiler milestone is ordinary effectful functions over
-[borrowed kernel regions](design/borrowed-kernel-regions.md). Its
-[model foundation](step-4-borrowed-region-model.md) validates scoped views,
-aliases, nested calls and owner resumption over the existing storage resource.
-The [source/object stage](step-4-source-region-functions.md) now compiles ordinary
-imported helpers with checked byte operations, transitive owner effects,
-nonescape, complete bounds and reproducible inspected object certificates.
-Independent native byte/debug tests qualify that standalone boundary. Kernel-root
-binding, physical invocation and reclamation remain required; this is not an
-additional executed kernel capability in the list above.
+Ordinary effectful functions now execute over actual
+[borrowed kernel regions](design/borrowed-kernel-regions.md). The
+[model foundation](step-4-borrowed-region-model.md) and
+[source/object stage](step-4-source-region-functions.md) lead to the
+[root invocation report](step-4-root-region-invocation.md): actual owner bytes,
+ordinary helper frames, dedicated root hooks and physical cleanup. Broader
+persistent ownership and kernel subsystems still need implementation and
+qualification; the initial root profile admits one synchronous 64-byte loan.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Ordinary borrowed-byte helpers with actual root loans and cleanup; finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink, positional transfers and dynamic directory records; no persistent storage, new directories, rename or hard links; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
+| Board descriptions and Device Tree | Interoperate with the DTS-to-DTB toolchain, validate DTB inputs and selected board bindings with provenance (`LK-DT-001`–`004`) | [Research and binding inventory](knowledge/common/device-tree.md); pinned Q35 platform and architecture-provider qualification only; DTB consumption and binding-driven device construction remain |
 | Networking and isolation | Network stack, namespaces, credentials/capabilities, cgroups and other retained UAPI contracts | Research/design plus bounded initial-process views |
 | Reference distribution | Replace the Step 3 kernel and run declared command-line corpus from its ordinary prompt | Toolchain-gate VM and static BusyBox corpus |
 | Containers | Docker and Podman acceptance in the replacement-kernel VM | Reference Linux controls only |
