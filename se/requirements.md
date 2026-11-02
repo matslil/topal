@@ -1802,6 +1802,19 @@ export map, and digest before native linking. It shall record the one selected
 slice in artifact metadata and reject a slice which adds a C/C++ runtime or
 another Topal dynamic-library dependency.
 
+## TOPAL-REQ-SYSTEMS-REGION-ROOT-001 — Physical root region invocation
+
+The qualified systems root shall lend an existing live bootstrap-region owner
+to its declared ordinary region library through explicit bounded temporary
+storage and stack obligations. Owner access shall resume only after complete
+view, arena, retired-stack and code/address-binding reclamation. Successful
+stores shall persist. Static modeling shall distinguish unknown helper-written
+bytes from known values and record runtime byte guards without claiming helper
+execution. Publication shall bind exact source/modules, object/link, owner,
+generation, hook and bound evidence. Pinned physical qualification shall observe
+actual helper frames/bytes, caller preservation and complete cleanup before
+owner resumption. See [TK-DEC-271](../linux-kernel/design/root-borrowed-region-invocation.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

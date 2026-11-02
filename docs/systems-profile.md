@@ -1928,6 +1928,17 @@ neither their address nor their provider's allocation metadata. Volatile,
 atomic, device, DMA, firmware, and user-memory operations remain distinct typed
 protocols rather than flags on a plain region access.
 
+A qualified bootstrap root may lend a live plain region to its selected
+ordinary region library, suspending owner access until synchronous completion
+and complete temporary reclamation. The initial profile binds one declared
+region-library entry, explicit arena/stack reserves and a nonoverlapping loan
+before atomic derivation. Source stores persist when the owner resumes. The
+ownership model treats opaque helper-written bytes as unknown and records later
+byte guards as runtime obligations rather than predicting unchanged contents.
+Source/object qualification, root ownership, linked code and physical cleanup
+require separate evidence. See
+[root region invocation](../linux-kernel/design/root-borrowed-region-invocation.md).
+
 Static placement is semantic evidence such as special-entry text, read-only
 data, mutable data, per-CPU template, bootstrap-reclaimable data, page-aligned
 table, or boot-adapter requirement. Source does not spell object-section names
