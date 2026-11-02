@@ -9,6 +9,12 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Ordinary Topal arithmetic and imported byte codecs update actual persistent
+  shared file-position fields under an exclusive controller grant. Real syscall
+  integration supplies effective base/count, preserves append/alias/fork/exec
+  behavior and proves temporary cleanup/history retirement; positional/zero/EOF/
+  error paths issue no action.
+
 - Ordinary effectful Topal byte helpers on actual root-owned storage, suspended
   owner access, dynamic output guards and complete arena/control/retired-stack
   erasure before owner resumption, with physical debugger/refusal evidence.
@@ -82,13 +88,16 @@ Ordinary effectful functions now execute over actual
 [model foundation](step-4-borrowed-region-model.md) and
 [source/object stage](step-4-source-region-functions.md) lead to the
 [root invocation report](step-4-root-region-invocation.md): actual owner bytes,
-ordinary helper frames, dedicated root hooks and physical cleanup. Broader
-persistent ownership and kernel subsystems still need implementation and
-qualification; the initial root profile admits one synchronous 64-byte loan.
+ordinary helper frames, dedicated root hooks and physical cleanup. The
+[persistent-field report](step-4-persistent-region-actions.md) adds a real
+subsystem operation: ordinary source arithmetic and a checked codec on the
+actual shared eight-byte position, with repeated invocation/terminal cleanup.
+General persistent allocation, broader ownership and kernel subsystems still
+need implementation and qualification.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |
-| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Ordinary borrowed-byte helpers with actual root loans and cleanup; finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
+| Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Ordinary byte helpers with actual root loans and persistent file-position actions, explicit controller exclusion, complete code/data binding and cleanup; finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
 | Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink, positional transfers and dynamic directory records; no persistent storage, new directories, rename or hard links; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |

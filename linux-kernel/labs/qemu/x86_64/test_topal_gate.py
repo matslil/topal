@@ -1198,16 +1198,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/245")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/246")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/232")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/233")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/245",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/246",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/145",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/146",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1733,7 +1733,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/245")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/246")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

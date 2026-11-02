@@ -50,7 +50,7 @@ def copy_architecture_libraries(directory):
     shutil.copytree(GATE.LINUX_KERNEL/"kernel"/relative, directory/relative)
     # Some counterexamples construct a deliberately small policy tree. Retain
     # independent primary imports while changing only their selected policy.
-    for name in ('file-open-access.t','bootstrap-byte-copy.t'):
+    for name in ('file-open-access.t','bootstrap-byte-copy.t','file-position.t'):
         policy=directory/'policy'/name
         policy.parent.mkdir(parents=True,exist_ok=True)
         policy.write_bytes((GATE.LINUX_KERNEL/'kernel/policy'/name).read_bytes())

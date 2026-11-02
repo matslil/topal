@@ -11,13 +11,14 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment qualifies [positional file transfers](step-4-positional-file-transfers.md): explicit offsets, unchanged shared positions, Linux append placement and complete owned-storage cleanup.
-
-The latest compiler milestone executes [ordinary source helpers on actual
-kernel-owned bytes](step-4-root-region-invocation.md), with imported helper
-frames, suspended ownership, dynamic result guards and physical temporary
-reclamation. The [standalone source/object stage](step-4-source-region-functions.md)
-retains its independent byte and certificate evidence.
+The latest Step 4 increment executes [ordinary source actions on persistent
+file positions](step-4-persistent-region-actions.md): actual shared description
+fields, ordinary arbitrary-precision arithmetic and imported byte codecs,
+append/alias/fork/exec behavior, exclusive controller loans and physical
+reclamation. [Positional transfers](step-4-positional-file-transfers.md) retain
+their unchanged-position contract. The preceding [root-owner milestone](step-4-root-region-invocation.md)
+and [standalone source/object stage](step-4-source-region-functions.md) retain
+their distinct ownership and execution evidence.
 
 ## Current phase
 

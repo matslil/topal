@@ -404,6 +404,6 @@ and deterministic physical execution without admitting a general loader.
 
 ## Ordinary source actions on persistent fields
 
-| Goal and requirements | Rules | Planned evidence | Scope |
+| Goal and requirements | Rules | Evidence | Scope |
 | --- | --- | --- | --- |
-| `TOPAL-REQ-SYSTEMS-REGION-ACTION-001`, `TOPAL-COMP-SYSTEMS-REGION-ACTION-001`, `TOPAL-SEM-SYSTEMS-REGION-ACTION-001` | `TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001`, `TOPAL-SYSTEMS-REGION-ACTION-OWNER-001`, `TOPAL-SYSTEMS-REGION-ACTION-RETURN-001`, `TOPAL-SYSTEMS-REGION-ACTION-POSITION-001` | [persistent region actions](design/persistent-region-actions.md); actual field/domain, scalar/result ABI, complete costs/cleanup, append/alias/positional and binding controls | specified; implementation and physical qualification pending |
+| `TOPAL-REQ-SYSTEMS-REGION-ACTION-001`, `TOPAL-COMP-SYSTEMS-REGION-ACTION-001`, `TOPAL-SEM-SYSTEMS-REGION-ACTION-001` | `TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001`, `TOPAL-SYSTEMS-REGION-ACTION-OWNER-001`, `TOPAL-SYSTEMS-REGION-ACTION-RETURN-001`, `TOPAL-SYSTEMS-REGION-ACTION-POSITION-001` | [persistent region actions](design/persistent-region-actions.md); [qualified report](step-4-persistent-region-actions.md), [actual field source](kernel/policy/file-position.t), [physical record](labs/qemu/x86_64/results/topal-file-position-region-gate.json); real scalar/Boolean/codec calls, controller exclusion, full cleanup/retirement, append/alias/positional and code/data/binding controls | `topal-semantics`, ordinary frontend/compiler and x86-64 provider/QEMU; first persistent field action, general subsystems remain |
