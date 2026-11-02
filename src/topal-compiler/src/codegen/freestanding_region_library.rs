@@ -44,7 +44,7 @@ pub(crate) fn emit_region_kernel_library(
         VALUE_RUNTIME,
         include_str!("../runtime/list_int_layout.ll"),
         FUNDAMENTAL_CONTAINERS_RUNTIME,
-        include_str!("../runtime/kernel_numeric_platform.ll"),
+        include_str!("../runtime/kernel_region_platform.ll"),
         include_str!("../runtime/kernel_regions.ll"),
     ] {
         for line in runtime.lines() {
@@ -75,9 +75,7 @@ pub(crate) fn emit_region_kernel_library(
     );
     module.push_str(REGION_BRIDGE_TAIL);
     module.push_str(&generator.debug.finish());
-    Ok(module
-        .replace("@topal.runtime.", "@topal.region.runtime.")
-        .replace("@topal.platform.", "@topal.region.platform."))
+    Ok(crate::systems_numeric_library::namespace_llvm(&module, "topal.region."))
 }
 
 // The caller's region/control/temporary extents are live, mapped and disjoint.

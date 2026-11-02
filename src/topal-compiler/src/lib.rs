@@ -17,6 +17,11 @@ mod systems_boot_resource;
 mod systems_library;
 mod systems_numeric_library;
 mod systems_region_library;
+#[cfg(test)]
+mod systems_region_root_tests;
+pub use systems_provider_object::root_region::{
+    SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
+};
 pub use systems_region_library::{
     CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
     build_systems_region_library, verify_systems_region_library,

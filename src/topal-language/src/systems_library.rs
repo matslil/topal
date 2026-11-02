@@ -76,6 +76,9 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "file-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1);
             }
+            "interface" if identifier_is(source, &field.value, "borrowed-byte-region-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1);
+            }
             "interface" if identifier_is(source, &field.value, "boot-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1);
             }
@@ -388,10 +391,10 @@ mod tests {
         // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
         let full = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
         let image_start = full.find("  image-library is").unwrap();
-        let image_end = full[image_start..].find("  bootstrap-storage is").unwrap() + image_start;
+        let image_end = full[image_start..].find("  region-library is").unwrap() + image_start;
         let original = format!("{}{}", &full[..image_start], &full[image_end..]);
         let start = original.find("  time-library is").unwrap();
-        let end = original[start..].find("  bootstrap-storage is").unwrap() + start;
+        let end = original[start..].find("  region-library is").unwrap() + start;
         let no_time = format!("{}{}", &original[..start], &original[end..]);
         let declaration = "  image-library is lang systems source-library (\n    source is \"policy/static-elf64-header.t\",\n    export is header-admitted?,\n    interface is static-elf64-header-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
         let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
@@ -483,7 +486,7 @@ mod tests {
             );
         }
         let start = source.find("  kernel-library is").unwrap();
-        let end = source[start..].find("  bootstrap-storage is").unwrap() + start;
+        let end = source[start..].find("  region-library is").unwrap() + start;
         let legacy = format!("{}{}", &source[..start], &source[end..]);
         assert!(
             analyze_systems_for_compiler(&legacy, &target)

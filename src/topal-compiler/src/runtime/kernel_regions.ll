@@ -7,7 +7,7 @@
 
 define internal void @topal.kernel.region.abort() noreturn nounwind noinline {
 entry:
-  call void @topal_kernel_numeric_abort_v1()
+  call void @topal_kernel_region_abort_v1()
   unreachable
 }
 

@@ -10,8 +10,8 @@ use topal_language::compiler::{CompilerKernelRegionEffects, CompilerProgram};
 
 pub(crate) const EXPORT: &str = "topal_kernel_region_apply_v1";
 pub(crate) const PREFIX: &str = "topal.region.";
-const ALLOCATE: &str = "topal_kernel_numeric_allocate_v1";
-const ABORT: &str = "topal_kernel_numeric_abort_v1";
+pub(crate) const ALLOCATE: &str = "topal_kernel_region_allocate_v1";
+pub(crate) const ABORT: &str = "topal_kernel_region_abort_v1";
 
 fn invalid(message: impl Into<String>) -> CompileError {
     CompileError::Tool(format!("E-SYSTEMS-REGION-LIBRARY: {}", message.into()))
@@ -68,6 +68,7 @@ pub struct SystemsRegionLibraryArtifact {
     pub maximum_stack_bytes: u64,
     pub stack_limit_bytes: u64,
     pub imported_hook_stack_bytes: u64,
+    pub imported_hooks: Vec<String>,
     pub functions: Vec<SystemsLibraryFunctionStack>,
 }
 
@@ -268,7 +269,7 @@ pub fn build_systems_region_library(
                         | "topal.region.runtime.container.empty"
                 )
                 && !name.starts_with("topal.region.platform.")
-                && name != "memset"
+                && name != "topal.region.memset"
             {
                 return Err(invalid(format!("unqualified region code {name}")));
             }
@@ -287,7 +288,8 @@ pub fn build_systems_region_library(
     if frames.keys().cloned().collect::<BTreeSet<_>>() != names {
         return Err(invalid("incomplete region stack metadata"));
     }
-    let calls = crate::systems_numeric_library::numeric_object_calls(&file, &names)?;
+    let calls =
+        crate::systems_numeric_library::library_object_calls(&file, &names, &[ALLOCATE, ABORT])?;
     let (maximum_stack_bytes, functions) = bound_stack(&names, &frames, &calls)?;
     let disassembly = run(Command::new(tools.tool_path("llvm-objdump"))
         .args(["-d", "--no-show-raw-insn"])
@@ -296,7 +298,7 @@ pub fn build_systems_region_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let snapshot = crate::systems_library::modules::snapshot(input)?;
     let record = SystemsRegionLibraryArtifact {
-        schema: "topal.kernel-region-source-object.x86_64/1".into(),
+        schema: "topal.kernel-region-source-object.x86_64/2".into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
         source_export: export.into(),
@@ -320,7 +322,7 @@ pub fn build_systems_region_library(
             )
             .collect(),
         runtime_sha256: digest(include_bytes!("runtime/kernel_regions.ll")),
-        platform_hooks_sha256: digest(include_bytes!("runtime/kernel_numeric_platform.ll")),
+        platform_hooks_sha256: digest(include_bytes!("runtime/kernel_region_platform.ll")),
         llvm_sha256: digest(llvm.as_bytes()),
         retained_llvm_sha256: digest(retained_llvm.as_bytes()),
         object_sha256: digest(&bytes),
@@ -334,6 +336,7 @@ pub fn build_systems_region_library(
         maximum_stack_bytes,
         stack_limit_bytes: 4096,
         imported_hook_stack_bytes: 8,
+        imported_hooks: vec![ALLOCATE.into(), ABORT.into()],
         functions,
     };
     Ok(CompiledSystemsRegionLibrary {

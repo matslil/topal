@@ -303,6 +303,14 @@ pub(crate) fn object_calls(
     file: &object::File<'_>,
     names: &BTreeSet<String>,
 ) -> Result<BTreeMap<String, BTreeSet<String>>, CompileError> {
+    object_calls_with_imports(file, names, &[ALLOCATE, ABORT])
+}
+
+pub(crate) fn object_calls_with_imports(
+    file: &object::File<'_>,
+    names: &BTreeSet<String>,
+    imports: &[&str],
+) -> Result<BTreeMap<String, BTreeSet<String>>, CompileError> {
     let mut result = BTreeMap::new();
     for name in names {
         let function = file
@@ -377,7 +385,7 @@ pub(crate) fn object_calls(
                 )?,
                 _ => return Err(invalid("unknown numeric call target")),
             };
-            if !names.contains(&target) && ![ALLOCATE, ABORT].contains(&target.as_str()) {
+            if !names.contains(&target) && !imports.contains(&target.as_str()) {
                 return Err(invalid(format!("unqualified numeric callee {target}")));
             }
             edges.insert(target);

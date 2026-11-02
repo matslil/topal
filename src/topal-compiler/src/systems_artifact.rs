@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/244";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/230";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/245";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/231";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -424,6 +424,10 @@ pub struct SystemsArtifactProvenance {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kernel_library: Option<crate::SystemsSourceLibraryArtifact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub region_runtime: Option<crate::SystemsRootRegionBinding>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub dispatch_library: Option<crate::SystemsNumericLibraryArtifact>,
@@ -575,6 +579,7 @@ pub fn publish_x86_64_systems_artifact_with_source_library(
 /// Explicit immutable inputs for each policy selected by a systems root.
 #[derive(Clone, Copy, Default)]
 pub struct SystemsKernelLibraries<'a> {
+    pub region: Option<&'a crate::SystemsSourceLibraryInput>,
     pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
@@ -601,6 +606,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
         initial_user_image,
         static_user_image,
         SystemsKernelLibraries {
+            region: None,
             policy: source_library,
             time: time_library,
             image: None,
@@ -624,12 +630,16 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
     let SystemsKernelLibraries {
+        region: region_library,
         policy: source_library,
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if program.region_library.is_some() != region_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-ROOT: declaration requires its matching explicit region source snapshot".into()));
+    }
     if program.process_identity_library.is_some() != process_identity_library.is_some() {
         return Err(CompileError::Tool("E-SYSTEMS-LIBRARY: declared process identity import requires its matching explicit source snapshot".into()));
     }
@@ -684,6 +694,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         image_library,
         dispatch_library,
         process_identity_library,
+        region_library,
         &stage,
     );
     let record = match result {
@@ -726,6 +737,7 @@ fn publish_in_stage(
     image_library: Option<&crate::SystemsSourceLibraryInput>,
     dispatch_library: Option<&crate::SystemsSourceLibraryInput>,
     process_identity_library: Option<&crate::SystemsSourceLibraryInput>,
+    region_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -742,6 +754,24 @@ fn publish_in_stage(
         .zip(source_library)
         .map(|(requirement, input)| {
             crate::systems_library::build_source_library(requirement, input, tools, &work)
+        })
+        .transpose()?;
+    let region = program
+        .region_library
+        .as_ref()
+        .zip(region_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-ROOT: source path does not match the declared entry".into(),
+                ));
+            }
+            crate::systems_region_library::build_systems_region_library(
+                input,
+                &requirement.export,
+                tools,
+                &work,
+            )
         })
         .transpose()?;
     if program.time_library.is_some()
@@ -784,6 +814,16 @@ fn publish_in_stage(
         })
         .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    let region_runtime = region
+        .as_ref()
+        .map(|region| {
+            crate::systems_provider_object::root_region::inspect_linked(
+                &linked.kernel,
+                &region.record,
+                plan.bootstrap_placement.capacity_bytes,
+            )
+        })
+        .transpose()?;
     if let Some(identity) = &identity_numeric {
         crate::systems_numeric_library::inspect_linked_numeric_library(
             &linked.kernel,
@@ -857,6 +897,42 @@ fn publish_in_stage(
         static_user_image,
         placements,
     )?;
+    if let Some(region) = region {
+        for (name, bytes) in [
+            ("region-library.t", region.source.as_bytes()),
+            ("region-library.ll", region.llvm.as_bytes()),
+            (
+                "region-library.retained.ll",
+                region.retained_llvm.as_bytes(),
+            ),
+            ("region-library.o", region.object.as_slice()),
+            (
+                "region-library.modules.json",
+                region.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write region source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-region-source:{}", region.record.source),
+            sha256: region.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(region.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-region-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.region_library = Some(region.record);
+        record.region_runtime = region_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
     if let Some(library) = library {
         for (name, bytes) in [
             ("kernel-library.t", library.source.as_bytes()),
@@ -2816,6 +2892,11 @@ fn build_linked_outputs(
             .arg("root.o")
             .arg("provider.o")
             .args(
+                work.join("kernel-region.o")
+                    .is_file()
+                    .then_some("kernel-region.o"),
+            )
+            .args(
                 work.join("time-library.o")
                     .is_file()
                     .then_some("time-library.o"),
@@ -2951,6 +3032,8 @@ fn artifact_provenance(
         placements,
         semantic_trace: semantic_trace(program)?,
         kernel_library: None,
+        region_library: None,
+        region_runtime: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,
@@ -4068,7 +4151,9 @@ struct PendingRelocation {
 }
 
 #[derive(Clone, Copy)]
-enum NumericRootDependency {
+enum RootLibraryDependency {
+    RegionApply,
+    RegionFinalize,
     Code,
     ImageCode,
     DispatchCode,
@@ -4081,6 +4166,8 @@ enum NumericRootDependency {
 
 #[derive(Default)]
 struct RootEncoder {
+    bootstrap_capacity: u64,
+    region_library: bool,
     source_bound_library: bool,
     source_library_export: &'static str,
     numeric_library: bool,
@@ -4090,7 +4177,7 @@ struct RootEncoder {
     process_identity_library: bool,
     retained_identity: bool,
     structured_identity: bool,
-    numeric_relocations: Vec<(u64, NumericRootDependency)>,
+    library_relocations: Vec<(u64, RootLibraryDependency)>,
     source_library_relocations: Vec<u64>,
     bytes: Vec<u8>,
     relocations: Vec<PendingRelocation>,
@@ -4102,6 +4189,7 @@ struct RootEncoder {
     translation: RootTranslationState,
     critical: RootCriticalState,
     bootstrap_region_offset: Option<u64>,
+    bootstrap_region_bytes: Option<u64>,
     atomic_word_offset: Option<u64>,
     local_notification: RootLocalNotificationState,
     pci_configuration_observations: usize,
@@ -6051,9 +6139,9 @@ impl RootEncoder {
             // Nineteen owns the selected store, or is a zero scalar-only pad.
             if self.retained_identity {
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations.push((
+                self.library_relocations.push((
                     self.bytes.len() as u64,
-                    NumericRootDependency::RetainedState,
+                    RootLibraryDependency::RetainedState,
                 ));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
@@ -6061,14 +6149,14 @@ impl RootEncoder {
                 self.bytes.extend_from_slice(&[0x6a, 0]);
             }
             self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-            self.numeric_relocations.push((
+            self.library_relocations.push((
                 self.bytes.len() as u64,
                 if self.structured_identity {
-                    NumericRootDependency::StructuredIdentityCode
+                    RootLibraryDependency::StructuredIdentityCode
                 } else if self.retained_identity {
-                    NumericRootDependency::RetainedIdentityCode
+                    RootLibraryDependency::RetainedIdentityCode
                 } else {
-                    NumericRootDependency::ProcessIdentityCode
+                    RootLibraryDependency::ProcessIdentityCode
                 },
             ));
             self.bytes.extend_from_slice(&[0; 4]);
@@ -6078,8 +6166,8 @@ impl RootEncoder {
             if self.dispatch_library {
                 // The seventeenth code argument replaces the previous pad.
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations
-                    .push((self.bytes.len() as u64, NumericRootDependency::DispatchCode));
+                self.library_relocations
+                    .push((self.bytes.len() as u64, RootLibraryDependency::DispatchCode));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
             } else {
@@ -6087,8 +6175,8 @@ impl RootEncoder {
             }
             if self.image_library {
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations
-                    .push((self.bytes.len() as u64, NumericRootDependency::ImageCode));
+                self.library_relocations
+                    .push((self.bytes.len() as u64, RootLibraryDependency::ImageCode));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
             } else {
@@ -6100,13 +6188,13 @@ impl RootEncoder {
             || self.dispatch_library
             || self.process_identity_library
         {
-            for dependency in [NumericRootDependency::Arena, NumericRootDependency::Code] {
-                if matches!(dependency, NumericRootDependency::Code) && !self.numeric_library {
+            for dependency in [RootLibraryDependency::Arena, RootLibraryDependency::Code] {
+                if matches!(dependency, RootLibraryDependency::Code) && !self.numeric_library {
                     self.bytes.extend_from_slice(&[0x6a, 0]);
                     continue;
                 }
                 self.bytes.extend_from_slice(&[0x48, 0x8d, 0x05]);
-                self.numeric_relocations
+                self.library_relocations
                     .push((self.bytes.len() as u64, dependency));
                 self.bytes.extend_from_slice(&[0; 4]);
                 self.bytes.push(0x50);
@@ -7625,13 +7713,17 @@ impl RootEncoder {
             .checked_add(mask)
             .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?
             & !mask;
-        if request.byte_count == 16_384 {
-            offset = offset.max(4096); // provider-private event state occupies the low page
-        }
+        // The low page belongs to provider event/context control. No ordinary
+        // region (including the 64-byte source witness) may expose those bytes.
+        offset = offset.max(4096);
         self.bootstrap_next_offset = offset
             .checked_add(request.byte_count)
             .ok_or_else(|| CompileError::Tool("bootstrap placement overflows".into()))?;
+        if self.bootstrap_next_offset > self.bootstrap_capacity {
+            return Err(CompileError::Tool("x86 bootstrap placement exceeds the declared pool after private-prefix reservation".into()));
+        }
         self.bootstrap_region_offset = Some(offset);
+        self.bootstrap_region_bytes = Some(request.byte_count);
         Ok(())
     }
 
@@ -7645,6 +7737,37 @@ impl RootEncoder {
         self.bytes.extend_from_slice(&[0xc6, 0x05]);
         self.rip_relative_storage(storage_offset, 1)?;
         self.bytes.push(value);
+        Ok(())
+    }
+
+    fn call_region_dependency(&mut self, dependency: RootLibraryDependency) {
+        self.bytes.push(0xe8);
+        self.library_relocations
+            .push((self.bytes.len() as u64, dependency));
+        self.bytes.extend_from_slice(&[0; 4]);
+    }
+
+    fn apply_region_library(&mut self) -> Result<(), CompileError> {
+        if !self.region_library
+            || self.atomic_word_offset.is_some()
+            || self.bootstrap_region_bytes != Some(64)
+        {
+            return Err(CompileError::Tool(
+                "E-SYSTEMS-REGION-ROOT: invocation requires the selected plain owner".into(),
+            ));
+        }
+        let offset = self.bootstrap_storage_offset(0)?;
+        self.load_bootstrap_storage_address(offset)?;
+        self.bytes.extend_from_slice(&[0x48, 0xbe]);
+        self.bytes.extend_from_slice(&64_u64.to_le_bytes());
+        self.bytes.extend_from_slice(&[0x48, 0xba]);
+        self.bytes.extend_from_slice(
+            &offset
+                .checked_add(1)
+                .ok_or_else(|| CompileError::Tool("root region owner identity overflow".into()))?
+                .to_le_bytes(),
+        );
+        self.call_region_dependency(RootLibraryDependency::RegionApply);
         Ok(())
     }
 
@@ -7686,6 +7809,7 @@ impl RootEncoder {
                 "x86 root lowering encountered release without a live bootstrap region".into(),
             ));
         }
+        self.bootstrap_region_bytes = None;
         Ok(())
     }
 
@@ -7729,7 +7853,7 @@ impl RootEncoder {
                 "x86 root lowering requires the sealed atomic compare/exchange".into(),
             ));
         }
-        self.load_bootstrap_storage_address(8)?;
+        self.load_bootstrap_storage_address(self.bootstrap_storage_offset(8)?)?;
         self.bytes.push(0xbe); // mov esi, imm32
         let expected = u32::try_from(expected)
             .map_err(|_| CompileError::Tool("atomic expected value exceeds x86 imm32".into()))?;
@@ -7754,7 +7878,7 @@ impl RootEncoder {
                 "x86 root lowering requires the sealed acquire atomic load".into(),
             ));
         }
-        self.load_bootstrap_storage_address(8)?;
+        self.load_bootstrap_storage_address(self.bootstrap_storage_offset(8)?)?;
         self.call(ProviderSymbol::AtomicWordLoad);
         self.bytes.extend_from_slice(&[0x48, 0x83, 0xf8, 0x2a]); // cmp rax, 42
         self.jump_to_fatal_if(0x85)
@@ -8606,19 +8730,39 @@ impl RootEncoder {
                     .into(),
             ));
         }
-        let (index, state_offset, stack_offset, entry) = match self.kernel_context {
-            RootKernelContextState::Fresh if self.bootstrap_region_offset == Some(4096) => {
-                (0, 80, 4096, ProviderSymbol::KernelThreadEntry)
+        let stack_offset = self.bootstrap_region_offset.ok_or_else(|| {
+            CompileError::Tool("kernel context requires its live stack owner".into())
+        })?;
+        let stack_end = stack_offset
+            .checked_add(16384)
+            .ok_or_else(|| CompileError::Tool("kernel stack extent overflow".into()))?;
+        if self.bootstrap_region_bytes != Some(16384)
+            || stack_offset < 4096
+            || stack_offset % 16 != 0
+            || stack_end > self.bootstrap_capacity
+            || self
+                .context_stack_offsets
+                .iter()
+                .flatten()
+                .any(|other| stack_offset < *other + 16384 && *other < stack_end)
+        {
+            return Err(CompileError::Tool(
+                "kernel context stack is not a contained disjoint ordinary region".into(),
+            ));
+        }
+        let (index, state_offset, entry) = match self.kernel_context {
+            RootKernelContextState::Fresh if self.context_layout_matches([false, false, false]) => {
+                (0, 80, ProviderSymbol::KernelThreadEntry)
             }
             RootKernelContextState::CooperativeCreated
-                if self.bootstrap_region_offset == Some(20_480) =>
+                if self.context_layout_matches([true, false, false]) =>
             {
-                (1, 112, 20_480, ProviderSymbol::CompletionThreadEntry)
+                (1, 112, ProviderSymbol::CompletionThreadEntry)
             }
             RootKernelContextState::CompletionCreated
-                if self.bootstrap_region_offset == Some(36_864) =>
+                if self.context_layout_matches([true, true, false]) =>
             {
-                (2, 144, 36_864, ProviderSymbol::TerminalThreadEntry)
+                (2, 144, ProviderSymbol::TerminalThreadEntry)
             }
             _ => {
                 return Err(CompileError::Tool(
@@ -8636,6 +8780,7 @@ impl RootEncoder {
         self.rip_relative_symbol(entry, 0)?;
         self.call_checked_bool(ProviderSymbol::CreateKernelContext)?;
         self.context_stack_offsets[index] = self.bootstrap_region_offset.take();
+        self.bootstrap_region_bytes = None;
         self.kernel_context = match index {
             0 => RootKernelContextState::CooperativeCreated,
             1 => RootKernelContextState::CompletionCreated,
@@ -8643,6 +8788,13 @@ impl RootEncoder {
             _ => unreachable!("closed context index"),
         };
         Ok(())
+    }
+
+    fn context_layout_matches(&self, live: [bool; 3]) -> bool {
+        self.context_stack_offsets
+            .iter()
+            .zip(live)
+            .all(|(offset, expected)| offset.is_some() == expected)
     }
 
     fn create_kernel_completion(&mut self) -> Result<(), CompileError> {
@@ -8671,22 +8823,22 @@ impl RootEncoder {
         }
         let (state_offset, next_state) = match self.kernel_context {
             RootKernelContextState::CooperativeDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480), Some(36_864)] =>
+                if self.context_layout_matches([true, true, true]) =>
             {
                 (80, RootKernelContextState::CooperativeYielded)
             }
             RootKernelContextState::TerminalDequeued
-                if self.context_stack_offsets == [Some(4096), Some(20_480), Some(36_864)] =>
+                if self.context_layout_matches([true, true, true]) =>
             {
                 (144, RootKernelContextState::TerminalCompleted)
             }
             RootKernelContextState::CooperativeDequeuedAgain
-                if self.context_stack_offsets == [Some(4096), Some(20_480), None] =>
+                if self.context_layout_matches([true, true, false]) =>
             {
                 (80, RootKernelContextState::CooperativeCompleted)
             }
             RootKernelContextState::CompletionDequeuedAgain
-                if self.context_stack_offsets == [None, Some(20_480), None] =>
+                if self.context_layout_matches([false, true, false]) =>
             {
                 (112, RootKernelContextState::CompletionCompleted)
             }
@@ -8706,7 +8858,7 @@ impl RootEncoder {
     fn transfer_kernel_context_until_deadline(&mut self) -> Result<(), CompileError> {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.kernel_context != RootKernelContextState::CooperativeDequeued
-            || self.context_stack_offsets != [Some(4096), Some(20_480), Some(36_864)]
+            || !self.context_layout_matches([true, true, true])
             || self.deadline != RootDeadlineState::Constructed
             || self.critical != RootCriticalState::Restored
         {
@@ -8738,7 +8890,7 @@ impl RootEncoder {
         if self.role != RootRole::BootstrapWithLocalNotification
             || self.kernel_context != RootKernelContextState::CompletionDequeued
             || self.completion != RootCompletionState::Created
-            || self.context_stack_offsets != [Some(4096), Some(20_480), Some(36_864)]
+            || !self.context_layout_matches([true, true, true])
             || self.critical != RootCriticalState::Restored
         {
             return Err(CompileError::Tool(
@@ -8906,17 +9058,17 @@ impl RootEncoder {
         }
         let (index, state_offset, next_state) = match self.kernel_context {
             RootKernelContextState::TerminalCompleted
-                if self.context_stack_offsets[2] == Some(36_864) =>
+                if self.context_stack_offsets[2].is_some() =>
             {
                 (2, 144, RootKernelContextState::TerminalReclaimed)
             }
             RootKernelContextState::CooperativeCompleted
-                if self.context_stack_offsets[0] == Some(4096) =>
+                if self.context_stack_offsets[0].is_some() =>
             {
                 (0, 80, RootKernelContextState::CooperativeReclaimed)
             }
             RootKernelContextState::CompletionCompleted
-                if self.context_stack_offsets[1] == Some(20_480) =>
+                if self.context_stack_offsets[1].is_some() =>
             {
                 (1, 112, RootKernelContextState::CompletionReclaimed)
             }
@@ -10163,6 +10315,8 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
     }
 
     let mut bootstrap = RootEncoder {
+        bootstrap_capacity: program.bootstrap_storage.capacity_bytes,
+        region_library: program.region_library.is_some(),
         role: RootRole::BootstrapWithLocalNotification,
         source_bound_library: program.kernel_library.is_some(),
         source_library_export: program
@@ -10188,6 +10342,9 @@ fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, Com
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
+    if bootstrap.region_library {
+        bootstrap.call_region_dependency(RootLibraryDependency::RegionFinalize);
+    }
     bootstrap.jump(ProviderSymbol::Fatal);
     append_root(
         &mut object,
@@ -10600,6 +10757,9 @@ fn encode_operations(
                 offset_bytes,
                 value,
             } => encoder.store_bootstrap_byte(*offset_bytes, *value)?,
+            CompilerSystemsOperation::ApplyBootstrapRegionLibrary => {
+                encoder.apply_region_library()?;
+            }
             CompilerSystemsOperation::BootstrapLoadByteEquals {
                 offset_bytes,
                 expected,
@@ -10869,17 +11029,25 @@ fn append_root(
                 })?;
         }
     }
-    for (offset, dependency) in &encoded.numeric_relocations {
+    for (offset, dependency) in &encoded.library_relocations {
         let (name, kind) = match dependency {
-            NumericRootDependency::Code => (
+            RootLibraryDependency::RegionApply => (
+                crate::systems_provider_object::root_region::APPLY,
+                SymbolKind::Text,
+            ),
+            RootLibraryDependency::RegionFinalize => (
+                crate::systems_provider_object::root_region::FINALIZE,
+                SymbolKind::Text,
+            ),
+            RootLibraryDependency::Code => (
                 crate::systems_numeric_library::EXPORT_SYMBOL,
                 SymbolKind::Text,
             ),
-            NumericRootDependency::ImageCode => (
+            RootLibraryDependency::ImageCode => (
                 crate::systems_numeric_library::NumericPolicy::Elf64Header.native_export(),
                 SymbolKind::Text,
             ),
-            NumericRootDependency::DispatchCode => (
+            RootLibraryDependency::DispatchCode => (
                 encoded
                     .dispatch_policy
                     .ok_or_else(|| {
@@ -10888,23 +11056,23 @@ fn append_root(
                     .native_export(),
                 SymbolKind::Text,
             ),
-            NumericRootDependency::ProcessIdentityCode => (
+            RootLibraryDependency::ProcessIdentityCode => (
                 crate::systems_numeric_library::NumericPolicy::ProcessIdentity.native_export(),
                 SymbolKind::Text,
             ),
-            NumericRootDependency::RetainedIdentityCode => (
+            RootLibraryDependency::RetainedIdentityCode => (
                 crate::systems_numeric_library::NumericPolicy::RetainedIdentity.native_export(),
                 SymbolKind::Text,
             ),
-            NumericRootDependency::StructuredIdentityCode => (
+            RootLibraryDependency::StructuredIdentityCode => (
                 crate::systems_numeric_library::NumericPolicy::StructuredIdentity.native_export(),
                 SymbolKind::Text,
             ),
-            NumericRootDependency::RetainedState => (
+            RootLibraryDependency::RetainedState => (
                 crate::systems_numeric_library::STATE_SYMBOL,
                 SymbolKind::Data,
             ),
-            NumericRootDependency::Arena => ("topal_x86_systems_numeric_arena", SymbolKind::Data),
+            RootLibraryDependency::Arena => ("topal_x86_systems_numeric_arena", SymbolKind::Data),
         };
         let symbol = object.add_symbol(Symbol {
             name: name.as_bytes().to_vec(),
@@ -11304,6 +11472,10 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
         .map(|transition| {
             let identity = transition.semantic_identity();
             match transition {
+                CompilerSystemsTransition::BorrowBootstrapRegionForLibrary { generation } => format!("{identity};generation={generation}"),
+                CompilerSystemsTransition::CheckDynamicBootstrapByte { offset_bytes, expected } => format!("{identity};runtime-guard;offset={offset_bytes};expected={expected}"),
+                CompilerSystemsTransition::RequireRegionLibraryReclamation => format!("{identity};reclamation-obligation"),
+                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary => format!("{identity};resume-owner-obligation"),
                 CompilerSystemsTransition::ProvisionBootstrapStorage {
                     capacity_bytes,
                     alignment_bytes,
@@ -12044,6 +12216,25 @@ mod tests {
         .unwrap();
         // The existing structural corpus explicitly exercises the retained
         // closed profile; source-bound publication is covered independently.
+        program.region_library = None;
+        program
+            .bootstrap
+            .handler
+            .effects
+            .retain(|effect| effect != topal_language::compiler::SYSTEMS_REGION_LIBRARY_APPLY);
+        program.bootstrap.handler.operations.retain(|operation| {
+            !matches!(
+                operation,
+                CompilerSystemsOperation::ApplyBootstrapRegionLibrary
+            )
+        });
+        for operation in &mut program.bootstrap.handler.operations {
+            if let CompilerSystemsOperation::BootstrapLoadByteEquals { offset_bytes, .. } =
+                operation
+            {
+                *offset_bytes = 0;
+            }
+        }
         program.kernel_library = None;
         program.time_library = None;
         program.image_library = None;
@@ -12105,6 +12296,7 @@ mod tests {
                 None,
                 None,
                 SystemsKernelLibraries {
+                    region: None,
                     policy: Some(&source),
                     time: Some(&time),
                     image: Some(&image),

@@ -153,6 +153,12 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertIsNone(wrong["runtime"]);self.assertTrue(wrong["native_root_and_provider_unchanged"])
         self.assertEqual(observation["result"],"expected-structured-history-rejection")
         self.assertTrue(all(observation[k] for k in ("independent_history_rejection","published_state_unchanged","native_scalar_result_still_matches")))
+        for name in ("wrap","count","counterexample"):
+            controlled=proof[name]
+            self.assertTrue(controlled["debugger_completed_before_teardown"])
+            self.assertEqual(controlled["stopped_target"]["running"],False)
+            self.assertEqual(controlled["stopped_target"]["status"],"debug")
+        self.assertEqual(proof["counterexample"]["debugger_exit_delay_seconds"],0.2)
         self.assertEqual(observation["calls"][0]["native_result"],dict(allocated=2,next=3))
         self.assertEqual(observation["calls"][0]["source_result"]["state"]["history"]["creations"],2)
         self.assertEqual(observation["calls"][0]["expected"]["state"]["history"]["creations"],1)
@@ -1192,16 +1198,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/244")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/245")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/231")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/232")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/244",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/245",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/144",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/145",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1727,7 +1733,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/244")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/245")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

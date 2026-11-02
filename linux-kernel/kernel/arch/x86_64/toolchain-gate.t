@@ -1201,7 +1201,8 @@ boot is fn (context : BootstrapContext) -> BootstrapDisposition
                                                                   )
                                                                     Ok region then {
                                                                       region byte store (offset-bytes is 0, value is 90)
-                                                                      observed : Nat is region byte load (offset-bytes is 0)
+                                                                      region library apply
+                                                                      observed : Nat is region byte load (offset-bytes is 1)
                                                                       observed = 90
                                                                         true then {
                                                                           atomic is region atomic word create (
@@ -1955,6 +1956,13 @@ lang systems artifact (
     export is process-identity,
     interface is structured-process-identity-v1,
     state-limit-bytes is 4096,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
+  region-library is lang systems source-library (
+    source is "policy/bootstrap-byte-copy.t",
+    export is apply,
+    interface is borrowed-byte-region-v1,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),

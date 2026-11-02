@@ -120,7 +120,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/231";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/232";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -259,6 +259,7 @@ pub enum X86SystemsLowering {
     MonotonicBootstrapAllocate,
     PlainBootstrapRegionStoreByte,
     PlainBootstrapRegionLoadByte,
+    BorrowBootstrapRegionForSource,
     ConsumeBootstrapRegion,
     CompleteBootstrapStorage,
     StaticCoherentDmaBuffer,
@@ -614,6 +615,7 @@ impl X86SystemsLowering {
                 "topal.provider.x86_64.storage.plain-store-byte/1"
             }
             Self::PlainBootstrapRegionLoadByte => "topal.provider.x86_64.storage.plain-load-byte/1",
+            Self::BorrowBootstrapRegionForSource => "topal.provider.x86_64.region-library.borrow/1",
             Self::ConsumeBootstrapRegion => "topal.provider.x86_64.storage.consume-region/1",
             Self::CompleteBootstrapStorage => "topal.provider.x86_64.storage.complete-bootstrap/1",
             Self::StaticCoherentDmaBuffer => "topal.provider.x86_64.dma.static-coherent-buffer/1",
@@ -753,6 +755,7 @@ pub struct SystemsBootstrapPlacementPlan {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct X86SystemsProviderPlan {
+    pub region_library_interface: Option<&'static str>,
     pub source_library_interface: Option<&'static str>,
     pub time_library_interface: Option<&'static str>,
     pub revision: &'static str,
@@ -829,6 +832,10 @@ pub fn plan_x86_64_systems_provider(
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(X86SystemsProviderPlan {
+        region_library_interface: program
+            .region_library
+            .as_ref()
+            .map(|requirement| requirement.interface.as_str()),
         source_library_interface: program
             .kernel_library
             .as_ref()
@@ -1140,6 +1147,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
         SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE => X86SystemsLowering::MonotonicBootstrapAllocate,
         SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE => X86SystemsLowering::PlainBootstrapRegionStoreByte,
         SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE => X86SystemsLowering::PlainBootstrapRegionLoadByte,
+        topal_language::compiler::SYSTEMS_REGION_LIBRARY_APPLY => {
+            X86SystemsLowering::BorrowBootstrapRegionForSource
+        }
         SYSTEMS_BOOTSTRAP_STORAGE_RELEASE => X86SystemsLowering::ConsumeBootstrapRegion,
         SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE => X86SystemsLowering::CompleteBootstrapStorage,
         SYSTEMS_DMA_BUFFER_CREATE => X86SystemsLowering::StaticCoherentDmaBuffer,
@@ -1485,6 +1495,9 @@ fn provider_operation(identity: &str) -> Result<SystemsProviderOperationPlan, Co
                 SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE
             }
             X86SystemsLowering::PlainBootstrapRegionLoadByte => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
+            X86SystemsLowering::BorrowBootstrapRegionForSource => {
+                topal_language::compiler::SYSTEMS_REGION_LIBRARY_APPLY
+            }
             X86SystemsLowering::ConsumeBootstrapRegion => SYSTEMS_BOOTSTRAP_STORAGE_RELEASE,
             X86SystemsLowering::CompleteBootstrapStorage => SYSTEMS_BOOTSTRAP_STORAGE_COMPLETE,
             X86SystemsLowering::StaticCoherentDmaBuffer => SYSTEMS_DMA_BUFFER_CREATE,
@@ -1563,7 +1576,11 @@ mod tests {
         assert_eq!(plan.code_model, "small");
         assert_eq!(plan.bootstrap_placement.capacity_bytes, 65_536);
         assert_eq!(plan.bootstrap_placement.alignment_bytes, 4096);
-        assert_eq!(plan.operations.len(), 152);
+        assert_eq!(plan.operations.len(), 153);
+        assert_eq!(
+            plan.region_library_interface.as_deref(),
+            Some("borrowed-byte-region-v1")
+        );
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_ENQUEUE,

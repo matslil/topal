@@ -5,6 +5,7 @@
 //! provider may consume without reinterpreting syntax.
 
 use std::collections::BTreeMap;
+pub use topal_semantics::SYSTEMS_REGION_LIBRARY_APPLY;
 
 #[path = "systems_library.rs"]
 mod source_library;
@@ -272,6 +273,27 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::Bootstrap,
         Some(&root_entries.bootstrap_storage),
     )?;
+    // Root selection and invocation are one structural source contract. Keep
+    // this check here as well as in semantic validation: callers of the shared
+    // frontend must not receive an unbound operation for later linking.
+    let region_calls = bootstrap
+        .operations
+        .iter()
+        .filter(|operation| {
+            matches!(
+                operation,
+                CompilerSystemsOperation::ApplyBootstrapRegionLibrary
+            )
+        })
+        .count();
+    if region_calls != usize::from(root_entries.region_library.is_some()) {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-REGION-ROOT",
+            statement_span(root),
+            "region-library requires exactly one bootstrap invocation",
+        ));
+    }
     let debug_break = analyze_named_handler(
         &source,
         &functions,
@@ -339,6 +361,7 @@ pub fn analyze_systems_for_compiler(
     Ok(CompilerSystemsProgram {
         target: target.clone(),
         kernel_library: root_entries.kernel_library,
+        region_library: root_entries.region_library,
         time_library: root_entries.time_library,
         image_library: root_entries.image_library,
         dispatch_library: root_entries.dispatch_library,
@@ -502,6 +525,7 @@ fn validate_language_selection(
 
 struct ArtifactEntries {
     kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    region_library: Option<CompilerSystemsSourceLibraryRequirement>,
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
     image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     dispatch_library: Option<CompilerSystemsSourceLibraryRequirement>,
@@ -550,6 +574,7 @@ fn parse_artifact_root(
     }
     let mut bootstrap_storage = None;
     let mut kernel_library = None;
+    let mut region_library = None;
     let mut time_library = None;
     let mut image_library = None;
     let mut dispatch_library = None;
@@ -558,7 +583,20 @@ fn parse_artifact_root(
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "process-identity-library" {
+        if label_text == "region-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
+                || region_library.replace(requirement).is_some()
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-REGION-ROOT",
+                    label,
+                    "region-library requires one borrowed-byte-region-v1 entry",
+                ));
+            }
+            continue;
+        } else if label_text == "process-identity-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if !matches!(
                 requirement.interface,
@@ -698,6 +736,7 @@ fn parse_artifact_root(
     }
     Ok(ArtifactEntries {
         kernel_library,
+        region_library,
         time_library,
         image_library,
         dispatch_library,
@@ -1841,13 +1880,47 @@ fn analyze_bootstrap_region_actions(
             "bootstrap allocation success requires a block using and releasing its region",
         ));
     };
-    let [store, load, comparison, true_rule, false_rule] = statements.as_slice() else {
-        return Err(storage_diagnostic(
-            source,
-            *success_span,
-            "the initial region success action requires byte store, byte load, and an exhaustive equality decision",
-        ));
+    let (store, invocation, load, comparison, true_rule, false_rule) = match statements.as_slice() {
+        [store, load, comparison, true_rule, false_rule] => {
+            (store, None, load, comparison, true_rule, false_rule)
+        }
+        [store, invocation, load, comparison, true_rule, false_rule] => (
+            store,
+            Some(invocation),
+            load,
+            comparison,
+            true_rule,
+            false_rule,
+        ),
+        _ => {
+            return Err(storage_diagnostic(
+                source,
+                *success_span,
+                "region success requires byte store, optional library apply, byte load and an exhaustive equality decision",
+            ));
+        }
     };
+    if let Some(invocation) = invocation {
+        let Statement::Expression(Expression::Application { items, .. }) = invocation else {
+            return Err(storage_diagnostic(
+                source,
+                statement_span(invocation),
+                "region library apply requires a direct source invocation",
+            ));
+        };
+        if request.byte_count != 64
+            || items.len() != 3
+            || !identifier_is(source, &items[0], ok_binding)
+            || !identifier_is(source, &items[1], "library")
+            || !identifier_is(source, &items[2], "apply")
+        {
+            return Err(storage_diagnostic(
+                source,
+                statement_span(invocation),
+                "region library apply requires its live 64-byte plain owner",
+            ));
+        }
+    }
     let (store_offset, value) = parse_region_store(source, store, ok_binding)?;
     let (loaded_name, load_offset) = parse_region_load(source, load, ok_binding)?;
     let comparison = parse_region_comparison(
@@ -1881,12 +1954,15 @@ fn analyze_bootstrap_region_actions(
             offset_bytes: store_offset,
             value,
         },
-        CompilerSystemsOperation::BootstrapLoadByteEquals {
-            offset_bytes: load_offset,
-            expected: comparison.expected,
-            failure_message: comparison.failure_message,
-        },
     ];
+    if invocation.is_some() {
+        operations.push(CompilerSystemsOperation::ApplyBootstrapRegionLibrary);
+    }
+    operations.push(CompilerSystemsOperation::BootstrapLoadByteEquals {
+        offset_bytes: load_offset,
+        expected: comparison.expected,
+        failure_message: comparison.failure_message,
+    });
     operations.extend(comparison.success_operations);
     Ok(CheckedBootstrapRegionDecision {
         operations,
@@ -9227,6 +9303,76 @@ mod tests {
         SOURCE.to_owned()
     }
 
+    #[test]
+    fn root_region_requires_exact_declaration_and_one_owned_call() {
+        // TOPAL-SYSTEMS-REGION-ROOT-BINDING-001, -CALL-001.
+        let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+        let valid = analyze_systems_for_compiler(SOURCE, &target).unwrap();
+        assert_eq!(
+            valid.region_library.as_ref().unwrap().interface,
+            CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
+        );
+        assert_eq!(
+            valid
+                .bootstrap
+                .handler
+                .operations
+                .iter()
+                .filter(|op| matches!(op, CompilerSystemsOperation::ApplyBootstrapRegionLibrary))
+                .count(),
+            1
+        );
+        let start = SOURCE.find("  region-library is").unwrap();
+        let end = start + SOURCE[start..].find("  ),\n").unwrap() + 5;
+        let declaration = &SOURCE[start..end];
+        let call_line = SOURCE
+            .lines()
+            .find(|line| line.trim() == "region library apply")
+            .unwrap();
+        for (case, invalid) in [
+            SOURCE.replace(declaration, ""),
+            SOURCE.replace(call_line, ""),
+            SOURCE.replace(declaration, &format!("{declaration}{declaration}")),
+            SOURCE.replace("borrowed-byte-region-v1", "relative-sleep-deadline-v1"),
+            SOURCE.replacen("region library apply", "other library apply", 1),
+            SOURCE.replace(call_line, &format!("{call_line}\n{call_line}")),
+            SOURCE.replace(declaration, &declaration.replace("4096", "2048")),
+            SOURCE.replace(declaration, &declaration.replace("65536", "32768")),
+            SOURCE.replace(
+                declaration,
+                &declaration.replace(
+                    "    runtime-limit-bytes",
+                    "    state-limit-bytes is 4096,\n    runtime-limit-bytes",
+                ),
+            ),
+            SOURCE.replace(
+                declaration,
+                &declaration.replace("policy/bootstrap-byte-copy.t", "../outside.t"),
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert!(
+                analyze_systems_for_compiler(&invalid, &target).is_err(),
+                "accepted invalid root region source case {case}"
+            );
+        }
+        let absent = SOURCE
+            .replace(declaration, "")
+            .replace(&format!("{call_line}\n"), "")
+            .replace(
+                "observed : Nat is region byte load (offset-bytes is 1)",
+                "observed : Nat is region byte load (offset-bytes is 0)",
+            );
+        assert!(
+            analyze_systems_for_compiler(&absent, &target)
+                .unwrap()
+                .region_library
+                .is_none()
+        );
+    }
+
     fn is_queue_finalization(operation: &CompilerSystemsOperation) -> bool {
         matches!(
             operation,
@@ -9432,6 +9578,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_REGION_LIBRARY_APPLY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
@@ -9942,9 +10089,12 @@ mod tests {
                     offset_bytes: 0,
                     value: 90,
                 },
-                CompilerSystemsTransition::LoadBootstrapByte {
-                    offset_bytes: 0,
-                    value: 90,
+                CompilerSystemsTransition::BorrowBootstrapRegionForLibrary { generation: 1 },
+                CompilerSystemsTransition::RequireRegionLibraryReclamation,
+                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary,
+                CompilerSystemsTransition::CheckDynamicBootstrapByte {
+                    offset_bytes: 1,
+                    expected: 90,
                 },
                 CompilerSystemsTransition::CreateAtomicWord {
                     request: CompilerAtomicWordRequest::initial(),
@@ -10617,7 +10767,7 @@ mod tests {
     }
 
     #[test]
-    fn checks_affine_bootstrap_region_access_and_models_real_byte_contents() {
+    fn checks_affine_bootstrap_region_access_and_dynamic_source_guard() {
         // TOPAL-SYSTEMS-STORAGE-001, TOPAL-SYSTEMS-QUALIFY-001,
         // TOPAL-SYSTEMS-FRAMES-001, TOPAL-SYSTEMS-STATIC-ELF-MAPPING-RESOURCES-001,
         // TOPAL-SYSTEMS-STATIC-ELF-LEAVES-001.
@@ -10626,7 +10776,7 @@ mod tests {
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
-        assert_eq!(program.bootstrap.handler.operations.len(), 422);
+        assert_eq!(program.bootstrap.handler.operations.len(), 423);
         assert_eq!(
             program.bootstrap.handler.effects,
             [
@@ -10702,6 +10852,7 @@ mod tests {
                 SYSTEMS_USER_MAPPING_PROTECT_READ_ONLY,
                 SYSTEMS_USER_MAPPING_STORE_BYTE,
                 SYSTEMS_USER_MAPPING_VERIFY_ENTRY_TRAMPOLINE,
+                SYSTEMS_REGION_LIBRARY_APPLY,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE,
                 SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS,
@@ -10793,9 +10944,9 @@ mod tests {
             })
         );
         assert!(
-            transitions.contains(&CompilerSystemsTransition::LoadBootstrapByte {
-                offset_bytes: 0,
-                value: 90,
+            transitions.contains(&CompilerSystemsTransition::CheckDynamicBootstrapByte {
+                offset_bytes: 1,
+                expected: 90,
             })
         );
         assert!(transitions.contains(&CompilerSystemsTransition::ReleaseBootstrapRegion));

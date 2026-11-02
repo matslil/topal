@@ -321,69 +321,10 @@ impl NumericPolicy {
     /// and metadata strings must retain their exact original spelling.
     pub(crate) fn namespace(self, module: &str) -> String {
         if self == Self::Deadline {
-            return module.to_owned();
+            module.to_owned()
+        } else {
+            namespace_llvm(module, self.private_namespace())
         }
-        let private = self.private_namespace();
-        let mut result = String::with_capacity(module.len());
-        let mut chars = module.chars().peekable();
-        let (mut quoted, mut escaped, mut comment) = (false, false, false);
-        while let Some(ch) = chars.next() {
-            if comment {
-                result.push(ch);
-                if ch == '\n' {
-                    comment = false;
-                }
-                continue;
-            }
-            if quoted {
-                result.push(ch);
-                if escaped {
-                    escaped = false;
-                } else if ch == '\\' {
-                    escaped = true;
-                } else if ch == '"' {
-                    quoted = false;
-                }
-                continue;
-            }
-            if ch == '"' {
-                quoted = true;
-                result.push(ch);
-                continue;
-            }
-            if ch == ';' {
-                comment = true;
-                result.push(ch);
-                continue;
-            }
-            if ch != '@' {
-                result.push(ch);
-                continue;
-            }
-            let mut name = String::new();
-            while chars
-                .peek()
-                .is_some_and(|c| c.is_ascii_alphanumeric() || "._$-".contains(*c))
-            {
-                name.push(chars.next().unwrap());
-            }
-            result.push('@');
-            if let Some(suffix) = name.strip_prefix("topal.runtime.") {
-                result.push_str(private);
-                result.push_str("runtime.");
-                result.push_str(suffix);
-            } else if let Some(suffix) = name.strip_prefix("topal.platform.") {
-                result.push_str(private);
-                result.push_str("platform.");
-                result.push_str(suffix);
-            } else if name == "memset" {
-                result.push_str(private);
-                result.push_str("memset");
-            } else {
-                result.push_str(&name);
-            }
-        }
-        result
     }
     pub(crate) fn canonical_name(self, name: &str) -> String {
         if self != Self::Deadline {
@@ -407,6 +348,69 @@ impl NumericPolicy {
         }
         name.into()
     }
+}
+
+pub(crate) fn namespace_llvm(module: &str, private: &str) -> String {
+    let mut result = String::with_capacity(module.len());
+    let mut chars = module.chars().peekable();
+    let (mut quoted, mut escaped, mut comment) = (false, false, false);
+    while let Some(ch) = chars.next() {
+        if comment {
+            result.push(ch);
+            if ch == '\n' {
+                comment = false;
+            }
+            continue;
+        }
+        if quoted {
+            result.push(ch);
+            if escaped {
+                escaped = false;
+            } else if ch == '\\' {
+                escaped = true;
+            } else if ch == '"' {
+                quoted = false;
+            }
+            continue;
+        }
+        if ch == '"' {
+            quoted = true;
+            result.push(ch);
+            continue;
+        }
+        if ch == ';' {
+            comment = true;
+            result.push(ch);
+            continue;
+        }
+        if ch != '@' {
+            result.push(ch);
+            continue;
+        }
+        let mut name = String::new();
+        while chars
+            .peek()
+            .is_some_and(|c| c.is_ascii_alphanumeric() || "._$-".contains(*c))
+        {
+            name.push(chars.next().unwrap());
+        }
+        result.push('@');
+        if let Some(suffix) = name.strip_prefix("topal.runtime.") {
+            result.push_str(private);
+            result.push_str("runtime.");
+            result.push_str(suffix);
+        } else if let Some(suffix) = name.strip_prefix("topal.platform.") {
+            result.push_str(private);
+            result.push_str("platform.");
+            result.push_str(suffix);
+        } else if name == "memset" {
+            result.push_str(private);
+            result.push_str("memset");
+        } else {
+            result.push_str(&name);
+        }
+    }
+    result
 }
 
 #[cfg(test)]

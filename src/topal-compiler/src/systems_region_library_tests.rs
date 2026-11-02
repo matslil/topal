@@ -120,6 +120,10 @@ fn region_source_checks_dynamic_refusals_rights_and_argument_effect_order() {
     let tools = LlvmTools::discover(None).unwrap();
     let readonly = SOURCE.replace("rights is read-write", "rights is read-only");
     for (source, mode) in [
+        (
+            include_str!("../../../linux-kernel/kernel/policy/bootstrap-byte-copy.t"),
+            "root-copy",
+        ),
         (readonly.as_str(), "readonly-view"),
         (
             include_str!("../../../linux-kernel/labs/qemu/x86_64/region_source_boundaries.t"),

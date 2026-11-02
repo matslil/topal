@@ -73,7 +73,7 @@ pub(crate) fn bound_region_library(
         "{:x}",
         Sha256::digest(include_bytes!("runtime/kernel_regions.ll"))
     );
-    if region_runtime_sha256 != "abb2005ba90c4748c7e2c10a7c6f03854440f4d75126704c0a0aac8526daa8ef" {
+    if region_runtime_sha256 != "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424" {
         return Err(invalid(
             "region primitive allocation certificate requires review",
         ));
@@ -81,10 +81,10 @@ pub(crate) fn bound_region_library(
     let adapter_sha256 = crate::codegen::region_adapter_sha256();
     let hooks_sha256 = format!(
         "{:x}",
-        Sha256::digest(include_bytes!("runtime/kernel_numeric_platform.ll"))
+        Sha256::digest(include_bytes!("runtime/kernel_region_platform.ll"))
     );
     if adapter_sha256 != "4ed4e32d16f151d0ede0bd06e58673a4e502506301c57f2b71ed0b4ada80de1e"
-        || hooks_sha256 != "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0"
+        || hooks_sha256 != "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e"
     {
         return Err(invalid(
             "region adapter/hook allocation certificate requires review",

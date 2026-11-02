@@ -4,6 +4,10 @@ use std::collections::BTreeMap;
 
 #[path = "systems_process_runtime.rs"]
 mod process_runtime;
+#[path = "systems_root_region.rs"]
+pub(crate) mod root_region;
+#[path = "systems_x86_function.rs"]
+mod x86_function;
 use process_runtime::file_descriptions as process_files;
 
 use object::write::{Object, Symbol, SymbolSection};
@@ -23,7 +27,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/223";
+    "topal.provider-object.x86_64-qemu-pc-q35/224";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1937,6 +1941,9 @@ pub fn generate_x86_64_systems_provider_object(
         section: SymbolSection::Section(storage),
         flags: SymbolFlags::None,
     });
+    if program.region_library.is_some() {
+        root_region::append(&mut object, text, plan.bootstrap_placement.capacity_bytes)?;
+    }
     let dma_storage = object.add_section(
         Vec::new(),
         X86_SYSTEMS_DMA_STORAGE_SECTION.as_bytes().to_vec(),
@@ -18055,6 +18062,9 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
     if let Some(interface) = plan.time_library_interface {
         note.push_str(&format!("time-library-interface={interface}\nnumeric-runtime-bytes=65536\nnumeric-stack-reserve=4096\n"));
     }
+    if let Some(interface) = plan.region_library_interface {
+        note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
+    }
     note
 }
 
@@ -18234,13 +18244,20 @@ assert bytes(output) == block[32:]
             file.sections()
                 .flat_map(|section| section.relocations())
                 .count(),
-            0
+            24
         );
         assert_eq!(
             file.symbols()
                 .filter(object::ObjectSymbol::is_undefined)
-                .count(),
-            0
+                .map(|symbol| symbol.name().unwrap())
+                .collect::<Vec<_>>(),
+            [crate::systems_region_library::EXPORT]
+        );
+        let frames = file.section_by_name(".debug_frame").unwrap();
+        // ELF readers classify nonallocated debugger sections as Other.
+        assert_eq!(frames.kind(), SectionKind::Other);
+        assert!(
+            matches!(frames.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & 2 == 0)
         );
         assert_eq!(
             file.section_by_name(X86_SYSTEMS_PROVIDER_TEXT_SECTION)

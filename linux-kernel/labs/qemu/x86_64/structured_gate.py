@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import socket
 import subprocess
 import tempfile
 import threading
@@ -42,12 +43,44 @@ def points(elf,library):
     return dict(before=before[0],clean=clean[0],committed=committed[0],source_call=call[0],source_result=result[0],source=source[0])
 
 
+def stopped_status(path):
+    """Independently verify the controlled guest stays stopped after disconnect."""
+    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
+        client.settimeout(3)
+        client.connect(str(path))
+        with client.makefile('rb') as reader:
+            if 'QMP' not in json.loads(reader.readline(65536)):
+                raise GATE.GateError('structured control lacks a QMP greeting')
+            for command in ('qmp_capabilities','query-status'):
+                client.sendall((json.dumps(dict(execute=command,id=command))+'\n').encode())
+                for _ in range(32):
+                    reply=json.loads(reader.readline(65536))
+                    if reply.get('id')==command:break
+                else:raise GATE.GateError('structured QMP reply was not bounded')
+                if 'error' in reply or 'return' not in reply:
+                    raise GATE.GateError('structured QMP command failed: '+repr(reply))
+            status=reply['return']
+            if status.get('running') is not False or status.get('status')!='debug':
+                raise GATE.GateError('controlled guest resumed after debugger observation: '+repr(status))
+            return status
+
+
 def observe(root,values,artifact,timeout,mode=None,counterexample=False,reordered=False):
     root.mkdir(parents=True,exist_ok=True)
     elf=values[3].parent/"kernel.elf";library=artifact["process_identity_library"]
     if library["interface"]!="structured-process-identity-v1" or library["retained_state"]["maximum_retained_graph_bytes"]!=88:
         raise GATE.GateError("structured witness needs its exact qualified whole-value schema")
     debug,result,failed,script=(root/n for n in ("debug.sock","structured.json","failed.txt","structured.gdb"))
+    controlled=bool(mode or counterexample)
+    qmp=root/'qmp.sock'
+    stopped=[]
+    # detach resumes the target. Controlled observations must leave the guest
+    # stopped; QMP below checks the actual QEMU state after GDB has exited.
+    disconnect='disconnect' if controlled else 'detach'
+    # Exercise the old result-file/teardown race on every wrong-history control.
+    # The guest must remain stopped while its debugger is deliberately delayed.
+    exit_delay=0.2 if counterexample else 0.0
+    pause=f"python import time; time.sleep({exit_delay})\n" if exit_delay else ""
     config=dict(result=str(result),failed=str(failed),elf=str(elf),**points(elf,library),
         readonly=DISPATCH.readonly_sections(elf),export=EXPORT,mode=mode,counterexample=counterexample,
         expected_outer=[1,0] if reordered else [0,1],expected_state=[0,1] if reordered else [1,0],
@@ -65,7 +98,7 @@ import structured_inspect
 structured_inspect.install({config!r})
 end
 continue
-detach
+{pause}{disconnect}
 ''')
     outcome=[]
     def inspect():
@@ -79,10 +112,21 @@ detach
     original_build,original_command,original_observe=GATE.build_image,GATE.qemu_command,GATE.observe_gate
     thread=threading.Thread(target=inspect,daemon=True)
     def command(*args):
-        thread.start();return original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
+        thread.start()
+        result=original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
+        if controlled:result += ["-qmp",f"unix:{qmp},server=on,wait=off"]
+        return result
     def failure():
         if failed.exists():return "structured debugger assertion failed: "+failed.read_text()
-        if (mode or counterexample) and result.exists():return "structured observation stopped before publication"
+        if outcome and outcome!=[0]:
+            failed.write_text('debugger exited unsuccessfully: '+repr(outcome))
+            return failed.read_text()
+        if controlled and result.exists() and outcome==[0]:
+            try:
+                if not stopped:stopped.append(stopped_status(qmp))
+            except BaseException as error:
+                failed.write_text(repr(error));return failed.read_text()
+            return "structured observation stopped before publication"
         return None
     GATE.build_image=lambda *_a,**_k:values;GATE.qemu_command=command
     GATE.observe_gate=lambda *a,**k:original_observe(*a,**k,failure_check=failure)
@@ -98,11 +142,16 @@ detach
             if mode or counterexample:raise GATE.GateError("controlled structured run unexpectedly completed")
     finally:GATE.build_image,GATE.qemu_command,GATE.observe_gate=original_build,original_command,original_observe
     thread.join(timeout=5)
-    if outcome!=[0] or failed.exists() or not result.exists():raise GATE.GateError("structured debugger did not finish: "+repr(outcome))
+    if outcome!=[0] or failed.exists() or not result.exists():
+        log=(root/"debug.log").read_text() if (root/"debug.log").exists() else "no debugger log"
+        raise GATE.GateError("structured debugger did not finish: "+repr(outcome)+"\n"+log)
     observation=json.loads(result.read_text())
     expected="expected-structured-history-rejection" if counterexample else "pass-controlled-"+mode if mode else "pass"
     if observation["result"]!=expected:raise GATE.GateError("structured witness missed its exact result")
-    return dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
+    if controlled and not stopped:raise GATE.GateError('controlled observation lacks stopped-target evidence')
+    record=dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
+    if controlled:record.update(debugger_completed_before_teardown=True,debugger_exit_delay_seconds=exit_delay,stopped_target=stopped[0])
+    return record
 
 
 def verify(timeout=60,write_evidence=False):

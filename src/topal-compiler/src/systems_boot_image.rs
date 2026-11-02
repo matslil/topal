@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/144";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/145";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -365,6 +365,95 @@ fn validate_artifact_input(
             "kernel-library.modules.json",
         )?;
         crate::systems_library::inspect_linked_library(kernel, library)?;
+    }
+    let has_region = file
+        .symbol_by_name(crate::systems_region_library::EXPORT)
+        .is_some();
+    if has_region != artifact.region_library.is_some()
+        || has_region != artifact.region_runtime.is_some()
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-REGION-ROOT: code and complete root binding disagree".into(),
+        ));
+    }
+    for symbol in [
+        crate::systems_provider_object::root_region::APPLY,
+        crate::systems_provider_object::root_region::FINALIZE,
+        crate::systems_provider_object::root_region::ARENA,
+        crate::systems_provider_object::root_region::CONTROL,
+        crate::systems_provider_object::root_region::HISTORY,
+        crate::systems_region_library::ALLOCATE,
+        crate::systems_region_library::ABORT,
+    ] {
+        if file.symbol_by_name(symbol).is_some() != has_region {
+            return Err(CompileError::Tool(
+                "E-SYSTEMS-REGION-ROOT: incomplete or extra native runtime ownership".into(),
+            ));
+        }
+    }
+    if let Some(region) = &artifact.region_library {
+        crate::systems_library::modules::validate_binding(
+            &region.modules,
+            &region.module_snapshot_sha256,
+            &artifact.inputs,
+            &artifact.outputs,
+            "kernel-region-source-module:",
+            "region-library.modules.json",
+        )?;
+        if artifact
+            .inputs
+            .iter()
+            .filter(|input| {
+                input.identity == format!("kernel-region-source:{}", region.source)
+                    && input.sha256 == region.source_sha256
+            })
+            .count()
+            != 1
+        {
+            return Err(CompileError::Tool(
+                "E-SYSTEMS-REGION-ROOT: source identity does not match its owned entry".into(),
+            ));
+        }
+        for (name, digest) in [
+            ("region-library.t", &region.source_sha256),
+            ("region-library.ll", &region.llvm_sha256),
+            ("region-library.retained.ll", &region.retained_llvm_sha256),
+            ("region-library.o", &region.object_sha256),
+        ] {
+            if artifact
+                .outputs
+                .iter()
+                .filter(|output| output.identity == name && &output.sha256 == digest)
+                .count()
+                != 1
+            {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-ROOT: source/object output binding mismatch".into(),
+                ));
+            }
+        }
+        let expected = crate::systems_provider_object::root_region::inspect_linked(
+            kernel,
+            region,
+            artifact.bootstrap_storage_capacity,
+        )?;
+        if artifact.region_runtime.as_ref() != Some(&expected) {
+            return Err(CompileError::Tool(
+                "E-SYSTEMS-REGION-ROOT: root runtime or combined bounds mismatch".into(),
+            ));
+        }
+    } else if artifact
+        .inputs
+        .iter()
+        .any(|input| input.identity.starts_with("kernel-region-source"))
+        || artifact
+            .outputs
+            .iter()
+            .any(|output| output.identity.starts_with("region-library."))
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-REGION-ROOT: orphan source binding".into(),
+        ));
     }
     let identity_interface = artifact
         .process_identity_library
@@ -1160,12 +1249,20 @@ mod tests {
             &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
         )
         .unwrap();
+        let region = program.region_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
         let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             crate::SystemsKernelLibraries {
+                region: region.as_ref(),
                 policy: Some(&source),
                 time: Some(&time),
                 image: Some(&image),

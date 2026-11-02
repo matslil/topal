@@ -22,7 +22,7 @@ mod interface;
 #[cfg(test)]
 #[path = "systems_retained_identity_tests.rs"]
 mod retained_identity_tests;
-pub(crate) use interface::NumericPolicy;
+pub(crate) use interface::{NumericPolicy, namespace_llvm};
 #[path = "systems_numeric_object.rs"]
 mod native_object;
 #[cfg(test)]
@@ -34,7 +34,7 @@ pub use native_object::SystemsNumericLibraryArtifact;
 mod region_bounds;
 #[path = "systems_retained_state_bound.rs"]
 mod retained_state;
-pub(crate) use native_object::object_calls as numeric_object_calls;
+pub(crate) use native_object::object_calls_with_imports as library_object_calls;
 pub(crate) use native_object::{
     build_numeric_library, inspect_linked_numeric_library, inspect_numeric_provider,
 };

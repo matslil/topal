@@ -30,18 +30,18 @@ static const uint64_t owner_identity = UINT64_C(0x1122334455667788);
 #error qualification must supply the conservative source allocation bound
 #endif
 
-__attribute__((noreturn, noinline)) void topal_kernel_numeric_abort_v1(void) {
+__attribute__((noreturn, noinline)) void topal_kernel_region_abort_v1(void) {
     _exit(74);
 }
 
 /* Normal allocation is a leaf over explicitly lent static temporary storage.
    Host termination on a bad contract is a test oracle, not a kernel fatal hook. */
-__attribute__((noinline)) void *topal_kernel_numeric_allocate_v1(uint64_t size) {
+__attribute__((noinline)) void *topal_kernel_region_allocate_v1(uint64_t size) {
     if (!allocator_active || size > UINT64_MAX - 7)
-        topal_kernel_numeric_abort_v1();
+        topal_kernel_region_abort_v1();
     size = (size + 7) & ~UINT64_C(7);
     if (!size || cursor > REGION_SOURCE_LIMIT_BYTES || size > REGION_SOURCE_LIMIT_BYTES - cursor)
-        topal_kernel_numeric_abort_v1();
+        topal_kernel_region_abort_v1();
     void *result = arena + cursor;
     cursor += size;
     if (cursor > peak) peak = cursor;
@@ -121,6 +121,7 @@ int main(int argc, char **argv) {
     const int readonly_view = argc > 1 && strcmp(argv[1], "readonly-view") == 0;
     const int boundaries = argc > 1 && strcmp(argv[1], "boundaries") == 0;
     const int argument_order = argc > 1 && strcmp(argv[1], "argument-order") == 0;
+    const int root_copy = argc > 1 && strcmp(argv[1], "root-copy") == 0;
     const size_t mapping_bytes = 65536 + 128;
     unsigned char *mapping = mmap(NULL, mapping_bytes, PROT_READ | PROT_WRITE,
                                  MAP_SHARED | MAP_ANONYMOUS, -1, 0);
@@ -139,7 +140,8 @@ int main(int argc, char **argv) {
             unsigned char expected[65536 + 128];
             memcpy(expected, mapping, sizeof(expected));
             if (writable && count) {
-                if (boundaries) expected[64] = 7;
+                if (root_copy) { if (count >= 2) expected[65] = expected[64]; }
+                else if (boundaries) expected[64] = 7;
                 else if (argument_order) {
                     expected[64] = count >= 2 ? expected[65] : 0;
                     if (count >= 2) expected[65] = 7;

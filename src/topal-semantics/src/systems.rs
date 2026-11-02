@@ -119,6 +119,7 @@ pub const INITIAL_SYSTEMS_TARGET: &str = "x86_64-unknown-none";
 pub const INITIAL_SYSTEMS_BOARD: &str = "topal-qemu-pc-q35-10.2";
 pub const INITIAL_SYSTEMS_PROFILE: &str = "topal.systems.x86_64-qemu-pc-q35-10.2/1";
 pub const SYSTEMS_CONSOLE_WRITE: &str = "topal.systems.device.console.write/1";
+pub const SYSTEMS_REGION_LIBRARY_APPLY: &str = "topal.systems.region-library.apply/1";
 pub const SYSTEMS_PCI_CONFIGURATION_READ_DWORD: &str =
     "topal.systems.device.pci-configuration.read-dword/1";
 pub const SYSTEMS_PCI_CONFIGURATION_UPDATE_WORD: &str =
@@ -1415,6 +1416,7 @@ pub enum SystemsOperation {
         offset_bytes: u64,
         value: u8,
     },
+    ApplyBootstrapRegionLibrary,
     BootstrapLoadByteEquals {
         offset_bytes: u64,
         expected: u8,
@@ -1737,6 +1739,7 @@ impl SystemsOperation {
             Self::DebugBreak => SYSTEMS_DEBUG_BREAK,
             Self::BootstrapAllocate { .. } => SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE,
             Self::BootstrapStoreByte { .. } => SYSTEMS_BOOTSTRAP_REGION_STORE_BYTE,
+            Self::ApplyBootstrapRegionLibrary => SYSTEMS_REGION_LIBRARY_APPLY,
             Self::BootstrapLoadByteEquals { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             Self::AtomicWordCreate { .. } => SYSTEMS_ATOMIC_WORD_CREATE,
             Self::AtomicCompareExchangeEquals { .. } => SYSTEMS_ATOMIC_COMPARE_EXCHANGE,
@@ -1909,6 +1912,7 @@ pub struct SystemsEntry {
 pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub region_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub dispatch_library: Option<crate::SystemsSourceLibraryRequirement>,
@@ -1926,6 +1930,15 @@ pub struct SystemsProgram {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SystemsTransition {
+    BorrowBootstrapRegionForLibrary {
+        generation: u64,
+    },
+    RequireRegionLibraryReclamation,
+    ResumeBootstrapRegionAfterLibrary,
+    CheckDynamicBootstrapByte {
+        offset_bytes: u64,
+        expected: u8,
+    },
     ProvisionBootstrapStorage {
         capacity_bytes: u64,
         alignment_bytes: u64,
@@ -2418,6 +2431,10 @@ impl SystemsTransition {
     #[must_use]
     pub const fn semantic_identity(&self) -> &'static str {
         match self {
+            Self::BorrowBootstrapRegionForLibrary { .. }
+            | Self::RequireRegionLibraryReclamation
+            | Self::ResumeBootstrapRegionAfterLibrary => SYSTEMS_REGION_LIBRARY_APPLY,
+            Self::CheckDynamicBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             Self::ProvisionBootstrapStorage { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::EnterBootstrap => "topal.systems.entry.bootstrap/1",
             Self::DescribeBootMemory => SYSTEMS_BOOT_MEMORY_DESCRIBE,
@@ -2777,6 +2794,28 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         ));
     }
     program.bootstrap_storage.validate()?;
+    let invocation_count = program
+        .bootstrap
+        .handler
+        .operations
+        .iter()
+        .filter(|operation| matches!(operation, SystemsOperation::ApplyBootstrapRegionLibrary))
+        .count();
+    if invocation_count != usize::from(program.region_library.is_some()) {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-REGION-ROOT",
+            "region-library requires exactly one bootstrap invocation",
+        ));
+    }
+    if let Some(library) = &program.region_library {
+        library.validate()?;
+        if library.interface != crate::SystemsSourceLibraryInterface::BorrowedByteRegionV1 {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-REGION-ROOT",
+                "region-library requires borrowed-byte-region-v1",
+            ));
+        }
+    }
     if let Some(library) = &program.kernel_library {
         library.validate()?;
         if !matches!(
@@ -3025,6 +3064,7 @@ fn validate_entry(
                     | SystemsOperation::DebugBreak
                     | SystemsOperation::BootstrapAllocate { .. }
                     | SystemsOperation::BootstrapStoreByte { .. }
+                    | SystemsOperation::ApplyBootstrapRegionLibrary
                     | SystemsOperation::BootstrapLoadByteEquals { .. }
                     | SystemsOperation::AtomicWordCreate { .. }
                     | SystemsOperation::AtomicCompareExchangeEquals { .. }
@@ -6737,7 +6777,19 @@ fn validate_bootstrap_storage_operations(
     let mut context_stacks: Vec<BootstrapRegion> = Vec::new();
     let mut atomic: Option<AtomicWordLocation> = None;
     let mut authority = BootstrapAuthorityState::default();
+    let mut owner_had_atomic = false;
     for (index, operation) in program.bootstrap.handler.operations.iter().enumerate() {
+        match operation {
+            SystemsOperation::BootstrapAllocate { .. } => owner_had_atomic = false,
+            SystemsOperation::AtomicWordCreate { .. } => owner_had_atomic = true,
+            SystemsOperation::ApplyBootstrapRegionLibrary if owner_had_atomic => {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-REGION-ROOT",
+                    "initial source loan must precede atomic derivation",
+                ));
+            }
+            _ => {}
+        }
         let authority_operation = authority.observe(index, operation)?;
         if validate_kernel_context_storage_operation(
             operation,
@@ -6863,7 +6915,7 @@ fn validate_bootstrap_storage_operation(
             *value,
         )?,
         SystemsOperation::BootstrapLoadByteEquals { offset_bytes, .. } => {
-            let _ = storage.load_byte(
+            let _ = storage.known_byte(
                 region.as_ref().ok_or_else(|| {
                     SystemsModelError::new(
                         "E-SYSTEMS-STORAGE-LIFETIME",
@@ -6872,6 +6924,16 @@ fn validate_bootstrap_storage_operation(
                 })?,
                 *offset_bytes,
             )?;
+        }
+        SystemsOperation::ApplyBootstrapRegionLibrary => {
+            let owner = required_region(region.as_ref(), "library apply")?;
+            if owner.byte_count() != 64 {
+                return Err(SystemsModelError::new(
+                    "E-SYSTEMS-REGION-ROOT",
+                    "root region library requires the 64-byte plain owner",
+                ));
+            }
+            storage.opaque_library_effect(owner)?;
         }
         SystemsOperation::BootstrapRelease => {
             let released = region.take().ok_or_else(|| {
@@ -9059,13 +9121,29 @@ fn model_bootstrap_storage_operation(
                 value: *value,
             });
         }
+        SystemsOperation::ApplyBootstrapRegionLibrary => {
+            let generation = storage
+                .opaque_library_effect(required_region(region.as_ref(), "library apply")?)?;
+            transitions.extend([
+                SystemsTransition::BorrowBootstrapRegionForLibrary { generation },
+                SystemsTransition::RequireRegionLibraryReclamation,
+                SystemsTransition::ResumeBootstrapRegionAfterLibrary,
+            ]);
+        }
         SystemsOperation::BootstrapLoadByteEquals {
             offset_bytes,
             expected,
             failure_message,
         } => {
-            let value =
-                storage.load_byte(required_region(region.as_ref(), "load")?, *offset_bytes)?;
+            let owner = required_region(region.as_ref(), "load")?;
+            if storage.known_byte(owner, *offset_bytes)?.is_none() {
+                transitions.push(SystemsTransition::CheckDynamicBootstrapByte {
+                    offset_bytes: *offset_bytes,
+                    expected: *expected,
+                });
+                return Ok(false);
+            }
+            let value = storage.load_byte(owner, *offset_bytes)?;
             transitions.push(SystemsTransition::LoadBootstrapByte {
                 offset_bytes: *offset_bytes,
                 value,
@@ -9115,6 +9193,180 @@ fn required_region<'a>(
 mod tests {
     use super::*;
     use crate::BootstrapStoragePlacement;
+
+    #[test]
+    fn opaque_region_effects_remove_byte_predictions_until_explicit_overwrite() {
+        // TOPAL-SYSTEMS-REGION-ROOT-CALL-001.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 128,
+                alignment_bytes: 8,
+            },
+            "opaque-root",
+        )
+        .unwrap();
+        let request = BootstrapStorageRequest {
+            byte_count: 64,
+            alignment_bytes: 8,
+            placement: BootstrapStoragePlacement::BootstrapReclaimable,
+        };
+        let owner = storage.allocate(request).unwrap();
+        storage.store_byte(&owner, 0, 90).unwrap();
+        assert_eq!(storage.known_byte(&owner, 0).unwrap(), Some(90));
+        assert_eq!(storage.opaque_library_effect(&owner).unwrap(), 1);
+        assert_eq!(storage.known_byte(&owner, 0).unwrap(), None);
+        assert_eq!(storage.known_byte(&owner, 1).unwrap(), None);
+        let before = format!("{storage:?}");
+        assert_eq!(
+            storage.load_byte(&owner, 0).unwrap_err().code,
+            "E-SYSTEMS-STORAGE-UNKNOWN"
+        );
+        assert_eq!(format!("{storage:?}"), before);
+        assert!(storage.known_byte(&owner, 64).is_err());
+        storage.store_byte(&owner, 0, 17).unwrap();
+        assert_eq!(storage.known_byte(&owner, 0).unwrap(), Some(17));
+        assert_eq!(storage.known_byte(&owner, 1).unwrap(), None);
+        storage.atomic_store_word(&owner, 8, 41).unwrap();
+        assert_eq!(storage.atomic_load_word(&owner, 8).unwrap(), 41);
+        assert!(storage.atomic_load_word(&owner, 0).is_err());
+        storage.release(owner).unwrap();
+        let fresh = storage.allocate(request).unwrap();
+        assert_eq!(storage.known_byte(&fresh, 0).unwrap(), Some(0));
+        assert_eq!(storage.opaque_library_effect(&fresh).unwrap(), 2);
+        storage.release(fresh).unwrap();
+        storage.complete_bootstrap().unwrap();
+    }
+
+    #[test]
+    fn root_region_call_records_dynamic_guard_and_cleanup_obligations() {
+        // TOPAL-SYSTEMS-REGION-ROOT-BINDING-001, -CALL-001, -RECLAIM-001.
+        let mut value = program(SystemsDisposition::Resume);
+        value.region_library = Some(crate::SystemsSourceLibraryRequirement {
+            source: "policy/region.t".into(),
+            export: "apply".into(),
+            interface: crate::SystemsSourceLibraryInterface::BorrowedByteRegionV1,
+            stack_limit_bytes: 4096,
+            runtime_limit_bytes: Some(65536),
+            state_limit_bytes: None,
+        });
+        value.bootstrap.handler.operations.extend([
+            SystemsOperation::BootstrapAllocate {
+                request: BootstrapStorageRequest {
+                    byte_count: 64,
+                    alignment_bytes: 8,
+                    placement: BootstrapStoragePlacement::BootstrapReclaimable,
+                },
+            },
+            SystemsOperation::BootstrapStoreByte {
+                offset_bytes: 0,
+                value: 90,
+            },
+            SystemsOperation::ApplyBootstrapRegionLibrary,
+            SystemsOperation::BootstrapLoadByteEquals {
+                offset_bytes: 1,
+                expected: 90,
+                failure_message: "source result mismatch".into(),
+            },
+            SystemsOperation::BootstrapRelease,
+        ]);
+        refresh_bootstrap_effects(&mut value);
+        let trace = model_systems_transitions(&value).unwrap();
+        let position =
+            |predicate: fn(&SystemsTransition) -> bool| trace.iter().position(predicate).unwrap();
+        let borrow = position(|step| {
+            matches!(
+                step,
+                SystemsTransition::BorrowBootstrapRegionForLibrary { .. }
+            )
+        });
+        let cleanup =
+            position(|step| matches!(step, SystemsTransition::RequireRegionLibraryReclamation));
+        let resume =
+            position(|step| matches!(step, SystemsTransition::ResumeBootstrapRegionAfterLibrary));
+        let guard = position(|step| {
+            matches!(
+                step,
+                SystemsTransition::CheckDynamicBootstrapByte {
+                    offset_bytes: 1,
+                    expected: 90
+                }
+            )
+        });
+        assert!(borrow < cleanup && cleanup < resume && resume < guard);
+        assert!(!trace.iter().any(|step| matches!(
+            step,
+            SystemsTransition::LoadBootstrapByte {
+                offset_bytes: 1,
+                ..
+            }
+        )));
+        assert!(!trace.iter().any(|step| matches!(step, SystemsTransition::Fatal { message } if message == "source result mismatch")));
+        let mut missing = value.clone();
+        missing.region_library = None;
+        assert!(validate_systems_program(&missing).is_err());
+        let mut duplicate = value.clone();
+        duplicate
+            .bootstrap
+            .handler
+            .operations
+            .push(SystemsOperation::ApplyBootstrapRegionLibrary);
+        refresh_bootstrap_effects(&mut duplicate);
+        assert!(validate_systems_program(&duplicate).is_err());
+        let mut late = value.clone();
+        let at = late
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|step| matches!(step, SystemsOperation::ApplyBootstrapRegionLibrary))
+            .unwrap();
+        late.bootstrap.handler.operations.splice(
+            at..at,
+            [
+                SystemsOperation::AtomicWordCreate {
+                    request: crate::AtomicWordRequest::initial(),
+                },
+                SystemsOperation::AtomicWordEnd,
+            ],
+        );
+        refresh_bootstrap_effects(&mut late);
+        assert_eq!(
+            validate_systems_program(&late).unwrap_err().code,
+            "E-SYSTEMS-REGION-ROOT"
+        );
+        let index = value
+            .bootstrap
+            .handler
+            .operations
+            .iter()
+            .position(|step| {
+                matches!(
+                    step,
+                    SystemsOperation::BootstrapLoadByteEquals {
+                        offset_bytes: 1,
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        value.bootstrap.handler.operations.insert(
+            index,
+            SystemsOperation::BootstrapStoreByte {
+                offset_bytes: 1,
+                value: 17,
+            },
+        );
+        refresh_bootstrap_effects(&mut value);
+        let trace = model_systems_transitions(&value).unwrap();
+        assert!(trace.iter().any(|step| matches!(step, SystemsTransition::Fatal { message } if message == "source result mismatch")));
+        assert!(!trace.iter().any(|step| matches!(
+            step,
+            SystemsTransition::CheckDynamicBootstrapByte {
+                offset_bytes: 1,
+                ..
+            }
+        )));
+    }
 
     fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
         let target = SystemsTargetSelection::initial_x86_64_qemu();
@@ -9216,6 +9468,7 @@ mod tests {
         SystemsProgram {
             target,
             kernel_library: None,
+            region_library: None,
             time_library: None,
             image_library: None,
             dispatch_library: None,

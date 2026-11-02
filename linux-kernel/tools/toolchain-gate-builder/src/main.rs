@@ -151,12 +151,23 @@ mod tests {
                 },
             ],
         };
+        let region = SystemsSourceLibraryInput {
+            source: "policy/bootstrap-byte-copy.t".into(),
+            source_name: "policy/bootstrap-byte-copy.t".into(),
+            text: include_str!("../../../kernel/policy/bootstrap-byte-copy.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/bytes.t".into(),
+                identity: vec!["support".into(), "bytes".into()],
+                text: include_str!("../../../kernel/support/bytes.t").into(),
+            }],
+        };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
+                region: Some(&region),
                 policy: Some(&source),
                 time: Some(&time),
                 image: Some(&image),

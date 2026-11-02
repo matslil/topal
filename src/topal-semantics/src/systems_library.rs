@@ -14,6 +14,7 @@ pub enum SystemsSourceLibraryInterface {
     ProcessIdentityTransitionV1,
     RetainedProcessIdentityV1,
     StructuredProcessIdentityV1,
+    BorrowedByteRegionV1,
 }
 impl SystemsSourceLibraryInterface {
     #[must_use]
@@ -30,6 +31,7 @@ impl SystemsSourceLibraryInterface {
             Self::ProcessIdentityTransitionV1 => "process-identity-transition-v1",
             Self::RetainedProcessIdentityV1 => "retained-process-identity-v1",
             Self::StructuredProcessIdentityV1 => "structured-process-identity-v1",
+            Self::BorrowedByteRegionV1 => "borrowed-byte-region-v1",
         }
     }
 }
@@ -73,7 +75,8 @@ impl SystemsSourceLibraryRequirement {
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
-                | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1 => {
+                | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
+                | SystemsSourceLibraryInterface::BorrowedByteRegionV1 => {
                     self.stack_limit_bytes == 4096
                         && self.runtime_limit_bytes == Some(65536)
                         && self.state_limit_bytes.is_none()

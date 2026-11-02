@@ -197,12 +197,36 @@ pub(crate) fn validate(
         .iter()
         .map(|m| SourceModule {
             identity: m.identity.clone(),
-            source_name: m.source.clone(),
+            source_name: debug_source_name(input, &m.source),
             source: m.text.clone(),
         })
         .collect::<Vec<_>>();
     modules.sort_by(|a, b| a.identity.cmp(&b.identity));
     Ok(modules)
+}
+
+// Module snapshot paths remain portable and contained. Debug paths resolve
+// against the actual selected library root, rather than the policy subdirectory
+// or the debugger's unrelated current working directory. In-memory callers may
+// supply an independent absolute unit filename; its directory is their root.
+fn debug_source_name(input: &SystemsSourceLibraryInput, module: &str) -> String {
+    let primary = Path::new(&input.source_name);
+    if !primary.is_absolute() {
+        return module.into();
+    }
+    let root = if primary.ends_with(&input.source) {
+        let mut root = primary.to_path_buf();
+        for _ in Path::new(&input.source).components() {
+            root.pop();
+        }
+        root
+    } else {
+        primary
+            .parent()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_path_buf()
+    };
+    root.join(module).to_string_lossy().into_owned()
 }
 
 /// Bound traversal before invoking shared ordinary selection. No dependency
@@ -494,6 +518,27 @@ pub(crate) fn validate_binding(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn debugger_modules_resolve_against_selected_library_root() {
+        // TOPAL-SYSTEMS-SOURCE-MODULES-001: debugger CWD is not a library root.
+        let (_, mut input) = finite();
+        input.source_name = "/selected/kernel/policy/open.t".into();
+        assert_eq!(
+            debug_source_name(&input, "support/logic.t"),
+            "/selected/kernel/support/logic.t"
+        );
+        input.source_name = "/independent/source.t".into();
+        assert_eq!(
+            debug_source_name(&input, "support/logic.t"),
+            "/independent/support/logic.t"
+        );
+        input.source_name = "policy/open.t".into();
+        assert_eq!(
+            debug_source_name(&input, "support/logic.t"),
+            "support/logic.t"
+        );
+    }
+
     fn finite() -> (
         topal_language::compiler::CompilerSystemsSourceLibraryRequirement,
         SystemsSourceLibraryInput,

@@ -200,7 +200,7 @@ def verify(timeout=30, write_evidence=False):
         only = root/"header-only-root.t"
         only_text=text[:start]+text[end:]
         dispatch_start=only_text.index("  dispatch-library is")
-        dispatch_end=only_text.index("  bootstrap-storage is",dispatch_start)
+        dispatch_end=only_text.index("  region-library is",dispatch_start)
         only_text=only_text[:dispatch_start]+only_text[dispatch_end:]
         only.write_text(only_text)
         GATE.SOURCE_PATH = only
