@@ -12233,10 +12233,15 @@ distinct from kernel-root/QEMU integration and full reclamation. See
 
 Implement `TOPAL-SYSTEMS-REGION-ROOT-BINDING-001`,
 `TOPAL-SYSTEMS-REGION-ROOT-CALL-001` and
-`TOPAL-SYSTEMS-REGION-ROOT-RECLAIM-001`. Bind the exact declared ordinary source
+`TOPAL-SYSTEMS-REGION-ROOT-RECLAIM-001` and
+`TOPAL-SYSTEMS-REGION-READONLY-DATA-001`. Bind the exact declared ordinary source
 entry, frozen module closure and inspected object into the root's actual region
 loan and atomic artifact publication. Qualify dedicated root-context temporary
-hooks, disjoint placement, complete bounds and linked code. Resume owner access
+hooks, disjoint placement, complete bounds, linked code and every allocated
+immutable source/runtime input. Qualify complete object data coverage and exact
+linked local identity/extent/alignment/bytes, Unit/action namespace separation,
+valid empty Unit data and corrected-outer-digest literal rejection without
+changing the Unit entry ABI. Resume owner access
 only after complete arena, retired-stack and pointer/code-binding reclamation.
 Preserve source stores and native callers; test actual helper frames and cleanup
 under pinned QEMU. Static owner modeling shall record unknown helper-written

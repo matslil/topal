@@ -9555,6 +9555,46 @@ observe actual helper/source frames, owner bytes, caller preservation and
 complete reclamation before the resumed owner's byte guard. Model, standalone
 native-client, structural/link and physical evidence SHALL remain distinct.
 
+### TOPAL-SYSTEMS-REGION-READONLY-DATA-001 — Complete immutable region inputs
+
+The exact linked code/data obligations for region source objects SHALL include
+all allocated immutable inputs consumed by their source/runtime closure.
+An unlinked object digest, instruction digest or corrected outer image digest
+SHALL NOT substitute for comparing the actual linked immutable bytes. Current
+Unit source objects SHALL use private schema version 3 and root invocation
+bindings version 2; their published Unit signature, native entry ABI, root
+declaration, hooks, effects and resource bounds SHALL retain their prior
+contracts. Action source objects SHALL retain their separately qualified schema
+and ABI while satisfying the same immutable-input obligation.
+
+Object qualification SHALL retain unambiguous local names for compiler-owned
+immutable data in the object's private namespace and record each definition's
+exact nonzero extent, alignment and byte digest. All allocated nonzero immutable
+bytes SHALL be covered. Writable/executable/TLS/foreign data, unsupported data
+relocations, ambiguous or unplaced definitions and truncated/overflowing extents
+SHALL reject. A valid Unit graph with no immutable input SHALL have an empty
+data binding; qualification SHALL prove that absence rather than introducing
+dummy source values. Source/debug strings SHALL retain their ordinary contents.
+
+Publication and boot packaging SHALL require every expected linked definition
+exactly once, with matching local visibility, kind, extent, alignment, allocated
+read-only nonexecutable placement and bytes. Missing, extra, reordered,
+duplicate, foreign-profile or changed bindings SHALL reject. Unit namespace
+closure SHALL exclude the nested action namespace in a combined executable.
+Equivalent immutable definitions MAY share addresses when all individually
+bound extents still contain their exact expected bytes; mutable-owner
+disjointness obligations SHALL remain unchanged. New artifacts SHALL NOT fall
+back to an older incomplete binding.
+
+Qualification SHALL independently change a linked literal while preserving
+source snapshots and instructions and correcting only the outer image digest;
+packaging SHALL reject it. Object replay, legitimate changed-source behavior,
+Unit/action coexistence, empty-data Unit graphs, data/metadata/namespace
+refusals, root and persistent owner execution and complete cleanup SHALL retain
+separate evidence. This rule SHALL NOT grant source addresses, data mutation,
+new core value semantics or stronger qualification to another library profile
+without that profile's own implementation and evidence.
+
 ### TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001 — Declared ordinary region action
 
 The separately selected `borrowed-byte-region-action-v1` context SHALL require

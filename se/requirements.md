@@ -1813,7 +1813,11 @@ bytes from known values and record runtime byte guards without claiming helper
 execution. Publication shall bind exact source/modules, object/link, owner,
 generation, hook and bound evidence. Pinned physical qualification shall observe
 actual helper frames/bytes, caller preservation and complete cleanup before
-owner resumption. See [TK-DEC-271](../linux-kernel/design/root-borrowed-region-invocation.md).
+owner resumption. The exact linked input binding includes immutable source/
+runtime data, independently of instruction and outer image digests; altered
+literals shall reject before packaging even when that outer digest is corrected.
+See [TK-DEC-271](../linux-kernel/design/root-borrowed-region-invocation.md) and
+[TK-DEC-273](../linux-kernel/design/region-immutable-data-bindings.md).
 
 ## TOPAL-REQ-SYSTEMS-REGION-ACTION-001 — Persistent owner region actions
 
