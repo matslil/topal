@@ -299,6 +299,8 @@ Topal or kernel semantics.
 
 | `TK-DEC-272` | run ordinary source actions on persistent shared kernel fields | detached boot witnesses do not qualify subsystem state; old-position deltas break append, and aliases do not grant raw shared mutation | systems-only refinement adopted under standing authorization; [persistent region actions](persistent-region-actions.md) defines controller-domain exclusion, actual field loans, immutable scalar inputs/Boolean results, checked source updates, separate temporary ownership and exact publication; [implementation and physical qualification](../step-4-persistent-region-actions.md) execute actual source scalar/Boolean/codec calls on shared description fields, with complete cleanup, independent append/alias/positional oracles and controlled entry/terminal refusals |
 
+| `TK-DEC-273` | bind actual immutable inputs of Unit region source objects | source/object and instruction hashes omit changed linked literals; a corrected-outer-checksum counterexample changes the actual root helper destination | systems-only hardening of the existing exact code/data obligation; [region immutable-data binding](region-immutable-data-bindings.md) adopts complete named local data coverage and linked/boot comparison while preserving the Unit entry ABI; implementation and fresh qualification pending |
+
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
