@@ -28,7 +28,8 @@ pub use systems_region_library::{
     CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
     SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, build_systems_region_action_library,
     build_systems_region_library, inspect_systems_region_action_data,
-    verify_systems_region_action_library, verify_systems_region_library,
+    inspect_systems_region_read_only_data, verify_systems_region_action_library,
+    verify_systems_region_library,
 };
 mod systems_pipeline;
 mod systems_provider;

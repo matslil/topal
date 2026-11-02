@@ -34,6 +34,7 @@ pub struct SystemsRootRegionBinding {
     pub storage: Vec<SystemsRootRegionStorage>,
     pub code: Vec<SystemsRootRegionCode>,
     pub source_code: Vec<SystemsRootRegionCode>,
+    pub source_data: Vec<crate::SystemsRegionReadOnlyBinding>,
 }
 fn invalid(message: impl Into<String>) -> CompileError {
     CompileError::Tool(format!("E-SYSTEMS-REGION-ROOT: {}", message.into()))
@@ -63,12 +64,11 @@ pub(crate) fn inspect_linked(
         .maximum_stack_bytes
         .checked_add(CALL_ALIGNMENT_BYTES)
         .ok_or_else(|| invalid("combined source/caller stack overflow"))?;
-    if library.schema != "topal.kernel-region-source-object.x86_64/2"
+    if library.schema != "topal.kernel-region-source-object.x86_64/3"
         || library.target != "x86_64-unknown-none"
         || library.data_layout != crate::X86_SYSTEMS_DATA_LAYOUT
         || library.native_export != crate::systems_region_library::EXPORT
         || library.declared_entry != "(KernelByteRegion) -> Unit"
-        || !library.read_only_data.is_empty()
         || library.imported_hooks
             != [
                 crate::systems_region_library::ALLOCATE,
@@ -92,6 +92,10 @@ pub(crate) fn inspect_linked(
         || file.architecture() != object::Architecture::X86_64
     {
         return Err(invalid("region root requires a linked x86-64 executable"));
+    }
+    let source_data = crate::inspect_systems_region_read_only_data(bytes, library)?;
+    for data in &source_data {
+        range(data.address, data.bytes)?;
     }
     let allocation = &library.allocation.numeric;
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
@@ -345,7 +349,7 @@ pub(crate) fn inspect_linked(
         });
     }
     Ok(SystemsRootRegionBinding {
-        schema: "topal.root-region-invocation.x86_64/1".into(),
+        schema: "topal.root-region-invocation.x86_64/2".into(),
         interface: "borrowed-byte-region-v1".into(),
         maximum_source_stack_bytes: library.maximum_stack_bytes,
         caller_alignment_bytes: CALL_ALIGNMENT_BYTES,
@@ -355,5 +359,6 @@ pub(crate) fn inspect_linked(
         storage: owned,
         code: records,
         source_code,
+        source_data,
     })
 }

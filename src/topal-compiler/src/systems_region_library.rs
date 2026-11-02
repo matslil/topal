@@ -14,6 +14,7 @@ use topal_language::compiler::{
 mod data;
 pub use data::{
     SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, inspect_systems_region_action_data,
+    inspect_systems_region_read_only_data,
 };
 
 pub(crate) const EXPORT: &str = "topal_kernel_region_apply_v1";
@@ -383,7 +384,7 @@ fn build_region_profile(
     let snapshot = crate::systems_library::modules::snapshot(input)?;
     let record = SystemsRegionLibraryArtifact {
         schema: match profile {
-            CompilerKernelRegionProfile::Unit => "topal.kernel-region-source-object.x86_64/2",
+            CompilerKernelRegionProfile::Unit => "topal.kernel-region-source-object.x86_64/3",
             CompilerKernelRegionProfile::Action => {
                 "topal.kernel-region-action-source-object.x86_64/1"
             }
@@ -438,10 +439,11 @@ fn build_region_profile(
         imported_hook_stack_bytes: 8,
         imported_hooks: vec![allocate.into(), abort.into()],
         functions,
-        read_only_data: match profile {
-            CompilerKernelRegionProfile::Unit => Vec::new(),
-            CompilerKernelRegionProfile::Action => data::object_data(&bytes, ACTION_PREFIX)?,
-        },
+        read_only_data: data::object_data(
+            &bytes,
+            prefix,
+            profile == CompilerKernelRegionProfile::Unit,
+        )?,
     };
     Ok(CompiledSystemsRegionLibrary {
         source: input.text.clone(),

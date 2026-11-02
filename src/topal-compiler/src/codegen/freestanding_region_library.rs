@@ -91,40 +91,42 @@ pub(crate) fn emit_region_kernel_library(
     module.push_str(&region_bridge_tail(unit.profile));
     module.push_str(&generator.debug.finish());
     let module = crate::systems_numeric_library::namespace_llvm(&module, unit.prefix());
-    Ok(match unit.profile {
-        CompilerKernelRegionProfile::Unit => module,
-        CompilerKernelRegionProfile::Action => {
-            // Named local constants permit exact object-to-linked data binding.
-            // They remain immutable and module-owned; no extra global export.
-            let module = module
-                .lines()
-                .map(|line| {
-                    if line.starts_with('@') {
-                        line.replacen(" = private ", " = internal ", 1)
-                    } else {
-                        line.to_owned()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\n")
-                + "\n";
-            crate::systems_numeric_library::namespace_llvm_symbols(&module, |name| {
-                use crate::systems_region_library as region;
+    // Local named constants retain complete immutable-input provenance without
+    // becoming source-visible addresses or additional public exports.
+    let module = module
+        .lines()
+        .map(|line| {
+            if line.starts_with('@') {
+                line.replacen(" = private ", " = internal ", 1)
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n";
+    Ok(crate::systems_numeric_library::namespace_llvm_symbols(
+        &module,
+        |name| {
+            use crate::systems_region_library as region;
+            if let Some(suffix) = name.strip_prefix(".topal.") {
+                return format!("{}literal.{suffix}", unit.prefix());
+            }
+            if unit.profile == CompilerKernelRegionProfile::Action {
                 match name {
                     region::EXPORT => region::ACTION_EXPORT.into(),
                     region::ALLOCATE => region::ACTION_ALLOCATE.into(),
                     region::ABORT => region::ACTION_ABORT.into(),
                     _ => match name.strip_prefix("topal.kernel.region.") {
                         Some(suffix) => format!("{}primitive.{suffix}", region::ACTION_PREFIX),
-                        None => match name.strip_prefix(".topal.") {
-                            Some(suffix) => format!("{}literal.{suffix}", region::ACTION_PREFIX),
-                            None => name.into(),
-                        },
+                        None => name.into(),
                     },
                 }
-            })
-        }
-    })
+            } else {
+                name.into()
+            }
+        },
+    ))
 }
 
 // The caller's region/control/temporary extents are live, mapped and disjoint.

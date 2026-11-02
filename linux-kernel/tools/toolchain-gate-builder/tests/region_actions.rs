@@ -383,7 +383,7 @@ fn region_action_linked_constants_reject_tampering_independently_of_function_byt
     assert!(
         error
             .to_string()
-            .contains("immutable action data bytes changed"),
+            .contains("immutable region data bytes changed"),
         "{error}"
     );
     for mode in 0..4 {
