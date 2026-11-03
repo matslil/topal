@@ -50,6 +50,10 @@ The process-entry emitter and context-decision checker exceed the ceiling even
 as individual routines. They require explicit helper phases rather than merely
 moving the same oversized item. The large instruction audit must retain all
 checks through named audit phases; its assertion count is not a size budget.
+Normal formatting also exposes the previously compact static-image checker as
+oversized. Its repeated marker witnesses may share one helper only while
+preserving each exact operation, expected text, diagnostic and source span in
+the original check order.
 
 ## Commit stages
 
@@ -64,6 +68,17 @@ checks through named audit phases; its assertion count is not a size budget.
 
 Each stage has its own commit. No normative specification change is proposed.
 The existing initial-plan work remains in the [status ledger](../step-4-status.md).
+
+The checker/model stage preserves the existing lexical modules through flat
+included files. Worker-context parsing delegates the remaining user lifecycle
+to a separate helper, carrying the same owner name and ordered operation
+prefix. The static-image checker shares 83 identical marker checks, retaining
+the exact analyze/compare/diagnostic order and spans. Canonical token/literal
+comparison matches 403 other functions and 131 declarations/imports/macros/
+module gates, with no removed function; the two reviewed parent decompositions
+add only their two private helpers. All 621 language and 173 semantics unit
+tests pass. Extracted included sources remain at most 1949 lines after normal
+formatting. Compiler/provider decomposition and final qualification remain.
 
 ## Verification and evidence reuse
 
