@@ -1849,6 +1849,21 @@ native and VM evidence shall qualify declared counts, actual values/frames,
 rejections, source mutation, caller preservation and complete reclamation.
 See [TK-DEC-275](../linux-kernel/design/framed-region-actions.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-INSTANCE-001 — Independent framed source instances
+
+Qualified framed source objects shall support independently bound instances
+without colliding entries, code/data namespaces or temporary hooks. Instance
+identity shall identify link/caller ownership without conferring authority or
+changing ordinary function, value or effect meanings. Each owning caller shall
+bind exact source/instance/count, code/data, control/storage, native ABI, bounds
+and complete cleanup. Old Unit/action/unscoped-frame contexts shall remain
+independently usable. The first kernel integration shall execute a zero-fact
+Boolean root instance and the existing two-fact persistent-position instance,
+with separate ownership and true-only admitted completion after reclamation.
+Independent native and VM evidence shall cover coexistence, cross-instance
+refusal, actual source/results/bytes, legacy behavior and the full cohort.
+See [TK-DEC-276](../linux-kernel/design/instance-scoped-region-actions.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

@@ -397,3 +397,16 @@ Do not claim opaque helper execution, unchanged source-written bytes or physical
 qualification from a detached bootstrap buffer. Distinguish post-admission
 invariant failure from ordinary Linux errors and rollback. See
 [TK-DEC-272](../../linux-kernel/design/persistent-region-actions.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-INSTANCE-001 — Distinct framed caller domains
+
+Retain independent root and persistent-field ownership domains when both select
+the framed source context. Interface/export/instance labels shall not merge
+owners or grant access. A root framed declaration shall retain the existing
+single synchronous contained loan, exact zero-fact/Boolean expectation and
+opaque source mutation. Source Boolean acceptance and resumed byte checks shall
+remain runtime obligations rather than static predictions. Source false after
+stores shall not imply rollback or owner resumption. Keep Unit and existing
+field contexts usable with their original contracts. Source/object and physical
+reclamation remain separate evidence. See
+[TK-DEC-276](../../linux-kernel/design/instance-scoped-region-actions.md).

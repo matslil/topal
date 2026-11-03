@@ -557,6 +557,19 @@ Older Unit and two-fact action contexts retain their contracts. This changes
 systems qualification and target-private transport, not core function, value,
 Memory, effect or error meaning; see `TK-DEC-275`.
 
+Separate framed source instances may serve independently owned kernel callers.
+The `borrowed-byte-region-instance-action-v1` context keeps earlier context
+selection intact while adding instance-bound qualification.
+An instance binds its source/code/data, native entry/hooks and caller-owned
+temporary/lifetime evidence; its label is link identity rather than authority.
+The same frame ABI and ordinary value/effect meanings apply to each instance.
+The root region caller may select a zero-fact Boolean instance, require true
+after complete temporary cleanup and retain its separate dynamic byte guard.
+The persistent-position caller retains its two facts and owner contract.
+Unit, two-fact action and unscoped framed contexts remain explicit alternatives.
+This adds systems qualification without a core value, allocator or function
+construct; see `TK-DEC-276`.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

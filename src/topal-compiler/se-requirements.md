@@ -12286,3 +12286,19 @@ and actual count and preserve source stores, noncalls, terminal cleanup and
 Linux behavior. Native and VM qualification shall inspect actual frame words,
 ordinary source arguments, independent values/canaries and complete reclamation.
 See [TK-DEC-275](../../linux-kernel/design/framed-region-actions.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-INSTANCE-001 — Instance-bound region source calls
+
+Qualify independent framed instances through ordinary declared-type/module/
+effect lowering and the existing frame ABI. Derive unique entry/hook and
+code/data namespaces from canonical instance identity; bind exact owner/caller
+slot, count, source/object/linked bytes, complete bounds and temporary/history
+storage. Labels shall not create authority or silently select another caller.
+Preserve legacy Unit/action/unscoped-frame representations and reject foreign,
+mixed, missing or null instance-only metadata. Root framed calls shall supply
+zero facts, retain the actual Boolean, reclaim every temporary and require true
+before resuming the real owner. The file-position caller shall retain its two
+facts and Linux contract. Validate same-signature object coexistence, wrong
+instance/code/control refusal, real independent owners and complete native/VM
+cleanup, including root false-after-store and all old contexts. See
+[TK-DEC-276](../../linux-kernel/design/instance-scoped-region-actions.md).
