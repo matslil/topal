@@ -75,6 +75,7 @@ pub(crate) fn build_source_library(
         .arg(&bitcode)
         .arg("-o")
         .arg(&object_path))?;
+    let sections = crate::systems_policy_inputs::prepare(tools, &object_path, "kernel-library")?;
     let bytes = fs::read(&object_path).map_err(|e| invalid(e.to_string()))?;
     let file = ::object::File::parse(bytes.as_slice()).map_err(|e| invalid(e.to_string()))?;
     if file.kind() != ObjectKind::Relocatable
@@ -164,7 +165,7 @@ pub(crate) fn build_source_library(
         .arg(&object_path))?;
     inspect_instructions(&disassembly)?;
     let record = SystemsSourceLibraryArtifact {
-        schema: "topal.kernel-source-library/2".into(),
+        schema: "topal.kernel-source-library/3".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
@@ -184,6 +185,8 @@ pub(crate) fn build_source_library(
         maximum_stack_bytes: maximum,
         stack_limit_bytes: requirement.stack_limit_bytes,
         functions: records,
+        sections,
+        linked_inputs: None,
     };
     Ok(CompiledSourceLibrary {
         module_snapshot: super::modules::snapshot(input)?,
@@ -330,7 +333,7 @@ pub(crate) fn inspect_linked_library(
     let file = ::object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
     let policy = super::finite::FinitePolicy::from_interface(&record.interface)?;
     let export = policy.export();
-    if record.schema != "topal.kernel-source-library/2"
+    if record.schema != "topal.kernel-source-library/3"
         || record.native_export != export
         || record.machine_profile != "x86_64-gpr-only-no-red-zone-acyclic/1"
         || record.stack_limit_bytes != 1024
@@ -343,6 +346,13 @@ pub(crate) fn inspect_linked_library(
     {
         return Err(invalid("incomplete or unqualified linked library binding"));
     }
+    crate::systems_policy_inputs::validate(
+        bytes,
+        "kernel-library",
+        &record.object_sha256,
+        &record.sections,
+        record.linked_inputs.as_ref(),
+    )?;
     for function in &record.functions {
         let symbol = file
             .symbol_by_name(&function.symbol)

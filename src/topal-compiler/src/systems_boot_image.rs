@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/147";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/148";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -338,6 +338,20 @@ fn validate_artifact_input(
         ));
     }
     let file = object::File::parse(kernel).map_err(|e| CompileError::Tool(e.to_string()))?;
+    let slots = [
+        (artifact.kernel_library.is_some(), "kernel-library"),
+        (artifact.time_library.is_some(), "time-library"),
+        (artifact.image_library.is_some(), "image-library"),
+        (artifact.dispatch_library.is_some(), "dispatch-library"),
+        (
+            artifact.process_identity_library.is_some(),
+            "process-identity-library",
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(present, slot)| present.then_some(slot))
+    .collect::<Vec<_>>();
+    crate::systems_policy_inputs::validate_slots(kernel, &slots)?;
     let exports = [
         crate::systems_library::EXPORT_SYMBOL,
         "topal_kernel_file_open_policy_v1",
@@ -356,6 +370,11 @@ fn validate_artifact_input(
         ));
     }
     if let Some(library) = &artifact.kernel_library {
+        crate::systems_policy_inputs::validate_object_output(
+            &artifact.outputs,
+            "kernel-library",
+            &library.object_sha256,
+        )?;
         crate::systems_library::modules::validate_binding(
             &library.modules,
             &library.module_snapshot_sha256,
@@ -565,6 +584,11 @@ fn validate_artifact_input(
             ));
         }
         if let Some(library) = library {
+            crate::systems_policy_inputs::validate_object_output(
+                &artifact.outputs,
+                stem,
+                &library.object_sha256,
+            )?;
             if library.interface != interface || library.native_export != policy.native_export() {
                 return Err(CompileError::Tool(
                     "numeric source binding is in the wrong policy slot".into(),

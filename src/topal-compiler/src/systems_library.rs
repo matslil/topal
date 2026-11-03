@@ -68,6 +68,8 @@ pub struct SystemsSourceLibraryArtifact {
     pub maximum_stack_bytes: u64,
     pub stack_limit_bytes: u64,
     pub functions: Vec<SystemsLibraryFunctionStack>,
+    pub sections: Vec<crate::SystemsPolicySection>,
+    pub linked_inputs: Option<crate::SystemsPolicyLinkedInputs>,
 }
 
 pub(crate) struct CheckedFiniteLibrary {

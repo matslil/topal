@@ -17,6 +17,7 @@ mod systems_boot_resource;
 mod systems_file_region_boot;
 mod systems_library;
 mod systems_numeric_library;
+mod systems_policy_inputs;
 mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
@@ -88,6 +89,9 @@ pub use systems_library::{
 pub use systems_numeric_library::{
     SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRegionAllocationBound,
     SystemsRetainedStateBound,
+};
+pub use systems_policy_inputs::{
+    SystemsPolicyLinkedInputs, SystemsPolicyLinkedSection, SystemsPolicySection,
 };
 pub use systems_provider::{
     SystemsBootstrapPlacementPlan, SystemsProviderOperationPlan, X86_SYSTEMS_DATA_LAYOUT,

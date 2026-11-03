@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/247";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/233";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/248";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/234";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -760,7 +760,7 @@ fn publish_in_stage(
         .map_err(io_error("write provider object", &provider_path))?;
     fs::write(&root_path, root_object).map_err(io_error("write root object", &root_path))?;
 
-    let library = program
+    let mut library = program
         .kernel_library
         .as_ref()
         .zip(source_library)
@@ -814,7 +814,7 @@ fn publish_in_stage(
     {
         crate::systems_numeric_library::inspect_numeric_provider(tools, &provider_path)?;
     }
-    let numeric = program
+    let mut numeric = program
         .time_library
         .as_ref()
         .zip(time_library)
@@ -822,7 +822,7 @@ fn publish_in_stage(
             crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
         })
         .transpose()?;
-    let image_numeric = program
+    let mut image_numeric = program
         .image_library
         .as_ref()
         .zip(image_library)
@@ -830,7 +830,7 @@ fn publish_in_stage(
             crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
         })
         .transpose()?;
-    let dispatch_numeric = program
+    let mut dispatch_numeric = program
         .dispatch_library
         .as_ref()
         .zip(dispatch_library)
@@ -838,7 +838,7 @@ fn publish_in_stage(
             crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
         })
         .transpose()?;
-    let identity_numeric = program
+    let mut identity_numeric = program
         .process_identity_library
         .as_ref()
         .zip(process_identity_library)
@@ -847,6 +847,29 @@ fn publish_in_stage(
         })
         .transpose()?;
     let linked = build_linked_outputs(tools, &work, stage)?;
+    if let Some(library) = library.as_mut() {
+        library.record.linked_inputs = Some(crate::systems_policy_inputs::inspect(
+            &linked.kernel,
+            "kernel-library",
+            &library.record.object_sha256,
+            &library.record.sections,
+        )?);
+    }
+    for (library, slot) in [
+        (numeric.as_mut(), "time-library"),
+        (image_numeric.as_mut(), "image-library"),
+        (dispatch_numeric.as_mut(), "dispatch-library"),
+        (identity_numeric.as_mut(), "process-identity-library"),
+    ] {
+        if let Some(library) = library {
+            library.record.linked_inputs = Some(crate::systems_policy_inputs::inspect(
+                &linked.kernel,
+                slot,
+                &library.record.object_sha256,
+                &library.record.sections,
+            )?);
+        }
+    }
     let file_position_runtime = file_position
         .as_ref()
         .map(|action| {

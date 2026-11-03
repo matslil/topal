@@ -45,6 +45,8 @@ pub struct SystemsNumericLibraryArtifact {
     pub maximum_stack_bytes: u64,
     pub stack_limit_bytes: u64,
     pub functions: Vec<SystemsLibraryFunctionStack>,
+    pub sections: Vec<crate::SystemsPolicySection>,
+    pub linked_inputs: Option<crate::SystemsPolicyLinkedInputs>,
     pub allocation: SystemsNumericAllocationBound,
 }
 pub(crate) struct CompiledNumericLibrary {
@@ -113,6 +115,7 @@ pub(crate) fn build_numeric_library(
         .arg(&bc)
         .arg("-o")
         .arg(&object))?;
+    let sections = crate::systems_policy_inputs::prepare(tools, &object, policy.stem())?;
     let bytes = fs::read(&object).map_err(|e| invalid(e.to_string()))?;
     let file = object::File::parse(bytes.as_slice()).map_err(|e| invalid(e.to_string()))?;
     if file.kind() != ObjectKind::Relocatable || file.architecture() != object::Architecture::X86_64
@@ -247,7 +250,7 @@ pub(crate) fn build_numeric_library(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let retained_llvm = fs::read_to_string(&retained).map_err(|e| invalid(e.to_string()))?;
     let record = SystemsNumericLibraryArtifact {
-        schema: "topal.kernel-numeric-source-library/8".into(),
+        schema: "topal.kernel-numeric-source-library/9".into(),
         interface: requirement.interface.as_str().into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),
@@ -287,6 +290,8 @@ pub(crate) fn build_numeric_library(
         maximum_stack_bytes,
         stack_limit_bytes: requirement.stack_limit_bytes,
         functions: records,
+        sections,
+        linked_inputs: None,
         allocation: checked.allocation,
     };
     Ok(CompiledNumericLibrary {
@@ -464,7 +469,7 @@ pub(crate) fn inspect_linked_numeric_library(
         }
         _ => record.retained_state.is_none(),
     };
-    if record.schema != "topal.kernel-numeric-source-library/8"
+    if record.schema != "topal.kernel-numeric-source-library/9"
         || !tags_valid
         || !fields_valid
         || !state_valid
@@ -498,6 +503,13 @@ pub(crate) fn inspect_linked_numeric_library(
             "incomplete numeric binding or resource certificate",
         ));
     }
+    crate::systems_policy_inputs::validate(
+        bytes,
+        policy.stem(),
+        &record.object_sha256,
+        &record.sections,
+        record.linked_inputs.as_ref(),
+    )?;
     if matches!(
         policy,
         super::NumericPolicy::RetainedIdentity | super::NumericPolicy::StructuredIdentity
