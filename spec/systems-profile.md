@@ -9603,6 +9603,82 @@ observe actual helper/source frames, owner bytes, caller preservation and
 complete reclamation before the resumed owner's byte guard. Model, standalone
 native-client, structural/link and physical evidence SHALL remain distinct.
 
+### TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001 — Declared framed action inputs
+
+A qualified `borrowed-byte-region-framed-action-v1` context MAY select an
+ordinary published `(KernelByteRegion, Nat ... Nat) -> Boolean` entry with
+exactly the caller-declared scalar count N, where 0 <= N <= 16. Declaration-only
+symbolic selection SHALL match the complete signature; it SHALL NOT construct
+source authority, infer an overload, insert ignored facts or reinterpret names.
+Existing ordinary function/module meanings and the closed acyclic, effect,
+nonescape, argument-order and unsupported-form obligations SHALL remain.
+The bound on N SHALL belong to this systems context, not core function types.
+
+Every transported fact SHALL represent a value in 0..2^64-1 as an ordinary Nat.
+Source arithmetic SHALL retain arbitrary precision. The input frame, native
+pointer, count word and target layout SHALL NOT become source constructors,
+addresses or authority. A new framed source-object schema/native ABI SHALL bind
+N explicitly. Old Unit/action schemas and entry ABIs SHALL retain their exact
+contexts and SHALL reject framed-only metadata. A distinct flat private
+namespace SHALL NOT enter the legacy Unit's namespace ownership set.
+
+Complete source/runtime, immutable data, dependency, native instruction and
+resource inspection SHALL remain mandatory. Valid zero-input code-only graphs
+SHALL retain an empty immutable-data binding when actual object/linked
+inspection proves absence; no dummy semantic constant SHALL be introduced.
+Standalone object evidence SHALL NOT grant a live callable region capability.
+
+### TOPAL-SYSTEMS-REGION-FRAME-ABI-001 — Caller-owned scalar frame lifetime
+
+The target-private bridge SHALL receive control identity, expected owner, next
+epoch, an input-word-frame pointer and its word count. The actual count SHALL
+equal N before scalar loads or source dispatch. N=0 SHALL use a null pointer
+and perform no word access. Nonempty frames SHALL have a nonnull aligned
+pointer, exact nonwrapping extent and disjoint control/owner placement.
+The owning caller SHALL additionally prove mapped immutable-during-call input
+storage, complete temporary-arena/retired-stack disjointness and lifetime through
+return. A raw pointer SHALL NOT discharge those caller obligations; this private
+ABI SHALL NOT claim safety for arbitrary unqualified C pointers.
+
+Word order SHALL match declared parameter order; byte order, alignment and
+machine calling convention SHALL be target-qualified. The first x86-64 ABI
+SHALL use aligned native-u64 words. All ordinary Nat inputs SHALL be prepared
+before the source call. Invalid transport/ownership SHALL be an invariant
+failure without a fallback, application errno or fabricated source result.
+All existing controller-domain exclusion, owner suspension, view identity,
+nonescape, generation and caller-state obligations SHALL remain.
+
+Complete allocation SHALL charge 64 root-view bytes, at most 24 bytes per fact,
+the existing 32-byte header and all source/helper evaluation. Complete stack
+SHALL include actual adapter/source/runtime frames, returns, alignment and live
+caller staging. The 65536-byte arena, 4096-byte combined stack, 256-view,
+64-source-function and 256-bit proof limits SHALL remain. The reviewed generated
+adapter family and selected exact rendering SHALL be bound in the certificate.
+Missing, excessive or inconsistent evidence SHALL reject publication.
+
+Return SHALL revoke views and reclaim complete temporary arena/control/retired
+stack state before ownership resumes. The caller SHALL clear its complete
+temporary frame staging and restore native non-result state after the last
+read. Source Boolean false SHALL retain its ordinary meaning; the file-position
+consumer SHALL still require true for an admitted transfer, with existing
+invariant-fatal/no-resumption/no-rollback behavior after private preparation.
+
+The initial file-position caller MAY select the framed context only with N=2,
+transporting exactly effective transfer base and actual count. Source signature,
+arithmetic/codec policy, successful owner stores, error/empty/positional noncalls
+and Linux behavior SHALL retain their existing contracts. Publication and boot
+SHALL bind exact scalar signature/frame, code/data, hooks, controller/storage,
+caller templates and bounds. Other targets SHALL provide independent layout,
+ABI, instruction, stack and physical qualification for the same obligations.
+
+Qualification SHALL cover N=0,1,2,3,16, full-u64 facts, independent arithmetic/
+byte/canary oracles, actual ordinary source frames and complete cleanup. It SHALL
+refuse excessive/mismatched counts/types, malformed frames, wrong owner/epoch,
+incompatible metadata and incomplete caller/resource proof. Physical kernel
+qualification SHALL inspect actual frame words, source values, persistent field
+bytes, caller state, complete cleanup and active/inactive retirement, retaining
+independent source variants, legacy contexts and the full runtime corpus.
+
 ### TOPAL-SYSTEMS-REGION-READONLY-DATA-001 — Complete immutable region inputs
 
 The exact linked code/data obligations for region source objects SHALL include

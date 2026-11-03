@@ -12269,3 +12269,20 @@ the native duplicate update. Reclaim all temporaries before owner resumption;
 qualify aliases/append/positional noncalls, active/inactive retirement, negative
 code/bounds controls and the full physical cohort. See
 [TK-DEC-272](../../linux-kernel/design/persistent-region-actions.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-FRAME-001 — Framed action input qualification
+
+Implement `TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001` and
+`TOPAL-SYSTEMS-REGION-FRAME-ABI-001` using ordinary declared-type selection,
+module/effect checking, shared numeric algorithms and a separately qualified
+target-private input-frame adapter. Bind the exact caller-selected 0–16-Nat
+signature and scalar count; preserve full u64 facts, arbitrary-precision source
+arithmetic and the old Unit/action entry ABIs. Prove complete input-frame
+ownership/disjointness/lifetime, bridge allocation and source/caller stack,
+native state, nonescape and cleanup. Reject incompatible counts, frames,
+objects, hooks, bounds and caller templates before a live grant. The initial
+persistent file-position caller shall still transport exactly effective base
+and actual count and preserve source stores, noncalls, terminal cleanup and
+Linux behavior. Native and VM qualification shall inspect actual frame words,
+ordinary source arguments, independent values/canaries and complete reclamation.
+See [TK-DEC-275](../../linux-kernel/design/framed-region-actions.md).

@@ -1835,6 +1835,20 @@ shall qualify behavior, bindings and teardown. Existing Unit profiles and core
 Memory/resource meanings shall remain intact. See
 [TK-DEC-272](../linux-kernel/design/persistent-region-actions.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-FRAME-001 — Framed ordinary action facts
+
+Qualified ordinary region actions shall accept a bounded caller-selected count
+of declared Nat facts through target-private caller-owned input frames, without
+source addresses, frame constructors or new core function/value meaning.
+Selection, scalar values, owner-relative effects, complete input lifetime/
+disjointness, resource proofs and cleanup shall remain explicit. The first
+profile shall admit zero to sixteen unsigned-64-bit facts and a Boolean result,
+preserve legacy Unit/two-fact contexts and execute the existing persistent
+file-position operation with its unchanged two semantic facts. Independent
+native and VM evidence shall qualify declared counts, actual values/frames,
+rejections, source mutation, caller preservation and complete reclamation.
+See [TK-DEC-275](../linux-kernel/design/framed-region-actions.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

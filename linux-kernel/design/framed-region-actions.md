@@ -23,7 +23,7 @@ control identity, expected owner, next epoch, a caller-owned native-u64 word
 frame and its word count. Word order follows declared parameter order; byte
 order and machine calling convention belong to the target ABI. Source receives
 ordinary values and its sealed view, never the frame pointer or native words.
-Zero inputs use an empty frame without any word access.
+Zero inputs use a null empty frame without any word access.
 
 The first implementation is x86-64 SysV. AArch64 and RISC-V retain the same
 source/value/lifetime obligations but require independent target layout,
