@@ -3772,6 +3772,54 @@ Enum-order variants, malformed/escape inputs and full artifact/runtime rollback.
 This rule SHALL NOT establish arbitrary-type, allocating or general module
 support merely from the first profile.
 
+### TOPAL-SYSTEMS-POLICY-LINKED-INPUTS-001 — Complete finite/numeric linked inputs
+
+The immutable code binding and closed source/runtime obligations of
+`TOPAL-SYSTEMS-SOURCE-LIBRARY-001`, `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
+`TOPAL-SYSTEMS-KERNEL-POLICY-BINDING-001` SHALL include every nonempty allocated
+code and read-only data section of each selected compiler-owned policy object.
+Anonymous tables, zero bytes and section padding SHALL remain within that set.
+Writable/TLS storage, unsupported allocated kinds/flags, ambiguous identities
+and unqualified dependencies SHALL reject. Existing frontend, call/instruction,
+native ABI, stack/allocation, ownership and cleanup obligations SHALL remain.
+
+Object qualification SHALL record complete ordered section identities, original
+names, byte digests, extents, executable roles and nonzero power-of-two
+alignments. Slot-qualified private local begin/end markers SHALL delimit each
+whole section. Constant merging/string coalescing SHALL NOT fragment those
+extents. Transformation SHALL preserve payload bytes, relocation semantics,
+function identities and debug strings, and SHALL verify complete transformed
+allocated-section coverage and exact marker endpoints before publication.
+Objects with executable sections but no read-only data SHALL remain valid.
+
+Linked publication SHALL bind the selected transformed object digest and actual
+relocated bytes of every manifest section, including resolved calls and table
+entries. Each marker SHALL occur exactly once with local visibility, the expected
+section/extent/alignment/executable role and placement in the qualified supervisor
+envelope. Section extents within a policy SHALL be disjoint. Actual private marker
+names SHALL equal the complete expected namespace; missing, extra, duplicate,
+reordered, foreign-slot or incompatible records SHALL reject. An unlinked object
+certificate SHALL have no linked binding; a linked artifact SHALL have one for
+every selected finite/numeric slot and none for absent slots.
+
+Boot packaging SHALL repeat the complete linked inspection and compare it to
+the publisher-owned binding. Wrong object, address, size, alignment, role or byte
+digests SHALL reject even when the outer kernel digest is corrected. Failure
+SHALL preserve atomic publication. This consistency binding SHALL NOT claim
+authentication against replacement of all source and inner provenance together.
+Finite metadata SHALL use private schema 3 and numeric metadata private schema 9;
+their source signatures and native entry ABIs SHALL retain their meanings.
+The stronger separate Unit/action region bindings SHALL remain mandatory.
+Another architecture SHALL provide its own object, relocation and placement
+qualification for the same complete-input obligation.
+
+Qualification SHALL cover independently changed actual literal, instruction and
+relocated table bytes, all selected policy slots, complete marker/manifest
+closure, empty-data objects, incompatible metadata and atomic refusal. Correctly
+rebuilt source/order variants, actual source/runtime frames, complete resource
+proofs, caller/state preservation, reclamation and existing public-interface
+execution SHALL retain independent passing evidence.
+
 ### TOPAL-SYSTEMS-NUMERIC-RECORDS-001 — Immutable structured numeric policy
 
 The numeric source-library profile MAY admit closed ordinary Records composed

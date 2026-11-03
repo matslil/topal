@@ -2663,6 +2663,13 @@ malformed inputs, native boundaries and complete rollback shall qualify it.
 A declared import shall never use a fallback on failure; older roots without
 this refinement retain their own declared contracts.
 
+Under `TK-DEC-274`, finite/numeric immutable code and closed runtime bindings
+shall realize `TOPAL-SYSTEMS-POLICY-LINKED-INPUTS-001`: complete object-owned
+code/read-only sections, verified private boundaries, actual relocated-byte
+binding and independent boot comparison. Correcting an outer kernel digest
+shall not admit altered instructions, literals or tables. Existing source/native
+interfaces, resource proofs, caller ownership and cleanup remain mandatory.
+
 Under `TK-DEC-257`, the finite and numeric source-library publishers shall
 validate a closed frozen ordinary module snapshot using
 `TOPAL-SYSTEMS-SOURCE-MODULES-001`. They shall preserve shared selection,
