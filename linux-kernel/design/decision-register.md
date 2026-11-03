@@ -304,4 +304,4 @@ Topal or kernel semantics.
 Resolving a row requires a written proposal, alternatives, cross-architecture
 review where applicable, and the repository-mandated approval for protected
 design meaning. A code change cannot mark a design row resolved by itself.
-
+| `TK-DEC-274` | bind complete linked finite/numeric policy inputs | corrected-outer-digest changes to numeric literals and instructions pass the earlier packager; finite tables contain relocations | [object-owned code/data sections](policy-linked-inputs.md) retain complete private boundaries and bind actual relocated bytes without changing source/native interfaces; implementation and qualification pending |
