@@ -548,8 +548,9 @@ A further systems qualification may transport a bounded number of ordinary Nat
 facts alongside one borrowed region through a caller-owned private input frame.
 The expected declared signature determines the exact count; the initial profile
 admits zero to sixteen unsigned-64-bit facts with a Boolean result. Values retain
-ordinary arbitrary-precision meaning after transport. Source receives no frame
-constructor, pointer or address. The caller must prove mapped immutable input
+ordinary arbitrary-precision meaning after transport. Existing explicit operand
+packaging still applies. Source receives no frame constructor, pointer or address.
+The caller must prove mapped immutable input
 storage, complete disjointness/lifetime and cleanup; the object and kernel must
 bind exact transport, code/data, ownership and complete stack/allocation evidence.
 Older Unit and two-fact action contexts retain their contracts. This changes

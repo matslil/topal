@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/227";
+    "topal.provider-object.x86_64-qemu-pc-q35/228";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -1661,8 +1661,9 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
         &static_image_deliver_entropy_initial_random()?,
     );
-    if program.file_position_library.is_some() {
-        file_region::append(&mut object, text)?;
+    if let Some(requirement) = &program.file_position_library {
+        let framed = requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1;
+        file_region::append(&mut object, text, framed)?;
     }
     append_linkable_function(
         &mut object,
@@ -18331,7 +18332,7 @@ assert bytes(output) == block[32:]
                 .collect::<std::collections::BTreeSet<_>>(),
             std::collections::BTreeSet::from([
                 crate::systems_region_library::EXPORT,
-                crate::systems_region_library::ACTION_EXPORT,
+                crate::systems_region_library::FRAME_EXPORT,
             ])
         );
         let frames = file.section_by_name(".debug_frame").unwrap();

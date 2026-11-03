@@ -25,18 +25,41 @@ pub(crate) const ACTION_EXPORT: &str = "topal_kernel_region_action_apply_v1";
 pub(crate) const ACTION_PREFIX: &str = "topal.region.action.";
 pub(crate) const ACTION_ALLOCATE: &str = "topal_kernel_region_action_allocate_v1";
 pub(crate) const ACTION_ABORT: &str = "topal_kernel_region_action_abort_v1";
+pub(crate) const FRAME_EXPORT: &str = "topal_kernel_region_frame_apply_v1";
+pub(crate) const FRAME_PREFIX: &str = "topal.framed-region.";
+pub(crate) const FRAME_ALLOCATE: &str = "topal_kernel_region_frame_allocate_v1";
+pub(crate) const FRAME_ABORT: &str = "topal_kernel_region_frame_abort_v1";
+
+/// Missing optional profile fields remain absent; a present JSON null cannot
+/// erase a framed-only key before the legacy context checks see it.
+pub(crate) fn deserialize_present_region_field<'de, T, D>(
+    deserializer: D,
+) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    T::deserialize(deserializer).map(Some)
+}
 
 impl CheckedRegionLibrary {
     pub(crate) fn native_export(&self) -> &'static str {
+        self.native_names().0
+    }
+    pub(crate) fn native_names(&self) -> (&'static str, &'static str, &'static str) {
         match self.profile {
-            CompilerKernelRegionProfile::Unit => EXPORT,
-            CompilerKernelRegionProfile::Action => ACTION_EXPORT,
+            CompilerKernelRegionProfile::Unit => (EXPORT, ALLOCATE, ABORT),
+            CompilerKernelRegionProfile::Action => (ACTION_EXPORT, ACTION_ALLOCATE, ACTION_ABORT),
+            CompilerKernelRegionProfile::FramedAction { .. } => {
+                (FRAME_EXPORT, FRAME_ALLOCATE, FRAME_ABORT)
+            }
         }
     }
     pub(crate) fn prefix(&self) -> &'static str {
         match self.profile {
             CompilerKernelRegionProfile::Unit => PREFIX,
             CompilerKernelRegionProfile::Action => ACTION_PREFIX,
+            CompilerKernelRegionProfile::FramedAction { .. } => FRAME_PREFIX,
         }
     }
 }
@@ -80,6 +103,13 @@ pub struct SystemsRegionLibraryArtifact {
     pub modules: Vec<crate::SystemsSourceModuleArtifact>,
     pub module_snapshot_sha256: String,
     pub declared_entry: String,
+    /// Only framed objects carry a count; legacy serialization remains intact.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_present_region_field"
+    )]
+    pub scalar_count: Option<u8>,
     pub effects: Vec<SystemsRegionEffect>,
     pub runtime_sha256: String,
     pub platform_hooks_sha256: String,
@@ -203,6 +233,22 @@ pub fn build_systems_region_action_library(
     )
 }
 
+pub fn build_systems_region_framed_action_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    scalar_count: u8,
+    tools: &LlvmTools,
+    work: &Path,
+) -> Result<CompiledSystemsRegionLibrary, CompileError> {
+    build_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        CompilerKernelRegionProfile::FramedAction { scalar_count },
+    )
+}
+
 fn build_region_profile(
     input: &SystemsSourceLibraryInput,
     export: &str,
@@ -211,16 +257,27 @@ fn build_region_profile(
     profile: CompilerKernelRegionProfile,
 ) -> Result<CompiledSystemsRegionLibrary, CompileError> {
     let modules = crate::systems_library::modules::validate(input)?;
-    let analyze = match profile {
+    let program = match profile {
         CompilerKernelRegionProfile::Unit => {
-            topal_language::compiler::analyze_kernel_region_library
+            topal_language::compiler::analyze_kernel_region_library(&input.text, &modules, export)
         }
         CompilerKernelRegionProfile::Action => {
-            topal_language::compiler::analyze_kernel_region_action_library
+            topal_language::compiler::analyze_kernel_region_action_library(
+                &input.text,
+                &modules,
+                export,
+            )
         }
-    };
-    let program = analyze(&input.text, &modules, export)
-        .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
+        CompilerKernelRegionProfile::FramedAction { scalar_count } => {
+            topal_language::compiler::analyze_kernel_region_framed_action_library(
+                &input.text,
+                &modules,
+                export,
+                scalar_count,
+            )
+        }
+    }
+    .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
     check_region_isolation(input, &program, &modules)?;
     let effects = topal_language::compiler::kernel_region_function_effects(&program)
         .map_err(|error| CompileError::Tool(error.render(&input.source_name)))?;
@@ -247,10 +304,7 @@ fn build_region_profile(
         profile,
     };
     let (native_export, prefix) = (checked.native_export(), checked.prefix());
-    let (allocate, abort) = match profile {
-        CompilerKernelRegionProfile::Unit => (ALLOCATE, ABORT),
-        CompilerKernelRegionProfile::Action => (ACTION_ALLOCATE, ACTION_ABORT),
-    };
+    let (_, allocate, abort) = checked.native_names();
     let llvm = crate::codegen::emit_region_kernel_library(&checked)?;
     let source = work.join("kernel-region.ll");
     let bitcode = work.join("kernel-region.bc");
@@ -340,8 +394,8 @@ fn build_region_profile(
                 && !name.starts_with(&format!("{prefix}runtime.int."))
                 && !(profile == CompilerKernelRegionProfile::Unit
                     && name.starts_with("topal.kernel.region."))
-                && !(profile == CompilerKernelRegionProfile::Action
-                    && name.starts_with("topal.region.action.primitive."))
+                && !(profile != CompilerKernelRegionProfile::Unit
+                    && name.starts_with(&format!("{prefix}primitive.")))
                 && !name.starts_with(&format!("{prefix}runtime.optional."))
                 && !name.starts_with(&format!("{prefix}runtime.list."))
                 && !matches!(
@@ -388,6 +442,9 @@ fn build_region_profile(
             CompilerKernelRegionProfile::Action => {
                 "topal.kernel-region-action-source-object.x86_64/1"
             }
+            CompilerKernelRegionProfile::FramedAction { .. } => {
+                "topal.kernel-region-frame-source-object.x86_64/1"
+            }
         }
         .into(),
         source: input.source.clone(),
@@ -398,10 +455,17 @@ fn build_region_profile(
         modules: crate::systems_library::modules::records(input),
         module_snapshot_sha256: digest(&snapshot),
         declared_entry: match profile {
-            CompilerKernelRegionProfile::Unit => "(KernelByteRegion) -> Unit",
-            CompilerKernelRegionProfile::Action => "(KernelByteRegion, Nat, Nat) -> Boolean",
-        }
-        .into(),
+            CompilerKernelRegionProfile::Unit => "(KernelByteRegion) -> Unit".into(),
+            CompilerKernelRegionProfile::Action => "(KernelByteRegion, Nat, Nat) -> Boolean".into(),
+            CompilerKernelRegionProfile::FramedAction { scalar_count } => format!(
+                "(KernelByteRegion{}) -> Boolean",
+                ", Nat".repeat(usize::from(scalar_count))
+            ),
+        },
+        scalar_count: match profile {
+            CompilerKernelRegionProfile::FramedAction { scalar_count } => Some(scalar_count),
+            _ => None,
+        },
         effects: effects
             .into_iter()
             .map(
@@ -432,6 +496,9 @@ fn build_region_profile(
             CompilerKernelRegionProfile::Action => {
                 "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1"
             }
+            CompilerKernelRegionProfile::FramedAction { .. } => {
+                "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1"
+            }
         }
         .into(),
         maximum_stack_bytes,
@@ -442,7 +509,7 @@ fn build_region_profile(
         read_only_data: data::object_data(
             &bytes,
             prefix,
-            profile == CompilerKernelRegionProfile::Unit,
+            profile != CompilerKernelRegionProfile::Action,
         )?,
     };
     Ok(CompiledSystemsRegionLibrary {
@@ -489,6 +556,24 @@ pub fn verify_systems_region_action_library(
         work,
         candidate,
         CompilerKernelRegionProfile::Action,
+    )
+}
+
+pub fn verify_systems_region_framed_action_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    scalar_count: u8,
+    tools: &LlvmTools,
+    work: &Path,
+    candidate: &CompiledSystemsRegionLibrary,
+) -> Result<(), CompileError> {
+    verify_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        candidate,
+        CompilerKernelRegionProfile::FramedAction { scalar_count },
     )
 }
 

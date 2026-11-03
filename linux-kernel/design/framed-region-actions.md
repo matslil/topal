@@ -16,6 +16,8 @@ it exactly. Do not infer an overload, insert ignored arguments or reinterpret
 parameter names as native algorithms. Existing selection, visibility, packaged
 parameter, effects, nonescape, closed direct-call and termination rules apply.
 The count limit belongs to this systems qualification, not core function types.
+Additional fields use the existing packaged-operand syntax; the core limit of
+two syntactic operands remains unchanged.
 
 Each transported fact is an unsigned 64-bit value constructed as an ordinary
 Nat. Source arithmetic remains arbitrary precision. The private ABI receives

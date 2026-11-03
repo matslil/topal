@@ -13,6 +13,12 @@ pub struct SystemsRegionAllocationBound {
     pub view_bytes: u64,
     pub region_runtime_sha256: String,
     pub adapter_sha256: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub adapter_family_sha256: Option<String>,
 }
 
 impl Bounds<'_> {
@@ -81,25 +87,42 @@ pub(crate) fn bound_region_library_profile(
             "region primitive allocation certificate requires review",
         ));
     }
-    let (adapter_sha256, certified_adapter) = match profile {
+    let (adapter_sha256, adapter_valid, adapter_family_sha256) = match profile {
         CompilerKernelRegionProfile::Unit => (
             crate::codegen::region_adapter_sha256(),
-            "4ed4e32d16f151d0ede0bd06e58673a4e502506301c57f2b71ed0b4ada80de1e",
+            crate::codegen::region_adapter_sha256()
+                == "4ed4e32d16f151d0ede0bd06e58673a4e502506301c57f2b71ed0b4ada80de1e",
+            None,
         ),
         CompilerKernelRegionProfile::Action => (
             crate::codegen::region_action_adapter_sha256(),
-            "6b8e0e8d4b234aeae8c6d666c3db66854bb91b1031fc8c603feb76d424aaa058",
+            crate::codegen::region_action_adapter_sha256()
+                == "6b8e0e8d4b234aeae8c6d666c3db66854bb91b1031fc8c603feb76d424aaa058",
+            None,
         ),
+        CompilerKernelRegionProfile::FramedAction { scalar_count } => {
+            if scalar_count > topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS {
+                return Err(invalid("excessive framed scalar count"));
+            }
+            let family = crate::codegen::region_frame_adapter_family_sha256();
+            let valid =
+                family == "c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe";
+            (
+                crate::codegen::region_frame_adapter_sha256(scalar_count),
+                valid,
+                Some(family),
+            )
+        }
     };
     let hooks_sha256 = format!(
         "{:x}",
         Sha256::digest(include_bytes!("runtime/kernel_region_platform.ll"))
     );
-    if adapter_sha256 != certified_adapter
+    if !adapter_valid
         || hooks_sha256 != "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e"
     {
         return Err(invalid(format!(
-            "region adapter/hook allocation certificate requires review: {adapter_sha256}"
+            "region adapter/hook allocation certificate requires review: {adapter_sha256}; family={adapter_family_sha256:?}"
         )));
     }
     let runtime_sha256 = format!(
@@ -130,12 +153,22 @@ pub(crate) fn bound_region_library_profile(
             let scalar = Value::Number(Range(BigInt::from(0), BigInt::from(u64::MAX)));
             (vec![Value::Region, scalar.clone(), scalar], 112)
         }
+        CompilerKernelRegionProfile::FramedAction { scalar_count } => {
+            let scalar = Value::Number(Range(BigInt::from(0), BigInt::from(u64::MAX)));
+            let mut values = vec![Value::Region];
+            values.extend(std::iter::repeat_n(scalar, usize::from(scalar_count)));
+            (values, 64 + 24 * u64::from(scalar_count))
+        }
     };
     let result = bounds.function(entry, inputs)?;
     if !matches!(
         (&profile, &result.value),
         (CompilerKernelRegionProfile::Unit, Value::Unit)
             | (CompilerKernelRegionProfile::Action, Value::Boolean)
+            | (
+                CompilerKernelRegionProfile::FramedAction { .. },
+                Value::Boolean
+            )
     ) {
         return Err(invalid(
             "region entry result does not match the selected context",
@@ -160,6 +193,9 @@ pub(crate) fn bound_region_library_profile(
             certificate: match profile {
                 CompilerKernelRegionProfile::Unit => "topal.kernel-region-allocation/1",
                 CompilerKernelRegionProfile::Action => "topal.kernel-region-action-allocation/1",
+                CompilerKernelRegionProfile::FramedAction { .. } => {
+                    "topal.kernel-region-frame-allocation/1"
+                }
             }
             .into(),
             runtime_sha256,
@@ -177,6 +213,7 @@ pub(crate) fn bound_region_library_profile(
         view_bytes: 64,
         region_runtime_sha256,
         adapter_sha256,
+        adapter_family_sha256,
     })
 }
 

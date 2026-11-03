@@ -141,23 +141,37 @@ fn owned_name(name: &str, prefix: &str) -> bool {
     name.starts_with(prefix) && (prefix != super::PREFIX || !name.starts_with(super::ACTION_PREFIX))
 }
 
-/// Inspect complete immutable Unit/action inputs. This does not grant a live
+/// Inspect complete immutable Unit/action/framed inputs. This does not grant a live
 /// region or qualify native callers, bounds, owner lifetimes or reclamation.
 pub fn inspect_systems_region_read_only_data(
     bytes: &[u8],
     library: &super::SystemsRegionLibraryArtifact,
 ) -> Result<Vec<SystemsRegionReadOnlyBinding>, CompileError> {
-    use super::{ACTION_EXPORT, ACTION_PREFIX, EXPORT, PREFIX};
+    use super::{ACTION_EXPORT, ACTION_PREFIX, EXPORT, FRAME_EXPORT, FRAME_PREFIX, PREFIX};
     use object::{Architecture, BinaryFormat, ObjectKind};
-    let prefix = match (library.schema.as_str(), library.native_export.as_str()) {
-        ("topal.kernel-region-source-object.x86_64/3", EXPORT) => PREFIX,
-        ("topal.kernel-region-action-source-object.x86_64/1", ACTION_EXPORT)
+    let prefix = match (
+        library.schema.as_str(),
+        library.native_export.as_str(),
+        library.scalar_count,
+    ) {
+        ("topal.kernel-region-source-object.x86_64/3", EXPORT, None) => PREFIX,
+        ("topal.kernel-region-action-source-object.x86_64/1", ACTION_EXPORT, None)
             if !library.read_only_data.is_empty() =>
         {
             ACTION_PREFIX
         }
+        ("topal.kernel-region-frame-source-object.x86_64/1", FRAME_EXPORT, Some(count))
+            if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS =>
+        {
+            FRAME_PREFIX
+        }
         _ => return Err(invalid("incompatible immutable region data certificate")),
     };
+    if prefix != FRAME_PREFIX && library.allocation.adapter_family_sha256.is_some() {
+        return Err(invalid(
+            "legacy region data cannot carry framed adapter metadata",
+        ));
+    }
     let file = object::File::parse(bytes).map_err(|e| invalid(e.to_string()))?;
     if file.format() != BinaryFormat::Elf
         || file.architecture() != Architecture::X86_64

@@ -588,15 +588,17 @@ fn parse_artifact_root(
         let label_text = source.slice(label);
         if label_text == "file-position-library" {
             let requirement = source_library::parse_requirement(source, field)?;
-            if requirement.interface
-                != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionActionV1
-                || file_position_library.replace(requirement).is_some()
+            if !matches!(
+                requirement.interface,
+                CompilerSystemsSourceLibraryInterface::BorrowedByteRegionActionV1
+                    | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
+            ) || file_position_library.replace(requirement).is_some()
             {
                 return Err(source_diagnostic(
                     source,
                     "E-SYSTEMS-REGION-ACTION",
                     label,
-                    "file-position-library requires one borrowed-byte-region-action-v1 entry",
+                    "file-position-library requires one qualified region action entry",
                 ));
             }
             continue;

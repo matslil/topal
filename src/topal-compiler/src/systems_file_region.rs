@@ -3,7 +3,9 @@
 use super::root_region::{Code, address, branch, clear_temporaries, erase, zero_readback};
 use super::x86_function::{E, R, R::*};
 use super::{CompileError, X86FunctionEncoder};
-use crate::systems_region_library::{ACTION_ABORT, ACTION_ALLOCATE, ACTION_EXPORT};
+use crate::systems_region_library::{
+    ACTION_ABORT, ACTION_ALLOCATE, ACTION_EXPORT, FRAME_ABORT, FRAME_ALLOCATE, FRAME_EXPORT,
+};
 use object::write::{Object, SectionId, Symbol, SymbolSection};
 use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 
@@ -28,7 +30,16 @@ pub(super) const CALL_ALIGNMENT_BYTES: u64 = 32;
 
 /// DI controller, SI description, D effective transfer base, C actual prefix.
 /// Only the checked handler supplies this grant; words never manufacture it.
-pub(super) fn apply() -> Result<Code, CompileError> {
+fn native_names(framed: bool) -> (&'static str, &'static str, &'static str) {
+    if framed {
+        (FRAME_EXPORT, FRAME_ALLOCATE, FRAME_ABORT)
+    } else {
+        (ACTION_EXPORT, ACTION_ALLOCATE, ACTION_ABORT)
+    }
+}
+
+pub(super) fn apply(framed: bool) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(framed);
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     e.cmp(_Sp, 0x108000);
@@ -126,7 +137,7 @@ pub(super) fn apply() -> Result<Code, CompileError> {
     e.add(R15, 1);
     e.0.jump_if(0x82, "fail");
     e.store(B, 16, A);
-    address(&mut e, &mut code.references, A, ACTION_EXPORT);
+    address(&mut e, &mut code.references, A, export);
     e.store(B, 0, A);
     e.store(B, 8, R13);
     e.mov(A, R14);
@@ -144,11 +155,19 @@ pub(super) fn apply() -> Result<Code, CompileError> {
     e.mov(Di, B);
     e.mov(Si, R13);
     e.mov(D, R15);
-    e.load(C, R12, 0);
-    e.load(R8, R12, 8);
+    if framed {
+        // The first two words of this owned 32-byte live frame are immutable
+        // throughout source execution. It is above the retired stack reserve
+        // and outside the numeric arena; all 32 bytes are erased on return.
+        e.mov(C, R12);
+        e.imm(R8, 2);
+    } else {
+        e.load(C, R12, 0);
+        e.load(R8, R12, 8);
+    }
     e.arith(4, _Sp, -16);
     e.add(_Sp, -16);
-    branch(&mut e, &mut code.references, ACTION_EXPORT, true);
+    branch(&mut e, &mut code.references, export, true);
     e.mov(_Sp, R12);
     e.store(R12, 16, A); // actual normalized source Boolean, not a policy fallback
     for offset in [0, 8, 24, 32, 40, 48, 56] {
@@ -202,15 +221,17 @@ pub(super) fn apply() -> Result<Code, CompileError> {
     e.0.bytes(&[0xc3]);
     e.0.bind("fail")?;
     code.unwind.push((e.0.bytes.len() as u32, vec![0x07, 16]));
-    branch(&mut e, &mut code.references, ACTION_ABORT, false);
+    branch(&mut e, &mut code.references, abort, false);
     Ok(code)
 }
 
-pub(super) fn allocator() -> Result<Code, CompileError> {
-    super::root_region::allocator_for(CONTROL, ARENA, ACTION_EXPORT, ACTION_ABORT, true)
+pub(super) fn allocator(framed: bool) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(framed);
+    super::root_region::allocator_for(CONTROL, ARENA, export, abort, true)
 }
 
-pub(super) fn finalize() -> Result<Code, CompileError> {
+pub(super) fn finalize(framed: bool) -> Result<Code, CompileError> {
+    let (_, _, abort) = native_names(framed);
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     address(&mut e, &mut code.references, R11, ARENA);
@@ -222,11 +243,16 @@ pub(super) fn finalize() -> Result<Code, CompileError> {
     clear_temporaries(&mut e);
     e.0.bytes(&[0xc3]);
     e.0.bind("fail")?;
-    branch(&mut e, &mut code.references, ACTION_ABORT, false);
+    branch(&mut e, &mut code.references, abort, false);
     Ok(code)
 }
 
-pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), CompileError> {
+pub(super) fn append(
+    object: &mut Object<'_>,
+    text: SectionId,
+    framed: bool,
+) -> Result<(), CompileError> {
+    let (_, allocate, abort) = native_names(framed);
     for (name, bytes, alignment) in [
         (ARENA, ARENA_BYTES, 4096),
         (CONTROL, 64, 8),
@@ -249,12 +275,12 @@ pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), Com
             flags: SymbolFlags::None,
         });
     }
-    super::append_encoded_function(object, text, ACTION_ABORT, &[0xfa, 0xf4, 0xeb, 0xfd]);
+    super::append_encoded_function(object, text, abort, &[0xfa, 0xf4, 0xeb, 0xfd]);
     let debug = object.add_section(Vec::new(), b".debug_frame".to_vec(), SectionKind::Debug);
     for (name, code) in [
-        (APPLY, apply()?),
-        (ACTION_ALLOCATE, allocator()?),
-        (FINALIZE, finalize()?),
+        (APPLY, apply(framed)?),
+        (allocate, allocator(framed)?),
+        (FINALIZE, finalize(framed)?),
     ] {
         super::root_region::append_code(object, text, debug, name, code)?;
     }

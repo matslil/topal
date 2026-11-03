@@ -158,6 +158,20 @@ fn region_action_binding_reproduction_rejects_changed_code_costs_and_profile() {
     let unit = build_systems_region_action_library(&input, "advance", &tools, &directory).unwrap();
     verify_systems_region_action_library(&input, "advance", &tools, &work(), &unit).unwrap();
     assert!(verify_systems_region_library(&input, "advance", &tools, &work(), &unit).is_err());
+    let encoded = serde_json::to_value(&unit.record).unwrap();
+    assert!(encoded.get("scalar_count").is_none());
+    assert!(encoded["allocation"].get("adapter_family_sha256").is_none());
+    let decoded: SystemsRegionLibraryArtifact = serde_json::from_value(encoded.clone()).unwrap();
+    assert_eq!(decoded, unit.record);
+    for field in ["scalar_count", "adapter_family_sha256"] {
+        let mut changed = encoded.clone();
+        if field == "scalar_count" {
+            changed[field] = serde_json::Value::Null;
+        } else {
+            changed["allocation"][field] = serde_json::Value::Null;
+        }
+        assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(changed).is_err());
+    }
     for mode in 0..8 {
         let mut changed = unit.clone();
         match mode {
@@ -285,9 +299,12 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     // TOPAL-SYSTEMS-REGION-ACTION-OWNER-001, -RETURN-001, -POSITION-001.
     // Structural provider evidence only; a declaration supplies no source snapshot.
     // Actual source/link/controller/boot binding is checked by a separate test.
-    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t").replace(
+        "borrowed-byte-region-framed-action-v1",
+        "borrowed-byte-region-action-v1",
+    );
     let program = topal_language::compiler::analyze_systems_for_compiler(
-        source,
+        &source,
         &topal_language::compiler::CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .unwrap();
@@ -386,13 +403,15 @@ fn region_action_linked_constants_reject_tampering_independently_of_function_byt
             .contains("immutable region data bytes changed"),
         "{error}"
     );
-    for mode in 0..4 {
+    for mode in 0..6 {
         let mut changed = unit.record.clone();
         match mode {
             0 => changed.read_only_data.clear(),
             1 => changed.read_only_data[0].alignment = 1,
             2 => changed.read_only_data[0].bytes += 8,
             3 => changed.read_only_data[0].symbol = "topal.region.action.missing".into(),
+            4 => changed.scalar_count = Some(2),
+            5 => changed.allocation.adapter_family_sha256 = Some("0".repeat(64)),
             _ => unreachable!(),
         }
         assert!(
@@ -403,8 +422,9 @@ fn region_action_linked_constants_reject_tampering_independently_of_function_byt
 }
 
 #[test]
-fn region_action_kernel_publication_binds_actual_caller_storage_code_and_constants() {
+fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constants() {
     // TOPAL-SYSTEMS-REGION-ACTION-SOURCE-001, -OWNER-001, -RETURN-001, -POSITION-001.
+    // TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001, -FRAME-ABI-001.
     // Structural linked/kernel packaging evidence; VM execution remains separate.
     use topal_language::compiler::{INITIAL_SYSTEMS_BOARD, INITIAL_SYSTEMS_TARGET};
     let directory = work();
@@ -434,6 +454,43 @@ fn region_action_kernel_publication_binds_actual_caller_storage_code_and_constan
     let artifact = publish_systems_source(root, &options).unwrap();
     let library = artifact.record.file_position_library.as_ref().unwrap();
     let binding = artifact.record.file_position_runtime.as_ref().unwrap();
+    let encoded = serde_json::to_value(&artifact.record).unwrap();
+    let decoded: SystemsArtifactProvenance = serde_json::from_value(encoded.clone()).unwrap();
+    assert_eq!(
+        decoded.file_position_runtime.as_ref().unwrap().scalar_count,
+        Some(2)
+    );
+    for target in ["source", "family", "runtime", "unit-source", "unit-family"] {
+        let mut changed = encoded.clone();
+        match target {
+            "source" => changed["file_position_library"]["scalar_count"] = serde_json::Value::Null,
+            "family" => {
+                changed["file_position_library"]["allocation"]["adapter_family_sha256"] =
+                    serde_json::Value::Null
+            }
+            "runtime" => changed["file_position_runtime"]["scalar_count"] = serde_json::Value::Null,
+            "unit-source" => changed["region_library"]["scalar_count"] = serde_json::Value::Null,
+            "unit-family" => {
+                changed["region_library"]["allocation"]["adapter_family_sha256"] =
+                    serde_json::Value::Null
+            }
+            _ => unreachable!(),
+        }
+        assert!(
+            serde_json::from_value::<SystemsArtifactProvenance>(changed).is_err(),
+            "{target}"
+        );
+    }
+    assert_eq!(
+        library.schema,
+        "topal.kernel-region-frame-source-object.x86_64/1"
+    );
+    assert_eq!(library.scalar_count, Some(2));
+    assert_eq!(
+        binding.schema,
+        "topal.file-position-region-invocation.x86_64/2"
+    );
+    assert_eq!(binding.scalar_count, Some(2));
     assert_eq!(
         binding.combined_stack_bytes,
         library.maximum_stack_bytes + 88 + 32
@@ -503,7 +560,7 @@ fn region_action_kernel_publication_binds_actual_caller_storage_code_and_constan
             "{case}: {error}"
         );
     }
-    for mode in 0..7 {
+    for mode in 0..15 {
         let mut changed = artifact.record.clone();
         match mode {
             0 => {
@@ -544,6 +601,37 @@ fn region_action_kernel_publication_binds_actual_caller_storage_code_and_constan
             }
             5 => changed.file_position_library = None,
             6 => changed.file_position_runtime = None,
+            7 => changed.file_position_library.as_mut().unwrap().scalar_count = Some(3),
+            8 => changed.file_position_library.as_mut().unwrap().scalar_count = None,
+            9 => changed.file_position_runtime.as_mut().unwrap().scalar_count = Some(1),
+            10 => {
+                changed
+                    .file_position_library
+                    .as_mut()
+                    .unwrap()
+                    .allocation
+                    .adapter_family_sha256 = None
+            }
+            11 => {
+                changed
+                    .file_position_library
+                    .as_mut()
+                    .unwrap()
+                    .allocation
+                    .adapter_sha256 = "0".repeat(64)
+            }
+            12 => {
+                changed.file_position_library.as_mut().unwrap().native_abi =
+                    "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1".into()
+            }
+            13 => {
+                changed.file_position_runtime.as_mut().unwrap().schema =
+                    "topal.file-position-region-invocation.x86_64/1".into()
+            }
+            14 => {
+                changed.file_position_runtime.as_mut().unwrap().interface =
+                    "borrowed-byte-region-action-v1".into()
+            }
             _ => unreachable!(),
         }
         assert!(

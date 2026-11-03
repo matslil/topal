@@ -11,6 +11,9 @@ def install(config):
     artifact = config['artifact']
     library = artifact['file_position_library']
     binding = artifact['file_position_runtime']
+    framed = binding['interface'] == 'borrowed-byte-region-framed-action-v1'
+    export_name = library['native_export']
+    prefix = 'topal.framed-region.' if framed else 'topal.region.action.'
     state = {'calls': [], 'generation': 0, 'finalized': False, 'finalizer_entries': 0, 'scope': 'actual persistent field loans; source/owner/cleanup observations'}
     current = None
     pending = None
@@ -37,7 +40,19 @@ def install(config):
     arena = addr('topal_x86_systems_file_position_arena')
     history = addr('topal_x86_systems_file_position_history')
     controller = addr('topal_x86_static_process_descriptor_table')
-    export = addr('topal_kernel_region_action_apply_v1')
+    export = addr(export_name)
+
+    def check_scalar_frame():
+        if framed:
+            assert binding['scalar_count'] == library['scalar_count'] == 2
+            address = current['frame_sp']
+            assert words(address, 2) == (current['base'], current['transferred'])
+            # The actual caller owns this mapped stack extent above its
+            # retired reserve, disjoint from every private invocation object.
+            assert 0x108000 <= address - 4096 < address < address + 32 <= 0x180000
+            for start, size in ((control, 64), (arena, 65536),
+                                (controller, binding['controller_owner']['bytes'])):
+                assert address + 32 <= start or start + size <= address
 
     def positions():
         result = {}
@@ -161,6 +176,7 @@ def install(config):
                 assert actual == self.saved, (self.kind, 'callee registers', self.saved, actual)
                 assert reg('rsp') == self.stack + 8, (self.kind, 'stack')
                 if self.kind == 'source':
+                    check_scalar_frame()
                     assert reg('rax') == (0 if config.get('false_action') else 1)
                     assert words(control, 8) == (0, 0, current['generation'], 0, 0, 0, 0, 0)
                     header = words(arena, 4)
@@ -256,8 +272,17 @@ def install(config):
                     assert caller['address'] <= current['return_pc'] < caller['address'] + caller['bytes']
                 elif self.kind == 'source':
                     assert current is not None
-                    assert (reg('rdi'), reg('rsi'), reg('rdx'), reg('rcx'), reg('r8')) == (
-                        control, controller, current['generation'], current['base'], current['transferred'])
+                    assert (reg('rdi'), reg('rsi'), reg('rdx')) == (
+                        control, controller, current['generation'])
+                    if framed:
+                        assert (reg('rcx'), reg('r8')) == (current['frame_sp'], 2)
+                        check_scalar_frame()
+                        current['scalar_transport'] = dict(
+                            interface=binding['interface'], address=reg('rcx'), words=2,
+                            frame_bytes=16, owned_staging_bytes=32,
+                            mapped_owned_extent=True, outside_arena_and_retired_stack=True)
+                    else:
+                        assert (reg('rcx'), reg('r8')) == (current['base'], current['transferred'])
                     assert reg('r12') == current['frame_sp']
                 else:
                     state['finalizer_entries'] += 1
@@ -278,6 +303,7 @@ def install(config):
         def stop(self):
             try:
                 assert current is not None
+                check_scalar_frame()
                 frame = gdb.newest_frame()
                 if self.codec:
                     assert frame.find_sal().symtab.fullname().endswith('support/word-bytes.t')
@@ -289,7 +315,7 @@ def install(config):
                     for _ in range(5):
                         assert value is not None
                         chain.append(value.name()); value = value.older()
-                    assert chain[2] == 'topal_kernel_region_action_apply_v1', chain
+                    assert chain[2] == export_name, chain
                     assert chain[3] == 'topal_x86_systems_file_position_apply_v1', chain
                     assert chain[4] == binding['controller_code']['symbol'], chain
                     caller = frame.older().older().older().older()
@@ -353,12 +379,12 @@ def install(config):
 
     Finished('*topal_x86_systems_fatal', internal=True)
     Enter('topal_x86_systems_file_position_apply_v1', 'owner')
-    Enter('topal_kernel_region_action_apply_v1', 'source')
+    Enter(export_name, 'source')
     Enter('topal_x86_systems_file_position_finalize_v1', 'finalize')
-    entry = next(f['symbol'] for f in library['functions'] if f['symbol'].startswith('topal.region.action.') and 'fn.advance.' in f['symbol'])
-    codec = next(f['symbol'] for f in library['functions'] if f['symbol'].startswith('topal.region.action.') and 'store_2du64_2dle' in f['symbol'])
+    entry = next(f['symbol'] for f in library['functions'] if f['symbol'].startswith(prefix) and 'fn.advance.' in f['symbol'])
+    codec = next(f['symbol'] for f in library['functions'] if f['symbol'].startswith(prefix) and 'store_2du64_2dle' in f['symbol'])
     Ordinary(entry, False)
     Ordinary(codec, True)
-    Fatal('*topal_kernel_region_action_abort_v1', internal=True)
+    Fatal('*' + library['imported_hooks'][1], internal=True)
     if cases:
         arm(0)

@@ -87,6 +87,13 @@ pub(crate) fn emit_region_kernel_library(
                 unit.entry_symbol
             );
         }
+        CompilerKernelRegionProfile::FramedAction { scalar_count } => {
+            module.push_str(&region_frame_inputs(scalar_count));
+            module.push_str(&region_frame_call(
+                scalar_count,
+                &format!("{}{}", unit.prefix(), unit.entry_symbol),
+            ));
+        }
     }
     module.push_str(&region_bridge_tail(unit.profile));
     module.push_str(&generator.debug.finish());
@@ -112,13 +119,14 @@ pub(crate) fn emit_region_kernel_library(
             if let Some(suffix) = name.strip_prefix(".topal.") {
                 return format!("{}literal.{suffix}", unit.prefix());
             }
-            if unit.profile == CompilerKernelRegionProfile::Action {
+            if unit.profile != CompilerKernelRegionProfile::Unit {
+                let (export, allocate, abort) = unit.native_names();
                 match name {
-                    region::EXPORT => region::ACTION_EXPORT.into(),
-                    region::ALLOCATE => region::ACTION_ALLOCATE.into(),
-                    region::ABORT => region::ACTION_ABORT.into(),
+                    region::EXPORT => export.into(),
+                    region::ALLOCATE => allocate.into(),
+                    region::ABORT => abort.into(),
                     _ => match name.strip_prefix("topal.kernel.region.") {
-                        Some(suffix) => format!("{}primitive.{suffix}", region::ACTION_PREFIX),
+                        Some(suffix) => format!("{}primitive.{suffix}", unit.prefix()),
                         None => name.into(),
                     },
                 }
@@ -226,16 +234,19 @@ fn region_bridge_head(profile: CompilerKernelRegionProfile) -> String {
         CompilerKernelRegionProfile::Action => REGION_BRIDGE_HEAD.replacen(
             "define void @topal_kernel_region_apply_v1(ptr %control, i64 %expected.owner, i64 %next.epoch)",
             "define i64 @topal_kernel_region_apply_v1(ptr %control, i64 %expected.owner, i64 %next.epoch, i64 %first, i64 %second)", 1),
+        CompilerKernelRegionProfile::FramedAction {scalar_count} => region_frame_head(scalar_count),
     }
 }
 fn region_bridge_tail(profile: CompilerKernelRegionProfile) -> String {
     match profile {
         CompilerKernelRegionProfile::Unit => REGION_BRIDGE_TAIL.into(),
-        CompilerKernelRegionProfile::Action => REGION_BRIDGE_TAIL.replacen(
-            "  ret void",
-            "  %result = zext i1 %accepted to i64\n  ret i64 %result",
-            1,
-        ),
+        CompilerKernelRegionProfile::Action | CompilerKernelRegionProfile::FramedAction { .. } => {
+            REGION_BRIDGE_TAIL.replacen(
+                "  ret void",
+                "  %result = zext i1 %accepted to i64\n  ret i64 %result",
+                1,
+            )
+        }
     }
 }
 const REGION_ACTION_INPUTS: &str = r#"

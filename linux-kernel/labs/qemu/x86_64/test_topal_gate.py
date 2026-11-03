@@ -26,6 +26,39 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_framed_region_inputs_are_owned_until_return_and_legacy_transport_still_runs(self):
+        # TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001, -FRAME-ABI-001.
+        proof = json.loads((LAB/'results/topal-file-position-region-gate.json').read_text())
+        self.assertEqual(proof['harness_sha256'], sha256(LAB/'file_region_gate.py'))
+        self.assertEqual(proof['inspector_sha256'], sha256(LAB/'file_region_inspect.py'))
+        for name in ('primary', 'lifetime'):
+            case = proof[name]
+            library, binding, observation = case['source_library'], case['binding'], case['observation']
+            self.assertEqual(library['schema'], 'topal.kernel-region-frame-source-object.x86_64/1')
+            self.assertEqual(library['scalar_count'], 2)
+            self.assertEqual(binding['schema'], 'topal.file-position-region-invocation.x86_64/2')
+            self.assertEqual(binding['scalar_count'], 2)
+            self.assertEqual(binding['interface'], 'borrowed-byte-region-framed-action-v1')
+            self.assertEqual(library['allocation']['numeric']['bridge_bytes'], 112)
+            self.assertEqual(binding['combined_stack_bytes'], library['maximum_stack_bytes'] + 120)
+            self.assertLessEqual(binding['combined_stack_bytes'], 4096)
+            self.assertEqual(observation['result'], 'pass')
+            self.assertTrue(observation['finalized'])
+            self.assertGreaterEqual(len(observation['calls']), 46)
+            for call in observation['calls']:
+                frame = call['scalar_transport']
+                self.assertEqual((frame['words'], frame['frame_bytes'], frame['owned_staging_bytes']), (2, 16, 32))
+                self.assertEqual(frame['address'], call['frame_sp'])
+                self.assertTrue(frame['mapped_owned_extent'] and frame['outside_arena_and_retired_stack'])
+                self.assertTrue(call['temporary_cleanup'] and call['caller_preserved'])
+        legacy = proof['legacy']
+        self.assertEqual(legacy['observation']['result'], 'pass')
+        self.assertEqual(legacy['source_library']['schema'], 'topal.kernel-region-action-source-object.x86_64/1')
+        self.assertEqual(legacy['binding']['schema'], 'topal.file-position-region-invocation.x86_64/1')
+        self.assertNotIn('scalar_count', legacy['binding'])
+        self.assertNotIn('scalar_count', legacy['source_library'])
+        self.assertNotIn('adapter_family_sha256', legacy['source_library']['allocation'])
+
     def test_controlled_debugger_completion_keeps_the_actual_guest_stopped(self) -> None:
         # Controlled result files cannot authorize teardown before GDB exits.
         groups = [
@@ -1255,16 +1288,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/248")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/249")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/235")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/236")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/248",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/249",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/149",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1790,7 +1823,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/248")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/249")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

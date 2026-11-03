@@ -15,6 +15,111 @@ fn temporary_work() -> std::path::PathBuf {
     std::fs::create_dir(&path).unwrap();
     path
 }
+
+#[test]
+fn framed_region_source_objects_bind_exact_scalar_counts_and_complete_costs() {
+    // TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001, -FRAME-ABI-001.
+    let tools = LlvmTools::discover(None).unwrap();
+    for scalar_count in [0, 1, 2, 3, 16] {
+        let parameters = (0..scalar_count)
+            .map(|i| format!(", fact{i} : Nat"))
+            .collect::<String>();
+        let fields = format!("region : KernelByteRegion{parameters}");
+        let operands = if scalar_count == 0 {
+            fields
+        } else {
+            format!("({fields})")
+        };
+        let source = format!(
+            "use language (version is v0.1, features is (systems))\npub apply is fn ({operands}) -> Boolean\n  true\n"
+        );
+        let work = temporary_work();
+        let input = input(&work, &source);
+        let object = build_systems_region_framed_action_library(
+            &input,
+            "apply",
+            scalar_count,
+            &tools,
+            &work,
+        )
+        .unwrap();
+        assert_eq!(object.record.scalar_count, Some(scalar_count));
+        let encoded = serde_json::to_value(&object.record).unwrap();
+        let decoded: SystemsRegionLibraryArtifact =
+            serde_json::from_value(encoded.clone()).unwrap();
+        assert_eq!(decoded, object.record);
+        for field in ["scalar_count", "adapter_family_sha256"] {
+            let mut changed = encoded.clone();
+            if field == "scalar_count" {
+                changed[field] = serde_json::Value::Null;
+            } else {
+                changed["allocation"][field] = serde_json::Value::Null;
+            }
+            assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(changed).is_err());
+        }
+        assert_eq!(
+            object.record.schema,
+            "topal.kernel-region-frame-source-object.x86_64/1"
+        );
+        assert_eq!(object.record.native_export, FRAME_EXPORT);
+        assert_eq!(
+            object.record.native_abi,
+            "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1"
+        );
+        assert_eq!(object.record.imported_hooks, [FRAME_ALLOCATE, FRAME_ABORT]);
+        assert_eq!(
+            object.record.allocation.numeric.bridge_bytes,
+            64 + 24 * u64::from(scalar_count)
+        );
+        assert_eq!(
+            object.record.allocation.numeric.maximum_bytes,
+            96 + 24 * u64::from(scalar_count)
+        );
+        assert_eq!(object.record.read_only_data.is_empty(), scalar_count == 0);
+        assert!(object.record.maximum_stack_bytes <= 4096);
+        eprintln!(
+            "frame count={scalar_count} selected-adapter={} family={:?}",
+            object.record.allocation.adapter_sha256, object.record.allocation.adapter_family_sha256
+        );
+        assert_eq!(
+            object.record.allocation.adapter_family_sha256,
+            Some(crate::codegen::region_frame_adapter_family_sha256())
+        );
+        verify_systems_region_framed_action_library(
+            &input,
+            "apply",
+            scalar_count,
+            &tools,
+            &temporary_work(),
+            &object,
+        )
+        .unwrap();
+        assert!(
+            verify_systems_region_framed_action_library(
+                &input,
+                "apply",
+                scalar_count + 1,
+                &tools,
+                &temporary_work(),
+                &object
+            )
+            .is_err()
+        );
+        let mut changed = object.clone();
+        changed.record.scalar_count = None;
+        assert!(
+            verify_systems_region_framed_action_library(
+                &input,
+                "apply",
+                scalar_count,
+                &tools,
+                &temporary_work(),
+                &changed
+            )
+            .is_err()
+        );
+    }
+}
 fn input(work: &Path, source: &str) -> SystemsSourceLibraryInput {
     let source_path = work.join("region-source.t");
     std::fs::write(&source_path, source).unwrap();
@@ -221,6 +326,17 @@ fn region_certificate_reproduction_rejects_undercharge_wrong_protocol_and_change
         );
     }
     let mut json = serde_json::to_value(&unit.record).unwrap();
+    assert!(json.get("scalar_count").is_none());
+    assert!(json["allocation"].get("adapter_family_sha256").is_none());
+    for field in ["scalar_count", "adapter_family_sha256"] {
+        let mut changed = json.clone();
+        if field == "scalar_count" {
+            changed[field] = serde_json::Value::Null;
+        } else {
+            changed["allocation"][field] = serde_json::Value::Null;
+        }
+        assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(changed).is_err());
+    }
     json["unchecked"] = true.into();
     assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(json).is_err());
 }

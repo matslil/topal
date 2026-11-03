@@ -9613,6 +9613,8 @@ source authority, infer an overload, insert ignored facts or reinterpret names.
 Existing ordinary function/module meanings and the closed acyclic, effect,
 nonescape, argument-order and unsupported-form obligations SHALL remain.
 The bound on N SHALL belong to this systems context, not core function types.
+Existing syntactic operand limits SHALL remain; additional declared fields
+SHALL use ordinary explicit operand packaging.
 
 Every transported fact SHALL represent a value in 0..2^64-1 as an ordinary Nat.
 Source arithmetic SHALL retain arbitrary precision. The input frame, native

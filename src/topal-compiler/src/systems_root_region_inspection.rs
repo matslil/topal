@@ -65,6 +65,8 @@ pub(crate) fn inspect_linked(
         .checked_add(CALL_ALIGNMENT_BYTES)
         .ok_or_else(|| invalid("combined source/caller stack overflow"))?;
     if library.schema != "topal.kernel-region-source-object.x86_64/3"
+        || library.scalar_count.is_some()
+        || library.allocation.adapter_family_sha256.is_some()
         || library.target != "x86_64-unknown-none"
         || library.data_layout != crate::X86_SYSTEMS_DATA_LAYOUT
         || library.native_export != crate::systems_region_library::EXPORT

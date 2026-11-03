@@ -12,7 +12,10 @@ pub enum CompilerKernelRegionOperation {
 pub enum CompilerKernelRegionProfile {
     Unit,
     Action,
+    FramedAction { scalar_count: u8 },
 }
+
+pub const MAX_KERNEL_REGION_FRAME_SCALARS: u8 = 16;
 
 enum KernelRegionSelection<'a> {
     Entry(&'a str, CompilerKernelRegionProfile),
@@ -48,6 +51,29 @@ pub fn analyze_kernel_region_action_library(
     entry: &str,
 ) -> Result<CompilerProgram, Diagnostic> {
     analyze_kernel_region_profile(text, modules, entry, CompilerKernelRegionProfile::Action)
+}
+
+/// Select an exact caller-declared scalar signature without constructing a view.
+pub fn analyze_kernel_region_framed_action_library(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+    scalar_count: u8,
+) -> Result<CompilerProgram, Diagnostic> {
+    if scalar_count > MAX_KERNEL_REGION_FRAME_SCALARS {
+        return Err(Diagnostic::error(
+            "E-SYSTEMS-REGION-SOURCE",
+            1,
+            1,
+            "framed region actions admit at most sixteen Nat inputs",
+        ));
+    }
+    analyze_kernel_region_profile(
+        text,
+        modules,
+        entry,
+        CompilerKernelRegionProfile::FramedAction { scalar_count },
+    )
 }
 
 fn analyze_kernel_region_profile(
@@ -282,7 +308,7 @@ impl Analyzer {
         };
         let name = (*name).clone();
         let mut declaration = declaration.clone();
-        if profile == CompilerKernelRegionProfile::Action {
+        if profile != CompilerKernelRegionProfile::Unit {
             let mut parameters = Vec::new();
             for parameter in &declaration.parameters {
                 if parameter.qualifier.is_some() || parameter.default.is_some() {
@@ -315,7 +341,7 @@ impl Analyzer {
             CompilerKernelRegionProfile::Unit => (
                 vec![CompilerType::KernelByteRegion],
                 CompilerType::Unit,
-                "region entry requires (KernelByteRegion) -> Unit",
+                "region entry requires (KernelByteRegion) -> Unit".to_owned(),
             ),
             CompilerKernelRegionProfile::Action => (
                 vec![
@@ -324,8 +350,22 @@ impl Analyzer {
                     CompilerType::Nat,
                 ],
                 CompilerType::Boolean,
-                "region action requires (KernelByteRegion, Nat, Nat) -> Boolean",
+                "region action requires (KernelByteRegion, Nat, Nat) -> Boolean".to_owned(),
             ),
+            CompilerKernelRegionProfile::FramedAction { scalar_count } => {
+                let mut types = vec![CompilerType::KernelByteRegion];
+                types.extend(std::iter::repeat_n(
+                    CompilerType::Nat,
+                    usize::from(scalar_count),
+                ));
+                (
+                    types,
+                    CompilerType::Boolean,
+                    format!(
+                        "framed region action requires one KernelByteRegion and {scalar_count} Nat inputs -> Boolean"
+                    ),
+                )
+            }
         };
         let actual = declaration
             .parameters
@@ -336,7 +376,7 @@ impl Analyzer {
             || actual != types
             || self.parse_classifier(declaration.result)? != result
         {
-            return Err(unsupported(&self.source, declaration.span, signature));
+            return Err(unsupported(&self.source, declaration.span, &signature));
         }
         let arguments = declaration
             .parameters
@@ -346,7 +386,8 @@ impl Analyzer {
             .map(|(index, (parameter, value_type))| CompilerExpression {
                 kind: CompilerExpressionKind::Local(match profile {
                     CompilerKernelRegionProfile::Unit => "<qualified-region-input>".into(),
-                    CompilerKernelRegionProfile::Action => {
+                    CompilerKernelRegionProfile::Action
+                    | CompilerKernelRegionProfile::FramedAction { .. } => {
                         format!("<qualified-region-input-{index}>")
                     }
                 }),

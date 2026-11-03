@@ -12,6 +12,12 @@ use crate::{SystemsRegionReadOnlyBinding, SystemsRootRegionCode, SystemsRootRegi
 pub struct SystemsFilePositionRegionBinding {
     pub schema: String,
     pub interface: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub scalar_count: Option<u8>,
     pub maximum_source_stack_bytes: u64,
     pub caller_alignment_bytes: u64,
     pub live_frame_bytes: u64,
@@ -48,23 +54,33 @@ pub(crate) fn inspect_linked(
     bytes: &[u8],
     library: &crate::SystemsRegionLibraryArtifact,
 ) -> Result<SystemsFilePositionRegionBinding, CompileError> {
+    let framed = library.schema == "topal.kernel-region-frame-source-object.x86_64/1";
+    let (export, allocate, abort_hook) = native_names(framed);
+    let prefix = if framed {
+        crate::systems_region_library::FRAME_PREFIX
+    } else {
+        crate::systems_region_library::ACTION_PREFIX
+    };
     let storage_bytes = super::super::process_runtime::children::STORAGE_BYTES;
     let combined_stack_bytes = library
         .maximum_stack_bytes
         .checked_add(CALL_ALIGNMENT_BYTES)
         .and_then(|n| n.checked_add(LIVE_FRAME_BYTES))
         .ok_or_else(|| invalid("combined source/caller stack overflow"))?;
-    if library.schema != "topal.kernel-region-action-source-object.x86_64/1"
+    if (!framed && library.schema != "topal.kernel-region-action-source-object.x86_64/1")
+        || library.scalar_count != framed.then_some(2)
+        || library.allocation.adapter_family_sha256.as_deref()
+            != if framed {
+                Some("c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe")
+            } else {
+                None
+            }
         || library.target != "x86_64-unknown-none"
         || library.data_layout != crate::X86_SYSTEMS_DATA_LAYOUT
-        || library.native_export != crate::systems_region_library::ACTION_EXPORT
+        || library.native_export != export
         || library.declared_entry != "(KernelByteRegion, Nat, Nat) -> Boolean"
         || library.read_only_data.is_empty()
-        || library.imported_hooks
-            != [
-                crate::systems_region_library::ACTION_ALLOCATE,
-                crate::systems_region_library::ACTION_ABORT,
-            ]
+        || library.imported_hooks != [allocate, abort_hook]
         || library.imported_hook_stack_bytes != 8
         || library.stack_limit_bytes != 4096
         || combined_stack_bytes > RETIRED_STACK_BYTES
@@ -88,13 +104,27 @@ pub(crate) fn inspect_linked(
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
     if library.machine_profile != "x86_64-owned-region-gpr-only/1"
         || library.native_abi
-            != "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1"
+            != if framed {
+                "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1"
+            } else {
+                "topal.kernel-region-action-control-view64-u64x2-bool.x86_64-sysv/1"
+            }
         || library.runtime_sha256 != digest(include_bytes!("runtime/kernel_regions.ll"))
         || library.platform_hooks_sha256
             != digest(include_bytes!("runtime/kernel_region_platform.ll"))
         || library.allocation.region_runtime_sha256 != library.runtime_sha256
-        || library.allocation.adapter_sha256 != crate::codegen::region_action_adapter_sha256()
-        || allocation.certificate != "topal.kernel-region-action-allocation/1"
+        || library.allocation.adapter_sha256
+            != if framed {
+                crate::codegen::region_frame_adapter_sha256(2)
+            } else {
+                crate::codegen::region_action_adapter_sha256()
+            }
+        || allocation.certificate
+            != if framed {
+                "topal.kernel-region-frame-allocation/1"
+            } else {
+                "topal.kernel-region-action-allocation/1"
+            }
         || allocation.runtime_sha256 != digest(include_bytes!("runtime/value_core.ll"))
         || allocation.collection_runtime_sha256
             != digest(include_bytes!("runtime/fundamental_containers.ll"))
@@ -115,16 +145,7 @@ pub(crate) fn inspect_linked(
     let mut owned = Vec::new();
     let mut source_code = Vec::new();
     let mut seen = BTreeSet::new();
-    let mut costs = BTreeMap::from([
-        (
-            crate::systems_region_library::ACTION_ALLOCATE.to_owned(),
-            8_u64,
-        ),
-        (
-            crate::systems_region_library::ACTION_ABORT.to_owned(),
-            8_u64,
-        ),
-    ]);
+    let mut costs = BTreeMap::from([(allocate.to_owned(), 8_u64), (abort_hook.to_owned(), 8_u64)]);
     for function in &library.functions {
         if !seen.insert(function.symbol.as_str()) {
             return Err(invalid("duplicate region function"));
@@ -207,19 +228,12 @@ pub(crate) fn inspect_linked(
         .symbols()
         .filter(|s| s.is_definition() && s.kind() == SymbolKind::Text)
         .filter_map(|s| s.name().ok())
-        .filter(|name| {
-            *name == crate::systems_region_library::ACTION_EXPORT
-                || name.starts_with(crate::systems_region_library::ACTION_PREFIX)
-        })
+        .filter(|name| *name == export || name.starts_with(prefix))
         .collect::<Vec<_>>();
     if linked_names.len() != seen.len() || linked_names.iter().any(|name| !seen.contains(name)) {
         return Err(invalid("extra or missing action source/runtime code"));
     }
-    if costs
-        .get(crate::systems_region_library::ACTION_EXPORT)
-        .and_then(|cost| cost.checked_add(8))
-        != Some(library.maximum_stack_bytes)
-    {
+    if costs.get(export).and_then(|cost| cost.checked_add(8)) != Some(library.maximum_stack_bytes) {
         return Err(invalid("inconsistent complete region stack certificate"));
     }
     let bootstrap = file
@@ -239,7 +253,7 @@ pub(crate) fn inspect_linked(
         &file,
         super::super::X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
     )?;
-    let source_data = crate::inspect_systems_region_action_data(bytes, library)?;
+    let source_data = crate::inspect_systems_region_read_only_data(bytes, library)?;
     for data in &source_data {
         range(data.address, data.bytes)?;
     }
@@ -321,10 +335,10 @@ pub(crate) fn inspect_linked(
         unwind: Vec::new(),
     };
     for (name, code) in [
-        (APPLY, apply()?),
-        (crate::systems_region_library::ACTION_ALLOCATE, allocator()?),
-        (crate::systems_region_library::ACTION_ABORT, abort),
-        (FINALIZE, finalize()?),
+        (APPLY, apply(framed)?),
+        (allocate, allocator(framed)?),
+        (abort_hook, abort),
+        (FINALIZE, finalize(framed)?),
     ] {
         let symbol = file
             .symbol_by_name(name)
@@ -405,8 +419,19 @@ pub(crate) fn inspect_linked(
         });
     }
     Ok(SystemsFilePositionRegionBinding {
-        schema: "topal.file-position-region-invocation.x86_64/1".into(),
-        interface: "borrowed-byte-region-action-v1".into(),
+        schema: if framed {
+            "topal.file-position-region-invocation.x86_64/2"
+        } else {
+            "topal.file-position-region-invocation.x86_64/1"
+        }
+        .into(),
+        interface: if framed {
+            "borrowed-byte-region-framed-action-v1"
+        } else {
+            "borrowed-byte-region-action-v1"
+        }
+        .into(),
+        scalar_count: framed.then_some(2),
         maximum_source_stack_bytes: library.maximum_stack_bytes,
         caller_alignment_bytes: CALL_ALIGNMENT_BYTES,
         live_frame_bytes: LIVE_FRAME_BYTES,

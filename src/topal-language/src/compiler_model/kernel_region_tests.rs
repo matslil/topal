@@ -284,3 +284,74 @@ fn action_context_rejects_wrong_shapes_private_entries_and_false_effects() {
     }
     assert!(analyze_kernel_region_action_library(SOURCE, &[], "apply").is_err());
 }
+
+#[test]
+fn framed_selection_matches_exact_declared_count_without_changing_core_operands() {
+    // TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001.
+    for count in [0, 1, 2, 3, 16] {
+        let mut parameters = "region : KernelByteRegion".to_owned();
+        for i in 0..count {
+            parameters.push_str(&format!(", fact{i} : Nat"));
+        }
+        let source = format!(
+            "use language (version is v0.1, features is (systems))\npub apply is fn (({parameters})) -> Boolean\n  true\n"
+        );
+        let program =
+            analyze_kernel_region_framed_action_library(&source, &[], "apply", count).unwrap();
+        let entry = program
+            .functions
+            .iter()
+            .find(|f| f.source_name == "apply")
+            .unwrap();
+        assert_eq!(entry.parameters.len(), usize::from(count) + 1);
+        assert_eq!(
+            entry.parameters[0].value_type,
+            CompilerType::KernelByteRegion
+        );
+        assert!(
+            entry.parameters[1..]
+                .iter()
+                .all(|p| p.value_type == CompilerType::Nat)
+        );
+        assert_eq!(entry.result_type, CompilerType::Boolean);
+        for expected in [17, count + 1] {
+            assert!(
+                analyze_kernel_region_framed_action_library(&source, &[], "apply", expected)
+                    .is_err()
+            );
+        }
+        for (old, new) in [
+            ("pub apply", "apply"),
+            ("-> Boolean", "-> Nat"),
+            (", features is (systems)", ""),
+            ("region : KernelByteRegion", "region : Nat"),
+        ] {
+            assert!(
+                analyze_kernel_region_framed_action_library(
+                    &source.replace(old, new),
+                    &[],
+                    "apply",
+                    count
+                )
+                .is_err()
+            );
+        }
+        if count > 0 {
+            assert!(
+                analyze_kernel_region_framed_action_library(
+                    &source.replace("fact0 : Nat", "fact0 : Int"),
+                    &[],
+                    "apply",
+                    count
+                )
+                .is_err()
+            );
+        }
+        assert_eq!(
+            analyze_kernel_region_action_library(&source, &[], "apply").is_ok(),
+            count == 2
+        );
+    }
+    let flat = "use language (version is v0.1, features is (systems))\npub apply is fn (region : KernelByteRegion, a : Nat, b : Nat) -> Boolean\n  true\n";
+    assert!(analyze_kernel_region_framed_action_library(flat, &[], "apply", 2).is_err());
+}

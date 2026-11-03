@@ -2819,10 +2819,14 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     }
     if let Some(library) = &program.file_position_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::BorrowedByteRegionActionV1 {
+        if !matches!(
+            library.interface,
+            crate::SystemsSourceLibraryInterface::BorrowedByteRegionActionV1
+                | crate::SystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
+        ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ACTION",
-                "file-position-library requires borrowed-byte-region-action-v1",
+                "file-position-library requires a qualified region action interface",
             ));
         }
     }

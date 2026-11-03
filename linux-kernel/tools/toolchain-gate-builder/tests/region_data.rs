@@ -214,7 +214,7 @@ fn region_root_changed_literal_rejects_with_unchanged_code_and_corrected_outer_d
             .is_err()
     );
     assert!(!refused.exists());
-    for mode in 0..12 {
+    for mode in 0..14 {
         let mut changed = artifact.record.clone();
         let record = changed.region_library.as_mut().unwrap();
         match mode {
@@ -244,6 +244,8 @@ fn region_root_changed_literal_rejects_with_unchanged_code_and_corrected_outer_d
                 record.read_only_data.remove(0);
             }
             11 => changed.region_runtime.as_mut().unwrap().source_data[0].address += 8,
+            12 => record.scalar_count = Some(0),
+            13 => record.allocation.adapter_family_sha256 = Some("0".repeat(64)),
             _ => unreachable!(),
         }
         assert!(
