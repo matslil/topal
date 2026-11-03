@@ -9556,7 +9556,7 @@ their separate integration evidence.
 
 ### TOPAL-SYSTEMS-REGION-ROOT-BINDING-001 — Root-bound region source
 
-A systems-root `region-library` declaration SHALL select a contained source
+A Unit-form systems-root `region-library` declaration SHALL select a contained source
 unit, published `(KernelByteRegion) -> Unit` export, interface
 `borrowed-byte-region-v1`, 4096-byte stack and 65536-byte temporary-runtime
 reserves, with no retained source-state reserve. The source/object obligations
@@ -9567,6 +9567,8 @@ complete bounds, linked code/data extents, relocations and root/provider/target
 identities. A standalone certificate SHALL NOT qualify a different linked
 executable or confer owner authority. Missing, extra, tampered or undercharged
 bindings SHALL reject before atomic publication.
+The separately qualified instance-action alternative SHALL obey
+`TOPAL-SYSTEMS-REGION-INSTANCE-ROOT-001`; it SHALL NOT reinterpret this Unit ABI.
 
 ### TOPAL-SYSTEMS-REGION-ROOT-CALL-001 — Exclusive root region loan
 
@@ -9680,6 +9682,111 @@ incompatible metadata and incomplete caller/resource proof. Physical kernel
 qualification SHALL inspect actual frame words, source values, persistent field
 bytes, caller state, complete cleanup and active/inactive retirement, retaining
 independent source variants, legacy contexts and the full runtime corpus.
+
+### TOPAL-SYSTEMS-REGION-INSTANCE-SOURCE-001 — Instance-owned framed source
+
+A `borrowed-byte-region-instance-action-v1` context MAY select an ordinary
+published one-`KernelByteRegion`/N-`Nat`/`Boolean` entry, with caller-declared
+0 <= N <= 16, under `TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001` and
+`TOPAL-SYSTEMS-REGION-FRAME-ABI-001`. All declared-type, packaging, closed-module,
+effect, nonescape, scalar-value and complete resource laws SHALL remain.
+An instance label SHALL identify object/link/caller ownership only; neither a
+label, matching signature, export nor numeric address SHALL grant a live call.
+
+Canonical labels SHALL contain 1–48 ASCII characters, start with a lowercase
+letter and contain only lowercase letters, digits and single internal hyphens.
+Final/repeated hyphens, dots, underscores and escaping forms SHALL reject before
+object generation. Private source/runtime/data names SHALL use
+`topal.region-instance.<label>.`. Native names SHALL append `_apply_v1`,
+`_allocate_v1` and `_abort_v1` to `topal_kernel_region_frame_<stem>`, where
+`<stem>` replaces each label hyphen with an underscore. The mapping SHALL
+be injective over admitted labels and SHALL NOT alter source/debug strings.
+
+Instance source objects SHALL use framed source-object schema 2 with explicit
+instance and scalar count. The existing five-argument framed native layout
+SHALL retain ABI 1. The reviewed complete adapter family and exact selected
+count rendering SHALL remain bound alongside actual named object/linked code
+and immutable data. No input or allocation charge SHALL disappear through
+instance naming. Valid zero-fact empty-data graphs SHALL remain valid.
+
+Unit schema 3, two-scalar action schema 1 and unscoped framed schema 1 SHALL
+retain their exact contexts, private symbols, entry ABIs and canonical omission
+of instance-only fields. Their readers/validators SHALL reject instance-only
+metadata, including explicit nulls. Instance contexts SHALL NOT be inferred
+from those old schemas or selected by a fallback. Objects alone SHALL confer
+neither owning resources nor callable authority.
+
+### TOPAL-SYSTEMS-REGION-INSTANCE-BINDING-001 — Independent caller domains
+
+Every live instance SHALL bind its exact caller slot, source/module closure,
+instance/count, entry/hooks, code/read-only extents and conservative resource
+certificate. Each caller SHALL separately prove actual owner/control rights,
+mapped input frame, independent arena/history and complete lifetime/reclamation.
+The control's code identity SHALL equal the actual selected instance entry.
+Matching layouts/counts SHALL NOT authorize cross-instance code/control/hooks,
+arena borrowing or owner access. Imported ordinary helpers SHALL belong to
+their importing instance's closed source graph rather than calling another
+instance's private native entry.
+
+The initial root and persistent-position slots SHALL bind `root-region` and
+`file-position` respectively. These identities SHALL derive from their owning
+callers, not a source address or freely chosen grant. Other standalone objects
+SHALL require independent live-caller qualification. Selected root and field
+instances MAY coexist; duplicate entries/labels, foreign/unselected namespaces,
+extra/missing hooks and mismatched instance/count/schema/code/data/storage
+SHALL reject before publication and boot. New root/field bindings SHALL use
+schema 3 with explicit instance/count; old bindings SHALL retain their exact
+prior contexts and omission of new fields.
+
+The 65536-byte arena, 4096-byte source-stack reserve, 256-view, 64-function and
+256-bit numeric proof limits SHALL remain per instance. Source depth, hooks,
+returns, alignment and all live caller/staging bytes SHALL be charged. Separate
+owners SHALL retain separate controls, arenas and histories. Retired stack
+storage MAY be reused only after complete preceding erasure under existing
+synchronous, nonnested, controller-domain exclusion. IF=0 SHALL NOT establish
+SMP exclusion. Instance identity SHALL NOT introduce concurrency or widen a
+plain-memory loan into MMIO, atomics, DMA, firmware or user-memory authority.
+
+Qualification SHALL execute at least two instances with identical arity/export,
+observe independent source parameters, writes, allocations/generations/cleanup
+and reject cross-instance code/control before source entry or allocation.
+Actual-object/linked code/data, canonical-label/metadata, legacy/absence and
+complete application/policy regressions SHALL remain mandatory. Other targets
+SHALL independently qualify layout, ABI, code, stack and physical behavior.
+
+### TOPAL-SYSTEMS-REGION-INSTANCE-ROOT-001 — Zero-fact Boolean root instance
+
+A systems-root `region-library` MAY select the instance-action context only
+with exactly zero Nat facts and a declared `(KernelByteRegion) -> Boolean`
+entry. It SHALL use instance `root-region`, the existing 4096/65536-byte limits,
+no retained-state reserve and a canonical null/zero input frame. The original
+Unit alternative SHALL remain independently usable. Unscoped framed/action
+contexts SHALL NOT silently become this root interface.
+
+The existing single synchronous 64-byte root loan before atomic derivation,
+owner suspension, opaque source mutation and dynamic resumed byte guard SHALL
+remain. The caller SHALL retain the actual source Boolean, revoke all views
+and erase/read back complete arena/control/retired-stack state before any owner
+resumption. It SHALL then require normalized true for admitted completion.
+False after successful stores SHALL take invariant-fatal disposition without
+owner resumption or rollback. Neither Boolean acceptance nor expected owner
+bytes SHALL be predicted by the opaque model or fabricated by native policy.
+
+The new x86-64 root binding SHALL charge 56 live caller bytes plus the existing
+32-byte alignment allowance and complete source depth within 4096 bytes, and
+SHALL prove native result/register preservation without erasing live root
+frames. History SHALL retire under the existing terminal-owner contract.
+The persistent-position instance SHALL retain N=2, effective-base/actual-count
+facts, immutable staging, true-only admitted completion and unchanged Linux
+behavior under its existing field laws.
+
+Physical qualification SHALL execute both actual root and field instances,
+verify exact code/owner identities, zero root frame, real source/helper/caller
+frames and Boolean/byte outcomes, disjoint invocation storage, full cleanup and
+terminal histories. Root false-after-store, wrong-byte/pre-entry/absence and
+independent legacy Unit/action/unscoped-frame controls SHALL remain. Controlled
+observations SHALL complete GDB disconnect and prove the guest stays stopped
+before teardown; standalone/model evidence SHALL NOT replace those checks.
 
 ### TOPAL-SYSTEMS-REGION-READONLY-DATA-001 — Complete immutable region inputs
 
