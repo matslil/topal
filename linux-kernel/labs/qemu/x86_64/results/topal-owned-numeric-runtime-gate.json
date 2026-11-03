@@ -15,7 +15,7 @@
         "source_evaluation_bytes": 41520
       },
       "checked_client_sha256": "7603cc3daf7091353f22b78320d9b922bfb230e1a08ee7f6abac3f4d24cfc1fa",
-      "disassembly_sha256": "2a2919d7557dc11053418cbfe536f5cfa6738e4aa79dc50774cb3d91bc247153",
+      "disassembly_sha256": "4867a7d57ee92e485892af39bc89d523a42eb46f38ea4fdc100c0453fc5fe36e",
       "functions": [
         {
           "callees": [],
@@ -377,11 +377,11 @@
       "interface": "relative-sleep-deadline-v1",
       "linked_inputs": {
         "manifest_sha256": "867f4f2f979e8617b668651c0ad70236492cf99f7e74b8cd67bbf2a544326294",
-        "object_sha256": "af186bc6a5ed5164c656c7a8a25d47bd7fdcf696e28dcf39981a49906524a0f2",
+        "object_sha256": "a59be329af4a869fcd643a389703e73e30c329c71d36d166934c4a3d3f1982c9",
         "schema": "topal.policy-linked-inputs.x86_64/1",
         "sections": [
           {
-            "address": 3195536,
+            "address": 3195648,
             "alignment": 16,
             "bytes": 73,
             "executable": true,
@@ -389,7 +389,7 @@
             "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4"
           },
           {
-            "address": 3195616,
+            "address": 3195728,
             "alignment": 16,
             "bytes": 43,
             "executable": true,
@@ -397,7 +397,7 @@
             "sha256": "2a1b84e4bc104f92c8c52826ad3447bfb8ddacc334cf009a45096b2af7d73e1f"
           },
           {
-            "address": 3195664,
+            "address": 3195776,
             "alignment": 16,
             "bytes": 31,
             "executable": true,
@@ -405,7 +405,7 @@
             "sha256": "9259263f0ea25538245bcc7bd145ad321177643f4dde53b869a9bdff0cac6462"
           },
           {
-            "address": 3195696,
+            "address": 3195808,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -413,7 +413,7 @@
             "sha256": "b7765d427c0ab33ac2f5e19fde4bdd111f726a689f6090d8249c3f9f019ca48b"
           },
           {
-            "address": 3195744,
+            "address": 3195856,
             "alignment": 16,
             "bytes": 10,
             "executable": true,
@@ -421,7 +421,7 @@
             "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
           },
           {
-            "address": 3195760,
+            "address": 3195872,
             "alignment": 16,
             "bytes": 79,
             "executable": true,
@@ -429,7 +429,7 @@
             "sha256": "2aa435852bd643649896da02c35845b4b0b87f570b0f00c3569646b9ffed83df"
           },
           {
-            "address": 3195840,
+            "address": 3195952,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -437,7 +437,7 @@
             "sha256": "2b7e33d4f5bdaf83d25d548aca3c507973d630649c6d8be1af51f4f8174ccab0"
           },
           {
-            "address": 3195968,
+            "address": 3196080,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -445,7 +445,7 @@
             "sha256": "b57c05d1d63a3571aa80996828bc652cf377b32827724be3b85363ad5fea8917"
           },
           {
-            "address": 3196016,
+            "address": 3196128,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -453,7 +453,7 @@
             "sha256": "8207954e261e2daab0c96d6e91fdb6a8df841b45e00ca412b5e267bf5d98df4d"
           },
           {
-            "address": 3196144,
+            "address": 3196256,
             "alignment": 16,
             "bytes": 116,
             "executable": true,
@@ -461,7 +461,7 @@
             "sha256": "efb673a5d0066baf94fedb8d2892b907512624099d02e47f982e43df20fb2194"
           },
           {
-            "address": 3196272,
+            "address": 3196384,
             "alignment": 16,
             "bytes": 96,
             "executable": true,
@@ -469,7 +469,7 @@
             "sha256": "09f3a857475febcd7641f0436a393e8139729438a2fd7436f5ac440c3004aa7d"
           },
           {
-            "address": 3196368,
+            "address": 3196480,
             "alignment": 16,
             "bytes": 158,
             "executable": true,
@@ -477,7 +477,7 @@
             "sha256": "f1682ed576c8f19f011cfdca0f8ddf298a7d002fb9a27c4679050fde11d5bc6b"
           },
           {
-            "address": 3196528,
+            "address": 3196640,
             "alignment": 16,
             "bytes": 212,
             "executable": true,
@@ -485,7 +485,7 @@
             "sha256": "d5180bd7440331a2303f0d4ac673b9517ee66fba8cb7e02d59f4bab0b6f5ef86"
           },
           {
-            "address": 3196752,
+            "address": 3196864,
             "alignment": 16,
             "bytes": 239,
             "executable": true,
@@ -493,7 +493,7 @@
             "sha256": "2bd94405a08513199832a40eed0e325b2b604d87d11b1bd2d6016160e71512e7"
           },
           {
-            "address": 3196992,
+            "address": 3197104,
             "alignment": 16,
             "bytes": 198,
             "executable": true,
@@ -501,7 +501,7 @@
             "sha256": "43c3f31207f44386c3af2b0465188c79e1aed4f4495dc8a54f78fc41c81a48fb"
           },
           {
-            "address": 3197200,
+            "address": 3197312,
             "alignment": 16,
             "bytes": 339,
             "executable": true,
@@ -509,7 +509,7 @@
             "sha256": "ff4d02bd6cf247e33b1bc8d86a454911c0d145395c8496c34639dd9c44da5eef"
           },
           {
-            "address": 3197552,
+            "address": 3197664,
             "alignment": 16,
             "bytes": 538,
             "executable": true,
@@ -517,7 +517,7 @@
             "sha256": "e90d19ff6dc1a2dad2c54fa249759c916afc38ddcd5f96bbb52787cb992e22f9"
           },
           {
-            "address": 3198096,
+            "address": 3198208,
             "alignment": 16,
             "bytes": 28,
             "executable": true,
@@ -525,7 +525,7 @@
             "sha256": "d11865a7a2e5c535d1846140ea69e97c0d55ff666cedd2532cfc339bb73cad94"
           },
           {
-            "address": 3198128,
+            "address": 3198240,
             "alignment": 16,
             "bytes": 47,
             "executable": true,
@@ -533,7 +533,7 @@
             "sha256": "670155cc82e36020d862b9366a151dc96529f95f978e8bf96dd46ea78b77737f"
           },
           {
-            "address": 3198176,
+            "address": 3198288,
             "alignment": 16,
             "bytes": 9,
             "executable": true,
@@ -541,7 +541,7 @@
             "sha256": "b1692178a17fd71398c4c4c05612bcddec0991e1ba16e887345afc6c929106fd"
           },
           {
-            "address": 3198192,
+            "address": 3198304,
             "alignment": 16,
             "bytes": 10,
             "executable": true,
@@ -549,7 +549,7 @@
             "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
           },
           {
-            "address": 3198208,
+            "address": 3198320,
             "alignment": 16,
             "bytes": 112,
             "executable": true,
@@ -557,7 +557,7 @@
             "sha256": "1052c44ab09ff99a1d138aa8cc56f41a53db6c642fa432216d51d03bfcca00dd"
           },
           {
-            "address": 3198320,
+            "address": 3198432,
             "alignment": 16,
             "bytes": 25,
             "executable": true,
@@ -565,7 +565,7 @@
             "sha256": "abef1dd9c8df305345b7760ea0fbd491bd0aab56bb629e69328e9ebcfa95a427"
           },
           {
-            "address": 3198352,
+            "address": 3198464,
             "alignment": 16,
             "bytes": 422,
             "executable": true,
@@ -573,7 +573,7 @@
             "sha256": "de0f0e08c9d673152f493eb94628526fd4bd3ae65f6f965c08ba30ca1336a217"
           },
           {
-            "address": 3198784,
+            "address": 3198896,
             "alignment": 16,
             "bytes": 288,
             "executable": true,
@@ -581,7 +581,7 @@
             "sha256": "675bc20e9b3672a86a4aa6f46a149e239df3db95edaf19eefd46a24ff6464242"
           },
           {
-            "address": 3199072,
+            "address": 3199184,
             "alignment": 16,
             "bytes": 78,
             "executable": true,
@@ -589,7 +589,7 @@
             "sha256": "6a3f5ae2fe2de70e3b0162e4327d420908e7a1ea6a3b79fd9e67586e9098af6a"
           },
           {
-            "address": 3199152,
+            "address": 3199264,
             "alignment": 16,
             "bytes": 52,
             "executable": true,
@@ -597,7 +597,7 @@
             "sha256": "3d18c9146e191fc05c7f4927758b4ab7e8e7ba7ea49f7943b3f3109a44823842"
           },
           {
-            "address": 3199216,
+            "address": 3199328,
             "alignment": 16,
             "bytes": 119,
             "executable": true,
@@ -605,23 +605,23 @@
             "sha256": "343fee65ecb3b79f12f29809957d8171b8150e0333e6e7fdb37ce874ec698183"
           },
           {
-            "address": 3199344,
+            "address": 3199456,
             "alignment": 16,
             "bytes": 11,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.28",
-            "sha256": "2599a3aba7f115d4862f778f91aa498cf8c50067e7a6b15410e1376156fa2ba5"
+            "sha256": "57d71e99c21f7e6a7dc9c9bbef0ed486722edb03c6dda8458cfcad2fdc46032e"
           },
           {
-            "address": 3199360,
+            "address": 3199472,
             "alignment": 16,
             "bytes": 9,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.29",
-            "sha256": "995996fa730264f78843a0ed3244bd304a336d4840b3bbb909f947caf98528e3"
+            "sha256": "332b45a79b46ac061c9b689933bf3c38e66841212a1f598a8f40a48525a3333f"
           },
           {
-            "address": 3199376,
+            "address": 3199488,
             "alignment": 16,
             "bytes": 80,
             "executable": true,
@@ -629,7 +629,7 @@
             "sha256": "5a4d5ba97d4092ba8e400bb64200194e1870341d8068ede92fd4dc2f08855033"
           },
           {
-            "address": 3199456,
+            "address": 3199568,
             "alignment": 16,
             "bytes": 81,
             "executable": true,
@@ -637,7 +637,7 @@
             "sha256": "2124d5053fe577fa5719661af441042f84a74355a1e04471c0c08a4ccaa38268"
           },
           {
-            "address": 3199552,
+            "address": 3199664,
             "alignment": 16,
             "bytes": 123,
             "executable": true,
@@ -645,7 +645,7 @@
             "sha256": "447cd044338642c7a0a0857340196e51abfd89cf18ce4930a41b814a4aba2777"
           },
           {
-            "address": 3199680,
+            "address": 3199792,
             "alignment": 16,
             "bytes": 116,
             "executable": true,
@@ -653,7 +653,7 @@
             "sha256": "dcd0a8fb098d46e901eb956ddd2d02257859aa2ac9e5401091d736ea4659a836"
           },
           {
-            "address": 3199808,
+            "address": 3199920,
             "alignment": 16,
             "bytes": 72,
             "executable": true,
@@ -661,7 +661,7 @@
             "sha256": "4616d064f5a5f0686db507bec40fd8819be2dad33d8d7366fcb077af754e52ba"
           },
           {
-            "address": 3199888,
+            "address": 3200000,
             "alignment": 16,
             "bytes": 25,
             "executable": true,
@@ -669,7 +669,7 @@
             "sha256": "677b1c6e62b27f407c9ed53b3c38f49e3b53ecab9b664f3a47b9d2abdd5321e3"
           },
           {
-            "address": 3199920,
+            "address": 3200032,
             "alignment": 16,
             "bytes": 150,
             "executable": true,
@@ -677,7 +677,7 @@
             "sha256": "f0d309e1e67f42ca6018bd957e676f8ccf041b090cf510647c79c250f1d1b264"
           },
           {
-            "address": 3200080,
+            "address": 3200192,
             "alignment": 16,
             "bytes": 281,
             "executable": true,
@@ -685,7 +685,7 @@
             "sha256": "37aa187888d2a4fd4cc3a1b9edfa582771a1429b6ef649ca70ace8d9ad0b7376"
           },
           {
-            "address": 3200368,
+            "address": 3200480,
             "alignment": 16,
             "bytes": 319,
             "executable": true,
@@ -693,7 +693,7 @@
             "sha256": "7a102280ae1c127f5d7b9ed25aa064926d0352487730374ed1efc233d7526524"
           },
           {
-            "address": 3200688,
+            "address": 3200800,
             "alignment": 16,
             "bytes": 172,
             "executable": true,
@@ -701,12 +701,12 @@
             "sha256": "32fdba66212670bf988d9a395bfb87a4ee4fe881d5a00da3a0614dffbb685371"
           },
           {
-            "address": 3200864,
+            "address": 3200976,
             "alignment": 16,
             "bytes": 272,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.40",
-            "sha256": "613de247dcc78f1555c8fa7983f8e311123ca40f6bac269328b3b15b4d26a106"
+            "sha256": "aa4deabd3c4731fa96213cfec894a3b47f41e7910856baca04b40a8cfdb123c2"
           },
           {
             "address": 2098152,
@@ -726,7 +726,7 @@
           }
         ]
       },
-      "llvm_sha256": "f021ac9d9c1aaf2db98ee200688c6b55db2c21e1c78ff5a7c3bd27c1bbbe13ab",
+      "llvm_sha256": "b21152027ddcc9024c3a83ac1cea360badda5ae90e2bbcb975d766c1492a3183",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-numeric-gpr-only/8",
       "maximum_stack_bytes": 1352,
@@ -745,11 +745,11 @@
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_invocation_save_bytes": 0,
       "native_leaf_return_bytes": 8,
-      "object_sha256": "af186bc6a5ed5164c656c7a8a25d47bd7fdcf696e28dcf39981a49906524a0f2",
+      "object_sha256": "a59be329af4a869fcd643a389703e73e30c329c71d36d166934c4a3d3f1982c9",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
       "result_field_order": [],
       "result_order_suffix": false,
-      "retained_llvm_sha256": "4d42a26ac752ff6d919396ded4d7ab88aa5616265ce7349277f40bf88ecd7196",
+      "retained_llvm_sha256": "50c9cebf20573d468f677a07884ff3d09099f07d8ed805b595a853a31285ce87",
       "retained_state": null,
       "schema": "topal.kernel-numeric-source-library/9",
       "sections": [
@@ -1100,19 +1100,19 @@
       ],
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-o4i_tkky/wrong-deadline/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-niycib3o/wrong-deadline/policy/relative-sleep-deadline.t",
       "source_sha256": "1acbb22ffddb4fd3ef09c121caf7d0d0b95157b3f2a49f74ae64e792b8efde74",
       "source_tags": [],
       "stack_limit_bytes": 4096
     },
-    "linked_kernel_sha256": "7a494fada40e3c7c718a53cdf0e878fe6b1f23143c636996afd6f7c75b6b4d3a",
+    "linked_kernel_sha256": "4c425912444ad9359333b8023853a96b5fcb392c64e25dd6df938aaff801385b",
     "module_body": false,
     "observation": {
-      "expected_deadline": 272709,
+      "expected_deadline": 282948,
       "independent_deadline_rejection": true,
       "nanoseconds": 1,
       "observed_deadline": 0,
-      "raw_ticks": 272708,
+      "raw_ticks": 282947,
       "seconds": 0,
       "wrapped": 0
     },
@@ -1135,7 +1135,7 @@
       "source_evaluation_bytes": 41520
     },
     "checked_client_sha256": "9b19c4beae77089949ba0b56b1d3921ed2c70ad80c78813ae6a2d9adb1f3d9d2",
-    "disassembly_sha256": "01e6c4717b40d9f80aa1b04f865aa30fdc627b55d3f4803d1405f7a8a636142e",
+    "disassembly_sha256": "66a760529ad55a2fde25e941359db4886dbc3e76e6f5fd5bd24ae303602c9882",
     "functions": [
       {
         "callees": [],
@@ -1501,7 +1501,7 @@
       "schema": "topal.policy-linked-inputs.x86_64/1",
       "sections": [
         {
-          "address": 3195520,
+          "address": 3195632,
           "alignment": 16,
           "bytes": 73,
           "executable": true,
@@ -1509,7 +1509,7 @@
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4"
         },
         {
-          "address": 3195600,
+          "address": 3195712,
           "alignment": 16,
           "bytes": 43,
           "executable": true,
@@ -1517,7 +1517,7 @@
           "sha256": "2a1b84e4bc104f92c8c52826ad3447bfb8ddacc334cf009a45096b2af7d73e1f"
         },
         {
-          "address": 3195648,
+          "address": 3195760,
           "alignment": 16,
           "bytes": 31,
           "executable": true,
@@ -1525,7 +1525,7 @@
           "sha256": "9259263f0ea25538245bcc7bd145ad321177643f4dde53b869a9bdff0cac6462"
         },
         {
-          "address": 3195680,
+          "address": 3195792,
           "alignment": 16,
           "bytes": 48,
           "executable": true,
@@ -1533,7 +1533,7 @@
           "sha256": "b7765d427c0ab33ac2f5e19fde4bdd111f726a689f6090d8249c3f9f019ca48b"
         },
         {
-          "address": 3195728,
+          "address": 3195840,
           "alignment": 16,
           "bytes": 10,
           "executable": true,
@@ -1541,7 +1541,7 @@
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
         },
         {
-          "address": 3195744,
+          "address": 3195856,
           "alignment": 16,
           "bytes": 79,
           "executable": true,
@@ -1549,7 +1549,7 @@
           "sha256": "2aa435852bd643649896da02c35845b4b0b87f570b0f00c3569646b9ffed83df"
         },
         {
-          "address": 3195824,
+          "address": 3195936,
           "alignment": 16,
           "bytes": 127,
           "executable": true,
@@ -1557,7 +1557,7 @@
           "sha256": "2b7e33d4f5bdaf83d25d548aca3c507973d630649c6d8be1af51f4f8174ccab0"
         },
         {
-          "address": 3195952,
+          "address": 3196064,
           "alignment": 16,
           "bytes": 48,
           "executable": true,
@@ -1565,7 +1565,7 @@
           "sha256": "b57c05d1d63a3571aa80996828bc652cf377b32827724be3b85363ad5fea8917"
         },
         {
-          "address": 3196000,
+          "address": 3196112,
           "alignment": 16,
           "bytes": 127,
           "executable": true,
@@ -1573,7 +1573,7 @@
           "sha256": "8207954e261e2daab0c96d6e91fdb6a8df841b45e00ca412b5e267bf5d98df4d"
         },
         {
-          "address": 3196128,
+          "address": 3196240,
           "alignment": 16,
           "bytes": 116,
           "executable": true,
@@ -1581,7 +1581,7 @@
           "sha256": "efb673a5d0066baf94fedb8d2892b907512624099d02e47f982e43df20fb2194"
         },
         {
-          "address": 3196256,
+          "address": 3196368,
           "alignment": 16,
           "bytes": 96,
           "executable": true,
@@ -1589,7 +1589,7 @@
           "sha256": "09f3a857475febcd7641f0436a393e8139729438a2fd7436f5ac440c3004aa7d"
         },
         {
-          "address": 3196352,
+          "address": 3196464,
           "alignment": 16,
           "bytes": 158,
           "executable": true,
@@ -1597,7 +1597,7 @@
           "sha256": "f1682ed576c8f19f011cfdca0f8ddf298a7d002fb9a27c4679050fde11d5bc6b"
         },
         {
-          "address": 3196512,
+          "address": 3196624,
           "alignment": 16,
           "bytes": 212,
           "executable": true,
@@ -1605,7 +1605,7 @@
           "sha256": "d5180bd7440331a2303f0d4ac673b9517ee66fba8cb7e02d59f4bab0b6f5ef86"
         },
         {
-          "address": 3196736,
+          "address": 3196848,
           "alignment": 16,
           "bytes": 239,
           "executable": true,
@@ -1613,7 +1613,7 @@
           "sha256": "2bd94405a08513199832a40eed0e325b2b604d87d11b1bd2d6016160e71512e7"
         },
         {
-          "address": 3196976,
+          "address": 3197088,
           "alignment": 16,
           "bytes": 198,
           "executable": true,
@@ -1621,7 +1621,7 @@
           "sha256": "43c3f31207f44386c3af2b0465188c79e1aed4f4495dc8a54f78fc41c81a48fb"
         },
         {
-          "address": 3197184,
+          "address": 3197296,
           "alignment": 16,
           "bytes": 339,
           "executable": true,
@@ -1629,7 +1629,7 @@
           "sha256": "ff4d02bd6cf247e33b1bc8d86a454911c0d145395c8496c34639dd9c44da5eef"
         },
         {
-          "address": 3197536,
+          "address": 3197648,
           "alignment": 16,
           "bytes": 538,
           "executable": true,
@@ -1637,7 +1637,7 @@
           "sha256": "e90d19ff6dc1a2dad2c54fa249759c916afc38ddcd5f96bbb52787cb992e22f9"
         },
         {
-          "address": 3198080,
+          "address": 3198192,
           "alignment": 16,
           "bytes": 28,
           "executable": true,
@@ -1645,7 +1645,7 @@
           "sha256": "d11865a7a2e5c535d1846140ea69e97c0d55ff666cedd2532cfc339bb73cad94"
         },
         {
-          "address": 3198112,
+          "address": 3198224,
           "alignment": 16,
           "bytes": 47,
           "executable": true,
@@ -1653,7 +1653,7 @@
           "sha256": "670155cc82e36020d862b9366a151dc96529f95f978e8bf96dd46ea78b77737f"
         },
         {
-          "address": 3198160,
+          "address": 3198272,
           "alignment": 16,
           "bytes": 9,
           "executable": true,
@@ -1661,7 +1661,7 @@
           "sha256": "b1692178a17fd71398c4c4c05612bcddec0991e1ba16e887345afc6c929106fd"
         },
         {
-          "address": 3198176,
+          "address": 3198288,
           "alignment": 16,
           "bytes": 10,
           "executable": true,
@@ -1669,7 +1669,7 @@
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
         },
         {
-          "address": 3198192,
+          "address": 3198304,
           "alignment": 16,
           "bytes": 112,
           "executable": true,
@@ -1677,7 +1677,7 @@
           "sha256": "1052c44ab09ff99a1d138aa8cc56f41a53db6c642fa432216d51d03bfcca00dd"
         },
         {
-          "address": 3198304,
+          "address": 3198416,
           "alignment": 16,
           "bytes": 25,
           "executable": true,
@@ -1685,7 +1685,7 @@
           "sha256": "abef1dd9c8df305345b7760ea0fbd491bd0aab56bb629e69328e9ebcfa95a427"
         },
         {
-          "address": 3198336,
+          "address": 3198448,
           "alignment": 16,
           "bytes": 422,
           "executable": true,
@@ -1693,7 +1693,7 @@
           "sha256": "de0f0e08c9d673152f493eb94628526fd4bd3ae65f6f965c08ba30ca1336a217"
         },
         {
-          "address": 3198768,
+          "address": 3198880,
           "alignment": 16,
           "bytes": 288,
           "executable": true,
@@ -1701,7 +1701,7 @@
           "sha256": "675bc20e9b3672a86a4aa6f46a149e239df3db95edaf19eefd46a24ff6464242"
         },
         {
-          "address": 3199056,
+          "address": 3199168,
           "alignment": 16,
           "bytes": 78,
           "executable": true,
@@ -1709,7 +1709,7 @@
           "sha256": "6a3f5ae2fe2de70e3b0162e4327d420908e7a1ea6a3b79fd9e67586e9098af6a"
         },
         {
-          "address": 3199136,
+          "address": 3199248,
           "alignment": 16,
           "bytes": 52,
           "executable": true,
@@ -1717,7 +1717,7 @@
           "sha256": "3d18c9146e191fc05c7f4927758b4ab7e8e7ba7ea49f7943b3f3109a44823842"
         },
         {
-          "address": 3199200,
+          "address": 3199312,
           "alignment": 16,
           "bytes": 119,
           "executable": true,
@@ -1725,23 +1725,23 @@
           "sha256": "343fee65ecb3b79f12f29809957d8171b8150e0333e6e7fdb37ce874ec698183"
         },
         {
-          "address": 3199328,
+          "address": 3199440,
           "alignment": 16,
           "bytes": 11,
           "executable": true,
           "marker": "topal.policy-inputs.time-library.28",
-          "sha256": "2599a3aba7f115d4862f778f91aa498cf8c50067e7a6b15410e1376156fa2ba5"
+          "sha256": "57d71e99c21f7e6a7dc9c9bbef0ed486722edb03c6dda8458cfcad2fdc46032e"
         },
         {
-          "address": 3199344,
+          "address": 3199456,
           "alignment": 16,
           "bytes": 9,
           "executable": true,
           "marker": "topal.policy-inputs.time-library.29",
-          "sha256": "995996fa730264f78843a0ed3244bd304a336d4840b3bbb909f947caf98528e3"
+          "sha256": "332b45a79b46ac061c9b689933bf3c38e66841212a1f598a8f40a48525a3333f"
         },
         {
-          "address": 3199360,
+          "address": 3199472,
           "alignment": 16,
           "bytes": 80,
           "executable": true,
@@ -1749,7 +1749,7 @@
           "sha256": "5a4d5ba97d4092ba8e400bb64200194e1870341d8068ede92fd4dc2f08855033"
         },
         {
-          "address": 3199440,
+          "address": 3199552,
           "alignment": 16,
           "bytes": 81,
           "executable": true,
@@ -1757,7 +1757,7 @@
           "sha256": "2124d5053fe577fa5719661af441042f84a74355a1e04471c0c08a4ccaa38268"
         },
         {
-          "address": 3199536,
+          "address": 3199648,
           "alignment": 16,
           "bytes": 123,
           "executable": true,
@@ -1765,7 +1765,7 @@
           "sha256": "447cd044338642c7a0a0857340196e51abfd89cf18ce4930a41b814a4aba2777"
         },
         {
-          "address": 3199664,
+          "address": 3199776,
           "alignment": 16,
           "bytes": 116,
           "executable": true,
@@ -1773,7 +1773,7 @@
           "sha256": "dcd0a8fb098d46e901eb956ddd2d02257859aa2ac9e5401091d736ea4659a836"
         },
         {
-          "address": 3199792,
+          "address": 3199904,
           "alignment": 16,
           "bytes": 72,
           "executable": true,
@@ -1781,7 +1781,7 @@
           "sha256": "4616d064f5a5f0686db507bec40fd8819be2dad33d8d7366fcb077af754e52ba"
         },
         {
-          "address": 3199872,
+          "address": 3199984,
           "alignment": 16,
           "bytes": 25,
           "executable": true,
@@ -1789,7 +1789,7 @@
           "sha256": "677b1c6e62b27f407c9ed53b3c38f49e3b53ecab9b664f3a47b9d2abdd5321e3"
         },
         {
-          "address": 3199904,
+          "address": 3200016,
           "alignment": 16,
           "bytes": 150,
           "executable": true,
@@ -1797,7 +1797,7 @@
           "sha256": "f0d309e1e67f42ca6018bd957e676f8ccf041b090cf510647c79c250f1d1b264"
         },
         {
-          "address": 3200064,
+          "address": 3200176,
           "alignment": 16,
           "bytes": 281,
           "executable": true,
@@ -1805,7 +1805,7 @@
           "sha256": "37aa187888d2a4fd4cc3a1b9edfa582771a1429b6ef649ca70ace8d9ad0b7376"
         },
         {
-          "address": 3200352,
+          "address": 3200464,
           "alignment": 16,
           "bytes": 319,
           "executable": true,
@@ -1813,7 +1813,7 @@
           "sha256": "7a102280ae1c127f5d7b9ed25aa064926d0352487730374ed1efc233d7526524"
         },
         {
-          "address": 3200672,
+          "address": 3200784,
           "alignment": 16,
           "bytes": 162,
           "executable": true,
@@ -1821,12 +1821,12 @@
           "sha256": "f9c1ee2027ab854a82a7ecc79e2badba447aed17c0938cc28bd3c491a7828258"
         },
         {
-          "address": 3200848,
+          "address": 3200960,
           "alignment": 16,
           "bytes": 272,
           "executable": true,
           "marker": "topal.policy-inputs.time-library.40",
-          "sha256": "613de247dcc78f1555c8fa7983f8e311123ca40f6bac269328b3b15b4d26a106"
+          "sha256": "aa4deabd3c4731fa96213cfec894a3b47f41e7910856baca04b40a8cfdb123c2"
         },
         {
           "address": 2098152,
@@ -1869,7 +1869,7 @@
     "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
     "result_field_order": [],
     "result_order_suffix": false,
-    "retained_llvm_sha256": "b3e46b5430fd50861c2c000e41a11dd87e9ea20c49eef9a22077b866b0305985",
+    "retained_llvm_sha256": "5981568e994cf6acc698c5535ff295e6c830871d4d24c3952162a189dab632bb",
     "retained_state": null,
     "schema": "topal.kernel-numeric-source-library/9",
     "sections": [
@@ -2241,7 +2241,7 @@
         "source_evaluation_bytes": 1360
       },
       "checked_client_sha256": "eabf824fa3a4c6f946e398cd968516d64b529eb33d578a843c644c257773af0e",
-      "disassembly_sha256": "e8efb128bf8440a771fb14d450543c08dd5cf789692f39308e77e21dc7a146b3",
+      "disassembly_sha256": "66a07a0a5ea375f9c2854ef77052528804932e35d04fd2ea355261a7b8b1b4bc",
       "functions": [
         {
           "callees": [],
@@ -2509,11 +2509,11 @@
       "interface": "relative-sleep-deadline-v1",
       "linked_inputs": {
         "manifest_sha256": "0ff8819832306c3fa64e1582384142564c09040a616f177143b756431ec0758a",
-        "object_sha256": "4f25352ba1de6978037d9e57b552c282c2f061ccca8f6f54fefd83ef8a2823d1",
+        "object_sha256": "421deffc361783f3a6c3f70ab42ad5b829a9a08c5746ce221df5c7d094b9acbd",
         "schema": "topal.policy-linked-inputs.x86_64/1",
         "sections": [
           {
-            "address": 3195472,
+            "address": 3195584,
             "alignment": 16,
             "bytes": 73,
             "executable": true,
@@ -2521,7 +2521,7 @@
             "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4"
           },
           {
-            "address": 3195552,
+            "address": 3195664,
             "alignment": 16,
             "bytes": 43,
             "executable": true,
@@ -2529,7 +2529,7 @@
             "sha256": "3325445fe3f2e8a777a27673246092b542a801530ce1cfff5c277fd71573ed7a"
           },
           {
-            "address": 3195600,
+            "address": 3195712,
             "alignment": 16,
             "bytes": 31,
             "executable": true,
@@ -2537,7 +2537,7 @@
             "sha256": "6166d221d7aaf2b62164d45a79939f4c2665eea3a82dfbce325837b830ea70c3"
           },
           {
-            "address": 3195632,
+            "address": 3195744,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -2545,7 +2545,7 @@
             "sha256": "441ca8fb9ed92045c6d694da15658b07b1ee84d59dab2eae48f770d4fed829ed"
           },
           {
-            "address": 3195680,
+            "address": 3195792,
             "alignment": 16,
             "bytes": 10,
             "executable": true,
@@ -2553,7 +2553,7 @@
             "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
           },
           {
-            "address": 3195696,
+            "address": 3195808,
             "alignment": 16,
             "bytes": 79,
             "executable": true,
@@ -2561,7 +2561,7 @@
             "sha256": "a427c1e578f66bd7868d00e4c293a185dea289ab9fa361566c8551a924b40ed2"
           },
           {
-            "address": 3195776,
+            "address": 3195888,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -2569,7 +2569,7 @@
             "sha256": "2b7e33d4f5bdaf83d25d548aca3c507973d630649c6d8be1af51f4f8174ccab0"
           },
           {
-            "address": 3195904,
+            "address": 3196016,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -2577,7 +2577,7 @@
             "sha256": "b57c05d1d63a3571aa80996828bc652cf377b32827724be3b85363ad5fea8917"
           },
           {
-            "address": 3195952,
+            "address": 3196064,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -2585,7 +2585,7 @@
             "sha256": "8207954e261e2daab0c96d6e91fdb6a8df841b45e00ca412b5e267bf5d98df4d"
           },
           {
-            "address": 3196080,
+            "address": 3196192,
             "alignment": 16,
             "bytes": 158,
             "executable": true,
@@ -2593,7 +2593,7 @@
             "sha256": "f1682ed576c8f19f011cfdca0f8ddf298a7d002fb9a27c4679050fde11d5bc6b"
           },
           {
-            "address": 3196240,
+            "address": 3196352,
             "alignment": 16,
             "bytes": 212,
             "executable": true,
@@ -2601,7 +2601,7 @@
             "sha256": "d5180bd7440331a2303f0d4ac673b9517ee66fba8cb7e02d59f4bab0b6f5ef86"
           },
           {
-            "address": 3196464,
+            "address": 3196576,
             "alignment": 16,
             "bytes": 239,
             "executable": true,
@@ -2609,7 +2609,7 @@
             "sha256": "e4a81ab23adac0518f9602b0174fca663c0a4136b21681703d544ff71536d530"
           },
           {
-            "address": 3196704,
+            "address": 3196816,
             "alignment": 16,
             "bytes": 198,
             "executable": true,
@@ -2617,7 +2617,7 @@
             "sha256": "2b6f1cab4fa8ea8dc97c8cdf5dda673e0d8e43e663c3f826fa987a47dd8d0daf"
           },
           {
-            "address": 3196912,
+            "address": 3197024,
             "alignment": 16,
             "bytes": 339,
             "executable": true,
@@ -2625,7 +2625,7 @@
             "sha256": "52ecadbd106ffd1022163980b69979ae838d58a8ac821fd7e276c8955ba4ddc9"
           },
           {
-            "address": 3197264,
+            "address": 3197376,
             "alignment": 16,
             "bytes": 538,
             "executable": true,
@@ -2633,7 +2633,7 @@
             "sha256": "83326a4c29850bb53e05fc7818ca4e441e4e7b107382cd2e26e2508da88231f9"
           },
           {
-            "address": 3197808,
+            "address": 3197920,
             "alignment": 16,
             "bytes": 28,
             "executable": true,
@@ -2641,7 +2641,7 @@
             "sha256": "d11865a7a2e5c535d1846140ea69e97c0d55ff666cedd2532cfc339bb73cad94"
           },
           {
-            "address": 3197840,
+            "address": 3197952,
             "alignment": 16,
             "bytes": 78,
             "executable": true,
@@ -2649,7 +2649,7 @@
             "sha256": "6a3f5ae2fe2de70e3b0162e4327d420908e7a1ea6a3b79fd9e67586e9098af6a"
           },
           {
-            "address": 3197920,
+            "address": 3198032,
             "alignment": 16,
             "bytes": 52,
             "executable": true,
@@ -2657,7 +2657,7 @@
             "sha256": "3d18c9146e191fc05c7f4927758b4ab7e8e7ba7ea49f7943b3f3109a44823842"
           },
           {
-            "address": 3197984,
+            "address": 3198096,
             "alignment": 16,
             "bytes": 119,
             "executable": true,
@@ -2665,23 +2665,23 @@
             "sha256": "d6664ad963861c77a32cd56c49b1afe0d8389c2bf9fc156af79ca53372906776"
           },
           {
-            "address": 3198112,
+            "address": 3198224,
             "alignment": 16,
             "bytes": 11,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.19",
-            "sha256": "2a3593ccf73b0b8ee3e05a1f39400883ef3993719ae9875a0f4e77280ee4177c"
+            "sha256": "28587eb7a09ae64441c3aa072e6ddab23936727d373b0898ecd29e594f2355c0"
           },
           {
-            "address": 3198128,
+            "address": 3198240,
             "alignment": 16,
             "bytes": 9,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.20",
-            "sha256": "1389e4f597bcc06a0ebb0421bce1186996e9f54924d43e92cc4ace577e9333fd"
+            "sha256": "3c4c22ff4f5efcc737eba71c843478d7d4f78651191777cc2f447d901444d924"
           },
           {
-            "address": 3198144,
+            "address": 3198256,
             "alignment": 16,
             "bytes": 80,
             "executable": true,
@@ -2689,7 +2689,7 @@
             "sha256": "4a38c6cceabb0bbb5e8e296889f933a70d25971bc7c5f332777c5c89290407fd"
           },
           {
-            "address": 3198224,
+            "address": 3198336,
             "alignment": 16,
             "bytes": 81,
             "executable": true,
@@ -2697,7 +2697,7 @@
             "sha256": "40f58e5c9c994eb28b45cbb5d6c3deb05721537c04fcfd54891f5bf161bbe0b6"
           },
           {
-            "address": 3198320,
+            "address": 3198432,
             "alignment": 16,
             "bytes": 123,
             "executable": true,
@@ -2705,7 +2705,7 @@
             "sha256": "e3129e206bee03a78069d62eecc457fe21ac7a98bbbb25ae04856011ab176197"
           },
           {
-            "address": 3198448,
+            "address": 3198560,
             "alignment": 16,
             "bytes": 116,
             "executable": true,
@@ -2713,7 +2713,7 @@
             "sha256": "dcd0a8fb098d46e901eb956ddd2d02257859aa2ac9e5401091d736ea4659a836"
           },
           {
-            "address": 3198576,
+            "address": 3198688,
             "alignment": 16,
             "bytes": 72,
             "executable": true,
@@ -2721,7 +2721,7 @@
             "sha256": "796f72ac3a4c49f3553b22247c220e577e21744a5bf3b3b9ebd2f30cf6131a2a"
           },
           {
-            "address": 3198656,
+            "address": 3198768,
             "alignment": 16,
             "bytes": 25,
             "executable": true,
@@ -2729,7 +2729,7 @@
             "sha256": "c648323bcbcadc96256cc0c1f2725fa294c832a4a1113b1aea84a3bde9e5345d"
           },
           {
-            "address": 3198688,
+            "address": 3198800,
             "alignment": 16,
             "bytes": 281,
             "executable": true,
@@ -2737,7 +2737,7 @@
             "sha256": "d4578ee44e2c834a26c12a53bdb719db980263076f688739f99a71edea9d49f8"
           },
           {
-            "address": 3198976,
+            "address": 3199088,
             "alignment": 16,
             "bytes": 319,
             "executable": true,
@@ -2745,7 +2745,7 @@
             "sha256": "fcae1e70542e086559a5e1f0da48a4be50fa49eb601238767a87cd4a30ef85cf"
           },
           {
-            "address": 3199296,
+            "address": 3199408,
             "alignment": 16,
             "bytes": 162,
             "executable": true,
@@ -2753,12 +2753,12 @@
             "sha256": "f9c1ee2027ab854a82a7ecc79e2badba447aed17c0938cc28bd3c491a7828258"
           },
           {
-            "address": 3199472,
+            "address": 3199584,
             "alignment": 16,
             "bytes": 272,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.30",
-            "sha256": "5efdfaf0a54e60448e0cae5d96f90bfe904479b62a17e3b45d85dc14b4cc7a81"
+            "sha256": "40bd8792773e595adf25e834f8769033594380a1c403007d7866d330e6f6341c"
           },
           {
             "address": 2098152,
@@ -2778,7 +2778,7 @@
           }
         ]
       },
-      "llvm_sha256": "e7f2e395b4acd81792e74ede126fcaa029d6b1a2dd16126f899f79ee6f7b4856",
+      "llvm_sha256": "098e8a42e31902459e0fa230daba5ee2f2ad06b25541c80fc4c805cce34ed025",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-numeric-gpr-only/8",
       "maximum_stack_bytes": 1128,
@@ -2797,11 +2797,11 @@
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_invocation_save_bytes": 0,
       "native_leaf_return_bytes": 8,
-      "object_sha256": "4f25352ba1de6978037d9e57b552c282c2f061ccca8f6f54fefd83ef8a2823d1",
+      "object_sha256": "421deffc361783f3a6c3f70ab42ad5b829a9a08c5746ce221df5c7d094b9acbd",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
       "result_field_order": [],
       "result_order_suffix": false,
-      "retained_llvm_sha256": "49e2374adafcd31b5ac6819bcf074380046a78e9fb8cf2377a92256009b3e405",
+      "retained_llvm_sha256": "74d181521adcb2bafa7133219c8617eda26058a82b9e83605f78466f803739d0",
       "retained_state": null,
       "schema": "topal.kernel-numeric-source-library/9",
       "sections": [
@@ -3072,19 +3072,19 @@
       ],
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-o4i_tkky/wrong-deadline-module/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-niycib3o/wrong-deadline-module/policy/relative-sleep-deadline.t",
       "source_sha256": "6d9f5f63b19fe96bc1bf7930e735a0c5b32949f5ca5677c7c4b8c44f8c22204d",
       "source_tags": [],
       "stack_limit_bytes": 4096
     },
-    "linked_kernel_sha256": "63725af0160ffbf2770a5c3dec9d2640a1a447ca4d6a5d48c0fecfe25b19089d",
+    "linked_kernel_sha256": "73612af9364f5968ea3807e1973e5e80bfe627f4f6b1588e3bc8b3a489005885",
     "module_body": true,
     "observation": {
-      "expected_deadline": 269056,
+      "expected_deadline": 280448,
       "independent_deadline_rejection": true,
       "nanoseconds": 1,
       "observed_deadline": 0,
-      "raw_ticks": 269055,
+      "raw_ticks": 280447,
       "seconds": 0,
       "wrapped": 0
     },
@@ -3133,23 +3133,23 @@
           96,
           80
         ],
-        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x328070 <topal_x86_systems_numeric_arena+112>) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:22\n#1  0x000000000030d31e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:37\n#2  0x000000000030d4d6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:50\n#3  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#4  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#5  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x00000000002112b9 in _topal_kernel_entry ()\n"
+        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x328070 <topal_x86_systems_numeric_arena+112>) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:22\n#1  0x000000000030d38e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:37\n#2  0x000000000030d546 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:50\n#3  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#4  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#5  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x00000000002112b9 in _topal_kernel_entry ()\n"
       }
     ],
     "binding_erased": true,
     "calls": [
       {
-        "allocation_count": 153,
+        "allocation_count": 119,
         "arena_erased": true,
-        "arena_highwater": 3632,
+        "arena_highwater": 2816,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 253481,
+        "expected_deadline": 262805,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 253481,
-        "raw_ticks": 253480,
+        "observed_deadline": 262805,
+        "raw_ticks": 262804,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3161,17 +3161,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 177,
+        "allocation_count": 167,
         "arena_erased": true,
-        "arena_highwater": 4208,
+        "arena_highwater": 3968,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 1307863,
+        "expected_deadline": 1284571,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 1307863,
-        "raw_ticks": 1307862,
+        "observed_deadline": 1284571,
+        "raw_ticks": 1284570,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3183,17 +3183,61 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 129,
+        "allocation_count": 179,
         "arena_erased": true,
-        "arena_highwater": 3056,
+        "arena_highwater": 4256,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 1851916,
+        "expected_deadline": 1805305,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 1851916,
-        "raw_ticks": 1851916,
+        "observed_deadline": 1805305,
+        "raw_ticks": 1805305,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 141,
+        "arena_erased": true,
+        "arena_highwater": 3344,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 0,
+        "expected_deadline": 2394200,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 2394200,
+        "raw_ticks": 2394199,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 173,
+        "arena_erased": true,
+        "arena_highwater": 4112,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 0,
+        "expected_deadline": 3176907,
+        "interrupts_masked": true,
+        "nanoseconds": 1000001,
+        "observed_deadline": 3176907,
+        "raw_ticks": 3076906,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3211,253 +3255,11 @@
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 0,
-        "expected_deadline": 2431794,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 2431794,
-        "raw_ticks": 2431793,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 115,
-        "arena_erased": true,
-        "arena_highwater": 2720,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 0,
-        "expected_deadline": 3147905,
-        "interrupts_masked": true,
-        "nanoseconds": 1000001,
-        "observed_deadline": 3147905,
-        "raw_ticks": 3047904,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 175,
-        "arena_erased": true,
-        "arena_highwater": 4160,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 0,
-        "expected_deadline": 3816801,
+        "expected_deadline": 3841669,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 3816801,
-        "raw_ticks": 3616801,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 187,
-        "arena_erased": true,
-        "arena_highwater": 4448,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 5860453,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 5860453,
-        "raw_ticks": 5860452,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 187,
-        "arena_erased": true,
-        "arena_highwater": 4448,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 6519922,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 6519922,
-        "raw_ticks": 6519921,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 187,
-        "arena_erased": true,
-        "arena_highwater": 4448,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 7109283,
-        "interrupts_masked": true,
-        "nanoseconds": 0,
-        "observed_deadline": 7109283,
-        "raw_ticks": 7109283,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 171,
-        "arena_erased": true,
-        "arena_highwater": 4064,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 7739447,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 7739447,
-        "raw_ticks": 7739446,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 163,
-        "arena_erased": true,
-        "arena_highwater": 3872,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 8451654,
-        "interrupts_masked": true,
-        "nanoseconds": 1000001,
-        "observed_deadline": 8451654,
-        "raw_ticks": 8351653,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 181,
-        "arena_erased": true,
-        "arena_highwater": 4304,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 9030328,
-        "interrupts_masked": true,
-        "nanoseconds": 2000000,
-        "observed_deadline": 9030328,
-        "raw_ticks": 8830328,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 161,
-        "arena_erased": true,
-        "arena_highwater": 3824,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 10289470,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 10289470,
-        "raw_ticks": 10289469,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 169,
-        "arena_erased": true,
-        "arena_highwater": 4016,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 10755810,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 10755810,
-        "raw_ticks": 10755809,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 207,
-        "arena_erased": true,
-        "arena_highwater": 4928,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 11270034,
-        "interrupts_masked": true,
-        "nanoseconds": 0,
-        "observed_deadline": 11270034,
-        "raw_ticks": 11270034,
+        "observed_deadline": 3841669,
+        "raw_ticks": 3641669,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3475,11 +3277,11 @@
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 11914439,
+        "expected_deadline": 6278587,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 11914439,
-        "raw_ticks": 11914438,
+        "observed_deadline": 6278587,
+        "raw_ticks": 6278586,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3491,61 +3293,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 221,
+        "allocation_count": 197,
         "arena_erased": true,
-        "arena_highwater": 5264,
+        "arena_highwater": 4688,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 12541948,
-        "interrupts_masked": true,
-        "nanoseconds": 1000001,
-        "observed_deadline": 12541948,
-        "raw_ticks": 12441947,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 205,
-        "arena_erased": true,
-        "arena_highwater": 4880,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 13312766,
-        "interrupts_masked": true,
-        "nanoseconds": 2000000,
-        "observed_deadline": 13312766,
-        "raw_ticks": 13112766,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 205,
-        "arena_erased": true,
-        "arena_highwater": 4880,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 14642037,
+        "expected_deadline": 6814918,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 14642037,
-        "raw_ticks": 14642036,
+        "observed_deadline": 6814918,
+        "raw_ticks": 6814917,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3557,39 +3315,17 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 185,
+        "allocation_count": 167,
         "arena_erased": true,
-        "arena_highwater": 4400,
+        "arena_highwater": 3968,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 15180134,
-        "interrupts_masked": true,
-        "nanoseconds": 1,
-        "observed_deadline": 15180134,
-        "raw_ticks": 15180133,
-        "result": "pass",
-        "retired_stack_erased": true,
-        "returned": true,
-        "seconds": 0,
-        "simd_preserved": true,
-        "stack_aligned": true,
-        "unused_storage_untouched": true,
-        "volatile_pointers_cleared": true,
-        "wrapped": 0
-      },
-      {
-        "allocation_count": 175,
-        "arena_erased": true,
-        "arena_highwater": 4160,
-        "binding_retained": true,
-        "callee_saved_preserved": true,
-        "exec_lifetime": 1,
-        "expected_deadline": 15790370,
+        "expected_deadline": 7364957,
         "interrupts_masked": true,
         "nanoseconds": 0,
-        "observed_deadline": 15790370,
-        "raw_ticks": 15790370,
+        "observed_deadline": 7364957,
+        "raw_ticks": 7364957,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3601,17 +3337,61 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 213,
+        "allocation_count": 189,
         "arena_erased": true,
-        "arena_highwater": 5072,
+        "arena_highwater": 4496,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 16446942,
+        "expected_deadline": 7980861,
         "interrupts_masked": true,
         "nanoseconds": 1,
-        "observed_deadline": 16446942,
-        "raw_ticks": 16446941,
+        "observed_deadline": 7980861,
+        "raw_ticks": 7980860,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 159,
+        "arena_erased": true,
+        "arena_highwater": 3776,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 8668574,
+        "interrupts_masked": true,
+        "nanoseconds": 1000001,
+        "observed_deadline": 8668574,
+        "raw_ticks": 8568573,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 195,
+        "arena_erased": true,
+        "arena_highwater": 4640,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 9415514,
+        "interrupts_masked": true,
+        "nanoseconds": 2000000,
+        "observed_deadline": 9415514,
+        "raw_ticks": 9215514,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3629,11 +3409,11 @@
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 17131366,
+        "expected_deadline": 10981841,
         "interrupts_masked": true,
-        "nanoseconds": 1000001,
-        "observed_deadline": 17131366,
-        "raw_ticks": 17031365,
+        "nanoseconds": 1,
+        "observed_deadline": 10981841,
+        "raw_ticks": 10981840,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3645,17 +3425,237 @@
         "wrapped": 0
       },
       {
-        "allocation_count": 205,
+        "allocation_count": 183,
         "arena_erased": true,
-        "arena_highwater": 4880,
+        "arena_highwater": 4352,
         "binding_retained": true,
         "callee_saved_preserved": true,
         "exec_lifetime": 1,
-        "expected_deadline": 17817332,
+        "expected_deadline": 11478039,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 11478039,
+        "raw_ticks": 11478038,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 187,
+        "arena_erased": true,
+        "arena_highwater": 4448,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 12097369,
+        "interrupts_masked": true,
+        "nanoseconds": 0,
+        "observed_deadline": 12097369,
+        "raw_ticks": 12097369,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 165,
+        "arena_erased": true,
+        "arena_highwater": 3920,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 12783723,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 12783723,
+        "raw_ticks": 12783722,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 175,
+        "arena_erased": true,
+        "arena_highwater": 4160,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 13650395,
+        "interrupts_masked": true,
+        "nanoseconds": 1000001,
+        "observed_deadline": 13650395,
+        "raw_ticks": 13550394,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 165,
+        "arena_erased": true,
+        "arena_highwater": 3920,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 14266896,
         "interrupts_masked": true,
         "nanoseconds": 2000000,
-        "observed_deadline": 17817332,
-        "raw_ticks": 17617332,
+        "observed_deadline": 14266896,
+        "raw_ticks": 14066896,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 173,
+        "arena_erased": true,
+        "arena_highwater": 4112,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 15352103,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 15352103,
+        "raw_ticks": 15352102,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 209,
+        "arena_erased": true,
+        "arena_highwater": 4976,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 15855454,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 15855454,
+        "raw_ticks": 15855453,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 155,
+        "arena_erased": true,
+        "arena_highwater": 3680,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 16385064,
+        "interrupts_masked": true,
+        "nanoseconds": 0,
+        "observed_deadline": 16385064,
+        "raw_ticks": 16385064,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 135,
+        "arena_erased": true,
+        "arena_highwater": 3200,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 16845896,
+        "interrupts_masked": true,
+        "nanoseconds": 1,
+        "observed_deadline": 16845896,
+        "raw_ticks": 16845895,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 175,
+        "arena_erased": true,
+        "arena_highwater": 4160,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 17416791,
+        "interrupts_masked": true,
+        "nanoseconds": 1000001,
+        "observed_deadline": 17416791,
+        "raw_ticks": 17316790,
+        "result": "pass",
+        "retired_stack_erased": true,
+        "returned": true,
+        "seconds": 0,
+        "simd_preserved": true,
+        "stack_aligned": true,
+        "unused_storage_untouched": true,
+        "volatile_pointers_cleared": true,
+        "wrapped": 0
+      },
+      {
+        "allocation_count": 173,
+        "arena_erased": true,
+        "arena_highwater": 4112,
+        "binding_retained": true,
+        "callee_saved_preserved": true,
+        "exec_lifetime": 1,
+        "expected_deadline": 18056291,
+        "interrupts_masked": true,
+        "nanoseconds": 2000000,
+        "observed_deadline": 18056291,
+        "raw_ticks": 17856291,
         "result": "pass",
         "retired_stack_erased": true,
         "returned": true,
@@ -3678,12 +3678,12 @@
         "record_bytes": 24,
         "seconds": 0,
         "stack_relative_offset": 768,
-        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:35\n#1  0x000000000030d4d6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:50\n#2  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#3  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#4  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
+        "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:35\n#1  0x000000000030d546 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:50\n#2  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#3  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#4  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
       }
     ],
     "result": "pass",
     "source_runtime_frames": [
-      "#0  0x000000000030cd80 in topal.runtime.int.divmod[absolute] ()\n#1  0x000000000030cf86 in topal.runtime.int.quotient[modulo] ()\n#2  0x000000000030d3d1 in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3280b8 <topal_x86_systems_numeric_arena+184>) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:9\n#3  0x000000000030d54f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:55\n#4  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#5  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x00000000002112b9 in _topal_kernel_entry ()\n"
+      "#0  0x000000000030cdf0 in topal.runtime.int.divmod[absolute] ()\n#1  0x000000000030cff6 in topal.runtime.int.quotient[modulo] ()\n#2  0x000000000030d441 in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3280b8 <topal_x86_systems_numeric_arena+184>) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:9\n#3  0x000000000030d5bf in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:55\n#4  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /home/mats/git/topal/linux-kernel/kernel/support/clock.t:62\n#5  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x00000000002112b9 in _topal_kernel_entry ()\n"
     ],
     "terminal_arena_erased": true
   },
@@ -3703,7 +3703,7 @@
         "source_evaluation_bytes": 41520
       },
       "checked_client_sha256": "d5aa7910319d552be36a40457f1c39d9a898514366aabbc98a66d1715c865dbb",
-      "disassembly_sha256": "64bba071dd64ec33cd9b28cd6c61b24cf6b09f35853b498654c3cd1bdd557831",
+      "disassembly_sha256": "c0920a233a789d363be410c2897f68f32385a914fdab5bd46db08dee6783961c",
       "functions": [
         {
           "callees": [],
@@ -4065,11 +4065,11 @@
       "interface": "relative-sleep-deadline-v1",
       "linked_inputs": {
         "manifest_sha256": "6532c148e6ccbc84c71fdf5e9086d6e8d34a4f3b950f5355c7613fc13df8d20b",
-        "object_sha256": "468e8c2bb86ede8f2a2a1dc5147e61037a07220372ee871fbdb0886f9bc1e373",
+        "object_sha256": "e189e254e3f29e24e286fd6bbdfbed15e0b15fce1bc201f1e5415ca28fa343a6",
         "schema": "topal.policy-linked-inputs.x86_64/1",
         "sections": [
           {
-            "address": 3195520,
+            "address": 3195632,
             "alignment": 16,
             "bytes": 73,
             "executable": true,
@@ -4077,7 +4077,7 @@
             "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4"
           },
           {
-            "address": 3195600,
+            "address": 3195712,
             "alignment": 16,
             "bytes": 43,
             "executable": true,
@@ -4085,7 +4085,7 @@
             "sha256": "2a1b84e4bc104f92c8c52826ad3447bfb8ddacc334cf009a45096b2af7d73e1f"
           },
           {
-            "address": 3195648,
+            "address": 3195760,
             "alignment": 16,
             "bytes": 31,
             "executable": true,
@@ -4093,7 +4093,7 @@
             "sha256": "9259263f0ea25538245bcc7bd145ad321177643f4dde53b869a9bdff0cac6462"
           },
           {
-            "address": 3195680,
+            "address": 3195792,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -4101,7 +4101,7 @@
             "sha256": "b7765d427c0ab33ac2f5e19fde4bdd111f726a689f6090d8249c3f9f019ca48b"
           },
           {
-            "address": 3195728,
+            "address": 3195840,
             "alignment": 16,
             "bytes": 10,
             "executable": true,
@@ -4109,7 +4109,7 @@
             "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
           },
           {
-            "address": 3195744,
+            "address": 3195856,
             "alignment": 16,
             "bytes": 79,
             "executable": true,
@@ -4117,7 +4117,7 @@
             "sha256": "2aa435852bd643649896da02c35845b4b0b87f570b0f00c3569646b9ffed83df"
           },
           {
-            "address": 3195824,
+            "address": 3195936,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -4125,7 +4125,7 @@
             "sha256": "2b7e33d4f5bdaf83d25d548aca3c507973d630649c6d8be1af51f4f8174ccab0"
           },
           {
-            "address": 3195952,
+            "address": 3196064,
             "alignment": 16,
             "bytes": 48,
             "executable": true,
@@ -4133,7 +4133,7 @@
             "sha256": "b57c05d1d63a3571aa80996828bc652cf377b32827724be3b85363ad5fea8917"
           },
           {
-            "address": 3196000,
+            "address": 3196112,
             "alignment": 16,
             "bytes": 127,
             "executable": true,
@@ -4141,7 +4141,7 @@
             "sha256": "8207954e261e2daab0c96d6e91fdb6a8df841b45e00ca412b5e267bf5d98df4d"
           },
           {
-            "address": 3196128,
+            "address": 3196240,
             "alignment": 16,
             "bytes": 116,
             "executable": true,
@@ -4149,7 +4149,7 @@
             "sha256": "efb673a5d0066baf94fedb8d2892b907512624099d02e47f982e43df20fb2194"
           },
           {
-            "address": 3196256,
+            "address": 3196368,
             "alignment": 16,
             "bytes": 96,
             "executable": true,
@@ -4157,7 +4157,7 @@
             "sha256": "09f3a857475febcd7641f0436a393e8139729438a2fd7436f5ac440c3004aa7d"
           },
           {
-            "address": 3196352,
+            "address": 3196464,
             "alignment": 16,
             "bytes": 158,
             "executable": true,
@@ -4165,7 +4165,7 @@
             "sha256": "f1682ed576c8f19f011cfdca0f8ddf298a7d002fb9a27c4679050fde11d5bc6b"
           },
           {
-            "address": 3196512,
+            "address": 3196624,
             "alignment": 16,
             "bytes": 212,
             "executable": true,
@@ -4173,7 +4173,7 @@
             "sha256": "d5180bd7440331a2303f0d4ac673b9517ee66fba8cb7e02d59f4bab0b6f5ef86"
           },
           {
-            "address": 3196736,
+            "address": 3196848,
             "alignment": 16,
             "bytes": 239,
             "executable": true,
@@ -4181,7 +4181,7 @@
             "sha256": "2bd94405a08513199832a40eed0e325b2b604d87d11b1bd2d6016160e71512e7"
           },
           {
-            "address": 3196976,
+            "address": 3197088,
             "alignment": 16,
             "bytes": 198,
             "executable": true,
@@ -4189,7 +4189,7 @@
             "sha256": "43c3f31207f44386c3af2b0465188c79e1aed4f4495dc8a54f78fc41c81a48fb"
           },
           {
-            "address": 3197184,
+            "address": 3197296,
             "alignment": 16,
             "bytes": 339,
             "executable": true,
@@ -4197,7 +4197,7 @@
             "sha256": "ff4d02bd6cf247e33b1bc8d86a454911c0d145395c8496c34639dd9c44da5eef"
           },
           {
-            "address": 3197536,
+            "address": 3197648,
             "alignment": 16,
             "bytes": 538,
             "executable": true,
@@ -4205,7 +4205,7 @@
             "sha256": "e90d19ff6dc1a2dad2c54fa249759c916afc38ddcd5f96bbb52787cb992e22f9"
           },
           {
-            "address": 3198080,
+            "address": 3198192,
             "alignment": 16,
             "bytes": 28,
             "executable": true,
@@ -4213,7 +4213,7 @@
             "sha256": "d11865a7a2e5c535d1846140ea69e97c0d55ff666cedd2532cfc339bb73cad94"
           },
           {
-            "address": 3198112,
+            "address": 3198224,
             "alignment": 16,
             "bytes": 47,
             "executable": true,
@@ -4221,7 +4221,7 @@
             "sha256": "670155cc82e36020d862b9366a151dc96529f95f978e8bf96dd46ea78b77737f"
           },
           {
-            "address": 3198160,
+            "address": 3198272,
             "alignment": 16,
             "bytes": 9,
             "executable": true,
@@ -4229,7 +4229,7 @@
             "sha256": "b1692178a17fd71398c4c4c05612bcddec0991e1ba16e887345afc6c929106fd"
           },
           {
-            "address": 3198176,
+            "address": 3198288,
             "alignment": 16,
             "bytes": 10,
             "executable": true,
@@ -4237,7 +4237,7 @@
             "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095"
           },
           {
-            "address": 3198192,
+            "address": 3198304,
             "alignment": 16,
             "bytes": 112,
             "executable": true,
@@ -4245,7 +4245,7 @@
             "sha256": "1052c44ab09ff99a1d138aa8cc56f41a53db6c642fa432216d51d03bfcca00dd"
           },
           {
-            "address": 3198304,
+            "address": 3198416,
             "alignment": 16,
             "bytes": 25,
             "executable": true,
@@ -4253,7 +4253,7 @@
             "sha256": "abef1dd9c8df305345b7760ea0fbd491bd0aab56bb629e69328e9ebcfa95a427"
           },
           {
-            "address": 3198336,
+            "address": 3198448,
             "alignment": 16,
             "bytes": 422,
             "executable": true,
@@ -4261,7 +4261,7 @@
             "sha256": "de0f0e08c9d673152f493eb94628526fd4bd3ae65f6f965c08ba30ca1336a217"
           },
           {
-            "address": 3198768,
+            "address": 3198880,
             "alignment": 16,
             "bytes": 288,
             "executable": true,
@@ -4269,7 +4269,7 @@
             "sha256": "675bc20e9b3672a86a4aa6f46a149e239df3db95edaf19eefd46a24ff6464242"
           },
           {
-            "address": 3199056,
+            "address": 3199168,
             "alignment": 16,
             "bytes": 78,
             "executable": true,
@@ -4277,7 +4277,7 @@
             "sha256": "6a3f5ae2fe2de70e3b0162e4327d420908e7a1ea6a3b79fd9e67586e9098af6a"
           },
           {
-            "address": 3199136,
+            "address": 3199248,
             "alignment": 16,
             "bytes": 52,
             "executable": true,
@@ -4285,7 +4285,7 @@
             "sha256": "3d18c9146e191fc05c7f4927758b4ab7e8e7ba7ea49f7943b3f3109a44823842"
           },
           {
-            "address": 3199200,
+            "address": 3199312,
             "alignment": 16,
             "bytes": 119,
             "executable": true,
@@ -4293,23 +4293,23 @@
             "sha256": "343fee65ecb3b79f12f29809957d8171b8150e0333e6e7fdb37ce874ec698183"
           },
           {
-            "address": 3199328,
+            "address": 3199440,
             "alignment": 16,
             "bytes": 11,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.28",
-            "sha256": "2599a3aba7f115d4862f778f91aa498cf8c50067e7a6b15410e1376156fa2ba5"
+            "sha256": "57d71e99c21f7e6a7dc9c9bbef0ed486722edb03c6dda8458cfcad2fdc46032e"
           },
           {
-            "address": 3199344,
+            "address": 3199456,
             "alignment": 16,
             "bytes": 9,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.29",
-            "sha256": "995996fa730264f78843a0ed3244bd304a336d4840b3bbb909f947caf98528e3"
+            "sha256": "332b45a79b46ac061c9b689933bf3c38e66841212a1f598a8f40a48525a3333f"
           },
           {
-            "address": 3199360,
+            "address": 3199472,
             "alignment": 16,
             "bytes": 80,
             "executable": true,
@@ -4317,7 +4317,7 @@
             "sha256": "5a4d5ba97d4092ba8e400bb64200194e1870341d8068ede92fd4dc2f08855033"
           },
           {
-            "address": 3199440,
+            "address": 3199552,
             "alignment": 16,
             "bytes": 81,
             "executable": true,
@@ -4325,7 +4325,7 @@
             "sha256": "2124d5053fe577fa5719661af441042f84a74355a1e04471c0c08a4ccaa38268"
           },
           {
-            "address": 3199536,
+            "address": 3199648,
             "alignment": 16,
             "bytes": 123,
             "executable": true,
@@ -4333,7 +4333,7 @@
             "sha256": "447cd044338642c7a0a0857340196e51abfd89cf18ce4930a41b814a4aba2777"
           },
           {
-            "address": 3199664,
+            "address": 3199776,
             "alignment": 16,
             "bytes": 116,
             "executable": true,
@@ -4341,7 +4341,7 @@
             "sha256": "dcd0a8fb098d46e901eb956ddd2d02257859aa2ac9e5401091d736ea4659a836"
           },
           {
-            "address": 3199792,
+            "address": 3199904,
             "alignment": 16,
             "bytes": 72,
             "executable": true,
@@ -4349,7 +4349,7 @@
             "sha256": "4616d064f5a5f0686db507bec40fd8819be2dad33d8d7366fcb077af754e52ba"
           },
           {
-            "address": 3199872,
+            "address": 3199984,
             "alignment": 16,
             "bytes": 25,
             "executable": true,
@@ -4357,7 +4357,7 @@
             "sha256": "677b1c6e62b27f407c9ed53b3c38f49e3b53ecab9b664f3a47b9d2abdd5321e3"
           },
           {
-            "address": 3199904,
+            "address": 3200016,
             "alignment": 16,
             "bytes": 150,
             "executable": true,
@@ -4365,7 +4365,7 @@
             "sha256": "f0d309e1e67f42ca6018bd957e676f8ccf041b090cf510647c79c250f1d1b264"
           },
           {
-            "address": 3200064,
+            "address": 3200176,
             "alignment": 16,
             "bytes": 281,
             "executable": true,
@@ -4373,7 +4373,7 @@
             "sha256": "37aa187888d2a4fd4cc3a1b9edfa582771a1429b6ef649ca70ace8d9ad0b7376"
           },
           {
-            "address": 3200352,
+            "address": 3200464,
             "alignment": 16,
             "bytes": 319,
             "executable": true,
@@ -4381,7 +4381,7 @@
             "sha256": "7a102280ae1c127f5d7b9ed25aa064926d0352487730374ed1efc233d7526524"
           },
           {
-            "address": 3200672,
+            "address": 3200784,
             "alignment": 16,
             "bytes": 162,
             "executable": true,
@@ -4389,12 +4389,12 @@
             "sha256": "9996e0cb96809ff4c0d89f1368e05567d0878a1fa29f8ae4be5968d2659183ca"
           },
           {
-            "address": 3200848,
+            "address": 3200960,
             "alignment": 16,
             "bytes": 272,
             "executable": true,
             "marker": "topal.policy-inputs.time-library.40",
-            "sha256": "613de247dcc78f1555c8fa7983f8e311123ca40f6bac269328b3b15b4d26a106"
+            "sha256": "aa4deabd3c4731fa96213cfec894a3b47f41e7910856baca04b40a8cfdb123c2"
           },
           {
             "address": 2098152,
@@ -4414,7 +4414,7 @@
           }
         ]
       },
-      "llvm_sha256": "6c684528a37bd6f0b73021f4241b761f9f4665259251202647a95a141493c262",
+      "llvm_sha256": "eb03eca856287afb3664ba79131bbe26500bece44e3e05a01429125c5fb7c51b",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-numeric-gpr-only/8",
       "maximum_stack_bytes": 1352,
@@ -4433,11 +4433,11 @@
       "native_export": "topal_kernel_sleep_deadline_policy_v1",
       "native_invocation_save_bytes": 0,
       "native_leaf_return_bytes": 8,
-      "object_sha256": "468e8c2bb86ede8f2a2a1dc5147e61037a07220372ee871fbdb0886f9bc1e373",
+      "object_sha256": "e189e254e3f29e24e286fd6bbdfbed15e0b15fce1bc201f1e5415ca28fa343a6",
       "platform_hooks_sha256": "20a20f369ef1debd3db975dad0761a51d36009842492d3cd954df2ae0cf94cc0",
       "result_field_order": [],
       "result_order_suffix": false,
-      "retained_llvm_sha256": "3e414da1d805337377033acf3d05736cb2a5bb720882f40e618959d9d2d988c9",
+      "retained_llvm_sha256": "206e862d754185fce35aa6e8479341a7aa4bdf8a4fa986426da09db0806a9446",
       "retained_state": null,
       "schema": "topal.kernel-numeric-source-library/9",
       "sections": [
@@ -4788,7 +4788,7 @@
       ],
       "source": "policy/relative-sleep-deadline.t",
       "source_export": "sleep-deadline",
-      "source_name": "/tmp/topal-numeric-o4i_tkky/record-fields-reordered/policy/relative-sleep-deadline.t",
+      "source_name": "/tmp/topal-numeric-niycib3o/record-fields-reordered/policy/relative-sleep-deadline.t",
       "source_sha256": "b10bbe6c9051b96b5e82ece53641516026ed9037169c99446cbafb2cd7fc79f0",
       "source_tags": [],
       "stack_limit_bytes": 4096
@@ -4810,23 +4810,89 @@
             96,
             80
           ],
-          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x328070 <topal_x86_systems_numeric_arena+112>) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:22\n#1  0x000000000030d31e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:37\n#2  0x000000000030d4d6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:50\n#3  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:62\n#4  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#5  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x00000000002112b9 in _topal_kernel_entry ()\n"
+          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dfrom_2dparts.2 (parts=0x328070 <topal_x86_systems_numeric_arena+112>) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:22\n#1  0x000000000030d38e in topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:37\n#2  0x000000000030d546 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:50\n#3  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:62\n#4  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#5  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#6  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#7  0x0000000001005000 in ?? ()\n#8  0x0000000001000000 in ?? ()\n#9  0x0000000001203000 in ?? ()\n#10 0x00000000002112b9 in _topal_kernel_entry ()\n"
         }
       ],
       "binding_erased": true,
       "calls": [
         {
-          "allocation_count": 149,
+          "allocation_count": 135,
           "arena_erased": true,
-          "arena_highwater": 3536,
+          "arena_highwater": 3200,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 248229,
+          "expected_deadline": 259201,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 248229,
-          "raw_ticks": 248228,
+          "observed_deadline": 259201,
+          "raw_ticks": 259200,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 167,
+          "arena_erased": true,
+          "arena_highwater": 3968,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 0,
+          "expected_deadline": 1437108,
+          "interrupts_masked": true,
+          "nanoseconds": 1,
+          "observed_deadline": 1437108,
+          "raw_ticks": 1437107,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 167,
+          "arena_erased": true,
+          "arena_highwater": 3968,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 0,
+          "expected_deadline": 1964609,
+          "interrupts_masked": true,
+          "nanoseconds": 0,
+          "observed_deadline": 1964609,
+          "raw_ticks": 1964609,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 179,
+          "arena_erased": true,
+          "arena_highwater": 4256,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 0,
+          "expected_deadline": 2510391,
+          "interrupts_masked": true,
+          "nanoseconds": 1,
+          "observed_deadline": 2510391,
+          "raw_ticks": 2510390,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -4844,187 +4910,11 @@
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 0,
-          "expected_deadline": 1243055,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 1243055,
-          "raw_ticks": 1243054,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 185,
-          "arena_erased": true,
-          "arena_highwater": 4400,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 0,
-          "expected_deadline": 1828330,
-          "interrupts_masked": true,
-          "nanoseconds": 0,
-          "observed_deadline": 1828330,
-          "raw_ticks": 1828330,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 165,
-          "arena_erased": true,
-          "arena_highwater": 3920,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 0,
-          "expected_deadline": 2482569,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 2482569,
-          "raw_ticks": 2482568,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 185,
-          "arena_erased": true,
-          "arena_highwater": 4400,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 0,
-          "expected_deadline": 3178467,
+          "expected_deadline": 3270559,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 3178467,
-          "raw_ticks": 3078466,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 181,
-          "arena_erased": true,
-          "arena_highwater": 4304,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 0,
-          "expected_deadline": 3909524,
-          "interrupts_masked": true,
-          "nanoseconds": 2000000,
-          "observed_deadline": 3909524,
-          "raw_ticks": 3709524,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 203,
-          "arena_erased": true,
-          "arena_highwater": 4832,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 6127070,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 6127070,
-          "raw_ticks": 6127069,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 187,
-          "arena_erased": true,
-          "arena_highwater": 4448,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 6669427,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 6669427,
-          "raw_ticks": 6669426,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 191,
-          "arena_erased": true,
-          "arena_highwater": 4544,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 7339030,
-          "interrupts_masked": true,
-          "nanoseconds": 0,
-          "observed_deadline": 7339030,
-          "raw_ticks": 7339030,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 193,
-          "arena_erased": true,
-          "arena_highwater": 4592,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 7994324,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 7994324,
-          "raw_ticks": 7994323,
+          "observed_deadline": 3270559,
+          "raw_ticks": 3170558,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5041,34 +4931,12 @@
           "arena_highwater": 4112,
           "binding_retained": true,
           "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 8743757,
-          "interrupts_masked": true,
-          "nanoseconds": 1000001,
-          "observed_deadline": 8743757,
-          "raw_ticks": 8643756,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 193,
-          "arena_erased": true,
-          "arena_highwater": 4592,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 9378710,
+          "exec_lifetime": 0,
+          "expected_deadline": 3943123,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 9378710,
-          "raw_ticks": 9178710,
+          "observed_deadline": 3943123,
+          "raw_ticks": 3743123,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5080,17 +4948,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 183,
+          "allocation_count": 205,
           "arena_erased": true,
-          "arena_highwater": 4352,
+          "arena_highwater": 4880,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 10933161,
+          "expected_deadline": 5963603,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 10933161,
-          "raw_ticks": 10933160,
+          "observed_deadline": 5963603,
+          "raw_ticks": 5963602,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5102,17 +4970,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 175,
+          "allocation_count": 177,
           "arena_erased": true,
-          "arena_highwater": 4160,
+          "arena_highwater": 4208,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 11453602,
+          "expected_deadline": 6486286,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 11453602,
-          "raw_ticks": 11453601,
+          "observed_deadline": 6486286,
+          "raw_ticks": 6486285,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5124,17 +4992,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 219,
+          "allocation_count": 185,
           "arena_erased": true,
-          "arena_highwater": 5216,
+          "arena_highwater": 4400,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 12058439,
+          "expected_deadline": 7044002,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 12058439,
-          "raw_ticks": 12058439,
+          "observed_deadline": 7044002,
+          "raw_ticks": 7044002,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5146,17 +5014,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 175,
+          "allocation_count": 179,
           "arena_erased": true,
-          "arena_highwater": 4160,
+          "arena_highwater": 4256,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 12672428,
+          "expected_deadline": 7578699,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 12672428,
-          "raw_ticks": 12672427,
+          "observed_deadline": 7578699,
+          "raw_ticks": 7578698,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5174,11 +5042,11 @@
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 13325855,
+          "expected_deadline": 8276791,
           "interrupts_masked": true,
           "nanoseconds": 1000001,
-          "observed_deadline": 13325855,
-          "raw_ticks": 13225854,
+          "observed_deadline": 8276791,
+          "raw_ticks": 8176790,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5190,17 +5058,39 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 187,
+          "allocation_count": 165,
           "arena_erased": true,
-          "arena_highwater": 4448,
+          "arena_highwater": 3920,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 14094040,
+          "expected_deadline": 8946421,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 14094040,
-          "raw_ticks": 13894040,
+          "observed_deadline": 8946421,
+          "raw_ticks": 8746421,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 159,
+          "arena_erased": true,
+          "arena_highwater": 3776,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 10407949,
+          "interrupts_masked": true,
+          "nanoseconds": 1,
+          "observed_deadline": 10407949,
+          "raw_ticks": 10407948,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5218,11 +5108,11 @@
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 15375637,
+          "expected_deadline": 10889893,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 15375637,
-          "raw_ticks": 15375636,
+          "observed_deadline": 10889893,
+          "raw_ticks": 10889892,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5234,39 +5124,17 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 199,
+          "allocation_count": 189,
           "arena_erased": true,
-          "arena_highwater": 4736,
+          "arena_highwater": 4496,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 15922604,
-          "interrupts_masked": true,
-          "nanoseconds": 1,
-          "observed_deadline": 15922604,
-          "raw_ticks": 15922603,
-          "result": "pass",
-          "retired_stack_erased": true,
-          "returned": true,
-          "seconds": 0,
-          "simd_preserved": true,
-          "stack_aligned": true,
-          "unused_storage_untouched": true,
-          "volatile_pointers_cleared": true,
-          "wrapped": 0
-        },
-        {
-          "allocation_count": 209,
-          "arena_erased": true,
-          "arena_highwater": 4976,
-          "binding_retained": true,
-          "callee_saved_preserved": true,
-          "exec_lifetime": 1,
-          "expected_deadline": 16511356,
+          "expected_deadline": 11486196,
           "interrupts_masked": true,
           "nanoseconds": 0,
-          "observed_deadline": 16511356,
-          "raw_ticks": 16511356,
+          "observed_deadline": 11486196,
+          "raw_ticks": 11486196,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5278,17 +5146,83 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 181,
+          "allocation_count": 169,
           "arena_erased": true,
-          "arena_highwater": 4304,
+          "arena_highwater": 4016,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 17188427,
+          "expected_deadline": 12069399,
           "interrupts_masked": true,
           "nanoseconds": 1,
-          "observed_deadline": 17188427,
-          "raw_ticks": 17188426,
+          "observed_deadline": 12069399,
+          "raw_ticks": 12069398,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 185,
+          "arena_erased": true,
+          "arena_highwater": 4400,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 12660213,
+          "interrupts_masked": true,
+          "nanoseconds": 1000001,
+          "observed_deadline": 12660213,
+          "raw_ticks": 12560212,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 195,
+          "arena_erased": true,
+          "arena_highwater": 4640,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 13280597,
+          "interrupts_masked": true,
+          "nanoseconds": 2000000,
+          "observed_deadline": 13280597,
+          "raw_ticks": 13080597,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 195,
+          "arena_erased": true,
+          "arena_highwater": 4640,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 14456125,
+          "interrupts_masked": true,
+          "nanoseconds": 1,
+          "observed_deadline": 14456125,
+          "raw_ticks": 14456124,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5306,11 +5240,11 @@
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 17911599,
+          "expected_deadline": 14985045,
           "interrupts_masked": true,
-          "nanoseconds": 1000001,
-          "observed_deadline": 17911599,
-          "raw_ticks": 17811598,
+          "nanoseconds": 1,
+          "observed_deadline": 14985045,
+          "raw_ticks": 14985044,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5322,17 +5256,83 @@
           "wrapped": 0
         },
         {
-          "allocation_count": 183,
+          "allocation_count": 177,
           "arena_erased": true,
-          "arena_highwater": 4352,
+          "arena_highwater": 4208,
           "binding_retained": true,
           "callee_saved_preserved": true,
           "exec_lifetime": 1,
-          "expected_deadline": 18647377,
+          "expected_deadline": 15552992,
+          "interrupts_masked": true,
+          "nanoseconds": 0,
+          "observed_deadline": 15552992,
+          "raw_ticks": 15552992,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 175,
+          "arena_erased": true,
+          "arena_highwater": 4160,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 16090637,
+          "interrupts_masked": true,
+          "nanoseconds": 1,
+          "observed_deadline": 16090637,
+          "raw_ticks": 16090636,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 169,
+          "arena_erased": true,
+          "arena_highwater": 4016,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 16849751,
+          "interrupts_masked": true,
+          "nanoseconds": 1000001,
+          "observed_deadline": 16849751,
+          "raw_ticks": 16749750,
+          "result": "pass",
+          "retired_stack_erased": true,
+          "returned": true,
+          "seconds": 0,
+          "simd_preserved": true,
+          "stack_aligned": true,
+          "unused_storage_untouched": true,
+          "volatile_pointers_cleared": true,
+          "wrapped": 0
+        },
+        {
+          "allocation_count": 185,
+          "arena_erased": true,
+          "arena_highwater": 4400,
+          "binding_retained": true,
+          "callee_saved_preserved": true,
+          "exec_lifetime": 1,
+          "expected_deadline": 17470051,
           "interrupts_masked": true,
           "nanoseconds": 2000000,
-          "observed_deadline": 18647377,
-          "raw_ticks": 18447377,
+          "observed_deadline": 17470051,
+          "raw_ticks": 17270051,
           "result": "pass",
           "retired_stack_erased": true,
           "returned": true,
@@ -5355,27 +5355,27 @@
           "record_bytes": 24,
           "seconds": 0,
           "stack_relative_offset": 768,
-          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:35\n#1  0x000000000030d4d6 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:50\n#2  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:62\n#3  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#4  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
+          "trace": "#0  topal.numeric.topal.fn.support_2eclock_2eduration_2dnanoseconds.3 (interval=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:35\n#1  0x000000000030d546 in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:50\n#2  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:62\n#3  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#4  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#5  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
         }
       ],
       "result": "pass",
       "source_runtime_frames": [
-        "#0  0x000000000030cd80 in topal.runtime.int.divmod[absolute] ()\n#1  0x000000000030cf86 in topal.runtime.int.quotient[modulo] ()\n#2  0x000000000030d3d1 in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3280b8 <topal_x86_systems_numeric_arena+184>) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:9\n#3  0x000000000030d54f in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:55\n#4  0x000000000030d683 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-o4i_tkky/record-fields-reordered/support/clock.t:62\n#5  0x000000000030d736 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x000000000030d7d1 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x00000000002112b9 in _topal_kernel_entry ()\n"
+        "#0  0x000000000030cdf0 in topal.runtime.int.divmod[absolute] ()\n#1  0x000000000030cff6 in topal.runtime.int.quotient[modulo] ()\n#2  0x000000000030d441 in topal.numeric.topal.fn.support_2eclock_2erounded.6 (target=0x3280b8 <topal_x86_systems_numeric_arena+184>) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:9\n#3  0x000000000030d5bf in topal.numeric.topal.fn.support_2eclock_2eordinary_2ddeadline.7 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:55\n#4  0x000000000030d6f3 in topal.numeric.topal.fn.support_2eclock_2esleep_2ddeadline.8 (request=...) at /tmp/topal-numeric-niycib3o/record-fields-reordered/support/clock.t:62\n#5  0x000000000030d7a6 in topal.numeric.topal.fn.sleep_2ddeadline.9 (seconds=0x2003e8, nanoseconds=0x328020 <topal_x86_systems_numeric_arena+32>, ticks=0x328038 <topal_x86_systems_numeric_arena+56>, wrapped=false) at relative-sleep-deadline.t:10\n#6  0x000000000030d841 in topal_kernel_sleep_deadline_policy_v1 ()\n#7  0x00000000002bc94b in topal_x86_systems_static_image_process_enter ()\n#8  0x0000000001005000 in ?? ()\n#9  0x0000000001000000 in ?? ()\n#10 0x0000000001203000 in ?? ()\n#11 0x00000000002112b9 in _topal_kernel_entry ()\n"
       ],
       "terminal_arena_erased": true
     },
     "result": "pass",
     "root_and_provider_unchanged": true,
     "runtime": {
-      "artifact_provenance_sha256": "27f8278c96e6bb0cce2433cebe29349dcc8fcaa5a9f55d9c05a4b6db6906833e",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/249",
-      "boot_image_sha256": "a5e5fe6deef5a8a10240c262f5ff138c921749ce1cfbe5fbadb73b77040428de",
-      "boot_provenance_sha256": "733ddf0d3f6d0f9f7306b260c7ffad605470d1041574411f677bd26c2091ec07",
+      "artifact_provenance_sha256": "0d638bb5fe26ec79f83394052dab1c075d4c56fec11015df5fedb7bff609849d",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/250",
+      "boot_image_sha256": "dc8802b067d2b7d33ab95e06b5bb42c1b948659c02e54d3601834a6ea15dd2b2",
+      "boot_provenance_sha256": "7855ba4c00fea0e80e1d3426fc7a93b0c222063c39641e7098803aac9ad27a24",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/149",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/150",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -5383,7 +5383,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "8cd54eb870f0407668d09e86bd24779fa5fed00c68a63e8310be055f40105b70",
+      "linked_kernel_sha256": "52dd2e4747bacd15d5f4a461b6b9acd0b563853dae88231afcac796020c43700",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -5651,13 +5651,13 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/236",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/237",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/249",
+      "schema": "topal-kernel-toolchain-gate-qemu/250",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
-      "source_sha256": "c96e42e2b6997b83c556276d752c3d1910c2fc186a96f0d6a4a9f640198a449d",
+      "source_sha256": "958b931152f930247a718651cce6fb43f4015fab5e883271854c8a7c566ae395",
       "static_boot_resource_member": "static-user.elf",
       "static_user_image_bytes": 2024544,
       "static_user_image_input": "supplied-clean-room-fixture",
@@ -5665,15 +5665,15 @@
     }
   },
   "runtime": {
-    "artifact_provenance_sha256": "0eabfb243664b6f1e862c9773b8d913578c73449d4ae6c51f3d3f37507ef3733",
-    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/249",
-    "boot_image_sha256": "70324631eb82596bcf903b06837322f5835638ef13161462f3997f3f98629276",
-    "boot_provenance_sha256": "e779c60896ef8cca110ab0c6a65a06644f5ef9dc241cedce6e912f139f80b634",
+    "artifact_provenance_sha256": "5101479f4c9cfa21ac1abfb93480e116710ca253802e0f2679feb4e65105c543",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/250",
+    "boot_image_sha256": "bafb6ed65c8be7b26b9f6adef5d0cc1f555d02dc71ad1681288d6e3254f2e475",
+    "boot_provenance_sha256": "9f6e339bb1e528b7cd060e8ff531541ef34e76111994b690040a9904c324f1de",
     "boot_resource_bytes": 2037200,
     "boot_resource_member": "init",
     "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
     "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/149",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/150",
     "clean_environment_mode": "maximum",
     "cpu": "qemu64-v1",
     "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -5681,7 +5681,7 @@
     "initial_user_image_bytes": 12288,
     "initial_user_image_input": "supplied",
     "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-    "linked_kernel_sha256": "f68708d7fe75e4c5effc50c19e2f4fa8a8d8aa3404d6bc5b07421ee2af8985a8",
+    "linked_kernel_sha256": "397e07bfa0c0528e73389ea781e112923b2637a5aa1ee587e4a795cc2cbc7bb0",
     "machine": "pc-q35-10.2",
     "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
     "observations": {
@@ -5949,13 +5949,13 @@
     "process_exit_status": 35,
     "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
     "process_workload": "true",
-    "provider": "topal.provider.x86_64-qemu-pc-q35/236",
+    "provider": "topal.provider.x86_64-qemu-pc-q35/237",
     "publication": "topalc-target-interface/1",
     "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-    "schema": "topal-kernel-toolchain-gate-qemu/249",
+    "schema": "topal-kernel-toolchain-gate-qemu/250",
     "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
     "serial_input_utf8": "read",
-    "source_sha256": "c96e42e2b6997b83c556276d752c3d1910c2fc186a96f0d6a4a9f640198a449d",
+    "source_sha256": "958b931152f930247a718651cce6fb43f4015fab5e883271854c8a7c566ae395",
     "static_boot_resource_member": "static-user.elf",
     "static_user_image_bytes": 2024544,
     "static_user_image_input": "supplied-clean-room-fixture",

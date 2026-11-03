@@ -9,6 +9,13 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Independently bound ordinary region instances, with exact caller-derived
+  identities, separate private code/data/hooks and disjoint temporary storage.
+  Root zero-fact Boolean and file-position two-fact callbacks coexist under one
+  frame ABI; false root completion clears temporary storage before refusing
+  owner resumption. Legacy contexts remain separately selectable. See the
+  [instance report](step-4-instance-scoped-region-actions.md).
+
 - Bounded framed inputs for ordinary region functions: exact caller-declared
   zero-to-sixteen Nat facts, full-u64 transport, complete immutable input-frame
   ownership/lifetime and stack/allocation evidence. The existing file-position
@@ -115,6 +122,11 @@ The [framed-input refinement](step-4-framed-region-actions.md) removes the fixed
 two-scalar transport restriction for qualified source objects while retaining
 exact per-caller signatures. It changes no Linux operation or core-language
 meaning and does not supply general persistent allocation or subsystem coverage.
+
+The [instance refinement](step-4-instance-scoped-region-actions.md) removes the
+single-object naming restriction and binds each qualified caller independently.
+It retains the ordinary signature/frame transport and first integrates root and
+field owners; general persistent allocation and broader callers remain required.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |

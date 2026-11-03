@@ -12,6 +12,12 @@ they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
 The latest Step 4 increment adds
+[independent ordinary region instances](step-4-instance-scoped-region-actions.md):
+separate source/code/data/hooks and caller storage for identical callable profiles,
+with a zero-fact Boolean root callback alongside the two-fact file-position
+callback. Legacy Unit/action/unscoped-frame contexts remain explicit controls.
+
+The preceding increment adds
 [framed inputs for ordinary region actions](step-4-framed-region-actions.md):
 exact declared zero-to-sixteen Nat facts through caller-owned immutable frames,
 full-width ordinary values, complete input lifetime/resource proofs and actual
