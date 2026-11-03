@@ -80,6 +80,16 @@ pub(super) fn parse_requirement(
                 if identifier_is(
                     source,
                     &field.value,
+                    "borrowed-byte-region-instance-action-v1",
+                ) =>
+            {
+                interface =
+                    Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1);
+            }
+            "interface"
+                if identifier_is(
+                    source,
+                    &field.value,
                     "borrowed-byte-region-framed-action-v1",
                 ) =>
             {

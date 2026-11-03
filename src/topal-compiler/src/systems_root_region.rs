@@ -16,6 +16,20 @@ pub(crate) const HISTORY: &str = "topal_x86_systems_region_history";
 pub(crate) const ARENA_BYTES: u64 = 65536;
 pub(crate) const RETIRED_STACK_BYTES: u64 = 4096;
 pub(crate) const CALL_ALIGNMENT_BYTES: u64 = 32;
+pub(crate) const LIVE_FRAME_BYTES: u64 = 56;
+
+fn native_names(framed: bool) -> (&'static str, &'static str, &'static str) {
+    use crate::systems_region_library as source;
+    if framed {
+        (
+            source::ROOT_FRAME_EXPORT,
+            source::ROOT_FRAME_ALLOCATE,
+            source::ROOT_FRAME_ABORT,
+        )
+    } else {
+        (source::EXPORT, source::ALLOCATE, source::ABORT)
+    }
+}
 
 #[path = "systems_root_region_inspection.rs"]
 mod inspection;
@@ -72,7 +86,8 @@ pub(super) fn clear_temporaries(e: &mut E<'_>) {
 /// SysV entry: DI actual live root-owned bytes, SI extent64, D owner offset+1.
 /// The checked root callsite supplies ownership; these address/word tests do not
 /// create it. The source graph and explicit root stack/IF context are qualified.
-fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
+fn apply(storage_bytes: u64, framed: bool) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(framed);
     if storage_bytes < 4160 {
         return Err(CompileError::Tool(
             "root storage cannot contain its private prefix and region owner".into(),
@@ -146,12 +161,7 @@ fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
     e.cmp(A, 0); // the initial root admits exactly one invocation
     e.0.jump_if(0x85, "fail");
     e.imm(R15, 1);
-    address(
-        &mut e,
-        &mut code.references,
-        A,
-        crate::systems_region_library::EXPORT,
-    );
+    address(&mut e, &mut code.references, A, export);
     e.store(B, 0, A);
     e.store(B, 8, R14);
     e.imm(A, 0);
@@ -175,15 +185,17 @@ fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
     e.mov(Di, B);
     e.mov(Si, R14);
     e.mov(D, R15);
+    if framed {
+        e.imm(C, 0); // no facts: canonical null frame
+        e.imm(R8, 0);
+    }
     e.arith(4, _Sp, -16);
     e.add(_Sp, -16);
-    branch(
-        &mut e,
-        &mut code.references,
-        crate::systems_region_library::EXPORT,
-        true,
-    );
+    branch(&mut e, &mut code.references, export, true);
     e.mov(_Sp, R12);
+    if framed {
+        e.mov(R14, A);
+    } // scalar result survives complete source cleanup
     // All live source bindings must already be revoked by the private bridge.
     for offset in [0, 8, 24, 32, 40, 48, 56] {
         e.load(A, B, offset);
@@ -213,6 +225,10 @@ fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
     address(&mut e, &mut code.references, R11, HISTORY);
     e.store(R11, 0, R15); // scalar only; no source/owner/address/code binding
     clear_temporaries(&mut e);
+    if framed {
+        e.cmp(R14, 1);
+        e.0.jump_if(0x85, "fail"); // false never resumes the root owner
+    }
     for (bytes, register) in [
         (&[0x41, 0x5f][..], 15),
         (&[0x41, 0x5e], 14),
@@ -231,25 +247,15 @@ fn apply(storage_bytes: u64) -> Result<Code, CompileError> {
     e.0.bind("fail")?;
     // Terminal failures can arrive with different partial prologues.
     code.unwind.push((e.0.bytes.len() as u32, vec![0x07, 16]));
-    branch(
-        &mut e,
-        &mut code.references,
-        crate::systems_region_library::ABORT,
-        false,
-    );
+    branch(&mut e, &mut code.references, abort, false);
     Ok(code)
 }
 
 /// Leaf temporary hook: exactly the caller's eight-byte return address, with
 /// no stack use, callee-saved changes, process state, host service or callback.
-fn allocator() -> Result<Code, CompileError> {
-    allocator_for(
-        CONTROL,
-        ARENA,
-        crate::systems_region_library::EXPORT,
-        crate::systems_region_library::ABORT,
-        false,
-    )
+fn allocator(framed: bool) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(framed);
+    allocator_for(CONTROL, ARENA, export, abort, false)
 }
 
 /// The repeated action context shares this inspected leaf algorithm, with its
@@ -326,7 +332,8 @@ pub(super) fn allocator_for(
     Ok(code)
 }
 
-fn finalize() -> Result<Code, CompileError> {
+fn finalize(framed: bool) -> Result<Code, CompileError> {
+    let (_, _, abort) = native_names(framed);
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     address(&mut e, &mut code.references, R11, ARENA);
@@ -341,12 +348,7 @@ fn finalize() -> Result<Code, CompileError> {
     clear_temporaries(&mut e);
     e.0.bytes(&[0xc3]);
     e.0.bind("fail")?;
-    branch(
-        &mut e,
-        &mut code.references,
-        crate::systems_region_library::ABORT,
-        false,
-    );
+    branch(&mut e, &mut code.references, abort, false);
     Ok(code)
 }
 
@@ -354,7 +356,9 @@ pub(super) fn append(
     object: &mut Object<'_>,
     text: SectionId,
     storage_bytes: u64,
+    framed: bool,
 ) -> Result<(), CompileError> {
+    let (_, allocate, abort) = native_names(framed);
     for (name, bytes, alignment) in [
         (ARENA, ARENA_BYTES, 4096),
         (CONTROL, 64, 8),
@@ -378,17 +382,12 @@ pub(super) fn append(
         });
     }
     // Fatal hook is a qualified terminal leaf; it never resumes an owner.
-    super::append_encoded_function(
-        object,
-        text,
-        crate::systems_region_library::ABORT,
-        &[0xfa, 0xf4, 0xeb, 0xfd],
-    );
+    super::append_encoded_function(object, text, abort, &[0xfa, 0xf4, 0xeb, 0xfd]);
     let debug_frame = object.add_section(Vec::new(), b".debug_frame".to_vec(), SectionKind::Debug);
     for (name, code) in [
-        (APPLY, apply(storage_bytes)?),
-        (crate::systems_region_library::ALLOCATE, allocator()?),
-        (FINALIZE, finalize()?),
+        (APPLY, apply(storage_bytes, framed)?),
+        (allocate, allocator(framed)?),
+        (FINALIZE, finalize(framed)?),
     ] {
         append_code(object, text, debug_frame, name, code)?;
     }

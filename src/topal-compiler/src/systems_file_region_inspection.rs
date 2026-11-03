@@ -18,6 +18,12 @@ pub struct SystemsFilePositionRegionBinding {
         deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
     )]
     pub scalar_count: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub instance: Option<String>,
     pub maximum_source_stack_bytes: u64,
     pub caller_alignment_bytes: u64,
     pub live_frame_bytes: u64,
@@ -54,21 +60,26 @@ pub(crate) fn inspect_linked(
     bytes: &[u8],
     library: &crate::SystemsRegionLibraryArtifact,
 ) -> Result<SystemsFilePositionRegionBinding, CompileError> {
-    let framed = library.schema == "topal.kernel-region-frame-source-object.x86_64/1";
-    let (export, allocate, abort_hook) = native_names(framed);
-    let prefix = if framed {
-        crate::systems_region_library::FRAME_PREFIX
-    } else {
-        crate::systems_region_library::ACTION_PREFIX
+    let profile = match (library.schema.as_str(), library.instance.as_deref()) {
+        ("topal.kernel-region-action-source-object.x86_64/1", None) => FileRegionProfile::Action,
+        ("topal.kernel-region-frame-source-object.x86_64/1", None) => FileRegionProfile::Frame,
+        (
+            "topal.kernel-region-frame-source-object.x86_64/2",
+            Some(crate::systems_region_library::FILE_INSTANCE),
+        ) => FileRegionProfile::Instance,
+        _ => return Err(invalid("incompatible file source instance/context")),
     };
+    let framed = profile.framed();
+    let symbols = library.native_symbols()?;
+    let (export, allocate, abort_hook) = native_names(profile);
+    let prefix = symbols.prefix.as_str();
     let storage_bytes = super::super::process_runtime::children::STORAGE_BYTES;
     let combined_stack_bytes = library
         .maximum_stack_bytes
         .checked_add(CALL_ALIGNMENT_BYTES)
         .and_then(|n| n.checked_add(LIVE_FRAME_BYTES))
         .ok_or_else(|| invalid("combined source/caller stack overflow"))?;
-    if (!framed && library.schema != "topal.kernel-region-action-source-object.x86_64/1")
-        || library.scalar_count != framed.then_some(2)
+    if library.scalar_count != framed.then_some(2)
         || library.allocation.adapter_family_sha256.as_deref()
             != if framed {
                 Some("c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe")
@@ -335,10 +346,10 @@ pub(crate) fn inspect_linked(
         unwind: Vec::new(),
     };
     for (name, code) in [
-        (APPLY, apply(framed)?),
-        (allocate, allocator(framed)?),
+        (APPLY, apply(profile)?),
+        (allocate, allocator(profile)?),
         (abort_hook, abort),
-        (FINALIZE, finalize(framed)?),
+        (FINALIZE, finalize(profile)?),
     ] {
         let symbol = file
             .symbol_by_name(name)
@@ -419,19 +430,24 @@ pub(crate) fn inspect_linked(
         });
     }
     Ok(SystemsFilePositionRegionBinding {
-        schema: if framed {
+        schema: if profile == FileRegionProfile::Instance {
+            "topal.file-position-region-invocation.x86_64/3"
+        } else if framed {
             "topal.file-position-region-invocation.x86_64/2"
         } else {
             "topal.file-position-region-invocation.x86_64/1"
         }
         .into(),
-        interface: if framed {
+        interface: if profile == FileRegionProfile::Instance {
+            "borrowed-byte-region-instance-action-v1"
+        } else if framed {
             "borrowed-byte-region-framed-action-v1"
         } else {
             "borrowed-byte-region-action-v1"
         }
         .into(),
         scalar_count: framed.then_some(2),
+        instance: symbols.instance.clone(),
         maximum_source_stack_bytes: library.maximum_stack_bytes,
         caller_alignment_bytes: CALL_ALIGNMENT_BYTES,
         live_frame_bytes: LIVE_FRAME_BYTES,

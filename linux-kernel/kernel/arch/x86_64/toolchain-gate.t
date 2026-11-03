@@ -1962,14 +1962,14 @@ lang systems artifact (
   file-position-library is lang systems source-library (
     source is "policy/file-position.t",
     export is advance,
-    interface is borrowed-byte-region-framed-action-v1,
+    interface is borrowed-byte-region-instance-action-v1,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
   region-library is lang systems source-library (
-    source is "policy/bootstrap-byte-copy.t",
+    source is "policy/bootstrap-byte-copy-frame.t",
     export is apply,
-    interface is borrowed-byte-region-v1,
+    interface is borrowed-byte-region-instance-action-v1,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),

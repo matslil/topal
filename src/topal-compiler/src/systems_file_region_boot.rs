@@ -10,12 +10,38 @@ pub(crate) fn validate(
     use crate::systems_region_library as source;
     let invalid = |message: &str| CompileError::Tool(format!("E-SYSTEMS-REGION-ACTION: {message}"));
     let file = object::File::parse(kernel).map_err(|e| invalid(&e.to_string()))?;
-    let legacy = file.symbol_by_name(source::ACTION_EXPORT).is_some();
-    let framed = file.symbol_by_name(source::FRAME_EXPORT).is_some();
-    if legacy && framed {
-        return Err(invalid("mixed persistent action transport profiles"));
-    }
-    let selected = legacy || framed;
+    let choices = [
+        (
+            source::ACTION_ALLOCATE,
+            source::ACTION_ABORT,
+            source::ACTION_EXPORT,
+            source::ACTION_PREFIX,
+        ),
+        (
+            source::FRAME_ALLOCATE,
+            source::FRAME_ABORT,
+            source::FRAME_EXPORT,
+            source::FRAME_PREFIX,
+        ),
+        (
+            source::FILE_FRAME_ALLOCATE,
+            source::FILE_FRAME_ABORT,
+            source::FILE_FRAME_EXPORT,
+            source::FILE_FRAME_PREFIX,
+        ),
+    ];
+    let active = choices
+        .iter()
+        .enumerate()
+        .filter(|(_, choice)| file.symbol_by_name(choice.2).is_some())
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    let choice = match active.as_slice() {
+        [] => None,
+        [index] => Some(*index),
+        _ => return Err(invalid("mixed persistent action transport profiles")),
+    };
+    let selected = choice.is_some();
     if selected != artifact.file_position_library.is_some()
         || selected != artifact.file_position_runtime.is_some()
     {
@@ -23,41 +49,16 @@ pub(crate) fn validate(
             "code and complete persistent action binding disagree",
         ));
     }
-    let source_names = if framed {
-        [
-            source::FRAME_ALLOCATE,
-            source::FRAME_ABORT,
-            source::FRAME_EXPORT,
-        ]
-    } else {
-        [
-            source::ACTION_ALLOCATE,
-            source::ACTION_ABORT,
-            source::ACTION_EXPORT,
-        ]
-    };
-    let unselected_names = if framed {
-        [
-            source::ACTION_ALLOCATE,
-            source::ACTION_ABORT,
-            source::ACTION_EXPORT,
-        ]
-    } else {
-        [
-            source::FRAME_ALLOCATE,
-            source::FRAME_ABORT,
-            source::FRAME_EXPORT,
-        ]
-    };
+    let names = choices[choice.unwrap_or(0)];
     let native_names = [
         native::APPLY,
         native::FINALIZE,
         native::ARENA,
         native::CONTROL,
         native::HISTORY,
-        source_names[0],
-        source_names[1],
-        source_names[2],
+        names.0,
+        names.1,
+        names.2,
     ];
     for name in native_names {
         if file
@@ -73,11 +74,12 @@ pub(crate) fn validate(
     }
     for symbol in file.symbols() {
         let name = symbol.name().map_err(|e| invalid(&e.to_string()))?;
-        if unselected_names.contains(&name)
-            || ((!framed || !selected) && name.starts_with(source::FRAME_PREFIX))
-            || ((!legacy || !selected) && name.starts_with(source::ACTION_PREFIX))
-        {
-            return Err(invalid("unselected action transport namespace"));
+        for (index, (allocate, abort, export, prefix)) in choices.iter().enumerate() {
+            if choice != Some(index)
+                && ([*allocate, *abort, *export].contains(&name) || name.starts_with(prefix))
+            {
+                return Err(invalid("unselected action transport namespace"));
+            }
         }
         if name.starts_with("topal_x86_systems_file_position_") && !native_names.contains(&name) {
             return Err(invalid("extra native action runtime symbol"));

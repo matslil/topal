@@ -1935,7 +1935,10 @@ pub enum SystemsTransition {
         generation: u64,
     },
     RequireRegionLibraryReclamation,
-    ResumeBootstrapRegionAfterLibrary,
+    ResumeBootstrapRegionAfterLibrary {
+        /// Runtime acceptance obligation; no source result is predicted.
+        require_true: bool,
+    },
     CheckDynamicBootstrapByte {
         offset_bytes: u64,
         expected: u8,
@@ -2434,7 +2437,7 @@ impl SystemsTransition {
         match self {
             Self::BorrowBootstrapRegionForLibrary { .. }
             | Self::RequireRegionLibraryReclamation
-            | Self::ResumeBootstrapRegionAfterLibrary => SYSTEMS_REGION_LIBRARY_APPLY,
+            | Self::ResumeBootstrapRegionAfterLibrary { .. } => SYSTEMS_REGION_LIBRARY_APPLY,
             Self::CheckDynamicBootstrapByte { .. } => SYSTEMS_BOOTSTRAP_REGION_LOAD_BYTE,
             Self::ProvisionBootstrapStorage { .. } => SYSTEMS_BOOTSTRAP_STORAGE_PROVISION,
             Self::EnterBootstrap => "topal.systems.entry.bootstrap/1",
@@ -2810,10 +2813,14 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
     }
     if let Some(library) = &program.region_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::BorrowedByteRegionV1 {
+        if !matches!(
+            library.interface,
+            crate::SystemsSourceLibraryInterface::BorrowedByteRegionV1
+                | crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+        ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ROOT",
-                "region-library requires borrowed-byte-region-v1",
+                "region-library requires a qualified Unit or instance-action entry",
             ));
         }
     }
@@ -2823,6 +2830,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             library.interface,
             crate::SystemsSourceLibraryInterface::BorrowedByteRegionActionV1
                 | crate::SystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
+                | crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ACTION",
@@ -7114,6 +7122,10 @@ pub fn model_systems_transitions(
         if model_bootstrap_operation(
             operation,
             &program.debug_break.handler,
+            program.region_library.as_ref().is_some_and(|library| {
+                library.interface
+                    == crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+            }),
             &mut storage,
             &mut region,
             &mut atomic,
@@ -8282,6 +8294,7 @@ fn model_monotonic_clock_transition(
 fn model_bootstrap_operation(
     operation: &SystemsOperation,
     debug_break_handler: &SystemsHandler,
+    require_region_true: bool,
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
     atomic: &mut Option<AtomicWordLocation>,
@@ -8671,6 +8684,7 @@ fn model_bootstrap_operation(
         _ => {
             return model_bootstrap_storage_operation(
                 operation,
+                require_region_true,
                 storage,
                 region,
                 atomic,
@@ -8933,6 +8947,7 @@ fn model_atomic_operation(
 
 fn model_bootstrap_storage_operation(
     operation: &SystemsOperation,
+    require_region_true: bool,
     storage: &mut BootstrapStorageState,
     region: &mut Option<BootstrapRegion>,
     atomic: &mut Option<AtomicWordLocation>,
@@ -9141,7 +9156,9 @@ fn model_bootstrap_storage_operation(
             transitions.extend([
                 SystemsTransition::BorrowBootstrapRegionForLibrary { generation },
                 SystemsTransition::RequireRegionLibraryReclamation,
-                SystemsTransition::ResumeBootstrapRegionAfterLibrary,
+                SystemsTransition::ResumeBootstrapRegionAfterLibrary {
+                    require_true: require_region_true,
+                },
             ]);
         }
         SystemsOperation::BootstrapLoadByteEquals {
@@ -9295,8 +9312,14 @@ mod tests {
         });
         let cleanup =
             position(|step| matches!(step, SystemsTransition::RequireRegionLibraryReclamation));
-        let resume =
-            position(|step| matches!(step, SystemsTransition::ResumeBootstrapRegionAfterLibrary));
+        let resume = position(|step| {
+            matches!(
+                step,
+                SystemsTransition::ResumeBootstrapRegionAfterLibrary {
+                    require_true: false
+                }
+            )
+        });
         let guard = position(|step| {
             matches!(
                 step,
@@ -9307,6 +9330,16 @@ mod tests {
             )
         });
         assert!(borrow < cleanup && cleanup < resume && resume < guard);
+        let mut instance = value.clone();
+        instance.region_library.as_mut().unwrap().interface =
+            crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1;
+        let instance_trace = model_systems_transitions(&instance).unwrap();
+        assert_eq!(instance_trace.len(), trace.len());
+        assert!(matches!(
+            instance_trace[resume],
+            SystemsTransition::ResumeBootstrapRegionAfterLibrary { require_true: true }
+        ));
+        assert_eq!(instance_trace[guard], trace[guard]); // actual bytes remain unknown
         assert!(!trace.iter().any(|step| matches!(
             step,
             SystemsTransition::LoadBootstrapByte {

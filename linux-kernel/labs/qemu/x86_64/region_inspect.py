@@ -8,6 +8,13 @@ from pathlib import Path
 def install(config):
     OUT = Path(config['output'])
     META = config['artifact']
+    library = META['region_library']
+    framed = library.get('instance') == 'root-region'
+    export_name = library['native_export']
+    if framed:
+        assert META['region_runtime']['instance'] == 'root-region'
+        assert META['region_runtime']['scalar_count'] == library['scalar_count'] == 0
+        assert META['region_runtime']['live_frame_bytes'] == 56
     expected = bytearray(64)
     expected[0] = expected[config.get('destination', 1)] = 90
     if config.get('store24'):
@@ -34,7 +41,7 @@ def install(config):
     ARENA = addr('topal_x86_systems_region_arena')
     HISTORY = addr('topal_x86_systems_region_history')
     POOL = addr('topal_bootstrap_storage')
-    EXPORT = addr('topal_kernel_region_apply_v1')
+    EXPORT = addr(export_name)
 
     class Return(gdb.FinishBreakpoint):
         def __init__(self, kind, saved, stack):
@@ -45,6 +52,9 @@ def install(config):
                 assert [reg(name) for name in regs] == self.saved, (self.kind, 'callee registers')
                 assert reg('rsp') == self.stack + 8, (self.kind, 'stack')
                 if self.kind == 'source':
+                    if framed:
+                        assert reg('rax') == (0 if config.get('false_action') else 1)
+                        state['source_boolean'] = reg('rax')
                     assert words(CONTROL, 8) == (0, 0, 1, 0, 0, 0, 0, 0)
                     header = words(ARENA, 4)
                     assert header[0] == CONTROL and 32 <= header[1] <= META['region_library']['allocation']['numeric']['maximum_bytes'] and header[2] == 1 and header[3] > 0, header
@@ -93,6 +103,9 @@ def install(config):
                 elif self.kind == 'source':
                     assert reg('rdi') == CONTROL and reg('rsi') == 4097 and reg('rdx') == 1
                     assert reg('r12') == state['frame_sp']
+                    if framed:
+                        assert reg('rcx') == reg('r8') == 0
+                        state['scalar_transport'] = dict(address=0, words=0, no_frame_access=True)
                 Return(self.kind, [reg(name) for name in regs], reg('rsp'))
                 return False
             except BaseException as error: return failed(error)
@@ -110,15 +123,18 @@ def install(config):
                 assert number(frame.read_var('destination')) == config.get('destination', 1)
                 chain = []
                 current = frame
-                for _ in range(5):
+                for _ in range(6 if framed else 5):
                     if current is None: break
                     chain.append(current.name()); current = current.older()
                 state['helper_chain'] = chain
-                assert chain[4] == '_topal_kernel_entry', chain
-                current = frame.older().older().older().older()
+                assert chain[-1] == '_topal_kernel_entry', chain
+                current = frame
+                for _ in range(len(chain)-1):
+                    current = current.older()
                 assert current.pc() == state['root_return_pc'], (current.pc(), state['root_return_pc'])
-                assert chain[0] in ['support.bytes.copy-byte', helper] and chain[1] in ['apply', 'topal.region.topal.fn.apply.1'] and chain[2] == 'topal_kernel_region_apply_v1', chain
-                assert chain[3] == 'topal_x86_systems_region_library_apply_v1', chain
+                assert chain[0] in ['support.bytes.copy-byte', helper], chain
+                assert chain[-3] == export_name, chain
+                assert chain[-2] == 'topal_x86_systems_region_library_apply_v1', chain
                 source = frame.find_sal().symtab.fullname()
                 state['helper_file'] = source
                 state['helper_file_exists'] = Path(source).is_file()
@@ -164,6 +180,19 @@ def install(config):
     class Abort(gdb.Breakpoint):
         def stop(self):
             try:
+                if config.get('false_action'):
+                    assert framed and state['root_returns'] == 0
+                    assert state['source_returns'] == state['helpers'] == 1
+                    assert state['source_boolean'] == 0 and not state['finalized']
+                    zero(CONTROL, 64); zero(ARENA, 65536)
+                    zero(state['frame_sp']-4096, 4096)
+                    assert words(HISTORY, 1) == (1,)
+                    assert memory(state['owner'], 64) == expected_owner
+                    assert memory(POOL, 4096) == state['private_prefix']
+                    state.update(result='expected-false-action-fatal', no_owner_resumption=True,
+                                 temporary_cleanup=True, successful_stores_survive=True)
+                    publish()
+                    return True
                 assert config.get('fault'), 'unexpected region abort'
                 assert state['root_returns'] == state['source_returns'] == state['helpers'] == 0
                 actual = [memory(address, size) for address, size in ((POOL, 4160), (CONTROL, 64), (ARENA, 65536), (HISTORY, 8))]
@@ -174,7 +203,7 @@ def install(config):
             except BaseException as error: return failed(error)
 
     Enter('topal_x86_systems_region_library_apply_v1', 'root')
-    Enter('topal_kernel_region_apply_v1', 'source')
+    Enter(export_name, 'source')
     Enter('topal_x86_systems_region_library_finalize_v1', 'finalize')
     helper = next(function['symbol'] for function in META['region_library']['functions'] if 'copy_2dbyte' in function['symbol'])
     Helper(helper, internal=True)
@@ -184,4 +213,4 @@ def install(config):
         Depth('*' + hex(addr(symbol)), internal=True)
     Fatal('*topal_x86_systems_fatal', internal=True)
 
-    Abort('*topal_kernel_region_abort_v1', internal=True)
+    Abort('*' + library['imported_hooks'][1], internal=True)

@@ -4,7 +4,8 @@ use super::root_region::{Code, address, branch, clear_temporaries, erase, zero_r
 use super::x86_function::{E, R, R::*};
 use super::{CompileError, X86FunctionEncoder};
 use crate::systems_region_library::{
-    ACTION_ABORT, ACTION_ALLOCATE, ACTION_EXPORT, FRAME_ABORT, FRAME_ALLOCATE, FRAME_EXPORT,
+    ACTION_ABORT, ACTION_ALLOCATE, ACTION_EXPORT, FILE_FRAME_ABORT, FILE_FRAME_ALLOCATE,
+    FILE_FRAME_EXPORT, FRAME_ABORT, FRAME_ALLOCATE, FRAME_EXPORT,
 };
 use object::write::{Object, SectionId, Symbol, SymbolSection};
 use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
@@ -30,16 +31,40 @@ pub(super) const CALL_ALIGNMENT_BYTES: u64 = 32;
 
 /// DI controller, SI description, D effective transfer base, C actual prefix.
 /// Only the checked handler supplies this grant; words never manufacture it.
-fn native_names(framed: bool) -> (&'static str, &'static str, &'static str) {
-    if framed {
-        (FRAME_EXPORT, FRAME_ALLOCATE, FRAME_ABORT)
-    } else {
-        (ACTION_EXPORT, ACTION_ALLOCATE, ACTION_ABORT)
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum FileRegionProfile {
+    Action,
+    Frame,
+    Instance,
+}
+impl FileRegionProfile {
+    pub(super) fn from_interface(
+        interface: topal_language::compiler::CompilerSystemsSourceLibraryInterface,
+    ) -> Result<Self, CompileError> {
+        use topal_language::compiler::CompilerSystemsSourceLibraryInterface as Interface;
+        match interface {
+            Interface::BorrowedByteRegionActionV1 => Ok(Self::Action),
+            Interface::BorrowedByteRegionFramedActionV1 => Ok(Self::Frame),
+            Interface::BorrowedByteRegionInstanceActionV1 => Ok(Self::Instance),
+            _ => Err(CompileError::Tool(
+                "E-SYSTEMS-REGION-ACTION: incompatible file source context".into(),
+            )),
+        }
+    }
+    fn framed(self) -> bool {
+        self != Self::Action
+    }
+}
+fn native_names(profile: FileRegionProfile) -> (&'static str, &'static str, &'static str) {
+    match profile {
+        FileRegionProfile::Action => (ACTION_EXPORT, ACTION_ALLOCATE, ACTION_ABORT),
+        FileRegionProfile::Frame => (FRAME_EXPORT, FRAME_ALLOCATE, FRAME_ABORT),
+        FileRegionProfile::Instance => (FILE_FRAME_EXPORT, FILE_FRAME_ALLOCATE, FILE_FRAME_ABORT),
     }
 }
 
-pub(super) fn apply(framed: bool) -> Result<Code, CompileError> {
-    let (export, _, abort) = native_names(framed);
+pub(super) fn apply(profile: FileRegionProfile) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(profile);
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     e.cmp(_Sp, 0x108000);
@@ -155,7 +180,7 @@ pub(super) fn apply(framed: bool) -> Result<Code, CompileError> {
     e.mov(Di, B);
     e.mov(Si, R13);
     e.mov(D, R15);
-    if framed {
+    if profile.framed() {
         // The first two words of this owned 32-byte live frame are immutable
         // throughout source execution. It is above the retired stack reserve
         // and outside the numeric arena; all 32 bytes are erased on return.
@@ -225,13 +250,13 @@ pub(super) fn apply(framed: bool) -> Result<Code, CompileError> {
     Ok(code)
 }
 
-pub(super) fn allocator(framed: bool) -> Result<Code, CompileError> {
-    let (export, _, abort) = native_names(framed);
+pub(super) fn allocator(profile: FileRegionProfile) -> Result<Code, CompileError> {
+    let (export, _, abort) = native_names(profile);
     super::root_region::allocator_for(CONTROL, ARENA, export, abort, true)
 }
 
-pub(super) fn finalize(framed: bool) -> Result<Code, CompileError> {
-    let (_, _, abort) = native_names(framed);
+pub(super) fn finalize(profile: FileRegionProfile) -> Result<Code, CompileError> {
+    let (_, _, abort) = native_names(profile);
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     address(&mut e, &mut code.references, R11, ARENA);
@@ -250,9 +275,9 @@ pub(super) fn finalize(framed: bool) -> Result<Code, CompileError> {
 pub(super) fn append(
     object: &mut Object<'_>,
     text: SectionId,
-    framed: bool,
+    profile: FileRegionProfile,
 ) -> Result<(), CompileError> {
-    let (_, allocate, abort) = native_names(framed);
+    let (_, allocate, abort) = native_names(profile);
     for (name, bytes, alignment) in [
         (ARENA, ARENA_BYTES, 4096),
         (CONTROL, 64, 8),
@@ -278,9 +303,9 @@ pub(super) fn append(
     super::append_encoded_function(object, text, abort, &[0xfa, 0xf4, 0xeb, 0xfd]);
     let debug = object.add_section(Vec::new(), b".debug_frame".to_vec(), SectionKind::Debug);
     for (name, code) in [
-        (APPLY, apply(framed)?),
-        (allocate, allocator(framed)?),
-        (FINALIZE, finalize(framed)?),
+        (APPLY, apply(profile)?),
+        (allocate, allocator(profile)?),
+        (FINALIZE, finalize(profile)?),
     ] {
         super::root_region::append_code(object, text, debug, name, code)?;
     }

@@ -120,17 +120,38 @@ fn region_root_changed_literal_rejects_with_unchanged_code_and_corrected_outer_d
         initial_user_image: None,
         static_user_image: Some(user_path),
     };
-    let artifact = publish_systems_source(
-        include_str!("../../../kernel/arch/x86_64/toolchain-gate.t"),
-        &options,
-    )
-    .unwrap();
+    // Keep this an explicit frozen Unit compatibility control while the
+    // primary kernel selects the independently bound framed root instance.
+    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let start = source.find("  region-library is").unwrap();
+    let end = start + source[start..].find("  ),\n").unwrap() + 5;
+    let legacy = source[start..end]
+        .replace("bootstrap-byte-copy-frame.t", "bootstrap-byte-copy.t")
+        .replace(
+            "borrowed-byte-region-instance-action-v1",
+            "borrowed-byte-region-v1",
+        );
+    let source = format!("{}{}{}", &source[..start], legacy, &source[end..]);
+    let artifact = publish_systems_source(&source, &options).unwrap();
     let kernel = std::fs::read(&artifact.kernel).unwrap();
     let initial = std::fs::read(&artifact.initial_user_image).unwrap();
     let user = std::fs::read(artifact.static_user_image.as_ref().unwrap()).unwrap();
     let library = artifact.record.region_library.as_ref().unwrap();
     let binding = artifact.record.region_runtime.as_ref().unwrap();
     assert_eq!(binding.schema, "topal.root-region-invocation.x86_64/2");
+    let encoded = serde_json::to_value(&artifact.record).unwrap();
+    for field in ["instance", "scalar_count", "live_frame_bytes"] {
+        assert!(encoded["region_runtime"].get(field).is_none());
+        let mut changed = encoded.clone();
+        changed["region_runtime"][field] = serde_json::Value::Null;
+        assert!(serde_json::from_value::<SystemsArtifactProvenance>(changed).is_err());
+    }
+    for field in ["instance", "scalar_count"] {
+        assert!(encoded["region_library"].get(field).is_none());
+        let mut changed = encoded.clone();
+        changed["region_library"][field] = serde_json::Value::Null;
+        assert!(serde_json::from_value::<SystemsArtifactProvenance>(changed).is_err());
+    }
     assert_eq!(
         binding.source_data,
         inspect_systems_region_read_only_data(&kernel, library).unwrap()

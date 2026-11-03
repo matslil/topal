@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/249";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/235";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/250";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/236";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -778,12 +778,12 @@ fn publish_in_stage(
                     "E-SYSTEMS-REGION-ROOT: source path does not match the declared entry".into(),
                 ));
             }
-            crate::systems_region_library::build_systems_region_library(
-                input,
-                &requirement.export,
-                tools,
-                &work,
-            )
+            if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1 {
+                crate::build_systems_region_instance_library(input, &requirement.export, 0,
+                    crate::systems_region_library::ROOT_INSTANCE, tools, &work)
+            } else {
+                crate::systems_region_library::build_systems_region_library(input, &requirement.export, tools, &work)
+            }
         })
         .transpose()?;
     let file_position = program
@@ -799,7 +799,10 @@ fn publish_in_stage(
             let action_work = work.join("file-position");
             fs::create_dir(&action_work)
                 .map_err(io_error("create action object work space", &action_work))?;
-            if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1 {
+            if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1 {
+                crate::build_systems_region_instance_library(input, &requirement.export, 2,
+                    crate::systems_region_library::FILE_INSTANCE, tools, &action_work)
+            } else if requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1 {
                 crate::build_systems_region_framed_action_library(
                     input, &requirement.export, 2, tools, &action_work,
                 )
@@ -11586,7 +11589,9 @@ fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, Compi
                 CompilerSystemsTransition::BorrowBootstrapRegionForLibrary { generation } => format!("{identity};generation={generation}"),
                 CompilerSystemsTransition::CheckDynamicBootstrapByte { offset_bytes, expected } => format!("{identity};runtime-guard;offset={offset_bytes};expected={expected}"),
                 CompilerSystemsTransition::RequireRegionLibraryReclamation => format!("{identity};reclamation-obligation"),
-                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary => format!("{identity};resume-owner-obligation"),
+                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary { require_true } => if require_true {
+                    format!("{identity};resume-owner-obligation;runtime-guard;required-source-boolean=true;instance=root-region")
+                } else { format!("{identity};resume-owner-obligation") },
                 CompilerSystemsTransition::ProvisionBootstrapStorage {
                     capacity_bytes,
                     alignment_bytes,

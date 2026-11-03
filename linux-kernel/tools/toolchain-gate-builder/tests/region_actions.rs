@@ -299,10 +299,14 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     // TOPAL-SYSTEMS-REGION-ACTION-OWNER-001, -RETURN-001, -POSITION-001.
     // Structural provider evidence only; a declaration supplies no source snapshot.
     // Actual source/link/controller/boot binding is checked by a separate test.
-    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t").replace(
-        "borrowed-byte-region-framed-action-v1",
+    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let start = source.find("  file-position-library is").unwrap();
+    let end = start + source[start..].find("  ),\n").unwrap() + 5;
+    let legacy = source[start..end].replace(
+        "borrowed-byte-region-instance-action-v1",
         "borrowed-byte-region-action-v1",
     );
+    let source = format!("{}{}{}", &source[..start], legacy, &source[end..]);
     let program = topal_language::compiler::analyze_systems_for_compiler(
         &source,
         &topal_language::compiler::CompilerSystemsTargetSelection::initial_x86_64_qemu(),
@@ -483,14 +487,16 @@ fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constan
     }
     assert_eq!(
         library.schema,
-        "topal.kernel-region-frame-source-object.x86_64/1"
+        "topal.kernel-region-frame-source-object.x86_64/2"
     );
     assert_eq!(library.scalar_count, Some(2));
     assert_eq!(
         binding.schema,
-        "topal.file-position-region-invocation.x86_64/2"
+        "topal.file-position-region-invocation.x86_64/3"
     );
     assert_eq!(binding.scalar_count, Some(2));
+    assert_eq!(library.instance.as_deref(), Some("file-position"));
+    assert_eq!(binding.instance.as_deref(), Some("file-position"));
     assert_eq!(
         binding.combined_stack_bytes,
         library.maximum_stack_bytes + 88 + 32

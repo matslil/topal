@@ -26,6 +26,24 @@ pub struct SystemsRootRegionCode {
 pub struct SystemsRootRegionBinding {
     pub schema: String,
     pub interface: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub instance: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub scalar_count: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub live_frame_bytes: Option<u64>,
     pub maximum_source_stack_bytes: u64,
     pub caller_alignment_bytes: u64,
     pub combined_stack_bytes: u64,
@@ -60,22 +78,38 @@ pub(crate) fn inspect_linked(
     library: &crate::SystemsRegionLibraryArtifact,
     storage_bytes: u64,
 ) -> Result<SystemsRootRegionBinding, CompileError> {
+    let framed = match (library.schema.as_str(), library.instance.as_deref()) {
+        ("topal.kernel-region-source-object.x86_64/3", None) => false,
+        (
+            "topal.kernel-region-frame-source-object.x86_64/2",
+            Some(crate::systems_region_library::ROOT_INSTANCE),
+        ) => true,
+        _ => return Err(invalid("incompatible root source instance/context")),
+    };
+    let symbols = library.native_symbols()?;
+    let (export, allocate, abort_hook) = native_names(framed);
     let combined_stack_bytes = library
         .maximum_stack_bytes
         .checked_add(CALL_ALIGNMENT_BYTES)
+        .and_then(|n| n.checked_add(if framed { LIVE_FRAME_BYTES } else { 0 }))
         .ok_or_else(|| invalid("combined source/caller stack overflow"))?;
-    if library.schema != "topal.kernel-region-source-object.x86_64/3"
-        || library.scalar_count.is_some()
-        || library.allocation.adapter_family_sha256.is_some()
+    if library.scalar_count != framed.then_some(0)
+        || library.allocation.adapter_family_sha256.as_deref()
+            != if framed {
+                Some("c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe")
+            } else {
+                None
+            }
         || library.target != "x86_64-unknown-none"
         || library.data_layout != crate::X86_SYSTEMS_DATA_LAYOUT
-        || library.native_export != crate::systems_region_library::EXPORT
-        || library.declared_entry != "(KernelByteRegion) -> Unit"
-        || library.imported_hooks
-            != [
-                crate::systems_region_library::ALLOCATE,
-                crate::systems_region_library::ABORT,
-            ]
+        || library.native_export != export
+        || library.declared_entry
+            != if framed {
+                "(KernelByteRegion) -> Boolean"
+            } else {
+                "(KernelByteRegion) -> Unit"
+            }
+        || library.imported_hooks != [allocate, abort_hook]
         || library.imported_hook_stack_bytes != 8
         || library.stack_limit_bytes != 4096
         || combined_stack_bytes > RETIRED_STACK_BYTES
@@ -102,13 +136,28 @@ pub(crate) fn inspect_linked(
     let allocation = &library.allocation.numeric;
     let digest = |bytes: &[u8]| format!("{:x}", Sha256::digest(bytes));
     if library.machine_profile != "x86_64-owned-region-gpr-only/1"
-        || library.native_abi != "topal.kernel-region-control-view64.x86_64-sysv/1"
+        || library.native_abi
+            != if framed {
+                "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1"
+            } else {
+                "topal.kernel-region-control-view64.x86_64-sysv/1"
+            }
         || library.runtime_sha256 != digest(include_bytes!("runtime/kernel_regions.ll"))
         || library.platform_hooks_sha256
             != digest(include_bytes!("runtime/kernel_region_platform.ll"))
         || library.allocation.region_runtime_sha256 != library.runtime_sha256
-        || library.allocation.adapter_sha256 != crate::codegen::region_adapter_sha256()
-        || allocation.certificate != "topal.kernel-region-allocation/1"
+        || library.allocation.adapter_sha256
+            != if framed {
+                crate::codegen::region_frame_adapter_sha256(0)
+            } else {
+                crate::codegen::region_adapter_sha256()
+            }
+        || allocation.certificate
+            != if framed {
+                "topal.kernel-region-frame-allocation/1"
+            } else {
+                "topal.kernel-region-allocation/1"
+            }
         || allocation.runtime_sha256 != digest(include_bytes!("runtime/value_core.ll"))
         || allocation.collection_runtime_sha256
             != digest(include_bytes!("runtime/fundamental_containers.ll"))
@@ -129,10 +178,7 @@ pub(crate) fn inspect_linked(
     let mut owned = Vec::new();
     let mut source_code = Vec::new();
     let mut seen = BTreeSet::new();
-    let mut costs = BTreeMap::from([
-        (crate::systems_region_library::ALLOCATE.to_owned(), 8_u64),
-        (crate::systems_region_library::ABORT.to_owned(), 8_u64),
-    ]);
+    let mut costs = BTreeMap::from([(allocate.to_owned(), 8_u64), (abort_hook.to_owned(), 8_u64)]);
     for function in &library.functions {
         if !seen.insert(function.symbol.as_str()) {
             return Err(invalid("duplicate region function"));
@@ -182,7 +228,7 @@ pub(crate) fn inspect_linked(
                     .ok_or_else(|| invalid("source code has no section"))?,
             )
             .map_err(|error| invalid(error.to_string()))?;
-        if !matches!(section.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & 4 != 0 && sh_flags.0 & 1 == 0)
+        if !matches!(section.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & (7 | object::elf::SHF_TLS.0) == 6)
         {
             return Err(invalid("source code is not immutable executable text"));
         }
@@ -211,11 +257,21 @@ pub(crate) fn inspect_linked(
             sha256: digest(code),
         });
     }
-    if costs
-        .get(crate::systems_region_library::EXPORT)
-        .and_then(|cost| cost.checked_add(8))
-        != Some(library.maximum_stack_bytes)
-    {
+    let linked_names = file
+        .symbols()
+        .filter(|s| s.is_definition() && s.kind() == SymbolKind::Text)
+        .filter_map(|s| s.name().ok())
+        .filter(|name| {
+            *name == export
+                || name.starts_with(&symbols.prefix)
+                    && (framed || !name.starts_with(crate::systems_region_library::ACTION_PREFIX))
+                || !framed && name.starts_with("topal.kernel.region.")
+        })
+        .collect::<Vec<_>>();
+    if linked_names.len() != seen.len() || linked_names.iter().any(|name| !seen.contains(name)) {
+        return Err(invalid("extra or missing root source/runtime code"));
+    }
+    if costs.get(export).and_then(|cost| cost.checked_add(8)) != Some(library.maximum_stack_bytes) {
         return Err(invalid("inconsistent complete region stack certificate"));
     }
     let bootstrap = file
@@ -255,6 +311,34 @@ pub(crate) fn inspect_linked(
         if section.kind() != SectionKind::UninitializedData {
             return Err(invalid("root storage is not zero-initialized owned BSS"));
         }
+        if !matches!(section.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & (7 | object::elf::SHF_TLS.0) == 3)
+            || extent.0 < section.address()
+            || extent.1
+                > section
+                    .address()
+                    .checked_add(section.size())
+                    .ok_or_else(|| invalid("root BSS extent overflow"))?
+        {
+            return Err(invalid(
+                "root storage is not contained in allocated writable BSS",
+            ));
+        }
+        for other in file.symbols().filter(|s| {
+            s.is_definition()
+                && s.kind() == SymbolKind::Data
+                && s.size() > 0
+                && s.name().ok() != Some(name)
+        }) {
+            let end = other
+                .address()
+                .checked_add(other.size())
+                .ok_or_else(|| invalid("other owned extent overflow"))?;
+            if extent.0 < end && other.address() < extent.1 {
+                return Err(invalid(
+                    "root invocation storage aliases another allocation",
+                ));
+            }
+        }
         extents.push(extent);
         owned.push(SystemsRootRegionStorage {
             symbol: name.into(),
@@ -273,10 +357,10 @@ pub(crate) fn inspect_linked(
         unwind: Vec::new(),
     };
     for (name, code) in [
-        (APPLY, apply(storage_bytes)?),
-        (crate::systems_region_library::ALLOCATE, allocator()?),
-        (crate::systems_region_library::ABORT, abort),
-        (FINALIZE, finalize()?),
+        (APPLY, apply(storage_bytes, framed)?),
+        (allocate, allocator(framed)?),
+        (abort_hook, abort),
+        (FINALIZE, finalize(framed)?),
     ] {
         let symbol = file
             .symbol_by_name(name)
@@ -327,6 +411,10 @@ pub(crate) fn inspect_linked(
                     .ok_or_else(|| invalid("root code has no section"))?,
             )
             .map_err(|error| invalid(error.to_string()))?;
+        if !matches!(section.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & (7 | object::elf::SHF_TLS.0) == 6)
+        {
+            return Err(invalid("native root code is not immutable allocated text"));
+        }
         let data = section.data().map_err(|error| invalid(error.to_string()))?;
         let offset = usize::try_from(
             symbol
@@ -351,8 +439,21 @@ pub(crate) fn inspect_linked(
         });
     }
     Ok(SystemsRootRegionBinding {
-        schema: "topal.root-region-invocation.x86_64/2".into(),
-        interface: "borrowed-byte-region-v1".into(),
+        schema: if framed {
+            "topal.root-region-invocation.x86_64/3"
+        } else {
+            "topal.root-region-invocation.x86_64/2"
+        }
+        .into(),
+        interface: if framed {
+            "borrowed-byte-region-instance-action-v1"
+        } else {
+            "borrowed-byte-region-v1"
+        }
+        .into(),
+        instance: symbols.instance.clone(),
+        scalar_count: framed.then_some(0),
+        live_frame_bytes: framed.then_some(LIVE_FRAME_BYTES),
         maximum_source_stack_bytes: library.maximum_stack_bytes,
         caller_alignment_bytes: CALL_ALIGNMENT_BYTES,
         combined_stack_bytes,

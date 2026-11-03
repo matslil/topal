@@ -147,27 +147,15 @@ pub fn inspect_systems_region_read_only_data(
     bytes: &[u8],
     library: &super::SystemsRegionLibraryArtifact,
 ) -> Result<Vec<SystemsRegionReadOnlyBinding>, CompileError> {
-    use super::{ACTION_EXPORT, ACTION_PREFIX, EXPORT, FRAME_EXPORT, FRAME_PREFIX, PREFIX};
     use object::{Architecture, BinaryFormat, ObjectKind};
-    let prefix = match (
-        library.schema.as_str(),
-        library.native_export.as_str(),
-        library.scalar_count,
-    ) {
-        ("topal.kernel-region-source-object.x86_64/3", EXPORT, None) => PREFIX,
-        ("topal.kernel-region-action-source-object.x86_64/1", ACTION_EXPORT, None)
-            if !library.read_only_data.is_empty() =>
-        {
-            ACTION_PREFIX
-        }
-        ("topal.kernel-region-frame-source-object.x86_64/1", FRAME_EXPORT, Some(count))
-            if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS =>
-        {
-            FRAME_PREFIX
-        }
-        _ => return Err(invalid("incompatible immutable region data certificate")),
-    };
-    if prefix != FRAME_PREFIX && library.allocation.adapter_family_sha256.is_some() {
+    let symbols = library.native_symbols()?;
+    let prefix = symbols.prefix.as_str();
+    if library.schema == "topal.kernel-region-action-source-object.x86_64/1"
+        && library.read_only_data.is_empty()
+    {
+        return Err(invalid("incompatible immutable region data certificate"));
+    }
+    if library.scalar_count.is_none() && library.allocation.adapter_family_sha256.is_some() {
         return Err(invalid(
             "legacy region data cannot carry framed adapter metadata",
         ));

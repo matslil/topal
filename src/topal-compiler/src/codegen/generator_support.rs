@@ -546,7 +546,7 @@ enum ScalarListRuntimeFragment {
 struct Generator<'a> {
     kernel_library_mode: bool,
     kernel_parameter_debug_storage: bool,
-    kernel_function_prefix: &'static str,
+    kernel_function_prefix: &'a str,
     program: &'a CompilerProgram,
     source_name: &'a str,
     globals: Vec<String>,

@@ -120,7 +120,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/236";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/237";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -1584,7 +1584,7 @@ mod tests {
         assert_eq!(plan.operations.len(), 153);
         assert_eq!(
             plan.region_library_interface.as_deref(),
-            Some("borrowed-byte-region-v1")
+            Some("borrowed-byte-region-instance-action-v1")
         );
         for source_only in [
             SYSTEMS_KERNEL_RUNNABLE_QUEUE_CREATE,

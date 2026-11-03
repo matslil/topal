@@ -21,6 +21,7 @@ mod systems_policy_inputs;
 mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
+mod systems_root_region_boot;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
 pub use systems_provider_object::root_region::{
     SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
@@ -28,9 +29,10 @@ pub use systems_provider_object::root_region::{
 pub use systems_region_library::{
     CompiledSystemsRegionLibrary, SystemsRegionEffect, SystemsRegionLibraryArtifact,
     SystemsRegionReadOnlyBinding, SystemsRegionReadOnlyData, build_systems_region_action_library,
-    build_systems_region_framed_action_library, build_systems_region_library,
-    inspect_systems_region_action_data, inspect_systems_region_read_only_data,
-    verify_systems_region_action_library, verify_systems_region_framed_action_library,
+    build_systems_region_framed_action_library, build_systems_region_instance_library,
+    build_systems_region_library, inspect_systems_region_action_data,
+    inspect_systems_region_read_only_data, verify_systems_region_action_library,
+    verify_systems_region_framed_action_library, verify_systems_region_instance_library,
     verify_systems_region_library,
 };
 mod systems_pipeline;

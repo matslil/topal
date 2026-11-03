@@ -66,6 +66,24 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
     .unwrap();
     eprintln!("root region artifact: {}", artifact.directory.display());
     let binding = artifact.record.region_runtime.as_ref().unwrap();
+    let source_record = artifact.record.region_library.as_ref().unwrap();
+    assert_eq!(source_record.instance.as_deref(), Some("root-region"));
+    assert_eq!(source_record.scalar_count, Some(0));
+    assert_eq!(binding.schema, "topal.root-region-invocation.x86_64/3");
+    assert_eq!(binding.instance.as_deref(), Some("root-region"));
+    assert_eq!(binding.scalar_count, Some(0));
+    assert_eq!(binding.live_frame_bytes, Some(56));
+    assert_eq!(
+        binding.combined_stack_bytes,
+        source_record.maximum_stack_bytes + 56 + 32
+    );
+    let field = artifact.record.file_position_runtime.as_ref().unwrap();
+    assert!(binding.storage.iter().all(|root| {
+        field.storage.iter().all(|field| {
+            root.address + root.bytes <= field.address
+                || field.address + field.bytes <= root.address
+        })
+    }));
     assert!(binding.combined_stack_bytes <= 4096);
     assert_eq!(binding.caller_alignment_bytes, 32);
     assert_eq!(binding.imported_hook_stack_bytes, 8);
@@ -88,9 +106,74 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
             .iter()
             .any(|step| step.contains("runtime-guard;offset=1;expected=90"))
     );
+    assert!(artifact.record.semantic_trace.iter().any(|step| {
+        step.contains("runtime-guard;required-source-boolean=true;instance=root-region")
+    }));
     let kernel = std::fs::read(&artifact.kernel).unwrap();
     let initial = std::fs::read(&artifact.initial_user_image).unwrap();
     let user = std::fs::read(artifact.static_user_image.as_ref().unwrap()).unwrap();
+    let encoded = serde_json::to_value(&artifact.record).unwrap();
+    for (context, fields) in [
+        ("region_library", &["instance", "scalar_count"][..]),
+        (
+            "region_runtime",
+            &["instance", "scalar_count", "live_frame_bytes"][..],
+        ),
+        ("file_position_library", &["instance", "scalar_count"][..]),
+        ("file_position_runtime", &["instance", "scalar_count"][..]),
+    ] {
+        for field in fields {
+            for missing in [false, true] {
+                let mut value = encoded.clone();
+                if missing {
+                    value[context].as_object_mut().unwrap().remove(*field);
+                } else {
+                    value[context][*field] = serde_json::Value::Null;
+                }
+                match serde_json::from_value::<SystemsArtifactProvenance>(value) {
+                    Err(_) => {}
+                    Ok(changed) => assert!(
+                        generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &user)
+                            .is_err(),
+                        "accepted {context}.{field} missing={missing}"
+                    ),
+                }
+            }
+        }
+    }
+    for mutation in 0..10 {
+        let mut changed = artifact.record.clone();
+        match mutation {
+            0 => changed.region_library.as_mut().unwrap().instance = Some("file-position".into()),
+            1 => changed.region_runtime.as_mut().unwrap().instance = Some("file-position".into()),
+            2 => {
+                changed.file_position_library.as_mut().unwrap().instance =
+                    Some("root-region".into())
+            }
+            3 => {
+                changed.file_position_runtime.as_mut().unwrap().instance =
+                    Some("root-region".into())
+            }
+            4 => changed.region_runtime.as_mut().unwrap().live_frame_bytes = Some(48),
+            5 => changed.region_library.as_mut().unwrap().scalar_count = Some(2),
+            6 => changed.region_runtime.as_mut().unwrap().scalar_count = Some(2),
+            7 => changed.file_position_library.as_mut().unwrap().scalar_count = Some(0),
+            8 => changed.file_position_runtime.as_mut().unwrap().scalar_count = Some(0),
+            9 => {
+                changed.region_library.as_mut().unwrap().imported_hooks = changed
+                    .file_position_library
+                    .as_ref()
+                    .unwrap()
+                    .imported_hooks
+                    .clone()
+            }
+            _ => unreachable!(),
+        }
+        assert!(
+            generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &user).is_err(),
+            "accepted cross-instance mutation {mutation}"
+        );
+    }
     let boot =
         generate_x86_64_linux_boot_image(&kernel, &artifact.record, &initial, &user).unwrap();
     std::fs::write(parent.join("bzImage"), boot.bytes).unwrap();
@@ -132,7 +215,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
     let mut invalid = region.as_ref().unwrap().clone();
     invalid.text = invalid
         .text
-        .replace("-> Unit\n", "-> Unit\n  : Effects ()\n");
+        .replace("-> Boolean\n", "-> Boolean\n  : Effects ()\n");
     let destination = parent.join("invalid-source");
     let error = publish_x86_64_systems_artifact_with_kernel_libraries(
         &program,
@@ -194,7 +277,14 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
     wrong.region_runtime.as_mut().unwrap().source_code[0].sha256 = "0".repeat(64);
     assert!(generate_x86_64_linux_boot_image(&kernel, &wrong, &initial, &user).is_err());
     let symbol = file
-        .symbol_by_name(crate::systems_region_library::ALLOCATE)
+        .symbol_by_name(
+            &artifact
+                .record
+                .region_library
+                .as_ref()
+                .unwrap()
+                .imported_hooks[0],
+        )
         .unwrap();
     let section = file
         .section_by_index(symbol.section_index().unwrap())

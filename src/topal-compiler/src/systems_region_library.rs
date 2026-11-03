@@ -30,6 +30,10 @@ pub(crate) const FRAME_PREFIX: &str = "topal.framed-region.";
 pub(crate) const FRAME_ALLOCATE: &str = "topal_kernel_region_frame_allocate_v1";
 pub(crate) const FRAME_ABORT: &str = "topal_kernel_region_frame_abort_v1";
 
+#[path = "systems_region_instance.rs"]
+mod instance;
+pub(crate) use instance::*;
+
 /// Missing optional profile fields remain absent; a present JSON null cannot
 /// erase a framed-only key before the legacy context checks see it.
 pub(crate) fn deserialize_present_region_field<'de, T, D>(
@@ -43,24 +47,18 @@ where
 }
 
 impl CheckedRegionLibrary {
-    pub(crate) fn native_export(&self) -> &'static str {
+    pub(crate) fn native_export(&self) -> &str {
         self.native_names().0
     }
-    pub(crate) fn native_names(&self) -> (&'static str, &'static str, &'static str) {
-        match self.profile {
-            CompilerKernelRegionProfile::Unit => (EXPORT, ALLOCATE, ABORT),
-            CompilerKernelRegionProfile::Action => (ACTION_EXPORT, ACTION_ALLOCATE, ACTION_ABORT),
-            CompilerKernelRegionProfile::FramedAction { .. } => {
-                (FRAME_EXPORT, FRAME_ALLOCATE, FRAME_ABORT)
-            }
-        }
+    pub(crate) fn native_names(&self) -> (&str, &str, &str) {
+        (
+            &self.symbols.export,
+            &self.symbols.allocate,
+            &self.symbols.abort,
+        )
     }
-    pub(crate) fn prefix(&self) -> &'static str {
-        match self.profile {
-            CompilerKernelRegionProfile::Unit => PREFIX,
-            CompilerKernelRegionProfile::Action => ACTION_PREFIX,
-            CompilerKernelRegionProfile::FramedAction { .. } => FRAME_PREFIX,
-        }
+    pub(crate) fn prefix(&self) -> &str {
+        &self.symbols.prefix
     }
 }
 
@@ -110,6 +108,12 @@ pub struct SystemsRegionLibraryArtifact {
         deserialize_with = "deserialize_present_region_field"
     )]
     pub scalar_count: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_present_region_field"
+    )]
+    pub instance: Option<String>,
     pub effects: Vec<SystemsRegionEffect>,
     pub runtime_sha256: String,
     pub platform_hooks_sha256: String,
@@ -148,6 +152,7 @@ pub(crate) struct CheckedRegionLibrary {
     pub(crate) source_name: String,
     pub(crate) entry_symbol: String,
     pub(crate) profile: CompilerKernelRegionProfile,
+    pub(crate) symbols: RegionNativeSymbols,
 }
 
 fn check_region_isolation(
@@ -214,6 +219,7 @@ pub fn build_systems_region_library(
         tools,
         work,
         CompilerKernelRegionProfile::Unit,
+        None,
     )
 }
 
@@ -230,6 +236,7 @@ pub fn build_systems_region_action_library(
         tools,
         work,
         CompilerKernelRegionProfile::Action,
+        None,
     )
 }
 
@@ -246,6 +253,26 @@ pub fn build_systems_region_framed_action_library(
         tools,
         work,
         CompilerKernelRegionProfile::FramedAction { scalar_count },
+        None,
+    )
+}
+
+/// Build an independently named object; the label confers no live caller grant.
+pub fn build_systems_region_instance_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    scalar_count: u8,
+    instance: &str,
+    tools: &LlvmTools,
+    work: &Path,
+) -> Result<CompiledSystemsRegionLibrary, CompileError> {
+    build_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        CompilerKernelRegionProfile::FramedAction { scalar_count },
+        Some(instance),
     )
 }
 
@@ -255,7 +282,9 @@ fn build_region_profile(
     tools: &LlvmTools,
     work: &Path,
     profile: CompilerKernelRegionProfile,
+    instance: Option<&str>,
 ) -> Result<CompiledSystemsRegionLibrary, CompileError> {
+    let symbols = RegionNativeSymbols::for_profile(profile, instance)?;
     let modules = crate::systems_library::modules::validate(input)?;
     let program = match profile {
         CompilerKernelRegionProfile::Unit => {
@@ -302,6 +331,7 @@ fn build_region_profile(
         source_name: input.source_name.clone(),
         entry_symbol,
         profile,
+        symbols,
     };
     let (native_export, prefix) = (checked.native_export(), checked.prefix());
     let (_, allocate, abort) = checked.native_names();
@@ -442,6 +472,11 @@ fn build_region_profile(
             CompilerKernelRegionProfile::Action => {
                 "topal.kernel-region-action-source-object.x86_64/1"
             }
+            CompilerKernelRegionProfile::FramedAction { .. }
+                if checked.symbols.instance.is_some() =>
+            {
+                "topal.kernel-region-frame-source-object.x86_64/2"
+            }
             CompilerKernelRegionProfile::FramedAction { .. } => {
                 "topal.kernel-region-frame-source-object.x86_64/1"
             }
@@ -466,6 +501,7 @@ fn build_region_profile(
             CompilerKernelRegionProfile::FramedAction { scalar_count } => Some(scalar_count),
             _ => None,
         },
+        instance: checked.symbols.instance.clone(),
         effects: effects
             .into_iter()
             .map(
@@ -539,6 +575,7 @@ pub fn verify_systems_region_library(
         work,
         candidate,
         CompilerKernelRegionProfile::Unit,
+        None,
     )
 }
 
@@ -556,6 +593,7 @@ pub fn verify_systems_region_action_library(
         work,
         candidate,
         CompilerKernelRegionProfile::Action,
+        None,
     )
 }
 
@@ -574,6 +612,27 @@ pub fn verify_systems_region_framed_action_library(
         work,
         candidate,
         CompilerKernelRegionProfile::FramedAction { scalar_count },
+        None,
+    )
+}
+
+pub fn verify_systems_region_instance_library(
+    input: &SystemsSourceLibraryInput,
+    export: &str,
+    scalar_count: u8,
+    instance: &str,
+    tools: &LlvmTools,
+    work: &Path,
+    candidate: &CompiledSystemsRegionLibrary,
+) -> Result<(), CompileError> {
+    verify_region_profile(
+        input,
+        export,
+        tools,
+        work,
+        candidate,
+        CompilerKernelRegionProfile::FramedAction { scalar_count },
+        Some(instance),
     )
 }
 
@@ -584,8 +643,9 @@ fn verify_region_profile(
     work: &Path,
     candidate: &CompiledSystemsRegionLibrary,
     profile: CompilerKernelRegionProfile,
+    instance: Option<&str>,
 ) -> Result<(), CompileError> {
-    let expected = build_region_profile(input, export, tools, work, profile)?;
+    let expected = build_region_profile(input, export, tools, work, profile, instance)?;
     if candidate.source != expected.source
         || candidate.module_snapshot != expected.module_snapshot
         || candidate.llvm != expected.llvm

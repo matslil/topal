@@ -11,9 +11,13 @@ def install(config):
     artifact = config['artifact']
     library = artifact['file_position_library']
     binding = artifact['file_position_runtime']
-    framed = binding['interface'] == 'borrowed-byte-region-framed-action-v1'
+    framed = binding['interface'] in ('borrowed-byte-region-framed-action-v1',
+                                     'borrowed-byte-region-instance-action-v1')
     export_name = library['native_export']
-    prefix = 'topal.framed-region.' if framed else 'topal.region.action.'
+    prefix = ('topal.region-instance.' + library['instance'] + '.' if library.get('instance')
+              else 'topal.framed-region.' if framed else 'topal.region.action.')
+    if library.get('instance'):
+        assert binding['instance'] == library['instance'] == 'file-position'
     state = {'calls': [], 'generation': 0, 'finalized': False, 'finalizer_entries': 0, 'scope': 'actual persistent field loans; source/owner/cleanup observations'}
     current = None
     pending = None

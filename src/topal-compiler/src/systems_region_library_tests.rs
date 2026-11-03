@@ -3,6 +3,234 @@ use super::*;
 const SOURCE: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/region_source_probe.t");
 const BYTES: &str = include_str!("../../../linux-kernel/kernel/support/bytes.t");
 
+#[test]
+fn instance_objects_bind_distinct_namespaces_hooks_counts_and_canonical_identity() {
+    // TOPAL-SYSTEMS-REGION-INSTANCE-SOURCE-001, -BINDING-001.
+    let tools = LlvmTools::discover(None).unwrap();
+    let source = "use language (version is v0.1, features is (systems))\npub apply is fn ((region : KernelByteRegion, first : Nat, second : Nat, third : Nat)) -> Boolean\n  true\n";
+    let mut roots = Vec::new();
+    let mut records = Vec::new();
+    let mut names = std::collections::BTreeSet::new();
+    for label in ["left-owner", "right-owner"] {
+        let work = temporary_work();
+        let input = input(&work, source);
+        let object =
+            build_systems_region_instance_library(&input, "apply", 3, label, &tools, &work)
+                .unwrap();
+        assert_eq!(
+            object.record.schema,
+            "topal.kernel-region-frame-source-object.x86_64/2"
+        );
+        assert_eq!(object.record.instance.as_deref(), Some(label));
+        assert_eq!(object.record.scalar_count, Some(3));
+        let symbols = object.record.native_symbols().unwrap();
+        for symbol in object
+            .record
+            .functions
+            .iter()
+            .map(|f| f.symbol.as_str())
+            .chain(
+                object
+                    .record
+                    .read_only_data
+                    .iter()
+                    .map(|d| d.symbol.as_str()),
+            )
+            .chain(object.record.imported_hooks.iter().map(String::as_str))
+        {
+            assert!(
+                names.insert(symbol.to_owned()),
+                "duplicate instance-owned name {symbol}"
+            );
+            assert!(
+                symbol.starts_with(&symbols.prefix)
+                    || symbol == symbols.export
+                    || symbol == symbols.allocate
+                    || symbol == symbols.abort
+            );
+        }
+        verify_systems_region_instance_library(
+            &input,
+            "apply",
+            3,
+            label,
+            &tools,
+            &temporary_work(),
+            &object,
+        )
+        .unwrap();
+        assert!(
+            verify_systems_region_framed_action_library(
+                &input,
+                "apply",
+                3,
+                &tools,
+                &temporary_work(),
+                &object
+            )
+            .is_err()
+        );
+        let mut changed = object.clone();
+        changed.record.instance = None;
+        assert!(
+            verify_systems_region_instance_library(
+                &input,
+                "apply",
+                3,
+                label,
+                &tools,
+                &temporary_work(),
+                &changed
+            )
+            .is_err()
+        );
+        let mut json = serde_json::to_value(&object.record).unwrap();
+        assert_eq!(
+            serde_json::from_value::<SystemsRegionLibraryArtifact>(json.clone()).unwrap(),
+            object.record
+        );
+        json["instance"] = serde_json::Value::Null;
+        assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(json).is_err());
+        records.push(object.record.clone());
+        roots.push(work);
+    }
+    // Namespace registration is one facet, not an ownership certificate. Use
+    // deliberately minimal ELF objects to isolate unselected-symbol refusal.
+    for (name, accepted) in [
+        ("topal.region-instance.left-owner.extra", true),
+        ("topal.region-instance.right-owner.extra", true),
+        ("topal.region-instance.foreign-owner.extra", false),
+        ("topal_kernel_region_frame_left_owner_apply_v1", true),
+        ("topal_kernel_region_frame_right_owner_allocate_v1", true),
+        ("topal_kernel_region_frame_foreign_owner_abort_v1", false),
+        ("topal_kernel_region_frame_apply_v1", false),
+    ] {
+        let mut file = object::write::Object::new(
+            object::BinaryFormat::Elf,
+            object::Architecture::X86_64,
+            object::Endianness::Little,
+        );
+        let section = file.add_section(Vec::new(), b".text".to_vec(), object::SectionKind::Text);
+        let value = file.append_section_data(section, &[0xc3], 1);
+        file.add_symbol(object::write::Symbol {
+            name: name.as_bytes().to_vec(),
+            value,
+            size: 1,
+            kind: object::SymbolKind::Text,
+            scope: object::SymbolScope::Linkage,
+            weak: false,
+            section: object::write::SymbolSection::Section(section),
+            flags: object::SymbolFlags::None,
+        });
+        let bytes = file.write().unwrap();
+        assert_eq!(
+            validate_instance_namespaces(&bytes, &[Some(&records[0]), Some(&records[1])]).is_ok(),
+            accepted,
+            "{name}"
+        );
+        assert!(
+            validate_instance_namespaces(&bytes, &[None, None]).is_err(),
+            "{name}"
+        );
+    }
+    let combined = temporary_work().join("both.bc");
+    let linked = Command::new(tools.directory.join("llvm-link"))
+        .arg(roots[0].join("kernel-region.bc"))
+        .arg(roots[1].join("kernel-region.bc"))
+        .arg("-o")
+        .arg(&combined)
+        .output()
+        .unwrap();
+    assert!(
+        linked.status.success(),
+        "{}",
+        String::from_utf8_lossy(&linked.stderr)
+    );
+    let verified = Command::new(tools.directory.join("opt"))
+        .args(["-passes=verify", "-disable-output"])
+        .arg(&combined)
+        .output()
+        .unwrap();
+    assert!(
+        verified.status.success(),
+        "{}",
+        String::from_utf8_lossy(&verified.stderr)
+    );
+    for label in [
+        "",
+        "Root",
+        "0root",
+        "root.region",
+        "root_region",
+        "root--region",
+        "root-",
+        "root/region",
+        "région",
+    ] {
+        let work = temporary_work();
+        assert!(
+            build_systems_region_instance_library(
+                &input(&work, source),
+                "apply",
+                3,
+                label,
+                &tools,
+                &work
+            )
+            .is_err(),
+            "{label}"
+        );
+        assert!(!work.join("kernel-region.o").exists());
+    }
+    let profile = CompilerKernelRegionProfile::FramedAction { scalar_count: 0 };
+    let empty_work = temporary_work();
+    let empty_source = "use language (version is v0.1, features is (systems))\npub apply is fn (region : KernelByteRegion) -> Boolean\n  true\n";
+    let empty_input = input(&empty_work, empty_source);
+    let empty = build_systems_region_instance_library(
+        &empty_input,
+        "apply",
+        0,
+        "empty-owner",
+        &tools,
+        &empty_work,
+    )
+    .unwrap();
+    assert!(empty.record.read_only_data.is_empty());
+    assert_eq!(empty.record.scalar_count, Some(0));
+    verify_systems_region_instance_library(
+        &empty_input,
+        "apply",
+        0,
+        "empty-owner",
+        &tools,
+        &temporary_work(),
+        &empty,
+    )
+    .unwrap();
+    let root = RegionNativeSymbols::for_profile(profile, Some(ROOT_INSTANCE)).unwrap();
+    assert_eq!(root.prefix, ROOT_FRAME_PREFIX);
+    assert_eq!(
+        (
+            root.export.as_str(),
+            root.allocate.as_str(),
+            root.abort.as_str()
+        ),
+        (ROOT_FRAME_EXPORT, ROOT_FRAME_ALLOCATE, ROOT_FRAME_ABORT)
+    );
+    let file = RegionNativeSymbols::for_profile(profile, Some(FILE_INSTANCE)).unwrap();
+    assert_eq!(file.prefix, FILE_FRAME_PREFIX);
+    assert_eq!(
+        (
+            file.export.as_str(),
+            file.allocate.as_str(),
+            file.abort.as_str()
+        ),
+        (FILE_FRAME_EXPORT, FILE_FRAME_ALLOCATE, FILE_FRAME_ABORT)
+    );
+    assert!(RegionNativeSymbols::for_profile(profile, Some(&"r".repeat(48))).is_ok());
+    assert!(RegionNativeSymbols::for_profile(profile, Some(&"r".repeat(49))).is_err());
+}
+
 fn temporary_work() -> std::path::PathBuf {
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

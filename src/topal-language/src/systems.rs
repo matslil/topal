@@ -592,6 +592,7 @@ fn parse_artifact_root(
                 requirement.interface,
                 CompilerSystemsSourceLibraryInterface::BorrowedByteRegionActionV1
                     | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
+                    | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
             ) || file_position_library.replace(requirement).is_some()
             {
                 return Err(source_diagnostic(
@@ -604,14 +605,17 @@ fn parse_artifact_root(
             continue;
         } else if label_text == "region-library" {
             let requirement = source_library::parse_requirement(source, field)?;
-            if requirement.interface != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
-                || region_library.replace(requirement).is_some()
+            if !matches!(
+                requirement.interface,
+                CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
+                    | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+            ) || region_library.replace(requirement).is_some()
             {
                 return Err(source_diagnostic(
                     source,
                     "E-SYSTEMS-REGION-ROOT",
                     label,
-                    "region-library requires one borrowed-byte-region-v1 entry",
+                    "region-library requires one qualified Unit or instance-action entry",
                 ));
             }
             continue;
@@ -9330,7 +9334,7 @@ mod tests {
         let valid = analyze_systems_for_compiler(SOURCE, &target).unwrap();
         assert_eq!(
             valid.region_library.as_ref().unwrap().interface,
-            CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
+            CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
         );
         assert_eq!(
             valid
@@ -9345,6 +9349,22 @@ mod tests {
         let start = SOURCE.find("  region-library is").unwrap();
         let end = start + SOURCE[start..].find("  ),\n").unwrap() + 5;
         let declaration = &SOURCE[start..end];
+        let legacy = declaration
+            .replace(
+                "borrowed-byte-region-instance-action-v1",
+                "borrowed-byte-region-v1",
+            )
+            .replace("bootstrap-byte-copy-frame.t", "bootstrap-byte-copy.t");
+        let legacy =
+            analyze_systems_for_compiler(&SOURCE.replace(declaration, &legacy), &target).unwrap();
+        assert_eq!(
+            legacy.region_library.unwrap().interface,
+            CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
+        );
+        assert_eq!(
+            valid.file_position_library.as_ref().unwrap().interface,
+            CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+        );
         let call_line = SOURCE
             .lines()
             .find(|line| line.trim() == "region library apply")
@@ -9353,7 +9373,27 @@ mod tests {
             SOURCE.replace(declaration, ""),
             SOURCE.replace(call_line, ""),
             SOURCE.replace(declaration, &format!("{declaration}{declaration}")),
-            SOURCE.replace("borrowed-byte-region-v1", "relative-sleep-deadline-v1"),
+            SOURCE.replace(
+                declaration,
+                &declaration.replace(
+                    "borrowed-byte-region-instance-action-v1",
+                    "borrowed-byte-region-framed-action-v1",
+                ),
+            ),
+            SOURCE.replace(
+                declaration,
+                &declaration.replace(
+                    "    export is",
+                    "    instance is root-region,\n    export is",
+                ),
+            ),
+            SOURCE.replace(
+                declaration,
+                &declaration.replace(
+                    "borrowed-byte-region-instance-action-v1",
+                    "relative-sleep-deadline-v1",
+                ),
+            ),
             SOURCE.replacen("region library apply", "other library apply", 1),
             SOURCE.replace(call_line, &format!("{call_line}\n{call_line}")),
             SOURCE.replace(declaration, &declaration.replace("4096", "2048")),
@@ -9367,7 +9407,7 @@ mod tests {
             ),
             SOURCE.replace(
                 declaration,
-                &declaration.replace("policy/bootstrap-byte-copy.t", "../outside.t"),
+                &declaration.replace("policy/bootstrap-byte-copy-frame.t", "../outside.t"),
             ),
         ]
         .into_iter()
@@ -10111,7 +10151,7 @@ mod tests {
                 },
                 CompilerSystemsTransition::BorrowBootstrapRegionForLibrary { generation: 1 },
                 CompilerSystemsTransition::RequireRegionLibraryReclamation,
-                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary,
+                CompilerSystemsTransition::ResumeBootstrapRegionAfterLibrary { require_true: true },
                 CompilerSystemsTransition::CheckDynamicBootstrapByte {
                     offset_bytes: 1,
                     expected: 90,

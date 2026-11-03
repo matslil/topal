@@ -23,7 +23,7 @@ def selected_source(text):
     declaration = ('  file-position-library is lang systems source-library (\n'
         '    source is "policy/file-position.t",\n'
         '    export is advance,\n'
-        '    interface is borrowed-byte-region-framed-action-v1,\n'
+        '    interface is borrowed-byte-region-instance-action-v1,\n'
         '    stack-limit-bytes is 4096,\n'
         '    runtime-limit-bytes is 65536\n  ),\n')
     return text.replace('  region-library is', declaration + '  region-library is')
@@ -157,13 +157,20 @@ def verify(timeout=120, write_evidence=False):
             if name == 'primary':
                 for fault in ('owner-prefix', 'field-stride', 'interrupts-enabled', 'dirty-arena', 'generation-exhausted'):
                     record[fault] = observe(root/fault, values, timeout, fault=fault)
-        legacy = root/'legacy-root.t'
-        legacy.write_text(selected_source(GATE.SOURCE_PATH.read_text()).replace(
-            'borrowed-byte-region-framed-action-v1', 'borrowed-byte-region-action-v1'))
-        values, calls = build(root/'legacy-artifact', False, legacy)
-        record['legacy'] = observe(root/'legacy', values, timeout, calls)
-        if record['legacy']['source_library']['schema'] != 'topal.kernel-region-action-source-object.x86_64/1':
-            raise GATE.GateError('legacy control did not select the frozen action transport')
+        for name, interface, schema in (
+            ('legacy', 'borrowed-byte-region-action-v1', 'topal.kernel-region-action-source-object.x86_64/1'),
+            ('unscoped_frame', 'borrowed-byte-region-framed-action-v1', 'topal.kernel-region-frame-source-object.x86_64/1'),
+        ):
+            legacy = root/(name+'-root.t')
+            text = selected_source(GATE.SOURCE_PATH.read_text())
+            start = text.index('  file-position-library is')
+            end = text.index('  ),\n', start)+len('  ),\n')
+            declaration = text[start:end].replace('borrowed-byte-region-instance-action-v1', interface)
+            legacy.write_text(text[:start]+declaration+text[end:])
+            values, calls = build(root/(name+'-artifact'), False, legacy)
+            record[name] = observe(root/name, values, timeout, calls)
+            if record[name]['source_library']['schema'] != schema:
+                raise GATE.GateError('legacy control did not select its frozen transport')
         for name, mode in [('wrong-codec', dict(wrong_codec=True)), ('false-action', dict(false_action=True))]:
             libraries = root/name/'library'
             shutil.copytree(GATE.LINUX_KERNEL/'kernel', libraries)

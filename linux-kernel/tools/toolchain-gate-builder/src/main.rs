@@ -152,14 +152,21 @@ mod tests {
             ],
         };
         let region = SystemsSourceLibraryInput {
-            source: "policy/bootstrap-byte-copy.t".into(),
-            source_name: "policy/bootstrap-byte-copy.t".into(),
-            text: include_str!("../../../kernel/policy/bootstrap-byte-copy.t").into(),
-            modules: vec![SystemsSourceModuleInput {
-                source: "support/bytes.t".into(),
-                identity: vec!["support".into(), "bytes".into()],
-                text: include_str!("../../../kernel/support/bytes.t").into(),
-            }],
+            source: "policy/bootstrap-byte-copy-frame.t".into(),
+            source_name: "policy/bootstrap-byte-copy-frame.t".into(),
+            text: include_str!("../../../kernel/policy/bootstrap-byte-copy-frame.t").into(),
+            modules: vec![
+                SystemsSourceModuleInput {
+                    source: "policy/bootstrap-byte-copy.t".into(),
+                    identity: vec!["policy".into(), "bootstrap-byte-copy".into()],
+                    text: include_str!("../../../kernel/policy/bootstrap-byte-copy.t").into(),
+                },
+                SystemsSourceModuleInput {
+                    source: "support/bytes.t".into(),
+                    identity: vec!["support".into(), "bytes".into()],
+                    text: include_str!("../../../kernel/support/bytes.t").into(),
+                },
+            ],
         };
         let position = SystemsSourceLibraryInput {
             source: "policy/file-position.t".into(),

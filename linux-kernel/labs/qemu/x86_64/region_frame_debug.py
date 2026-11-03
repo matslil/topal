@@ -6,6 +6,8 @@ from pathlib import Path
 
 config = json.loads(Path(gdb.parse_and_eval('$frame_config').string()).read_text())
 record = config['record']
+arena_symbol = config.get('arena_symbol', 'arena')
+cursor_symbol = config.get('cursor_symbol', 'cursor')
 completed = 0
 current = None
 preserved = ('rbx', 'rbp', 'r12', 'r13', 'r14', 'r15')
@@ -36,7 +38,7 @@ def vectors():
 
 def natural(pointer):
     start = int(pointer)
-    arena, cursor = address('arena'), int(gdb.parse_and_eval('cursor'))
+    arena, cursor = address(arena_symbol), int(gdb.parse_and_eval(cursor_symbol))
     extents = [(arena + 32, arena + cursor)]
     extents += [(item['address'], item['address'] + item['bytes']) for item in config['data']]
     assert any(low <= start and start + 16 <= high for low, high in extents)
@@ -86,7 +88,7 @@ class Ordinary(gdb.Breakpoint):
         assert values == current['values'], (values, current['values'])
         assert 0 <= current['stack'] - reg('rsp') <= record['maximum_stack_bytes']
         view = int(frame.read_var('region'))
-        arena, cursor = address('arena'), int(gdb.parse_and_eval('cursor'))
+        arena, cursor = address(arena_symbol), int(gdb.parse_and_eval(cursor_symbol))
         assert arena + 32 <= view and view + 64 <= arena + cursor
         control = words(current['control'], 8)
         assert control[0] == address(record['native_export']) and control[3] == 1
