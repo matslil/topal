@@ -218,6 +218,7 @@ def verify(external_image,timeout=60,write_evidence=False):
             external=GATE.build_image(root/'external-artifact',external_image)
             # The shared observer recognizes its existing precise failure hook.
             record=dict(schema='topal-static-process-pair-qemu/1',harness_sha256=GATE.digest(Path(__file__)),
+                observer_sha256=GATE.digest(LAB/'children_gate.py'), qmp_control_sha256=GATE.digest(LAB/'qemu_control.py'),
                 fixture_sha256=GATE.digest(LAB/'static_pair_checks.py'),
                 clean=observed(root/'clean',clean),
                 external=observed(root/'external',external,external_image),

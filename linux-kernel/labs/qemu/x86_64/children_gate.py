@@ -11,6 +11,8 @@ import tempfile
 import threading
 import time
 
+from qemu_control import stopped_status
+
 LAB = Path(__file__).resolve().parent
 SPEC = importlib.util.spec_from_file_location("topal_gate", LAB / "topal_gate.py")
 GATE = importlib.util.module_from_spec(SPEC)
@@ -181,8 +183,15 @@ def observe(root, values, external_image, corrupt, timeout, workload=None,
     debug, result, failed = root / "debug.sock", root / "result.json", root / "failed.txt"
     elf = values[3].parent / "kernel.elf"
     commands = root / "debug.gdb"
-    commands.write_text(script(elf, debug, result, failed, entry_point(elf), external_image is not None, corrupt))
+    debugger_script = script(elf, debug, result, failed, entry_point(elf), external_image is not None, corrupt)
+    if corrupt:
+        if not debugger_script.endswith('\ndetach\n'):
+            raise GATE.GateError('controlled child observer lacks its owned debugger ending')
+        debugger_script = debugger_script[:-len('detach\n')] + 'disconnect\npython\nimport time\ntime.sleep(.2)\nend\n'
+    commands.write_text(debugger_script)
     outcome = []
+    stopped = []
+    qmp = root / 'qmp.sock'
 
     def inspect():
         try:
@@ -199,22 +208,36 @@ def observe(root, values, external_image, corrupt, timeout, workload=None,
             outcome.append(str(error))
 
     original_build, original_command, original_observe = GATE.build_image, GATE.qemu_command, GATE.observe_gate
+    original_markers = GATE.MARKERS
     thread = threading.Thread(target=inspect, daemon=True)
 
     def command(*args):
         thread.start()
-        return original_command(*args) + ["-S", "-gdb", f"unix:{debug},server=on,wait=off"]
+        command = original_command(*args) + ["-S", "-gdb", f"unix:{debug},server=on,wait=off"]
+        if corrupt:
+            command += ['-qmp', f'unix:{qmp},server=on,wait=off']
+        return command
 
     def failure():
         if failed.exists():
             return "child debugger assertion failed: " + failed.read_text()
-        if corrupt and result.exists():
+        if outcome and outcome != [0]:
+            return 'child debugger failed: ' + repr(outcome)
+        if corrupt and result.exists() and outcome == [0]:
+            try:
+                if not stopped:
+                    stopped.append(stopped_status(qmp))
+            except BaseException as error:
+                failed.write_text(repr(error))
+                return 'controlled child state verification failed: ' + failed.read_text()
             return rejection
         return None
 
     GATE.build_image = lambda *_args, **_kwargs: values
     GATE.qemu_command = command
     GATE.observe_gate = lambda *args, **kwargs: original_observe(*args, **kwargs, failure_check=failure)
+    if corrupt:
+        GATE.MARKERS = (*original_markers, b'CHILD_CONTROL_REQUIRES_DEBUGGER_DISCONNECT')
     try:
         try:
             runtime = GATE.verify(timeout, False, external_image,
@@ -229,12 +252,18 @@ def observe(root, values, external_image, corrupt, timeout, workload=None,
         if outcome != [0] or failed.exists() or not result.exists():
             raise GATE.GateError("child debugger did not qualify: " + repr(outcome) + "\n" +
                                  ((root / "debug.log").read_text() if (root / "debug.log").exists() else ""))
+        if corrupt and (runtime is not None or not stopped):
+            raise GATE.GateError('controlled child observation resumed or lacked stopped-target proof')
         record = dict(observation=json.loads(result.read_text()), linked_kernel_sha256=GATE.digest(elf))
+        if corrupt:
+            record.update(debugger_completed_before_teardown=True, stopped_target=stopped[0],
+                          debugger_exit_delay_seconds=.2)
         if runtime is not None:
             record["runtime"] = runtime
         return record
     finally:
         GATE.build_image, GATE.qemu_command, GATE.observe_gate = original_build, original_command, original_observe
+        GATE.MARKERS = original_markers
 
 
 def verify(external_image, timeout=60, write_evidence=False):
@@ -244,6 +273,7 @@ def verify(external_image, timeout=60, write_evidence=False):
         clean = GATE.build_image(root / "clean-artifact")
         external = GATE.build_image(root / "external-artifact", external_image)
         record = dict(schema="topal-static-process-children-qemu/1", harness_sha256=GATE.digest(Path(__file__)),
+                      qmp_control_sha256=GATE.digest(LAB/'qemu_control.py'),
                       fixture_sha256=GATE.digest(LAB / "static_child_checks.py"),
                       clean=observe(root / "clean", clean, None, False, timeout),
                       external=observe(root / "external", external, external_image, False, timeout),

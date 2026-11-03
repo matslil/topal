@@ -91,7 +91,7 @@ static uint64_t word_value(unsigned sample, unsigned index) {
 
 static int exercise(void) {
     struct Control control = {0};
-    unsigned char bytes[32];
+    _Alignas(8) unsigned char bytes[32];
     for (unsigned sample = 0; sample < 48; ++sample) {
         memset(bytes, 0xa5, sizeof(bytes));
         prepare(&control, bytes);
@@ -139,7 +139,7 @@ static int exercise(void) {
 static int refusals(void) {
     for (unsigned test = 0; test < 16; ++test) {
         struct Control control = {0};
-        unsigned char bytes[32];
+        _Alignas(8) unsigned char bytes[32];
         _Alignas(8) uint64_t words[16] = {0};
         memset(bytes, 0xa5, sizeof(bytes));
         prepare(&control, bytes);

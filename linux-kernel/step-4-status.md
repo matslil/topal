@@ -9,6 +9,13 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Bounded framed inputs for ordinary region functions: exact caller-declared
+  zero-to-sixteen Nat facts, full-u64 transport, complete immutable input-frame
+  ownership/lifetime and stack/allocation evidence. The existing file-position
+  caller supplies its two facts through owned staging, with complete cleanup
+  and a separately selected legacy-ABI execution control. See the
+  [framed-action report](step-4-framed-region-actions.md).
+
 - Complete allocated code/read-only sections for every selected finite/numeric
   policy slot, including relocated tables, with exact object/manifest/linked
   bindings and independent changed-byte boot refusal. Source/native interfaces,
@@ -103,6 +110,11 @@ subsystem operation: ordinary source arithmetic and a checked codec on the
 actual shared eight-byte position, with repeated invocation/terminal cleanup.
 General persistent allocation, broader ownership and kernel subsystems still
 need implementation and qualification.
+
+The [framed-input refinement](step-4-framed-region-actions.md) removes the fixed
+two-scalar transport restriction for qualified source objects while retaining
+exact per-caller signatures. It changes no Linux operation or core-language
+meaning and does not supply general persistent allocation or subsystem coverage.
 
 | Area | Required result | Current limit |
 | --- | --- | --- |

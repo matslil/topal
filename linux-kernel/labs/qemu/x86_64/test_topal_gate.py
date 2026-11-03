@@ -65,6 +65,9 @@ class TopalToolchainGateTests(unittest.TestCase):
             ('source-process-identity', ('wrap', 'counterexample')),
             ('retained-source-identity', ('wrap', 'counterexample')),
             ('structured-source-identity', ('wrap', 'count', 'counterexample')),
+            ('static-process-children', ('counterexample',)),
+            ('static-process-pair', ('counterexample',)),
+            ('static-process-pipes', ('counterexample',)),
             ('file-position-region', ('owner-prefix', 'field-stride', 'interrupts-enabled',
                                       'dirty-arena', 'generation-exhausted', 'wrong-codec',
                                       'false-action', 'inactive_terminal')),
@@ -72,12 +75,15 @@ class TopalToolchainGateTests(unittest.TestCase):
         for name, cases in groups:
             proof = json.loads((LAB / f'results/topal-{name}-gate.json').read_text())
             self.assertEqual(proof['qmp_control_sha256'], sha256(LAB / 'qemu_control.py'))
+            if name in ('static-process-pair', 'static-process-pipes'):
+                self.assertEqual(proof['observer_sha256'], sha256(LAB/'children_gate.py'))
             for case in cases:
                 record = proof[case]
                 self.assertTrue(record['debugger_completed_before_teardown'])
                 self.assertIs(record['stopped_target']['running'], False)
                 self.assertEqual(record['stopped_target']['status'], 'debug')
-                if name in ('source-process-identity', 'retained-source-identity'):
+                if name in ('source-process-identity', 'retained-source-identity',
+                            'static-process-children', 'static-process-pair', 'static-process-pipes'):
                     self.assertEqual(record['debugger_exit_delay_seconds'], 0.2)
 
     def test_policy_inputs_bind_complete_code_and_relocated_data_for_each_slot(self) -> None:

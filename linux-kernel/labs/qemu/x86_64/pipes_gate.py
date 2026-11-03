@@ -314,6 +314,7 @@ def verify(external_image,timeout=90,write_evidence=False):
             root=Path(temporary);clean=GATE.build_image(root/'clean-artifact')
             external=GATE.build_image(root/'external-artifact',external_image)
             proof=dict(schema='topal-static-process-pipes-qemu/1',harness_sha256=GATE.digest(Path(__file__)),
+                observer_sha256=GATE.digest(LAB/'children_gate.py'), qmp_control_sha256=GATE.digest(LAB/'qemu_control.py'),
                 fixture_sha256=GATE.digest(LAB/'static_pipe_checks.py'),
                 clean=observed(root/'clean',clean),external=observed(root/'external',external,external_image),
                 termination=observed(root/'termination',clean,terminate=True),

@@ -11,7 +11,13 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment binds
+The latest Step 4 increment adds
+[framed inputs for ordinary region actions](step-4-framed-region-actions.md):
+exact declared zero-to-sixteen Nat facts through caller-owned immutable frames,
+full-width ordinary values, complete input lifetime/resource proofs and actual
+file-position integration, with a separate frozen-ABI compatibility control.
+
+The preceding increment binds
 [complete linked finite/numeric policy inputs](step-4-policy-linked-inputs.md):
 all object-owned code and read-only sections, actual relocated table bytes,
 complete private boundaries and independent boot comparison in all five slots.
