@@ -8,6 +8,12 @@ The [design](design/owned-numeric-kernel-runtime.md) and rules
 `TOPAL-SYSTEMS-NUMERIC-RUNTIME-001` and
 `TOPAL-SYSTEMS-SLEEP-DEADLINE-LIBRARY-001` define this qualified profile.
 
+The later [complete linked-input qualification](step-4-policy-linked-inputs.md)
+adds independent boot comparison of actual relocated code and immutable inputs.
+The first binding's object/source digests and function placement checks omitted
+that comparison; the execution/resource evidence below retains its historical
+scope and identities.
+
 This advances Step 4's freestanding-library requirement. General allocation,
 process creation, distribution boot, containers and VM hosting remain unfinished;
 the [remaining acceptance work](step-4-status.md) applies.

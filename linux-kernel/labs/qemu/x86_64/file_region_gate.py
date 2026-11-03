@@ -12,7 +12,7 @@ import time
 
 import topal_gate as GATE
 import positional_gate as POSITIONAL
-from structured_gate import stopped_status
+from qemu_control import stopped_status
 
 LAB = Path(__file__).resolve().parent
 
@@ -133,7 +133,7 @@ def observe(root, values, timeout, cases=(), **mode):
 
 def verify(timeout=120, write_evidence=False):
     record = dict(schema='topal-file-position-region-qemu/1',
-        harness_sha256=GATE.digest(Path(__file__)), inspector_sha256=GATE.digest(LAB/'file_region_inspect.py'))
+        harness_sha256=GATE.digest(Path(__file__)), qmp_control_sha256=GATE.digest(LAB/"qemu_control.py"), inspector_sha256=GATE.digest(LAB/'file_region_inspect.py'))
     record['caller_sources'] = {name: GATE.digest(LAB/name) for name in (
         'static_positional_file_checks.py', 'static_named_file_checks.py',
         'static_volatile_file_checks.py', 'static_process_checks.py')}

@@ -9,6 +9,11 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+- Complete allocated code/read-only sections for every selected finite/numeric
+  policy slot, including relocated tables, with exact object/manifest/linked
+  bindings and independent changed-byte boot refusal. Source/native interfaces,
+  resource certificates and caller/cleanup contracts retain their meanings.
+
 - Complete immutable Unit/action region inputs bound independently of code,
   with exact object-to-linked comparison and changed-literal boot refusal;
   Unit entry ABI and empty-data functions retain their contracts.

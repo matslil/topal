@@ -6,11 +6,11 @@ import importlib.util
 import json
 from pathlib import Path
 import re
-import socket
 import subprocess
 import tempfile
 import threading
 import time
+from qemu_control import stopped_status
 
 LAB=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location("retained_gate",LAB/"retained_gate.py")
@@ -41,28 +41,6 @@ def points(elf,library):
     if any(len(values)!=1 for values in (before,clean,committed,call,result,source)):
         raise GATE.GateError("structured witness lacks unique source/publication boundaries")
     return dict(before=before[0],clean=clean[0],committed=committed[0],source_call=call[0],source_result=result[0],source=source[0])
-
-
-def stopped_status(path):
-    """Independently verify the controlled guest stays stopped after disconnect."""
-    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as client:
-        client.settimeout(3)
-        client.connect(str(path))
-        with client.makefile('rb') as reader:
-            if 'QMP' not in json.loads(reader.readline(65536)):
-                raise GATE.GateError('structured control lacks a QMP greeting')
-            for command in ('qmp_capabilities','query-status'):
-                client.sendall((json.dumps(dict(execute=command,id=command))+'\n').encode())
-                for _ in range(32):
-                    reply=json.loads(reader.readline(65536))
-                    if reply.get('id')==command:break
-                else:raise GATE.GateError('structured QMP reply was not bounded')
-                if 'error' in reply or 'return' not in reply:
-                    raise GATE.GateError('structured QMP command failed: '+repr(reply))
-            status=reply['return']
-            if status.get('running') is not False or status.get('status')!='debug':
-                raise GATE.GateError('controlled guest resumed after debugger observation: '+repr(status))
-            return status
 
 
 def observe(root,values,artifact,timeout,mode=None,counterexample=False,reordered=False):
@@ -157,7 +135,7 @@ continue
 def verify(timeout=60,write_evidence=False):
     with tempfile.TemporaryDirectory(prefix="topal-structured-",dir="/tmp") as temporary:
         root=Path(temporary);values=GATE.build_image(root/"artifact");artifact=json.loads(values[3].read_text())
-        record=dict(schema="topal-structured-source-identity-qemu/1",harness_sha256=GATE.digest(Path(__file__)),
+        record=dict(schema="topal-structured-source-identity-qemu/1",harness_sha256=GATE.digest(Path(__file__)), qmp_control_sha256=GATE.digest(LAB/"qemu_control.py"),
             inspector_sha256=GATE.digest(LAB/"structured_inspect.py"),library=artifact["process_identity_library"],
             primary=observe(root/"primary",values,artifact,timeout),
             module_publication=LIBRARY.module_publication(values[3].parent,artifact,"process_identity_library","kernel-process-identity-source-module:"))

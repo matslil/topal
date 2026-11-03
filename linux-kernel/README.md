@@ -11,7 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment completes
+The latest Step 4 increment binds
+[complete linked finite/numeric policy inputs](step-4-policy-linked-inputs.md):
+all object-owned code and read-only sections, actual relocated table bytes,
+complete private boundaries and independent boot comparison in all five slots.
+
+The preceding increment completes
 [immutable region-source inputs](step-4-region-immutable-data.md): exact linked
 literal binding, preserved Unit/action entry ABIs and pre-boot rejection of
 altered data.

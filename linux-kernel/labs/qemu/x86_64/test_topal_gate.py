@@ -26,6 +26,63 @@ def sha256(path: Path) -> str:
 
 
 class TopalToolchainGateTests(unittest.TestCase):
+    def test_controlled_debugger_completion_keeps_the_actual_guest_stopped(self) -> None:
+        # Controlled result files cannot authorize teardown before GDB exits.
+        groups = [
+            ('source-process-identity', ('wrap', 'counterexample')),
+            ('retained-source-identity', ('wrap', 'counterexample')),
+            ('structured-source-identity', ('wrap', 'count', 'counterexample')),
+            ('file-position-region', ('owner-prefix', 'field-stride', 'interrupts-enabled',
+                                      'dirty-arena', 'generation-exhausted', 'wrong-codec',
+                                      'false-action', 'inactive_terminal')),
+        ]
+        for name, cases in groups:
+            proof = json.loads((LAB / f'results/topal-{name}-gate.json').read_text())
+            self.assertEqual(proof['qmp_control_sha256'], sha256(LAB / 'qemu_control.py'))
+            for case in cases:
+                record = proof[case]
+                self.assertTrue(record['debugger_completed_before_teardown'])
+                self.assertIs(record['stopped_target']['running'], False)
+                self.assertEqual(record['stopped_target']['status'], 'debug')
+                if name in ('source-process-identity', 'retained-source-identity'):
+                    self.assertEqual(record['debugger_exit_delay_seconds'], 0.2)
+
+    def test_policy_inputs_bind_complete_code_and_relocated_data_for_each_slot(self) -> None:
+        # TOPAL-SYSTEMS-POLICY-LINKED-INPUTS-001
+        fields = ('marker', 'source_section', 'bytes', 'alignment', 'executable', 'sha256')
+        for name, slot in [('file-open-plan', 'kernel-library'),
+                           ('owned-numeric-runtime', 'time-library'),
+                           ('source-elf64-header', 'image-library'),
+                           ('source-linux-dispatch', 'dispatch-library'),
+                           ('structured-source-identity', 'process-identity-library')]:
+            proof = json.loads((LAB / f'results/topal-{name}-gate.json').read_text())
+            library = proof['normal']['library'] if slot == 'kernel-library' else proof['library']
+            manifest = library['sections']
+            binding = library['linked_inputs']
+            self.assertEqual(binding['schema'], 'topal.policy-linked-inputs.x86_64/1')
+            self.assertEqual(binding['object_sha256'], library['object_sha256'])
+            encoded = json.dumps([{field: entry[field] for field in fields} for entry in manifest],
+                                 ensure_ascii=False, separators=(',', ':')).encode()
+            self.assertEqual(binding['manifest_sha256'], hashlib.sha256(encoded).hexdigest())
+            self.assertEqual(len(manifest), len(binding['sections']))
+            self.assertTrue(any(entry['executable'] for entry in manifest))
+            self.assertTrue(any(not entry['executable'] for entry in manifest))
+            extents = []
+            for index, (source, linked) in enumerate(zip(manifest, binding['sections'])):
+                self.assertEqual(source['marker'], f'topal.policy-inputs.{slot}.{index}')
+                for field in ('marker', 'bytes', 'alignment', 'executable'):
+                    self.assertEqual(source[field], linked[field])
+                self.assertGreater(source['bytes'], 0)
+                self.assertEqual(linked['address'] % source['alignment'], 0)
+                self.assertEqual(len(linked['sha256']), 64)
+                start, end = linked['address'], linked['address'] + linked['bytes']
+                self.assertTrue(all(start >= b or end <= a for a, b in extents))
+                extents.append((start, end))
+            if slot == 'kernel-library':
+                self.assertTrue(any(source['sha256'] != linked['sha256']
+                                    for source, linked in zip(manifest, binding['sections'])
+                                    if not source['executable']))
+
     def test_volatile_files_preserve_sparse_bytes_aliases_process_lifetime_and_complete_reclamation(self) -> None:
         # TOPAL-SYSTEMS-VOLATILE-FILE-{OWNERSHIP,TRANSFER,PERSONALITY}-001
         proof=json.loads((LAB/'results/topal-volatile-file-gate.json').read_text())
@@ -81,7 +138,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(proof["inspector_sha256"],sha256(LAB/"structured_inspect.py"))
         library=proof["library"];bound=library["retained_state"]
         self.assertEqual(library["interface"],"structured-process-identity-v1")
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/8")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
         self.assertEqual(library["result_field_order"],["allocated","state"]);self.assertTrue(library["result_order_suffix"])
         self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/structured-process-identity.t"))
         self.assertEqual(len(library["modules"]),2)
@@ -171,7 +228,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(proof["inspector_sha256"],sha256(LAB/"retained_inspect.py"))
         library=proof["library"]
         self.assertEqual(library["interface"],"retained-process-identity-v1")
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/8")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
         self.assertEqual(library["allocation"]["maximum_bytes"],312)
         self.assertEqual(library["maximum_stack_bytes"],760)
         self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/policy/process-identity.t"))
@@ -234,7 +291,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(proof["harness_sha256"],sha256(LAB/"identity_gate.py"))
         self.assertEqual(proof["inspector_sha256"],sha256(LAB/"identity_inspect.py"))
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/8")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
         self.assertEqual(library["interface"],"process-identity-transition-v1")
         self.assertEqual(library["result_field_order"],["allocated","next"])
         self.assertTrue(library["result_order_suffix"])
@@ -328,7 +385,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         expected.update({17:'ReadAt',18:'WriteAt'})
         choices=[name for _,name in sorted(expected.items())]+['Unsupported']
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/8")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
         self.assertEqual(library["interface"],"static-linux-dispatch-v4")
         self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch-v4.t"))
         self.assertEqual(library["allocation"]["maximum_bytes"],56)
@@ -479,7 +536,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NUMERIC-ARRAYS-001
         proof=json.loads((LAB/"results/topal-owned-numeric-runtime-gate.json").read_text())
         library=proof["library"]
-        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/8")
+        self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
         runtime=GATE.REPOSITORY/"src/topal-compiler/src/runtime"
         allocation=library["allocation"]
         self.assertEqual(allocation["collection_runtime_sha256"],sha256(runtime/"fundamental_containers.ll"))
@@ -1198,16 +1255,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/247")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/248")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/234")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/235")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/247",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/248",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1733,7 +1790,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/247")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/248")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

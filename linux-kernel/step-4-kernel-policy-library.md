@@ -7,6 +7,11 @@ lowered by the shared frontend/backend. Native flags, lookup, errno translation,
 description publication and resource-right checks remain at the machine boundary.
 Core-language meaning is unchanged.
 
+The later [complete linked-input qualification](step-4-policy-linked-inputs.md)
+closes an omission in the first binding: actual relocated instruction/table
+bytes were not independently compared at boot packaging. The execution and
+ownership observations below retain their historical scope and identities.
+
 This is an incremental Step 4 result. It does not establish general kernel
 modules, allocating libraries, general processes, a distribution boot, containers
 or VM hosting. The [remaining acceptance work](step-4-status.md) still applies.

@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from qemu_control import stopped_status
 
 LAB=Path(__file__).resolve().parent
 spec=importlib.util.spec_from_file_location("dispatch_gate",LAB/"dispatch_gate.py")
@@ -49,6 +50,13 @@ def observe(root,values,artifact,timeout,wrap=False,counterexample=False):
     if library["interface"]!="retained-process-identity-v1" or library["retained_state"] is None:
         raise GATE.GateError("retained witness needs its exact owned-state interface")
     debug,result,failed,script=(root/name for name in ("debug.sock","retained.json","failed.txt","retained.gdb"))
+    controlled = bool(wrap or counterexample)
+    qmp = root / "qmp.sock"
+    stopped = []
+    # Delay every control to exercise the result-file/teardown race.
+    exit_delay = 0.2 if controlled else 0.0
+    pause = f"python import time; time.sleep({exit_delay})\n" if controlled else ""
+    disconnect = "disconnect" if controlled else "detach"
     config=dict(result=str(result),failed=str(failed),elf=str(elf),**points(elf,library),
         readonly=DISPATCH.readonly_sections(elf),field_order=library["result_field_order"],
         expected_order=[1,0] if "(next is following, allocated is allocated)" in (values[3].parent/"process-identity-library.t").read_text() else [0,1],
@@ -65,7 +73,7 @@ import retained_inspect
 retained_inspect.install({config!r})
 end
 continue
-detach
+{pause}{disconnect}
 ''')
     outcome=[]
     def inspect():
@@ -77,15 +85,30 @@ detach
             (root/"debug.log").write_bytes(run.stdout);outcome.append(run.returncode)
         except BaseException as error:outcome.append(str(error))
     original_build,original_command,original_observe=GATE.build_image,GATE.qemu_command,GATE.observe_gate
+    original_markers = GATE.MARKERS
     thread=threading.Thread(target=inspect,daemon=True)
     def command(*args):
-        thread.start();return original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
+        thread.start()
+        command = original_command(*args)+["-S","-gdb",f"unix:{debug},server=on,wait=off"]
+        if controlled:
+            command += ["-qmp", f"unix:{qmp},server=on,wait=off"]
+        return command
     def failure():
         if failed.exists():return "retained debugger assertion failed: "+failed.read_text()
-        if (wrap or counterexample) and result.exists():return "retained observation stopped before publication"
+        if outcome and outcome != [0]:
+            failed.write_text("debugger exited unsuccessfully: "+repr(outcome))
+            return failed.read_text()
+        if controlled and result.exists() and outcome == [0]:
+            try:
+                if not stopped: stopped.append(stopped_status(qmp))
+            except BaseException as error:
+                failed.write_text(repr(error)); return failed.read_text()
+            return "retained observation stopped before publication"
         return None
     GATE.build_image=lambda *_a,**_k:values;GATE.qemu_command=command
     GATE.observe_gate=lambda *a,**k:original_observe(*a,**k,failure_check=failure)
+    if controlled:
+        GATE.MARKERS = (*original_markers, b"RETAINED_CONTROL_REQUIRES_DEBUGGER_DISCONNECT")
     runtime=None
     try:
         try:runtime=GATE.verify(timeout,False)
@@ -96,21 +119,28 @@ detach
                 raise GATE.GateError(str(error)+"\nRetained debugger:\n"+log) from error
         else:
             if wrap or counterexample:raise GATE.GateError("controlled retained run unexpectedly completed")
-    finally:GATE.build_image,GATE.qemu_command,GATE.observe_gate=original_build,original_command,original_observe
+    finally:
+        GATE.build_image,GATE.qemu_command,GATE.observe_gate=original_build,original_command,original_observe
+        GATE.MARKERS = original_markers
     thread.join(timeout=5)
     if outcome!=[0] or failed.exists() or not result.exists():
-        raise GATE.GateError("retained debugger did not finish: "+repr(outcome))
+        log = (root/"debug.log").read_text() if (root/"debug.log").exists() else "no debugger log"
+        raise GATE.GateError("retained debugger did not finish: "+repr(outcome)+"\n"+log)
     observation=json.loads(result.read_text())
     expected="expected-retained-transition-rejection" if counterexample else "pass-controlled-wrap" if wrap else "pass"
     if observation["result"]!=expected:raise GATE.GateError("retained witness missed its exact result")
-    return dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
+    record = dict(runtime=runtime,observation=observation,linked_kernel_sha256=GATE.digest(elf))
+    if controlled:
+        if not stopped: raise GATE.GateError("controlled retained guest lacks stopped-state evidence")
+        record.update(debugger_completed_before_teardown=True, debugger_exit_delay_seconds=exit_delay, stopped_target=stopped[0])
+    return record
 
 
 def verify_retained(timeout=60,write_evidence=False):
     with tempfile.TemporaryDirectory(prefix="topal-retained-",dir="/tmp") as temporary:
         root=Path(temporary);values=GATE.build_image(root/"artifact");artifact=json.loads(values[3].read_text())
         primary=observe(root/"primary",values,artifact,timeout)
-        record=dict(schema="topal-retained-source-identity-qemu/1",harness_sha256=GATE.digest(Path(__file__)),
+        record=dict(schema="topal-retained-source-identity-qemu/1",harness_sha256=GATE.digest(Path(__file__)), qmp_control_sha256=GATE.digest(LAB/"qemu_control.py"),
             inspector_sha256=GATE.digest(LAB/"retained_inspect.py"),library=artifact["process_identity_library"],primary=primary,
             module_publication=LIBRARY.module_publication(values[3].parent,artifact,"process_identity_library","kernel-process-identity-source-module:"))
         record["wrap"]=observe(root/"wrap",values,artifact,timeout,wrap=True)

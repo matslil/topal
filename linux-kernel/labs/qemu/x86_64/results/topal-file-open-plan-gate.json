@@ -2,7 +2,7 @@
   "frozen": {
     "library": {
       "checked_client_sha256": "cec4ca64ccf3361cdb9d840d060dc996b079a5d9789cf2defe05650266c7493d",
-      "disassembly_sha256": "77077d6e5e7c8549b31b0df40c6987068e5b122dbc1d228c32d8e780fce6c6b7",
+      "disassembly_sha256": "e55d22f38980e46ad5775c692d12ea113a715a45e5153436384a8f7813fb4783",
       "functions": [
         {
           "callees": [],
@@ -74,6 +74,29 @@
         }
       ],
       "interface": "boot-open-decision-v1",
+      "linked_inputs": {
+        "manifest_sha256": "693b5e4cb6bad66bef8cf046c20ad5af58590a8af1382d6a78f1b83dc9a787d2",
+        "object_sha256": "9cdd0a1dffd489d9a96fc39d65c2afde81b4bff33b8db3fe261ffa7296e49dce",
+        "schema": "topal.policy-linked-inputs.x86_64/1",
+        "sections": [
+          {
+            "address": 3224480,
+            "alignment": 16,
+            "bytes": 557,
+            "executable": true,
+            "marker": "topal.policy-inputs.kernel-library.0",
+            "sha256": "eb77e0cef1054638f4d7631553047343a0e1efb9830d5c25ee32cb7f2c646da1"
+          },
+          {
+            "address": 2102896,
+            "alignment": 8,
+            "bytes": 32,
+            "executable": false,
+            "marker": "topal.policy-inputs.kernel-library.1",
+            "sha256": "04567d0cbe48ec453ccd8af4bec7b39148d46fc73191b0efc6961b810097e15d"
+          }
+        ]
+      },
       "llvm_sha256": "79db11a00d35acf571f6c59a503930ac0165fdf3cbade679cea17de4d60e91d9",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
@@ -99,8 +122,26 @@
       ],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_boot_open_policy_v1",
-      "object_sha256": "92105e5316fe440b5d2556c005a1c213d53e2b258b524aa3ccdec66d84239140",
-      "schema": "topal.kernel-source-library/2",
+      "object_sha256": "9cdd0a1dffd489d9a96fc39d65c2afde81b4bff33b8db3fe261ffa7296e49dce",
+      "schema": "topal.kernel-source-library/3",
+      "sections": [
+        {
+          "alignment": 16,
+          "bytes": 557,
+          "executable": true,
+          "marker": "topal.policy-inputs.kernel-library.0",
+          "sha256": "e7d230e82ab38bfda6451294c71917847ec29543640fdc987d24865da9514774",
+          "source_section": ".text"
+        },
+        {
+          "alignment": 8,
+          "bytes": 32,
+          "executable": false,
+          "marker": "topal.policy-inputs.kernel-library.1",
+          "sha256": "66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925",
+          "source_section": ".rodata"
+        }
+      ],
       "source": "policy/boot-open-access.t",
       "source_export": "boot-open-decision",
       "source_name": "/home/mats/git/topal/linux-kernel/kernel/policy/boot-open-access.t",
@@ -113,17 +154,17 @@
       ],
       "stack_limit_bytes": 1024
     },
-    "linked_kernel_sha256": "9049530706346b3fda28dd90110e13395fbf91ed4ad81203cc81dec400ac7a25",
+    "linked_kernel_sha256": "8c8fdf046b840af8cf9dd4794ec5e34904b8948cdac898b82a4ef2de15dbb039",
     "runtime": {
-      "artifact_provenance_sha256": "c4a6e2409506ea5d768694b06c14c933c1a9a4ea32fc715fa57b4c74f9f88caf",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/247",
-      "boot_image_sha256": "9241da1fcb803976a887138f0601ece3e57734641b67977a3f09cf4e9cc134f3",
-      "boot_provenance_sha256": "00d404e22321f98ae35ca65744ed6eab32189e5328bdaab9c1514a2acabfd7d3",
+      "artifact_provenance_sha256": "5b0e3417e51b638059a3addff662161d879e31d39c73f7cda18fed92fcac569b",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/248",
+      "boot_image_sha256": "466a6c37adcff49e6fda1935d3fa0ec2d15166757a0fcc2a6885585451dde587",
+      "boot_provenance_sha256": "a1ba16e24c9e28e74763367b23f00b7359546ee615286f8663a635092bc16f48",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -131,7 +172,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "9049530706346b3fda28dd90110e13395fbf91ed4ad81203cc81dec400ac7a25",
+      "linked_kernel_sha256": "8c8fdf046b840af8cf9dd4794ec5e34904b8948cdac898b82a4ef2de15dbb039",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -399,10 +440,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/234",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/235",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/247",
+      "schema": "topal-kernel-toolchain-gate-qemu/248",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "e48e3fe8f926efeb78c0cbfce6b965593d4af483aa7142d82e898000a9e90bb5",
@@ -416,7 +457,7 @@
   "inspector_sha256": "2236aa22e1fb00e18e797a8b6c78a6ec7089ca1fe9eed6d2bfeaa345c3faa1f7",
   "lifetime": {
     "actual_file_syscall_returns": 161,
-    "linked_kernel_sha256": "1e22423366ad38ca4b0f992db3f69fec379b33b95715329b3abfd1950068b273",
+    "linked_kernel_sha256": "5a22daf18e739099dd6ea039d4d2b84c782cf118920d7abee5c0f651c4e80779",
     "observation": {
       "calls": [
         {
@@ -435,7 +476,7 @@
           },
           "resident_pages": 0,
           "result": 5,
-          "store_sha256": "61d5cefa642253014eefde993758fe5b54471fc99edbea433c8b80d6895172fd"
+          "store_sha256": "9e399058f6986e29a9078d029f090d3381db1fd2ae02ae203f75736a1ca2a37f"
         },
         {
           "index": 2,
@@ -445,7 +486,7 @@
           },
           "resident_pages": 0,
           "result": 15,
-          "store_sha256": "61d5cefa642253014eefde993758fe5b54471fc99edbea433c8b80d6895172fd"
+          "store_sha256": "9e399058f6986e29a9078d029f090d3381db1fd2ae02ae203f75736a1ca2a37f"
         },
         {
           "index": 3,
@@ -455,7 +496,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "61d5cefa642253014eefde993758fe5b54471fc99edbea433c8b80d6895172fd"
+          "store_sha256": "9e399058f6986e29a9078d029f090d3381db1fd2ae02ae203f75736a1ca2a37f"
         },
         {
           "index": 4,
@@ -465,7 +506,7 @@
           },
           "resident_pages": 0,
           "result": 14,
-          "store_sha256": "61d5cefa642253014eefde993758fe5b54471fc99edbea433c8b80d6895172fd"
+          "store_sha256": "9e399058f6986e29a9078d029f090d3381db1fd2ae02ae203f75736a1ca2a37f"
         },
         {
           "index": 5,
@@ -475,7 +516,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 6,
@@ -485,7 +526,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 7,
@@ -495,7 +536,7 @@
           },
           "resident_pages": 1,
           "result": -9,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 8,
@@ -505,7 +546,7 @@
           },
           "resident_pages": 1,
           "result": 63,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 9,
@@ -515,7 +556,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 10,
@@ -525,7 +566,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 11,
@@ -535,7 +576,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "3dc3ad3f39f86d33e20a63e2eb34bb7a3e2963ec48571954174932328ad077b9"
+          "store_sha256": "5575939ae95e4e8d61a98131e7159a7270329debc5d728999bc8121e76f6ae9c"
         },
         {
           "index": 12,
@@ -681,7 +722,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 30,
@@ -691,7 +732,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 31,
@@ -701,7 +742,7 @@
           },
           "resident_pages": 0,
           "result": 4292610,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 32,
@@ -711,7 +752,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 33,
@@ -721,7 +762,7 @@
           },
           "resident_pages": 0,
           "result": -14,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 34,
@@ -731,7 +772,7 @@
           },
           "resident_pages": 0,
           "result": -14,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 35,
@@ -741,7 +782,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 36,
@@ -751,7 +792,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 37,
@@ -761,7 +802,7 @@
           },
           "resident_pages": 1,
           "result": 5,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 38,
@@ -771,7 +812,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 39,
@@ -781,7 +822,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 40,
@@ -791,7 +832,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 41,
@@ -801,7 +842,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 42,
@@ -811,7 +852,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 43,
@@ -821,7 +862,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 44,
@@ -831,7 +872,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 45,
@@ -841,7 +882,7 @@
           },
           "resident_pages": 1,
           "result": -22,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 46,
@@ -851,7 +892,7 @@
           },
           "resident_pages": 1,
           "result": -9,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 47,
@@ -861,7 +902,7 @@
           },
           "resident_pages": 1,
           "result": -22,
-          "store_sha256": "ec5aba8bf12d4c19a2af841232dd293e1d7ffd339b37efec3b08a4a3d6182192"
+          "store_sha256": "ef5e9cd69616f6536b7775d06127e97b2fb608d6caa40386e8ad598a3c460ebb"
         },
         {
           "index": 48,
@@ -871,7 +912,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "67d077db230a3cd9111f199d8df04984e9b6c7d41d0dfa44ad11f54128c88d20"
+          "store_sha256": "1f0dcba50850572e81c4c72ef56341256e1968d6ada90c229805ca6dceaac9bb"
         },
         {
           "index": 49,
@@ -881,7 +922,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "67d077db230a3cd9111f199d8df04984e9b6c7d41d0dfa44ad11f54128c88d20"
+          "store_sha256": "1f0dcba50850572e81c4c72ef56341256e1968d6ada90c229805ca6dceaac9bb"
         },
         {
           "index": 50,
@@ -891,7 +932,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 51,
@@ -901,7 +942,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 52,
@@ -911,7 +952,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 53,
@@ -921,7 +962,7 @@
           },
           "resident_pages": 1,
           "result": 4093,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 54,
@@ -931,7 +972,7 @@
           },
           "resident_pages": 1,
           "result": 3,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 55,
@@ -941,7 +982,7 @@
           },
           "resident_pages": 1,
           "result": 1,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 56,
@@ -951,7 +992,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 57,
@@ -961,7 +1002,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 58,
@@ -971,7 +1012,7 @@
           },
           "resident_pages": 1,
           "result": 4096,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 59,
@@ -981,7 +1022,7 @@
           },
           "resident_pages": 1,
           "result": -6,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 60,
@@ -991,7 +1032,7 @@
           },
           "resident_pages": 1,
           "result": -6,
-          "store_sha256": "12965fa6d6fc38a8de7ba43794a3ce70079542246b6d6be39cc8bf939f0c07b1"
+          "store_sha256": "e31bf2fb0e3ea72b2a5ae886b96307ec7c15c9644ee9b173d100c12ab5be2e4e"
         },
         {
           "index": 61,
@@ -1001,7 +1042,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 62,
@@ -1011,7 +1052,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 63,
@@ -1021,7 +1062,7 @@
           },
           "resident_pages": 0,
           "result": 281474976710669,
-          "store_sha256": "083bc3c4bc6b1989140da08cf245bdca538d87f475951cef299729caad046a68"
+          "store_sha256": "782d777b4ca454def546d75d6b29b065309dbea77bfdba3d04c96de8550a486d"
         },
         {
           "index": 64,
@@ -1031,7 +1072,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 65,
@@ -1041,7 +1082,7 @@
           },
           "resident_pages": 1,
           "result": 281474976710656,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 66,
@@ -1051,7 +1092,7 @@
           },
           "resident_pages": 1,
           "result": 281474976710677,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 67,
@@ -1061,7 +1102,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 68,
@@ -1071,7 +1112,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 69,
@@ -1081,7 +1122,7 @@
           },
           "resident_pages": 1,
           "result": 281474976710669,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 70,
@@ -1091,7 +1132,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "6c949fb7ff46a51a1a1e3ad5b6f0f1f6719fcd44c3f0d34bf11c1e62ae69e1a2"
+          "store_sha256": "dc73a2e96c3c819013d67f02f73c8aef5bc1f1b57ccf9cfede4491eb59a4013b"
         },
         {
           "index": 71,
@@ -1117,7 +1158,7 @@
           },
           "resident_pages": 0,
           "result": 5,
-          "store_sha256": "4d69c5728382532021d11a948ff57ac59dd61ecddabbebac07b4d3d981a44790"
+          "store_sha256": "2c61b3d12742ebd19b23eb94e6fe166dac57105337bed01873f637b7caf3a08e"
         },
         {
           "index": 74,
@@ -1143,7 +1184,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "96afd74ece608d7647eb3f8dbc1b79e6da71a183e23d7ace185c8ca8b3d6567b"
+          "store_sha256": "c4bee1b426a4124c9a260fd5bafae60eb0fe32512a89824370b4d0b1c97d873a"
         },
         {
           "index": 77,
@@ -1154,7 +1195,7 @@
           },
           "resident_pages": 0,
           "result": 5,
-          "store_sha256": "4ae381d3443e3d212a6e6fb12dc1cc279af06bd135d3369c6b4aa9ec40edad20"
+          "store_sha256": "cacefc930ce3cda9014bb3909234f966f6f16aa7b545f6435754142bd9d19b12"
         },
         {
           "index": 78,
@@ -1166,7 +1207,7 @@
           },
           "resident_pages": 0,
           "result": 6,
-          "store_sha256": "852e282dc696846e267c41678c784a7f1a925a808fb7121636e76b09724dd773"
+          "store_sha256": "0a98283f0f53c63f34fc89666cde61d523fb33ba9f282830ed12b9aa5b558c46"
         },
         {
           "index": 79,
@@ -1179,7 +1220,7 @@
           },
           "resident_pages": 0,
           "result": 7,
-          "store_sha256": "7e7b8e49c6202931a2b7ffd9dfda4b01bcad0fd6af899c54da7e264f4c846525"
+          "store_sha256": "0dfbd946ca492a2a2e46a74f59e46575ff46a13f89043f4cab7d51b395b4bba2"
         },
         {
           "index": 80,
@@ -1192,7 +1233,7 @@
           },
           "resident_pages": 0,
           "result": -28,
-          "store_sha256": "7e7b8e49c6202931a2b7ffd9dfda4b01bcad0fd6af899c54da7e264f4c846525"
+          "store_sha256": "0dfbd946ca492a2a2e46a74f59e46575ff46a13f89043f4cab7d51b395b4bba2"
         },
         {
           "index": 81,
@@ -1205,7 +1246,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "7e7b8e49c6202931a2b7ffd9dfda4b01bcad0fd6af899c54da7e264f4c846525"
+          "store_sha256": "0dfbd946ca492a2a2e46a74f59e46575ff46a13f89043f4cab7d51b395b4bba2"
         },
         {
           "index": 82,
@@ -1218,7 +1259,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "ced2ea98ba9c9f3dcac6f90d07f61c04725fbce7e4edc26b42fcee9f552303cb"
+          "store_sha256": "6c306926b35b36bdd637e65d462fa822fbafdcd8f3cb13d4aba406decb075861"
         },
         {
           "index": 83,
@@ -1231,7 +1272,7 @@
           },
           "resident_pages": 1,
           "result": 4096,
-          "store_sha256": "ced2ea98ba9c9f3dcac6f90d07f61c04725fbce7e4edc26b42fcee9f552303cb"
+          "store_sha256": "6c306926b35b36bdd637e65d462fa822fbafdcd8f3cb13d4aba406decb075861"
         },
         {
           "index": 84,
@@ -1244,7 +1285,7 @@
           },
           "resident_pages": 2,
           "result": 8,
-          "store_sha256": "b3082f55b42faf8be353b70a0abfb2af6ff467162b75d053c1d6937d346a808e"
+          "store_sha256": "b5e6dc045e1f5ee7d4830d7083f248e20716ab14a74b6334ad3f65b37fc42142"
         },
         {
           "index": 85,
@@ -1257,7 +1298,7 @@
           },
           "resident_pages": 2,
           "result": 0,
-          "store_sha256": "b3082f55b42faf8be353b70a0abfb2af6ff467162b75d053c1d6937d346a808e"
+          "store_sha256": "b5e6dc045e1f5ee7d4830d7083f248e20716ab14a74b6334ad3f65b37fc42142"
         },
         {
           "index": 86,
@@ -1270,7 +1311,7 @@
           },
           "resident_pages": 3,
           "result": 8,
-          "store_sha256": "953ee109611d49177b2ac13c6988752edf2172ac905c5dc313d8d954bc97972b"
+          "store_sha256": "876ad9ee4acb60aa669cea2698f9d27755531e67ab80f9f58db17cd6b5757cd2"
         },
         {
           "index": 87,
@@ -1283,7 +1324,7 @@
           },
           "resident_pages": 3,
           "result": 4096,
-          "store_sha256": "953ee109611d49177b2ac13c6988752edf2172ac905c5dc313d8d954bc97972b"
+          "store_sha256": "876ad9ee4acb60aa669cea2698f9d27755531e67ab80f9f58db17cd6b5757cd2"
         },
         {
           "index": 88,
@@ -1296,7 +1337,7 @@
           },
           "resident_pages": 4,
           "result": 8,
-          "store_sha256": "b4406cd74b8d984e094e16f2eab9f10c3b9366232d687d647d697ace4d40b904"
+          "store_sha256": "7733a508c7fde28d8141f00bb312053cded5ee7c1027e4ad4a89ff4cb062835b"
         },
         {
           "index": 89,
@@ -1309,7 +1350,7 @@
           },
           "resident_pages": 4,
           "result": 0,
-          "store_sha256": "b4406cd74b8d984e094e16f2eab9f10c3b9366232d687d647d697ace4d40b904"
+          "store_sha256": "7733a508c7fde28d8141f00bb312053cded5ee7c1027e4ad4a89ff4cb062835b"
         },
         {
           "index": 90,
@@ -1322,7 +1363,7 @@
           },
           "resident_pages": 5,
           "result": 8,
-          "store_sha256": "4e16b838ba7dd3feddb0129928eb930d7d0bcf74b67d7d0cdfe86da872c59055"
+          "store_sha256": "9c39f478ecb1a8ee341ebd043991dbf61334806f30416cce68971f1074bec943"
         },
         {
           "index": 91,
@@ -1335,7 +1376,7 @@
           },
           "resident_pages": 5,
           "result": 4096,
-          "store_sha256": "4e16b838ba7dd3feddb0129928eb930d7d0bcf74b67d7d0cdfe86da872c59055"
+          "store_sha256": "9c39f478ecb1a8ee341ebd043991dbf61334806f30416cce68971f1074bec943"
         },
         {
           "index": 92,
@@ -1348,7 +1389,7 @@
           },
           "resident_pages": 6,
           "result": 8,
-          "store_sha256": "41843f2d996a932f1597855c8fe46653766cc4e3ef341677624036f5c01ad01c"
+          "store_sha256": "b9dbfe637da26ebaadcbaf4b0152406b1b9198de645e7d0e67930f244f49ae00"
         },
         {
           "index": 93,
@@ -1361,7 +1402,7 @@
           },
           "resident_pages": 6,
           "result": 0,
-          "store_sha256": "41843f2d996a932f1597855c8fe46653766cc4e3ef341677624036f5c01ad01c"
+          "store_sha256": "b9dbfe637da26ebaadcbaf4b0152406b1b9198de645e7d0e67930f244f49ae00"
         },
         {
           "index": 94,
@@ -1374,7 +1415,7 @@
           },
           "resident_pages": 7,
           "result": 8,
-          "store_sha256": "65eb87b974e53a337f7f10bc0cca0606fb3a2463c57d9ef3959b649c863958cd"
+          "store_sha256": "d08ac7168a481aa8805f1fa2b1aa25f497c4fa05d12b35a83ebf029f374d4608"
         },
         {
           "index": 95,
@@ -1387,7 +1428,7 @@
           },
           "resident_pages": 7,
           "result": 4096,
-          "store_sha256": "65eb87b974e53a337f7f10bc0cca0606fb3a2463c57d9ef3959b649c863958cd"
+          "store_sha256": "d08ac7168a481aa8805f1fa2b1aa25f497c4fa05d12b35a83ebf029f374d4608"
         },
         {
           "index": 96,
@@ -1400,7 +1441,7 @@
           },
           "resident_pages": 8,
           "result": 8,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 97,
@@ -1413,7 +1454,7 @@
           },
           "resident_pages": 8,
           "result": 8192,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 98,
@@ -1426,7 +1467,7 @@
           },
           "resident_pages": 8,
           "result": -28,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 99,
@@ -1439,7 +1480,7 @@
           },
           "resident_pages": 8,
           "result": 8192,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 100,
@@ -1452,7 +1493,7 @@
           },
           "resident_pages": 8,
           "result": 0,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 101,
@@ -1465,7 +1506,7 @@
           },
           "resident_pages": 8,
           "result": 8,
-          "store_sha256": "c66623c0fb7d036ca5c2470d36e54a2778fd4ffa1b6cb64706b3a2f00491208f"
+          "store_sha256": "168f6080a838cc38340bc6273f91ab201fb43b7369c5c26b2b0d3e2f8925a530"
         },
         {
           "index": 102,
@@ -1477,7 +1518,7 @@
           },
           "resident_pages": 6,
           "result": 0,
-          "store_sha256": "776d5ae7cd938dbadf4d8b77b771fac4c285da30d267f5ac3ada3ae03be36add"
+          "store_sha256": "d935a6534b9a8bc3c2447574d29d6509ee6688b9d308894e8e27e116ef221c9b"
         },
         {
           "index": 103,
@@ -1488,7 +1529,7 @@
           },
           "resident_pages": 4,
           "result": 0,
-          "store_sha256": "d6676ec73f3b34b5a221b4f4053f953ce89d7f0a9774bb29d311ce7a59f9c0d1"
+          "store_sha256": "e37648df034b7f02f959a989aa5bf2498adefab574a60f7949605c4b675f0bb9"
         },
         {
           "index": 104,
@@ -1498,7 +1539,7 @@
           },
           "resident_pages": 2,
           "result": 0,
-          "store_sha256": "af4534481a46869084349b300c1b6b61c6cc830b1f51fbaf8267d3dde27e151e"
+          "store_sha256": "ec3a64a8b87b37c62bf356aeefc168d93c37673af0096402f20d1e39db6e7622"
         },
         {
           "index": 105,
@@ -1516,7 +1557,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "371d528da71e5d0ae54b1813b3b30e4240f1590bd74a98ce7d3e46651fa5f728"
+          "store_sha256": "a45fa6cc3f5be8c5ddcd768bdfcfb5df4f5907c5c186fc30856f70561d69ccbe"
         },
         {
           "index": 107,
@@ -1526,7 +1567,7 @@
           },
           "resident_pages": 0,
           "result": 9223372036854775806,
-          "store_sha256": "371d528da71e5d0ae54b1813b3b30e4240f1590bd74a98ce7d3e46651fa5f728"
+          "store_sha256": "a45fa6cc3f5be8c5ddcd768bdfcfb5df4f5907c5c186fc30856f70561d69ccbe"
         },
         {
           "index": 108,
@@ -1536,7 +1577,7 @@
           },
           "resident_pages": 0,
           "result": -22,
-          "store_sha256": "371d528da71e5d0ae54b1813b3b30e4240f1590bd74a98ce7d3e46651fa5f728"
+          "store_sha256": "a45fa6cc3f5be8c5ddcd768bdfcfb5df4f5907c5c186fc30856f70561d69ccbe"
         },
         {
           "index": 109,
@@ -1546,7 +1587,7 @@
           },
           "resident_pages": 1,
           "result": 1,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 110,
@@ -1556,7 +1597,7 @@
           },
           "resident_pages": 1,
           "result": -22,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 111,
@@ -1566,7 +1607,7 @@
           },
           "resident_pages": 1,
           "result": -22,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 112,
@@ -1576,7 +1617,7 @@
           },
           "resident_pages": 1,
           "result": 9223372036854775806,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 113,
@@ -1586,7 +1627,7 @@
           },
           "resident_pages": 1,
           "result": -22,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 114,
@@ -1596,7 +1637,7 @@
           },
           "resident_pages": 1,
           "result": 1,
-          "store_sha256": "2574ac13d205fd47db29677f3046643b4b6f8f30523c3303d194aba0f9fff1f0"
+          "store_sha256": "97a243ad9f9d2558db5849a7356fc61611819be9474e32cdb5b8878a1edb97e8"
         },
         {
           "index": 115,
@@ -1606,7 +1647,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "371d528da71e5d0ae54b1813b3b30e4240f1590bd74a98ce7d3e46651fa5f728"
+          "store_sha256": "a45fa6cc3f5be8c5ddcd768bdfcfb5df4f5907c5c186fc30856f70561d69ccbe"
         },
         {
           "index": 116,
@@ -1616,7 +1657,7 @@
           },
           "resident_pages": 0,
           "result": 0,
-          "store_sha256": "371d528da71e5d0ae54b1813b3b30e4240f1590bd74a98ce7d3e46651fa5f728"
+          "store_sha256": "a45fa6cc3f5be8c5ddcd768bdfcfb5df4f5907c5c186fc30856f70561d69ccbe"
         },
         {
           "index": 117,
@@ -1626,7 +1667,7 @@
           },
           "resident_pages": 1,
           "result": 256,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 118,
@@ -1636,7 +1677,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 119,
@@ -1646,7 +1687,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 120,
@@ -1656,7 +1697,7 @@
           },
           "resident_pages": 1,
           "result": -14,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 121,
@@ -1666,7 +1707,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 122,
@@ -1676,7 +1717,7 @@
           },
           "resident_pages": 1,
           "result": 256,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 123,
@@ -1686,7 +1727,7 @@
           },
           "resident_pages": 1,
           "result": 256,
-          "store_sha256": "42149b791cec99b5f6438b5c246f54c7a46bf4e4cc93ae8dbb54588be3ff58f3"
+          "store_sha256": "970e0f74df70aadb43b08a38b200cfa866269f71b0a64521871b7fdc0b669b95"
         },
         {
           "index": 124,
@@ -1704,7 +1745,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "665a5d8537dcc428308e22567c132151cc3ffdf06354a56c29a9964d85fa417b"
+          "store_sha256": "9b7c0d00d422071964d3860039be4a8f7ae53bc40e9aeefbf0c38873e847b932"
         },
         {
           "index": 126,
@@ -1714,7 +1755,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "f594a44dd1b0c5162afc04b8628847c8ba33a8d82cceb8f59ef48cfa58bbf3de"
+          "store_sha256": "b41e578ac86fa52ce6f8530ced93af7430540596d5a4ee5e59cc0616ad519694"
         },
         {
           "index": 127,
@@ -1724,7 +1765,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "f594a44dd1b0c5162afc04b8628847c8ba33a8d82cceb8f59ef48cfa58bbf3de"
+          "store_sha256": "b41e578ac86fa52ce6f8530ced93af7430540596d5a4ee5e59cc0616ad519694"
         },
         {
           "index": 128,
@@ -1734,7 +1775,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "f594a44dd1b0c5162afc04b8628847c8ba33a8d82cceb8f59ef48cfa58bbf3de"
+          "store_sha256": "b41e578ac86fa52ce6f8530ced93af7430540596d5a4ee5e59cc0616ad519694"
         },
         {
           "index": 129,
@@ -1744,7 +1785,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "f594a44dd1b0c5162afc04b8628847c8ba33a8d82cceb8f59ef48cfa58bbf3de"
+          "store_sha256": "b41e578ac86fa52ce6f8530ced93af7430540596d5a4ee5e59cc0616ad519694"
         },
         {
           "index": 130,
@@ -1754,7 +1795,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "5d1d610a70b80dfa73f9dabd6c2dcbff787690cf6539b830a4b77e7498797a45"
+          "store_sha256": "f79fa66c2fb362018dcc3f425832b1ffeb930215624aa4434c5d9d37179ad6f6"
         },
         {
           "index": 131,
@@ -1764,7 +1805,7 @@
           },
           "resident_pages": 1,
           "result": 16,
-          "store_sha256": "5d1d610a70b80dfa73f9dabd6c2dcbff787690cf6539b830a4b77e7498797a45"
+          "store_sha256": "f79fa66c2fb362018dcc3f425832b1ffeb930215624aa4434c5d9d37179ad6f6"
         },
         {
           "index": 132,
@@ -1774,7 +1815,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "20e7732ce8ac2dd7c8d34260d35720e967d54d06bed5ae74599cef66f8a43c0c"
+          "store_sha256": "5b08ef22fb333db99c3061b9990ac7e205fbf8e96c8f2f5593bd5a144ca39c03"
         },
         {
           "index": 133,
@@ -1784,7 +1825,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "20e7732ce8ac2dd7c8d34260d35720e967d54d06bed5ae74599cef66f8a43c0c"
+          "store_sha256": "5b08ef22fb333db99c3061b9990ac7e205fbf8e96c8f2f5593bd5a144ca39c03"
         },
         {
           "index": 134,
@@ -1794,7 +1835,7 @@
           },
           "resident_pages": 2,
           "result": 1,
-          "store_sha256": "d065bc620f5affa6b3d310d4f76ef75e5f1553600776b3dc97bae384efabc83e"
+          "store_sha256": "6e1fb359255007fd85fa69b50889ecd30cd2e936fab54761b884a959328aadfe"
         },
         {
           "index": 135,
@@ -1804,7 +1845,7 @@
           },
           "resident_pages": 2,
           "result": 0,
-          "store_sha256": "d065bc620f5affa6b3d310d4f76ef75e5f1553600776b3dc97bae384efabc83e"
+          "store_sha256": "6e1fb359255007fd85fa69b50889ecd30cd2e936fab54761b884a959328aadfe"
         },
         {
           "index": 136,
@@ -1814,7 +1855,7 @@
           },
           "resident_pages": 2,
           "result": -27,
-          "store_sha256": "d065bc620f5affa6b3d310d4f76ef75e5f1553600776b3dc97bae384efabc83e"
+          "store_sha256": "6e1fb359255007fd85fa69b50889ecd30cd2e936fab54761b884a959328aadfe"
         },
         {
           "index": 137,
@@ -1832,7 +1873,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "f2176e15ce66e8ce79cd3afded21507c98996a34d158dd2c0d6f9cb7b4d0fb6a"
+          "store_sha256": "261edb282f561ca759f7baafa1af0f40ffa27df148ca69537f6b0534ada121a2"
         },
         {
           "index": 139,
@@ -1842,7 +1883,7 @@
           },
           "resident_pages": 0,
           "result": -9,
-          "store_sha256": "f2176e15ce66e8ce79cd3afded21507c98996a34d158dd2c0d6f9cb7b4d0fb6a"
+          "store_sha256": "261edb282f561ca759f7baafa1af0f40ffa27df148ca69537f6b0534ada121a2"
         },
         {
           "index": 140,
@@ -1852,7 +1893,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "f7e12ab147662dee93766dad4ec6de9ca081ea25706de61ea714b65f5e34062e"
+          "store_sha256": "d724cdc6323d73e86cd60d663400c152a29dd988eea6a9803580bd2616676680"
         },
         {
           "index": 141,
@@ -1878,7 +1919,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "bb01fef3bb81fdae400c7de010d53d3b45293029ffd2386deb74c92ac2cdfa9c"
+          "store_sha256": "620ea1c72b054fa99be555d1cf823692c1e47211b6d39cb0c6f315edf7d6d447"
         },
         {
           "index": 144,
@@ -1888,7 +1929,7 @@
           },
           "resident_pages": 0,
           "result": 5,
-          "store_sha256": "bb01fef3bb81fdae400c7de010d53d3b45293029ffd2386deb74c92ac2cdfa9c"
+          "store_sha256": "620ea1c72b054fa99be555d1cf823692c1e47211b6d39cb0c6f315edf7d6d447"
         },
         {
           "index": 145,
@@ -1898,7 +1939,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "e71cc665f40bc1e569535e98b7fe6b9adb139e32996351a2a55b9dbcdc49d743"
+          "store_sha256": "7eabc16256f7bed2b1c720207ea4cc45e1210ad31a1c381e993c4adab77d4ef2"
         },
         {
           "index": 146,
@@ -1908,7 +1949,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "e71cc665f40bc1e569535e98b7fe6b9adb139e32996351a2a55b9dbcdc49d743"
+          "store_sha256": "7eabc16256f7bed2b1c720207ea4cc45e1210ad31a1c381e993c4adab77d4ef2"
         },
         {
           "index": 147,
@@ -1918,7 +1959,7 @@
           },
           "resident_pages": 1,
           "result": 18,
-          "store_sha256": "e71cc665f40bc1e569535e98b7fe6b9adb139e32996351a2a55b9dbcdc49d743"
+          "store_sha256": "7eabc16256f7bed2b1c720207ea4cc45e1210ad31a1c381e993c4adab77d4ef2"
         },
         {
           "index": 148,
@@ -1928,7 +1969,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 149,
@@ -1938,7 +1979,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 150,
@@ -1948,7 +1989,7 @@
           },
           "resident_pages": 1,
           "result": 11,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 151,
@@ -1958,7 +1999,7 @@
           },
           "resident_pages": 1,
           "result": 18,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 152,
@@ -1968,7 +2009,7 @@
           },
           "resident_pages": 1,
           "result": 11,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 153,
@@ -1978,7 +2019,7 @@
           },
           "resident_pages": 1,
           "result": 16,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 154,
@@ -1988,7 +2029,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 155,
@@ -1998,7 +2039,7 @@
           },
           "resident_pages": 1,
           "result": 16,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 156,
@@ -2008,7 +2049,7 @@
           },
           "resident_pages": 1,
           "result": 0,
-          "store_sha256": "4279c91cc573cda3320b55c57630568b0dd7bbe4797dd8c76e8e5d8120b8aebc"
+          "store_sha256": "a58c9bdd1f3d353cae49f4afddd75d168875f90f086c41f011ab3d726448de30"
         },
         {
           "index": 157,
@@ -2026,7 +2067,7 @@
           },
           "resident_pages": 0,
           "result": 4,
-          "store_sha256": "2f31a716c06cccf9fee467273a0baf644aea3bce13be7a0edf45e78b2529a7ab"
+          "store_sha256": "88bff73a517cc6b43f036480d27e12ae0b036e326d8f47b2eefadda76f461d12"
         },
         {
           "index": 159,
@@ -2036,7 +2077,7 @@
           },
           "resident_pages": 0,
           "result": 5,
-          "store_sha256": "2f31a716c06cccf9fee467273a0baf644aea3bce13be7a0edf45e78b2529a7ab"
+          "store_sha256": "88bff73a517cc6b43f036480d27e12ae0b036e326d8f47b2eefadda76f461d12"
         },
         {
           "index": 160,
@@ -2046,7 +2087,7 @@
           },
           "resident_pages": 1,
           "result": 8,
-          "store_sha256": "7083d9a3df557f6e424ad5921e281d3985979f4392c60a1f096bdde431f76b28"
+          "store_sha256": "879795a2add00390d411ad7f984b42fd574cf406fc653599de6e2000ab97ed3b"
         }
       ],
       "complete_process_backing_erased": true,
@@ -2082,15 +2123,15 @@
       "transfer_staging_offset": 1408
     },
     "runtime": {
-      "artifact_provenance_sha256": "34ac6d30ce0169c047e97171ca0f0a1124e9ab0699fb76d6d74b2c21136600aa",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/247",
-      "boot_image_sha256": "1166d7b172058915169359a1a5b3cdd6a23cd3a6649db6ac5517f3dc189b5f90",
-      "boot_provenance_sha256": "ed961b7b5ff2bcb020a33603b7b958c9706dbcb01cdade7714462aacee30ec10",
+      "artifact_provenance_sha256": "96565c1a1b5bd3d9eee23296d4b3b8a7de7c29e53f42a1908b93e3a4acfadcc9",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/248",
+      "boot_image_sha256": "ea56f15eade6d86d55660c27c7e10f3b5a8fc3e5c685f4e2fec723882731c0f5",
+      "boot_provenance_sha256": "b11dcc272b3dee67cc938b1b5126802a2b344ce392f8dd6c7fadddfbac9fb028",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "49b624297402f83d2d712de8ab5898ba8d794e79078744705d1250364632bed2",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -2098,7 +2139,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "1e22423366ad38ca4b0f992db3f69fec379b33b95715329b3abfd1950068b273",
+      "linked_kernel_sha256": "5a22daf18e739099dd6ea039d4d2b84c782cf118920d7abee5c0f651c4e80779",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -2366,10 +2407,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/234",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/235",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/247",
+      "schema": "topal-kernel-toolchain-gate-qemu/248",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "a8d8882afa9886d252e9670433d370aa3fe0907cb4d4154c8717dbad578428c6",
@@ -2384,7 +2425,7 @@
     "actual_file_syscall_returns": 130,
     "library": {
       "checked_client_sha256": "7158ec9e2efcdf3f3ec15d4b3c64805b0021965ce323bbc4d08eddca9be34065",
-      "disassembly_sha256": "a4a4270e708f900b95cce7323d2e451819f8ec8ec5445df2e7bf74293b2d2d7e",
+      "disassembly_sha256": "6c05044d068f927ddc7d7e6237e4f58690c13bb5f4577fae8f6c508e45c05512",
       "functions": [
         {
           "callees": [],
@@ -2714,7 +2755,30 @@
         }
       ],
       "interface": "file-open-decision-v1",
-      "llvm_sha256": "7c8b886ef5ca051a5a08ab802cb65058a111f480fc56438765e7c61ffaa2cef5",
+      "linked_inputs": {
+        "manifest_sha256": "336ee9fdd05a480893d4c51da26bd4052830bc917769e7efb738ff0dab472683",
+        "object_sha256": "90f1d586773bf8c41c880a543899342106a4242b7f4a65d4322a83a4804edad5",
+        "schema": "topal.policy-linked-inputs.x86_64/1",
+        "sections": [
+          {
+            "address": 3225184,
+            "alignment": 16,
+            "bytes": 3517,
+            "executable": true,
+            "marker": "topal.policy-inputs.kernel-library.0",
+            "sha256": "4b061f476e5f188053b26a76219cff19f740d51d88b946bb2bbf9f2353dcf247"
+          },
+          {
+            "address": 2102896,
+            "alignment": 8,
+            "bytes": 64,
+            "executable": false,
+            "marker": "topal.policy-inputs.kernel-library.1",
+            "sha256": "543f897ba97f4c67005278e119029df97884fa85607a316a0d2dcf47c38976e9"
+          }
+        ]
+      },
+      "llvm_sha256": "2359354f061fa60b61ecfc8b84793c6c17206d241ddb0e10aad183bafb573af3",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
       "maximum_stack_bytes": 388,
@@ -2722,11 +2786,29 @@
       "modules": [],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_file_open_policy_v1",
-      "object_sha256": "e2dafa968102b21407b1387cc1885f1489e2a08ef470faf053dcb7b648e046c3",
-      "schema": "topal.kernel-source-library/2",
+      "object_sha256": "90f1d586773bf8c41c880a543899342106a4242b7f4a65d4322a83a4804edad5",
+      "schema": "topal.kernel-source-library/3",
+      "sections": [
+        {
+          "alignment": 16,
+          "bytes": 3517,
+          "executable": true,
+          "marker": "topal.policy-inputs.kernel-library.0",
+          "sha256": "36515d3ed402aeb3f0adb8c2ba945c235d8eed14e480488113d1851e2b7ea533",
+          "source_section": ".text"
+        },
+        {
+          "alignment": 8,
+          "bytes": 64,
+          "executable": false,
+          "marker": "topal.policy-inputs.kernel-library.1",
+          "sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
+          "source_section": ".rodata"
+        }
+      ],
       "source": "policy/file-open-access.t",
       "source_export": "file-open-decision",
-      "source_name": "/tmp/topal-file-open-o8ol4tm9/normal/library/policy/file-open-access.t",
+      "source_name": "/tmp/topal-file-open-laelanvo/normal/library/policy/file-open-access.t",
       "source_sha256": "0b9ca8e42900850f8da60824aa10b6c15558a7b586d7547e8072dcdcebdf4c2e",
       "source_tags": [
         0,
@@ -2740,7 +2822,7 @@
       ],
       "stack_limit_bytes": 1024
     },
-    "linked_kernel_sha256": "1e22423366ad38ca4b0f992db3f69fec379b33b95715329b3abfd1950068b273",
+    "linked_kernel_sha256": "5a22daf18e739099dd6ea039d4d2b84c782cf118920d7abee5c0f651c4e80779",
     "observation": {
       "actual_temporary_create_plan": true,
       "all_native_calls_match_independent_disposition": true,
@@ -3331,29 +3413,29 @@
       "complete_process_store_erased": true,
       "result": "pass",
       "source_helper_frames": [
-        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x00000000003140a2 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x00000000003140ed in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x00000000003141a1 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x0000000000314212 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4089 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x0000000000211129 in _topal_kernel_entry ()\n"
+        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x0000000000314232 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x000000000031427d in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x0000000000314331 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x00000000003143a2 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4219 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
       ]
     },
     "root_and_provider_inputs": [
       {
-        "identity": "topal.provider-object.x86_64-qemu-pc-q35/226",
-        "sha256": "989141b0ddd08d21f4fbc8d083ac7015b93ee216185957eeea6c8d19fa3caa39"
+        "identity": "topal.provider-object.x86_64-qemu-pc-q35/227",
+        "sha256": "5ed568b92ed08978fe60d76dbf65b2d522bc1e8fe3a4fdb5b8b6d4cdc7776dd9"
       },
       {
-        "identity": "topal.systems-root-object.x86_64/233",
+        "identity": "topal.systems-root-object.x86_64/234",
         "sha256": "9c4998843f044c5e28c04d0338121ce31602070316c926687ebd228a973c89b3"
       }
     ],
     "runtime": {
-      "artifact_provenance_sha256": "519f04920ae018e547d4a677af74e8d4b32c79fdc68a9d7b2300739e81a57bcd",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/247",
-      "boot_image_sha256": "1166d7b172058915169359a1a5b3cdd6a23cd3a6649db6ac5517f3dc189b5f90",
-      "boot_provenance_sha256": "b362fe0fce559468bf1fb7b8848d1b973a3e47cc598177c91e151563e2c12cb9",
+      "artifact_provenance_sha256": "8a910a2db633cff65dde712e81299b23c5f990aec1eac27b9d1672e2584ac501",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/248",
+      "boot_image_sha256": "ea56f15eade6d86d55660c27c7e10f3b5a8fc3e5c685f4e2fec723882731c0f5",
+      "boot_provenance_sha256": "9bdae47e15ab3f3a9b97605c1aebcaf4bc959171b8bcc48d6e99d3b777666934",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "e84d3168678e7a5fd4ea3d9cd3f67fe3c8eabc988f903cfce18c44d923900257",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -3361,7 +3443,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "1e22423366ad38ca4b0f992db3f69fec379b33b95715329b3abfd1950068b273",
+      "linked_kernel_sha256": "5a22daf18e739099dd6ea039d4d2b84c782cf118920d7abee5c0f651c4e80779",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -3629,10 +3711,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/234",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/235",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/247",
+      "schema": "topal-kernel-toolchain-gate-qemu/248",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "a8d8882afa9886d252e9670433d370aa3fe0907cb4d4154c8717dbad578428c6",
@@ -3647,7 +3729,7 @@
     "actual_file_syscall_returns": 130,
     "library": {
       "checked_client_sha256": "c8713afe710ed1ee603adc00526157e932773f0e2447108f9a9b7057a8a094eb",
-      "disassembly_sha256": "150335f81b9b6e86519d853796577f1f753bdaada74d822a7811e3a099c65982",
+      "disassembly_sha256": "c9f0cbc3370555c3bd8b417fcb5343db78ef2107161fb6d41f437fc83588fc01",
       "functions": [
         {
           "callees": [],
@@ -3977,7 +4059,30 @@
         }
       ],
       "interface": "file-open-decision-v1",
-      "llvm_sha256": "82b61fad26b3d9d5b8ee841cf2826233f13f4cb9c3c85726e5502e61bf04e0a1",
+      "linked_inputs": {
+        "manifest_sha256": "8cc51c50890194e8ff90643d9f4f1ebc01c5289b379722ede9ba03914833e11d",
+        "object_sha256": "c532f418bb808dc730aa0b367b369381b765c746739bc3c2645f722dd2ee321c",
+        "schema": "topal.policy-linked-inputs.x86_64/1",
+        "sections": [
+          {
+            "address": 3225184,
+            "alignment": 16,
+            "bytes": 3517,
+            "executable": true,
+            "marker": "topal.policy-inputs.kernel-library.0",
+            "sha256": "6712fad0cce266bfb891a1273c58958ee99b4e7a3a2782ca81e1622fec561009"
+          },
+          {
+            "address": 2102896,
+            "alignment": 8,
+            "bytes": 64,
+            "executable": false,
+            "marker": "topal.policy-inputs.kernel-library.1",
+            "sha256": "51e34dd0d8a647095d23c0c5b227b392aabdfe3c138531e74ae5df6b288718cc"
+          }
+        ]
+      },
+      "llvm_sha256": "2f552634c89865aaf0a98affab4c1558e1aec12aafcbd22120bf302e9ce0970f",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
       "maximum_stack_bytes": 388,
@@ -3985,11 +4090,29 @@
       "modules": [],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_file_open_policy_v1",
-      "object_sha256": "9a9928d7d2bffa732578d19c77ce52fd96ee1328f3421fb1f2f5a15f83f54bed",
-      "schema": "topal.kernel-source-library/2",
+      "object_sha256": "c532f418bb808dc730aa0b367b369381b765c746739bc3c2645f722dd2ee321c",
+      "schema": "topal.kernel-source-library/3",
+      "sections": [
+        {
+          "alignment": 16,
+          "bytes": 3517,
+          "executable": true,
+          "marker": "topal.policy-inputs.kernel-library.0",
+          "sha256": "518701ebd232be7a07e10d7a2f3023cccc7c999fc778cd60610423de39e6cb87",
+          "source_section": ".text"
+        },
+        {
+          "alignment": 8,
+          "bytes": 64,
+          "executable": false,
+          "marker": "topal.policy-inputs.kernel-library.1",
+          "sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
+          "source_section": ".rodata"
+        }
+      ],
       "source": "policy/file-open-access.t",
       "source_export": "file-open-decision",
-      "source_name": "/tmp/topal-file-open-o8ol4tm9/reversed/library/policy/file-open-access.t",
+      "source_name": "/tmp/topal-file-open-laelanvo/reversed/library/policy/file-open-access.t",
       "source_sha256": "4915f7338ebc6b192e126a5b5ade63bb8610a492e71db2c2b002f3de86825e66",
       "source_tags": [
         7,
@@ -4003,7 +4126,7 @@
       ],
       "stack_limit_bytes": 1024
     },
-    "linked_kernel_sha256": "d315bde6786a6770a02e4eafbdfba5dbfc331b4d6babe1f175b797d756928717",
+    "linked_kernel_sha256": "dc240b646bdfb9f706b5309d6d638bd2aed63bc70745be027e5d85fd2030c47e",
     "observation": {
       "actual_temporary_create_plan": true,
       "all_native_calls_match_independent_disposition": true,
@@ -4594,29 +4717,29 @@
       "complete_process_store_erased": true,
       "result": "pass",
       "source_helper_frames": [
-        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x00000000003140a2 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x00000000003140ed in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x00000000003141a1 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x0000000000314212 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4089 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x0000000000211129 in _topal_kernel_entry ()\n"
+        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x0000000000314232 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x000000000031427d in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x0000000000314331 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x00000000003143a2 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4219 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
       ]
     },
     "root_and_provider_inputs": [
       {
-        "identity": "topal.provider-object.x86_64-qemu-pc-q35/226",
-        "sha256": "989141b0ddd08d21f4fbc8d083ac7015b93ee216185957eeea6c8d19fa3caa39"
+        "identity": "topal.provider-object.x86_64-qemu-pc-q35/227",
+        "sha256": "5ed568b92ed08978fe60d76dbf65b2d522bc1e8fe3a4fdb5b8b6d4cdc7776dd9"
       },
       {
-        "identity": "topal.systems-root-object.x86_64/233",
+        "identity": "topal.systems-root-object.x86_64/234",
         "sha256": "9c4998843f044c5e28c04d0338121ce31602070316c926687ebd228a973c89b3"
       }
     ],
     "runtime": {
-      "artifact_provenance_sha256": "0d0fff6e7c2893cc398a443fd87030510f1da036f38e12e47b34fd3fa2071306",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/247",
-      "boot_image_sha256": "67793153ddf884704b02fd0b0772fad6fbb9674e562a12b345519d0ac2801f0b",
-      "boot_provenance_sha256": "11b8d92f3398cb6971cabb9e9533ebcb2d2c342125d62c43532c28c4572b6687",
+      "artifact_provenance_sha256": "2c2131b4b855a82fbc81bf8c47ee27c60fdf91ae2c390dfd8a01011d7db96f44",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/248",
+      "boot_image_sha256": "b17b1e1d08263d35c8da8e02f33f8f5abbc2ffee86fc5075baba00691b4007af",
+      "boot_provenance_sha256": "333d0e055eea94cc61ad8b7b4513730831ac916cc8488defa42679458a8889f4",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "e84d3168678e7a5fd4ea3d9cd3f67fe3c8eabc988f903cfce18c44d923900257",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/147",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/148",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -4624,7 +4747,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "d315bde6786a6770a02e4eafbdfba5dbfc331b4d6babe1f175b797d756928717",
+      "linked_kernel_sha256": "dc240b646bdfb9f706b5309d6d638bd2aed63bc70745be027e5d85fd2030c47e",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -4892,10 +5015,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/234",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/235",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/247",
+      "schema": "topal-kernel-toolchain-gate-qemu/248",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "a8d8882afa9886d252e9670433d370aa3fe0907cb4d4154c8717dbad578428c6",
@@ -4912,7 +5035,7 @@
     "actual_file_syscall_returns": null,
     "library": {
       "checked_client_sha256": "09ad8a1dc3d0847a23ebafce57d2810d91e964c5784b23d31d5229f3aadeee3d",
-      "disassembly_sha256": "2d7da9ad489b4181ddfe0a6bc174b00f44394b3eaec3a5711c742c3d6a95be2b",
+      "disassembly_sha256": "132ee5e0c8b32fd6d2f3859687e261bd8c74cfcdf4a7b5eff7ca98de3ac6e446",
       "functions": [
         {
           "callees": [],
@@ -5242,7 +5365,30 @@
         }
       ],
       "interface": "file-open-decision-v1",
-      "llvm_sha256": "44e27aa3c251f9402bb8335c75672c3b2c73c919c08564e1f9e46b9be34fa324",
+      "linked_inputs": {
+        "manifest_sha256": "9cf9476b94c55d192b61c3779a7c03c3c5ba631c2066299d61764672f5400f82",
+        "object_sha256": "efafe7c08cc88fc6caf4dfae004f0f929a33df47b4c0ddeb2050f25ce09de48d",
+        "schema": "topal.policy-linked-inputs.x86_64/1",
+        "sections": [
+          {
+            "address": 3225184,
+            "alignment": 16,
+            "bytes": 3517,
+            "executable": true,
+            "marker": "topal.policy-inputs.kernel-library.0",
+            "sha256": "1297a7c479721e41a358c11d9e028f6f05ff4d912436c4bba5287676ca46579b"
+          },
+          {
+            "address": 2102896,
+            "alignment": 8,
+            "bytes": 64,
+            "executable": false,
+            "marker": "topal.policy-inputs.kernel-library.1",
+            "sha256": "543f897ba97f4c67005278e119029df97884fa85607a316a0d2dcf47c38976e9"
+          }
+        ]
+      },
+      "llvm_sha256": "ae0768b7695b202c38c2cc1a9e57c0e4c62fd3123a5511317486861ebacf1ca6",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-gpr-only-no-red-zone-acyclic/1",
       "maximum_stack_bytes": 388,
@@ -5250,11 +5396,29 @@
       "modules": [],
       "native_alignment_reserve_bytes": 32,
       "native_export": "topal_kernel_file_open_policy_v1",
-      "object_sha256": "97f18e45f09b1d1b8ea5bfca4cf6d5dd89d73bea5b31a092fc7a4e3a16395367",
-      "schema": "topal.kernel-source-library/2",
+      "object_sha256": "efafe7c08cc88fc6caf4dfae004f0f929a33df47b4c0ddeb2050f25ce09de48d",
+      "schema": "topal.kernel-source-library/3",
+      "sections": [
+        {
+          "alignment": 16,
+          "bytes": 3517,
+          "executable": true,
+          "marker": "topal.policy-inputs.kernel-library.0",
+          "sha256": "27a08a53a27227d924cbd67bc6c5bfcedf10e9478b2f768b7499681f67ae89d2",
+          "source_section": ".text"
+        },
+        {
+          "alignment": 8,
+          "bytes": 64,
+          "executable": false,
+          "marker": "topal.policy-inputs.kernel-library.1",
+          "sha256": "f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b",
+          "source_section": ".rodata"
+        }
+      ],
       "source": "policy/file-open-access.t",
       "source_export": "file-open-decision",
-      "source_name": "/tmp/topal-file-open-o8ol4tm9/wrong/library/policy/file-open-access.t",
+      "source_name": "/tmp/topal-file-open-laelanvo/wrong/library/policy/file-open-access.t",
       "source_sha256": "96d7dd0936e76fd6b136795d15f7b34c2b7ac7b8c9ac009dc9069e1880480ade",
       "source_tags": [
         0,
@@ -5268,7 +5432,7 @@
       ],
       "stack_limit_bytes": 1024
     },
-    "linked_kernel_sha256": "5a1626500b04b7d1a10580edc967e99ae984ac55815339a73f8436228aa80e0e",
+    "linked_kernel_sha256": "0be6084d09f1c06be1e2055f4dfb3fe2fcee9167d5ddda83d7d617551252d0d3",
     "observation": {
       "calls": [
         {
@@ -5789,18 +5953,18 @@
       "object_page_and_payload_store_unchanged": true,
       "result": "expected-wrong-create-plan-refusal",
       "source_helper_frames": [
-        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x00000000003140a2 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x00000000003140ed in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x00000000003141a1 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x0000000000314212 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4089 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x0000000000211129 in _topal_kernel_entry ()\n"
+        "#0  topal.fn.missing_2dkind.38 (required=<optimized out>) at file-open-access.t:56\n#1  0x0000000000314232 in topal.fn.missing_2dview.39 (mutable=<optimized out>, required=10) at file-open-access.t:64\n#2  0x000000000031427d in topal.fn.missing_2dopen.40 (mutable=5, required=10, create=<optimized out>) at file-open-access.t:69\n#3  0x0000000000314331 in topal.fn.file_2dopen_2ddecision.41 (write=41, directory=20, required=10, mutable=5, exists=<optimized out>, create=true, exclusive=false, truncate=false) at file-open-access.t:74\n#4  0x00000000003143a2 in topal_kernel_file_open_policy_v1 ()\n#5  0x00000000002c4219 in topal_x86_systems_static_image_process_enter ()\n#6  0x0000000001005000 in ?? ()\n#7  0x0000000001000000 in ?? ()\n#8  0x0000000001203000 in ?? ()\n#9  0x00000000002112b9 in _topal_kernel_entry ()\n"
       ],
       "source_returned_open_for_create": true,
       "terminal_cleanup_claimed": false
     },
     "root_and_provider_inputs": [
       {
-        "identity": "topal.provider-object.x86_64-qemu-pc-q35/226",
-        "sha256": "989141b0ddd08d21f4fbc8d083ac7015b93ee216185957eeea6c8d19fa3caa39"
+        "identity": "topal.provider-object.x86_64-qemu-pc-q35/227",
+        "sha256": "5ed568b92ed08978fe60d76dbf65b2d522bc1e8fe3a4fdb5b8b6d4cdc7776dd9"
       },
       {
-        "identity": "topal.systems-root-object.x86_64/233",
+        "identity": "topal.systems-root-object.x86_64/234",
         "sha256": "9c4998843f044c5e28c04d0338121ce31602070316c926687ebd228a973c89b3"
       }
     ],
