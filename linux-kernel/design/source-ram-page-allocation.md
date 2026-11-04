@@ -150,10 +150,12 @@ admission. Native-only legacy selection must retain its explicit old contract.
 
 1. Define this owner/protocol, update systems intent and exact normative rules,
    and implement the portable lifecycle model with traceable rejection tests.
-2. Implement the ordinary source/module, exact source selection and complete
-   artifact/caller/resource/serialization binding, preserving earlier contexts.
-3. Integrate the actual x86-64 write/release paths and independent native/GDB/VM
-   observations, including an alternate source placement order.
+2. Implement the ordinary source/module and exact source-object/code/data/hooks/
+   resource/serialization binding. Independently execute the component through
+   a checked native test caller, preserving earlier contexts.
+3. Bind the actual kernel owner/controller/caller before enabling its artifact
+   declaration, and integrate the x86-64 write/release paths and independent
+   native/GDB/VM observations, including an alternate source placement order.
 4. Qualify the complete workspace, strict source size, Linux/model controls and
    all affected VM cohorts; update reports/traceability and the existing Step 4 PR.
 

@@ -539,3 +539,21 @@ checks every artifact and complete provenance, and verifies four refusal control
 Only proven per-build LLVM/disassembly text headers are normalized for comparison;
 production checksums and formats are preserved. Its separate JSON record identifies
 one fresh primary VM and the retained preceding 137-observation cohort.
+
+## Ordinary RAM-page allocator source component
+
+The [source-component integration](../../../tools/toolchain-gate-builder/tests/ram_page_pool.rs)
+executes first/last-fit ordinary objects through independent C and GDB oracles.
+It uses the existing instance/frame ABI and strict source-object bounds. It
+qualifies component behavior; actual kernel ownership/dispatch and retired-stack
+reclamation require the subsequent VM stage. See the
+[staged report](../../../step-4-source-ram-page-allocation.md).
+
+With the host-safe Cargo environment used for workspace qualification:
+
+```sh
+rtk scripts/run_bounded.py -- env TOPAL_WRITE_RAM_PAGE_EVIDENCE=1 cargo test -p topal-kernel-toolchain-gate-builder --test ram_page_pool -j1 -- --nocapture
+```
+
+The explicit evidence variable writes the successful component record under
+`results/`. Ordinary workspace tests leave committed evidence unchanged.
