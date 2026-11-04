@@ -112,35 +112,29 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
-The next [reusable-page action stage](step-4-source-ram-page-allocation.md) models
-ordinary effects on the real filesystem allocation map and guarded association
-publication. Its portable model and independently executed ordinary source
-objects pass. The actual x86-64 map/controller binding and 21 targeted VM
-dispositions now pass, alongside the 137 freshly repeated preceding VM observations
-and all 42 lab contracts. Complete Rust workspace/all-target qualification remains
-pending because the bounded host-memory budget is insufficient. This adds a
-bounded reusable RAM-page owner, with general
-allocation and the initial distribution/container/VM-hosting acceptance still
-unfinished.
+The [reusable-page action stage](step-4-source-ram-page-allocation.md) is qualified:
+ordinary Topal updates the real filesystem allocation map, and the controller
+validates exact deltas before association publication. Its portable model,
+independent first/last-fit source components, actual x86-64 owner binding and
+21 targeted VM dispositions pass, alongside 137 freshly repeated preceding
+VM observations and all 42 lab contracts.
 
-All 181 current semantics tests have also been freshly rebuilt and passed under
-the existing host limits. Actual compiler-allocator retention tuning did not
-make the all-target or language-model builds fit their 420/388 MiB budgets.
-The [separate-runner preparation](tools/rust-qualification/README.md) retains
-the bounded wrapper and exact command evidence. Its GitHub workflow remains an
-inactive template pending approval of the required file-location exception;
-there is no hosted success or completed Rust qualification yet.
+After the user freed host RAM, complete Rust qualification passed under the
+unchanged memory policy: all-target workspace checking, all 2261 tests across
+41 targets, and the separate doc-test command. The
+[exact record and logs](tools/rust-qualification/results/tk278/final/qualification.json)
+bind the qualified revision and tool identities. Formatting and the 2000-line
+Rust ceiling also pass. Qualification corrected three stale controls: a legacy
+fixture selecting the new page declaration, the systems-rule count, and the
+provider-object relocation/import expectations. The latter now checks both
+allocator profiles and proves that its forward descriptor reference has a
+matching strong local BSS definition. The earlier failed attempt remains
+archived. No production code or qualified kernel changed in those corrections.
+The optional hosted workflow stays inactive; local qualification needs no
+workflow-location exception.
 
-Subsequent validation by existing Cargo target qualifies 1122 distinct current
-Rust tests: 323 in eight foundational packages, 779 in seven tool packages,
-16 in the gate builder and four specification/requirement coverage tests.
-This exposed and corrected a legacy test-fixture dependency on the new page
-declaration and the stale 297-versus-300 systems-rule ledger count. Production
-code and the qualified kernel are unchanged. Compiler/language unit targets,
-compiler CLI integration, workspace doc tests and the full all-target check
-still need qualification; the compiler CLI/doc-test builds were killed at
-their 274/297 MiB cgroup limits. These partial successes do not complete Step 4
-or its Rust workspace qualification.
+This adds a bounded reusable RAM-page owner. General allocation and the initial
+distribution/container/VM-hosting acceptance remain unfinished.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

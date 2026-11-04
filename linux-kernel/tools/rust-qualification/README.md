@@ -1,7 +1,7 @@
 # Rust qualification on a separate runner
 
-The current local host cannot compile every Rust target within its available
-bounded memory budget. This runner preserves `scripts/run_bounded.py` unchanged:
+This driver supports qualification when a build needs a different machine or
+more available RAM. It preserves `scripts/run_bounded.py` unchanged:
 the default requested limit is 4 GiB, the normal host reserve is retained, and
 the validation cgroup has zero swap. It does not change the user's host or
 require privileged guest execution. This is implementation-test infrastructure,
@@ -36,4 +36,14 @@ Activating it therefore needs an explicit exception to the
 requested placement of Linux-kernel files under `linux-kernel/`; only that entry
 point would live outside the requested tree. The script and documentation stay
 here. No Actions success or full Rust qualification is claimed by preparing the
-template. See the [current report](../../step-4-source-ram-page-allocation.md).
+template. TK278 completed locally after the user freed RAM; its
+[final record](results/tk278/final/qualification.json) and the
+[earlier failed control](results/tk278/before-provider-control-fix/qualification.json)
+retain the exact command results and complete logs. No workflow-location
+exception is needed for that local result. See the
+[current report](../../step-4-source-ram-page-allocation.md).
+
+Archived logs use lossless `.log.gz` files to keep execution output compact and
+preserve its exact bytes, including trailing blank lines. The unchanged driver
+records name the original `.log` files; their `log_sha256` digests apply to the
+decompressed bytes. The JSON records are retained verbatim.

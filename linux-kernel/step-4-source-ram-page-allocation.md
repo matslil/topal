@@ -90,7 +90,7 @@ kernel dispatch and complete retired-stack/control/history reclamation are not
 proved by this host component test. Existing root/position objects retain their
 separate owning callers and contracts.
 
-## Live-kernel implementation and pending qualification
+## Live-kernel implementation
 
 The [x86-64 controller](../src/topal-compiler/src/systems_ram_page_region.rs)
 and `ram-page-pool-library` artifact selection are now
@@ -169,9 +169,9 @@ included-source formatting, strict source size and whitespace checks pass.
 The later all-target check was killed by its 486 MiB cgroup. A retry with one
 allocator arena and aggressive trimming was stopped after prolonged reclaim
 pressure at 365 MiB. These are failed/incomplete validations. The full current
-Rust workspace suite and all-target check remain required before this increment's
-qualification is complete. The host's 1569 MiB reserve and zero-swap policy remain
-in force; more available RAM or a separate qualified runner is needed.
+Rust workspace suite and all-target check were still required at that point.
+The host's 1569 MiB reserve and zero-swap policy remained in force; more available
+RAM or a separate qualified runner was needed.
 An additional retry used the compiler's actual jemalloc configuration with one
 arena, immediate dirty/muzzy-page purging, no retained mappings and no thread
 cache. The compiler explicitly accepted every setting. This changed no cgroup
@@ -187,8 +187,9 @@ recording exact commit/tool/command/log identities. Its environment preflight
 passes against Rust 1.97.0 and LLVM 22.1.6, and Python syntax and workflow structure
 checks pass. The adjacent GitHub Actions template is inactive: activation needs
 one workflow entry point outside `linux-kernel/`, at GitHub's required location.
-The file-location exception has been requested. No hosted run or full Rust
-qualification is claimed.
+The file-location exception was requested while the host lacked available RAM.
+The later local qualification below completes the Rust checks; no hosted run
+or workflow activation was needed.
 
 ## Additional Rust package qualification
 
@@ -202,7 +203,8 @@ implementation tests without changing the bounded-wrapper policy:
 | Kernel toolchain gate builder | 16 | Seven unchanged targets pass; the corrected region-action target passes all eight of its tests. |
 | Language specification/requirement coverage integration | 4 | All tests pass after correcting the mechanically checked rule count. |
 
-These are 1122 distinct passing Rust tests, not complete workspace qualification.
+That partial stage qualified 1122 distinct Rust tests, before complete workspace
+qualification.
 The first gate-package command failed one legacy test: the current root's new
 page declaration triggered its missing-snapshot guard before the intended
 file-position guard. That structural control now explicitly selects the retained
@@ -223,8 +225,48 @@ memory and is not counted as a pass.
 The compiler CLI integration build was killed at its 274 MiB cap; the separate
 workspace doc-test build was killed at 297 MiB. Both are journal-confirmed cgroup
 out-of-memory failures. Compiler/language unit targets, compiler CLI integration,
-workspace doc tests and the complete all-target check remain unqualified. The
-prepared workflow is still inactive pending the requested location exception.
+workspace doc tests and the complete all-target check remained unqualified then.
+
+## Complete Rust qualification after releasing host memory
+
+After the user freed host RAM, the unchanged bounded runner admitted an 1884 MiB
+check budget and a 1797 MiB test budget, retaining the 1569 MiB host reserve and
+zero cgroup swap. The [first complete attempt](tools/rust-qualification/results/tk278/before-provider-control-fix/qualification.json)
+passed all-target checking and the doc-test command, with 2260 tests passing and
+one structural provider test failing. This was an actual assertion failure,
+distinct from the earlier resource failures.
+
+The old provider control expected 51 relocations and two ordinary-source imports.
+Selecting the new page controller adds relocations and its separately bound
+source entry. The [corrected control](../src/topal-compiler/src/systems_provider_object_tests.rs)
+now checks both profiles: the native-page variant retains 51 relocations and
+two source imports; the source-page variant has 80 relocations and three source
+imports. The latter also has a forward descriptor-table symbol record. Before
+accepting it, the test proves its sole matching strong data definition in the
+same object's process BSS, with exact extent and alignment. This records a local
+forward reference rather than an additional external dependency. Deterministic
+objects, exact symbol sets, ELF identity and nonallocated unwind data remain
+checked in both variants. The focused control passes. No production code or
+generated kernel changed.
+
+The [fresh final record](tools/rust-qualification/results/tk278/final/qualification.json)
+binds clean revision `ee5555f06b4e14f9b1d58629e85f22ab4ca30ba9`, its tree,
+Rust 1.97.0/LLVM 22.1.6, the actual driver/wrapper and all command/log digests.
+All three commands return zero: locked workspace all-target checking, locked
+workspace all-target tests and the separate workspace doc-test command.
+All **2261 tests across 41 targets pass**, with zero failed or ignored tests;
+these include 254 compiler unit tests, 261 compiler CLI tests, 622 language unit
+tests, 181 semantics tests and all 16 gate-builder tests. The doc-test command
+currently discovers no executable doc tests. Every recorded log digest is
+independently checked against its decompressed archived log. Both the earlier
+failed attempt and the final successful attempt retain their complete logs.
+
+Bounded workspace formatting and the unchanged 2000-line Rust source ceiling
+also pass. The final changes concern a test control and qualification records;
+the 158 fresh machine observations and 42 lab contracts above retain their
+qualified production identities. This completes TK278's staged qualification.
+The workflow template stays inactive, and its location exception is unnecessary
+for this completed local validation.
 
 The [initial acceptance ledger](step-4-status.md) remains in force. General
 allocation, distribution replacement, containers and VM hosting remain unfinished.
@@ -233,5 +275,5 @@ Risk is high at bitmap/association consistency, preparation versus publication,
 source failure, zeroing, stale ownership, cross-domain views, bounds and shared
 process lifetime. Current self-review covers approved systems/resource/effect
 intent, three exact rules, actual model borrows and independent reference laws.
-Complete Rust workspace and all-target qualification remain outstanding;
-no independent reviewer result is claimed.
+Complete Rust workspace and all-target qualification now pass. No independent
+reviewer result is claimed.
