@@ -1,0 +1,631 @@
+fn static_image_copy_payload() -> Result<Vec<u8>, CompileError> {
+    const LOADS: [(u32, u32, u32); 4] = [
+        (0, 0, 0x6e0),
+        (0x1000, 0x1000, 0x18_b285),
+        (0x18_d000, 0x18_d000, 0x5_7040),
+        (0x1e_4660, 0x1e_5660, 0x9728),
+    ];
+    const ZERO_GAPS: [(u32, u32); 4] = [
+        (0x6e0, 0x920),
+        (0x18_c285, 0xd7b),
+        (0x1e_4040, 0x1620),
+        (0x1e_ed88, 0x8278),
+    ];
+
+    fn emit_interval_cursors(code: &mut X86FunctionEncoder, source: u32, destination: u32) {
+        code.bytes(&[0x4c, 0x89, 0xde]); // static ELF base -> source cursor
+        code.bytes(&[0x48, 0x81, 0xc6]);
+        code.bytes(&source.to_le_bytes());
+        code.bytes(&[0x4c, 0x89, 0xd7]); // payload base -> destination cursor
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&destination.to_le_bytes());
+    }
+
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let static_metadata_offsets = (0..7).chain(16..40).chain(52..58).chain(64..64 + 11 * 56);
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56]); // retain payload and metadata identities
+    code.bytes(&[0x49, 0x89, 0xcb]); // retain boot_params
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-before-copy")?;
+    code.bytes(&[0x4c, 0x89, 0xde]); // boot_params
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    for offset in static_metadata_offsets {
+        let displacement = u32::try_from(X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + offset)
+            .map_err(|_| CompileError::Tool("static ELF metadata offset exceeds u32".into()))?;
+        code.bytes(&[0x41, 0x80, 0xb8]); // cmp byte ptr [r8+disp32], imm8
+        code.bytes(&displacement.to_le_bytes());
+        code.bytes(&[static_user_image[offset]]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4d, 0x89, 0xc3]); // static ELF base
+    code.bytes(&[0x49, 0x81, 0xc3]);
+    code.bytes(&X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // payload base
+    for (source, destination, length) in LOADS {
+        emit_interval_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa4]); // exact bounded copy
+    }
+    code.bytes(&[0x0f, 0xae, 0xf0]); // publish populated payload
+    for (source, destination, length) in LOADS {
+        emit_interval_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa6]); // verify copied interval
+        code.jump_if(0x85, "fail");
+    }
+    for (start, length) in ZERO_GAPS {
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&start.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xae]); // verify zero-filled gap or BSS
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-leaves-after-copy")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_seal_permissions() -> Result<Vec<u8>, CompileError> {
+    const LOADS: [(u32, u32, u32); 4] = [
+        (0, 0, 0x6e0),
+        (0x1000, 0x1000, 0x18_b285),
+        (0x18_d000, 0x18_d000, 0x5_7040),
+        (0x1e_4660, 0x1e_5660, 0x9728),
+    ];
+    const ZERO_GAPS: [(u32, u32); 4] = [
+        (0x6e0, 0x920),
+        (0x18_c285, 0xd7b),
+        (0x1e_4040, 0x1620),
+        (0x1e_ed88, 0x8278),
+    ];
+    const RO_NX: u64 = 0x8000_0000_0000_0005;
+    const RO_X: u64 = 0x0000_0000_0000_0005;
+    const RW_NX: u64 = 0x8000_0000_0000_0007;
+
+    fn emit_content_cursors(code: &mut X86FunctionEncoder, source: u32, destination: u32) {
+        code.bytes(&[0x4c, 0x89, 0xde]);
+        code.bytes(&[0x48, 0x81, 0xc6]);
+        code.bytes(&source.to_le_bytes());
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&destination.to_le_bytes());
+    }
+
+    fn emit_leaf_role(
+        code: &mut X86FunctionEncoder,
+        label: &'static str,
+        count: u32,
+        flags: u64,
+        verify: bool,
+    ) -> Result<(), CompileError> {
+        code.bytes(&[0x49, 0xb9]);
+        code.bytes(&flags.to_le_bytes());
+        code.bytes(&[0xb9]);
+        code.bytes(&count.to_le_bytes());
+        code.bind(label)?;
+        code.bytes(&[0x4c, 0x89, 0xd0]);
+        code.bytes(&[0x4c, 0x09, 0xc8]);
+        if verify {
+            code.bytes(&[0x48, 0x39, 0x07]);
+            code.jump_if(0x85, "fail");
+            code.bytes(&[0x48, 0x83, 0xc7, 0x08]);
+        } else {
+            code.bytes(&[0x48, 0xab]);
+        }
+        code.bytes(&[0x49, 0x81, 0xc2, 0x00, 0x10, 0x00, 0x00]);
+        code.bytes(&[0xff, 0xc9]);
+        code.jump_if(0x85, label);
+        Ok(())
+    }
+
+    let static_user_image = qualified_x86_64_static_user_image_fixture();
+    let static_metadata_offsets = (0..7).chain(16..40).chain(52..58).chain(64..64 + 11 * 56);
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56]);
+    code.bytes(&[0x49, 0x89, 0xcb]); // retain boot_params
+    emit_static_image_resource_validation(&mut code)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x34, 0x24]);
+    emit_static_image_leaf_verification(&mut code, "verify-initial-leaves-before-seal")?;
+    code.bytes(&[0x4c, 0x89, 0xde]);
+    emit_initial_boot_resource_handoff_validation(&mut code)?;
+    for offset in static_metadata_offsets {
+        let displacement = u32::try_from(X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET as usize + offset)
+            .map_err(|_| CompileError::Tool("static ELF metadata offset exceeds u32".into()))?;
+        code.bytes(&[0x41, 0x80, 0xb8]);
+        code.bytes(&displacement.to_le_bytes());
+        code.bytes(&[static_user_image[offset]]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4d, 0x89, 0xc3]);
+    code.bytes(&[0x49, 0x81, 0xc3]);
+    code.bytes(&X86_STATIC_BOOT_RESOURCE_PAYLOAD_OFFSET.to_le_bytes());
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]);
+    for (source, destination, length) in LOADS {
+        emit_content_cursors(&mut code, source, destination);
+        code.bytes(&[0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xa6]);
+        code.jump_if(0x85, "fail");
+    }
+    for (start, length) in ZERO_GAPS {
+        code.bytes(&[0x4c, 0x89, 0xd7]);
+        code.bytes(&[0x48, 0x81, 0xc7]);
+        code.bytes(&start.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&length.to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0xae]);
+        code.jump_if(0x85, "fail");
+    }
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // payload cursor
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24]); // metadata cursor
+    code.bytes(&[0xfc]);
+    emit_leaf_role(&mut code, "seal-header", 1, RO_NX, false)?;
+    emit_leaf_role(&mut code, "seal-executable", 396, RO_X, false)?;
+    emit_leaf_role(&mut code, "seal-immutable", 88, RO_NX, false)?;
+    emit_leaf_role(&mut code, "seal-writable-relro", 18, RW_NX, false)?;
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]);
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24]);
+    emit_leaf_role(&mut code, "verify-header", 1, RO_NX, true)?;
+    emit_leaf_role(&mut code, "verify-executable", 396, RO_X, true)?;
+    emit_leaf_role(&mut code, "verify-immutable", 88, RO_NX, true)?;
+    emit_leaf_role(&mut code, "verify-writable-relro", 18, RW_NX, true)?;
+    code.bytes(&[0x31, 0xc0, 0xb9, 0x09, 0x00, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x10, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn emit_static_image_address_space_resource_validation(
+    code: &mut X86FunctionEncoder,
+    require_inactive_root: bool,
+) -> Result<(), CompileError> {
+    emit_static_image_resource_validation(code)?;
+    code.bytes(&[0x48, 0x85, 0xc9]); // hierarchy base
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0xf7, 0xc1, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05, 0x00, 0x10, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x39, 0xc1]); // hierarchy follows leaf metadata exactly
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0x05, 0x00, 0x50, 0x00, 0x00]);
+    code.jump_if(0x82, "fail");
+    code.bytes(&[0x48, 0x3d, 0x00, 0x00, 0x00, 0x40]);
+    code.jump_if(0x87, "fail");
+    if require_inactive_root {
+        code.bytes(&[0x0f, 0x20, 0xd8]); // current CR3
+        code.bytes(&[0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+        code.bytes(&[0x48, 0x39, 0xc8]);
+        code.jump_if(0x84, "fail"); // construction hierarchy must remain inactive
+    }
+    Ok(())
+}
+
+fn emit_static_image_address_space_hierarchy_verification(
+    code: &mut X86FunctionEncoder,
+    expect_inactive_root: bool,
+) -> Result<(), CompileError> {
+    emit_static_image_address_space_hierarchy_verification_labeled_with_stack(
+        code,
+        expect_inactive_root,
+        "verify-static-address-space-low-pd",
+        "verify-static-address-space-low-pd-expected",
+        false,
+    )
+}
+
+fn emit_static_image_address_space_hierarchy_verification_labeled(
+    code: &mut X86FunctionEncoder,
+    expect_inactive_root: bool,
+    low_pd_label: &'static str,
+    _low_pd_expected_label: &'static str,
+) -> Result<(), CompileError> {
+    emit_static_image_address_space_hierarchy_verification_labeled_with_stack(
+        code,
+        expect_inactive_root,
+        low_pd_label,
+        _low_pd_expected_label,
+        true,
+    )
+}
+
+fn emit_static_image_address_space_hierarchy_verification_labeled_with_stack(
+    code: &mut X86FunctionEncoder,
+    expect_inactive_root: bool,
+    low_pd_label: &'static str,
+    _low_pd_expected_label: &'static str,
+    stack_extent_published: bool,
+) -> Result<(), CompileError> {
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24]); // hierarchy base
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x08]); // leaf metadata base
+
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x10, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x03]); // PML4[0]
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8d, 0x7b, 0x08, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0xff, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x20, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x00, 0x10, 0x00, 0x00]); // PDPT[0]
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8d, 0xbb, 0x08, 0x10, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x02, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x30, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x23,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x18, 0x10, 0x00, 0x00]); // PDPT[3]
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8d, 0xbb, 0x20, 0x10, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0xfc, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_0000_00e3_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0x00, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_0020_00e3_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0x08, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x83, 0xc8, 0x27]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x10, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x40, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x39, 0x83, 0x18, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0xb9, 0x04, 0x00, 0x00, 0x00]);
+    code.bind(low_pd_label)?;
+    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0xc1, 0xe0, 0x15]);
+    code.bytes(&[0x48, 0x0d, 0xe3, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x49, 0x39, 0x84, 0xcb, 0x00, 0x20, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
+    code.jump_if(0x85, low_pd_label);
+
+    code.bytes(&[0x49, 0x8d, 0xbb, 0x00, 0x30, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0xf6, 0x01, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fec0_00fb_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0xb0, 0x3f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fee0_00fb_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x83, 0xb8, 0x3f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8d, 0xbb, 0xc0, 0x3f, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x08, 0x00, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x49, 0x8d, 0xbb, 0x00, 0x40, 0x00, 0x00, 0x31, 0xc0]);
+    code.bytes(&[0xb9]);
+    code.bytes(&(if stack_extent_published { 510_u32 } else { 512 }).to_le_bytes());
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd8]);
+    code.jump_if(if expect_inactive_root { 0x84 } else { 0x85 }, "fail");
+    Ok(())
+}
+
+fn static_image_attach_address_space() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56, 0x51]); // retain payload, metadata, hierarchy
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification(
+        &mut code,
+        [
+            "attach-before-header",
+            "attach-before-executable",
+            "attach-before-relro",
+            "attach-before-writable",
+        ],
+    )?;
+
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24]);
+    // Preseed x86 accessed/dirty state so the bounded active interval is byte-stable.
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x10, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x89, 0x03]);
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x20, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x89, 0x83, 0x00, 0x10, 0x00, 0x00]);
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x30, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x23,
+    ]);
+    code.bytes(&[0x49, 0x89, 0x83, 0x18, 0x10, 0x00, 0x00]);
+    code.bytes(&[0x31, 0xc9]);
+    code.bind("construct-static-address-space-low-pd")?;
+    code.bytes(&[0x48, 0x89, 0xc8, 0x48, 0xc1, 0xe0, 0x15]);
+    code.bytes(&[0x48, 0x0d, 0xe3, 0x00, 0x00, 0x00]);
+    code.bytes(&[0x49, 0x89, 0x84, 0xcb, 0x00, 0x20, 0x00, 0x00]);
+    code.bytes(&[0xff, 0xc1, 0x81, 0xf9, 0x00, 0x02, 0x00, 0x00]);
+    code.jump_if(0x85, "construct-static-address-space-low-pd");
+    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x08, 0x48, 0x83, 0xc8, 0x27]);
+    code.bytes(&[0x49, 0x89, 0x83, 0x10, 0x20, 0x00, 0x00]);
+    code.bytes(&[
+        0x49, 0x8d, 0x83, 0x00, 0x40, 0x00, 0x00, 0x48, 0x83, 0xc8, 0x27,
+    ]);
+    code.bytes(&[0x49, 0x89, 0x83, 0x18, 0x20, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fec0_00fb_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x83, 0xb0, 0x3f, 0x00, 0x00]);
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x0000_0000_fee0_00fb_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x89, 0x83, 0xb8, 0x3f, 0x00, 0x00]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification(
+        &mut code,
+        [
+            "attach-after-header",
+            "attach-after-executable",
+            "attach-after-relro",
+            "attach-after-writable",
+        ],
+    )?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_activate_address_space() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x50, 0x57, 0x56, 0x51]); // bootstrap, payload, metadata, static root
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification(
+        &mut code,
+        [
+            "activate-header",
+            "activate-executable",
+            "activate-relro",
+            "activate-writable",
+        ],
+    )?;
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+    code.bytes(&[0x4c, 0x8b, 0x44, 0x24, 0x18]); // qualified bootstrap root
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24, 0x4d, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x0c, 0x24, 0x0f, 0x22, 0xd9]); // activate static CR3
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x48, 0x39, 0xc8]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_restore_address_space() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x50, 0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, false)?;
+    code.bytes(&[0x4c, 0x8b, 0x44, 0x24, 0x18]);
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24, 0x4d, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xd8]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x41, 0x0f, 0x22, 0xd8]); // restore bootstrap CR3
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification(
+        &mut code,
+        [
+            "restore-header",
+            "restore-executable",
+            "restore-relro",
+            "restore-writable",
+        ],
+    )?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_entry_authority(relro_sealed: bool) -> Result<Vec<u8>, CompileError> {
+    static_image_entry_and_stack_slot_authority(false, relro_sealed)
+}
+
+fn static_image_stack_slot_authority(relro_sealed: bool) -> Result<Vec<u8>, CompileError> {
+    static_image_entry_and_stack_slot_authority(true, relro_sealed)
+}
+
+fn static_image_entry_and_stack_slot_authority(
+    verify_stack_slot: bool,
+    relro_sealed: bool,
+) -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x41, 0x50, 0x57, 0x56, 0x51]); // bootstrap, payload, metadata, static root
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_sealed_leaf_verification_with_relro(
+        &mut code,
+        [
+            "entry-header",
+            "entry-executable",
+            "entry-relro",
+            "entry-writable",
+        ],
+        relro_sealed,
+    )?;
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+
+    code.bytes(&[0x4c, 0x8b, 0x44, 0x24, 0x18]); // qualified bootstrap root
+    code.bytes(&[0x4d, 0x85, 0xc0]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x41, 0xf7, 0xc0, 0xff, 0x0f, 0x00, 0x00]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x81, 0xf8, 0x00, 0xb0, 0xff, 0x3f]);
+    code.jump_if(0x87, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x1c, 0x24, 0x4d, 0x39, 0xd8]);
+    code.jump_if(0x84, "fail");
+    code.bytes(&[0x0f, 0x20, 0xd8, 0x48, 0x25, 0x00, 0xf0, 0xff, 0xff]);
+    code.bytes(&[0x4c, 0x39, 0xc0]);
+    code.jump_if(0x85, "fail");
+
+    code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x10]); // payload base
+    code.bytes(&[0x48, 0xb8]);
+    code.bytes(&0x004a_6580_u64.to_le_bytes());
+    code.bytes(&[0x49, 0x39, 0x42, 0x18]); // copied ELF e_entry
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x49, 0x8b, 0x42, 0x18]);
+    code.bytes(&[0x48, 0x2d, 0x00, 0x00, 0x40, 0x00]);
+    code.bytes(&[0x48, 0x3d, 0x80, 0x65, 0x0a, 0x00]); // exact entry offset 0xa6580
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x08]); // final leaf table
+    code.bytes(&[0x4c, 0x89, 0xd0, 0x48, 0x05, 0x00, 0x60, 0x0a, 0x00]);
+    code.bytes(&[0x48, 0x83, 0xc8, 0x05]); // user read/execute, never writable
+    code.bytes(&[0x49, 0x39, 0x83, 0x30, 0x05, 0x00, 0x00]); // leaf ordinal 166
+    code.jump_if(0x85, "fail");
+
+    if verify_stack_slot {
+        code.bytes(&[0x4c, 0x8b, 0x5c, 0x24, 0x08]); // final leaf table
+        code.bytes(&[0x49, 0x83, 0xbb, 0xf0, 0x0f, 0x00, 0x00, 0x00]); // guard 510
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x49, 0x83, 0xbb, 0xf8, 0x0f, 0x00, 0x00, 0x00]); // slot 511
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&0x0060_0000_u64.to_le_bytes()); // provider-private initial top
+        code.bytes(&[0xa9, 0xff, 0x0f, 0x00, 0x00]);
+        code.jump_if(0x85, "fail");
+        code.bytes(&[0xa9, 0x0f, 0x00, 0x00, 0x00]);
+        code.jump_if(0x85, "fail");
+    }
+
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x20, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_detach_address_space() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    code.bytes(&[0x57, 0x56, 0x51]);
+    emit_static_image_address_space_resource_validation(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_post_relro_leaf_verification(
+        &mut code,
+        [
+            "detach-before-header",
+            "detach-before-executable",
+            "detach-before-relro",
+            "detach-before-writable",
+        ],
+    )?;
+    emit_static_image_address_space_hierarchy_verification(&mut code, true)?;
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xab]);
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x8b, 0x3c, 0x24, 0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x0a, 0x00, 0x00, 0xfc, 0xf3, 0x48, 0xaf]);
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0x48, 0x8b, 0x7c, 0x24, 0x10]);
+    code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
+    emit_static_image_post_relro_leaf_verification(
+        &mut code,
+        [
+            "detach-after-header",
+            "detach-after-executable",
+            "detach-after-relro",
+            "detach-after-writable",
+        ],
+    )?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18, 0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x48, 0x83, 0xc4, 0x18, 0x31, 0xc0, 0xc3]);
+    code.finish()
+}
+
+fn static_image_revoke_initial_leaves() -> Result<Vec<u8>, CompileError> {
+    let mut code = X86FunctionEncoder::default();
+    emit_static_image_resource_validation(&mut code)?;
+    emit_static_image_post_relro_leaf_verification(
+        &mut code,
+        [
+            "revoke-header",
+            "revoke-executable",
+            "revoke-relro",
+            "revoke-writable",
+        ],
+    )?;
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]); // revoke all 512 entries
+    code.bytes(&[0x0f, 0xae, 0xf0]);
+    code.bytes(&[0x48, 0x89, 0xf7]);
+    code.bytes(&[0x31, 0xc0]);
+    code.bytes(&[0xb9, 0x00, 0x02, 0x00, 0x00]);
+    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]); // verify complete revocation
+    code.jump_if(0x85, "fail");
+    code.bytes(&[0xb8, 0x01, 0x00, 0x00, 0x00, 0xc3]);
+    code.bind("fail")?;
+    code.bytes(&[0x31, 0xc0, 0xc3]);
+    code.finish()
+}

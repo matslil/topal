@@ -78,7 +78,17 @@ comparison matches 403 other functions and 131 declarations/imports/macros/
 module gates, with no removed function; the two reviewed parent decompositions
 add only their two private helpers. All 621 language and 173 semantics unit
 tests pass. Extracted included sources remain at most 1949 lines after normal
-formatting. Compiler/provider decomposition and final qualification remain.
+formatting.
+
+Compiler/provider extraction uses the same lexical modules and public paths.
+The process-entry emitter delegates to five ordered phases sharing its one
+encoder; eight ordinary audit helpers retain the original single test entry
+and every assertion. Fingerprints match 505 other backend functions and 280
+declarations without removing any function or declaration. All 254 compiler unit tests and all compiler targets pass. Every owned Rust source now passes the unchanged 2000-line ceiling.
+The audit covers all 333 previously tracked sources and 48 new backend sources;
+ignored generated caches are pruned before traversal. The [preservation
+audits](../tools/systems-source-audit/README.md) are retained for reproduction.
+Final workspace, exact native artifact and VM qualification remain.
 
 ## Verification and evidence reuse
 
