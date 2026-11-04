@@ -171,6 +171,24 @@ pressure at 365 MiB. These are failed/incomplete validations. The full current
 Rust workspace suite and all-target check remain required before this increment's
 qualification is complete. The host's 1569 MiB reserve and zero-swap policy remain
 in force; more available RAM or a separate qualified runner is needed.
+An additional retry used the compiler's actual jemalloc configuration with one
+arena, immediate dirty/muzzy-page purging, no retained mappings and no thread
+cache. The compiler explicitly accepted every setting. This changed no cgroup
+or host policy, but the all-target check was still killed at 420 MiB. A separate
+language-model test build was killed at 388 MiB. The journal confirms both
+out-of-memory dispositions. All 181 current semantics tests were separately
+rebuilt and passed within a 380 MiB budget; this does not qualify the remaining
+workspace targets.
+
+A [separate-runner driver](tools/rust-qualification/README.md) is now prepared
+for the outstanding Rust checks, retaining the unchanged bounded wrapper and
+recording exact commit/tool/command/log identities. Its environment preflight
+passes against Rust 1.97.0 and LLVM 22.1.6, and Python syntax and workflow structure
+checks pass. The adjacent GitHub Actions template is inactive: activation needs
+one workflow entry point outside `linux-kernel/`, at GitHub's required location.
+The file-location exception has been requested. No hosted run or full Rust
+qualification is claimed.
+
 The [initial acceptance ledger](step-4-status.md) remains in force. General
 allocation, distribution replacement, containers and VM hosting remain unfinished.
 

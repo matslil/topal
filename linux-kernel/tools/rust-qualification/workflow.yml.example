@@ -1,0 +1,42 @@
+# Activation requires this one entry point at .github/workflows/rust-qualification.yml.
+name: Rust workspace qualification
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: rust-qualification-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: 1.97.0
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Install qualification tools on the disposable runner
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential gdb python3
+          rustup toolchain install 1.97.0 --profile minimal --component llvm-tools,rustfmt
+      - name: Start the runner user manager for bounded validation
+        run: |
+          runner_uid=$(id -u)
+          sudo systemctl start "user@${runner_uid}.service"
+          echo "XDG_RUNTIME_DIR=/run/user/${runner_uid}" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${runner_uid}/bus" >> "$GITHUB_ENV"
+      - name: Qualify the checked-out commit
+        run: python3 linux-kernel/tools/rust-qualification/run.py --output /tmp/topal-rust-qualification
+      - name: Retain exact command results and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rust-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/topal-rust-qualification
+          if-no-files-found: warn
+          retention-days: 7

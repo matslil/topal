@@ -123,6 +123,14 @@ bounded reusable RAM-page owner, with general
 allocation and the initial distribution/container/VM-hosting acceptance still
 unfinished.
 
+All 181 current semantics tests have also been freshly rebuilt and passed under
+the existing host limits. Actual compiler-allocator retention tuning did not
+make the all-target or language-model builds fit their 420/388 MiB budgets.
+The [separate-runner preparation](tools/rust-qualification/README.md) retains
+the bounded wrapper and exact command evidence. Its GitHub workflow remains an
+inactive template pending approval of the required file-location exception;
+there is no hosted success or completed Rust qualification yet.
+
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The
 [model foundation](step-4-borrowed-region-model.md) and
