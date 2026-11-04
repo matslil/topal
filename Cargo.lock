@@ -709,6 +709,7 @@ dependencies = [
 name = "topal-semantics"
 version = "0.1.0"
 dependencies = [
+ "num-bigint",
  "sha2",
 ]
 

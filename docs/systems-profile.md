@@ -583,6 +583,26 @@ borrowed regions and frame transport; it adds no core allocator, Memory, resourc
 function or effect meaning. `TK-DEC-278` defines the eight-slot owner and staged
 model/source/native qualification; its design alone is not executable evidence.
 
+Qualified ordinary region functions may also access unsigned byte fields through
+`region unsigned load` and `region unsigned store`. A static `byte-count` from
+one through eight and explicit `little-endian` or `big-endian` `byte-order`
+describe the encoding independently of architecture word size and alignment.
+Dynamic offsets and values retain ordinary arbitrary-precision Nat meaning.
+Load returns Optional Nat; store returns Boolean. Complete view/range/rights and
+value preflight precedes owner-payload access. Invalid ranges, read-only stores
+and values outside the complete encoding refuse without payload access or
+partial mutation. Existing generation, helper-frame, alias/effect and temporary
+reclamation laws apply unchanged. Source fact expressions retain ordinary
+evaluation order, and their earlier effects are not rolled back by refusal.
+
+This provides plain-memory encoding, with no source address/cast, new core
+integer, alignment or atomic guarantee. Machine, MMIO, DMA and user-memory
+protocols remain separate. It changes systems qualification, not core value,
+Memory, function, effect or destruction meaning. See
+[unsigned region fields](../linux-kernel/design/unsigned-region-fields.md),
+`TK-DEC-279`. The portable-model stage does not qualify source lowering or native
+execution; complete object/caller/cost and machine evidence remain required.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

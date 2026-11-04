@@ -12316,3 +12316,16 @@ order and explicit native-only/earlier-context compatibility. Independently
 execute alternate source placement, invalid/mixed bindings and false/malformed
 completion, no-entry/cleanup/reuse and complete affected kernel/BusyBox cohorts.
 See [TK-DEC-278](../../linux-kernel/design/source-ram-page-allocation.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-UNSIGNED-001 — Qualified ordinary field encodings
+
+Implement `TOPAL-SYSTEMS-REGION-UNSIGNED-001` and
+`TOPAL-SYSTEMS-REGION-UNSIGNED-QUALIFY-001` through existing ordinary source,
+module, effect and native pipelines. Bind exact static formats and runtime fact
+order, full Nat range semantics, complete checked byte access, shared-owner
+effects and all helper costs/code/data. Reject incomplete or changed runtime
+evidence and preserve byte-only/earlier callable controls. Execute independently
+observed native components before enabling the real file-position application;
+retain its arithmetic, admission, owner and cleanup laws. Keep existing source
+resource limits and qualify every affected changed-kernel cohort. See
+[TK-DEC-279](../../linux-kernel/design/unsigned-region-fields.md).

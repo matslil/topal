@@ -136,6 +136,14 @@ workflow-location exception.
 This adds a bounded reusable RAM-page owner. General allocation and the initial
 distribution/container/VM-hosting acceptance remain unfinished.
 
+The next [unsigned-field stage](step-4-unsigned-region-fields.md) defines explicit
+portable encodings on existing borrowed regions. Its actual-owner model and
+all 190 semantics tests pass, with nine new encoding/refusal/lifetime tests.
+Source/native qualification and current file-position integration remain pending;
+no changed kernel or source runtime is claimed by the model. This addresses the
+current eight-byte codec's 60152-byte temporary bound without enlarging the
+existing source arena or changing core language meaning.
+
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The
 [model foundation](step-4-borrowed-region-model.md) and

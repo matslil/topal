@@ -6,6 +6,9 @@ mod owner;
 pub(crate) use owner::ControllerActionState;
 pub use owner::RegionActionReclamation;
 use owner::Storage;
+#[path = "systems_region_unsigned.rs"]
+mod unsigned;
+pub use unsigned::{RegionLibraryByteOrder, RegionLibraryUnsignedFormat};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegionLibraryError {
@@ -16,6 +19,7 @@ pub enum RegionLibraryError {
     Bounds,
     ReadOnly,
     ByteValue,
+    UnsignedValue,
     Capacity,
     IdentityExhausted,
     NotRoot,

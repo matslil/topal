@@ -10021,3 +10021,64 @@ observations, strict artifact/boot refusal, native-only legacy behavior and the
 complete affected VFS/BusyBox/source cohort against independent reference and
 pinned Linux oracles. Changed native artifacts SHALL require fresh machine
 observations; unchanged interface labels alone SHALL NOT justify evidence reuse.
+
+### TOPAL-SYSTEMS-REGION-UNSIGNED-001 — Contained unsigned byte fields
+
+A qualified ordinary `KernelByteRegion` context MAY provide `unsigned load` and
+`unsigned store` members with `offset-bytes`, `byte-count`, `byte-order` and,
+for store, `value` facts. Offset/value SHALL be ordinary Nat expressions.
+Byte count SHALL be a static integer literal in `[1,8]`; order SHALL be the
+static sealed fact `little-endian` or `big-endian`. Invalid, missing, unknown or
+duplicated format facts SHALL reject qualification. Runtime fact expressions
+SHALL retain ordinary named-field evaluation order before native slot adaptation.
+
+For `w` bytes `b[0..w)`, load SHALL return Some of
+`sum(b[i] * 256^i)` for little endian, or `sum(b[i] * 256^(w-1-i))` for big endian.
+Store SHALL admit exactly `value < 256^w` and encode that complete value in the
+selected order. Nat values SHALL retain arbitrary precision and SHALL NOT be
+truncated to obtain a valid index or value. Load SHALL return Optional Nat and
+store SHALL return Boolean; no source address or new core value type is created.
+
+Existing owner/binding/generation/frame and contained-rights laws SHALL apply.
+The entire field SHALL fit the current view and actual owner using nonwrapping
+range checks. Load range refusal SHALL return None before any owner-payload
+read. Store SHALL validate the entire span, write rights and value range before
+any owner-payload access; refusal SHALL return false without payload access or
+partial mutation. Private view/control admission reads are not payload reads.
+Successful store SHALL write exactly the selected field and preserve surrounding
+bytes. Refusal SHALL NOT roll back earlier argument effects or successful stores.
+Invalid authority SHALL retain its existing terminal/no-owner-resumption laws.
+
+Unaligned views SHALL be supported. These operations SHALL NOT imply atomicity,
+alignment, one hardware transaction or synchronization, and SHALL NOT substitute
+for MMIO, atomic, DMA, firmware or user-memory protocols. Load/store SHALL retain
+owner-relative Read/Write identities through aliases and helper calls without
+creating a view, owner or generation. Core Nat, Memory, function, effect,
+AllocationRegion and destruction semantics SHALL remain unchanged.
+
+### TOPAL-SYSTEMS-REGION-UNSIGNED-QUALIFY-001 — Field runtime and owning callers
+
+Field source objects SHALL bind their exact source/module/signature, static
+formats, runtime/code/read-only inputs, hooks and complete allocation/stack/view
+costs. New runtime evidence SHALL be required exactly when used; missing, null,
+orphan, changed or undercharged evidence SHALL reject qualification/publication.
+Byte-only and earlier Unit/action/framed/instance contracts SHALL retain explicit
+compatibility controls and canonical metadata. Existing 65536-byte temporary and
+4096-byte source-stack limits SHALL NOT be silently raised. A measured high-water
+mark SHALL NOT replace a complete resource certificate.
+
+First integration MAY replace the ordinary file-position `store-u64-le` codec
+with an explicit eight-byte little-endian store. Source arithmetic and its full
+signed-offset check, native admission/transfer order, actual shared field loan,
+Boolean handling and complete temporary reclamation SHALL retain their laws.
+Native code SHALL NOT duplicate the source codec/arithmetic or substitute copied
+test bytes for the owner. Changed native inputs SHALL require fresh affected VM
+observations; prior source/ABI labels SHALL NOT justify evidence reuse.
+
+Qualification SHALL include an actual-owner portable model, independent bytes
+for every width/order and unsigned boundary, large Nat facts, unaligned/edge and
+read-only/narrow windows, alias/frame/generation/foreign-owner refusal and source
+fact evaluation order. Independent native execution and debugger observations
+SHALL prove actual source/helper/owner operations, refused payload access,
+caller preservation and complete temporary cleanup. Model transitions and
+cleanup flags SHALL NOT be reported as source execution or physical evidence.

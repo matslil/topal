@@ -425,3 +425,15 @@ numeric generations. Verify all occupancy patterns, release slots, reuse/zeroing
 shared lifetime and termination. Model flags and labels shall not constitute
 compiled source, native authority or physical erasure evidence. See
 [TK-DEC-278](../../linux-kernel/design/source-ram-page-allocation.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-UNSIGNED-001 — Actual contained field effects
+
+Model explicit one-to-eight-byte unsigned formats over the same borrowed owner
+bytes as existing access. Use arbitrary-precision range facts and complete
+preflight; refuse invalid spans/rights/values before owner-payload observations
+or mutation. Preserve surrounding bytes, alias effect identity, current-frame
+exclusion, stale/foreign view refusal and successful stores across cancellation.
+Exercise actual persistent field/map loans and their independent completion
+guards. Format data and model cleanup flags shall not become native authority
+or physical execution/erasure evidence. See
+[TK-DEC-279](../../linux-kernel/design/unsigned-region-fields.md).

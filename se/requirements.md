@@ -1880,6 +1880,18 @@ and the existing Linux controls. This adds systems qualification over existing
 ordinary views/frames, without changing core allocator or value meanings.
 See [TK-DEC-278](../linux-kernel/design/source-ram-page-allocation.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-UNSIGNED-001 — Checked unsigned region fields
+
+Qualify unsigned field loads/stores on existing borrowed plain-byte regions with
+explicit byte count and order, ordinary Nat facts/results and existing Optional
+and Boolean refusal. Preserve complete owner/view/generation/rights checks,
+whole-field preflight, arbitrary-precision range rejection and alias-relative
+effects. Retain complete source/caller/cost/runtime binding and reclamation;
+plain fields shall not acquire atomic, device, user-memory or address authority.
+Independently verify encoding, refused payload access, source fact order and
+actual owning application effects. Keep byte-only and earlier callable controls.
+See [TK-DEC-279](../linux-kernel/design/unsigned-region-fields.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,
