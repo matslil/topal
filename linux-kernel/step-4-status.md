@@ -131,6 +131,17 @@ the bounded wrapper and exact command evidence. Its GitHub workflow remains an
 inactive template pending approval of the required file-location exception;
 there is no hosted success or completed Rust qualification yet.
 
+Subsequent validation by existing Cargo target qualifies 1122 distinct current
+Rust tests: 323 in eight foundational packages, 779 in seven tool packages,
+16 in the gate builder and four specification/requirement coverage tests.
+This exposed and corrected a legacy test-fixture dependency on the new page
+declaration and the stale 297-versus-300 systems-rule ledger count. Production
+code and the qualified kernel are unchanged. Compiler/language unit targets,
+compiler CLI integration, workspace doc tests and the full all-target check
+still need qualification; the compiler CLI/doc-test builds were killed at
+their 274/297 MiB cgroup limits. These partial successes do not complete Step 4
+or its Rust workspace qualification.
+
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The
 [model foundation](step-4-borrowed-region-model.md) and

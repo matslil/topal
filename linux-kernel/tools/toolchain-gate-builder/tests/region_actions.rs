@@ -307,11 +307,15 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
         "borrowed-byte-region-action-v1",
     );
     let source = format!("{}{}{}", &source[..start], legacy, &source[end..]);
-    let program = topal_language::compiler::analyze_systems_for_compiler(
+    let mut program = topal_language::compiler::analyze_systems_for_compiler(
         &source,
         &topal_language::compiler::CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .unwrap();
+    // Keep this legacy position-snapshot refusal independent of the current
+    // root's optional page-source declaration and its earlier admission guard.
+    // Missing page snapshots are covered by ram_page_binding.rs.
+    program.ram_page_pool_library = None;
     assert_eq!(
         program
             .file_position_library
@@ -322,6 +326,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
         "borrowed-byte-region-action-v1"
     );
     let object = generate_x86_64_systems_provider_object(&program).unwrap();
+    assert!(object.plan.ram_page_pool_library_interface.is_none());
     assert_eq!(
         object.plan.file_position_library_interface,
         Some("borrowed-byte-region-action-v1")
@@ -346,6 +351,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
         1
     );
     assert_eq!(native_calls("topal_kernel_region_action_apply_v1"), 1);
+    assert_eq!(native_calls("topal_x86_systems_ram_page_apply_v1"), 0);
     let destination = directory.join("refused");
     let error = publish_x86_64_systems_artifact_with_kernel_libraries(
         &program,

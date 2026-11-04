@@ -41,8 +41,9 @@ models retain their behavior and check shared-map consistency. Testing exposed
 one missed bitmap clear in truncate-on-open; that path now updates and erases
 the same resource as ordinary truncation/destruction.
 
-All 181 semantics unit tests and 621 language unit tests pass, including eight
-new page-action tests. Workspace all-target checks and formatting pass. The
+At the portable-model stage, all 181 semantics unit tests and 621 language unit
+tests passed, including eight new page-action tests. Workspace all-target checks
+and formatting passed at that stage. The
 existing source-size ceiling passes; model and test files remain below 2000
 lines. The systems specification now has 300 unique rule IDs. Further stage
 checks and traceability are recorded with their actual results as work proceeds.
@@ -188,6 +189,42 @@ checks pass. The adjacent GitHub Actions template is inactive: activation needs
 one workflow entry point outside `linux-kernel/`, at GitHub's required location.
 The file-location exception has been requested. No hosted run or full Rust
 qualification is claimed.
+
+## Additional Rust package qualification
+
+Splitting validation by existing Cargo target completed the following current
+implementation tests without changing the bounded-wrapper policy:
+
+| Scope | Passed tests | Result |
+| --- | ---: | --- |
+| Source, syntax, C ABI/bindgen, GEIR, semantics, serialization and transfer packages | 323 | All targets pass; the 181 semantics tests are included in this count. |
+| Best-practices, build, debugger, documentation, interpreter, linter and LSP packages | 779 | All targets pass, including 280 debugger and 404 interpreter CLI tests. |
+| Kernel toolchain gate builder | 16 | Seven unchanged targets pass; the corrected region-action target passes all eight of its tests. |
+| Language specification/requirement coverage integration | 4 | All tests pass after correcting the mechanically checked rule count. |
+
+These are 1122 distinct passing Rust tests, not complete workspace qualification.
+The first gate-package command failed one legacy test: the current root's new
+page declaration triggered its missing-snapshot guard before the intended
+file-position guard. That structural control now explicitly selects the retained
+native page allocator and verifies the absence of page-source calls. It still
+requires the exact missing action-snapshot error and no destination publication.
+The separate page-binding target retains its page-snapshot refusal controls.
+All eight affected region-action tests then pass; unchanged targets were not
+repeated. No production code, generated kernel or machine-observation binding
+changed.
+
+The coverage integration initially found two failures from the stale systems
+rule count, 297 instead of 300, in `se/core-language-coverage.md`. Updating only
+that count restores all four coverage/traceability checks without changing owner,
+phase or completion status. Bounded workspace formatting and strict whitespace
+checks also pass. An earlier formatting attempt refused insufficient available
+memory and is not counted as a pass.
+
+The compiler CLI integration build was killed at its 274 MiB cap; the separate
+workspace doc-test build was killed at 297 MiB. Both are journal-confirmed cgroup
+out-of-memory failures. Compiler/language unit targets, compiler CLI integration,
+workspace doc tests and the complete all-target check remain unqualified. The
+prepared workflow is still inactive pending the requested location exception.
 
 The [initial acceptance ledger](step-4-status.md) remains in force. General
 allocation, distribution replacement, containers and VM hosting remain unfinished.
