@@ -91,7 +91,77 @@ fn emit_read(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<(
     Ok(())
 }
 
-fn emit_write(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<(), CompileError> {
+fn emit_source_page_preparation(e: &mut E<'_>, prefix: &str) -> Result<(), CompileError> {
+    let resident = format!("{prefix}-source-resident");
+    let clock = format!("{prefix}-source-clock");
+    let scan = format!("{prefix}-source-capacity");
+    let advance = format!("{prefix}-source-capacity-next");
+    let ready = format!("{prefix}-source-ready");
+    // CF still describes the actual page lookup. Capacity inspection chooses
+    // no candidate and performs no allocation before the recoverable clock.
+    e.0.jump_if(0x83, &resident);
+    e.mov(R11, R12);
+    e.add(R11, BASE + 24);
+    e.imm(R9, 8);
+    e.imm(C, 0);
+    e.0.bind(&scan)?;
+    super::super::namespace::byte(e, A, R11, 0);
+    e.cmp(A, 1);
+    e.0.jump_if(0x87, "fatal");
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, &advance);
+    e.add(C, 1);
+    e.0.bind(&advance)?;
+    e.add(R11, 1);
+    e.add(R9, -1);
+    e.cmp(R9, 0);
+    e.0.jump_if(0x85, &scan);
+    e.cmp(C, 0);
+    e.0.jump_if(0x84, "file-enospc");
+    e.imm(Si, 0);
+    e.imm(Di, 0);
+    e.0.jump(&clock);
+    e.0.bind(&resident)?;
+    e.mov(R9, R12);
+    e.add(R9, BASE + 24);
+    e.rr(0x01, R9, C);
+    super::super::namespace::byte(e, A, R9, 0);
+    e.cmp(A, 1);
+    e.0.jump_if(0x85, "fatal");
+    payload(e, Di, C);
+    e.mov(Si, R11);
+    e.0.bind(&clock)?;
+    e.0.call("file-clock");
+    e.0.jump_if(0x82, "file-eio");
+    e.mov(R13, A);
+    e.0.bytes(&[0x57]);
+    e.mov(R11, Si);
+    e.mov(Si, R8);
+    e.mov(Di, R12);
+    e.add(Di, STAGING);
+    e.mov(C, Bp);
+    e.0.bytes(&[0xfc, 0xf3, 0xa4, 0x5f]);
+    e.cmp(R11, 0);
+    e.0.jump_if(0x85, &ready);
+    e.mov(R9, R15);
+    shift(e, R9, false, 12);
+    super::super::super::ram_page_region::emit_action(e.0, B, 0, R9);
+    // This slot comes exclusively from the cleaned source map delta.
+    payload(e, Di, A);
+    e.mov(R11, A);
+    shift(e, R11, true, 5);
+    e.rr(0x01, R11, R12);
+    e.add(R11, PAGES);
+    e.0.bind(&ready)?;
+    Ok(())
+}
+
+fn emit_write(
+    e: &mut E<'_>,
+    positional: bool,
+    source_position: bool,
+    source_page: bool,
+) -> Result<(), CompileError> {
     let prefix = if positional {
         "file-pwrite"
     } else {
@@ -132,56 +202,62 @@ fn emit_write(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<
     e.0.jump_if(0x82, "file-efault");
     e.mov(R10, B);
     e.0.call("file-page-lookup");
-    e.0.jump_if(0x83, &format!("{prefix}-page-ready"));
-    e.mov(R11, R12);
-    e.add(R11, PAGES);
-    e.imm(R9, 0);
-    e.0.bind(&format!("{prefix}-free-page"))?;
-    e.load(A, R11, 0);
-    e.cmp(A, 0);
-    e.0.jump_if(0x84, &format!("{prefix}-free-ready"));
-    e.add(R11, 32);
-    e.add(R9, 1);
-    e.cmp(R9, 8);
-    e.0.jump_if(0x82, &format!("{prefix}-free-page"));
-    e.0.jump("file-enospc");
-    e.0.bind(&format!("{prefix}-free-ready"))?;
-    e.mov(C, R9);
-    e.0.bind(&format!("{prefix}-page-ready"))?;
-    payload(e, Di, C);
-    e.mov(Si, R11);
-    // A free association's payload is clean before it receives an identity.
-    e.load(A, Si, 0);
-    e.cmp(A, 0);
-    e.0.jump_if(0x85, &format!("{prefix}-page-checked"));
-    e.0.bytes(&[0x57]);
-    e.imm(A, 0);
-    e.imm(C, 4096 / 8);
-    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf, 0x5f]);
-    e.0.jump_if(0x85, "fatal");
-    for offset in [8, 16, 24] {
-        e.load(A, Si, offset);
+    if source_page {
+        emit_source_page_preparation(e, prefix)?;
+    } else {
+        e.0.jump_if(0x83, &format!("{prefix}-page-ready"));
+        e.mov(R11, R12);
+        e.add(R11, PAGES);
+        e.imm(R9, 0);
+        e.0.bind(&format!("{prefix}-free-page"))?;
+        e.load(A, R11, 0);
         e.cmp(A, 0);
+        e.0.jump_if(0x84, &format!("{prefix}-free-ready"));
+        e.add(R11, 32);
+        e.add(R9, 1);
+        e.cmp(R9, 8);
+        e.0.jump_if(0x82, &format!("{prefix}-free-page"));
+        e.0.jump("file-enospc");
+        e.0.bind(&format!("{prefix}-free-ready"))?;
+        e.mov(C, R9);
+        e.0.bind(&format!("{prefix}-page-ready"))?;
+        payload(e, Di, C);
+        e.mov(Si, R11);
+        // A free association's payload is clean before it receives an identity.
+        e.load(A, Si, 0);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, &format!("{prefix}-page-checked"));
+        e.0.bytes(&[0x57]);
+        e.imm(A, 0);
+        e.imm(C, 4096 / 8);
+        e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf, 0x5f]);
         e.0.jump_if(0x85, "fatal");
+        for offset in [8, 16, 24] {
+            e.load(A, Si, offset);
+            e.cmp(A, 0);
+            e.0.jump_if(0x85, "fatal");
+        }
+        e.0.bind(&format!("{prefix}-page-checked"))?;
+        e.0.call("file-clock");
+        e.0.jump_if(0x82, "file-eio");
+        e.mov(R13, A);
+        // The complete input prefix was admitted. Its private copy precedes any
+        // page identity, payload, logical-size or shared-position publication.
+        e.0.bytes(&[0x57]);
+        e.mov(R11, Si);
+        e.mov(Si, R8);
+        e.mov(Di, R12);
+        e.add(Di, STAGING);
+        e.mov(C, Bp);
+        e.0.bytes(&[0xfc, 0xf3, 0xa4, 0x5f]);
     }
-    e.0.bind(&format!("{prefix}-page-checked"))?;
-    e.0.call("file-clock");
-    e.0.jump_if(0x82, "file-eio");
-    e.mov(R13, A);
-    // The complete input prefix was admitted. Its private copy precedes any
-    // page identity, payload, logical-size or shared-position publication.
-    e.0.bytes(&[0x57]);
-    e.mov(R11, Si);
-    e.mov(Si, R8);
-    e.mov(Di, R12);
-    e.add(Di, STAGING);
-    e.mov(C, Bp);
-    e.0.bytes(&[0xfc, 0xf3, 0xa4, 0x5f]);
-    e.load(A, B, 8);
-    e.store(R11, 0, A);
-    e.mov(A, R15);
-    shift(e, A, false, 12);
-    e.store(R11, 8, A);
+    if !source_page {
+        e.load(A, B, 8);
+        e.store(R11, 0, A);
+        e.mov(A, R15);
+        shift(e, A, false, 12);
+        e.store(R11, 8, A);
+    }
     e.mov(A, R15);
     e.arith(4, A, 4095);
     e.rr(0x01, Di, A);
@@ -213,17 +289,18 @@ fn emit_write(e: &mut E<'_>, positional: bool, source_position: bool) -> Result<
 pub(super) fn emit(
     code: &mut X86FunctionEncoder,
     source_position: bool,
+    source_page: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     emit_read(&mut e, false, source_position)?;
     emit_read(&mut e, true, source_position)?;
-    emit_write(&mut e, false, source_position)?;
-    emit_write(&mut e, true, source_position)?;
+    emit_write(&mut e, false, source_position, source_page)?;
+    emit_write(&mut e, true, source_position, source_page)?;
     e.0.bind("file-zero")?;
     e.imm(A, 0);
     emit_static_process_sysret(e.0);
     emit_seek(&mut e)?;
-    emit_truncate(&mut e)?;
+    emit_truncate(&mut e, source_page)?;
     emit_stat(&mut e)?;
     Ok(())
 }
@@ -307,7 +384,7 @@ fn emit_seek(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
-fn emit_truncate(e: &mut E<'_>) -> Result<(), CompileError> {
+fn emit_truncate(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.0.bind("file-truncate")?;
     e.cmp(Si, 0);
     e.0.jump_if(0x8c, "file-einval");
@@ -365,9 +442,13 @@ fn emit_truncate(e: &mut E<'_>) -> Result<(), CompileError> {
     }
     e.0.jump("file-truncate-next");
     e.0.bind("file-truncate-release-page")?;
-    payload(e, R8, R9);
-    erase(e, R8, 4096);
-    erase(e, R11, 32);
+    if source_page {
+        super::super::super::ram_page_region::emit_action(e.0, B, 1, R9);
+    } else {
+        payload(e, R8, R9);
+        erase(e, R8, 4096);
+        erase(e, R11, 32);
+    }
     e.0.bind("file-truncate-next")?;
     e.add(R11, 32);
     e.add(R9, 1);

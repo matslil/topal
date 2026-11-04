@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/150";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/151";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -308,7 +308,11 @@ fn validate_artifact_input(
         ));
     }
     crate::systems_provider_object::inspect_linked_process_backing(kernel)?;
-    if artifact.volatile_files != crate::systems_provider_object::volatile_file_profile() {
+    if artifact.volatile_files
+        != crate::systems_provider_object::volatile_file_profile(
+            artifact.ram_page_pool_library.is_some(),
+        )
+    {
         return Err(CompileError::Tool(
             "unqualified volatile filesystem ownership/capacity evidence".into(),
         ));
@@ -386,12 +390,14 @@ fn validate_artifact_input(
         crate::systems_library::inspect_linked_library(kernel, library)?;
     }
     crate::systems_file_region_boot::validate(kernel, artifact)?;
+    crate::systems_ram_page_region_boot::validate(kernel, artifact)?;
     crate::systems_root_region_boot::validate(kernel, artifact)?;
     crate::systems_region_library::validate_instance_namespaces(
         kernel,
         &[
             artifact.region_library.as_ref(),
             artifact.file_position_library.as_ref(),
+            artifact.ram_page_pool_library.as_ref(),
         ],
     )?;
     let identity_interface = artifact
@@ -1200,6 +1206,13 @@ mod tests {
             )
             .unwrap()
         });
+        let page = program.ram_page_pool_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
         let position = program.file_position_library.as_ref().map(|requirement| {
             crate::systems_library::load_source_library(
                 requirement,
@@ -1213,6 +1226,7 @@ mod tests {
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             crate::SystemsKernelLibraries {
+                ram_page_pool: page.as_ref(),
                 file_position: position.as_ref(),
                 region: region.as_ref(),
                 policy: Some(&source),

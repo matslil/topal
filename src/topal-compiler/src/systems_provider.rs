@@ -120,7 +120,7 @@ use topal_language::compiler::{
 
 use crate::CompileError;
 
-pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/237";
+pub const X86_SYSTEMS_PROVIDER_REVISION: &str = "topal.provider.x86_64-qemu-pc-q35/238";
 pub const X86_SYSTEMS_PLATFORM_ABI: &str = "topal.systems.x86_64-bare/1";
 pub const X86_SYSTEMS_DATA_LAYOUT: &str =
     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128";
@@ -757,6 +757,7 @@ pub struct SystemsBootstrapPlacementPlan {
 pub struct X86SystemsProviderPlan {
     pub region_library_interface: Option<&'static str>,
     pub file_position_library_interface: Option<&'static str>,
+    pub ram_page_pool_library_interface: Option<&'static str>,
     pub source_library_interface: Option<&'static str>,
     pub time_library_interface: Option<&'static str>,
     pub revision: &'static str,
@@ -833,6 +834,10 @@ pub fn plan_x86_64_systems_provider(
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(X86SystemsProviderPlan {
+        ram_page_pool_library_interface: program
+            .ram_page_pool_library
+            .as_ref()
+            .map(|requirement| requirement.interface.as_str()),
         file_position_library_interface: program
             .file_position_library
             .as_ref()

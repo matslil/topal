@@ -6,6 +6,8 @@ use std::collections::BTreeMap;
 pub(crate) mod file_region;
 #[path = "systems_process_runtime.rs"]
 mod process_runtime;
+#[path = "systems_ram_page_region.rs"]
+pub(crate) mod ram_page_region;
 #[path = "systems_root_region.rs"]
 pub(crate) mod root_region;
 #[path = "systems_x86_function.rs"]
@@ -29,7 +31,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/229";
+    "topal.provider-object.x86_64-qemu-pc-q35/230";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -43,8 +45,8 @@ pub const X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL: &str =
     "topal_x86_static_process_descriptor_table";
 pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 
-pub(crate) fn volatile_file_profile() -> crate::SystemsVolatileFileProfile {
-    process_runtime::volatile_files::profile()
+pub(crate) fn volatile_file_profile(source_page: bool) -> crate::SystemsVolatileFileProfile {
+    process_runtime::volatile_files::profile(source_page)
 }
 
 /// Verify the expanded process/child backing before it can reach a boot image.

@@ -9,6 +9,8 @@ BASE, SIZE, OBJECTS, PAGES, BUFFER = 0x43000, 0x9000, 256, 1024, 4096
 
 
 def install(config):
+    page_map_offset = config.get('page_map_offset')
+    assert page_map_offset in (None, 24)
     records = []
     previous = None
     corrupted = False
@@ -28,7 +30,8 @@ def install(config):
     def inspect_store():
         store = memory(table + BASE, SIZE)
         assert word(store, 0) >= 7
-        assert not any(store[24:OBJECTS]) and not any(store[OBJECTS + 512:PAGES])
+        assert not any(store[32 if page_map_offset is not None else 24:OBJECTS])
+        assert not any(store[OBJECTS + 512:PAGES])
         assert word(store,8)==word(store,16)
         assert not any(store[PAGES + 256:1536]) and not any(store[1536+1024:3072])
         assert not any(store[3072:BUFFER])
@@ -69,6 +72,8 @@ def install(config):
             value = store[PAGES + index * 32:PAGES + (index + 1) * 32]
             payload = store[BUFFER + index * 4096:BUFFER + (index + 1) * 4096]
             owner, page = word(value, 0), word(value, 8)
+            if page_map_offset is not None:
+                assert store[page_map_offset + index] == int(owner != 0), 'allocation/association mismatch'
             if owner == 0:
                 assert not any(value) and not any(payload)
                 continue

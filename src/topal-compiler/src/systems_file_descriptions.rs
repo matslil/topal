@@ -653,6 +653,7 @@ pub(in super::super) fn emit_transfer_services(
 pub(in super::super) fn emit_reclamation(
     code: &mut X86FunctionEncoder,
     source_position: bool,
+    source_page: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // An inactive parent retains references in this same description store.
@@ -728,6 +729,9 @@ pub(in super::super) fn emit_reclamation(
     if source_position {
         // Both banks, all references and the controller storage are now erased.
         e.0.external_call(super::super::file_region::FINALIZE);
+    }
+    if source_page {
+        e.0.external_call(super::super::ram_page_region::FINALIZE);
     }
     e.0.bind("fd-release-return")?;
     e.0.bytes(&[0xc3]);

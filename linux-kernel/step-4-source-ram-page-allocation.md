@@ -89,26 +89,84 @@ kernel dispatch and complete retired-stack/control/history reclamation are not
 proved by this host component test. Existing root/position objects retain their
 separate owning callers and contracts.
 
-## Remaining live-kernel work
+## Live-kernel implementation and pending qualification
 
-The live artifact/caller selection, actual x86-64 filesystem invocation and VM
-qualification remain pending. The new systems artifact member is not yet
-executable; it will be enabled with the actual controller binding. The model
-and source-component stages do not add a kernel capability, change the preceding
-qualified native artifact, or qualify general allocation.
-The [initial acceptance ledger](step-4-status.md) remains in force.
+The [x86-64 controller](../src/topal-compiler/src/systems_ram_page_region.rs)
+and `ram-page-pool-library` artifact selection are now
+implemented and selected in the primary root. The controller lends the actual
+eight-byte map at filesystem offset 24, with independent arena/control/history.
+It preserves all fourteen incoming non-result GPRs. Its 184-byte live frame and
+64-byte complete call/alignment allowance combine with the 1152-byte source
+bound to give a 1400-byte invocation certificate. Enclosing native lifetime
+frames are separately included in the filesystem's 328-byte native helper bound:
+five enclosing return addresses and the lifetime helper's five register saves.
+The 65536/4096-byte source resource limits and frame ABI/family remain unchanged.
 
-Source selection will use the existing two-fact Boolean instance/frame ABI under
-`ram-page-pool`, with separate control/arena/history and complete source/caller
-bounds. The actual write path must preserve all recoverable admission and clock
-ordering before source mutation, validate its exact map delta and publish the
-selected actual backing slot. Release must prove zeroing, complete cleanup and
-association retirement. Changed native code requires fresh affected machine
-observations, including independent alternate-placement and refusal controls.
+Missing-page writes count capacity without choosing a slot before the fallible
+clock. After copying the complete admitted input prefix, they call ordinary
+source and derive the actual slot from its exact whole-map delta. Clean
+association/payload checks precede publication. Resident writes issue no page
+callback. Full release validates owner/object/map/context/resources/generation
+before zeroing/readback, then clears the real map through source and erases the
+association after complete cleanup. Partial truncation retains the bit.
+The complete source input/result frame is erased before requiring true or
+validating the map delta. Independent owner preparation facts survive only as
+controller scalars; views, arena, control and the retired source stack do not.
+
+Boot packaging checks all three independent source namespaces and their actual
+relocated code, immutable data, disjoint storage, module/input/output identities,
+resource certificates and complete native templates. File-position and page
+invocations share the verification algorithm with explicit caller templates;
+their runtime resources and owning bindings remain separate. Source absence
+retains the native allocator and old filesystem metadata omissions.
+
+The first primary smoke observation passed 360 syscall checks and 42 real page
+actions (21 allocations and 21 releases). A subsequent exploratory suite
+collected successful primary/lifetime/last-fit observations, three admitted
+source-failure dispositions and ten allocation/release pre-entry refusals. Its
+aggregate command failed because raw serial bytes were not JSON serializable;
+the reporting error is corrected. An earlier lifetime observation also exposed
+a debugger assumption that a resumed parent fork repeats the syscall instruction;
+the observer now handles the saved continuation explicitly.
+
+The final [RAM-page suite](labs/qemu/x86_64/results/topal-ram-page-region-gate.json)
+now passes all 21 VM dispositions on the selected primary revision: primary,
+lifetime and last-fit execution; cancellation with a live inactive child; six
+admitted bad-source allocation/release cases; ten pre-entry refusals; and a
+native-only compatibility run. The primary executes 360 syscall checks and 42
+page actions; lifetime executes 411 and 50. The cancellation run checks complete
+reclamation after 46 actions. GDB observes the actual four-frame ordinary source,
+adapter, native controller and service call chain, saved return PC, all fourteen
+GPRs, source facts/result, exact map/association/payload changes, and physical
+arena/control/retired-stack/input-frame erasure. Controlled failures prove the
+stopped guest before disposal. The publication contract test passes.
+
+The [public-API binding integration](tools/toolchain-gate-builder/tests/ram_page_binding.rs)
+also passes exact code/storage/data/bounds tampering, rebound outer-kernel-digest
+code mutation, present-null, orphan snapshot and missing source refusals. Native
+source absence publishes the old allocator/profile omissions, contains no page
+instance symbols and passes boot adaptation.
+
+Primary kernel SHA-256 is
+`efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f`.
+Artifact/root/provider/object/boot/gate revisions are 251/237/238/230/151/251.
+This qualifies the bounded RAM-page owner; it does not yet qualify the complete
+affected preceding VFS/BusyBox/source cohort. That fresh cohort and complete
+workspace qualification remain the final stage.
+
+Two bounded compiler unit-test builds were killed by their cgroup at 723/816 MiB;
+a later build was stopped after prolonged reclaim pressure at its 601 MiB cap.
+The host reserve and zero-swap policy were retained. Sharing the verifier, moving
+the binding test to a small public-API integration target and reducing host
+allocator arenas allowed compilation and binding qualification to complete.
+Compiler-library checking and the strict source ceiling pass. Remaining workspace
+and affected-cohort results will be recorded when actually complete.
+The [initial acceptance ledger](step-4-status.md) remains in force. General
+allocation, distribution replacement, containers and VM hosting remain unfinished.
 
 Risk is high at bitmap/association consistency, preparation versus publication,
 source failure, zeroing, stale ownership, cross-domain views, bounds and shared
 process lifetime. Current self-review covers approved systems/resource/effect
 intent, three exact rules, actual model borrows and independent reference laws.
-Live-kernel and complete physical reclamation evidence remain future obligations; no
-independent reviewer result is claimed.
+Complete workspace and affected-cohort qualification remain outstanding;
+no independent reviewer result is claimed.

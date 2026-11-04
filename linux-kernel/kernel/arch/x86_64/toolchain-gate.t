@@ -1959,6 +1959,13 @@ lang systems artifact (
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
+  ram-page-pool-library is lang systems source-library (
+    source is "memory/ram-page-pool.t",
+    export is apply,
+    interface is borrowed-byte-region-instance-action-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   file-position-library is lang systems source-library (
     source is "policy/file-position.t",
     export is advance,

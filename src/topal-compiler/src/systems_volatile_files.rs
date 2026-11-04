@@ -8,13 +8,13 @@ mod create;
 #[path = "systems_volatile_transfer.rs"]
 mod transfer;
 
-pub(super) const BASE: i32 = 0x43000;
+pub(in super::super) const BASE: i32 = 0x43000;
 pub(super) const BYTES: u64 = 0x9000;
-pub(super) const OBJECTS: i32 = BASE + 256;
-pub(super) const PAGES: i32 = BASE + 1024;
+pub(in super::super) const OBJECTS: i32 = BASE + 256;
+pub(in super::super) const PAGES: i32 = BASE + 1024;
 pub(super) const NAMES: i32 = BASE + 1536;
 pub(super) const DIRECTORY_STAGING: i32 = BASE + 3072;
-pub(super) const BUFFER: i32 = BASE + 4096;
+pub(in super::super) const BUFFER: i32 = BASE + 4096;
 // Private process bytes after the transfer staging and before signal actions.
 // In particular, table+32 already belongs to the blocked signal mask.
 pub(super) const UMASK: i32 = STAGING + 256;
@@ -34,14 +34,21 @@ const _: () = {
     assert!(BUFFER as u64 + 8 * 4096 == BASE as u64 + BYTES);
 };
 
-pub(in super::super) fn profile() -> crate::SystemsVolatileFileProfile {
+pub(in super::super) fn profile(source_page: bool) -> crate::SystemsVolatileFileProfile {
     crate::SystemsVolatileFileProfile {
-        schema: "topal.volatile-file.x86_64/2".into(),
+        schema: if source_page {
+            "topal.volatile-file.x86_64/3"
+        } else {
+            "topal.volatile-file.x86_64/2"
+        }
+        .into(),
         process_storage_symbol: super::super::X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
             .into(),
         process_storage_bytes: super::children::STORAGE_BYTES,
         filesystem_offset: BASE as u64,
         filesystem_bytes: BYTES,
+        page_allocation_map_offset: source_page.then_some(24),
+        page_allocation_map_bytes: source_page.then_some(8),
         object_offset: (OBJECTS - BASE) as u64,
         object_count: 4,
         object_bytes: 128,
@@ -60,7 +67,18 @@ pub(in super::super) fn profile() -> crate::SystemsVolatileFileProfile {
         transfer_staging_offset: STAGING as u64,
         transfer_quantum: 256,
         maximum_file_offset: i64::MAX as u64,
-        maximum_native_helper_stack_bytes: MAXIMUM_HELPER_STACK,
+        maximum_native_helper_stack_bytes: if source_page {
+            // fd-{terminal,exec} -> fd-drop-reference -> file-last-description
+            // -> file-destroy-object -> file-release-pages -> page controller:
+            // five enclosing return addresses and five lifetime saves, in
+            // addition to the controller's own complete frame/alignment bound.
+            super::super::ram_page_region::LIVE_FRAME_BYTES
+                + super::super::ram_page_region::CALL_ALIGNMENT_BYTES
+                + 40
+                + 5 * 8
+        } else {
+            MAXIMUM_HELPER_STACK
+        },
         timestamp_policy: "realtime-seconds-noatime".into(),
     }
 }
@@ -226,7 +244,7 @@ pub(super) fn name_pointer(e: &mut E<'_>, destination: super::R, object: super::
     e.rr(0x01, destination, R12);
     e.add(destination, NAMES);
 }
-fn emit_lifetime(e: &mut E<'_>) -> Result<(), CompileError> {
+fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     // Object R10 -> CF set if neither bank holds a live independent description.
     e.0.bind("file-live-description")?;
     e.mov(R11, R12);
@@ -287,9 +305,13 @@ fn emit_lifetime(e: &mut E<'_>) -> Result<(), CompileError> {
     e.load(A, R9, 0);
     e.mem(0x3b, A, R10, 8);
     e.0.jump_if(0x85, "file-release-page-next");
-    payload(e, R11, R8);
-    erase(e, R11, 4096);
-    erase(e, R9, 32);
+    if source_page {
+        super::super::ram_page_region::emit_action(e.0, R10, 1, R8);
+    } else {
+        payload(e, R11, R8);
+        erase(e, R11, 4096);
+        erase(e, R9, 32);
+    }
     e.0.bind("file-release-page-next")?;
     e.add(R9, 32);
     e.add(R8, 1);
@@ -338,11 +360,12 @@ pub(in super::super) fn emit_services(
     code: &mut X86FunctionEncoder,
     file_open_plan: bool,
     source_position: bool,
+    source_page: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     emit_lookup(&mut e)?;
-    emit_lifetime(&mut e)?;
-    transfer::emit(e.0, source_position)?;
+    emit_lifetime(&mut e, source_page)?;
+    transfer::emit(e.0, source_position, source_page)?;
     create::emit(e.0, file_open_plan)?;
     e.0.bind("file-umask")?;
     e.gs(0x8b, R12, TABLE_CONTEXT);

@@ -48,6 +48,7 @@ def module_publication(directory, artifact, key, prefix):
 def copy_architecture_libraries(directory):
     relative = Path("arch/x86_64/policy")
     shutil.copytree(GATE.LINUX_KERNEL/"kernel"/relative, directory/relative)
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel/memory", directory/"memory")
     # Some counterexamples construct a deliberately small policy tree. Retain
     # independent primary imports while changing only their selected policy.
     for name in ('file-open-access.t','bootstrap-byte-copy.t',

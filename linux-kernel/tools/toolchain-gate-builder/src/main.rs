@@ -168,6 +168,16 @@ mod tests {
                 },
             ],
         };
+        let page = SystemsSourceLibraryInput {
+            source: "memory/ram-page-pool.t".into(),
+            source_name: "memory/ram-page-pool.t".into(),
+            text: include_str!("../../../kernel/memory/ram-page-pool.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/page-slots.t".into(),
+                identity: vec!["support".into(), "page-slots".into()],
+                text: include_str!("../../../kernel/support/page-slots.t").into(),
+            }],
+        };
         let position = SystemsSourceLibraryInput {
             source: "policy/file-position.t".into(),
             source_name: "policy/file-position.t".into(),
@@ -184,6 +194,7 @@ mod tests {
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
+                ram_page_pool: Some(&page),
                 file_position: Some(&position),
                 region: Some(&region),
                 policy: Some(&source),

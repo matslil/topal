@@ -26,6 +26,11 @@ fn build_linked_outputs(
             .arg("root.o")
             .arg("provider.o")
             .args(
+                work.join("ram-page-pool/kernel-region.o")
+                    .is_file()
+                    .then_some("ram-page-pool/kernel-region.o"),
+            )
+            .args(
                 work.join("file-position/kernel-region.o")
                     .is_file()
                     .then_some("file-position/kernel-region.o"),
@@ -174,12 +179,16 @@ fn artifact_provenance(
         region_library: None,
         file_position_library: None,
         file_position_runtime: None,
+        ram_page_pool_library: None,
+        ram_page_pool_runtime: None,
         region_runtime: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,
         process_identity_library: None,
-        volatile_files: crate::systems_provider_object::volatile_file_profile(),
+        volatile_files: crate::systems_provider_object::volatile_file_profile(
+            program.ram_page_pool_library.is_some(),
+        ),
         inputs,
         outputs,
     })

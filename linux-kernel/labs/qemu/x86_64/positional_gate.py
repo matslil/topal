@@ -57,6 +57,7 @@ def observe(root, values, calls, timeout, *, lifetime=False, corrupt=False, term
         raise GATE.GateError('file witness does not match the selected ownership/capacity profile')
     debug, failed, result, script = (root / name for name in ('debug.sock', 'failed.txt', 'observation.json', 'file.gdb'))
     config = dict(calls=calls, failed=str(failed), result=str(result), retained_for_exit=lifetime,
+                  page_map_offset=profile.get('page_allocation_map_offset'),
                   corrupt=corrupt, terminate_inactive=terminate)
     if corrupt:
         code,_=CHECKS.code()

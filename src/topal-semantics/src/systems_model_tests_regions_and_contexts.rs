@@ -293,6 +293,7 @@ fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
         kernel_library: None,
         region_library: None,
         file_position_library: None,
+        ram_page_pool_library: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,

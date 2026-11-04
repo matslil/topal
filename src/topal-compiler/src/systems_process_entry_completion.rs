@@ -9,6 +9,7 @@ fn emit_static_process_completion(
     retained_identity: bool,
     structured_identity: bool,
     source_position: bool,
+    source_page: bool,
 ) -> Result<(), CompileError> {
     code.bind("static-process-shell-banner")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -1589,7 +1590,7 @@ fn emit_static_process_completion(
     process_files::emit_initialize(code)?;
     process_files::emit_lifetime_services(code)?;
     process_files::emit_transfer_services(code, source_position)?;
-    process_files::emit_reclamation(code, source_position)?;
+    process_files::emit_reclamation(code, source_position, source_page)?;
     process_runtime::signals::emit_services(code)?;
     process_runtime::namespace::emit_services(code, source_bound, file_open_plan)?;
     process_runtime::realtime::emit_services(code)?;
@@ -1603,7 +1604,12 @@ fn emit_static_process_completion(
         structured_identity,
     )?;
     process_runtime::pipes::emit_services(code)?;
-    process_runtime::volatile_files::emit_services(code, file_open_plan, source_position)?;
+    process_runtime::volatile_files::emit_services(
+        code,
+        file_open_plan,
+        source_position,
+        source_page,
+    )?;
     process_runtime::environment::emit_copy(code)?;
     Ok(())
 }

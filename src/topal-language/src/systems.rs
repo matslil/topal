@@ -363,6 +363,7 @@ pub fn analyze_systems_for_compiler(
         kernel_library: root_entries.kernel_library,
         region_library: root_entries.region_library,
         file_position_library: root_entries.file_position_library,
+        ram_page_pool_library: root_entries.ram_page_pool_library,
         time_library: root_entries.time_library,
         image_library: root_entries.image_library,
         dispatch_library: root_entries.dispatch_library,
@@ -528,6 +529,7 @@ struct ArtifactEntries {
     kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
     region_library: Option<CompilerSystemsSourceLibraryRequirement>,
     file_position_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    ram_page_pool_library: Option<CompilerSystemsSourceLibraryRequirement>,
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
     image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     dispatch_library: Option<CompilerSystemsSourceLibraryRequirement>,
@@ -578,6 +580,7 @@ fn parse_artifact_root(
     let mut kernel_library = None;
     let mut region_library = None;
     let mut file_position_library = None;
+    let mut ram_page_pool_library = None;
     let mut time_library = None;
     let mut image_library = None;
     let mut dispatch_library = None;
@@ -586,7 +589,21 @@ fn parse_artifact_root(
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "file-position-library" {
+        if label_text == "ram-page-pool-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface
+                != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                || ram_page_pool_library.replace(requirement).is_some()
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-REGION-PAGE",
+                    label,
+                    "ram-page-pool-library requires one qualified region instance action entry",
+                ));
+            }
+            continue;
+        } else if label_text == "file-position-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if !matches!(
                 requirement.interface,
@@ -761,6 +778,7 @@ fn parse_artifact_root(
         kernel_library,
         region_library,
         file_position_library,
+        ram_page_pool_library,
         time_library,
         image_library,
         dispatch_library,
@@ -1803,6 +1821,7 @@ include!("systems_source_device_values.rs");
 #[cfg(test)]
 mod tests {
     include!("systems_source_tests_root_and_devices.rs");
+    include!("systems_source_tests_ram_pages.rs");
     include!("systems_source_tests_device_lifecycles.rs");
     include!("systems_source_tests_memory_and_image.rs");
     include!("systems_source_tests_image_completion.rs");

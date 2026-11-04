@@ -115,8 +115,11 @@ witness does not establish general Linux compatibility.
 The next [reusable-page action stage](step-4-source-ram-page-allocation.md) models
 ordinary effects on the real filesystem allocation map and guarded association
 publication. Its portable model and independently executed ordinary source
-objects pass; live kernel binding/calls and VM integration remain pending. It
-adds no qualified machine capability.
+objects pass. The actual x86-64 map/controller binding and 21 targeted VM
+dispositions now pass; the complete affected-cohort and workspace qualification
+remain pending. This adds a bounded reusable RAM-page owner, with general
+allocation and the initial distribution/container/VM-hosting acceptance still
+unfinished.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

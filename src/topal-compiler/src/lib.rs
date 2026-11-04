@@ -18,11 +18,13 @@ mod systems_file_region_boot;
 mod systems_library;
 mod systems_numeric_library;
 mod systems_policy_inputs;
+mod systems_ram_page_region_boot;
 mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
 mod systems_root_region_boot;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
+pub use systems_provider_object::ram_page_region::SystemsRamPageRegionBinding;
 pub use systems_provider_object::root_region::{
     SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
 };

@@ -21,6 +21,7 @@ fn program() -> CompilerSystemsProgram {
     // closed profile; source-bound publication is covered independently.
     program.region_library = None;
     program.file_position_library = None;
+    program.ram_page_pool_library = None;
     program
         .bootstrap
         .handler
@@ -98,6 +99,7 @@ fn declared_library_requires_checked_snapshot_before_publication() {
             None,
             None,
             SystemsKernelLibraries {
+                ram_page_pool: None,
                 file_position: None,
                 region: None,
                 policy: Some(&source),

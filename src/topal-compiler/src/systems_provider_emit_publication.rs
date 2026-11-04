@@ -407,6 +407,9 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
         &static_image_deliver_entropy_initial_random()?,
     );
+    if program.ram_page_pool_library.is_some() {
+        ram_page_region::append(&mut object, text)?;
+    }
     if let Some(requirement) = &program.file_position_library {
         let profile = file_region::FileRegionProfile::from_interface(requirement.interface)?;
         file_region::append(&mut object, text, profile)?;
@@ -426,6 +429,7 @@ pub fn generate_x86_64_systems_provider_object(
             crate::systems_numeric_library::uses_retained_identity(program),
             crate::systems_numeric_library::uses_structured_identity(program),
             program.file_position_library.is_some(),
+            program.ram_page_pool_library.is_some(),
         )?,
     )?;
     append_encoded_function(

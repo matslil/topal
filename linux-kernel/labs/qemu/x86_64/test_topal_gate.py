@@ -193,12 +193,13 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(observation['result'],'pass')
             self.assertEqual(len(observation['calls']),count)
             self.assertTrue(observation['complete_store_erased'] and observation['complete_process_backing_erased'])
-            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/2')
+            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/3')
             self.assertEqual((profile['object_count'],profile['resident_pages'],profile['page_bytes']),(4,8,4096))
             self.assertEqual((profile['filesystem_offset'],profile['filesystem_bytes'],profile['process_storage_bytes']),(0x43000,0x9000,0x4c000))
             self.assertEqual(profile['private_umask_offset'],1664)
             self.assertEqual(profile['transfer_staging_offset']+profile['transfer_quantum'],profile['private_umask_offset'])
-            self.assertEqual(profile['maximum_native_helper_stack_bytes'],112)
+            self.assertEqual(profile['maximum_native_helper_stack_bytes'],328)
+            self.assertEqual((profile['page_allocation_map_offset'], profile['page_allocation_map_bytes']), (24, 8))
             self.assertEqual(profile['maximum_file_offset'],(1<<63)-1)
             self.assertEqual(max(call['resident_pages'] for call in observation['calls']),8)
             self.assertTrue(any(call['result']==-28 for call in observation['calls']))
@@ -1343,16 +1344,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/250")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/251")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/237")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/238")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/250",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/251",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/150",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1878,7 +1879,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/250")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/251")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -2566,7 +2567,7 @@ class NamedFileContractTests(unittest.TestCase):
             self.assertEqual(obs["result"],"pass")
             self.assertEqual(len(obs["calls"]),count)
             self.assertTrue(obs["complete_store_erased"] and obs["complete_process_backing_erased"])
-            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/2")
+            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/3")
             self.assertEqual(len(obs["calls"][-1]["objects"]),2 if name=="lifetime" else 0)
             self.assertEqual(obs["calls"][-1]["resident_pages"],2 if name=="lifetime" else 0)
         inactive=proof["inactive_terminal"]

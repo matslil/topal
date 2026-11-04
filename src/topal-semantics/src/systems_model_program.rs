@@ -115,6 +115,7 @@ pub struct SystemsProgram {
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub region_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub file_position_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub ram_page_pool_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub dispatch_library: Option<crate::SystemsSourceLibraryRequirement>,
@@ -1022,6 +1023,17 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ROOT",
                 "region-library requires a qualified Unit or instance-action entry",
+            ));
+        }
+    }
+    if let Some(library) = &program.ram_page_pool_library {
+        library.validate()?;
+        if library.interface
+            != crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-REGION-PAGE",
+                "ram-page-pool-library requires the qualified region instance action interface",
             ));
         }
     }

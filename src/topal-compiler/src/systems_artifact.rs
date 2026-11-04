@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/250";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/236";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/251";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/237";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -431,6 +431,18 @@ pub struct SystemsArtifactProvenance {
     pub file_position_library: Option<crate::SystemsRegionLibraryArtifact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_position_runtime: Option<crate::SystemsFilePositionRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub ram_page_pool_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub ram_page_pool_runtime: Option<crate::SystemsRamPageRegionBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
@@ -585,6 +597,7 @@ pub fn publish_x86_64_systems_artifact_with_source_library(
 pub struct SystemsKernelLibraries<'a> {
     pub region: Option<&'a crate::SystemsSourceLibraryInput>,
     pub file_position: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub ram_page_pool: Option<&'a crate::SystemsSourceLibraryInput>,
     pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
@@ -612,6 +625,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
         static_user_image,
         SystemsKernelLibraries {
             file_position: None,
+            ram_page_pool: None,
             region: None,
             policy: source_library,
             time: time_library,
@@ -638,12 +652,16 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
     let SystemsKernelLibraries {
         region: region_library,
         file_position: file_position_library,
+        ram_page_pool: ram_page_pool_library,
         policy: source_library,
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if program.ram_page_pool_library.is_some() != ram_page_pool_library.is_some() {
+        return Err(CompileError::Tool("E-SYSTEMS-REGION-PAGE: declaration requires its matching explicit page source snapshot".into()));
+    }
     if program.file_position_library.is_some() != file_position_library.is_some() {
         return Err(CompileError::Tool("E-SYSTEMS-REGION-ACTION: declaration requires its matching explicit action source snapshot".into()));
     }
@@ -706,6 +724,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         process_identity_library,
         region_library,
         file_position_library,
+        ram_page_pool_library,
         &stage,
     );
     let record = match result {
@@ -750,6 +769,7 @@ fn publish_in_stage(
     process_identity_library: Option<&crate::SystemsSourceLibraryInput>,
     region_library: Option<&crate::SystemsSourceLibraryInput>,
     file_position_library: Option<&crate::SystemsSourceLibraryInput>,
+    ram_page_pool_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -811,6 +831,29 @@ fn publish_in_stage(
                     input, &requirement.export, tools, &action_work,
                 )
             }
+        })
+        .transpose()?;
+    let ram_page_pool = program
+        .ram_page_pool_library
+        .as_ref()
+        .zip(ram_page_pool_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-REGION-PAGE: source path does not match the declared entry".into(),
+                ));
+            }
+            let page_work = work.join("ram-page-pool");
+            fs::create_dir(&page_work)
+                .map_err(io_error("create page object work space", &page_work))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::PAGE_INSTANCE,
+                tools,
+                &page_work,
+            )
         })
         .transpose()?;
     if program.time_library.is_some()
@@ -876,6 +919,15 @@ fn publish_in_stage(
             )?);
         }
     }
+    let ram_page_pool_runtime = ram_page_pool
+        .as_ref()
+        .map(|page| {
+            crate::systems_provider_object::ram_page_region::inspect_linked(
+                &linked.kernel,
+                &page.record,
+            )
+        })
+        .transpose()?;
     let file_position_runtime = file_position
         .as_ref()
         .map(|action| {
@@ -968,6 +1020,42 @@ fn publish_in_stage(
         static_user_image,
         placements,
     )?;
+    if let Some(page) = ram_page_pool {
+        for (name, bytes) in [
+            ("ram-page-pool-library.t", page.source.as_bytes()),
+            ("ram-page-pool-library.ll", page.llvm.as_bytes()),
+            (
+                "ram-page-pool-library.retained.ll",
+                page.retained_llvm.as_bytes(),
+            ),
+            ("ram-page-pool-library.o", page.object.as_slice()),
+            (
+                "ram-page-pool-library.modules.json",
+                page.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write page source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-ram-page-pool-source:{}", page.record.source),
+            sha256: page.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(page.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-ram-page-pool-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.ram_page_pool_library = Some(page.record);
+        record.ram_page_pool_runtime = ram_page_pool_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
     if let Some(action) = file_position {
         for (name, bytes) in [
             ("file-position-library.t", action.source.as_bytes()),

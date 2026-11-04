@@ -14,6 +14,33 @@ use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 mod inspection;
 pub use inspection::SystemsFilePositionRegionBinding;
 pub(crate) use inspection::inspect_linked;
+pub(super) use inspection::inspect_owned;
+
+/// Caller-owned symbols and exact templates for the shared region verifier.
+/// Source instances still have separate code, arenas, controls and histories.
+pub(super) struct InvocationTemplate {
+    pub(super) framed: bool,
+    pub(super) schema: &'static str,
+    pub(super) interface: &'static str,
+    pub(super) export: &'static str,
+    pub(super) allocate: &'static str,
+    pub(super) abort_hook: &'static str,
+    pub(super) arena: &'static str,
+    pub(super) control: &'static str,
+    pub(super) history: &'static str,
+    pub(super) live_frame_bytes: u64,
+    pub(super) call_alignment_bytes: u64,
+    pub(super) code: Vec<(&'static str, Code)>,
+}
+pub(super) fn fatal_template() -> Code {
+    Code {
+        encoder: X86FunctionEncoder {
+            bytes: vec![0xfa, 0xf4, 0xeb, 0xfd],
+            ..X86FunctionEncoder::default()
+        },
+        ..Code::default()
+    }
+}
 
 pub(crate) const APPLY: &str = "topal_x86_systems_file_position_apply_v1";
 pub(crate) const FINALIZE: &str = "topal_x86_systems_file_position_finalize_v1";

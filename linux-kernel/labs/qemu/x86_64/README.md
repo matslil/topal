@@ -557,3 +557,24 @@ rtk scripts/run_bounded.py -- env TOPAL_WRITE_RAM_PAGE_EVIDENCE=1 cargo test -p 
 
 The explicit evidence variable writes the successful component record under
 `results/`. Ordinary workspace tests leave committed evidence unchanged.
+
+## Live RAM-page owner qualification
+
+The [binding integration](../../../tools/toolchain-gate-builder/tests/ram_page_binding.rs)
+uses the public compiler API to inspect the actual owning kernel and reject
+metadata, source/code and missing-snapshot mismatches. The
+[RAM-page VM harness](ram_page_gate.py) observes actual allocation/release,
+first/last placement, alias/fork/exec lifetime, terminal cancellation, malformed
+source effects and pre-entry refusal before payload erasure. It runs isolated
+QEMU TCG guests using the same pinned machine and independent positional-file
+caller. Use the same host-safe Cargo environment and existing memory wrapper:
+
+```sh
+rtk scripts/run_bounded.py -- cargo test -p topal-kernel-toolchain-gate-builder --test ram_page_binding -j1
+rtk scripts/run_bounded.py -- python3 linux-kernel/labs/qemu/x86_64/ram_page_gate.py --write-evidence
+```
+
+`--smoke` executes the primary witness without publishing a complete record.
+`--keep /tmp/NAME` retains artifacts, per-case observations, debugger output and
+serial logs for investigation. The staged report distinguishes development
+observations from completed qualification of the current primary revision.

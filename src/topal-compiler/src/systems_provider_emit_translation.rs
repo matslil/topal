@@ -387,6 +387,9 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
         note.push_str(&format!("file-position-library-interface={interface}\nfile-position-runtime-bytes=65536\nfile-position-control-bytes=64\nfile-position-history-bytes=8\nfile-position-field-bytes=8\nfile-position-retired-stack-bytes=4096\nfile-position-live-frame-bytes={}\nfile-position-call-alignment-bytes={}\nfile-position-domain=serialized-single-processor-masked\n",
             file_region::LIVE_FRAME_BYTES, file_region::CALL_ALIGNMENT_BYTES));
     }
+    if let Some(interface) = plan.ram_page_pool_library_interface {
+        note.push_str(&format!("ram-page-pool-library-interface={interface}\nram-page-pool-runtime-bytes=65536\nram-page-pool-control-bytes=64\nram-page-pool-history-bytes=8\nram-page-pool-map-bytes=8\nram-page-pool-retired-stack-bytes=4096\nram-page-pool-live-frame-bytes={}\nram-page-pool-call-alignment-bytes={}\nram-page-pool-domain=serialized-single-processor-masked\n", ram_page_region::LIVE_FRAME_BYTES, ram_page_region::CALL_ALIGNMENT_BYTES));
+    }
     if let Some(interface) = plan.region_library_interface {
         note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
     }

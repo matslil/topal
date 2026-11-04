@@ -9,6 +9,18 @@ pub struct SystemsVolatileFileProfile {
     pub process_storage_bytes: u64,
     pub filesystem_offset: u64,
     pub filesystem_bytes: u64,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub page_allocation_map_offset: Option<u64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub page_allocation_map_bytes: Option<u64>,
     pub object_offset: u64,
     pub object_count: u64,
     pub object_bytes: u64,
