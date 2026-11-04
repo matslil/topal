@@ -9,6 +9,12 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+The [systems implementation maintenance](step-4-modular-systems-implementation.md)
+restores the existing size ceiling across all 381 owned Rust sources. Complete
+workspace checks, preserved function/assertion inventories and an independently
+compared fresh primary VM pass. This changes no kernel capability or normative
+contract; the preceding 137 VM observations remain separately retained evidence.
+
 - Independently bound ordinary region instances, with exact caller-derived
   identities, separate private code/data/hooks and disjoint temporary storage.
   Root zero-fact Boolean and file-position two-fact callbacks coexist under one

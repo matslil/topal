@@ -12,8 +12,11 @@ def rust_sources(root: Path):
     # Prune generated dependencies before traversal; retain the limit for every
     # owned source file, including new files that have not been committed yet.
     for directory, directories, files in os.walk(root):
+        linux_dependencies = Path(directory) == root / "linux-kernel"
         directories[:] = [
-            name for name in directories if name not in {".git", "target", ".cache"}
+            name for name in directories
+            if name not in {".git", "target"}
+            and not (linux_dependencies and name == ".cache")
         ]
         for name in files:
             if name.endswith(".rs"):

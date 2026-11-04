@@ -529,3 +529,13 @@ runs seven physical cases, including changed source, absence and pre-entry
 controls; its record is `results/topal-root-region-gate.json`. It supplements
 the preceding full runtime/BusyBox cohort. A passing region witness alone does
 not qualify distribution replacement, containers or VM hosting.
+
+## Systems source modularization qualification
+
+The [TK277 preservation workflow](../../../tools/systems-source-audit/README.md)
+compares the extracted systems compiler with an independent predecessor build.
+`modular_gate.py --baseline-artifact PATH` rebuilds and boots the primary kernel,
+checks every artifact and complete provenance, and verifies four refusal controls.
+Only proven per-build LLVM/disassembly text headers are normalized for comparison;
+production checksums and formats are preserved. Its separate JSON record identifies
+one fresh primary VM and the retained preceding 137-observation cohort.

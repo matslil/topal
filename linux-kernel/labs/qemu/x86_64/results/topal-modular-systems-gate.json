@@ -1,0 +1,696 @@
+{
+  "all_primary_fields_except_per_build_provenance_hash_identical": true,
+  "baseline_builder_sha256": "2cc100cd8d23552de8d9c159080f4360b9307c00d59c3dcbcf04b93a0dda6585",
+  "fresh_primary": {
+    "artifact_provenance_sha256": "f301e47e7eba388561b2f2ffc583709db2c0eabf791cdabe0a6106eadc54d122",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/250",
+    "boot_image_sha256": "bafb6ed65c8be7b26b9f6adef5d0cc1f555d02dc71ad1681288d6e3254f2e475",
+    "boot_provenance_sha256": "9f6e339bb1e528b7cd060e8ff531541ef34e76111994b690040a9904c324f1de",
+    "boot_resource_bytes": 2037200,
+    "boot_resource_member": "init",
+    "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
+    "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/150",
+    "clean_environment_mode": "maximum",
+    "cpu": "qemu64-v1",
+    "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
+    "generated_initial_user_image_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+    "initial_user_image_bytes": 12288,
+    "initial_user_image_input": "supplied",
+    "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+    "linked_kernel_sha256": "397e07bfa0c0528e73389ea781e112923b2637a5aa1ee587e4a795cc2cbc7bb0",
+    "machine": "pc-q35-10.2",
+    "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+    "observations": {
+      "markers_in_order": [
+        "TOPAL_KERNEL_FRAME_ALLOCATED",
+        "TOPAL_KERNEL_FRAME_MAPPED",
+        "TOPAL_KERNEL_TRANSLATION_ACTIVE",
+        "TOPAL_KERNEL_TRANSLATION_EDITED",
+        "TOPAL_KERNEL_FRAME_EXTENT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+        "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+        "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK",
+        "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK",
+        "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
+        "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
+        "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
+        "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
+        "TOPAL_KERNEL_INTERRUPTS_MASKED",
+        "TOPAL_KERNEL_MEMORY_DESCRIBED",
+        "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
+        "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK",
+        "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED",
+        "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED",
+        "TOPAL_KERNEL_PCI_BUS_MASTER_OK",
+        "TOPAL_KERNEL_DMA_BUFFERS_OK",
+        "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
+        "TOPAL_KERNEL_DMA_DEVICE_OWNED",
+        "TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK",
+        "TOPAL_KERNEL_BOOT",
+        "TOPAL_KERNEL_FAULT_RESUMED",
+        "TOPAL_KERNEL_ATOMIC_OK",
+        "TOPAL_KERNEL_MEMORY_OK",
+        "TOPAL_KERNEL_INTERRUPT_OK",
+        "TOPAL_KERNEL_TIME_OK",
+        "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
+        "TOPAL_KERNEL_DEADLINE_PREEMPTED",
+        "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
+        "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+        "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+        "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+        "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+        "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+        "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
+        "TOPAL_KERNEL_USER_IMAGE_READY",
+        "TOPAL_KERNEL_BOOT_RESOURCE_OK",
+        "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
+        "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
+        "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
+        "TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+        "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
+        "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
+        "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
+        "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+        "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
+        "TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
+        "TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
+        "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
+        "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
+        "TOPAL_KERNEL_USER_WRITE_OK",
+        "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
+        "TOPAL_KERNEL_USER_GETRANDOM_OK",
+        "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
+        "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
+        "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK",
+        "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK",
+        "TOPAL_KERNEL_USER_READ_OK",
+        "TOPAL_KERNEL_USER_CLOSE_OK",
+        "TOPAL_KERNEL_USER_DUP_OK",
+        "TOPAL_KERNEL_USER_FCNTL_OK",
+        "TOPAL_KERNEL_USER_FSTAT_OK",
+        "TOPAL_KERNEL_USER_TCGETS_OK",
+        "TOPAL_KERNEL_USER_WINSIZE_OK",
+        "TOPAL_KERNEL_USER_LSEEK_OK",
+        "TOPAL_KERNEL_USER_COPY_TO_OK",
+        "TOPAL_KERNEL_USER_COPY_FROM_OK",
+        "TOPAL_KERNEL_USER_SYSCALL_OK",
+        "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+        "TOPAL_KERNEL_USER_IMAGE_STACK_OK",
+        "TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
+        "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK",
+        "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK",
+        "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK",
+        "TOPAL_KERNEL_USER_IMAGE_ELF_OK",
+        "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK",
+        "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK",
+        "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK",
+        "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK",
+        "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK",
+        "TOPAL_KERNEL_USER_IMAGE_BSS_OK",
+        "TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+        "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK",
+        "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
+        "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+        "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
+        "TOPAL_KERNEL_USER_IMAGE_RETAINED",
+        "TOPAL_KERNEL_USER_MAPPING_OK",
+        "TOPAL_KERNEL_FRAME_DISJOINT_OK",
+        "TOPAL_KERNEL_USER_BACKING_OK"
+      ],
+      "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
+      "qemu_running_after_markers": true,
+      "readonly_open_access_profile": "lookup-and-type-errors-before-immutable-view-write-denial",
+      "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
+      "result": "pass",
+      "reusable_clean_boundary_corpus": true,
+      "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
+      "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
+      "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
+      "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",
+      "serial_quiescent_after_fatal_disposition": true,
+      "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+      "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\nTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OKTOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OKTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_PCI_VIRTIO_RNG_OKTOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OKTOPAL_KERNEL_VIRTIO_PCI_NEGOTIATEDTOPAL_KERNEL_VIRTIO_QUEUE_DISCOVEREDTOPAL_KERNEL_PCI_BUS_MASTER_OKTOPAL_KERNEL_DMA_BUFFERS_OKTOPAL_KERNEL_VIRTIO_SPLIT_RING_OKTOPAL_KERNEL_DMA_DEVICE_OWNEDTOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OKTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTEREDTOPAL_KERNEL_DEADLINE_PREEMPTEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_RETIREDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMEDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIREDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIREDTOPAL_KERNEL_USER_IMAGE_READYTOPAL_KERNEL_BOOT_RESOURCE_OKTOPAL_KERNEL_VIRTIO_QUEUE_ACTIVETOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIEDTOPAL_KERNEL_VIRTIO_COMPLETION_SIGNALTOPAL_KERNEL_VIRTIO_USED_RING_OKTOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNEDTOPAL_KERNEL_ENTROPY_SAMPLE_CAPTUREDTOPAL_KERNEL_ENTROPY_SAMPLE_CREDITEDTOPAL_KERNEL_ENTROPY_POOL_CREATEDTOPAL_KERNEL_ENTROPY_POOL_MIXEDTOPAL_KERNEL_ENTROPY_POOL_CREDITEDTOPAL_KERNEL_ENTROPY_GENERATOR_READYTOPAL_KERNEL_ENTROPY_OUTPUT_READYTOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OKTOPAL_KERNEL_USER_WRITE_OKTOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OKTOPAL_KERNEL_USER_GETRANDOM_OKTOPAL_KERNEL_USER_GETRANDOM_REPEATED_OKTOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OKTOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OKTOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OKTOPAL_KERNEL_USER_READ_OKTOPAL_KERNEL_USER_CLOSE_OKTOPAL_KERNEL_USER_DUP_OKTOPAL_KERNEL_USER_FCNTL_OKTOPAL_KERNEL_USER_FSTAT_OKTOPAL_KERNEL_USER_TCGETS_OKTOPAL_KERNEL_USER_WINSIZE_OKTOPAL_KERNEL_USER_LSEEK_OKTOPAL_KERNEL_USER_COPY_TO_OKTOPAL_KERNEL_USER_COPY_FROM_OKTOPAL_KERNEL_USER_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_STACK_OKTOPAL_KERNEL_USER_IMAGE_AUXV_OKTOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OKTOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OKTOPAL_KERNEL_USER_IMAGE_ELF_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OKTOPAL_KERNEL_USER_IMAGE_BSS_OKTOPAL_KERNEL_USER_IMAGE_DATA_OKTOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OKTOPAL_KERNEL_USER_IMAGE_COPY_TO_OKTOPAL_KERNEL_USER_IMAGE_COPY_FROM_OKTOPAL_KERNEL_USER_IMAGE_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_RETAINEDTOPAL_KERNEL_USER_MAPPING_OKTOPAL_KERNEL_FRAME_DISJOINT_OKTOPAL_KERNEL_USER_BACKING_OK",
+      "static_applet_newline_count": 21,
+      "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
+      "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
+      "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
+      "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+      "static_process_runtime_profile": "clean-negative-retry-maximum-aggregate-console-status-witness",
+      "static_process_time_profile": "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines",
+      "static_shell_banner_profile": "clean-exact-109-byte-shell-banner-witness",
+      "static_shell_bin_busybox_artifact_size_profile": "clean-sealed-2024544-byte-bin-busybox-artifact-witness",
+      "static_shell_bin_busybox_condition_output_profile": "clean-exact-bin-busybox-file-condition-output-witness",
+      "static_shell_bin_busybox_entry_profile": "clean-sealed-bin-busybox-dirent-witness",
+      "static_shell_bin_busybox_executable_condition_output_profile": "clean-exact-bin-busybox-executable-condition-output-witness",
+      "static_shell_bin_busybox_executable_credential_profile": "clean-effective-root-witness",
+      "static_shell_bin_busybox_executable_metadata_profile": "clean-repeated-complete-bin-busybox-metadata-witness",
+      "static_shell_bin_busybox_explicit_close_condition_output_profile": "clean-exact-bin-busybox-close-output-witness",
+      "static_shell_bin_busybox_explicit_close_duplicate_profile": "clean-exact-f-dupfd-cloexec-ten-witness",
+      "static_shell_bin_busybox_explicit_close_profile": "clean-ordered-three-then-ten-close-witness",
+      "static_shell_bin_busybox_explicit_close_terminal_absence_profile": "clean-pre-reopen-proved-closed-description-witness",
+      "static_shell_bin_busybox_header_poll_profile": "clean-header-poll-not-issued",
+      "static_shell_bin_busybox_header_read_condition_output_profile": "clean-exact-bin-busybox-read-output-witness",
+      "static_shell_bin_busybox_header_read_profile": "clean-four-byte-elf-header-read-witness",
+      "static_shell_bin_busybox_header_read_terminal_revoke_profile": "clean-explicit-close-revoked-header-read-state-witness",
+      "static_shell_bin_busybox_header_terminal_probe_profile": "clean-header-terminal-probes-not-issued",
+      "static_shell_bin_busybox_metadata_profile": "clean-complete-bin-busybox-file-metadata-witness",
+      "static_shell_bin_busybox_nonempty_condition_output_profile": "clean-exact-bin-busybox-nonempty-condition-output-witness",
+      "static_shell_bin_busybox_nonempty_metadata_profile": "clean-third-complete-positive-bin-busybox-metadata-witness",
+      "static_shell_bin_busybox_open_condition_output_profile": "clean-exact-bin-busybox-open-output-witness",
+      "static_shell_bin_busybox_open_terminal_revoke_profile": "clean-reopen-terminal-revoked-live-bin-busybox-description-witness",
+      "static_shell_bin_busybox_read_only_open_profile": "clean-exact-bin-busybox-read-only-open-witness",
+      "static_shell_bin_busybox_reopen_profile": "clean-fresh-generation-descriptor-three-witness",
+      "static_shell_bin_busybox_reopen_terminal_revoke_profile": "clean-terminal-revoked-reopened-description-witness",
+      "static_shell_cd_root_profile": "clean-exact-root-chdir-witness",
+      "static_shell_console_fstat_profile": "clean-complete-console-fstat-witness",
+      "static_shell_dev_tty_open_profile": "clean-dev-tty-open-enoent-witness",
+      "static_shell_echo_command_profile": "clean-sealed-echo-command-witness",
+      "static_shell_empty_bin_close_profile": "clean-explicit-bin-directory-close-witness",
+      "static_shell_empty_bin_enumeration_profile": "clean-three-record-bin-busybox-enumeration-witness",
+      "static_shell_empty_bin_fstat_profile": "clean-complete-bin-directory-fstat-witness",
+      "static_shell_empty_bin_open_profile": "clean-exact-bin-directory-open-witness",
+      "static_shell_empty_bin_output_profile": "clean-exact-bin-busybox-glob-match-witness",
+      "static_shell_getpid_profile": "clean-pid-one-witness",
+      "static_shell_getppid_profile": "clean-no-parent-witness",
+      "static_shell_mailpath_stat_profile": "clean-root-mailpath-enoent-witness",
+      "static_shell_named_root_condition_profile": "clean-selected-bin-busybox-glob-condition-witness",
+      "static_shell_named_root_entry_profile": "clean-sealed-bin-directory-entry-witness",
+      "static_shell_named_root_metadata_profile": "clean-complete-bin-directory-metadata-witness",
+      "static_shell_post_banner_getcwd_profile": "clean-post-banner-sealed-root-witness",
+      "static_shell_post_banner_geteuid_profile": "clean-post-banner-effective-root-witness",
+      "static_shell_post_banner_terminal_probe_profile": "clean-post-banner-stdin-enotty-witness",
+      "static_shell_profile_close_profile": "clean-consumed-system-profile-description-witness",
+      "static_shell_profile_fstat_profile": "clean-complete-system-profile-metadata-witness",
+      "static_shell_profile_open_profile": "clean-read-only-system-profile-descriptor-three-witness",
+      "static_shell_profile_read_profile": "clean-empty-system-profile-eof-witness",
+      "static_shell_prompt_profile": "clean-exact-root-prompt-witness",
+      "static_shell_pwd_command_profile": "clean-command-getcwd-root-output-witness",
+      "static_shell_pwd_console_fstat_profile": "clean-command-console-fstat-absent",
+      "static_shell_pwd_getcwd_profile": "clean-command-getcwd-root-witness",
+      "static_shell_pwd_output_profile": "clean-exact-application-root-line-witness",
+      "static_shell_pwd_terminal_probe_profile": "clean-command-stdout-terminal-probe-absent",
+      "static_shell_refill_input_profile": "clean-five-publication-command-refill-witness",
+      "static_shell_root_glob_enumeration_profile": "clean-three-record-root-directory-enumeration-witness",
+      "static_shell_root_glob_fstat_profile": "clean-complete-root-directory-metadata-witness",
+      "static_shell_root_glob_open_profile": "clean-exact-root-directory-open-witness",
+      "static_shell_root_glob_output_profile": "clean-exact-named-root-glob-match-witness",
+      "static_shell_sigchld_profile": "clean-installed-cleared-witness",
+      "static_shell_stack_profile": "clean-affine-two-page-rw-nx-stack-witness",
+      "static_shell_standard_terminal_probe_profile": "clean-stderr-stdout-stdin-enotty-witness",
+      "static_shell_terminal_warning_profile": "clean-three-segment-stderr-warning-witness",
+      "static_unknown_syscall_profile": "normalized-selector-enosys-without-argument-or-state-access"
+    },
+    "process_command_sha256": "f29e3aeccbf2528bea57c96761fe8a75fdd7e092e7ad6b37b837f0b6af792113",
+    "process_command_utf8": "exec /bin/busybox true\n",
+    "process_exec_commits": 3,
+    "process_exit_status": 35,
+    "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+    "process_workload": "true",
+    "provider": "topal.provider.x86_64-qemu-pc-q35/237",
+    "publication": "topalc-target-interface/1",
+    "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+    "schema": "topal-kernel-toolchain-gate-qemu/250",
+    "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
+    "serial_input_utf8": "read",
+    "source_sha256": "958b931152f930247a718651cce6fb43f4015fab5e883271854c8a7c566ae395",
+    "static_boot_resource_member": "static-user.elf",
+    "static_user_image_bytes": 2024544,
+    "static_user_image_input": "supplied-clean-room-fixture",
+    "static_user_image_sha256": "b835a8d3e0f343e329cad678e8bf9d16d4b9259a0ba3daeda1ca0912689d94f7"
+  },
+  "fresh_vm_observations": 1,
+  "harness_sha256": "be4098872715554a97db4588c5305978076facc2c168664a86aa4050d244e405",
+  "preservation_audits": {
+    "backends.py": "d603a1c8c20b1bcaadf700ed606bc39bbf54512d1b1299bbc7357e575192c65e",
+    "checkers.py": "18028795a18ae3a05f85e6b9cc0af7842d2f2152db8694d870875432e8d778c0",
+    "rust_items.py": "62fe858bccbada4fd4eef982d85f6b0ba069413afb5b804c713a68e49803acc1"
+  },
+  "preservation_baseline": "73e17ab5a50d34561b71db6fb835ed0aae31217f",
+  "provenance_comparison_sha256": "7f11693922c8199e9a95d3fc8b00da36bebf3fa3561d2003fac2b2a7185ce56e",
+  "retained_evidence": [
+    {
+      "path": "results/topal-deadline-entry-filter-gate.json",
+      "sha256": "8fd8091c210d9cb6d9b73a4266e07e4754974e74e625d736f7a27a8d88801a28"
+    },
+    {
+      "path": "results/topal-file-open-plan-gate.json",
+      "sha256": "3f6691ac0777858fa6651383e3c07a43338cc3d94654fc46fb6637b65a57de94"
+    },
+    {
+      "path": "results/topal-file-position-region-gate.json",
+      "sha256": "0d4dda144728c5c3fd0f74694cbf5c2b68f95b9fa63c0359cecb5335498270df"
+    },
+    {
+      "path": "results/topal-kernel-source-library-gate.json",
+      "sha256": "90dd70c7a145a0d8bfe480fcb1443125d1c000cf6068bbf1e07fa820f004115c"
+    },
+    {
+      "path": "results/topal-named-file-gate.json",
+      "sha256": "c1ee92bbdc94c869d31a47003f950381b37bb414428536e8ad2f97fc777cefd6"
+    },
+    {
+      "path": "results/topal-named-file-linux-control.json",
+      "sha256": "df7b9899c68fe2f73f8a14e9d8f240f6e9d6d4e5c624c9ee5dde63e24661c9bd"
+    },
+    {
+      "path": "results/topal-owned-numeric-runtime-gate.json",
+      "sha256": "c2f8d0412c457cf82633874c197fed577333f78b19316e1f0d30670eced9a5e1"
+    },
+    {
+      "path": "results/topal-pinned-static-busybox-gate.json",
+      "sha256": "98f10e4abffee1f622703d6a462192f26f91578b5c3b12a5b63283f63716fd3c"
+    },
+    {
+      "path": "results/topal-positional-file-gate.json",
+      "sha256": "0fe57c8c6603f291a7aee93acd0f4859a925b3657d1886f7ace10658e7ae4a3a"
+    },
+    {
+      "path": "results/topal-positional-file-linux-control.json",
+      "sha256": "50855c996196da3eab1dc575347d487700b8c3e0240495dce121335a40517913"
+    },
+    {
+      "path": "results/topal-realtime-seconds-gate.json",
+      "sha256": "f346e14616b5520613653888b1e2cb32fe5aa5331b6fc167b4c9bd5385b9746e"
+    },
+    {
+      "path": "results/topal-retained-source-identity-gate.json",
+      "sha256": "52e1ca53f88b4e55005d737f175ab736c67814f6b229b393d323073668e9ced7"
+    },
+    {
+      "path": "results/topal-root-region-gate.json",
+      "sha256": "e38c0deaa7f945c08422bfe944628a6ac5a1909b71267173ab8d5295f4f7a9f8"
+    },
+    {
+      "path": "results/topal-runtime-child-cwd-gate.json",
+      "sha256": "3ecf1f249b9001f5a739d2ce947969e63f638de4e26bc472b04a9f31518f27f8"
+    },
+    {
+      "path": "results/topal-runtime-child-echo-gate.json",
+      "sha256": "aadffa18bbc9e1c93c5567a42f42aa998e06fac2ae25d67407fded8978a7de48"
+    },
+    {
+      "path": "results/topal-runtime-child-offset-gate.json",
+      "sha256": "9ba4ffa8cd3c945089227da427d367c2a2331f64777203f26b96eacf2438f8e4"
+    },
+    {
+      "path": "results/topal-runtime-child-repeated-gate.json",
+      "sha256": "efd1782b390b9069436ffba2c309c6d97a79aab3a450e0182c6a8cec5fe126d8"
+    },
+    {
+      "path": "results/topal-runtime-child-status-gate.json",
+      "sha256": "44630ddf84641c511fee07702f42ab194c89302c90b4efd647c6b7a4a9f1a2c3"
+    },
+    {
+      "path": "results/topal-runtime-dd-seek-gate.json",
+      "sha256": "ee3216d7f6604aa0cab7ae941751fd04b7f34bda06a3b0a8f43e0983c1612de8"
+    },
+    {
+      "path": "results/topal-runtime-echo-changed-gate.json",
+      "sha256": "eed1cbf94f49edc0695ad26591d06d538f15584c74e19228fece9b97f5584f84"
+    },
+    {
+      "path": "results/topal-runtime-echo-gate.json",
+      "sha256": "47b47bf6ed062c96972f022607bac4b46ce708d36d480678006fc55ed6b79d0c"
+    },
+    {
+      "path": "results/topal-runtime-env-empty-gate.json",
+      "sha256": "ab2a518d533da685c528b2c54c4138f9152934e0ec56c538346fe76b6f37e1ed"
+    },
+    {
+      "path": "results/topal-runtime-env-null-gate.json",
+      "sha256": "b63917f16ec1621c1daf60e3cb687dec878b283284bfdfccb6a0ae0d6678a65c"
+    },
+    {
+      "path": "results/topal-runtime-exec-chain-cwd-gate.json",
+      "sha256": "8fd825f9394ec085f106d8db1a927c3b805dfb073b618f92073406f30a87e25c"
+    },
+    {
+      "path": "results/topal-runtime-exec-chain-false-gate.json",
+      "sha256": "3d8fa090595bf3ff468f110c4a33eabfae3c3731632ff158c12f6d77e75fd6a3"
+    },
+    {
+      "path": "results/topal-runtime-exec-chain-gate.json",
+      "sha256": "edf5862b19c1fd8f3e6a5fa392feb9e169743a0d92644e072b4fd32c35dc160d"
+    },
+    {
+      "path": "results/topal-runtime-export-token-changed-gate.json",
+      "sha256": "77c65f20ccacae380c252146d55ef2f918a40691be1a4ee45751c74b67af07e7"
+    },
+    {
+      "path": "results/topal-runtime-export-token-gate.json",
+      "sha256": "1285654742121c5449b6735cfe2b8d4a44d357d2a099c605f2c6accdf114600d"
+    },
+    {
+      "path": "results/topal-runtime-false-gate.json",
+      "sha256": "4031861127a29cc947860ef1b8dd5da8af8cf97574c6044969b652c7fa71975b"
+    },
+    {
+      "path": "results/topal-runtime-head-alias-gate.json",
+      "sha256": "debaeb0fef92df9e2dad6a1496372da8af7010c862ab9e5db5fb0d368558fda2"
+    },
+    {
+      "path": "results/topal-runtime-head-file-gate.json",
+      "sha256": "daf215db4833c5ada2312d10f31d225e152135fc3dc6fb6862b194e0a9b03bd6"
+    },
+    {
+      "path": "results/topal-runtime-head-normalized-gate.json",
+      "sha256": "edacfdfb6994e213df561aa0006c4f6038bbf8ad42dbfb9cd6a436502eeea4cc"
+    },
+    {
+      "path": "results/topal-runtime-head-stdin-gate.json",
+      "sha256": "b9c641b80c158a8c63dc3fea30a2e37ffd32585f616d4b1428a0c9602a85bfe0"
+    },
+    {
+      "path": "results/topal-runtime-interactive-prompt-changed-gate.json",
+      "sha256": "d505ca6f21b38d7c0604e1f515feccf390f1deec8c8c778213cf485af86c566b"
+    },
+    {
+      "path": "results/topal-runtime-interactive-prompt-gate.json",
+      "sha256": "3e888c7708e2e7c6c3f5b742b90fe9f2a1bfce7120040324efdc2682e0f5f5a1"
+    },
+    {
+      "path": "results/topal-runtime-ls-bin-gate.json",
+      "sha256": "2e2cb2d894949ea3ce7902042ca32af48dce59f5ca54383cdc355cd3dab30bab"
+    },
+    {
+      "path": "results/topal-runtime-named-append-gate.json",
+      "sha256": "c7f73b03e4aee7d6e7216484ee02c0aa3e0677f4b16ef310cee9b017df43688e"
+    },
+    {
+      "path": "results/topal-runtime-named-list-gate.json",
+      "sha256": "80e822612154f6a52d76b7720164a7672ba7150be99bb77ed3692253b93e42c9"
+    },
+    {
+      "path": "results/topal-runtime-named-redirection-gate.json",
+      "sha256": "a79ce4fdfa09831280f68e375e9eb7078df598c2b7820a2e19d608ad1ff68b24"
+    },
+    {
+      "path": "results/topal-runtime-named-remove-gate.json",
+      "sha256": "55681968e13432cd1ac8c5ca9edbe90f41669348b7233f9611834094dc923287"
+    },
+    {
+      "path": "results/topal-runtime-named-reopen-gate.json",
+      "sha256": "4d6363f59fc14e354420f689435c7323603bdfcd601bbc7fbbff6ac88ad6cd59"
+    },
+    {
+      "path": "results/topal-runtime-named-truncate-gate.json",
+      "sha256": "6c72c883b70ed5077f6fa051f62e00d2fb7b69aa67ecf1c9e0ee8d4fc7d26d67"
+    },
+    {
+      "path": "results/topal-runtime-pipe-substitution-changed-gate.json",
+      "sha256": "aada929a3d07155b90ba8176679e4d7becb8f4f09ce0286649cb8fb1446208a0"
+    },
+    {
+      "path": "results/topal-runtime-pipe-substitution-gate.json",
+      "sha256": "6124a518d1be63b026c1ab91fbf8e94964051f8bbf2c47bcfac6cb0fd0281ed0"
+    },
+    {
+      "path": "results/topal-runtime-pipe-substitution-large-gate.json",
+      "sha256": "07bef365de8bfe754ddff1799b43046b196f4f9e232825a4b0f4c9d56f1daa56"
+    },
+    {
+      "path": "results/topal-runtime-pwd-bin-gate.json",
+      "sha256": "38d656335e461dde1098dbb3d12b34ad26d03598e5355c19a06e7b11ef52569c"
+    },
+    {
+      "path": "results/topal-runtime-replacement-shell-cwd-gate.json",
+      "sha256": "bdd487a5b087cc2547e8f5a13164c1276e607235821eea628023fc8dd95fb211"
+    },
+    {
+      "path": "results/topal-runtime-replacement-shell-pid-gate.json",
+      "sha256": "0e0b5e4cd475f7266b52cc213e5b3d6575cab1a7448dc3c1be76c01e8a326727"
+    },
+    {
+      "path": "results/topal-runtime-replacement-shell-script-gate.json",
+      "sha256": "acdf82dd89a671fa1f2dec9aebf356566b93de9a0fbd02b83ece82fc5a73db14"
+    },
+    {
+      "path": "results/topal-runtime-sleep-changed-gate.json",
+      "sha256": "ba785d4e6370067e312a0da8dc30b83aa94733979cbd33dd30edac7011f66fc5"
+    },
+    {
+      "path": "results/topal-runtime-sleep-short-gate.json",
+      "sha256": "08f8270dd45ad170eee3e92d3ae77b937c0ab865c05cc7b0e696eef4c7330884"
+    },
+    {
+      "path": "results/topal-runtime-uname-kernel-gate.json",
+      "sha256": "adf60429ac057438a6895f63f3937adb2df21df6b1ec113f9d596d722cb5072c"
+    },
+    {
+      "path": "results/topal-runtime-wc-file-gate.json",
+      "sha256": "677739c6463363310f4cca42812a9b3caea10d6e0ebc838aab5a49dfa96dad1e"
+    },
+    {
+      "path": "results/topal-runtime-wc-stdin-gate.json",
+      "sha256": "4919c255d8368e90842660a542063bb38ccb2b635e4c8ec7ccc4bb19f524c7d7"
+    },
+    {
+      "path": "results/topal-source-elf64-header-gate.json",
+      "sha256": "cdd41227c2e1d769379e009ced82397590b84e8c810fc613fc44ddbcaf2c05b8"
+    },
+    {
+      "path": "results/topal-source-linux-dispatch-gate.json",
+      "sha256": "618712b7033cb6e66567ee98c0236272d15f36d8626b26f32d55c642c6f718ee"
+    },
+    {
+      "path": "results/topal-source-process-identity-gate.json",
+      "sha256": "7ca6b973ff56e00c0ed80b433923c3878bf496e7c36d14b3a7dd387aae3ffb84"
+    },
+    {
+      "path": "results/topal-static-process-children-gate.json",
+      "sha256": "1f3e735fb313e0642c90f68ea56363c1a521a157d6ba1537fa8fdf683f1fe34b"
+    },
+    {
+      "path": "results/topal-static-process-pair-gate.json",
+      "sha256": "6dc41b11a1ee4dc9b40a54ba8e36a4f736a1171d9b8069a68fac092864506657"
+    },
+    {
+      "path": "results/topal-static-process-pipes-gate.json",
+      "sha256": "d438250c047a0271fd7691a1caebd9b8e4d4a40b65e77ad1bb38014151896c50"
+    },
+    {
+      "path": "results/topal-static-process-time-gate.json",
+      "sha256": "59ce3871d39cdbdd7184c6b6326991a677f63dcfc32b4c1a33a468fbb3a4437d"
+    },
+    {
+      "path": "results/topal-structured-source-identity-gate.json",
+      "sha256": "bc4f670307a5804209ad9d57937ad215e98b182a4e1aa9bb69dbd7ef172453ca"
+    },
+    {
+      "path": "results/topal-toolchain-gate.json",
+      "sha256": "ebcbb01eed71f6a038580d0997f27dd006d33be3f753bef48d6bd8cf32e0085f"
+    },
+    {
+      "path": "results/topal-volatile-file-gate.json",
+      "sha256": "56c401e2d7ebd14de2981fe69ac3f0e8fb007e7f16c3b814620169a42a921d99"
+    },
+    {
+      "path": "results/topal-volatile-file-linux-control.json",
+      "sha256": "706052d3748b376473e2b16d25efbd9f85b102cae70a1d0e79d213c5296a9e75"
+    }
+  ],
+  "retained_preceding_vm_observations": 137,
+  "schema": "topal.modular-systems-qualification.v1",
+  "verified_provenance_equivalence": {
+    "all_other_provenance_fields_identical": true,
+    "baseline_provenance_sha256": "64813eaf352179bd10ff47ae7980b93ff31d06bc790b8298d23acc672ba7b8e0",
+    "common_normalized_provenance_sha256": "f172f059f7ff184c8886bf666efa14def0f2158dce2a2a3ea8808f6df183ad65",
+    "controlled_refusals": [
+      "resource-fact",
+      "retained-module-body",
+      "object-bytes",
+      "disassembly-hash"
+    ],
+    "fresh_provenance_sha256": "f301e47e7eba388561b2f2ffc583709db2c0eabf791cdabe0a6106eadc54d122",
+    "verified_per_build_headers": [
+      {
+        "common_normalized_sha256": "8e1ddf79ca63db9f379e4d1b32ae00a56e7cb8d28bb348b8b78947a320d3662a",
+        "output": "dispatch-library.retained.ll",
+        "raw_sha256": [
+          "2fa5a57bad836752573fa5445163365c31e3ee5524ea38192a2575ba1108b0e6",
+          "5101ad231625b09a8bff369a4e061cd853281c9ce84671c0944f1382deada253"
+        ],
+        "verified_headers": [
+          "; ModuleID = '/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work/dispatch-library.bc'",
+          "; ModuleID = '/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work/dispatch-library.bc'"
+        ]
+      },
+      {
+        "common_normalized_sha256": "3503496b8594adcbdbda74a11043346c6cb641e697b6e7522ae0adb1024c3574",
+        "output": "image-library.retained.ll",
+        "raw_sha256": [
+          "eb0eb9944a7e94830063249e03e06da66a816aaee16fb736183c997860ee1620",
+          "f3ee9807ffa7fc6c351032e5a1dd00b1ccafc1567d59ea7ce2a883f94b245202"
+        ],
+        "verified_headers": [
+          "; ModuleID = '/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work/image-library.bc'",
+          "; ModuleID = '/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work/image-library.bc'"
+        ]
+      },
+      {
+        "common_normalized_sha256": "c3e3219788144f2c57adff19333a0a52304b69de305da4c4029e22c5ba7de906",
+        "output": "process-identity-library.retained.ll",
+        "raw_sha256": [
+          "761bd04dc14782311032bfd7e816af02b1fe8e53f7a2d4404d802ddb3ccd217f",
+          "83d61d5da993651571d9b3c2be7edc80786a6138086a5465ecfa1edfd0ffbab6"
+        ],
+        "verified_headers": [
+          "; ModuleID = '/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work/process-identity-library.bc'",
+          "; ModuleID = '/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work/process-identity-library.bc'"
+        ]
+      },
+      {
+        "common_normalized_sha256": "b4611b81d06b745f3609cedf1e2984419492086d876124dc4a97c027fbc06976",
+        "output": "time-library.retained.ll",
+        "raw_sha256": [
+          "d2228299b773bc751b6e83f4c8670a5614589319f0276a46c0cb20de775bae1a",
+          "9148501e141b98304a1ab75fed7534b7c0fc45e96b0d5394d30681321f2851fc"
+        ],
+        "verified_headers": [
+          "; ModuleID = '/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work/time-library.bc'",
+          "; ModuleID = '/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work/time-library.bc'"
+        ]
+      },
+      {
+        "common_normalized_sha256": "c9244592fc5b3f8087c33a4125accaf8a047705945e5043b007571de92fcb017",
+        "raw_disassembly_sha256": [
+          "b4dc431ca500f9a1161c09e7f68adf6013ef47e2116b21bae6841fa44bc594df",
+          "784b507d0a5ea4d92a14a15f95ca74693ca0094603b4426b1541408e8632f99c"
+        ],
+        "slot": "kernel_library",
+        "verified_original_work_roots": [
+          "/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work",
+          "/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work"
+        ]
+      },
+      {
+        "common_normalized_sha256": "bb57a9b6605b21a57fcc42984dc6c7e4231f428c6a70fc1e70301f36ecd22c94",
+        "raw_disassembly_sha256": [
+          "b29dcf5f321a854529101d411384a9d3e18b6e3caa7634dcda34057c723a0124",
+          "b943f6dfb1765f2e1d22b81a57c4d33cdc00404c88eb67589125dcebf494d107"
+        ],
+        "slot": "time_library",
+        "verified_original_work_roots": [
+          "/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work",
+          "/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work"
+        ]
+      },
+      {
+        "common_normalized_sha256": "97bde77d705bd870a5553862695a246920737dd23d2af24b4e4b828430f3fe89",
+        "raw_disassembly_sha256": [
+          "2bc16e7d4cef452bb05995b5e056b582e7fdc1e0f030c1ca52968a5a39d8eea6",
+          "e53045b3bc15341fa37a8adf3c950e4c6b1d3989082f6b6c427a6b4510f560a6"
+        ],
+        "slot": "image_library",
+        "verified_original_work_roots": [
+          "/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work",
+          "/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work"
+        ]
+      },
+      {
+        "common_normalized_sha256": "71c4c3e246770cb7a39cab35369bbcbea676dd7b30dbf49e250085fa4430412d",
+        "raw_disassembly_sha256": [
+          "2caba513a71cb1c987248906b2c992c6c5c0fee2bb25d3157c39591c18f19bf6",
+          "9b3298cbedb7b1e5ca843b64456e87f8bfaff2b0bc5f3abb0ffd3ccd7cbaf9a2"
+        ],
+        "slot": "dispatch_library",
+        "verified_original_work_roots": [
+          "/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work",
+          "/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work"
+        ]
+      },
+      {
+        "common_normalized_sha256": "4416245eb61411805a1832ff54ce0779d1ee630f4679ff114760b6d090a202af",
+        "raw_disassembly_sha256": [
+          "483167c0c466dd7fe0aae5beb051722b94574fe3e8c4e699bedc9902e3795b72",
+          "14235936b5e756ffe10822480c9c70bd556eaaa857a53c1c752c5318474adf6e"
+        ],
+        "slot": "process_identity_library",
+        "verified_original_work_roots": [
+          "/tmp/topal-tk277-baseline-artifact/.topal-systems-artifact-784498-0/work",
+          "/home/mats/git/topal/linux-kernel/build/x86_64/topal-toolchain-gate/run-g41zvu8s/artifact/.topal-systems-artifact-817523-0/work"
+        ]
+      }
+    ]
+  }
+}

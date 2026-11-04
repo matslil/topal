@@ -88,7 +88,10 @@ declarations without removing any function or declaration. All 254 compiler unit
 The audit covers all 333 previously tracked sources and 48 new backend sources;
 ignored generated caches are pruned before traversal. The [preservation
 audits](../tools/systems-source-audit/README.md) are retained for reproduction.
-Final workspace, exact native artifact and VM qualification remain.
+The [completed qualification](../step-4-modular-systems-implementation.md) passes
+the complete workspace/all-target/format/size checks, 41 lab contracts, preserved
+source inventories and an independently compared fresh primary VM with four
+provenance refusal controls. Prior cohort observations remain retained evidence.
 
 ## Verification and evidence reuse
 
@@ -105,6 +108,17 @@ only for unchanged artifact and harness identities; explicitly distinguish
 retained observations from fresh runs. A changed generated artifact requires
 investigation and qualification rather than an unexplained new checksum.
 Never describe retained evidence as a complete fresh cohort run.
+
+The independent predecessor build exposes an existing provenance detail:
+four retained LLVM texts carry an absolute temporary-path ModuleID header,
+and five disassembly hashes include the temporary object path. Their raw
+checksums consequently vary even when using the predecessor compiler twice.
+Qualification must verify those recorded raw hashes and exact text bodies,
+normalize only the identified diagnostic headers, then compare every remaining
+provenance field and every published native/source artifact. This changes no
+production provenance format or hash calculation. A broader discrepancy must
+still fail qualification. Object-byte, LLVM-body, resource-fact and disassembly-
+hash controls check that this comparison does not hide meaningful differences.
 
 Risk is high at extraction boundaries, shared mutable checker/emitter state,
 early-return order, namespace/type paths, literal templates, instruction/label/

@@ -11,7 +11,12 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 increment adds
+The latest Step 4 maintenance [restores reviewable systems implementation
+files](step-4-modular-systems-implementation.md). The unchanged source-size ceiling,
+complete workspace checks and an independently compared primary VM pass; kernel
+interfaces and capabilities retain their preceding scope.
+
+The latest functional Step 4 increment adds
 [independent ordinary region instances](step-4-instance-scoped-region-actions.md):
 separate source/code/data/hooks and caller storage for identical callable profiles,
 with a zero-fact Boolean root callback alongside the two-fact file-position

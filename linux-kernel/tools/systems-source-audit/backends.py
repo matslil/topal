@@ -5,6 +5,10 @@ from collections import Counter
 import hashlib, re, subprocess, tempfile
 from rust_items import items, body, masked_rust
 
+if not __debug__:
+    raise RuntimeError("Run this qualification without Python optimization")
+
+
 BASE = '73e17ab5a50d34561b71db6fb835ed0aae31217f'
 def canonical(text):
     literals = []
