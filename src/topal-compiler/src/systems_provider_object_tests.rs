@@ -9,11 +9,18 @@ use super::*;
 const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
 fn generated() -> GeneratedSystemsProviderObject {
-    let program = analyze_systems_for_compiler(
+    generated_with_page_source(true)
+}
+
+fn generated_with_page_source(selected: bool) -> GeneratedSystemsProviderObject {
+    let mut program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .unwrap();
+    if !selected {
+        program.ram_page_pool_library = None;
+    }
     generate_x86_64_systems_provider_object(&program).unwrap()
 }
 
@@ -129,43 +136,77 @@ assert bytes(output) == block[32:]
 
 #[test]
 fn emits_a_closed_relocatable_elf64_provider_object() {
-    // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001.
-    let first = generated();
-    let repeated = generated();
-    assert_eq!(first.bytes, repeated.bytes);
-    let file = object::File::parse(first.bytes.as_slice()).unwrap();
-    assert_eq!(file.format(), BinaryFormat::Elf);
-    assert_eq!(file.architecture(), Architecture::X86_64);
-    assert!(file.is_little_endian());
-    assert_eq!(file.kind(), object::ObjectKind::Relocatable);
-    assert_eq!(
-        file.sections()
-            .flat_map(|section| section.relocations())
-            .count(),
-        51
-    );
-    assert_eq!(
-        file.symbols()
-            .filter(object::ObjectSymbol::is_undefined)
-            .map(|symbol| symbol.name().unwrap())
-            .collect::<std::collections::BTreeSet<_>>(),
-        std::collections::BTreeSet::from([
+    // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001;
+    // TOPAL-COMP-SYSTEMS-REGION-PAGE-001. Source imports are explicit for each
+    // selected caller; retaining native page allocation keeps its old closure.
+    for source_page in [false, true] {
+        let first = generated_with_page_source(source_page);
+        let repeated = generated_with_page_source(source_page);
+        assert_eq!(first.bytes, repeated.bytes);
+        let file = object::File::parse(first.bytes.as_slice()).unwrap();
+        assert_eq!(file.format(), BinaryFormat::Elf);
+        assert_eq!(file.architecture(), Architecture::X86_64);
+        assert!(file.is_little_endian());
+        assert_eq!(file.kind(), object::ObjectKind::Relocatable);
+        assert_eq!(
+            file.sections()
+                .flat_map(|section| section.relocations())
+                .count(),
+            if source_page { 80 } else { 51 },
+            "page source selected: {source_page}"
+        );
+        let mut undefined = std::collections::BTreeSet::from([
             crate::systems_region_library::ROOT_FRAME_EXPORT,
             crate::systems_region_library::FILE_FRAME_EXPORT,
-        ])
-    );
-    let frames = file.section_by_name(".debug_frame").unwrap();
-    // ELF readers classify nonallocated debugger sections as Other.
-    assert_eq!(frames.kind(), SectionKind::Other);
-    assert!(
-        matches!(frames.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & 2 == 0)
-    );
-    assert_eq!(
-        file.section_by_name(X86_SYSTEMS_PROVIDER_TEXT_SECTION)
-            .unwrap()
-            .kind(),
-        SectionKind::Text
-    );
+        ]);
+        if source_page {
+            undefined.insert(crate::systems_region_library::PAGE_FRAME_EXPORT);
+            // The page controller precedes process storage in the object. Its
+            // forward data reference resolves to this same object's sole strong
+            // definition; it is not an additional external source/host import.
+            let definitions = file
+                .symbols()
+                .filter(|symbol| {
+                    symbol.is_definition()
+                        && symbol.name().ok()
+                            == Some(X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL)
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(definitions.len(), 1);
+            let definition = &definitions[0];
+            assert_eq!(definition.kind(), SymbolKind::Data);
+            assert_eq!(definition.scope(), SymbolScope::Linkage);
+            assert!(!definition.is_weak());
+            assert_eq!(definition.size(), process_runtime::children::STORAGE_BYTES);
+            assert_eq!(definition.address() % 4096, 0);
+            let section = file
+                .section_by_index(definition.section_index().unwrap())
+                .unwrap();
+            assert_eq!(section.name().unwrap(), X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION);
+            assert_eq!(section.kind(), SectionKind::UninitializedData);
+            undefined.insert(X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL);
+        }
+        assert_eq!(
+            file.symbols()
+                .filter(object::ObjectSymbol::is_undefined)
+                .map(|symbol| symbol.name().unwrap())
+                .collect::<std::collections::BTreeSet<_>>(),
+            undefined,
+            "page source selected: {source_page}"
+        );
+        let frames = file.section_by_name(".debug_frame").unwrap();
+        // ELF readers classify nonallocated debugger sections as Other.
+        assert_eq!(frames.kind(), SectionKind::Other);
+        assert!(
+            matches!(frames.flags(), object::SectionFlags::Elf { sh_flags, .. } if sh_flags.0 & 2 == 0)
+        );
+        assert_eq!(
+            file.section_by_name(X86_SYSTEMS_PROVIDER_TEXT_SECTION)
+                .unwrap()
+                .kind(),
+            SectionKind::Text
+        );
+    }
 }
 
 #[test]
