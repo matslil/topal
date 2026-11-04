@@ -228,6 +228,47 @@ impl<'a> RegionLibraryInvocation<'a> {
         ))
     }
 
+    pub(crate) fn begin_page(
+        storage: crate::systems_volatile_files::page_actions::PageActionStorage<'a>,
+        binding: &'a RegionLibraryBinding,
+        generation: u64,
+    ) -> (Self, RegionLibraryView) {
+        Self::from_storage(
+            Storage::PagePool(storage),
+            binding,
+            generation,
+            RegionLibraryAccess::ReadWrite,
+        )
+    }
+
+    /// Admitted model facts, without execution of a source body.
+    pub fn page_action_inputs(&self) -> Result<(u64, u64), RegionLibraryError> {
+        self.active()?;
+        match &self.storage {
+            Storage::PagePool(storage) => Ok(storage.inputs()),
+            _ => Err(RegionLibraryError::Binding),
+        }
+    }
+
+    /// Validate the actual map and explicit model reclamation obligations, then
+    /// publish the association. The returned slot is data, not native authority.
+    pub fn complete_page_action(
+        &mut self,
+        result: bool,
+        proof: RegionActionReclamation,
+    ) -> Result<u64, RegionLibraryError> {
+        self.active()?;
+        if self.frames.len() != 1 {
+            return Err(RegionLibraryError::NotRoot);
+        }
+        let Storage::PagePool(storage) = &mut self.storage else {
+            return Err(RegionLibraryError::Binding);
+        };
+        let completion = storage.finish(result, proof);
+        self.revoke();
+        completion
+    }
+
     /// Copied facts only. The model does not execute a compiled source body.
     pub fn position_action_inputs(&self) -> Result<(u64, u64), RegionLibraryError> {
         self.active()?;
@@ -438,7 +479,7 @@ impl<'a> RegionLibraryInvocation<'a> {
 
     pub fn complete(&mut self) -> Result<(), RegionLibraryError> {
         self.active()?;
-        if self.storage.is_position() {
+        if self.storage.is_controller() {
             return Err(RegionLibraryError::Invariant);
         }
         if self.frames.len() != 1 {
@@ -450,7 +491,7 @@ impl<'a> RegionLibraryInvocation<'a> {
 
     pub fn cancel(&mut self) -> Result<(), RegionLibraryError> {
         self.active()?;
-        if self.storage.is_position() {
+        if self.storage.is_controller() {
             return Err(RegionLibraryError::Invariant);
         }
         self.revoke();

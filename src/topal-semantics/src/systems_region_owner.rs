@@ -29,7 +29,7 @@ pub struct RegionActionReclamation {
     pub caller_restored: bool,
 }
 impl RegionActionReclamation {
-    fn complete(self) -> bool {
+    pub(crate) fn complete(self) -> bool {
         self.arena_erased
             && self.control_erased
             && self.retired_stack_erased
@@ -53,24 +53,28 @@ pub(super) enum Storage<'a> {
         inputs: (u64, u64),
         expected: u64,
     },
+    PagePool(crate::systems_volatile_files::page_actions::PageActionStorage<'a>),
 }
 impl Storage<'_> {
     pub(super) fn owner(&self) -> (String, u64) {
         match self {
             Self::Bootstrap { region, .. } => region.library_owner_identity(),
             Self::Position { owner, .. } => owner.clone(),
+            Self::PagePool(storage) => storage.owner(),
         }
     }
     pub(super) fn scope(&self) -> Option<ControllerOwner> {
         match self {
             Self::Bootstrap { .. } => None,
             Self::Position { scope, .. } => Some(scope.clone()),
+            Self::PagePool(storage) => Some(ControllerOwner(storage.identity())),
         }
     }
     pub(super) fn count(&self) -> u64 {
         match self {
             Self::Bootstrap { region, .. } => region.byte_count(),
             Self::Position { .. } => 8,
+            Self::PagePool(_) => 8,
         }
     }
     pub(super) fn resource(&self) -> ResourceIdentity {
@@ -85,6 +89,11 @@ impl Storage<'_> {
                 ]))
             }
             Self::Position { resource, .. } => resource.clone(),
+            Self::PagePool(storage) => ResourceIdentity(QualifiedName(vec![
+                "systems".into(),
+                "file-controller".into(),
+                storage.controller().into(),
+            ])),
         }
     }
     pub(super) fn load(&mut self, offset: u64) -> Result<u8, RegionLibraryError> {
@@ -101,6 +110,7 @@ impl Storage<'_> {
                     .copied()
                     .ok_or(RegionLibraryError::Bounds)
             }
+            Self::PagePool(storage) => storage.load(offset),
         }
     }
     pub(super) fn store(&mut self, offset: u64, value: u8) -> Result<(), RegionLibraryError> {
@@ -117,6 +127,7 @@ impl Storage<'_> {
                     .ok_or(RegionLibraryError::Bounds)? = value;
                 Ok(())
             }
+            Self::PagePool(storage) => storage.store(offset, value),
         }
     }
     pub(super) fn finish_position(
@@ -141,6 +152,9 @@ impl Storage<'_> {
         Ok(())
     }
     pub(super) fn abandon(&mut self) {
+        if let Self::PagePool(storage) = self {
+            storage.abandon();
+        }
         if let Self::Position { domain, .. } = self {
             if domain.active {
                 domain.poisoned = true;
@@ -149,5 +163,8 @@ impl Storage<'_> {
     }
     pub(super) fn is_position(&self) -> bool {
         matches!(self, Self::Position { .. })
+    }
+    pub(super) fn is_controller(&self) -> bool {
+        matches!(self, Self::Position { .. } | Self::PagePool(_))
     }
 }

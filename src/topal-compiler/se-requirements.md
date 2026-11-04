@@ -12302,3 +12302,17 @@ facts and Linux contract. Validate same-signature object coexistence, wrong
 instance/code/control refusal, real independent owners and complete native/VM
 cleanup, including root false-after-store and all old contexts. See
 [TK-DEC-276](../../linux-kernel/design/instance-scoped-region-actions.md).
+
+## TOPAL-COMP-SYSTEMS-REGION-PAGE-001 — Real source-backed reusable page maps
+
+Select a separately bound `ram-page-pool` instance with the existing two-fact
+ordinary region/Boolean frame context and resource limits. Bind the real
+filesystem allocation map, source/module/code/data/hooks, contained owner,
+independent control/arena/history and complete caller/stack/allocation proofs.
+Ordinary source shall choose the slot; native code shall validate the full
+single-byte allocation/release delta, actual Boolean, association/payload and
+complete reclamation before publication. Preserve Linux recoverable admission
+order and explicit native-only/earlier-context compatibility. Independently
+execute alternate source placement, invalid/mixed bindings and false/malformed
+completion, no-entry/cleanup/reuse and complete affected kernel/BusyBox cohorts.
+See [TK-DEC-278](../../linux-kernel/design/source-ram-page-allocation.md).

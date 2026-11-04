@@ -112,6 +112,11 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
+The next [reusable-page action stage](step-4-source-ram-page-allocation.md) models
+ordinary effects on the real filesystem allocation map and guarded association
+publication. Its portable model passes; ordinary source, artifact binding and
+native/VM integration remain pending. It adds no qualified machine capability.
+
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The
 [model foundation](step-4-borrowed-region-model.md) and

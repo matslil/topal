@@ -111,13 +111,15 @@ impl SystemsVolatileFilePool {
             o.size = 0;
             o.times[1] = seconds;
             o.times[2] = seconds;
-            for page in self
+            for (slot, page) in self
                 .state
                 .pages
                 .iter_mut()
-                .filter(|p| p.owner == Some(identity))
+                .enumerate()
+                .filter(|(_, p)| p.owner == Some(identity))
             {
                 page.erase();
+                self.state.page_allocation[slot] = 0;
             }
         }
         self.state.descriptions.insert(
@@ -220,13 +222,15 @@ impl SystemsVolatileFilePool {
             return;
         }
         let identity = self.state.objects[object].as_ref().unwrap().identity;
-        for page in self
+        for (slot, page) in self
             .state
             .pages
             .iter_mut()
-            .filter(|p| p.owner == Some(identity))
+            .enumerate()
+            .filter(|(_, p)| p.owner == Some(identity))
         {
             page.erase();
+            self.state.page_allocation[slot] = 0;
         }
         self.state.objects[object] = None;
     }

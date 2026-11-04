@@ -9923,3 +9923,101 @@ shared alias/fork/exec state, negative bounds/rights/body/binding controls,
 noninvocation paths, source absence, terminal active/inactive reclamation and
 the full preceding VFS/BusyBox/root-source cohort against independent reference
 and pinned Linux oracles.
+
+### TOPAL-SYSTEMS-REGION-PAGE-OWNER-001 — Reusable page allocation-map owner
+
+A selected `ram-page-pool-library` systems artifact member MAY qualify an ordinary
+source unit/export with interface `borrowed-byte-region-instance-action-v1`,
+4096-byte source-stack limit and 65536-byte runtime limit. Its caller SHALL derive
+instance `ram-page-pool` and exact scalar count two. The source/object and private
+frame ABI SHALL retain their existing meanings and limits. Root and file-position
+instances, legacy contexts and native-only source-absence behavior SHALL remain
+separately qualified rather than being reinterpreted by this selection.
+
+The filesystem owner SHALL contain an actual persistent eight-byte allocation
+map for its eight existing resident buffers. Each byte SHALL be zero or one;
+outside exclusive private preparation it SHALL agree with the live association
+and payload ownership of that slot. A free slot SHALL have a completely clean
+association and zeroed/read-back payload. The live object identity and logical
+page association SHALL remain distinct from a slot, number, label or address.
+Knowing those values SHALL NOT confer access. The map SHALL NOT be a detached
+simulation, invocation arena or process-restored private snapshot.
+
+The complete existing filesystem controller SHALL remain exclusive throughout
+admission, loan, reclamation and ownership publication. Caller/owner identity,
+contained extent/rights, code/data/hooks, actual execution context, inactive clean
+control, fresh nonwrapping generation and disjoint complete bounds SHALL validate
+before entry or release preparation changes storage. Position and page-map views
+SHALL remain distinct even with equal model labels/numeric generations; their
+effects SHALL conflict in the filesystem synchronization domain. Source SHALL
+receive no native pointer, association/payload view or unrelated memory domain.
+Core Memory, AllocationRegion, ordinary function/effect/value/resource meanings
+SHALL remain unchanged. Other architectures SHALL retain the same owner/delta
+laws and independently qualify native representation; only x86-64 is executable
+in this increment.
+
+### TOPAL-SYSTEMS-REGION-PAGE-ALLOCATE-001 — Source-selected slot publication
+
+For a missing resident page, descriptor/rights, complete signed interval,
+zero-count, append/position, clipped user-prefix and capacity admissions SHALL
+retain their existing error order. A read-only guard MAY prove some free slot
+exists before the existing fallible clock observation but SHALL NOT choose its
+index. Exhaustion SHALL retain ENOSPC with no invocation, owner/payload/position
+mutation or leaked reservation. Recoverable clock/input-staging failure SHALL
+precede allocation-map mutation. Resident writes, reads/holes, zero/EOF/error
+and size-only growth SHALL invoke no allocation action.
+
+After complete recoverable admission and input staging, the controller SHALL
+lend the real map and supply facts `(0, 0)`. Ordinary source SHALL select a free
+slot and update its byte from zero to one using checked access. The actual
+Boolean SHALL survive complete view revocation, arena/control/retired-stack
+erasure/readback and caller restoration. Before any owner resumption, the
+controller SHALL validate the whole before/after map: exactly one previously
+free byte became one and every other byte is unchanged. That delta SHALL select
+the backing slot; a native preselected candidate or duplicate placement policy
+SHALL NOT substitute for the source algorithm. The controller SHALL validate
+its clean payload/free association and publish the admitted object/logical-page
+grant within the same exclusive operation. Independent alternate source order
+SHALL select different actual backing slots while retaining resource/UAPI laws.
+
+A valid admitted invocation SHALL require true. False, bad delta or incomplete
+reclamation SHALL be an invariant failure, SHALL NOT resume the owner or become
+a new Linux errno/short write, and SHALL NOT imply rollback of successful stores.
+Models SHALL inspect actual loaned bytes rather than predict opaque source
+results or execution. Source type/effect admission alone SHALL NOT prove this
+allocator algorithm or its application-specific postconditions.
+
+Independently executed source over a canonical full map SHALL return false
+without stores. Unknown operation facts, a nonzero allocation slot fact or an
+out-of-range/unoccupied release slot SHALL return false without mutation.
+Those data-only tests SHALL NOT create kernel authority or change the admitted
+kernel failure law.
+
+### TOPAL-SYSTEMS-REGION-PAGE-RELEASE-001 — Erasure, release and shared reuse
+
+Release SHALL first establish live object/slot/association authority and complete
+caller/code/generation/context/resource admission. Only then MAY the controller
+zero/read back the entire selected payload and lend the real map with facts
+`(1, slot)`, where `slot < 8` and its admitted byte is one. Source SHALL clear
+that byte through checked access. After complete temporary reclamation, true
+and an exact one-to-zero change at only that slot SHALL precede complete
+association erasure and free-slot publication. Invalid or false admitted
+completion SHALL retain the no-resumption/no-rollback law. No stale or foreign
+view SHALL reach reused storage; histories SHALL not wrap or be reset by fork,
+exec, process restoration or intermediate object destruction.
+
+Partial-page truncation SHALL retain its allocation bit and zero the removed
+suffix. Aliases, linked/unlinked lifetime, active/inactive process references,
+last-description destruction and terminal cancellation SHALL retain existing
+shared ownership laws. Final owner termination SHALL prove an empty map and
+retire its complete temporary/control/history storage after all references and
+loans are gone. Model cleanup flags SHALL NOT constitute native erasure evidence.
+
+Qualification SHALL include all canonical occupancy patterns and release slots,
+exhaustion/reuse/zeroing, full-width malformed facts, foreign/cross-domain views,
+generation limits, abandonment/incomplete cleanup, wrong source/delta and
+false-after-store controls, actual helper/caller/input/result/owner/payload
+observations, strict artifact/boot refusal, native-only legacy behavior and the
+complete affected VFS/BusyBox/source cohort against independent reference and
+pinned Linux oracles. Changed native artifacts SHALL require fresh machine
+observations; unchanged interface labels alone SHALL NOT justify evidence reuse.

@@ -1864,6 +1864,22 @@ Independent native and VM evidence shall cover coexistence, cross-instance
 refusal, actual source/results/bytes, legacy behavior and the full cohort.
 See [TK-DEC-276](../linux-kernel/design/instance-scoped-region-actions.md).
 
+## TOPAL-REQ-SYSTEMS-REGION-PAGE-001 — Ordinary reusable-page allocation actions
+
+Qualify ordinary Topal allocation/release on the actual persistent allocation
+map of the existing eight-page RAM filesystem. Retain source nonescape, exact
+instance/caller/code/data/owner binding, fresh generation, complete independent
+bounds and temporary reclamation. Source shall select the backing slot; the
+controller shall validate the exact map delta, live association and clean payload
+before ownership publication. Recoverable Linux admissions and error order
+shall precede mutation. False, invalid delta, abandoned invocation or incomplete
+reclamation after admission shall not resume the owner or imply rollback.
+Allocation, release/reuse, sparse/truncate/alias/fork/exec and terminal lifetime
+laws shall agree with independent model, actual source/native/VM observations
+and the existing Linux controls. This adds systems qualification over existing
+ordinary views/frames, without changing core allocator or value meanings.
+See [TK-DEC-278](../linux-kernel/design/source-ram-page-allocation.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

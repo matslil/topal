@@ -570,6 +570,19 @@ Unit, two-fact action and unscoped framed contexts remain explicit alternatives.
 This adds systems qualification without a core value, allocator or function
 construct; see `TK-DEC-276`.
 
+A further kernel caller may lend the actual reusable RAM-page allocation map
+to an independently bound ordinary instance. The two Nat facts select allocate
+or release and the release slot; they carry no address or memory authority.
+Ordinary source selects and updates a map byte. The exclusive controller
+validates the complete admitted delta, payload cleanliness, association identity
+and actual Boolean after full temporary reclamation before publishing ownership.
+Linux admission/error order and the existing filesystem capacity/lifetime laws
+remain unchanged. False or malformed admitted completion stops without owner
+resumption or promised rollback. This qualifies a kernel subsystem over existing
+borrowed regions and frame transport; it adds no core allocator, Memory, resource,
+function or effect meaning. `TK-DEC-278` defines the eight-slot owner and staged
+model/source/native qualification; its design alone is not executable evidence.
+
 ### One-shot deadline event
 
 An absolute deadline retains the identity of the instant from which it is

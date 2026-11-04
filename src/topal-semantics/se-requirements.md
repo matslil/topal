@@ -410,3 +410,18 @@ stores shall not imply rollback or owner resumption. Keep Unit and existing
 field contexts usable with their original contracts. Source/object and physical
 reclamation remain separate evidence. See
 [TK-DEC-276](../../linux-kernel/design/instance-scoped-region-actions.md).
+
+## TOPAL-SEM-SYSTEMS-REGION-PAGE-001 — Actual reusable-page owner loans
+
+Model loans on the same persistent allocation bytes used by filesystem page
+selection, release and normal reference laws. Keep live object/page authority,
+bitmap/association/payload consistency, source views, generation and opaque
+Boolean completion distinct. The exclusive controller shall validate complete
+delta and reclamation before publishing an allocation or release; false,
+abandonment or malformed completion shall poison the owner without rollback.
+Before-entry rejection shall preserve storage and identity observations. Stale,
+foreign and cross-position/page views shall reject even with equal labels or
+numeric generations. Verify all occupancy patterns, release slots, reuse/zeroing,
+shared lifetime and termination. Model flags and labels shall not constitute
+compiled source, native authority or physical erasure evidence. See
+[TK-DEC-278](../../linux-kernel/design/source-ram-page-allocation.md).
