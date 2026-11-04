@@ -116,8 +116,10 @@ The next [reusable-page action stage](step-4-source-ram-page-allocation.md) mode
 ordinary effects on the real filesystem allocation map and guarded association
 publication. Its portable model and independently executed ordinary source
 objects pass. The actual x86-64 map/controller binding and 21 targeted VM
-dispositions now pass; the complete affected-cohort and workspace qualification
-remain pending. This adds a bounded reusable RAM-page owner, with general
+dispositions now pass, alongside the 137 freshly repeated preceding VM observations
+and all 42 lab contracts. Complete Rust workspace/all-target qualification remains
+pending because the bounded host-memory budget is insufficient. This adds a
+bounded reusable RAM-page owner, with general
 allocation and the initial distribution/container/VM-hosting acceptance still
 unfinished.
 

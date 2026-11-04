@@ -150,17 +150,27 @@ instance symbols and passes boot adaptation.
 Primary kernel SHA-256 is
 `efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f`.
 Artifact/root/provider/object/boot/gate revisions are 251/237/238/230/151/251.
-This qualifies the bounded RAM-page owner; it does not yet qualify the complete
-affected preceding VFS/BusyBox/source cohort. That fresh cohort and complete
-workspace qualification remain the final stage.
+This qualifies the bounded RAM-page owner. The complete affected preceding
+VFS/BusyBox/source cohort has also been freshly executed: 137 observations,
+including forty unmodified BusyBox workloads. Combined with the 21 new RAM-page
+cases, this increment has 158 fresh VM observations. All 42 Python lab contracts
+pass against current source/tool identities, pinned Linux controls, actual
+native artifacts and controlled dispositions. No TK277 unchanged-artifact
+exception or preceding machine observations substitute for these executions.
 
 Two bounded compiler unit-test builds were killed by their cgroup at 723/816 MiB;
 a later build was stopped after prolonged reclaim pressure at its 601 MiB cap.
 The host reserve and zero-swap policy were retained. Sharing the verifier, moving
 the binding test to a small public-API integration target and reducing host
 allocator arenas allowed compilation and binding qualification to complete.
-Compiler-library checking and the strict source ceiling pass. Remaining workspace
-and affected-cohort results will be recorded when actually complete.
+Compiler-library checking, current source-component/binding tests, workspace and
+included-source formatting, strict source size and whitespace checks pass.
+The later all-target check was killed by its 486 MiB cgroup. A retry with one
+allocator arena and aggressive trimming was stopped after prolonged reclaim
+pressure at 365 MiB. These are failed/incomplete validations. The full current
+Rust workspace suite and all-target check remain required before this increment's
+qualification is complete. The host's 1569 MiB reserve and zero-swap policy remain
+in force; more available RAM or a separate qualified runner is needed.
 The [initial acceptance ledger](step-4-status.md) remains in force. General
 allocation, distribution replacement, containers and VM hosting remain unfinished.
 
@@ -168,5 +178,5 @@ Risk is high at bitmap/association consistency, preparation versus publication,
 source failure, zeroing, stale ownership, cross-domain views, bounds and shared
 process lifetime. Current self-review covers approved systems/resource/effect
 intent, three exact rules, actual model borrows and independent reference laws.
-Complete workspace and affected-cohort qualification remain outstanding;
+Complete Rust workspace and all-target qualification remain outstanding;
 no independent reviewer result is claimed.
