@@ -126,10 +126,8 @@ pub fn inspect_systems_region_action_data(
     bytes: &[u8],
     library: &super::SystemsRegionLibraryArtifact,
 ) -> Result<Vec<SystemsRegionReadOnlyBinding>, CompileError> {
-    if library.schema != "topal.kernel-region-action-source-object.x86_64/1"
-        || library.native_export != super::ACTION_EXPORT
-        || library.read_only_data.is_empty()
-    {
+    let symbols = library.native_symbols()?;
+    if symbols.export != super::ACTION_EXPORT || library.read_only_data.is_empty() {
         return Err(invalid(
             "missing or incompatible immutable region data certificate",
         ));
@@ -150,9 +148,7 @@ pub fn inspect_systems_region_read_only_data(
     use object::{Architecture, BinaryFormat, ObjectKind};
     let symbols = library.native_symbols()?;
     let prefix = symbols.prefix.as_str();
-    if library.schema == "topal.kernel-region-action-source-object.x86_64/1"
-        && library.read_only_data.is_empty()
-    {
+    if symbols.export == super::ACTION_EXPORT && library.read_only_data.is_empty() {
         return Err(invalid("incompatible immutable region data certificate"));
     }
     if library.scalar_count.is_none() && library.allocation.adapter_family_sha256.is_some() {

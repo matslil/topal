@@ -81,32 +81,48 @@ impl SystemsRegionLibraryArtifact {
             self.scalar_count,
             self.instance.as_deref(),
         ) {
-            ("topal.kernel-region-source-object.x86_64/3", None, None) => (Profile::Unit, None),
-            ("topal.kernel-region-action-source-object.x86_64/1", None, None) => {
-                (Profile::Action, None)
-            }
-            ("topal.kernel-region-frame-source-object.x86_64/1", Some(count), None)
-                if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS =>
-            {
-                (
-                    Profile::FramedAction {
-                        scalar_count: count,
-                    },
-                    None,
-                )
-            }
-            ("topal.kernel-region-frame-source-object.x86_64/2", Some(count), Some(label))
-                if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS =>
-            {
-                (
-                    Profile::FramedAction {
-                        scalar_count: count,
-                    },
-                    Some(label),
-                )
-            }
+            (
+                "topal.kernel-region-source-object.x86_64/3"
+                | "topal.kernel-region-source-object.x86_64/4",
+                None,
+                None,
+            ) => (Profile::Unit, None),
+            (
+                "topal.kernel-region-action-source-object.x86_64/1"
+                | "topal.kernel-region-action-source-object.x86_64/2",
+                None,
+                None,
+            ) => (Profile::Action, None),
+            (
+                "topal.kernel-region-frame-source-object.x86_64/1"
+                | "topal.kernel-region-frame-source-object.x86_64/3",
+                Some(count),
+                None,
+            ) if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS => (
+                Profile::FramedAction {
+                    scalar_count: count,
+                },
+                None,
+            ),
+            (
+                "topal.kernel-region-frame-source-object.x86_64/2"
+                | "topal.kernel-region-frame-source-object.x86_64/4",
+                Some(count),
+                Some(label),
+            ) if count <= topal_language::compiler::MAX_KERNEL_REGION_FRAME_SCALARS => (
+                Profile::FramedAction {
+                    scalar_count: count,
+                },
+                Some(label),
+            ),
             _ => return Err(invalid("incompatible region instance/profile certificate")),
         };
+        let runtime = self.allocation.unsigned_runtime_sha256.as_deref();
+        if self.schema != source_object_schema(profile, instance.is_some(), runtime.is_some())
+            || runtime.is_some_and(|digest| digest != UNSIGNED_RUNTIME_SHA256)
+        {
+            return Err(invalid("unsigned runtime/profile certificate mismatch"));
+        }
         let symbols = RegionNativeSymbols::for_profile(profile, instance)?;
         if self.native_export != symbols.export
             || self.imported_hooks != [symbols.allocate.clone(), symbols.abort.clone()]

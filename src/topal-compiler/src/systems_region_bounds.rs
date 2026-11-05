@@ -12,6 +12,12 @@ pub struct SystemsRegionAllocationBound {
     pub control_bytes: u64,
     pub view_bytes: u64,
     pub region_runtime_sha256: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub unsigned_runtime_sha256: Option<String>,
     pub adapter_sha256: String,
     #[serde(
         default,
@@ -59,6 +65,19 @@ impl Bounds<'_> {
                 40,
             ),
             RegionOp::Store => (Value::Boolean, 0),
+            RegionOp::UnsignedLoad(format) => {
+                self.maximum_bits = self.maximum_bits.max(u64::from(format.byte_count()) * 8);
+                (
+                    Value::Optional {
+                        some: Some(Box::new(number(
+                            u64::MAX >> ((8 - format.byte_count()) * 8),
+                        ))),
+                        none: true,
+                    },
+                    40,
+                )
+            }
+            RegionOp::UnsignedStore(_) => (Value::Boolean, 0),
             RegionOp::Window { .. } => (
                 Value::Optional {
                     some: Some(Box::new(Value::Region)),
@@ -118,6 +137,27 @@ pub(crate) fn bound_region_library_profile(
         "{:x}",
         Sha256::digest(include_bytes!("runtime/kernel_region_platform.ll"))
     );
+    let unsigned_runtime_sha256 =
+        if topal_language::compiler::kernel_region_unsigned_runtime_required(program)
+            .map_err(|error| invalid(error.message))?
+        {
+            let digest = format!(
+                "{:x}",
+                Sha256::digest(include_bytes!("runtime/kernel_region_unsigned.ll"))
+            );
+            // The complete helper has only bounded (<=8) byte loops. Guard/span/
+            // index/store paths allocate nothing; load constructs at most one
+            // unsigned number (24) and one Optional (16). Shared callees retain
+            // their separately checked certificates above/below.
+            if digest != crate::systems_region_library::UNSIGNED_RUNTIME_SHA256 {
+                return Err(invalid(
+                    "unsigned field runtime allocation certificate requires review",
+                ));
+            }
+            Some(digest)
+        } else {
+            None
+        };
     if !adapter_valid
         || hooks_sha256 != "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e"
     {
@@ -212,6 +252,7 @@ pub(crate) fn bound_region_library_profile(
         control_bytes: 64,
         view_bytes: 64,
         region_runtime_sha256,
+        unsigned_runtime_sha256,
         adapter_sha256,
         adapter_family_sha256,
     })

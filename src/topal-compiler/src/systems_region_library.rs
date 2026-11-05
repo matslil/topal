@@ -29,6 +29,44 @@ pub(crate) const FRAME_EXPORT: &str = "topal_kernel_region_frame_apply_v1";
 pub(crate) const FRAME_PREFIX: &str = "topal.framed-region.";
 pub(crate) const FRAME_ALLOCATE: &str = "topal_kernel_region_frame_allocate_v1";
 pub(crate) const FRAME_ABORT: &str = "topal_kernel_region_frame_abort_v1";
+// Reviewed <=8-byte loops: no allocation in span/store; load at most 24 bytes
+// for int.from.u64 plus 16 for Some (or 16 for None). Shared callees retain
+// their existing independent runtime certificates; see TK-DEC-279.
+pub(crate) const UNSIGNED_RUNTIME_SHA256: &str =
+    "d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4";
+
+pub(crate) fn source_object_schema(
+    profile: CompilerKernelRegionProfile,
+    instance: bool,
+    unsigned: bool,
+) -> &'static str {
+    match (profile, instance, unsigned) {
+        (CompilerKernelRegionProfile::Unit, _, false) => {
+            "topal.kernel-region-source-object.x86_64/3"
+        }
+        (CompilerKernelRegionProfile::Unit, _, true) => {
+            "topal.kernel-region-source-object.x86_64/4"
+        }
+        (CompilerKernelRegionProfile::Action, _, false) => {
+            "topal.kernel-region-action-source-object.x86_64/1"
+        }
+        (CompilerKernelRegionProfile::Action, _, true) => {
+            "topal.kernel-region-action-source-object.x86_64/2"
+        }
+        (CompilerKernelRegionProfile::FramedAction { .. }, false, false) => {
+            "topal.kernel-region-frame-source-object.x86_64/1"
+        }
+        (CompilerKernelRegionProfile::FramedAction { .. }, true, false) => {
+            "topal.kernel-region-frame-source-object.x86_64/2"
+        }
+        (CompilerKernelRegionProfile::FramedAction { .. }, false, true) => {
+            "topal.kernel-region-frame-source-object.x86_64/3"
+        }
+        (CompilerKernelRegionProfile::FramedAction { .. }, true, true) => {
+            "topal.kernel-region-frame-source-object.x86_64/4"
+        }
+    }
+}
 
 #[path = "systems_region_instance.rs"]
 mod instance;
@@ -467,20 +505,11 @@ fn build_region_profile(
     crate::systems_library::inspect_instructions(&disassembly)?;
     let snapshot = crate::systems_library::modules::snapshot(input)?;
     let record = SystemsRegionLibraryArtifact {
-        schema: match profile {
-            CompilerKernelRegionProfile::Unit => "topal.kernel-region-source-object.x86_64/3",
-            CompilerKernelRegionProfile::Action => {
-                "topal.kernel-region-action-source-object.x86_64/1"
-            }
-            CompilerKernelRegionProfile::FramedAction { .. }
-                if checked.symbols.instance.is_some() =>
-            {
-                "topal.kernel-region-frame-source-object.x86_64/2"
-            }
-            CompilerKernelRegionProfile::FramedAction { .. } => {
-                "topal.kernel-region-frame-source-object.x86_64/1"
-            }
-        }
+        schema: source_object_schema(
+            profile,
+            checked.symbols.instance.is_some(),
+            allocation.unsigned_runtime_sha256.is_some(),
+        )
         .into(),
         source: input.source.clone(),
         source_name: input.source_name.clone(),

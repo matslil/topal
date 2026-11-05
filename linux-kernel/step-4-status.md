@@ -139,9 +139,11 @@ distribution/container/VM-hosting acceptance remain unfinished.
 The next [unsigned-field stage](step-4-unsigned-region-fields.md) defines explicit
 portable encodings on existing borrowed regions. Its actual-owner model and
 all 190 semantics tests pass, with nine new encoding/refusal/lifetime tests.
-Source/native qualification and current file-position integration remain pending;
-no changed kernel or source runtime is claimed by the model. This addresses the
-current eight-byte codec's 60152-byte temporary bound without enlarging the
+Typed source, exact runtime/cost binding and independent native components now
+pass: all sixteen formats, 92622 C calls and both byte-order GDB observations
+over actual source values, payload access and complete temporary erasure.
+Current file-position integration and changed-kernel qualification remain pending.
+This addresses the current eight-byte codec's 60152-byte temporary bound without enlarging the
 existing source arena or changing core language meaning.
 
 Ordinary effectful functions now execute over actual

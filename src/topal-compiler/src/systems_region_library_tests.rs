@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "systems_region_unsigned_tests.rs"]
+mod unsigned;
+
 const SOURCE: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/region_source_probe.t");
 const BYTES: &str = include_str!("../../../linux-kernel/kernel/support/bytes.t");
 

@@ -42,13 +42,24 @@ pub(crate) fn emit_region_kernel_library(
     module.push_str(
         "@llvm.used = appending global [1 x ptr] [ptr @memset], section \"llvm.metadata\"\n",
     );
+    let unsigned_runtime =
+        if topal_language::compiler::kernel_region_unsigned_runtime_required(&unit.program)
+            .map_err(|error| crate::CompileError::Tool(error.render(&unit.source_name)))?
+        {
+            Some(include_str!("../runtime/kernel_region_unsigned.ll"))
+        } else {
+            None
+        };
     for runtime in [
         VALUE_RUNTIME,
         include_str!("../runtime/list_int_layout.ll"),
         FUNDAMENTAL_CONTAINERS_RUNTIME,
         include_str!("../runtime/kernel_region_platform.ll"),
         include_str!("../runtime/kernel_regions.ll"),
-    ] {
+    ]
+    .into_iter()
+    .chain(unsigned_runtime)
+    {
         for line in runtime.lines() {
             if line.starts_with("define ") && line.ends_with(" {") {
                 let _ = writeln!(

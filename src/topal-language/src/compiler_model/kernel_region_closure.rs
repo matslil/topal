@@ -29,6 +29,20 @@ fn region_source_type(ty: &CompilerType, parameter: bool) -> bool {
 pub fn kernel_region_function_effects(
     program: &CompilerProgram,
 ) -> Result<Vec<CompilerKernelRegionEffects>, Diagnostic> {
+    kernel_region_analysis(program).map(|(effects, _)| effects)
+}
+
+/// Runtime input selection is separate from the source effect row. It is
+/// derived from every lowered specialization, including unselected branches.
+pub fn kernel_region_unsigned_runtime_required(
+    program: &CompilerProgram,
+) -> Result<bool, Diagnostic> {
+    kernel_region_analysis(program).map(|(_, required)| required)
+}
+
+fn kernel_region_analysis(
+    program: &CompilerProgram,
+) -> Result<(Vec<CompilerKernelRegionEffects>, bool), Diagnostic> {
     let invalid = |span, message| unsupported(&program.source, span, message);
     let functions = program
         .functions
@@ -44,7 +58,7 @@ pub fn kernel_region_function_effects(
     fn visit_block(
         block: &CompilerBlock,
         calls: &mut BTreeSet<String>,
-        effects: &mut (bool, bool),
+        effects: &mut (bool, bool, bool),
     ) -> Result<(), Span> {
         for statement in &block.statements {
             visit(
@@ -61,7 +75,7 @@ pub fn kernel_region_function_effects(
     fn visit(
         value: &CompilerExpression,
         calls: &mut BTreeSet<String>,
-        effects: &mut (bool, bool),
+        effects: &mut (bool, bool, bool),
     ) -> Result<(), Span> {
         use CompilerExpressionKind as K;
         let local_view = matches!(&value.value_type, CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::KernelByteRegion);
@@ -84,8 +98,21 @@ pub fn kernel_region_function_effects(
                 arguments,
                 ..
             } => {
-                effects.0 |= *operation == CompilerKernelRegionOperation::Load;
-                effects.1 |= *operation == CompilerKernelRegionOperation::Store;
+                effects.0 |= matches!(
+                    operation,
+                    CompilerKernelRegionOperation::Load
+                        | CompilerKernelRegionOperation::UnsignedLoad(_)
+                );
+                effects.1 |= matches!(
+                    operation,
+                    CompilerKernelRegionOperation::Store
+                        | CompilerKernelRegionOperation::UnsignedStore(_)
+                );
+                effects.2 |= matches!(
+                    operation,
+                    CompilerKernelRegionOperation::UnsignedLoad(_)
+                        | CompilerKernelRegionOperation::UnsignedStore(_)
+                );
                 visit(region, calls, effects)?;
                 for argument in arguments {
                     visit(argument, calls, effects)?;
@@ -175,17 +202,17 @@ pub fn kernel_region_function_effects(
             ));
         }
         let mut calls = BTreeSet::new();
-        let mut effects = (false, false);
+        let mut effects = (false, false, false);
         visit_block(&function.body, &mut calls, &mut effects)
             .map_err(|span| invalid(span, "unqualified region-library source value/operation"))?;
         graph.insert(symbol.clone(), (calls, effects));
     }
     fn closure(
         symbol: &str,
-        graph: &BTreeMap<String, (BTreeSet<String>, (bool, bool))>,
+        graph: &BTreeMap<String, (BTreeSet<String>, (bool, bool, bool))>,
         active: &mut BTreeSet<String>,
-        cache: &mut BTreeMap<String, (bool, bool)>,
-    ) -> Result<(bool, bool), ()> {
+        cache: &mut BTreeMap<String, (bool, bool, bool)>,
+    ) -> Result<(bool, bool, bool), ()> {
         if let Some(result) = cache.get(symbol) {
             return Ok(*result);
         }
@@ -197,16 +224,19 @@ pub fn kernel_region_function_effects(
             let nested = closure(&callee, graph, active, cache)?;
             effects.0 |= nested.0;
             effects.1 |= nested.1;
+            effects.2 |= nested.2;
         }
         active.remove(symbol);
         cache.insert(symbol.into(), effects);
         Ok(effects)
     }
     let mut results = Vec::new();
+    let mut unsigned_runtime = false;
     let mut cache = BTreeMap::new();
     for (symbol, function) in functions {
-        let (read, write) = closure(&symbol, &graph, &mut BTreeSet::new(), &mut cache)
+        let (read, write, unsigned) = closure(&symbol, &graph, &mut BTreeSet::new(), &mut cache)
             .map_err(|()| invalid(function.span, "region-library recursive or unresolved call"))?;
+        unsigned_runtime |= unsigned;
         if (read || write)
             && function
                 .declared_effects
@@ -224,5 +254,5 @@ pub fn kernel_region_function_effects(
             write,
         });
     }
-    Ok(results)
+    Ok((results, unsigned_runtime))
 }

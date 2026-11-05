@@ -5,6 +5,8 @@ pub enum CompilerKernelRegionOperation {
     Load,
     Store,
     Window { write: bool },
+    UnsignedLoad(topal_semantics::RegionLibraryUnsignedFormat),
+    UnsignedStore(topal_semantics::RegionLibraryUnsignedFormat),
 }
 
 /// Systems callable contexts, not new source types or live resource grants.
@@ -33,6 +35,10 @@ pub struct CompilerKernelRegionModuleExport {
 #[cfg(test)]
 #[path = "kernel_region_tests.rs"]
 mod kernel_region_tests;
+
+#[cfg(test)]
+#[path = "kernel_region_unsigned_tests.rs"]
+mod kernel_region_unsigned_tests;
 
 /// Typed source entry selection. This supplies no live/native region authority.
 /// The systems publisher must additionally qualify the complete object/runtime.
@@ -430,7 +436,7 @@ impl Analyzer {
         let Expression::Identifier(name) = receiver else {
             return Ok(None);
         };
-        if self.source.slice(*byte) != "byte"
+        if !matches!(self.source.slice(*byte), "byte" | "unsigned")
             || !environment
                 .get(self.source.slice(*name))
                 .is_some_and(|facts| facts.value_type == CompilerType::KernelByteRegion)
@@ -443,6 +449,15 @@ impl Analyzer {
                 span,
                 "kernel-region member without systems vocabulary",
             ));
+        }
+        if self.source.slice(*byte) == "unsigned" {
+            return self.analyze_kernel_region_unsigned_member(
+                receiver,
+                *member,
+                rest,
+                span,
+                environment,
+            );
         }
         let region = Box::new(self.analyze_expression(receiver, environment)?);
         let member = self.source.slice(*member).to_owned();
@@ -571,3 +586,5 @@ impl Analyzer {
         }))
     }
 }
+
+include!("kernel_region_unsigned.rs");
