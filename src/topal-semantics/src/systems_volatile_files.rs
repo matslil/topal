@@ -6,6 +6,9 @@ use std::sync::Arc;
 #[path = "systems_named_files.rs"]
 mod named;
 pub use named::*;
+#[path = "systems_namespace_transactions.rs"]
+mod namespace_transactions;
+pub use namespace_transactions::SystemsFileRename;
 #[path = "systems_inode_file_modes.rs"]
 mod inode_modes;
 #[path = "systems_positional_files.rs"]
@@ -20,6 +23,7 @@ pub use page_actions::SystemsRamPageAction;
 const PAGE: usize = 4096;
 const PAGES: usize = 8;
 const OBJECTS: usize = 4;
+const NAMES: usize = 4;
 const QUANTUM: usize = 256;
 const MAX_OFFSET: u64 = i64::MAX as u64;
 
@@ -87,9 +91,14 @@ pub struct SystemsVolatileFileMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Object {
     identity: u64,
-    name: Option<Vec<u8>>,
+    may_link_unlinked: bool,
     size: u64,
     inode: SystemsInodeMetadata,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NameEntry {
+    identity: u64,
+    name: Vec<u8>,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Description {
@@ -123,6 +132,7 @@ impl Page {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct State {
     objects: Vec<Option<Object>>,
+    names: Vec<Option<NameEntry>>,
     pages: Vec<Page>,
     page_allocation: [u8; PAGES],
     descriptions: BTreeMap<u64, Description>,
@@ -162,6 +172,7 @@ impl SystemsVolatileFilePool {
             identity: Arc::new(()),
             state: State {
                 objects: (0..OBJECTS).map(|_| None).collect(),
+                names: (0..NAMES).map(|_| None).collect(),
                 pages: (0..PAGES)
                     .map(|_| Page {
                         owner: None,
@@ -198,7 +209,39 @@ impl SystemsVolatileFilePool {
         if !self.allocation_consistent() {
             return Err(error("inconsistent page allocation owner"));
         }
+        if !self.namespace_consistent() {
+            return Err(error("inconsistent namespace owner"));
+        }
         Ok(())
+    }
+
+    fn namespace_consistent(&self) -> bool {
+        let mut names = std::collections::BTreeSet::new();
+        let mut identities = std::collections::BTreeSet::new();
+        self.state.objects.len() == OBJECTS
+            && self
+                .state
+                .objects
+                .iter()
+                .flatten()
+                .all(|object| object.identity >= 7 && identities.insert(object.identity))
+            && self.state.names.len() == NAMES
+            && self.state.names.iter().flatten().all(|entry| {
+                valid_name(&entry.name).is_ok()
+                    && names.insert(entry.name.as_slice())
+                    && self.state.objects.iter().flatten().any(|object| {
+                        object.identity == entry.identity && !object.may_link_unlinked
+                    })
+            })
+    }
+
+    fn links(&self, identity: u64) -> u64 {
+        self.state
+            .names
+            .iter()
+            .flatten()
+            .filter(|entry| entry.identity == identity)
+            .count() as u64
     }
 
     fn allocation_consistent(&self) -> bool {
@@ -279,7 +322,7 @@ impl SystemsVolatileFilePool {
             .ok_or_else(|| error("description identity exhausted"))?;
         self.state.objects[index] = Some(Object {
             identity,
-            name: None,
+            may_link_unlinked: true,
             size: 0,
             inode: SystemsInodeMetadata::new(0o100000, umask.apply(mode), seconds),
         });
@@ -335,7 +378,7 @@ impl SystemsVolatileFilePool {
         let o = self.state.objects[object].as_ref().unwrap();
         SystemsVolatileFileMetadata {
             identity: o.identity,
-            links: u64::from(o.name.is_some()),
+            links: self.links(o.identity),
             size: o.size,
             position,
             mode: o.inode.permissions(),
@@ -617,6 +660,7 @@ impl SystemsVolatileFilePool {
         }
         self.state.page_allocation.fill(0);
         self.state.objects.fill(None);
+        self.state.names.fill(None);
         self.state.descriptions.clear();
         self.state.references.clear();
         self.state.next_identity = 0;

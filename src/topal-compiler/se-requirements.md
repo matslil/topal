@@ -12346,3 +12346,17 @@ ordering, real source/helper effects, read-only/alias/unlinked/reused objects,
 mutable directories and both pipe endpoints against byte, pinned Linux, native
 and physical oracles. Preserve explicit older dispatch/ABI controls and initial
 acceptance scope. See [TK-DEC-280](../../linux-kernel/design/shared-inode-mode-actions.md).
+
+## TOPAL-COMP-SYSTEMS-NAMESPACE-001 — Ordinary namespace mutation service
+
+Implement `TOPAL-SYSTEMS-NAMESPACE-{OWNERSHIP,TRANSACTION,ABI,ACTION}-001`
+through separately bound ordinary source, actual persistent metadata and the
+existing two-Nat/Boolean instance ABI. Bind input/staging, complete code/data,
+owner geometry, runtime, history and costs. Guard exact complete deltas and
+immutable input, reclaim all temporaries before resumption and make admitted
+failure terminal without rollback. Qualify all five native adapters, retained
+dispatch vocabularies, exact new layouts, replacement/alias/capacity/lifetime
+laws, malformed bindings and source failures using independent byte/native/
+Linux/physical oracles and unchanged utility binaries. Keep existing owner
+extents, source resource limits, core meaning and initial acceptance scope.
+See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

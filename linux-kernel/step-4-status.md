@@ -120,6 +120,13 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
+The [shared namespace increment](step-4-shared-namespace-transactions.md) starts
+with independently owned entries and inodes and direct models for hard links,
+rename/replacement/exchange, anonymous link intent and complete lifetime/failure
+laws. No new native capability is claimed by that model. Ordinary source, V6
+adapters, changed native table consumers and full affected qualification remain
+its following stages; full initial acceptance remains below.
+
 The [reusable-page action stage](step-4-source-ram-page-allocation.md) was qualified
 at the TK278 checkpoint:
 ordinary Topal updates the real filesystem allocation map, and the controller

@@ -1905,6 +1905,18 @@ Retain current core language meaning and unfinished general credentials,
 distribution/container/VM-host acceptance. See
 [TK-DEC-280](../linux-kernel/design/shared-inode-mode-actions.md).
 
+## TOPAL-REQ-SYSTEMS-NAMESPACE-001 — Shared namespace transactions
+
+Qualify rename and hard links on owned regular inodes with independently owned
+entry slots, exact link counts, actual descriptions and stable object/page
+lifetime. Preserve same-inode no-ops, replacement victims, exchange, independent
+capacity, temporary-link eligibility, complete refusal-state preservation and
+native argument/error order. Use ordinary source over actual persistent
+metadata with complete ownership/cost binding, independent guarded completion
+and cleanup; keep model, source/native, Linux and physical evidence separate.
+Retain core meaning and the unfinished full kernel acceptance. See
+[TK-DEC-281](../linux-kernel/design/shared-namespace-transactions.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

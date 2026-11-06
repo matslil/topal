@@ -23,6 +23,12 @@ Pinned Linux comparisons and complete affected qualification pass: 2305 Rust
 tests, 176 Topal VM observations, 45 unchanged BusyBox workloads and 43 lab
 contracts. The original distribution/container/VM-host goal is unfinished.
 
+The next [shared namespace increment](step-4-shared-namespace-transactions.md)
+separates directory entries from regular inodes and models hard links and
+rename/replacement/exchange, including retained-open lifetime and independent
+capacity. Its source/native adapters and machine qualification remain staged
+work; the current executed native checkpoint remains the inode-mode increment.
+
 An earlier functional Step 4 increment adds
 [independent ordinary region instances](step-4-instance-scoped-region-actions.md):
 separate source/code/data/hooks and caller storage for identical callable profiles,

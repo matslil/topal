@@ -32,11 +32,18 @@ pub(super) fn valid_name(name: &[u8]) -> Result<(), SystemsModelError> {
     Ok(())
 }
 impl SystemsVolatileFilePool {
+    pub(super) fn named_entry(&self, name: &[u8]) -> Option<usize> {
+        self.state
+            .names
+            .iter()
+            .position(|entry| entry.as_ref().is_some_and(|entry| entry.name == name))
+    }
     pub(super) fn named_object(&self, name: &[u8]) -> Option<usize> {
+        let identity = self.state.names[self.named_entry(name)?].as_ref()?.identity;
         self.state
             .objects
             .iter()
-            .position(|o| o.as_ref().is_some_and(|o| o.name.as_deref() == Some(name)))
+            .position(|o| o.as_ref().is_some_and(|o| o.identity == identity))
     }
     pub fn open_named(
         &mut self,
@@ -85,26 +92,37 @@ impl SystemsVolatileFilePool {
         };
         // Every fallible check precedes namespace, data or counter publication.
         let created = if existing.is_none() {
+            let name_slot = self
+                .state
+                .names
+                .iter()
+                .position(Option::is_none)
+                .ok_or_else(|| error("ENOSPC"))?;
             let identity = self.state.next_identity;
             Some((
                 identity,
                 identity
                     .checked_add(1)
                     .ok_or_else(|| error("object identity exhausted"))?,
+                name_slot,
             ))
         } else {
             None
         };
-        if let Some((identity, next)) = created {
+        if let Some((identity, next, name_slot)) = created {
             self.state.objects[object] = Some(Object {
                 identity,
-                name: Some(name.to_vec()),
+                may_link_unlinked: false,
                 size: 0,
                 inode: SystemsInodeMetadata::new(
                     0o100000,
                     request.umask.apply(request.mode),
                     seconds,
                 ),
+            });
+            self.state.names[name_slot] = Some(NameEntry {
+                identity,
+                name: name.to_vec(),
             });
             self.state.next_identity = next;
             self.state.directory_inode.modified(seconds);
@@ -161,8 +179,9 @@ impl SystemsVolatileFilePool {
         self.owned(owner)?;
         valid_name(name)?;
         let index = self.named_object(name).ok_or_else(|| error("ENOENT"))?;
+        let name_slot = self.named_entry(name).unwrap();
         let object = self.state.objects[index].as_mut().unwrap();
-        object.name = None;
+        self.state.names[name_slot] = None;
         object.inode.changed(seconds);
         self.state.directory_inode.modified(seconds);
         self.reclaim_unlinked(index);
@@ -192,9 +211,9 @@ impl SystemsVolatileFilePool {
             let candidate = match current {
                 0 => Some((6, b".".to_vec(), true)),
                 1 => Some((3, b"..".to_vec(), true)),
-                _ => self.state.objects[(current - 2) as usize]
+                _ => self.state.names[(current - 2) as usize]
                     .as_ref()
-                    .and_then(|o| o.name.as_ref().map(|n| (o.identity, n.clone(), false))),
+                    .map(|entry| (entry.identity, entry.name.clone(), false)),
             };
             if let Some((identity, name, directory)) = candidate {
                 let length = (19 + name.len() + 1).div_ceil(8) * 8;
@@ -221,7 +240,7 @@ impl SystemsVolatileFilePool {
         Ok((entries, current))
     }
     pub(super) fn reclaim_unlinked(&mut self, object: usize) {
-        if self.state.objects[object].as_ref().unwrap().name.is_some()
+        if self.links(self.state.objects[object].as_ref().unwrap().identity) != 0
             || self.state.descriptions.values().any(|d| d.object == object)
         {
             return;

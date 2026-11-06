@@ -452,3 +452,16 @@ remain separate. Source-loan modeling shall retain independent
 opaque-completion and cleanup obligations; direct model updates shall not claim
 source/native execution or complete syscall error-order/physical evidence. See
 [TK-DEC-280](../../linux-kernel/design/shared-inode-mode-actions.md).
+
+## TOPAL-SEM-SYSTEMS-NAMESPACE-001 — Independent name and inode lifetime
+
+Model `TOPAL-SYSTEMS-NAMESPACE-OWNERSHIP-001` and
+`TOPAL-SYSTEMS-NAMESPACE-TRANSACTION-001` with entries referring to the same
+owned inode metadata/data as existing open, chmod, transfer and lifetime laws.
+Cover hard-link aliases, per-description state, initial anonymous link intent,
+unlink/recreation, rename replacement/exchange/no-op, exact independent entry/
+inode capacity, metadata changes, directory cookies, foreign/stale/poisoned
+refusal and complete terminal retirement. Preserve entire state on recoverable
+failure. Later loans shall retain independent source-completion/reclamation
+obligations; direct transitions shall not claim source or physical execution.
+See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

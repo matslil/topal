@@ -9358,6 +9358,12 @@ positions initially zero over shared object contents. Descriptor duplication
 and fork SHALL instead retain their original shared descriptions and positions.
 Page ownership SHALL use object identity, not description identity.
 
+The single-name and zero-link unlink clauses here apply to the initial named-file
+profile. A selected shared-namespace refinement SHALL instead use
+`TOPAL-SYSTEMS-NAMESPACE-OWNERSHIP-001` and
+`TOPAL-SYSTEMS-NAMESPACE-TRANSACTION-001` for multiple associations and remaining
+link counts, preserving the other lifetime and failure laws here.
+
 Unlink SHALL erase the association and name, set link count zero, and retain the
 object while any live description references it. Final independent-description
 release SHALL erase an unlinked object's pages, metadata and slot. Closing all
@@ -9416,6 +9422,8 @@ remain. Anonymous and unlinked objects SHALL NOT appear in getdents64 output.
 The initial `/tmp` directory SHALL use opaque slot-order cookies: zero before
 `.` and one before `..`; two through five select the four object slots, with
 six the terminal cookie. Skipped free/unlinked slots SHALL not emit records.
+The shared-namespace refinement SHALL use its independent entry slots in place
+of object slots; the following cursor/copy laws SHALL remain unchanged.
 Successful output SHALL advance the shared directory-description cursor past
 its last examined/emitted slot; successful EOF MAY advance across remaining
 holes. Independent directory opens SHALL have distinct cursors. Rewind SHALL
@@ -10179,3 +10187,110 @@ missing, extra, stale, cross-instance or undercharged inputs SHALL reject before
 publication/boot. V5 selection SHALL NOT itself establish handler arguments,
 credentials or object authority. Existing admission/cleanup-before-native-
 argument-access laws and `TOPAL-SYSTEMS-INODE-MODE-{ABI,ACTION}-001` SHALL apply.
+
+### TOPAL-SYSTEMS-NAMESPACE-OWNERSHIP-001 — Independent entries and inodes
+
+The shared-namespace refinement SHALL separate directory-entry slots and copied
+raw component bytes from stable inode identity, inode slots, page ownership,
+open descriptions, descriptor slots and cookies. Numeric equality SHALL grant
+no authority. The selected owner SHALL retain four independent entry slots,
+four regular inodes, eight pages and one-to-255-byte names excluding NUL, slash,
+dot and dot-dot. Multiple entries MAY name one inode; its link count SHALL
+equal their count. Free entry capacity SHALL NOT imply free inode capacity.
+
+Every lookup, create, unlink, stat, directory observation, chmod, close and
+process-lifetime consumer SHALL use the same entry associations and metadata.
+Only an inode without entries or descriptions SHALL be reclaimed. Reuse SHALL
+not resurrect identities, metadata, names or payload. Directory cookies SHALL
+enumerate dot/dot-dot and entry slots, independently of inode slots, with the
+existing complete-copy/cursor and no-cross-mutation-snapshot laws. Terminal
+retirement SHALL clear entries, objects, descriptions, pages and histories.
+
+Only a never-linked eligible anonymous temporary inode MAY acquire its initial
+link through a live empty-path descriptor. O_TMPFILE|O_EXCL SHALL prevent that
+initial link. Successful linking SHALL consume initial-link eligibility; after
+all links are removed, retained descriptions SHALL NOT resurrect the inode.
+Actual owner/generation/reference and controller exclusion SHALL remain required.
+Invalid table associations, duplicate names, stale/foreign references and
+poisoned overlapping filesystem controllers SHALL reject before mutation.
+
+### TOPAL-SYSTEMS-NAMESPACE-TRANSACTION-001 — Hard-link and rename effects
+
+Hard link SHALL require an existing regular inode and absent destination,
+consume one clean entry, set inode ctime and parent mtime/ctime, and preserve
+data, size, allocation, permissions, atime/mtime and all description state.
+Existing destination SHALL yield EEXIST; entry exhaustion SHALL yield ENOSPC
+without consuming inode or description identity. Unlink SHALL remove precisely
+one entry, updating the same shared counts and lifetime laws.
+
+Ordinary rename SHALL move to an absent destination without requiring a free
+entry, or atomically replace its entry and remove the source entry. The victim
+SHALL retain its identity/data through other entries or descriptions. Source
+and retained victim ctime and parent mtime/ctime SHALL update; unrelated fields
+and allocation SHALL remain exact. Last-reference victim reclamation SHALL
+erase its released state under the same exclusive operation.
+
+NOREPLACE SHALL reject every existing destination with EEXIST before same-inode
+handling. EXCHANGE SHALL require both entries, swap their inode associations,
+preserve names and link counts, and update both inode ctimes and parent times.
+Ordinary rename or EXCHANGE of names for the same inode SHALL be complete
+successful no-ops, preserving both entries, metadata and invocation history.
+Missing source or exchange destination SHALL yield ENOENT. All recoverable
+admission/clock failures SHALL preserve complete state. Direct model transitions
+SHALL NOT imply opaque source execution or physical erasure evidence.
+
+### TOPAL-SYSTEMS-NAMESPACE-ABI-001 — Rename and link personality
+
+The pinned x86-64 adapters SHALL cover rename 82, link 86, renameat 264,
+linkat 265 and renameat2 316 with distinct old/new copied-name and dirfd facts.
+Fd/flags SHALL adapt through their declared 32-bit native types. Linkat SHALL
+admit AT_SYMLINK_FOLLOW and AT_EMPTY_PATH; empty strings require EMPTY_PATH,
+while null/unreadable strings retain EFAULT. Unsupported symlink/device/
+directory/credential semantics SHALL NOT become claimed coverage.
+
+Rename flags SHALL distinguish zero, NOREPLACE and EXCHANGE; unknown bits and
+EXCHANGE combined with NOREPLACE or WHITEOUT SHALL yield EINVAL. WHITEOUT
+SHALL remain explicitly unqualified until device semantics are implemented,
+never ordinary successful rename. Native flag, copy, lookup, mount, dot/root,
+trailing-component and same-inode error priority SHALL be independently
+compared with the pinned Linux reference before machine qualification.
+
+The new `static-linux-dispatch-v6` SHALL add precisely `Rename` (82), `Link`
+(86), `RenameAt` (264), `LinkAt` (265) and `RenameAtFlags` (316) to v5's exact
+65 operations, plus Unsupported. The first five vocabularies and named adapters
+SHALL remain frozen. V6 SHALL require an explicit `namespace-library` declaration
+using `borrowed-byte-region-instance-action-v1`, two Nat facts and Boolean
+result, with the caller-derived `namespace-metadata` instance. Source selection
+SHALL NOT itself establish inode, mount, credential or controller authority.
+
+### TOPAL-SYSTEMS-NAMESPACE-ACTION-001 — Actual source namespace publication
+
+The selected ordinary source SHALL mutate the actual owned metadata page,
+including entry/name associations, checked link counts and inode/parent times;
+a copied candidate or native mutation SHALL NOT substitute for that grant.
+The exclusive controller SHALL stage immutable admitted indexes/name bytes in
+its disjoint input area, supply operation/time through the existing framed
+two-Nat/Boolean ABI and validate actual owner, geometry, generations, source,
+code/data/hooks, complete costs and clean disjoint runtime before entry.
+Source SHALL preflight the complete extent, operation and selected entry/object/
+input state before stores, using existing ordinary arithmetic/checked byte
+codecs without constructing native pointers or authority.
+Input preservation SHALL be a checked contract of the exact selected source,
+including independent no-store evidence; the existing read/write metadata view
+SHALL NOT be described as a new read-only capability or frame-transport ABI.
+
+True completion, untouched input and the exact complete persistent delta SHALL
+be independently checked before owner resumption. Complete staging/frame/view/
+arena/control/retired-stack reclamation SHALL precede resumption. Source false,
+abandonment, changed association or incomplete reclamation after admitted
+stores SHALL be fatal without rollback or resumed owner/Linux error. No-op and
+pre-admission refusal SHALL issue no action. Histories SHALL not rewind during
+link/rename, object reuse, exec/fork or process restoration. Overlapping
+filesystem loans SHALL conflict; distinct instance storage SHALL remain disjoint.
+
+New table geometry SHALL require exact new evidence versions and changed-byte/
+stale/overlapping binding refusals, without enlarging existing owner extents or
+65536/4096 source limits. Qualification SHALL distinguish direct state, actual
+loans, independent source/native components, pinned Linux and physical GDB/QMP
+evidence, including replacement/exchange, aliases, exhaustion, false-after-store,
+cleanup, active/inactive lifetime and unmodified mv/ln workloads.

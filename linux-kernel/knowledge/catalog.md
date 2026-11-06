@@ -50,6 +50,7 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-X64-DISCOVERY-001` | discovery and authority order | x86-64 | reviewed | [platform](x86_64/platform-and-board.md) |
 | `LK-X64-VIRTIO-001` | initial virtual devices | x86-64 QEMU | proposed | [platform](x86_64/platform-and-board.md) |
 | `TK-ELEMENT-001` | kernel-element design rules | cross-architecture | proposed | [Topal elements](../design/topal-kernel-primitives.md) |
+| `LK-X64-NAMESPACE-TRANSACTIONS-001` | rename/link adapters, shared names, temporary-link eligibility and metadata laws | x86-64 | source-indexed | [verified primary files](x86_64/namespace-transactions-research.json), [design](../design/shared-namespace-transactions.md) |
 
 The broad UAPI boundary is source-indexed, but most semantic families remain
 `mapped`. They advance only when their command/layout/state ledgers reconcile
