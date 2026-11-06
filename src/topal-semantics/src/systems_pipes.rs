@@ -81,6 +81,7 @@ pub struct SystemsPipePool {
     next_endpoint: u64,
     next_wait: u64,
     live: bool,
+    inode_actions: crate::systems_region_library::ControllerActionState,
 }
 
 fn error(message: &str) -> SystemsModelError {
@@ -102,10 +103,15 @@ impl SystemsPipePool {
             next_endpoint: 1,
             next_wait: 1,
             live: true,
+            inode_actions: Default::default(),
         })
     }
     fn owned(&self, owner: &str) -> Result<(), SystemsModelError> {
-        if !self.live || self.owner != owner {
+        if !self.live
+            || self.owner != owner
+            || self.inode_actions.active
+            || self.inode_actions.poisoned
+        {
             return Err(error("wrong or released pipe owner"));
         }
         Ok(())
@@ -424,7 +430,10 @@ impl SystemsPipePool {
         Ok(())
     }
     pub fn terminate(&mut self, owner: &str) -> Result<(), SystemsModelError> {
-        self.owned(owner)?;
+        // Terminal reclamation does not resume a poisoned metadata owner.
+        if !self.live || self.owner != owner {
+            return Err(error("wrong or released pipe owner"));
+        }
         self.waits.clear();
         self.endpoints.clear();
         for p in self.objects.iter_mut().flatten() {
@@ -435,6 +444,7 @@ impl SystemsPipePool {
         self.next_endpoint = 0;
         self.next_wait = 0;
         self.live = false;
+        self.inode_actions = Default::default();
         Ok(())
     }
 }

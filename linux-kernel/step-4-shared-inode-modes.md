@@ -68,10 +68,99 @@ and physical observations are required in subsequent stages. The previous
 [TK279 checkpoint](step-4-unsigned-region-fields.md) retains its distinct 2280
 Rust tests and 158 VM observations; those counts do not qualify this new action.
 
+## Stage 2: ordinary source and actual-owner components
+
+The [entry](kernel/policy/inode-mode-action.t) imports the ordinary
+[metadata module](kernel/support/inode-metadata.t). It checks the complete
+32-byte extent, permission/time ranges and existing type before any store.
+Ordinary quotient/multiplication retains the existing type prefix; checked
+eight-byte little-endian stores update mode and ctime. The action constructs
+no pointer or grant, changes no core language meaning and uses no native
+mutation substitute. Read-only or malformed data returns false without stores.
+An independently changed false-after-mode body preserves that earlier store,
+without pretending to roll it back.
+
+The exact instance is `inode-metadata`, with two Nat inputs and Boolean result,
+unsigned source schema `/4` and the unchanged frame ABI/family. Full source,
+module snapshot, runtime, code/read-only data, hooks and bounds are reproduced
+and verified. Its complete temporary certificate is **12208 bytes**:
+12064 source evaluation, 112 input/view bridge and 32 header. The reviewed
+ordinary numeric operation accounting includes division's full bounded
+allocation paths, rather than assuming a machine-word quotient. The maximum
+operand bound is 65 bits, one view is issued and all 47 retained native
+functions have stack evidence; complete source stack is **1296 bytes**.
+The existing 65536/4096 limits are unchanged. Observed peaks of 7328 in the
+full data corpus and 936 in debugger samples do not replace the certificate.
+Owning syscall/controller stack paths remain a later qualification obligation.
+
+The model additionally lends the same live inode block used by regular,
+directory and pipe observations. Actual byte operations occur on that block,
+not a copied candidate. Independent filesystem and pipe domains validate
+real references and mode encoding before publishing a fresh invocation;
+permission facts outside 07777 and exhausted generations preserve state.
+Nested helper views retain owner-relative effects and current-frame exclusion.
+History survives intermediate object destruction and slot reuse. Same-label/
+generation inode, position and page views remain distinct while filesystem
+effects conservatively conflict in their common controller domain.
+
+All **208 semantics tests pass**, with nine further loan tests. True and exact
+mode/ctime plus unchanged atime/mtime are required after all model reclamation
+obligations. Each missing cleanup obligation, false after stores, wrong retained
+field, partial update and abandonment poisons the owner without undoing successful
+stores. Normal access and new loans then reject; terminal reclamation can retire
+the poisoned owner. Direct model operations, model proof flags and terminal
+retirement do not prove source execution or physical erasure.
+
+Four independent compiler component tests cover:
+
+- The [C caller](labs/qemu/x86_64/inode_mode_client.c) executes **36906 calls**:
+  all 4096 permission patterns on regular/directory/FIFO types at each of three
+  placements, including an unaligned field and both guarded-page boundaries,
+  then 42 data refusals. Its separate division-based byte oracle checks the
+  entire payload page, preserved type/times and full unsigned clock values.
+- Thirty-two narrow extents and invalid permission facts point at inaccessible
+  payload pages. Invalid types use physically read-only pages; read-only views
+  preserve valid metadata. Four additional compiled probes construct actual
+  65/256-bit permission/time facts and refuse before inaccessible payload access.
+- Sixteen malformed native entry/control/frame cases reach the abort hook before
+  changing the complete control, arena or payload. Fourteen changed artifact/
+  caller/runtime/cost/effect cases reject reproduction, including coordinated
+  schema downgrade plus runtime-digest removal. Changed source encoding fails
+  the independent byte oracle; a false-after-first-store variant proves no
+  rollback independently of the model.
+- The [debugger oracle](labs/qemu/x86_64/inode_mode_debug.py) observes **nine calls
+  and nine arena/frame erasures**, all actual entry/imported-helper facts,
+  computed type prefixes, full source mode/time values, internal Boolean low-bit
+  returns and exact public Boolean results. It observes 48 owner-payload byte
+  reads and 64 stores, no access to atime/mtime, unchanged control generation
+  laws, all six callee GPRs, all sixteen XMM registers, restored RSP and contained
+  source-stack use. Even the equal-mode/equal-clock case performs its stores.
+
+The C component owns and physically erases its full arena and immutable input
+staging, with independent debugger readback. It is not the kernel controller:
+kernel retired-stack erasure, actual subsystem admission and cleanup still need
+fresh machine observations. The selected kernel and its 61-operation dispatch
+remain unchanged in this component stage.
+
+Early source attempts used an unsupported nested branch spelling, unqualified
+module reference and an ambiguous unbound application/arithmetic expression.
+Using existing helper functions, fully qualified module calls and explicit
+ordinary value bindings fixes them without a language change. The first GDB
+attempt encountered an optimized-out C-only observation variable; making that
+observation volatile preserves it, and the complete debugger rerun passes.
+
+Final component-stage validation passes all **263 compiler unit tests** and all
+**208 semantics tests**, with no failed or ignored tests. Locked workspace
+all-target checking, all four specification/requirement coverage checks,
+bounded formatting and the unchanged 2000-line Rust ceiling pass. All 305
+systems norms remain unique, all 406 local links in this stage's changed
+documents resolve, and raw whitespace/debugger-syntax checks pass. The normal
+bounded wrapper retains its host reserve and zero swap throughout. Complete
+workspace test/doc and changed-kernel machine qualification remain Stage 4 work;
+this stage does not reuse the preceding kernel's VM results as new evidence.
+
 ## Remaining staged work
 
-Stage 2 must qualify the ordinary two-field source action, actual-owner loans,
-strict object/runtime/cost binding and independent guarded native/GDB components.
 Stage 3 must integrate all four chmod-family adapters and the real persistent
 metadata owners, new exact layout versions, Linux reference controls, physical
 cleanup and unmodified BusyBox workloads. Stage 4 must complete the affected

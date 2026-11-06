@@ -134,6 +134,7 @@ struct State {
     live: bool,
     position_actions: crate::systems_region_library::ControllerActionState,
     page_actions: crate::systems_region_library::ControllerActionState,
+    inode_actions: crate::systems_region_library::ControllerActionState,
 }
 
 #[derive(Debug)]
@@ -178,6 +179,7 @@ impl SystemsVolatileFilePool {
                 live: true,
                 position_actions: Default::default(),
                 page_actions: Default::default(),
+                inode_actions: Default::default(),
             },
         })
     }
@@ -188,6 +190,8 @@ impl SystemsVolatileFilePool {
             || self.state.position_actions.poisoned
             || self.state.page_actions.active
             || self.state.page_actions.poisoned
+            || self.state.inode_actions.active
+            || self.state.inode_actions.poisoned
         {
             return Err(error("wrong or released filesystem owner"));
         }
@@ -621,6 +625,7 @@ impl SystemsVolatileFilePool {
         self.state.next_ticket = 0;
         self.state.position_actions = Default::default();
         self.state.page_actions = Default::default();
+        self.state.inode_actions = Default::default();
         self.state.live = false;
         Ok(())
     }

@@ -1,7 +1,30 @@
 //! TOPAL-SYSTEMS-INODE-MODE-STATE-001: both endpoints share inode metadata.
 use super::*;
+use crate::systems_region_library::InodeController;
+use crate::{RegionLibraryBinding, RegionLibraryError, RegionLibraryInvocation, RegionLibraryView};
 
 impl SystemsPipePool {
+    pub fn borrow_inode_mode_after_admission<'a>(
+        &'a mut self,
+        owner: &str,
+        endpoint: &SystemsPipeEndpoint,
+        permissions: u64,
+        seconds: u64,
+        binding: &'a RegionLibraryBinding,
+    ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        let index = self
+            .endpoint(owner, endpoint)
+            .map_err(|_| RegionLibraryError::Owner)?;
+        RegionLibraryInvocation::begin_inode(
+            &mut self.objects[index].as_mut().unwrap().inode,
+            &mut self.inode_actions,
+            (&self.owner, self.identity.clone(), InodeController::Pipe),
+            0o10000,
+            (permissions, seconds),
+            binding,
+        )
+    }
+
     /// An admitted prepared-root metadata operation, independent of direction.
     pub fn chmod(
         &mut self,
@@ -31,6 +54,7 @@ mod tests {
         waits: BTreeMap<u64, Wait>,
         counters: [u64; 3],
         live: bool,
+        inode_actions: crate::systems_region_library::ControllerActionState,
     }
 
     fn snapshot(pool: &SystemsPipePool) -> Snapshot {
@@ -40,6 +64,7 @@ mod tests {
             waits: pool.waits.clone(),
             counters: [pool.next_generation, pool.next_endpoint, pool.next_wait],
             live: pool.live,
+            inode_actions: pool.inode_actions.clone(),
         }
     }
 
@@ -131,3 +156,7 @@ mod tests {
         assert_eq!(second.metadata("owner", &foreign).unwrap().mode, 0o600);
     }
 }
+
+#[cfg(test)]
+#[path = "systems_inode_pipe_action_tests.rs"]
+mod action_tests;

@@ -1,5 +1,7 @@
 use super::*;
 
+#[path = "systems_inode_mode_tests.rs"]
+mod inode_modes;
 #[path = "systems_region_unsigned_tests.rs"]
 mod unsigned;
 

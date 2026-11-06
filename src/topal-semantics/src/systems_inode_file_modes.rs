@@ -1,8 +1,87 @@
 //! Shared inode permission laws; no compiled-source or Linux syscall claim.
 //! TOPAL-SYSTEMS-INODE-MODE-STATE-001.
 use super::*;
+use crate::systems_region_library::InodeController;
+use crate::{RegionLibraryBinding, RegionLibraryError, RegionLibraryInvocation, RegionLibraryView};
 
 impl SystemsVolatileFilePool {
+    /// Lend the actual inode after model owner/reference and request admission.
+    /// This neither executes a source body nor proves physical reclamation.
+    pub fn borrow_inode_mode_after_admission<'a>(
+        &'a mut self,
+        owner: &str,
+        file: &SystemsVolatileFile,
+        permissions: u64,
+        seconds: u64,
+        binding: &'a RegionLibraryBinding,
+    ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        let description = self
+            .description(owner, file)
+            .map_err(|_| RegionLibraryError::Owner)?;
+        let object = self.state.descriptions[&description].object;
+        self.borrow_object_inode_mode(object, permissions, seconds, binding)
+    }
+
+    pub fn borrow_named_inode_mode_after_admission<'a>(
+        &'a mut self,
+        owner: &str,
+        name: &[u8],
+        permissions: u64,
+        seconds: u64,
+        binding: &'a RegionLibraryBinding,
+    ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        self.owned(owner).map_err(|_| RegionLibraryError::Owner)?;
+        named::valid_name(name).map_err(|_| RegionLibraryError::Owner)?;
+        let object = self.named_object(name).ok_or(RegionLibraryError::Owner)?;
+        self.borrow_object_inode_mode(object, permissions, seconds, binding)
+    }
+
+    fn borrow_object_inode_mode<'a>(
+        &'a mut self,
+        object: usize,
+        permissions: u64,
+        seconds: u64,
+        binding: &'a RegionLibraryBinding,
+    ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        RegionLibraryInvocation::begin_inode(
+            &mut self.state.objects[object]
+                .as_mut()
+                .ok_or(RegionLibraryError::Owner)?
+                .inode,
+            &mut self.state.inode_actions,
+            (
+                &self.owner,
+                self.identity.clone(),
+                InodeController::Filesystem,
+            ),
+            0o100000,
+            (permissions, seconds),
+            binding,
+        )
+    }
+
+    pub fn borrow_directory_mode_after_admission<'a>(
+        &'a mut self,
+        owner: &str,
+        permissions: u64,
+        seconds: u64,
+        binding: &'a RegionLibraryBinding,
+    ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        self.owned(owner).map_err(|_| RegionLibraryError::Owner)?;
+        RegionLibraryInvocation::begin_inode(
+            &mut self.state.directory_inode,
+            &mut self.state.inode_actions,
+            (
+                &self.owner,
+                self.identity.clone(),
+                InodeController::Filesystem,
+            ),
+            0o40000,
+            (permissions, seconds),
+            binding,
+        )
+    }
+
     /// Model the admitted prepared-root operation on a live description.
     /// Description read/write rights do not authorize or prohibit chmod.
     pub fn chmod(
@@ -59,6 +138,10 @@ impl SystemsVolatileFilePool {
         Ok(self.state.directory_inode.clone())
     }
 }
+
+#[cfg(test)]
+#[path = "systems_inode_file_action_tests.rs"]
+mod action_tests;
 
 #[cfg(test)]
 mod tests {

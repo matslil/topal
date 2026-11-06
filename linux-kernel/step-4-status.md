@@ -164,7 +164,12 @@ for all three types. Exact pinned Linux source bytes were verified against the
 manifest archive. The changed workspace all-target check and formatting pass
 under the unchanged memory policy after the user freed RAM. This is the first
 definition/model stage; source/native/adapter/VM qualification remains, and the
-current native kernel still selects 61 Linux operations.
+current native kernel still selects 61 Linux operations. The next component
+stage adds the actual-owner loan model and ordinary source action: all 208
+semantics tests pass; independent components execute 36906 field calls, guarded
+large-fact/ABI refusals and source/helper/field/caller/arena/frame debugger
+observations. Its complete temporary/source-stack bounds are 12208/1296 bytes
+under unchanged limits. Native syscall/controller and VM integration remain.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

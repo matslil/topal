@@ -9,6 +9,9 @@ use owner::Storage;
 #[path = "systems_region_unsigned.rs"]
 mod unsigned;
 pub use unsigned::{RegionLibraryByteOrder, RegionLibraryUnsignedFormat};
+#[path = "systems_inode_region_actions.rs"]
+mod inode_actions;
+pub(crate) use inode_actions::InodeController;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegionLibraryError {

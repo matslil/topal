@@ -448,7 +448,7 @@ allocation and waits. Cover every permission pattern, native high-bit masking,
 unchanged-mode ctime, read-only descriptions, retained unlinked objects, name
 recreation, reuse, stale/foreign authority and complete failure-state preservation.
 Directory namespace mutation shall retain its mode and pipe creation time shall
-remain separate. Subsequent source-loan modeling shall retain independent
+remain separate. Source-loan modeling shall retain independent
 opaque-completion and cleanup obligations; direct model updates shall not claim
 source/native execution or complete syscall error-order/physical evidence. See
 [TK-DEC-280](../../linux-kernel/design/shared-inode-mode-actions.md).
