@@ -29,15 +29,21 @@ def selected_source(text):
     return text.replace('  region-library is', declaration + '  region-library is')
 
 
-def build(destination, lifetime, source_path=None):
+def build(destination, lifetime, source_path=None, *, library_root=None):
     original = POSITIONAL.GATE.SOURCE_PATH
+    original_build = POSITIONAL.GATE.build_image
     source = destination.parent/'file-region-root.t'
     source.write_text(selected_source((source_path or original).read_text()))
     POSITIONAL.GATE.SOURCE_PATH = source
+    if library_root is not None:
+        def selected_build(*args, **kwargs):
+            return original_build(*args, **kwargs, library_root=library_root)
+        POSITIONAL.GATE.build_image = selected_build
     try:
         return POSITIONAL.build(destination, lifetime)
     finally:
         POSITIONAL.GATE.SOURCE_PATH = original
+        POSITIONAL.GATE.build_image = original_build
 
 
 def observe(root, values, timeout, cases=(), **mode):
@@ -82,7 +88,9 @@ def observe(root, values, timeout, cases=(), **mode):
         if failed.exists():
             return failed.read_text()
         if outcome and outcome != [0]:
-            return 'file-region debugger failed: '+repr(outcome)
+            debug_log = root/'debug.log'
+            details = debug_log.read_text(errors='replace')[-8000:] if debug_log.exists() else ''
+            return 'file-region debugger failed: '+repr(outcome)+'\n'+details
         if controlled and result.exists() and outcome == [0]:
             try:
                 if not stopped:
@@ -134,6 +142,7 @@ def observe(root, values, timeout, cases=(), **mode):
 def verify(timeout=120, write_evidence=False):
     record = dict(schema='topal-file-position-region-qemu/1',
         harness_sha256=GATE.digest(Path(__file__)), qmp_control_sha256=GATE.digest(LAB/"qemu_control.py"), inspector_sha256=GATE.digest(LAB/'file_region_inspect.py'))
+    record['bytewise_fixture_sha256'] = GATE.digest(LAB/'fixtures/word-bytes-bytewise.t')
     record['caller_sources'] = {name: GATE.digest(LAB/name) for name in (
         'static_positional_file_checks.py', 'static_named_file_checks.py',
         'static_volatile_file_checks.py', 'static_process_checks.py')}
@@ -157,6 +166,9 @@ def verify(timeout=120, write_evidence=False):
             if name == 'primary':
                 for fault in ('owner-prefix', 'field-stride', 'interrupts-enabled', 'dirty-arena', 'generation-exhausted'):
                     record[fault] = observe(root/fault, values, timeout, fault=fault)
+        legacy_libraries = root/'bytewise-library'
+        shutil.copytree(GATE.LINUX_KERNEL/'kernel', legacy_libraries)
+        shutil.copyfile(LAB/'fixtures/word-bytes-bytewise.t', legacy_libraries/'support/word-bytes.t')
         for name, interface, schema in (
             ('legacy', 'borrowed-byte-region-action-v1', 'topal.kernel-region-action-source-object.x86_64/1'),
             ('unscoped_frame', 'borrowed-byte-region-framed-action-v1', 'topal.kernel-region-frame-source-object.x86_64/1'),
@@ -167,20 +179,26 @@ def verify(timeout=120, write_evidence=False):
             end = text.index('  ),\n', start)+len('  ),\n')
             declaration = text[start:end].replace('borrowed-byte-region-instance-action-v1', interface)
             legacy.write_text(text[:start]+declaration+text[end:])
-            values, calls = build(root/(name+'-artifact'), False, legacy)
+            values, calls = build(root/(name+'-artifact'), False, legacy,
+                                  library_root=legacy_libraries)
             record[name] = observe(root/name, values, timeout, calls)
             if record[name]['source_library']['schema'] != schema:
                 raise GATE.GateError('legacy control did not select its frozen transport')
+            helper_inputs = [item for item in record[name]['source_library']['modules']
+                             if item['source'] == 'support/word-bytes.t']
+            if (len(helper_inputs) != 1
+                    or helper_inputs[0]['sha256'] != record['bytewise_fixture_sha256']
+                    or 'unsigned_runtime_sha256' in record[name]['source_library']['allocation']):
+                raise GATE.GateError('legacy control did not bind the frozen bytewise implementation')
         for name, mode in [('wrong-codec', dict(wrong_codec=True)), ('false-action', dict(false_action=True))]:
             libraries = root/name/'library'
             shutil.copytree(GATE.LINUX_KERNEL/'kernel', libraries)
             helper = libraries/'support/word-bytes.t'
             source = helper.read_text()
             if name == 'wrong-codec':
-                changed = source.replace('offset-bytes is 0, value is byte', 'offset-bytes is 0, value is 0')
+                changed = source.replace('value is value', 'value is 0')
             else:
-                changed = source.replace('offset-bytes is 7, value is byte)\n    true then true',
-                                         'offset-bytes is 7, value is byte)\n    true then false')
+                changed = source.replace('  region unsigned store', '  stored is region unsigned store') + '  false\n'
             if changed == source:
                 raise GATE.GateError('source control did not change its ordinary codec')
             helper.write_text(changed)

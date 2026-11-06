@@ -81,6 +81,10 @@ fn region_action_executes_real_nat_addition_byte_codec_and_boolean_refusals() {
     );
     assert_eq!(unit.record.native_export, ACTION_EXPORT);
     assert_eq!(unit.record.allocation.numeric.bridge_bytes, 112);
+    assert_eq!(
+        unit.record.allocation.unsigned_runtime_sha256.as_deref(),
+        Some("d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4")
+    );
     assert_eq!(unit.record.imported_hooks, [ACTION_ALLOCATE, ACTION_ABORT]);
     assert!(!unit.record.read_only_data.is_empty());
     assert!(
@@ -172,7 +176,7 @@ fn region_action_binding_reproduction_rejects_changed_code_costs_and_profile() {
         }
         assert!(serde_json::from_value::<SystemsRegionLibraryArtifact>(changed).is_err());
     }
-    for mode in 0..8 {
+    for mode in 0..11 {
         let mut changed = unit.clone();
         match mode {
             0 => changed.record.allocation.numeric.bridge_bytes -= 24,
@@ -183,6 +187,11 @@ fn region_action_binding_reproduction_rejects_changed_code_costs_and_profile() {
             5 => changed.object[0] ^= 1,
             6 => changed.record.allocation.adapter_sha256 = "0".repeat(64),
             7 => changed.record.read_only_data[0].sha256 = "0".repeat(64),
+            8 => changed.record.allocation.unsigned_runtime_sha256 = None,
+            9 => changed.record.allocation.unsigned_runtime_sha256 = Some("0".repeat(64)),
+            10 => {
+                changed.record.schema = "topal.kernel-region-action-source-object.x86_64/1".into()
+            }
             _ => unreachable!(),
         }
         assert!(
@@ -199,10 +208,8 @@ fn region_action_changed_ordinary_body_fails_independent_byte_oracle() {
     let tools = LlvmTools::discover(None).unwrap();
     let work = work();
     let mut input = input(&work);
-    input.modules[0].text = WORD.replace(
-        "offset-bytes is 7, value is byte",
-        "offset-bytes is 7, value is 0",
-    );
+    input.modules[0].text = WORD.replace("value is value", "value is 0");
+    assert_ne!(input.modules[0].text, WORD);
     let unit = build_systems_region_action_library(&input, "advance", &tools, &work).unwrap();
     let error = run(&mut Command::new(client(
         &work,
@@ -493,7 +500,7 @@ fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constan
     }
     assert_eq!(
         library.schema,
-        "topal.kernel-region-frame-source-object.x86_64/2"
+        "topal.kernel-region-frame-source-object.x86_64/4"
     );
     assert_eq!(library.scalar_count, Some(2));
     assert_eq!(
@@ -572,7 +579,7 @@ fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constan
             "{case}: {error}"
         );
     }
-    for mode in 0..15 {
+    for mode in 0..19 {
         let mut changed = artifact.record.clone();
         match mode {
             0 => {
@@ -643,6 +650,36 @@ fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constan
             14 => {
                 changed.file_position_runtime.as_mut().unwrap().interface =
                     "borrowed-byte-region-action-v1".into()
+            }
+            15 => {
+                changed
+                    .file_position_library
+                    .as_mut()
+                    .unwrap()
+                    .allocation
+                    .unsigned_runtime_sha256 = None
+            }
+            16 => {
+                changed
+                    .file_position_library
+                    .as_mut()
+                    .unwrap()
+                    .allocation
+                    .unsigned_runtime_sha256 = Some("0".repeat(64))
+            }
+            17 => {
+                changed.file_position_library.as_mut().unwrap().schema =
+                    "topal.kernel-region-frame-source-object.x86_64/2".into()
+            }
+            18 => {
+                changed.file_position_library.as_mut().unwrap().schema =
+                    "topal.kernel-region-frame-source-object.x86_64/2".into();
+                changed
+                    .file_position_library
+                    .as_mut()
+                    .unwrap()
+                    .allocation
+                    .unsigned_runtime_sha256 = None;
             }
             _ => unreachable!(),
         }

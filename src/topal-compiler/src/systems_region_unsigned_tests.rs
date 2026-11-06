@@ -155,6 +155,8 @@ fn unsigned_load_store_costs_and_optional_runtime_presence_are_exactly_bound() {
     let mut orphan = object.clone();
     orphan.record.allocation.unsigned_runtime_sha256 = Some(UNSIGNED_RUNTIME_SHA256.into());
     assert!(orphan.record.native_symbols().is_err());
+    orphan.record.schema = "topal.kernel-region-source-object.x86_64/4".into();
+    assert!(orphan.record.native_symbols().is_err());
     assert!(
         verify_systems_region_library(&byte, "apply", &tools, &temporary_work(), &orphan).is_err()
     );
@@ -218,6 +220,8 @@ fn unsigned_unit_instance_and_unselected_runtime_inputs_keep_exact_profile_bindi
     assert!(changed.native_symbols().is_err());
     changed = unit.record.clone();
     changed.schema = "topal.kernel-region-source-object.x86_64/3".into();
+    assert!(changed.native_symbols().is_err());
+    changed.allocation.unsigned_runtime_sha256 = None;
     assert!(changed.native_symbols().is_err());
     let source = "use language (version is v0.1, features is (systems))\npub apply is fn ((region : KernelByteRegion, offset : Nat, value : Nat)) -> Boolean\n  false\n    true then region unsigned store (offset-bytes is offset, byte-count is 7, byte-order is big-endian, value is value)\n    false then true\n";
     let work = temporary_work();

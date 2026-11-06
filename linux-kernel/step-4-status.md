@@ -142,9 +142,13 @@ all 190 semantics tests pass, with nine new encoding/refusal/lifetime tests.
 Typed source, exact runtime/cost binding and independent native components now
 pass: all sixteen formats, 92622 C calls and both byte-order GDB observations
 over actual source values, payload access and complete temporary erasure.
-Current file-position integration and changed-kernel qualification remain pending.
-This addresses the current eight-byte codec's 60152-byte temporary bound without enlarging the
-existing source arena or changing core language meaning.
+The current file-position codec now uses the checked eight-byte store: its
+complete temporary bound is 464 bytes and its combined owning stack is 712.
+All eight source/native/binding tests and thirteen fresh targeted VM observations
+pass, including actual field/primitive/cleanup evidence and frozen bytewise
+interface controls. Complete workspace qualification and the other 145 affected
+VM observations remain required. The existing source arena and core language
+meaning are unchanged.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

@@ -28,13 +28,17 @@ def sha256(path: Path) -> str:
 class TopalToolchainGateTests(unittest.TestCase):
     def test_framed_region_inputs_are_owned_until_return_and_legacy_transport_still_runs(self):
         # TOPAL-SYSTEMS-REGION-FRAME-SOURCE-001, -FRAME-ABI-001.
+        # TOPAL-SYSTEMS-REGION-UNSIGNED-QUALIFY-001.
         proof = json.loads((LAB/'results/topal-file-position-region-gate.json').read_text())
         self.assertEqual(proof['harness_sha256'], sha256(LAB/'file_region_gate.py'))
         self.assertEqual(proof['inspector_sha256'], sha256(LAB/'file_region_inspect.py'))
         for name in ('primary', 'lifetime'):
             case = proof[name]
             library, binding, observation = case['source_library'], case['binding'], case['observation']
-            self.assertEqual(library['schema'], 'topal.kernel-region-frame-source-object.x86_64/2')
+            self.assertEqual(library['schema'], 'topal.kernel-region-frame-source-object.x86_64/4')
+            self.assertEqual(library['allocation']['unsigned_runtime_sha256'],
+                             sha256(LAB.parents[3]/'src/topal-compiler/src/runtime/kernel_region_unsigned.ll'))
+            self.assertEqual(library['allocation']['numeric']['maximum_bytes'], 464)
             self.assertEqual(library['scalar_count'], 2)
             self.assertEqual(binding['schema'], 'topal.file-position-region-invocation.x86_64/3')
             self.assertEqual(binding['scalar_count'], 2)
@@ -53,6 +57,12 @@ class TopalToolchainGateTests(unittest.TestCase):
                 self.assertEqual(frame['address'], call['frame_sp'])
                 self.assertTrue(frame['mapped_owned_extent'] and frame['outside_arena_and_retired_stack'])
                 self.assertTrue(call['temporary_cleanup'] and call['caller_preserved'])
+                primitive = call['unsigned_primitive']
+                self.assertEqual((primitive['offset'], primitive['width'], primitive['byte_order']),
+                                 (0, 8, 'little-endian'))
+                self.assertEqual(primitive['value'], call['base'] + call['transferred'])
+                self.assertEqual(primitive['accepted'], 1)
+                self.assertEqual(primitive['field_after'], call['field_after'])
         legacy = proof['legacy']
         self.assertEqual(legacy['observation']['result'], 'pass')
         self.assertEqual(legacy['source_library']['schema'], 'topal.kernel-region-action-source-object.x86_64/1')
@@ -67,6 +77,11 @@ class TopalToolchainGateTests(unittest.TestCase):
         for case in (legacy, unscoped):
             self.assertNotIn('instance', case['binding'])
             self.assertNotIn('instance', case['source_library'])
+            self.assertNotIn('unsigned_runtime_sha256', case['source_library']['allocation'])
+            helper = [m for m in case['source_library']['modules'] if m['source'] == 'support/word-bytes.t']
+            self.assertEqual(len(helper), 1)
+            self.assertEqual(helper[0]['sha256'], proof['bytewise_fixture_sha256'])
+        self.assertEqual(proof['bytewise_fixture_sha256'], sha256(LAB/'fixtures/word-bytes-bytewise.t'))
 
     def test_root_instance_binds_zero_facts_boolean_acceptance_and_disjoint_storage(self):
         # TOPAL-SYSTEMS-REGION-INSTANCE-{SOURCE,BINDING,ROOT}-001.
@@ -1344,16 +1359,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/251")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/252")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/238")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/239")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/251",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/252",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1879,7 +1894,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/251")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/252")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",

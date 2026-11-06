@@ -181,6 +181,8 @@ def install(config):
                 assert reg('rsp') == self.stack + 8, (self.kind, 'stack')
                 if self.kind == 'source':
                     check_scalar_frame()
+                    if library['allocation'].get('unsigned_runtime_sha256'):
+                        assert current['unsigned_primitive']['accepted'] == 1
                     assert reg('rax') == (0 if config.get('false_action') else 1)
                     assert words(control, 8) == (0, 0, current['generation'], 0, 0, 0, 0, 0)
                     header = words(arena, 4)
@@ -364,6 +366,48 @@ def install(config):
             except BaseException:
                 return failed()
 
+    class PrimitiveReturned(gdb.Breakpoint):
+        def __init__(self):
+            super().__init__('*' + hex(words(reg('rsp'), 1)[0]), internal=True)
+            self.stack = reg('rsp')
+        def stop(self):
+            try:
+                self.enabled = False
+                assert current is not None
+                primitive = current['unsigned_primitive']
+                # The private LLVM result is i1; upper RAX bits carry no
+                # Boolean meaning. The public adapter separately returns u64.
+                accepted = reg('rax') & 1
+                assert accepted == 1 and reg('rsp') == self.stack + 8
+                after = memory(current['description'], 64)
+                expected = primitive['value'].to_bytes(8, 'little')
+                assert after[24:32] == expected
+                assert after[:24] == primitive['before'][:24]
+                assert after[32:] == primitive['before'][32:]
+                primitive.update(accepted=accepted, field_after=list(expected))
+                primitive.pop('before')
+                return False
+            except BaseException:
+                return failed()
+
+    class Primitive(gdb.Breakpoint):
+        def stop(self):
+            try:
+                assert current is not None and 'unsigned_primitive' not in current
+                check_scalar_frame()
+                view = words(reg('rdi'), 8)
+                assert view == (control, 0, 8, 1, current['generation'], controller, export, 0)
+                offset, value = natural(reg('rsi')), natural(reg('rdx'))
+                assert offset == 0 and reg('rcx') == 8 and reg('r8') == 0
+                assert value == (0 if config.get('wrong_codec') else current['base'] + current['transferred'])
+                current['unsigned_primitive'] = dict(offset=offset, width=8, byte_order='little-endian',
+                    value=value, owner_field=current['description']+24,
+                    before=memory(current['description'], 64))
+                PrimitiveReturned()
+                return False
+            except BaseException:
+                return failed()
+
     class Finished(gdb.Breakpoint):
         def stop(self):
             try:
@@ -389,6 +433,11 @@ def install(config):
     codec = next(f['symbol'] for f in library['functions'] if f['symbol'].startswith(prefix) and 'store_2du64_2dle' in f['symbol'])
     Ordinary(entry, False)
     Ordinary(codec, True)
+    if library['allocation'].get('unsigned_runtime_sha256'):
+        primitive = [f['symbol'] for f in library['functions']
+                     if f['symbol'].endswith('.primitive.unsigned.store')]
+        assert len(primitive) == 1
+        Primitive('*' + hex(addr(primitive[0])), internal=True)
     Fatal('*' + library['imported_hooks'][1], internal=True)
     if cases:
         arm(0)

@@ -125,15 +125,81 @@ and all 1004 local links in the changed reports/traceability files pass. The
 existing cgroup wrapper retains its normal host reserve and zero swap; no host
 security or memory policy was changed.
 
-## Remaining stages and evidence scope
+## Current file-position integration and owning caller
 
-Current-codec integration, actual owning caller/boot binding and fresh affected
-VM qualification remain required. Source/native component evidence grants no
-new live kernel loan. The earlier
+The third stage replaces the current
+[ordinary codec](kernel/support/word-bytes.t) with one explicit eight-byte
+little-endian store. Its public signature is unchanged. The ordinary
+[file-position policy](kernel/policy/file-position.t) still computes the full
+Nat sum and admits the signed file-offset range. Native code still completes
+admission/transfer before lending the actual shared description field, and
+requires the source Boolean and complete temporary cleanup before resuming the
+owner. No native arithmetic or codec duplicates the ordinary source body.
+
+The complete file-position allocation certificate is now **464 bytes**, down
+from 60152: 320 source-evaluation bytes, 112 bridge bytes and a 32-byte header.
+It retains one view and proves a 65-bit maximum numeric intermediate. The native
+source graph has 21 functions and a 592-byte complete source-stack bound; the
+owning caller totals **712 bytes**, including 88 live bytes and 32 alignment
+bytes. The 65536-byte arena and 4096-byte retired-stack reserve remain unchanged
+and are completely erased. A standalone observed allocation peak of 176 bytes
+does not replace the conservative certificate.
+
+All eight current-codec/compiler-API tests pass. Independent C calls retain the
+168-case signed and full-u64 source controls and twelve ABI refusals; GDB sees
+the actual addition/codec values, Boolean returns, control revocation and caller
+state. Changed source fails the independent byte oracle. Exact source/runtime,
+immutable data, code, costs and owning storage bind through native publication
+and boot, including missing/wrong unsigned digests, orphan evidence and a
+combined schema downgrade plus digest removal. Runtime presence is also coupled
+to actual retained helper code, so coordinated metadata edits cannot disguise
+unsigned code as a byte-only object.
+Correcting the outer ELF hash cannot legitimize changed code or data.
+
+The freshly executed
+[file-position VM record](labs/qemu/x86_64/results/topal-file-position-region-gate.json)
+contains thirteen observations: primary and lifetime runs, inactive-child
+cancellation, five pre-entry refusals, two frozen callable contexts, wrong-codec
+and false-action cases, and source-absent execution. Primary/lifetime check
+360/411 syscall returns and 46 actual field calls each; cancellation checks 389
+returns and 46 calls. The selected primary/lifetime kernel SHA-256 is
+`2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69`.
+
+GDB observes each actual unsigned primitive's view, full Nat facts, static
+eight-byte/little-endian format, real owner-field address, Boolean and complete
+64-byte description before/after. It independently validates that only the
+position field changes. Existing source/helper/caller, frame, generation,
+shared-description/syscall, post-return erasure and terminal reclamation checks
+remain. The private LLVM result is `i1`; its undefined upper RAX bits are not a
+Boolean value. The public adapter's complete u64 result is checked separately.
+The debugger's changed-codec oracle stops before owner resumption. The native
+controller halts on a subsequent false result after successful writes, preserving
+those writes and erasing the complete temporary storage.
+Controlled cases prove the actual stopped guest before disposal.
+
+The earlier action and unscoped-frame controls execute the exact
+[frozen bytewise fixture](labs/qemu/x86_64/fixtures/word-bytes-bytewise.t).
+Their source schemas and omitted unsigned metadata retain their earlier
+contracts; the record binds their exact module/fixture digest. The current
+instance executes the current codec and unsigned schema `/4`. Both its frame
+ABI/family and the native invocation binding `/3` remain unchanged.
+
+Artifact/root/provider/object/boot/gate revisions are now
+252/238/239/231/152/252. The first VM attempt failed debugger setup because the
+hyphenated private symbol needed an address lookup; the corrected run passes
+all thirteen cases. The focused evidence/publication test, source ceiling,
+bounded formatting and strict whitespace checks pass. Other machine cohorts
+and complete workspace qualification still require the fourth stage.
+
+## Remaining stage and evidence scope
+
+Complete workspace qualification and the remaining 145 affected VM observations
+remain required. The current thirteen observations qualify only their own
+changed inputs and dispositions. The earlier
 [TK278 checkpoint](step-4-source-ram-page-allocation.md) retains its own complete
 Rust and machine records; it does not qualify this new runtime or a changed
-codec. The selected kernel and existing byte primitives remain unchanged through
-this component stage.
+codec. Stages one/two preserved the selected kernel; the third changes the
+selected codec and requires fresh execution throughout its affected cohort.
 
 Risk is high at full-span preflight, unsigned/endian conversion, aliases,
 caller exclusion, fact ordering and complete costs. Self-review checks the

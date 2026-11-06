@@ -61,10 +61,19 @@ pub(crate) fn inspect_linked(
     library: &crate::SystemsRegionLibraryArtifact,
 ) -> Result<SystemsFilePositionRegionBinding, CompileError> {
     let profile = match (library.schema.as_str(), library.instance.as_deref()) {
-        ("topal.kernel-region-action-source-object.x86_64/1", None) => FileRegionProfile::Action,
-        ("topal.kernel-region-frame-source-object.x86_64/1", None) => FileRegionProfile::Frame,
         (
-            "topal.kernel-region-frame-source-object.x86_64/2",
+            "topal.kernel-region-action-source-object.x86_64/1"
+            | "topal.kernel-region-action-source-object.x86_64/2",
+            None,
+        ) => FileRegionProfile::Action,
+        (
+            "topal.kernel-region-frame-source-object.x86_64/1"
+            | "topal.kernel-region-frame-source-object.x86_64/3",
+            None,
+        ) => FileRegionProfile::Frame,
+        (
+            "topal.kernel-region-frame-source-object.x86_64/2"
+            | "topal.kernel-region-frame-source-object.x86_64/4",
             Some(crate::systems_region_library::FILE_INSTANCE),
         ) => FileRegionProfile::Instance,
         _ => return Err(invalid("incompatible file source instance/context")),

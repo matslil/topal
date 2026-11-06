@@ -124,6 +124,22 @@ impl SystemsRegionLibraryArtifact {
             return Err(invalid("unsigned runtime/profile certificate mismatch"));
         }
         let symbols = RegionNativeSymbols::for_profile(profile, instance)?;
+        let unsigned_prefix = if profile == Profile::Unit {
+            "topal.kernel.region.unsigned.".to_owned()
+        } else {
+            format!("{}primitive.unsigned.", symbols.prefix)
+        };
+        let unsigned_code = self
+            .functions
+            .iter()
+            .any(|function| function.symbol.starts_with(&unsigned_prefix));
+        // Couple the schema/digest to actual retained helper inputs as well.
+        // Removing the digest together with a schema downgrade cannot turn
+        // unsigned code into a byte-only certificate, and an empty upgrade
+        // cannot attach orphan unsigned evidence to byte-only code.
+        if unsigned_code != runtime.is_some() {
+            return Err(invalid("unsigned runtime/code presence mismatch"));
+        }
         if self.native_export != symbols.export
             || self.imported_hooks != [symbols.allocate.clone(), symbols.abort.clone()]
         {
