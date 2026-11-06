@@ -22,6 +22,7 @@ fn program() -> CompilerSystemsProgram {
     program.region_library = None;
     program.file_position_library = None;
     program.ram_page_pool_library = None;
+    program.inode_mode_library = None;
     program
         .bootstrap
         .handler
@@ -99,6 +100,7 @@ fn declared_library_requires_checked_snapshot_before_publication() {
             None,
             None,
             SystemsKernelLibraries {
+                inode_mode: None,
                 ram_page_pool: None,
                 file_position: None,
                 region: None,

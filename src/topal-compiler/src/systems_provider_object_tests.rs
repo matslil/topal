@@ -13,13 +13,23 @@ fn generated() -> GeneratedSystemsProviderObject {
 }
 
 fn generated_with_page_source(selected: bool) -> GeneratedSystemsProviderObject {
+    generated_with_sources(selected, true)
+}
+
+fn generated_with_sources(source_page: bool, source_inode: bool) -> GeneratedSystemsProviderObject {
     let mut program = analyze_systems_for_compiler(
         SOURCE,
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .unwrap();
-    if !selected {
+    if !source_page {
         program.ram_page_pool_library = None;
+    }
+    if !source_inode {
+        program.inode_mode_library = None;
+        let dispatch = program.dispatch_library.as_mut().unwrap();
+        dispatch.interface = topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
+        dispatch.source = "arch/x86_64/policy/static-linux-dispatch-v4.t".into();
     }
     generate_x86_64_systems_provider_object(&program).unwrap()
 }
@@ -139,9 +149,9 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
     // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001;
     // TOPAL-COMP-SYSTEMS-REGION-PAGE-001. Source imports are explicit for each
     // selected caller; retaining native page allocation keeps its old closure.
-    for source_page in [false, true] {
-        let first = generated_with_page_source(source_page);
-        let repeated = generated_with_page_source(source_page);
+    for (source_page, source_inode) in [(false, false), (false, true), (true, false), (true, true)] {
+        let first = generated_with_sources(source_page, source_inode);
+        let repeated = generated_with_sources(source_page, source_inode);
         assert_eq!(first.bytes, repeated.bytes);
         let file = object::File::parse(first.bytes.as_slice()).unwrap();
         assert_eq!(file.format(), BinaryFormat::Elf);
@@ -152,8 +162,8 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
             file.sections()
                 .flat_map(|section| section.relocations())
                 .count(),
-            if source_page { 80 } else { 51 },
-            "page source selected: {source_page}"
+            51 + if source_page { 29 } else { 0 } + if source_inode { 26 } else { 0 },
+            "source page/inode: {source_page}/{source_inode}"
         );
         let mut undefined = std::collections::BTreeSet::from([
             crate::systems_region_library::ROOT_FRAME_EXPORT,
@@ -161,6 +171,11 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
         ]);
         if source_page {
             undefined.insert(crate::systems_region_library::PAGE_FRAME_EXPORT);
+        }
+        if source_inode {
+            undefined.insert(crate::systems_region_library::INODE_FRAME_EXPORT);
+        }
+        if source_page || source_inode {
             // The page controller precedes process storage in the object. Its
             // forward data reference resolves to this same object's sole strong
             // definition; it is not an additional external source/host import.
@@ -192,7 +207,7 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
                 .map(|symbol| symbol.name().unwrap())
                 .collect::<std::collections::BTreeSet<_>>(),
             undefined,
-            "page source selected: {source_page}"
+            "source page/inode: {source_page}/{source_inode}"
         );
         let frames = file.section_by_name(".debug_frame").unwrap();
         // ELF readers classify nonallocated debugger sections as Other.

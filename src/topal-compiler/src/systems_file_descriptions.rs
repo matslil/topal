@@ -13,11 +13,11 @@ mod positional;
 pub(in super::super) const TABLE_CONTEXT: u32 = 928;
 pub(in super::super) const ARCHIVE_CONTEXT: u32 = 936;
 pub(super) const SLOTS: i32 = 64;
-pub(super) const DESCRIPTIONS: i32 = 320;
+pub(in super::super) const DESCRIPTIONS: i32 = 320;
 // A parked parent can retain sixteen distinct descriptions while its child
 // independently opens sixteen more. Either process can retain cells in either
 // bank after handoff. This shared bank outlives inactive private snapshots.
-pub(super) const CHILD_DESCRIPTIONS: i32 = 0x3d000;
+pub(in super::super) const CHILD_DESCRIPTIONS: i32 = 0x3d000;
 pub(in super::super) const TABLE_BYTES: u64 = 8192;
 pub(super) const STAGING: i32 = 1408;
 const FILE_SIZE: u64 = 2_024_544;
@@ -654,6 +654,7 @@ pub(in super::super) fn emit_reclamation(
     code: &mut X86FunctionEncoder,
     source_position: bool,
     source_page: bool,
+    source_inode: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // An inactive parent retains references in this same description store.
@@ -732,6 +733,9 @@ pub(in super::super) fn emit_reclamation(
     }
     if source_page {
         e.0.external_call(super::super::ram_page_region::FINALIZE);
+    }
+    if source_inode {
+        e.0.external_call(super::super::inode_region::FINALIZE);
     }
     e.0.bind("fd-release-return")?;
     e.0.bytes(&[0xc3]);

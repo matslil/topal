@@ -1,0 +1,258 @@
+{
+  "busybox_workloads": 5,
+  "complete_affected_qualification": false,
+  "initial_inactive_attempt": {
+    "native_reclamation_observation": "pass; this initial driver attempt is not qualification",
+    "reason": "normal serial markers raced debugger disconnect; final driver requires explicit QMP confirmation",
+    "result": "failed-host-observer"
+  },
+  "logs": [
+    {
+      "path": "machine/bad-type/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/bad-type/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/bad-type/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/dirty-arena/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/dirty-arena/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/dirty-arena/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/false-after-mode/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/false-after-mode/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/false-after-mode/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "af30aaf997ee9893598beb3aeb3e01f9f9f93f4807a30267d0052266394f13f2"
+    },
+    {
+      "path": "machine/foreign-owner/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/foreign-owner/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/foreign-owner/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/generation-exhausted/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/generation-exhausted/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/generation-exhausted/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/inactive_terminal/serial.log.gz",
+      "uncompressed_bytes": 7336,
+      "uncompressed_sha256": "18b82668383ca8884de11f3efec7d07cf724c510d0abe523d7fcbcc306f80058"
+    },
+    {
+      "path": "machine/inactive_terminal/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/inactive_terminal/debug.log.gz",
+      "uncompressed_bytes": 106,
+      "uncompressed_sha256": "ab878139836728f6b046026209334ce00ed35f27c049e91edc1af102c329fcf3"
+    },
+    {
+      "path": "machine/interrupts-enabled/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/interrupts-enabled/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/interrupts-enabled/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/lifetime/serial.log.gz",
+      "uncompressed_bytes": 7606,
+      "uncompressed_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435"
+    },
+    {
+      "path": "machine/lifetime/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/lifetime/debug.log.gz",
+      "uncompressed_bytes": 140,
+      "uncompressed_sha256": "0b21f6aa8f5373888aa0256c18d0846a88778b084e680f7aec7688cdcfb9a86a"
+    },
+    {
+      "path": "machine/permissions-range/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/permissions-range/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/permissions-range/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/primary/serial.log.gz",
+      "uncompressed_bytes": 7606,
+      "uncompressed_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435"
+    },
+    {
+      "path": "machine/primary/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/primary/debug.log.gz",
+      "uncompressed_bytes": 140,
+      "uncompressed_sha256": "0b21f6aa8f5373888aa0256c18d0846a88778b084e680f7aec7688cdcfb9a86a"
+    },
+    {
+      "path": "machine/record-stride/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/record-stride/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/record-stride/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "machine/wrong-mode/serial.log.gz",
+      "uncompressed_bytes": 2685,
+      "uncompressed_sha256": "41c9ca1c4b6661ba90902967efc1de5a13f616242a377719fd1f25af16984560"
+    },
+    {
+      "path": "machine/wrong-mode/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "a15525a5923254a30f7abdb79da294cc666e64ac82d44c664dbf24675d04f2a4"
+    },
+    {
+      "path": "machine/wrong-mode/debug.log.gz",
+      "uncompressed_bytes": 132,
+      "uncompressed_sha256": "61dcd9d1c4a629ca75818fb1f6e358d625fd3ca6717bf8be6c4bd06a17a33a5e"
+    },
+    {
+      "path": "busybox/mode-directory/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "b113ef6c9de1aba99d8e035143fb0e67d8b043832a3263d80c216caa344f767d"
+    },
+    {
+      "path": "busybox/mode-directory/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "017dcc020281eb21cb4d7615f3845c1d37545872e7afe05da9c1b43d24fec1e7"
+    },
+    {
+      "path": "busybox/mode-numeric/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "e4a8d9d972ee382620b4fec48e2bf3e16f6a75a2c945bd2182994fc44347c02a"
+    },
+    {
+      "path": "busybox/mode-numeric/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "017dcc020281eb21cb4d7615f3845c1d37545872e7afe05da9c1b43d24fec1e7"
+    },
+    {
+      "path": "busybox/mode-retained-reader/serial.log.gz",
+      "uncompressed_bytes": 7155,
+      "uncompressed_sha256": "3fef142331f845801f8988fb177dddcb5849882929bda75e56f80e8f52312a4c"
+    },
+    {
+      "path": "busybox/mode-retained-reader/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "017dcc020281eb21cb4d7615f3845c1d37545872e7afe05da9c1b43d24fec1e7"
+    },
+    {
+      "path": "busybox/mode-symbolic/serial.log.gz",
+      "uncompressed_bytes": 7151,
+      "uncompressed_sha256": "e494a09f28170ccf7d2cb6d60eb0aecd144df537517d0c1bcc1f5e29b99c075c"
+    },
+    {
+      "path": "busybox/mode-symbolic/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "017dcc020281eb21cb4d7615f3845c1d37545872e7afe05da9c1b43d24fec1e7"
+    },
+    {
+      "path": "busybox/mode-umask-independent/serial.log.gz",
+      "uncompressed_bytes": 7152,
+      "uncompressed_sha256": "b52c2abc83f02b3bc7231eda796da3acd8252a8b9d56ade4308806480e035820"
+    },
+    {
+      "path": "busybox/mode-umask-independent/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "017dcc020281eb21cb4d7615f3845c1d37545872e7afe05da9c1b43d24fec1e7"
+    },
+    {
+      "path": "initial-inactive-attempt/serial.log.gz",
+      "uncompressed_bytes": 7336,
+      "uncompressed_sha256": "18b82668383ca8884de11f3efec7d07cf724c510d0abe523d7fcbcc306f80058"
+    },
+    {
+      "path": "initial-inactive-attempt/qemu.log.gz",
+      "uncompressed_bytes": 81,
+      "uncompressed_sha256": "1d14e892ef5b991ea0244b0a70cb942ca8a0ed1fbae414a390d8081c0cd4717d"
+    },
+    {
+      "path": "initial-inactive-attempt/debug.log.gz",
+      "uncompressed_bytes": 106,
+      "uncompressed_sha256": "ab878139836728f6b046026209334ce00ed35f27c049e91edc1af102c329fcf3"
+    }
+  ],
+  "machine_dispositions": 12,
+  "schema": "topal-inode-stage-3-archive/1"
+}

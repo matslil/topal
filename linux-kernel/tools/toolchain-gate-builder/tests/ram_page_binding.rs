@@ -5,7 +5,7 @@ use topal_compiler::*;
 use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
 #[test]
-fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
+fn real_ram_page_owner_binds_four_disjoint_instances_and_rejects_tampering() {
     // TOPAL-SYSTEMS-REGION-PAGE-{OWNER,ALLOCATE,RELEASE}-001.
     let text = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
     let declaration = "  ram-page-pool-library is lang systems source-library (\n    source is \"memory/ram-page-pool.t\",\n    export is apply,\n    interface is borrowed-byte-region-instance-action-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
@@ -31,13 +31,15 @@ fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
             let helpers: &[&str] = match r.source.as_str() {
                 "memory/ram-page-pool.t" => &["support/page-slots.t"],
                 "policy/file-position.t" => &["support/word-bytes.t"],
+                "policy/inode-mode-action.t" => &["support/inode-metadata.t"],
                 "policy/bootstrap-byte-copy-frame.t" => {
                     &["policy/bootstrap-byte-copy.t", "support/bytes.t"]
                 }
                 "policy/file-open-access.t" => &[],
                 "policy/relative-sleep-deadline.t" => &["support/clock.t"],
                 "policy/static-elf64-header.t" => &["support/elf.t"],
-                "arch/x86_64/policy/static-linux-dispatch-v4.t" => &["support/syscall.t"],
+                "arch/x86_64/policy/static-linux-dispatch-v4.t"
+                | "arch/x86_64/policy/static-linux-dispatch-v5.t" => &["support/syscall.t"],
                 "policy/structured-process-identity.t" => {
                     &["support/identity-history.t", "support/process-identity.t"]
                 }
@@ -71,6 +73,7 @@ fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
     let region = load(&program.region_library);
     let position = load(&program.file_position_library);
     let page = load(&program.ram_page_pool_library);
+    let inode = load(&program.inode_mode_library);
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -82,6 +85,7 @@ fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
     std::fs::create_dir(&parent).unwrap();
     let tools = LlvmTools::discover(None).unwrap();
     let libraries = SystemsKernelLibraries {
+        inode_mode: inode.as_ref(),
         ram_page_pool: page.as_ref(),
         region: region.as_ref(),
         file_position: position.as_ref(),
@@ -128,6 +132,7 @@ fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
     assert_eq!(binding.storage.len(), 3);
     assert_eq!(binding.code.len(), 4);
     for other in [
+        &artifact.record.inode_mode_runtime.as_ref().unwrap().storage,
         &artifact.record.region_runtime.as_ref().unwrap().storage,
         &artifact
             .record
@@ -239,7 +244,7 @@ fn real_ram_page_owner_binds_three_disjoint_instances_and_rejects_tampering() {
     assert!(legacy.record.ram_page_pool_runtime.is_none());
     assert_eq!(
         legacy.record.volatile_files.schema,
-        "topal.volatile-file.x86_64/2"
+        "topal.volatile-file.x86_64/5"
     );
     assert!(
         legacy

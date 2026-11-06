@@ -476,7 +476,6 @@ fn emit_stat(e: &mut E<'_>) -> Result<(), CompileError> {
     e.load(A, R10, 56);
     e.store(R12, STAGING + 16, A);
     e.load(A, R10, 24);
-    e.arith(1, A, 0o100000);
     e.store(R12, STAGING + 24, A);
     e.load(A, R10, 16);
     e.store(R12, STAGING + 48, A);

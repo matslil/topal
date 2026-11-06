@@ -134,7 +134,7 @@ fn extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_p
 
 #[test]
 fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs() {
-    for version in 1..=4 {
+    for version in 1..=5 {
         native_dispatch_profile(version);
     }
 }
@@ -159,6 +159,13 @@ fn native_dispatch_profile(version: u8) {
     if version == 4 {
         requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
         requirement.source = "arch/x86_64/policy/static-linux-dispatch-v4.t".into();
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+        input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
+    }
+    if version == 5 {
+        requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5;
+        requirement.source = "arch/x86_64/policy/static-linux-dispatch-v5.t".into();
         let root =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
         input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
@@ -238,13 +245,25 @@ int main(void) {
     } else {
         driver_source
     };
-    let driver_source = if version == 4 {
+    let driver_source = if version >= 4 {
         driver_source
             .replace(
                 "static_linux_dispatch_policy_v3",
                 "static_linux_dispatch_policy_v4",
             )
             .replace("13,14,16,22", "13,14,16,17,18,22")
+    } else {
+        driver_source
+    };
+    let driver_source = if version == 5 {
+        driver_source
+            .replace(
+                "static_linux_dispatch_policy_v4",
+                "static_linux_dispatch_policy_v5",
+            )
+            .replace("80,81,87,95", "80,81,87,90,91,95")
+            .replace("263,267,273", "263,267,268,273")
+            .replace("318,334", "318,334,452")
     } else {
         driver_source
     };
@@ -305,7 +324,12 @@ int main(void) {
         .iter()
         .zip(&second.record.source_tags)
     {
-        assert_eq!(original + reversed, 55 + 2 * u32::from(version - 1));
+        let last_tag = if version == 5 {
+            65
+        } else {
+            55 + 2 * u32::from(version - 1)
+        };
+        assert_eq!(original + reversed, last_tag);
     }
     let compiled = std::process::Command::new("cc")
         .arg("-no-pie")
@@ -346,6 +370,7 @@ fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4,
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5,
     ];
     for (version, interface) in versions.iter().enumerate() {
         let mut q = legacy.clone();
@@ -360,7 +385,10 @@ fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
         };
         let input = crate::systems_library::load_source_library(&q, &root).unwrap();
         let checked = check_numeric_library(&q, &input).unwrap();
-        assert_eq!(checked.source_tags.len(), 56 + 2 * version);
+        assert_eq!(
+            checked.source_tags.len(),
+            if version == 4 { 66 } else { 56 + 2 * version }
+        );
         for other in versions {
             if other == *interface {
                 continue;

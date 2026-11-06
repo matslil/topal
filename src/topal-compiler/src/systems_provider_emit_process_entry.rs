@@ -184,6 +184,7 @@ fn static_image_process_enter(
     structured_identity: bool,
     source_position: bool,
     source_page: bool,
+    source_inode: bool,
 ) -> Result<LinkableX86Function, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_process_start(
@@ -196,6 +197,7 @@ fn static_image_process_enter(
         dispatch_policy,
         source_identity,
         retained_identity,
+        source_inode,
     )?;
     emit_static_process_read_exec(&mut code, source_image)?;
     emit_static_process_files(&mut code)?;
@@ -212,6 +214,7 @@ fn static_image_process_enter(
         structured_identity,
         source_position,
         source_page,
+        source_inode,
     )?;
     code.finish_linkable()
 }

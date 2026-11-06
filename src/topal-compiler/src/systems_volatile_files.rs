@@ -9,6 +9,7 @@ mod create;
 mod transfer;
 
 pub(in super::super) const BASE: i32 = 0x43000;
+pub(in super::super) const DIRECTORY_METADATA: i32 = BASE + 32;
 pub(super) const BYTES: u64 = 0x9000;
 pub(in super::super) const OBJECTS: i32 = BASE + 256;
 pub(in super::super) const PAGES: i32 = BASE + 1024;
@@ -34,12 +35,15 @@ const _: () = {
     assert!(BUFFER as u64 + 8 * 4096 == BASE as u64 + BYTES);
 };
 
-pub(in super::super) fn profile(source_page: bool) -> crate::SystemsVolatileFileProfile {
+pub(in super::super) fn profile(
+    source_page: bool,
+    source_inode: bool,
+) -> crate::SystemsVolatileFileProfile {
     crate::SystemsVolatileFileProfile {
         schema: if source_page {
-            "topal.volatile-file.x86_64/3"
+            "topal.volatile-file.x86_64/4"
         } else {
-            "topal.volatile-file.x86_64/2"
+            "topal.volatile-file.x86_64/5"
         }
         .into(),
         process_storage_symbol: super::super::X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
@@ -47,6 +51,13 @@ pub(in super::super) fn profile(source_page: bool) -> crate::SystemsVolatileFile
         process_storage_bytes: super::children::STORAGE_BYTES,
         filesystem_offset: BASE as u64,
         filesystem_bytes: BYTES,
+        directory_metadata_offset: (DIRECTORY_METADATA - BASE) as u64,
+        object_metadata_offset: 24,
+        inode_metadata_bytes: 32,
+        pipe_pool_offset: super::pipes::BASE as u64,
+        pipe_record_bytes: super::pipes::RECORD as u64,
+        pipe_metadata_offset: 64,
+        pipe_creation_time_offset: 96,
         page_allocation_map_offset: source_page.then_some(24),
         page_allocation_map_bytes: source_page.then_some(8),
         object_offset: (OBJECTS - BASE) as u64,
@@ -76,6 +87,12 @@ pub(in super::super) fn profile(source_page: bool) -> crate::SystemsVolatileFile
                 + super::super::ram_page_region::CALL_ALIGNMENT_BYTES
                 + 40
                 + 5 * 8
+        } else if source_inode {
+            // Direct chmod handler -> instance controller, including return,
+            // complete live frame and the caller/inner alignment allowance.
+            super::super::inode_region::LIVE_FRAME_BYTES
+                + super::super::inode_region::CALL_ALIGNMENT_BYTES
+                + 8
         } else {
             MAXIMUM_HELPER_STACK
         },
@@ -145,6 +162,8 @@ pub(in super::super) fn emit_initialize(code: &mut X86FunctionEncoder) {
     let mut e = E(code);
     e.imm(A, 7);
     e.store(R12, BASE, A);
+    e.imm(A, 0o41777);
+    e.store(R12, DIRECTORY_METADATA, A);
     e.imm(A, 0o022);
     e.store(R12, UMASK, A);
 }
@@ -340,11 +359,20 @@ fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.add(R15, 1);
     e.cmp(R15, 4);
     e.0.jump_if(0x82, "file-terminal-object");
-    // Identity counter and declared directory timestamps are the only remainder.
+    // Only the identity counter and canonical directory metadata may remain.
+    for offset in [8, 16, 24] {
+        e.load(A, R12, BASE + offset);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "fatal");
+    }
+    e.load(A, R12, DIRECTORY_METADATA);
+    e.arith(4, A, !0o7777);
+    e.cmp(A, 0o40000);
+    e.0.jump_if(0x85, "fatal");
     e.mov(Di, R12);
-    e.add(Di, BASE + 24);
+    e.add(Di, BASE + 64);
     e.imm(A, 0);
-    e.imm(C, (BYTES - 24) / 8);
+    e.imm(C, (BYTES - 64) / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
     e.mov(R11, R12);

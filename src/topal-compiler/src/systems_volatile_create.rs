@@ -105,6 +105,7 @@ pub(super) fn emit(
     e.load(A, R12, UMASK);
     e.0.bytes(&[0x48, 0xf7, 0xd0]);
     e.rr(0x21, R9, A);
+    e.arith(1, R9, 0o100000); // actual inode word owns type and permissions
     // RTC erases private staging. Preserve copied name facts in GPRs it saves.
     if file_open_plan {
         e.load(Si, R12, namespace::COMPONENT);
@@ -126,8 +127,8 @@ pub(super) fn emit(
     e.store(R13, 72, D);
     e.imm(A, 1);
     e.store(R13, 56, A);
-    e.store(R12, BASE + 8, R15);
-    e.store(R12, BASE + 16, R15);
+    e.store(R12, DIRECTORY_METADATA + 16, R15);
+    e.store(R12, DIRECTORY_METADATA + 24, R15);
     e.0.bind("file-create-name-ready")?;
     namespace::wipe_name(&mut e);
     wipe_staging(&mut e);

@@ -15,6 +15,7 @@ mod systems_artifact;
 mod systems_boot_image;
 mod systems_boot_resource;
 mod systems_file_region_boot;
+mod systems_inode_region_boot;
 mod systems_library;
 mod systems_numeric_library;
 mod systems_policy_inputs;
@@ -24,6 +25,7 @@ mod systems_region_library;
 mod systems_region_root_tests;
 mod systems_root_region_boot;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
+pub use systems_provider_object::inode_region::SystemsInodeRegionBinding;
 pub use systems_provider_object::ram_page_region::SystemsRamPageRegionBinding;
 pub use systems_provider_object::root_region::{
     SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,

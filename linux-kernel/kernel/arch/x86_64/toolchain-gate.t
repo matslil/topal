@@ -1945,9 +1945,9 @@ lang systems artifact (
     runtime-limit-bytes is 65536
   ),
   dispatch-library is lang systems source-library (
-    source is "arch/x86_64/policy/static-linux-dispatch-v4.t",
+    source is "arch/x86_64/policy/static-linux-dispatch-v5.t",
     export is select-operation,
-    interface is static-linux-dispatch-v4,
+    interface is static-linux-dispatch-v5,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),
@@ -1956,6 +1956,13 @@ lang systems artifact (
     export is process-identity,
     interface is structured-process-identity-v1,
     state-limit-bytes is 4096,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
+  inode-mode-library is lang systems source-library (
+    source is "policy/inode-mode-action.t",
+    export is apply,
+    interface is borrowed-byte-region-instance-action-v1,
     stack-limit-bytes is 4096,
     runtime-limit-bytes is 65536
   ),

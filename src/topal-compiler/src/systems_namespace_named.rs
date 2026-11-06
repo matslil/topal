@@ -207,8 +207,8 @@ fn unlink(e: &mut E<'_>) -> Result<(), CompileError> {
     files::name_pointer(e, R11, R10);
     files::erase(e, R11, 256);
     e.store(R10, 48, R13);
-    e.store(R12, files::BASE + 8, R13);
-    e.store(R12, files::BASE + 16, R13);
+    e.store(R12, files::DIRECTORY_METADATA + 16, R13);
+    e.store(R12, files::DIRECTORY_METADATA + 24, R13);
     e.0.call("file-live-description");
     e.0.jump_if(0x83, "named-unlink-retained");
     e.0.call("file-destroy-object");

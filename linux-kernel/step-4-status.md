@@ -156,20 +156,21 @@ publication contracts** pass. The existing source arena and core language
 meaning are unchanged. This qualifies the unsigned-field increment; the initial
 acceptance areas below remain unfinished.
 
-The next [shared-inode mode stage](step-4-shared-inode-modes.md) defines the
-chmod-family boundary and an ordinary source action on real inode metadata.
-Its portable regular-file/directory/pipe model passes all 199 semantics tests,
-including nine new independent state/lifetime cases and every permission pattern
-for all three types. Exact pinned Linux source bytes were verified against the
-manifest archive. The changed workspace all-target check and formatting pass
-under the unchanged memory policy after the user freed RAM. This is the first
-definition/model stage; source/native/adapter/VM qualification remains, and the
-current native kernel still selects 61 Linux operations. The next component
-stage adds the actual-owner loan model and ordinary source action: all 208
-semantics tests pass; independent components execute 36906 field calls, guarded
-large-fact/ABI refusals and source/helper/field/caller/arena/frame debugger
-observations. Its complete temporary/source-stack bounds are 12208/1296 bytes
-under unchanged limits. Native syscall/controller and VM integration remain.
+The current [shared-inode mode stage](step-4-shared-inode-modes.md) executes all
+four chmod-family calls through an ordinary source action on actual regular,
+directory and pipe metadata. Its first two commits define the shared-state and
+actual-loan models and qualify 36906 independent native component calls. The
+third stage selects 65 operations, binds canonical inode geometry and complete
+12208/1296/1544-byte temporary/source-stack/combined-stack bounds, passes 33
+pinned Linux comparisons, twelve physical VM dispositions and five unchanged
+BusyBox chmod/stat/shell workloads. Complete owner-byte deltas, actual Nat facts,
+registers, frame/arena/retired-stack reclamation, generation lifetime,
+inactive-child cleanup and pre-entry/post-store refusal controls pass. All 264
+compiler unit tests, 628 language tests, 209 semantics tests, locked all-target
+checking and four specification/requirement coverage checks pass. Host safeguards
+and core language meaning are unchanged. Stage 4 must still refresh and qualify
+the complete affected Rust/lab/VM cohort; preceding-kernel results above do not
+qualify this new kernel.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

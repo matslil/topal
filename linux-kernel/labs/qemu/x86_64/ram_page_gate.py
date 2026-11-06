@@ -222,7 +222,7 @@ def verify(timeout=120, write_evidence=False, smoke=False, keep=None):
             absent, absent_calls = build(root/'native-only-artifact', source_text=text[:start]+text[end:])
             metadata = json.loads(absent[3].read_text())
             assert 'ram_page_pool_library' not in metadata and 'ram_page_pool_runtime' not in metadata
-            assert metadata['volatile_files']['schema'] == 'topal.volatile-file.x86_64/2'
+            assert metadata['volatile_files']['schema'] == 'topal.volatile-file.x86_64/5'
             serial = GATE.observe_gate(absent[0], absent[1], root/'native-only-serial.log',
                                         root/'native-only-qemu.log', timeout)
             record['native_only'] = dict(result='pass', independent_syscall_checks=len(absent_calls),

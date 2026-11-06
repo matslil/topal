@@ -27,7 +27,10 @@ def install(config):
         store = memory(table + BASE, SIZE)
         assert word(store, 0) >= 7
         assert not any(store[8:24])
-        assert not any(store[32 if page_map_offset is not None else 24:OBJECTS])
+        if page_map_offset is None: assert not any(store[24:32])
+        assert word(store, 32) == 0o41777 and word(store, 40) == 0
+        assert word(store, 48) == word(store, 56)
+        assert not any(store[64:OBJECTS])
         assert not any(store[OBJECTS + 512:PAGES])
         assert not any(store[PAGES + 256:BUFFER])
         objects = {}
@@ -39,7 +42,7 @@ def install(config):
             assert word(value, 0) == 1
             identity, size = word(value, 8), word(value, 16)
             assert 7 <= identity < word(store, 0) and identity not in objects
-            assert size <= (1 << 63) - 1 and word(value, 24) <= 0o7777
+            assert size <= (1 << 63) - 1 and word(value, 24) & ~0o7777 == 0o100000
             assert word(value, 32) > 0 and word(value, 40) > 0 and word(value, 48) > 0
             assert not any(value[56:64]) and word(value, 64) in (0, 1) and not any(value[72:])
             objects[identity] = size

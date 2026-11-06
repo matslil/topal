@@ -343,11 +343,13 @@ fn emit_metadata(e: &mut E<'_>) -> Result<(), CompileError> {
     e.imm(A, 2);
     e.store(R12, STAGING, A);
     e.store(R12, STAGING + 16, A);
-    e.imm(A, 0o41777);
+    e.load(A, R12, super::volatile_files::DIRECTORY_METADATA);
     e.store(R12, STAGING + 24, A);
-    e.load(A, R12, super::volatile_files::BASE + 8);
+    e.load(A, R12, super::volatile_files::DIRECTORY_METADATA + 8);
+    e.store(R12, STAGING + 72, A);
+    e.load(A, R12, super::volatile_files::DIRECTORY_METADATA + 16);
     e.store(R12, STAGING + 88, A);
-    e.load(A, R12, super::volatile_files::BASE + 16);
+    e.load(A, R12, super::volatile_files::DIRECTORY_METADATA + 24);
     e.store(R12, STAGING + 104, A);
     e.0.bytes(&[0xc3]);
     Ok(())

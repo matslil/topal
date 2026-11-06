@@ -11,6 +11,7 @@ pub enum SystemsSourceLibraryInterface {
     StaticLinuxDispatchV2,
     StaticLinuxDispatchV3,
     StaticLinuxDispatchV4,
+    StaticLinuxDispatchV5,
     ProcessIdentityTransitionV1,
     RetainedProcessIdentityV1,
     StructuredProcessIdentityV1,
@@ -31,6 +32,7 @@ impl SystemsSourceLibraryInterface {
             Self::StaticLinuxDispatchV2 => "static-linux-dispatch-v2",
             Self::StaticLinuxDispatchV3 => "static-linux-dispatch-v3",
             Self::StaticLinuxDispatchV4 => "static-linux-dispatch-v4",
+            Self::StaticLinuxDispatchV5 => "static-linux-dispatch-v5",
             Self::ProcessIdentityTransitionV1 => "process-identity-transition-v1",
             Self::RetainedProcessIdentityV1 => "retained-process-identity-v1",
             Self::StructuredProcessIdentityV1 => "structured-process-identity-v1",
@@ -81,6 +83,7 @@ impl SystemsSourceLibraryRequirement {
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                 | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
+                | SystemsSourceLibraryInterface::StaticLinuxDispatchV5
                 | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                 | SystemsSourceLibraryInterface::BorrowedByteRegionV1
                 | SystemsSourceLibraryInterface::BorrowedByteRegionActionV1

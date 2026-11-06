@@ -41,6 +41,26 @@ INTERACTIVE_BANNER = (
     b"Enter 'help' for a list of built-in commands.\n\n"
 )
 PROCESS_WORKLOADS = {
+    "mode-numeric": (
+        b"exec /bin/busybox sh -c 'echo payload >/tmp/item; /bin/busybox chmod 2751 /tmp/item; exec /bin/busybox stat -c %a /tmp/item'\n",
+        b"2751\n", 0
+    ),
+    "mode-symbolic": (
+        b"exec /bin/busybox sh -c 'echo payload >/tmp/item; /bin/busybox chmod u=rx,g=r,o= /tmp/item; exec /bin/busybox stat -c %a /tmp/item'\n",
+        b"540\n", 0
+    ),
+    "mode-directory": (
+        b"exec /bin/busybox sh -c '/bin/busybox chmod 1700 /tmp; exec /bin/busybox stat -c %a /tmp'\n",
+        b"1700\n", 0
+    ),
+    "mode-retained-reader": (
+        b"exec /bin/busybox sh -c 'echo payload >/tmp/item; exec 4</tmp/item; /bin/busybox chmod 0 /tmp/item; exec /bin/busybox cat <&4'\n",
+        b"payload\n", 0
+    ),
+    "mode-umask-independent": (
+        b"exec /bin/busybox sh -c 'umask 077; : >/tmp/item; /bin/busybox chmod 7777 /tmp/item; exec /bin/busybox stat -c %a /tmp/item'\n",
+        b"7777\n", 0
+    ),
     "named-redirection": (
         b"exec /bin/busybox sh -c 'echo alpha >/tmp/item; exec /bin/busybox head -c 6 /tmp/item'\n",
         b"alpha\n", 0
@@ -1372,7 +1392,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/252",
+        "schema": "topal-kernel-toolchain-gate-qemu/253",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1815,6 +1835,8 @@ def verify(
                                 "pipe-substitution-large":2,
                                 "named-redirection":2,"named-append":2,"named-truncate":2,
                                 "named-reopen":3,"named-remove":3,"named-list":2}.get(process_workload, 1)
+            if process_workload.startswith('mode-'):
+                expected_commits = 3
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

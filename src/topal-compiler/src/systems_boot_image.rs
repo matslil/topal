@@ -24,7 +24,7 @@ use crate::{
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/152";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/153";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -311,6 +311,7 @@ fn validate_artifact_input(
     if artifact.volatile_files
         != crate::systems_provider_object::volatile_file_profile(
             artifact.ram_page_pool_library.is_some(),
+            artifact.inode_mode_library.is_some(),
         )
     {
         return Err(CompileError::Tool(
@@ -391,6 +392,17 @@ fn validate_artifact_input(
     }
     crate::systems_file_region_boot::validate(kernel, artifact)?;
     crate::systems_ram_page_region_boot::validate(kernel, artifact)?;
+    crate::systems_inode_region_boot::validate(kernel, artifact)?;
+    if artifact
+        .dispatch_library
+        .as_ref()
+        .is_some_and(|library| library.interface == "static-linux-dispatch-v5")
+        && artifact.inode_mode_library.is_none()
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: v5 dispatch requires its actual inode action binding".into(),
+        ));
+    }
     crate::systems_root_region_boot::validate(kernel, artifact)?;
     crate::systems_region_library::validate_instance_namespaces(
         kernel,
@@ -398,6 +410,7 @@ fn validate_artifact_input(
             artifact.region_library.as_ref(),
             artifact.file_position_library.as_ref(),
             artifact.ram_page_pool_library.as_ref(),
+            artifact.inode_mode_library.as_ref(),
         ],
     )?;
     let identity_interface = artifact
@@ -453,6 +466,9 @@ fn validate_artifact_input(
         "static-linux-dispatch-v4" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
         }
+        "static-linux-dispatch-v5" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
+        }
         "static-linux-dispatch-v3" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
         }
@@ -463,6 +479,7 @@ fn validate_artifact_input(
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5,
     ]
     .into_iter()
     .any(|policy| {
@@ -1159,6 +1176,8 @@ mod tests {
     use super::*;
     use crate::{LlvmTools, qualified_x86_64_static_user_image_fixture};
 
+    include!("systems_inode_binding_tests.rs");
+
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
     fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
@@ -1220,12 +1239,20 @@ mod tests {
             )
             .unwrap()
         });
+        let inode = program.inode_mode_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
         let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             crate::SystemsKernelLibraries {
+                inode_mode: inode.as_ref(),
                 ram_page_pool: page.as_ref(),
                 file_position: position.as_ref(),
                 region: region.as_ref(),

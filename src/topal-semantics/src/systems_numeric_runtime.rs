@@ -43,6 +43,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV5
             ) && std::mem::replace(&mut dispatch_selected, true)
             {
                 return Err(invalid());
@@ -64,6 +65,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV5
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
                     | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
@@ -242,6 +244,7 @@ mod tests {
             StaticLinuxDispatchV2,
             StaticLinuxDispatchV3,
             StaticLinuxDispatchV4,
+            StaticLinuxDispatchV5,
         ];
         let requirement = |interface| SystemsSourceLibraryRequirement {
             source: "policy/identity.t".into(),

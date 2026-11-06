@@ -8,6 +8,7 @@ fn emit_static_process_start(
     dispatch_policy: crate::systems_numeric_library::NumericPolicy,
     source_identity: bool,
     retained_identity: bool,
+    source_inode: bool,
 ) -> Result<(), CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -301,6 +302,9 @@ fn emit_static_process_start(
         process_runtime::dispatch::emit_invoke(code, dispatch_policy)?;
     }
     process_files::emit_dispatch(code)?;
+    if source_inode {
+        process_runtime::inode_services::emit_dispatch(code)?;
+    }
     process_runtime::signals::emit_dispatch(code)?;
     process_runtime::namespace::emit_dispatch(
         code,
@@ -308,7 +312,7 @@ fn emit_static_process_start(
             || matches!(
                 dispatch_policy,
                 crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
-                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
+                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4 | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
             ),
     )?;
     process_runtime::realtime::emit_dispatch(code)?;

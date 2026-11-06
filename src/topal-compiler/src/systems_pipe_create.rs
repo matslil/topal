@@ -147,9 +147,11 @@ pub(super) fn emit(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
         e.arith(4, C, 1);
         e.store(A, 8, C);
     }
-    for offset in [64, 72, 80, 88] {
+    for offset in [72, 80, 88, 96] {
         e.store(R13, offset, super::super::R::_Bp);
     }
+    e.imm(A, 0o10600);
+    e.store(R13, 64, A);
     e.imm(A, 1);
     e.store(R13, 0, A);
     e.store(R12, COUNTER, R15);

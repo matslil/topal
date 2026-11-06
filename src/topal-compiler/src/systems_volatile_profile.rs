@@ -9,6 +9,13 @@ pub struct SystemsVolatileFileProfile {
     pub process_storage_bytes: u64,
     pub filesystem_offset: u64,
     pub filesystem_bytes: u64,
+    pub directory_metadata_offset: u64,
+    pub object_metadata_offset: u64,
+    pub inode_metadata_bytes: u64,
+    pub pipe_pool_offset: u64,
+    pub pipe_record_bytes: u64,
+    pub pipe_metadata_offset: u64,
+    pub pipe_creation_time_offset: u64,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",

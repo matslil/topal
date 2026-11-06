@@ -16,7 +16,14 @@ files](step-4-modular-systems-implementation.md). The unchanged source-size ceil
 complete workspace checks and an independently compared primary VM pass; kernel
 interfaces and capabilities retain their preceding scope.
 
-The latest functional Step 4 increment adds
+The current functional Step 4 increment executes
+[shared inode mode actions](step-4-shared-inode-modes.md): all four chmod-family
+adapters lend actual regular/directory/pipe metadata to ordinary Topal source.
+Pinned Linux comparisons, targeted physical cleanup/refusal/lifetime checks and
+five unchanged BusyBox workloads pass. Complete affected qualification remains
+Stage 4 work; the original distribution/container/VM-host goal is unfinished.
+
+An earlier functional Step 4 increment adds
 [independent ordinary region instances](step-4-instance-scoped-region-actions.md):
 separate source/code/data/hooks and caller storage for identical callable profiles,
 with a zero-fact Boolean root callback alongside the two-fact file-position

@@ -390,6 +390,10 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
     if let Some(interface) = plan.ram_page_pool_library_interface {
         note.push_str(&format!("ram-page-pool-library-interface={interface}\nram-page-pool-runtime-bytes=65536\nram-page-pool-control-bytes=64\nram-page-pool-history-bytes=8\nram-page-pool-map-bytes=8\nram-page-pool-retired-stack-bytes=4096\nram-page-pool-live-frame-bytes={}\nram-page-pool-call-alignment-bytes={}\nram-page-pool-domain=serialized-single-processor-masked\n", ram_page_region::LIVE_FRAME_BYTES, ram_page_region::CALL_ALIGNMENT_BYTES));
     }
+    if let Some(interface) = plan.inode_mode_library_interface {
+        note.push_str(&format!("inode-mode-library-interface={interface}\ninode-mode-instance=inode-metadata\ninode-mode-runtime-bytes=65536\ninode-mode-control-bytes=64\ninode-mode-history-bytes=8\ninode-mode-metadata-bytes=32\ninode-mode-retired-stack-bytes=4096\ninode-mode-live-frame-bytes={}\ninode-mode-call-alignment-bytes={}\ninode-mode-domain=serialized-single-processor-masked\n",
+            inode_region::LIVE_FRAME_BYTES, inode_region::CALL_ALIGNMENT_BYTES));
+    }
     if let Some(interface) = plan.region_library_interface {
         note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
     }

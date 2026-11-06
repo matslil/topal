@@ -54,6 +54,14 @@ anonymous pipe inodes. Do not turn unimplemented target kinds or credential
 profiles into success. Native error order must be compared with the pinned
 reference kernel before claiming syscall qualification.
 
+Select `static-linux-dispatch-v5` for the new operations: v4's exact 61
+operations plus `ChangeMode` (90), `ChangeModeByFile` (91), `ChangeModeAt`
+(268) and `ChangeModeAtFlags` (452), plus Unsupported. Earlier four vocabularies,
+source tags and named native adapters remain frozen. V5 requires an explicit
+`inode-mode-library` root declaration using the existing qualified instance
+action interface; its exact caller-derived instance is `inode-metadata`.
+Selecting a source object alone does not supply native inode authority.
+
 Success preserves file type, identity, links, contents, size, page associations,
 description positions/rights/flags, directory entries and atime/mtime. It sets
 exactly the requested permission bits and ctime under the existing

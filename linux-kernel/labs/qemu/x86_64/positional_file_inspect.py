@@ -30,9 +30,12 @@ def install(config):
     def inspect_store():
         store = memory(table + BASE, SIZE)
         assert word(store, 0) >= 7
-        assert not any(store[32 if page_map_offset is not None else 24:OBJECTS])
+        assert not any(store[8:24])
+        if page_map_offset is None: assert not any(store[24:32])
+        assert word(store, 32) == 0o41777 and word(store, 40) == 0
+        assert word(store, 48) == word(store, 56)
+        assert not any(store[64:OBJECTS])
         assert not any(store[OBJECTS + 512:PAGES])
-        assert word(store,8)==word(store,16)
         assert not any(store[PAGES + 256:1536]) and not any(store[1536+1024:3072])
         assert not any(store[3072:BUFFER])
         objects,links,names = {},{},{}
@@ -53,7 +56,7 @@ def install(config):
             assert word(value,0)==1
             identity,size=word(value,8),word(value,16)
             assert 7<=identity<word(store,0) and identity not in objects
-            assert size<(1<<63) and word(value,24)<=0o7777
+            assert size<(1<<63) and word(value,24)&~0o7777==0o100000
             assert all(word(value,at)>0 for at in (32,40,48))
             linked,length=word(value,56),word(value,72)
             assert linked in (0,1) and word(value,64) in (0,1) and not any(value[80:])

@@ -159,12 +159,99 @@ bounded wrapper retains its host reserve and zero swap throughout. Complete
 workspace test/doc and changed-kernel machine qualification remain Stage 4 work;
 this stage does not reuse the preceding kernel's VM results as new evidence.
 
+## Stage 3: native adapters and actual inode execution
+
+The selected root now declares `inode-mode-library` and the exact
+`static-linux-dispatch-v5` vocabulary: 65 operations plus Unsupported. The four
+new operations route chmod, fchmod, fchmodat and fchmodat2 through Linux argument
+adaptation, copied-name/live-description lookup and admitted clock acquisition
+before the source receives authority. Earlier four source vocabularies and named
+adapters remain frozen; the native selector oracle checks all five, including
+holes and wide inputs, in original and reversed Enum orders.
+
+The [native controller](../src/topal-compiler/src/systems_inode_region.rs) lends
+the actual regular-object, directory or pipe metadata block. It checks the live
+controller, exact record geometry, object/generation/endpoint ownership, canonical
+type, permissions, masked execution context and clean invocation state. The
+ordinary source alone performs the metadata stores. Complete post-state checking
+requires its true result, preserved type/atime/mtime and exact permissions/ctime.
+The 1296-byte source stack plus 184-byte live controller frame and 64-byte
+alignment allowance yields a **1544-byte combined bound**. No resource limit grew.
+
+Regular metadata now owns the complete type/permission word at object offset 24;
+stat publishes that word directly. Directory metadata occupies header bytes
+32–63, with the old timestamp words reserved zero. Pipe mode/times occupy bytes
+64–95, with separate creation time at 96. Creation, stat, namespace mutation,
+transfer and terminal consumers use these placements. The new filesystem
+evidence schemas are `/4` with the source page pool and `/5` with native page
+allocation. Owner extent and child snapshot boundaries remain unchanged.
+The [boot binding tests](../src/topal-compiler/src/systems_inode_binding_tests.rs)
+reject changed layout, source/runtime/cost facts, missing or cross-instance
+bindings, explicit null fields and modified controller/source instructions.
+
+The [pinned Linux control](labs/qemu/x86_64/results/topal-inode-mode-linux-control.json)
+passes **33 independently issued cases** on Linux 7.2.9. It checks mode/fd/flag
+adaptation, ignored fchmodat argument four, empty-name regular/directory/pipe
+selection, read-only description rights, alias/unlink behavior and exact errors.
+A disposable guest tmpfs remount checks lookup-before-EROFS; the host is unchanged.
+
+The [fresh physical suite](labs/qemu/x86_64/results/tk280/stage-3/inode-qualification.json)
+passes **12 VM dispositions**:
+
+- Primary: 82 caller returns and 14 actual source actions across all four calls,
+  read-only/reopened/duplicated descriptions, closed linked names, unlink/recreate,
+  object reuse, mutable directory metadata, both pipe endpoints and ABI errors.
+- Lifetime: 131 caller returns and 20 actions, including failed/successful exec,
+  close-on-exec filtering, inherited independent/aliased descriptions, child
+  file/pipe mode changes, shared unlink/recreate and equal-mode stores.
+- Controlled inactive-child termination: 106 observed returns and 16 actions,
+  with complete live/inactive process backing and invocation history erased.
+- Seven pre-entry controls reject a foreign owner, record misalignment, enabled
+  interrupts, excessive adapted permissions, dirty arena, exhausted generation
+  and malformed inode type. Complete actual owner/runtime state remains unchanged.
+- Independently compiled wrong-mode and false-after-first-store sources stop
+  after complete cleanup, preserve their earlier effects and never resume the
+  owner. Their native root/provider objects are unchanged. QMP independently
+  confirms all controlled targets remain stopped after debugger disconnect.
+
+For every successful action, the debugger reads actual ordinary Nat facts and
+view identity, observes eight byte loads and sixteen byte stores, observes no
+atime/mtime access, and compares the complete process owner against the exact
+two-field delta. It verifies caller GPRs, all sixteen XMM registers, RSP, complete
+65536-byte arena/control reclamation, the 4096-byte retired stack and 64-byte
+input frame before owner return. Generations remain consecutive across object
+reuse, exec and child restoration. Terminal cleanup erases history and all
+311296 owner bytes. These are physical observations, separate from model proofs.
+
+Five [unchanged BusyBox workloads](labs/qemu/x86_64/results/tk280/stage-3/inode-busybox.json)
+pass: numeric and symbolic chmod followed by stat, directory chmod/stat, an
+already-open reader after mode zero, and chmod independent of creation umask.
+All targeted records bind kernel SHA-256
+`d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1`;
+the two deliberately changed source kernels have distinct recorded hashes.
+The artifact/root/provider/object/boot/gate epochs are **253/239/240/232/153/253**.
+The [archive index](labs/qemu/x86_64/results/tk280/stage-3/archive.json) binds
+49 complete, losslessly compressed logs, including the initial failed inactive
+host observation. That attempt raced normal serial completion against debugger
+disconnect; requiring explicit QMP confirmation fixes the harness, and all
+twelve final dispositions pass. No kernel check was weakened.
+
+Current validation passes all **264 compiler unit tests**, **628 language tests**,
+**209 semantics tests**, locked workspace all-target checking, four traceability
+coverage tests, formatting and the unchanged 2000-line Rust ceiling. The first
+compiler run found an old relocation count; the revised test checks all four
+page/inode source-presence combinations and their exact closed imports. The
+public page-owner test also needed the new native-page evidence version `/5`.
+An initial utility launch assumed `/usr/bin/busybox`; supplying the already
+pinned binary fixes host input discovery, and all five actual workloads pass.
+Normal bounded execution retains the host reserve and zero cgroup swap.
+
 ## Remaining staged work
 
-Stage 3 must integrate all four chmod-family adapters and the real persistent
-metadata owners, new exact layout versions, Linux reference controls, physical
-cleanup and unmodified BusyBox workloads. Stage 4 must complete the affected
-Rust/lab/native/VM cohort and archive exact evidence.
+Stage 4 must execute the full affected committed Rust/lab/native/VM cohort and
+refresh its versioned publication contracts. The 17 targeted Topal VM runs above
+do not replace that obligation. TK279's 158 VM observations and complete workspace
+results remain historical evidence for its preceding kernel, not this kernel.
 
 No core language change is needed for this design. General credentials,
 filesystem/device services, dynamic programs, distribution replacement,

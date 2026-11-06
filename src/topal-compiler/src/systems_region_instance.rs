@@ -5,6 +5,12 @@ pub(crate) const INSTANCE_PREFIX: &str = "topal.region-instance.";
 pub(crate) const ROOT_INSTANCE: &str = "root-region";
 pub(crate) const FILE_INSTANCE: &str = "file-position";
 pub(crate) const PAGE_INSTANCE: &str = "ram-page-pool";
+pub(crate) const INODE_INSTANCE: &str = "inode-metadata";
+pub(crate) const INODE_FRAME_PREFIX: &str = "topal.region-instance.inode-metadata.";
+pub(crate) const INODE_FRAME_EXPORT: &str = "topal_kernel_region_frame_inode_metadata_apply_v1";
+pub(crate) const INODE_FRAME_ALLOCATE: &str =
+    "topal_kernel_region_frame_inode_metadata_allocate_v1";
+pub(crate) const INODE_FRAME_ABORT: &str = "topal_kernel_region_frame_inode_metadata_abort_v1";
 pub(crate) const PAGE_FRAME_PREFIX: &str = "topal.region-instance.ram-page-pool.";
 pub(crate) const PAGE_FRAME_EXPORT: &str = "topal_kernel_region_frame_ram_page_pool_apply_v1";
 pub(crate) const PAGE_FRAME_ALLOCATE: &str = "topal_kernel_region_frame_ram_page_pool_allocate_v1";

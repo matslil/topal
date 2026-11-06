@@ -10159,3 +10159,23 @@ Qualification SHALL distinguish portable state laws from actual loans, opaque
 source, independent native/GDB execution and physical cleanup; all mutable
 target kinds, aliases, unlink/recreate, active/inactive process lifetime and
 unmodified utility workloads SHALL require fresh affected machine evidence.
+
+### TOPAL-SYSTEMS-LINUX-DISPATCH-V5-001 — Shared inode mode selection
+
+The `static-linux-dispatch-v5` source interface SHALL retain v4's exact 61
+operations and add precisely `ChangeMode` (90), `ChangeModeByFile` (91),
+`ChangeModeAt` (268) and `ChangeModeAtFlags` (452), plus Unsupported. Its ordinary
+source signature SHALL remain Nat to the nominal operation Enum. Complete
+arbitrary-precision selector equality SHALL precede named tag adaptation;
+unknown/wide normalized facts SHALL select Unsupported, never a truncated
+supported operation. Earlier v1 through v4 vocabularies and adapters SHALL
+remain independently usable with their exact meanings.
+
+An `inode-mode-library` root declaration SHALL require one qualified
+`borrowed-byte-region-instance-action-v1` entry, exactly two Nat facts and
+Boolean result, with the caller-derived `inode-metadata` instance identity.
+V5 selection SHALL require this declaration and its complete native binding;
+missing, extra, stale, cross-instance or undercharged inputs SHALL reject before
+publication/boot. V5 selection SHALL NOT itself establish handler arguments,
+credentials or object authority. Existing admission/cleanup-before-native-
+argument-access laws and `TOPAL-SYSTEMS-INODE-MODE-{ABI,ACTION}-001` SHALL apply.

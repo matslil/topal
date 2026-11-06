@@ -26,6 +26,8 @@ use super::{CompileError, X86FunctionEncoder, emit_static_process_sysret};
 pub(super) mod credentials;
 #[path = "systems_file_descriptions.rs"]
 pub(super) mod file_descriptions;
+#[path = "systems_inode_services.rs"]
+pub(super) mod inode_services;
 #[path = "systems_process_namespace.rs"]
 pub(super) mod namespace;
 #[path = "systems_process_observations.rs"]

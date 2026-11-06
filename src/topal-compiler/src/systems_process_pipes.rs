@@ -10,10 +10,10 @@ mod transfer;
 #[path = "systems_pipe_wait.rs"]
 mod wait;
 
-pub(super) const BASE: i32 = 0x3e000;
+pub(in super::super) const BASE: i32 = 0x3e000;
 pub(super) const BUFFER: i32 = 0x3f000;
 pub(super) const BYTES: u64 = 0x5000;
-const RECORD: i32 = 128;
+pub(in super::super) const RECORD: i32 = 128;
 const COUNTER: i32 = BASE + 512;
 const HEADER: i32 = 0x2000;
 const CONTEXT: i32 = 0x2100;
@@ -126,7 +126,7 @@ pub(in super::super) fn emit_services(code: &mut X86FunctionEncoder) -> Result<(
     e.store(R12, STAGING, A); // anonymous device, distinct from boot root
     e.load(A, R10, 8);
     e.store(R12, STAGING + 8, A);
-    e.imm(A, 0x1180);
+    e.load(A, R10, 64);
     e.store(R12, STAGING + 24, A);
     for (source, target) in [(72, 72), (80, 88), (88, 104)] {
         e.load(A, R10, source);

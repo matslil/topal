@@ -124,9 +124,9 @@ mod tests {
             }],
         };
         let dispatch = SystemsSourceLibraryInput {
-            source: "arch/x86_64/policy/static-linux-dispatch-v4.t".into(),
-            source_name: "arch/x86_64/policy/static-linux-dispatch-v4.t".into(),
-            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v4.t")
+            source: "arch/x86_64/policy/static-linux-dispatch-v5.t".into(),
+            source_name: "arch/x86_64/policy/static-linux-dispatch-v5.t".into(),
+            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v5.t")
                 .into(),
             modules: vec![SystemsSourceModuleInput {
                 source: "support/syscall.t".into(),
@@ -188,12 +188,23 @@ mod tests {
                 text: include_str!("../../../kernel/support/word-bytes.t").into(),
             }],
         };
+        let inode = SystemsSourceLibraryInput {
+            source: "policy/inode-mode-action.t".into(),
+            source_name: "policy/inode-mode-action.t".into(),
+            text: include_str!("../../../kernel/policy/inode-mode-action.t").into(),
+            modules: vec![SystemsSourceModuleInput {
+                source: "support/inode-metadata.t".into(),
+                identity: vec!["support".into(), "inode-metadata".into()],
+                text: include_str!("../../../kernel/support/inode-metadata.t").into(),
+            }],
+        };
         publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
+                inode_mode: Some(&inode),
                 ram_page_pool: Some(&page),
                 file_position: Some(&position),
                 region: Some(&region),

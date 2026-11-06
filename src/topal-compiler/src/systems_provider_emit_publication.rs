@@ -407,6 +407,9 @@ pub fn generate_x86_64_systems_provider_object(
         X86_SYSTEMS_STATIC_IMAGE_DELIVER_ENTROPY_INITIAL_RANDOM_SYMBOL,
         &static_image_deliver_entropy_initial_random()?,
     );
+    if program.inode_mode_library.is_some() {
+        inode_region::append(&mut object, text)?;
+    }
     if program.ram_page_pool_library.is_some() {
         ram_page_region::append(&mut object, text)?;
     }
@@ -430,6 +433,7 @@ pub fn generate_x86_64_systems_provider_object(
             crate::systems_numeric_library::uses_structured_identity(program),
             program.file_position_library.is_some(),
             program.ram_page_pool_library.is_some(),
+            program.inode_mode_library.is_some(),
         )?,
     )?;
     append_encoded_function(

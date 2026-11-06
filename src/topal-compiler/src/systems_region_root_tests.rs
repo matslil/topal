@@ -43,6 +43,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
     let region = load(&program.region_library, &root);
     let position = load(&program.file_position_library, &root);
     let page = load(&program.ram_page_pool_library, &root);
+    let inode = load(&program.inode_mode_library, &root);
     let time = load(&program.time_library, &root);
     let image = load(&program.image_library, &root);
     let dispatch = load(&program.dispatch_library, &root);
@@ -54,6 +55,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
         None,
         Some(&qualified_x86_64_static_user_image_fixture()),
         SystemsKernelLibraries {
+            inode_mode: inode.as_ref(),
             ram_page_pool: page.as_ref(),
             file_position: position.as_ref(),
             region: region.as_ref(),
@@ -225,6 +227,7 @@ fn root_region_publishes_exact_native_ownership_and_rejects_code_and_bound_tampe
         None,
         Some(&qualified_x86_64_static_user_image_fixture()),
         SystemsKernelLibraries {
+            inode_mode: inode.as_ref(),
             ram_page_pool: page.as_ref(),
             file_position: position.as_ref(),
             region: Some(&invalid),

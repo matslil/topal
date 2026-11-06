@@ -33,6 +33,10 @@ pub enum SystemsStaticLinuxOperation {
     UnlinkAt,
     TruncateFile,
     FileCreationMask,
+    ChangeMode,
+    ChangeModeByFile,
+    ChangeModeAt,
+    ChangeModeAtFlags,
     WorkingDirectory,
     ChangeDirectory,
     ChangeDirectoryByFile,
@@ -152,6 +156,16 @@ mod tests {
 }
 impl SystemsStaticLinuxOperation {
     #[must_use]
+    pub const fn from_selector_v5(selector: u64) -> Self {
+        match selector {
+            90 => Self::ChangeMode,
+            91 => Self::ChangeModeByFile,
+            268 => Self::ChangeModeAt,
+            452 => Self::ChangeModeAtFlags,
+            _ => Self::from_selector_v4(selector),
+        }
+    }
+    #[must_use]
     pub const fn from_selector_v4(selector: u64) -> Self {
         match selector {
             17 => Self::ReadAt,
@@ -268,6 +282,10 @@ impl SystemsStaticLinuxOperation {
             Self::UnlinkAt => "UnlinkAt",
             Self::TruncateFile => "TruncateFile",
             Self::FileCreationMask => "FileCreationMask",
+            Self::ChangeMode => "ChangeMode",
+            Self::ChangeModeByFile => "ChangeModeByFile",
+            Self::ChangeModeAt => "ChangeModeAt",
+            Self::ChangeModeAtFlags => "ChangeModeAtFlags",
             Self::WorkingDirectory => "WorkingDirectory",
             Self::ChangeDirectory => "ChangeDirectory",
             Self::ChangeDirectoryByFile => "ChangeDirectoryByFile",
@@ -374,5 +392,39 @@ mod positional_tests {
                 );
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod inode_tests {
+    use super::SystemsStaticLinuxOperation as Op;
+
+    #[test]
+    fn v5_adds_only_the_four_mode_calls_and_preserves_full_native_selectors() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-V5-001.
+        for selector in 0..65536 {
+            let expected = match selector {
+                90 => Op::ChangeMode,
+                91 => Op::ChangeModeByFile,
+                268 => Op::ChangeModeAt,
+                452 => Op::ChangeModeAtFlags,
+                _ => Op::from_selector_v4(selector),
+            };
+            assert_eq!(Op::from_selector_v5(selector), expected);
+        }
+        for selector in [90, 91, 268, 452] {
+            for old in [
+                Op::from_selector,
+                Op::from_selector_v2,
+                Op::from_selector_v3,
+                Op::from_selector_v4,
+            ] {
+                assert_eq!(old(selector), Op::Unsupported);
+            }
+            for high in [1_u64 << 32, 1_u64 << 63] {
+                assert_eq!(Op::from_selector_v5(high | selector), Op::Unsupported);
+            }
+        }
+        assert_eq!(Op::from_selector_v5(u64::MAX), Op::Unsupported);
     }
 }

@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/252";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/238";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/253";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/239";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -443,6 +443,18 @@ pub struct SystemsArtifactProvenance {
         deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
     )]
     pub ram_page_pool_runtime: Option<crate::SystemsRamPageRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub inode_mode_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub inode_mode_runtime: Option<crate::SystemsInodeRegionBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
@@ -598,6 +610,7 @@ pub struct SystemsKernelLibraries<'a> {
     pub region: Option<&'a crate::SystemsSourceLibraryInput>,
     pub file_position: Option<&'a crate::SystemsSourceLibraryInput>,
     pub ram_page_pool: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub inode_mode: Option<&'a crate::SystemsSourceLibraryInput>,
     pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
@@ -626,6 +639,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
         SystemsKernelLibraries {
             file_position: None,
             ram_page_pool: None,
+            inode_mode: None,
             region: None,
             policy: source_library,
             time: time_library,
@@ -653,12 +667,19 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         region: region_library,
         file_position: file_position_library,
         ram_page_pool: ram_page_pool_library,
+        inode_mode: inode_mode_library,
         policy: source_library,
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if program.inode_mode_library.is_some() != inode_mode_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: declaration requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
     if program.ram_page_pool_library.is_some() != ram_page_pool_library.is_some() {
         return Err(CompileError::Tool("E-SYSTEMS-REGION-PAGE: declaration requires its matching explicit page source snapshot".into()));
     }
@@ -725,6 +746,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         region_library,
         file_position_library,
         ram_page_pool_library,
+        inode_mode_library,
         &stage,
     );
     let record = match result {
@@ -770,6 +792,7 @@ fn publish_in_stage(
     region_library: Option<&crate::SystemsSourceLibraryInput>,
     file_position_library: Option<&crate::SystemsSourceLibraryInput>,
     ram_page_pool_library: Option<&crate::SystemsSourceLibraryInput>,
+    inode_mode_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -856,6 +879,29 @@ fn publish_in_stage(
             )
         })
         .transpose()?;
+    let inode_mode = program
+        .inode_mode_library
+        .as_ref()
+        .zip(inode_mode_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-INODE-MODE: source path does not match the declared entry".into(),
+                ));
+            }
+            let inode_work = work.join("inode-mode");
+            fs::create_dir(&inode_work)
+                .map_err(io_error("create inode object work space", &inode_work))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::INODE_INSTANCE,
+                tools,
+                &inode_work,
+            )
+        })
+        .transpose()?;
     if program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
@@ -925,6 +971,15 @@ fn publish_in_stage(
             crate::systems_provider_object::ram_page_region::inspect_linked(
                 &linked.kernel,
                 &page.record,
+            )
+        })
+        .transpose()?;
+    let inode_mode_runtime = inode_mode
+        .as_ref()
+        .map(|inode| {
+            crate::systems_provider_object::inode_region::inspect_linked(
+                &linked.kernel,
+                &inode.record,
             )
         })
         .transpose()?;
@@ -1053,6 +1108,42 @@ fn publish_in_stage(
             }));
         record.ram_page_pool_library = Some(page.record);
         record.ram_page_pool_runtime = ram_page_pool_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(inode) = inode_mode {
+        for (name, bytes) in [
+            ("inode-mode-library.t", inode.source.as_bytes()),
+            ("inode-mode-library.ll", inode.llvm.as_bytes()),
+            (
+                "inode-mode-library.retained.ll",
+                inode.retained_llvm.as_bytes(),
+            ),
+            ("inode-mode-library.o", inode.object.as_slice()),
+            (
+                "inode-mode-library.modules.json",
+                inode.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write inode source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-inode-mode-source:{}", inode.record.source),
+            sha256: inode.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(inode.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-inode-mode-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.inode_mode_library = Some(inode.record);
+        record.inode_mode_runtime = inode_mode_runtime;
         record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
     }
