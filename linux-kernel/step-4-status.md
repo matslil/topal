@@ -9,6 +9,14 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
+Shared regular/directory/pipe inode modes now change through actual ordinary
+source loans for all four chmod-family calls. The
+[current qualification](step-4-shared-inode-modes.md) passes 2305 Rust tests,
+176 Topal VM observations, 45 unchanged BusyBox workloads, 33 separate pinned
+Linux comparisons and 43 lab publication contracts. It covers the existing
+prepared root and bounded object kinds; general credentials and filesystems
+remain required below.
+
 The [systems implementation maintenance](step-4-modular-systems-implementation.md)
 restores the existing size ceiling across all 381 owned Rust sources. Complete
 workspace checks, preserved function/assertion inventories and an independently
@@ -66,8 +74,8 @@ contract; the preceding 137 VM observations remain separately retained evidence.
   allocation bounds and imported collection helpers using shared ordinary runtime.
 - Source ELF64 header interpretation over copied owned bytes, precommit exec
   refusal, independently selected header/time policies and complete reclamation.
-- Versioned ordinary source selection of 61 Linux operations plus Unsupported,
-  with frozen 55/57/59-operation compatibility, actual nominal tag adaptation and
+- Versioned ordinary source selection of 65 Linux operations plus Unsupported,
+  with frozen 55/57/59/61-operation compatibility, actual nominal tag adaptation and
   cleanup before native argument/handler access.
 - Source process-ID/cursor transitions over immutable Record snapshots, named
   scalar result extraction and owned state publication after complete cleanup.
@@ -167,10 +175,17 @@ BusyBox chmod/stat/shell workloads. Complete owner-byte deltas, actual Nat facts
 registers, frame/arena/retired-stack reclamation, generation lifetime,
 inactive-child cleanup and pre-entry/post-store refusal controls pass. All 264
 compiler unit tests, 628 language tests, 209 semantics tests, locked all-target
-checking and four specification/requirement coverage checks pass. Host safeguards
-and core language meaning are unchanged. Stage 4 must still refresh and qualify
-the complete affected Rust/lab/VM cohort; preceding-kernel results above do not
-qualify this new kernel.
+checking and four specification/requirement coverage checks pass. The complete
+committed Rust rerun passes all **2305 tests across 41 targets**, locked all-target
+checking and the separate doc-test command, with the
+[exact record/logs](tools/rust-qualification/results/tk280/final/qualification.json)
+archived. The complete affected machine cohort passes **176 Topal VM
+observations**, including **45 unchanged BusyBox workloads**; all **43 lab
+publication contracts** pass. Its [final manifest/logs](labs/qemu/x86_64/results/tk280/final/qualification.json)
+retain current record hashes and exact counts, separately preserving failed
+attempts. Host safeguards and core language meaning are unchanged. This qualifies
+the inode-mode increment; preceding-kernel evidence remains historical and the
+original acceptance areas below are unfinished.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

@@ -255,7 +255,8 @@ def verify(timeout=30,write_evidence=False):
 
 def order_variant(root,primary,timeout):
     case=root/"record-fields-reordered"
-    (case/"policy").mkdir(parents=True)
+    # Retain every declared policy dependency before changing the selected one.
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel/policy",case/"policy")
     shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
     LIBRARY.copy_architecture_libraries(case)
     original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
@@ -264,10 +265,6 @@ def order_variant(root,primary,timeout):
         "    clock is (wrapped is wrapped, ticks is ticks),\n    interval is (nanoseconds is nanoseconds, seconds is seconds)")
     if changed==original:raise GATE.GateError("Record order variant did not change the constructor")
     (case/"policy/relative-sleep-deadline.t").write_text(changed)
-    (case/"policy/boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
-    (case/"policy/process-identity.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/process-identity.t").read_bytes())
-    (case/"policy/structured-process-identity.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/structured-process-identity.t").read_bytes())
-    (case/"policy/static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t").read_bytes())
     values=GATE.build_image(case/"artifact",library_root=case)
     artifact=json.loads(values[3].read_text())
     for prefix in ("topal.systems-root-object","topal.provider-object"):
@@ -285,16 +282,13 @@ def wrong_policy(root,primary,timeout,module_body=False):
     """Reject a changed scalar at the independent deadline oracle, before completion."""
     case=root/("wrong-deadline-module" if module_body else "wrong-deadline")
     policy=case/"policy"
-    policy.mkdir(parents=True)
+    # Unrelated mandatory source slots must remain identical to the primary.
+    shutil.copytree(GATE.LINUX_KERNEL/"kernel/policy",policy)
     original=(GATE.LINUX_KERNEL/"kernel/policy/relative-sleep-deadline.t").read_text()
     changed=original.replace("  support clock sleep-deadline request","  computed is support clock sleep-deadline request\n  0")
     if module_body: changed=original
     elif changed==original:raise GATE.GateError("counterexample did not alter the source policy")
     (policy/"relative-sleep-deadline.t").write_text(changed)
-    (policy/"boot-open-access.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/boot-open-access.t").read_bytes())
-    (policy/"process-identity.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/process-identity.t").read_bytes())
-    (policy/"structured-process-identity.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/structured-process-identity.t").read_bytes())
-    (policy/"static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL/"kernel/policy/static-elf64-header.t").read_bytes())
     shutil.copytree(GATE.LINUX_KERNEL/"kernel/support",case/"support")
     LIBRARY.copy_architecture_libraries(case)
     if module_body:

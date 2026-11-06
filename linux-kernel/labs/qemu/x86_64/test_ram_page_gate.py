@@ -59,7 +59,8 @@ class RamPageEvidence(unittest.TestCase):
         self.assertTrue(record['inactive_terminal']['observation']['inactive_child_retained_at_parent_exit'])
         self.assertEqual(record['native_only']['result'], 'pass')
         self.assertTrue(record['native_only']['source_and_binding_absent'])
-        self.assertEqual(record['native_only']['profile']['schema'], 'topal.volatile-file.x86_64/2')
+        self.assertEqual(record['native_only']['profile']['schema'], 'topal.volatile-file.x86_64/5')
+        self.assertEqual(record['native_only']['profile']['maximum_native_helper_stack_bytes'], 256)
         self.assertNotIn('page_allocation_map_offset', record['native_only']['profile'])
 
 

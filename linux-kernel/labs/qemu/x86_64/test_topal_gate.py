@@ -208,7 +208,11 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(observation['result'],'pass')
             self.assertEqual(len(observation['calls']),count)
             self.assertTrue(observation['complete_store_erased'] and observation['complete_process_backing_erased'])
-            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/3')
+            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/4')
+            self.assertEqual((profile['directory_metadata_offset'], profile['object_metadata_offset'],
+                profile['inode_metadata_bytes'], profile['pipe_pool_offset'], profile['pipe_record_bytes'],
+                profile['pipe_metadata_offset'], profile['pipe_creation_time_offset']),
+                (32, 24, 32, 0x3e000, 128, 64, 96))
             self.assertEqual((profile['object_count'],profile['resident_pages'],profile['page_bytes']),(4,8,4096))
             self.assertEqual((profile['filesystem_offset'],profile['filesystem_bytes'],profile['process_storage_bytes']),(0x43000,0x9000,0x4c000))
             self.assertEqual(profile['private_umask_offset'],1664)
@@ -487,17 +491,19 @@ class TopalToolchainGateTests(unittest.TestCase):
         expected.update({87: 'Unlink',263: 'UnlinkAt'})
         v3_expected=expected.copy()
         expected.update({17:'ReadAt',18:'WriteAt'})
+        v4_expected=expected.copy()
+        expected.update({90:'ChangeMode',91:'ChangeModeByFile',268:'ChangeModeAt',452:'ChangeModeAtFlags'})
         choices=[name for _,name in sorted(expected.items())]+['Unsupported']
         library=proof["library"]
         self.assertEqual(library["schema"],"topal.kernel-numeric-source-library/9")
-        self.assertEqual(library["interface"],"static-linux-dispatch-v4")
-        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch-v4.t"))
+        self.assertEqual(library["interface"],"static-linux-dispatch-v5")
+        self.assertEqual(library["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch-v5.t"))
         self.assertEqual(library["allocation"]["maximum_bytes"],56)
         self.assertEqual(library["allocation"]["source_evaluation_bytes"],0)
         self.assertEqual(library["allocation"]["bridge_bytes"],24)
         self.assertEqual(library["allocation"]["maximum_operand_bits"],64)
         self.assertEqual(library["native_invocation_save_bytes"],64)
-        self.assertEqual(set(library["source_tags"]),set(range(62)))
+        self.assertEqual(set(library["source_tags"]),set(range(66)))
         self.assertEqual(proof["module_publication"]["snapshot_sha256"],library["module_snapshot_sha256"])
         self.assertEqual([m["source"] for m in library["modules"]],["support/syscall.t"])
         self.assertEqual(library["modules"][0]["sha256"],sha256(GATE.LINUX_KERNEL/"kernel/support/syscall.t"))
@@ -511,9 +517,9 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertLessEqual(library["maximum_stack_bytes"],4096)
         primary=proof["primary"]
         self.assertEqual(primary["linked_kernel_sha256"],self.evidence["linked_kernel_sha256"])
-        for name in ("primary","order_variant","dispatch_only","legacy_compatibility","legacy_v2_compatibility","legacy_v3_compatibility"):
+        for name in ("primary","order_variant","dispatch_only","legacy_compatibility","legacy_v2_compatibility","legacy_v3_compatibility","legacy_v4_compatibility"):
             case=proof[name];binding=case.get("library",library);observation=case["observation"]
-            selected_expected={'static-linux-dispatch-v4':expected,'static-linux-dispatch-v3':v3_expected,'static-linux-dispatch-v2':v2_expected,'static-linux-dispatch-v1':legacy_expected}[binding['interface']]
+            selected_expected={'static-linux-dispatch-v5':expected,'static-linux-dispatch-v4':v4_expected,'static-linux-dispatch-v3':v3_expected,'static-linux-dispatch-v2':v2_expected,'static-linux-dispatch-v1':legacy_expected}[binding['interface']]
             selected_choices=[name for _,name in sorted(selected_expected.items())]+['Unsupported']
             self.assertEqual(case["runtime"]["observations"]["result"],"pass")
             self.assertEqual(observation["result"],"pass")
@@ -543,7 +549,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(variant["library"]["allocation"],library["allocation"])
         self.assertEqual(variant["library"]["module_snapshot_sha256"],library["module_snapshot_sha256"])
         self.assertNotEqual(variant["library"]["source_sha256"],library["source_sha256"])
-        self.assertTrue(all(a+b==61 for a,b in zip(library["source_tags"],variant["library"]["source_tags"])))
+        self.assertTrue(all(a+b==65 for a,b in zip(library["source_tags"],variant["library"]["source_tags"])))
         legacy=proof['legacy_compatibility']
         self.assertTrue(legacy['explicit_legacy_dispatch_control'])
         self.assertEqual(legacy['library']['interface'],'static-linux-dispatch-v1')
@@ -562,6 +568,12 @@ class TopalToolchainGateTests(unittest.TestCase):
         self.assertEqual(set(legacy_v3["library"]["source_tags"]),set(range(60)))
         self.assertEqual(legacy_v3["library"]["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch-v3.t"))
         self.assertNotEqual(legacy_v3["linked_kernel_sha256"],primary["linked_kernel_sha256"])
+        legacy_v4=proof["legacy_v4_compatibility"]
+        self.assertTrue(legacy_v4["explicit_legacy_dispatch_control"])
+        self.assertEqual(legacy_v4["library"]["interface"],"static-linux-dispatch-v4")
+        self.assertEqual(set(legacy_v4["library"]["source_tags"]),set(range(62)))
+        self.assertEqual(legacy_v4["library"]["source_sha256"],sha256(GATE.LINUX_KERNEL/"kernel/arch/x86_64/policy/static-linux-dispatch-v4.t"))
+        self.assertNotEqual(legacy_v4["linked_kernel_sha256"],primary["linked_kernel_sha256"])
         only=proof["dispatch_only"]
         self.assertTrue(only["time_and_image_libraries_absent"])
         self.assertNotIn("  time-library is",only["root_source"])
@@ -1359,16 +1371,16 @@ class TopalToolchainGateTests(unittest.TestCase):
                              "reopened-non-cloexec-fd-three")
             self.assertEqual(bound["observations"]["static_execve_random_profile"],
                              "fresh-generator-extraction-before-reentry")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/252")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/253")
         self.assertEqual(evidence["publication"], "topalc-target-interface/1")
-        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/239")
+        self.assertEqual(evidence["provider"], "topal.provider.x86_64-qemu-pc-q35/240")
         self.assertEqual(
             evidence["artifact_schema"],
-            "topal.systems-artifact.x86_64-qemu-pc-q35/252",
+            "topal.systems-artifact.x86_64-qemu-pc-q35/253",
         )
         self.assertEqual(
             evidence["boot_schema"],
-            "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
+            "topal.boot-adapter.linux-x86-protocol-2.15-q35/153",
         )
         self.assertEqual(
             evidence["boot_resource_schema"],
@@ -1894,7 +1906,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/252")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/253")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -2508,7 +2520,9 @@ class TopalToolchainGateTests(unittest.TestCase):
                                     "pipe-substitution":2,"pipe-substitution-changed":2,
                                     "pipe-substitution-large":2,
                                     "named-redirection":2,"named-append":2,"named-truncate":2,
-                                    "named-reopen":3,"named-remove":3,"named-list":2}.get(workload,1)))
+                                    "named-reopen":3,"named-remove":3,"named-list":2,
+                                    "mode-numeric":3,"mode-symbolic":3,"mode-directory":3,
+                                    "mode-retained-reader":3,"mode-umask-independent":3}.get(workload,1)))
         for record,count in records:
             serial=record["observations"]["serial_utf8"]
             marker=GATE.EXEC_COMMIT_MARKER.decode()
@@ -2582,7 +2596,7 @@ class NamedFileContractTests(unittest.TestCase):
             self.assertEqual(obs["result"],"pass")
             self.assertEqual(len(obs["calls"]),count)
             self.assertTrue(obs["complete_store_erased"] and obs["complete_process_backing_erased"])
-            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/3")
+            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/4")
             self.assertEqual(len(obs["calls"][-1]["objects"]),2 if name=="lifetime" else 0)
             self.assertEqual(obs["calls"][-1]["resident_pages"],2 if name=="lifetime" else 0)
         inactive=proof["inactive_terminal"]

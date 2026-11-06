@@ -205,14 +205,11 @@ def variants(root, primary, artifact, timeout):
     ]:
         case = root / name
         unit = case / "policy/boot-open-access.t"
-        unit.parent.mkdir(parents=True)
+        # Keep every primary dependency while changing only this policy.
+        shutil.copytree(GATE.LINUX_KERNEL / "kernel/policy", unit.parent)
         unit.write_text(text)
         shutil.copytree(GATE.LINUX_KERNEL / "kernel/support",case / "support")
         copy_architecture_libraries(case)
-        (unit.parent / "process-identity.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/process-identity.t").read_bytes())
-        (unit.parent / "structured-process-identity.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/structured-process-identity.t").read_bytes())
-        (unit.parent / "static-elf64-header.t").write_bytes((GATE.LINUX_KERNEL / "kernel/policy/static-elf64-header.t").read_bytes())
-        (unit.parent / "relative-sleep-deadline.t").write_text((GATE.LINUX_KERNEL / "kernel/policy/relative-sleep-deadline.t").read_text())
         values = original_build(case / "artifact", library_root=case)
         changed = json.loads(values[3].read_text())
         for prefix in ("topal.systems-root-object", "topal.provider-object"):

@@ -38,7 +38,12 @@ def install(config):
     class Refused(Checked):
         def inspect(self):
             store = memory(table + 0x43000, 0x9000)
-            assert int.from_bytes(store[:8], 'little') == 7 and not any(store[8:])
+            # Latest layout retains the actual initial directory mode even
+            # before any file exists. Every other byte must remain initial.
+            initial = bytearray(0x9000)
+            initial[:8] = (7).to_bytes(8, 'little')
+            initial[32:40] = (0o41777).to_bytes(8, 'little')
+            assert store == bytes(initial)
             for bank in (320,0x3d000):
                 assert all(word(table+bank+64*i)!=7 for i in range(16))
             assert reg('rip') == config['refusal_pc']

@@ -246,11 +246,11 @@ An initial utility launch assumed `/usr/bin/busybox`; supplying the already
 pinned binary fixes host input discovery, and all five actual workloads pass.
 Normal bounded execution retains the host reserve and zero cgroup swap.
 
-## Remaining staged work
+## Stage 4: complete affected qualification
 
-Stage 4 must execute the full affected committed Rust/lab/native/VM cohort and
-refresh its versioned publication contracts. The 17 targeted Topal VM runs above
-do not replace that obligation. TK279's 158 VM observations and complete workspace
+Stage 4 covers the full affected committed Rust/lab/native/VM cohort and its
+versioned publication contracts. The 17 targeted Topal VM runs above do not
+replace that obligation. TK279's 158 VM observations and complete workspace
 results remain historical evidence for its preceding kernel, not this kernel.
 
 The [first full committed Rust run](tools/rust-qualification/results/tk280/before-legacy-position-fixture-fix/qualification.json)
@@ -262,7 +262,58 @@ selecting frozen V4 and omitting the unrelated page/inode slots restores the
 fixture's intended position-guard check; the focused test passes. The same test
 also verifies that neither unrelated native controller is imported. Production
 admission and the selected kernel remain unchanged. Complete logs are preserved;
-a fresh qualification on committed corrected sources is still required.
+the [fresh qualification on committed corrected sources](tools/rust-qualification/results/tk280/final/qualification.json)
+passes locked workspace all-target checking, **all 2305 tests across 41 targets**
+with no failed or ignored tests, and the separate doc-test command. The latter
+discovers no executable doc tests. The record binds revision
+`86c72c443be8bd993b06c71de44504071ce01a6b`, the exact tree, tool versions,
+unchanged bounded wrapper and all three complete, losslessly compressed logs.
+
+The complete affected machine cohort now passes **176 Topal VM observations**.
+The completed runner's logs independently count 164 QEMU starts. The twelve
+inode dispositions from Stage 3 retain their exact current kernel, source,
+caller and observer bindings, independently checked before inclusion; the
+targeted five BusyBox cases are rerun within the fresh **45-workload corpus**
+and are not counted twice. The 33 Linux reference cases remain a separate
+comparison corpus, not Topal VM starts.
+
+| Observation group | Count |
+| --- | --- |
+| Root, file-position and RAM-page source owners | 43 |
+| Shared inode admission, lifetime and refusal controls | 12 |
+| Positional, named, file-open and volatile-file behavior | 17 |
+| Header, dispatch, identity, retained/structured state, numeric and finite policies | 35 |
+| Clean/empty/null execution and 45 external BusyBox workloads | 48 |
+| Real/monotonic clocks, child/pair/pipe lifecycle and deadlines | 21 |
+| Total | 176 |
+
+The [final manifest and complete logs](labs/qemu/x86_64/results/tk280/final/qualification.json)
+bind the primary kernel, exact result hashes, per-command VM counts, runner
+source snapshots and corrected observer files. All **43 lab publication
+contracts** pass, including the new inode contract, current canonical geometry,
+the new dispatch with four frozen compatibility controls, actual ownership,
+cleanup, source values and existing Linux-reference manifest contracts. The
+complete unittest log is also retained. Observer/fixture and publication changes
+are recorded separately from the committed compiler/kernel/source subject;
+none of those production inputs changed after the complete Rust qualification.
+
+Three earlier cohort attempts remain archived and excluded from passing counts.
+The first could not acquire the normal validation lock inside the sandbox;
+normal authorized execution retained the same wrapper and safeguards. The
+file-open observer expected a zero directory header, but the canonical header
+now contains `/tmp`'s initial mode. Its corrected independent byte oracle checks
+the entire initial filesystem and exact no-mutation refusal, including that
+mode. The numeric counterexample fixture omitted the mandatory inode source
+module. Numeric and finite-policy variants now retain the complete primary
+policy tree before changing their intended module; unchanged native-root/
+provider and independent rejection checks still pass. No production check was
+weakened, and no partial failed attempt is counted as successful.
+
+The systems ledger has **306 unique rules**. Formatting, the unchanged 2000-line
+Rust ceiling, local Markdown targets, raw whitespace and lossless log/hash
+verification pass. The bounded wrapper continues to adapt to available host
+RAM while retaining the normal host reserve and zero swap. No host security,
+memory limit, reserve, quota or swap policy was relaxed.
 
 No core language change is needed for this design. General credentials,
 filesystem/device services, dynamic programs, distribution replacement,

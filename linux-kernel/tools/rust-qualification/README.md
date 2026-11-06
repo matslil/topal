@@ -52,6 +52,18 @@ three complete compressed logs retain command, tree, tool and hash evidence.
 See the [unsigned-field report](../../step-4-unsigned-region-fields.md) for the
 distinct native/kernel/VM qualification scope.
 
+TK280 completed locally on committed revision
+`86c72c443be8bd993b06c71de44504071ce01a6b`: locked workspace all-target checking,
+all 2305 tests across 41 targets with no failures or ignored tests, and the
+separate doc-test command pass (zero executable doc tests). Its
+[final record](results/tk280/final/qualification.json) and complete logs retain
+the actual command, tree, tool and hash evidence. The
+[earlier failed run](results/tk280/before-legacy-position-fixture-fix/qualification.json)
+records 2304 passing tests and one legacy fixture failure; it remains separate
+from the successful corrected run. See the
+[inode-mode report](../../step-4-shared-inode-modes.md) for the distinct
+source/native/Linux/VM qualification scope.
+
 Archived logs use lossless `.log.gz` files to keep execution output compact and
 preserve its exact bytes, including trailing blank lines. The unchanged driver
 records name the original `.log` files; their `log_sha256` digests apply to the

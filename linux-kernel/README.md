@@ -19,9 +19,9 @@ interfaces and capabilities retain their preceding scope.
 The current functional Step 4 increment executes
 [shared inode mode actions](step-4-shared-inode-modes.md): all four chmod-family
 adapters lend actual regular/directory/pipe metadata to ordinary Topal source.
-Pinned Linux comparisons, targeted physical cleanup/refusal/lifetime checks and
-five unchanged BusyBox workloads pass. Complete affected qualification remains
-Stage 4 work; the original distribution/container/VM-host goal is unfinished.
+Pinned Linux comparisons and complete affected qualification pass: 2305 Rust
+tests, 176 Topal VM observations, 45 unchanged BusyBox workloads and 43 lab
+contracts. The original distribution/container/VM-host goal is unfinished.
 
 An earlier functional Step 4 increment adds
 [independent ordinary region instances](step-4-instance-scoped-region-actions.md):
