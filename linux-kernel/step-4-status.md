@@ -112,7 +112,8 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
-The [reusable-page action stage](step-4-source-ram-page-allocation.md) is qualified:
+The [reusable-page action stage](step-4-source-ram-page-allocation.md) was qualified
+at the TK278 checkpoint:
 ordinary Topal updates the real filesystem allocation map, and the controller
 validates exact deltas before association publication. Its portable model,
 independent first/last-fit source components, actual x86-64 owner binding and
@@ -146,9 +147,14 @@ The current file-position codec now uses the checked eight-byte store: its
 complete temporary bound is 464 bytes and its combined owning stack is 712.
 All eight source/native/binding tests and thirteen fresh targeted VM observations
 pass, including actual field/primitive/cleanup evidence and frozen bytewise
-interface controls. Complete workspace qualification and the other 145 affected
-VM observations remain required. The existing source arena and core language
-meaning are unchanged.
+interface controls. Complete locked Rust qualification now passes all 2280 tests
+across 41 targets, all-target checking and the separate doc-test command, with
+the [exact record/logs](tools/rust-qualification/results/tk279/final/qualification.json)
+archived. Its complete affected machine cohort now passes **158 fresh VM
+observations**, including forty unmodified BusyBox workloads; all **42 lab
+publication contracts** pass. The existing source arena and core language
+meaning are unchanged. This qualifies the unsigned-field increment; the initial
+acceptance areas below remain unfinished.
 
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The

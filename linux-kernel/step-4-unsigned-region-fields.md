@@ -188,18 +188,63 @@ Artifact/root/provider/object/boot/gate revisions are now
 252/238/239/231/152/252. The first VM attempt failed debugger setup because the
 hyphenated private symbol needed an address lookup; the corrected run passes
 all thirteen cases. The focused evidence/publication test, source ceiling,
-bounded formatting and strict whitespace checks pass. Other machine cohorts
-and complete workspace qualification still require the fourth stage.
+bounded formatting and strict whitespace checks pass. These checks qualified
+the third stage; the fourth stage below covers the remaining cohorts and
+complete workspace qualification.
 
-## Remaining stage and evidence scope
+## Complete increment qualification and remaining initial-plan scope
 
-Complete workspace qualification and the remaining 145 affected VM observations
-remain required. The current thirteen observations qualify only their own
-changed inputs and dispositions. The earlier
+Complete locked Rust qualification now passes on committed revision
+`9e3d0277c692b6fafacff617b3480ab6b5fa6bd6`: all-target workspace checking,
+all **2280 tests across 41 targets**, and the separate workspace doc-test
+command. No test failed or was ignored; doc tests currently discover no
+executable cases. The
+[verbatim record and complete compressed logs](tools/rust-qualification/results/tk279/final/qualification.json)
+retain the exact tested tree, tools, commands and log digests. Hashes apply to
+the decompressed log bytes, which were independently verified before archiving.
+
+The remaining 145 affected VM observations now pass. Together with the thirteen
+targeted file-position observations above, this gives **158 fresh VM
+observations**, including forty unmodified BusyBox workloads. The completed
+runner's command logs independently count 145 QEMU starts; each constituent
+harness requires its expected success or controlled-failure disposition before
+returning success. The
+[cohort manifest and complete compressed logs](labs/qemu/x86_64/results/tk279/qualification.json)
+bind all fresh record hashes, the tested code/tree, primary kernel and actual
+per-command observation counts. All **42 lab publication contracts** pass against
+the new records, including source/tool identities, caller preservation, owned storage,
+actual values/effects, controlled stopped guests and complete reclamation.
+
+| Fresh observation group | Count |
+| --- | --- |
+| Root, file-position and RAM-page source owners | 43 |
+| Positional, named, file-open and volatile-file behavior | 17 |
+| Header, dispatch, identity, retained/structured state, numeric and finite policies | 34 |
+| Clean/empty/null execution and forty external BusyBox workloads | 43 |
+| Real/monotonic clocks, child/pair/pipe lifecycle and deadlines | 21 |
+| Total | 158 |
+
+The first cohort attempt stopped while writing a later RAM-page test artifact
+because the `/tmp` user quota was exhausted. The
+[failed attempt log](labs/qemu/x86_64/results/topal-tk279-ram-page-quota-attempt.log.gz)
+is retained separately. Approved cleanup removed only 1916 inactive generated
+region-test directories, freeing 875 MiB; pinned fixtures and qualification logs
+were preserved. No host quota, memory limit or security policy was changed.
+The complete retry passes; no partial first-attempt result is counted as a pass.
+
+These results qualify the checked-field increment and its changed inputs and
+dispositions. The earlier
 [TK278 checkpoint](step-4-source-ram-page-allocation.md) retains its own complete
 Rust and machine records; it does not qualify this new runtime or a changed
-codec. Stages one/two preserved the selected kernel; the third changes the
-selected codec and requires fresh execution throughout its affected cohort.
+codec. Stages one/two preserved the selected kernel; the third changed the
+selected codec and the fourth freshly executed its complete affected cohort.
+
+The systems ledger retains 302 unique rules. Workspace formatting, the unchanged
+2000-line Rust ceiling, strict whitespace, local links and complete compressed
+log/hash reproduction checks pass. No source or kernel input changed after the
+qualified revision; the fourth stage records evidence and traceability.
+General allocation/subsystems, the remaining Linux UAPI, reference-distribution
+replacement, Docker/Podman and VM-host qualification remain initial-plan work.
 
 Risk is high at full-span preflight, unsigned/endian conversion, aliases,
 caller exclusion, fact ordering and complete costs. Self-review checks the

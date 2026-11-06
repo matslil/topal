@@ -1,14 +1,14 @@
 {
   "absent": {
-    "artifact_provenance_sha256": "d999693cbd90b810acc3b3541d0090c292b6e2cd6df606248d8d6d96a459e9d5",
-    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/251",
-    "boot_image_sha256": "aff04d23c8fd14627f37c5f8eb4f79c7e00f62b99365772d62978d37bc13214d",
-    "boot_provenance_sha256": "1127223468017627d0fb85843c66bbf3ea252ce59b2fa2985d0bcacf422eb52a",
+    "artifact_provenance_sha256": "8d0e4e138e6507835190dea12ccc3b80e66da8b66d237efec19e65b27c8f8cf9",
+    "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/252",
+    "boot_image_sha256": "ed6ad4dc508d041776d8186d98e2941a8bc88e5510b9c29ee48cf8abf70573a6",
+    "boot_provenance_sha256": "635db3f99f9df4621a83946f6d085a3b56f7bb11f2af4805dbf386089db17a05",
     "boot_resource_bytes": 2037200,
     "boot_resource_member": "init",
     "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
     "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
+    "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
     "clean_environment_mode": "maximum",
     "cpu": "qemu64-v1",
     "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -16,7 +16,7 @@
     "initial_user_image_bytes": 12288,
     "initial_user_image_input": "supplied",
     "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-    "linked_kernel_sha256": "f1ab3b40cdba60866b5b01894be0a96718a0c7cdff34ca331ddbc7230a05e02b",
+    "linked_kernel_sha256": "32d91e7d67aa354e2628242138b17c49c8af990923340a7224f088a1ee7b610e",
     "machine": "pc-q35-10.2",
     "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
     "observations": {
@@ -284,10 +284,10 @@
     "process_exit_status": 35,
     "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
     "process_workload": "true",
-    "provider": "topal.provider.x86_64-qemu-pc-q35/238",
+    "provider": "topal.provider.x86_64-qemu-pc-q35/239",
     "publication": "topalc-target-interface/1",
     "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-    "schema": "topal-kernel-toolchain-gate-qemu/251",
+    "schema": "topal-kernel-toolchain-gate-qemu/252",
     "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
     "serial_input_utf8": "read",
     "source_sha256": "1abc390e4df6f1a55470e489563ec5d8c9878ee095d9b626682de626b6a26076",
@@ -298,15 +298,15 @@
   },
   "dirty-arena": {
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f",
+    "linked_kernel_sha256": "2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69",
     "observation": {
       "finalized": false,
       "frame_sp": 1572808,
       "helpers": 0,
       "minimum_rsp": 1572808,
-      "owner": 3465216,
+      "owner": 3461120,
       "result": "expected-pre-entry-refusal",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 0,
       "source_returns": 0
     },
@@ -315,27 +315,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -350,109 +350,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "6b7e044017e227c55a609dbd78e4ec40ac13aad9c12003f14a32466c73cc15c8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -467,14 +467,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -483,19 +483,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -769,7 +769,7 @@
   },
   "false_action": {
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "d2f744d677b8670f8cf241ea2b60b01cb20aa8188deec55eb62acaea137c2e18",
+    "linked_kernel_sha256": "5db9b9380e0723a54c89e96bff9b7b738e5b787df1c70e6980108696874bf619",
     "observation": {
       "finalized": false,
       "frame_sp": 1572808,
@@ -781,15 +781,15 @@
         "topal_x86_systems_region_library_apply_v1",
         "_topal_kernel_entry"
       ],
-      "helper_file": "/tmp/topal-root-region-c0csn9of/false-action/library/support/bytes.t",
+      "helper_file": "/tmp/topal-root-region-oc5d9qb6/false-action/library/support/bytes.t",
       "helper_file_exists": true,
       "helpers": 1,
       "minimum_rsp": 1572296,
       "no_owner_resumption": true,
       "observed_arena_bytes": 136,
-      "owner": 3465216,
+      "owner": 3461120,
       "result": "expected-false-action-fatal",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 0,
       "scalar_transport": {
         "address": 0,
@@ -806,27 +806,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -841,109 +841,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "3c1c09ea610376150ce9f127af7044adc013387e8ba6ba401e7198019b12afd8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -958,14 +958,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -974,19 +974,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -1195,7 +1195,7 @@
         "topal_kernel_region_frame_root_region_abort_v1"
       ],
       "instance": "root-region",
-      "llvm_sha256": "7ba597e5cac06e3a2d54c8b488a89545720a9a46cd2a067e4ccb0764ac0a3c7f",
+      "llvm_sha256": "15fac2f4856f34e154f1bee21573e062721ca000f4f38224b35cd3d3da5b1b2a",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-region-gpr-only/1",
       "maximum_stack_bytes": 544,
@@ -1220,7 +1220,7 @@
       ],
       "native_abi": "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1",
       "native_export": "topal_kernel_region_frame_root_region_apply_v1",
-      "object_sha256": "8c368246300bfc5871c6345f0cff3bf99c60b711d15af38eea34864438f301d3",
+      "object_sha256": "3b21891921aa58d855df0f07d7536f45932d3748fef33b4c04752926e4779188",
       "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
       "read_only_data": [
         {
@@ -1242,13 +1242,13 @@
           "symbol": "topal.region-instance.root-region.runtime.int.zero"
         }
       ],
-      "retained_llvm_sha256": "af96b803af7dcfa6e003fee826848c81a0a0a590c1db228568da285f353c1425",
+      "retained_llvm_sha256": "090e02fd55f02f225db78fca3c62a2e198bab247c1d000622fc2b208484425f5",
       "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
       "scalar_count": 0,
       "schema": "topal.kernel-region-frame-source-object.x86_64/2",
       "source": "policy/bootstrap-byte-copy-frame.t",
       "source_export": "apply",
-      "source_name": "/tmp/topal-root-region-c0csn9of/false-action/library/policy/bootstrap-byte-copy-frame.t",
+      "source_name": "/tmp/topal-root-region-oc5d9qb6/false-action/library/policy/bootstrap-byte-copy-frame.t",
       "source_sha256": "8ad0fd69bb6d2fe13a7502bf49a4514cc575e211ded40336fdb8bb6a1300c35a",
       "stack_limit_bytes": 4096,
       "target": "x86_64-unknown-none"
@@ -1262,15 +1262,15 @@
   "inspector_sha256": "0c20f75fd8e333e666069022f26b710d08cdca0f50eb06994d997c5c33f780c1",
   "interrupts-enabled": {
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f",
+    "linked_kernel_sha256": "2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69",
     "observation": {
       "finalized": false,
       "frame_sp": 1572808,
       "helpers": 0,
       "minimum_rsp": 1572856,
-      "owner": 3465216,
+      "owner": 3461120,
       "result": "expected-pre-entry-refusal",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 0,
       "source_returns": 0
     },
@@ -1279,27 +1279,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -1314,109 +1314,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "6b7e044017e227c55a609dbd78e4ec40ac13aad9c12003f14a32466c73cc15c8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -1431,14 +1431,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -1447,19 +1447,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -1732,7 +1732,7 @@
     }
   },
   "legacy": {
-    "linked_kernel_sha256": "e243f78f28c4ee92a3fbd711d21118b30c1eab11c27d10fc686c8e5608be5483",
+    "linked_kernel_sha256": "9edaafe27c2c6d6039b0a12c03709f13702c5af88e010f9956a6369773ced0c4",
     "observation": {
       "finalized": true,
       "frame_sp": 1572808,
@@ -1749,10 +1749,10 @@
       "minimum_rsp": 1572344,
       "observed_arena_bytes": 136,
       "observed_source_stack_bytes": 464,
-      "owner": 3465216,
+      "owner": 3461120,
       "proved_source_caller_stack_bytes": 528,
       "result": "pass",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 1,
       "source_returns": 1
     },
@@ -1760,27 +1760,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1052,
-          "sha256": "2120ef1353030735c268d80405ea1c59122450a06702b6e8e05e8f87cdf46315",
+          "sha256": "f06a3243b5587ea94124cd57bfbaa50186b8a3997eba83bcbe5a0e44d669948c",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194512,
+          "address": 3194064,
           "bytes": 295,
-          "sha256": "7e308f94d11f7a5dabbf82325e755b6fbc4eeaf5bdc4eacd797fd4f81d5169d4",
+          "sha256": "d76ea20938c43418c4cdf788280cda61c78d4f5d7f92e2495d16ead51c4fee17",
           "symbol": "topal_kernel_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_abort_v1"
         },
         {
-          "address": 3194816,
+          "address": 3194368,
           "bytes": 272,
-          "sha256": "50f9d532e3860d7096e898bff36c7e3a97559888b08bb6180d8aa20ff2638b61",
+          "sha256": "6bc9617148bab4e9c9da56d833260aa65ffa009e5e796096c7b935282c7ebd5e",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -1792,103 +1792,103 @@
       "schema": "topal.root-region-invocation.x86_64/2",
       "source_code": [
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 9,
-          "sha256": "332b45a79b46ac061c9b689933bf3c38e66841212a1f598a8f40a48525a3333f",
+          "sha256": "452575ae77b51a56c84703edbe7e04132b5326001c15e98808fa57b76fced558",
           "symbol": "topal.kernel.region.abort"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 435,
           "sha256": "78e55d9afe6c297595c04128e3e2c7ac1f7cca98d7e62ca022660efa55736d3e",
           "symbol": "topal.kernel.region.guard"
         },
         {
-          "address": 3208496,
+          "address": 3204912,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.kernel.region.index"
         },
         {
-          "address": 3208000,
+          "address": 3204416,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region.platform.allocate"
         },
         {
-          "address": 3208016,
+          "address": 3204432,
           "bytes": 9,
-          "sha256": "5294d3018f5c04978d638140167a21f9871ae0e87c6a42e1451d068e09f7a11c",
+          "sha256": "1c8a4b3a441df2257682c04e8f75640416cb710be7db6b53ae39e815ac53d827",
           "symbol": "topal.region.platform.exit"
         },
         {
-          "address": 3207792,
+          "address": 3204208,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region.runtime.int.allocate"
         },
         {
-          "address": 3207872,
+          "address": 3204288,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region.runtime.int.from.u64"
         },
         {
-          "address": 3207696,
+          "address": 3204112,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region.runtime.optional.none"
         },
         {
-          "address": 3207648,
+          "address": 3204064,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region.runtime.optional.some"
         },
         {
-          "address": 3208640,
+          "address": 3205056,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.kernel.region.load"
         },
         {
-          "address": 3208752,
+          "address": 3205168,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.kernel.region.store"
         },
         {
-          "address": 3207568,
+          "address": 3203984,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region.memset"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region.runtime.optional.is.some"
         },
         {
-          "address": 3207776,
+          "address": 3204192,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region.runtime.optional.payload"
         },
         {
-          "address": 3208912,
+          "address": 3205328,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209024,
+          "address": 3205440,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region.topal.fn.apply.1"
         },
         {
-          "address": 3209072,
+          "address": 3205488,
           "bytes": 630,
           "sha256": "c1585118c7aacab00c21ce8ae7511362a5cfa0c7a7c8657c9a47a16ece929f57",
           "symbol": "topal_kernel_region_apply_v1"
@@ -1903,14 +1903,14 @@
           "symbol": "topal.region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -1919,19 +1919,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -1939,15 +1939,15 @@
       ]
     },
     "runtime": {
-      "artifact_provenance_sha256": "7f01f33d36543cc35ca3156e9f54095b3252caa16095543c5dc5b5172c9ffd7d",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/251",
-      "boot_image_sha256": "841e0ddfc3aaf29a09a595565a98d17894c322c25800147c6a3dd18378f7f970",
-      "boot_provenance_sha256": "4f10327feeb7aa1cf51a23b8afe7774250c61f632577042c6b713ed79223253a",
+      "artifact_provenance_sha256": "85c2729debda909ba4e29eadaa4fd9a3d17ba3406a26c9e8f2c83f6fa90ba608",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/252",
+      "boot_image_sha256": "595979fcb8dc39f61609b6e8129e169a7ae613617bd2820f164ddd2dbfaf15b4",
+      "boot_provenance_sha256": "f3848d2598c98b13be27286aae39eb89a414af36bf619164533f671db3e7f86d",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -1955,7 +1955,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "e243f78f28c4ee92a3fbd711d21118b30c1eab11c27d10fc686c8e5608be5483",
+      "linked_kernel_sha256": "9edaafe27c2c6d6039b0a12c03709f13702c5af88e010f9956a6369773ced0c4",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -2223,10 +2223,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/238",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/239",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/251",
+      "schema": "topal-kernel-toolchain-gate-qemu/252",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "82fea9f0819a77b9fadaa18acc150aa7862aafbce252d99f92cc2376aebfeab8",
@@ -2473,15 +2473,15 @@
   },
   "owner-prefix": {
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f",
+    "linked_kernel_sha256": "2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69",
     "observation": {
       "finalized": false,
       "frame_sp": 1572808,
       "helpers": 0,
       "minimum_rsp": 1572808,
-      "owner": 3461120,
+      "owner": 3457024,
       "result": "expected-pre-entry-refusal",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 0,
       "source_returns": 0
     },
@@ -2490,27 +2490,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -2525,109 +2525,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "6b7e044017e227c55a609dbd78e4ec40ac13aad9c12003f14a32466c73cc15c8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -2642,14 +2642,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -2658,19 +2658,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -2943,7 +2943,7 @@
     }
   },
   "primary": {
-    "linked_kernel_sha256": "efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f",
+    "linked_kernel_sha256": "2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69",
     "observation": {
       "finalized": true,
       "frame_sp": 1572808,
@@ -2961,10 +2961,10 @@
       "minimum_rsp": 1572296,
       "observed_arena_bytes": 136,
       "observed_source_stack_bytes": 512,
-      "owner": 3465216,
+      "owner": 3461120,
       "proved_source_caller_stack_bytes": 632,
       "result": "pass",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 1,
       "scalar_transport": {
         "address": 0,
@@ -2978,27 +2978,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -3013,109 +3013,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "6b7e044017e227c55a609dbd78e4ec40ac13aad9c12003f14a32466c73cc15c8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -3130,14 +3130,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -3146,19 +3146,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -3166,15 +3166,15 @@
       ]
     },
     "runtime": {
-      "artifact_provenance_sha256": "a441c0a1ccc413b039b8300af29eaa0f584e4071fecf49bc3dc99e2ad104717e",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/251",
-      "boot_image_sha256": "13f109b70f145a73d95a7219a80bbad87faa0886cc46dd835c2460c78a7c6c5c",
-      "boot_provenance_sha256": "49fe982ccfa940dc4401ffe5745cc22321efa0ec5521d093f740a4df4fc73dba",
+      "artifact_provenance_sha256": "b4d2f4256194cc38476d517041644a83612455b13d433a02ee673a8ff85d4dcc",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/252",
+      "boot_image_sha256": "c620136222e1a31c9f0ade7fd9f45a3f3f3e1c7761e99e8267bef147e5a93eb7",
+      "boot_provenance_sha256": "cd521c5ef64bde1c8b2200b1c7a0e6522526db4b24df63bc89e57f11a02e8d05",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -3182,7 +3182,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "efebdfa319455a1374ce1996ce69c5ec78bf8509930c837a23ce71b0d7c7374f",
+      "linked_kernel_sha256": "2f2da9b4f308cac3e4bf5456408a72b70d68b17050d12129ff821cb9bb75cf69",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -3450,10 +3450,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/238",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/239",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/251",
+      "schema": "topal-kernel-toolchain-gate-qemu/252",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "9fe4c6afe542029bbc17fb49e248a5117d8d1cc707a1c4d630466981fe47d3fc",
@@ -3725,7 +3725,7 @@
   "qmp_control_sha256": "23de918998fef666112a3d26d77c80d479fbb49a84262185900c19ba1a2ee55a",
   "schema": "topal-root-region-qemu/1",
   "store24": {
-    "linked_kernel_sha256": "a430646323bad5f42706884ceee6f69e8b92a62f0176a657cabf5427f88a0fb5",
+    "linked_kernel_sha256": "f78a42fcbae2d9a6524383d8eef8d43e3a16273eda6286d562b02dca8c86c5dc",
     "observation": {
       "finalized": true,
       "frame_sp": 1572808,
@@ -3737,16 +3737,16 @@
         "topal_x86_systems_region_library_apply_v1",
         "_topal_kernel_entry"
       ],
-      "helper_file": "/tmp/topal-root-region-c0csn9of/store24/library/support/bytes.t",
+      "helper_file": "/tmp/topal-root-region-oc5d9qb6/store24/library/support/bytes.t",
       "helper_file_exists": true,
       "helpers": 1,
       "minimum_rsp": 1572296,
       "observed_arena_bytes": 136,
       "observed_source_stack_bytes": 512,
-      "owner": 3465216,
+      "owner": 3461120,
       "proved_source_caller_stack_bytes": 632,
       "result": "pass",
-      "root_return_pc": 2193999,
+      "root_return_pc": 2193551,
       "root_returns": 1,
       "scalar_transport": {
         "address": 0,
@@ -3760,27 +3760,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193504,
+          "address": 3193056,
           "bytes": 1088,
-          "sha256": "a42913905f294d07418224d897660ff66835c0f494dab7107fd129fb285b6abe",
+          "sha256": "ba5d1133d40a6db7a0ec38ebe6a1546c092f9903744ae3ddec89db2723da805f",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194592,
+          "address": 3194144,
           "bytes": 295,
-          "sha256": "1a690d6cf8888528e43542c39ef9d12ed650fcce54b7d81f516d4c232f43b834",
+          "sha256": "451f858ab37565dc85f7ec8e76f2566daaa88f297c3899a7d3b5e5099148634e",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193488,
+          "address": 3193040,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194896,
+          "address": 3194448,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -3795,109 +3795,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207648,
+          "address": 3204064,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208096,
+          "address": 3204512,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208112,
+          "address": 3204528,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208128,
+          "address": 3204544,
           "bytes": 435,
           "sha256": "3b4b41d2722ee24f82bf193499c602c5af271a476fafc8a40c8ef707a61b7b7d",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208576,
+          "address": 3204992,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207872,
+          "address": 3204288,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207952,
+          "address": 3204368,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207776,
+          "address": 3204192,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208720,
+          "address": 3205136,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208832,
+          "address": 3205248,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207856,
+          "address": 3204272,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208992,
+          "address": 3205408,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 76,
-          "sha256": "4c2e5b465943d255cdfe0cabe6562d504c4068a2731101459f964de6df445867",
+          "sha256": "c6853fe92addf4e4a68697a4453fa9f889ba6284280b1241a69b411a5d072288",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209184,
+          "address": 3205600,
           "bytes": 25,
           "sha256": "97593069d18f27b5fd70c6d51cabe61bca6fcb3d38e0119eb7869dc40edee587",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209216,
+          "address": 3205632,
           "bytes": 685,
           "sha256": "414fbdc6410e8be37eccbd9e2390adddfe0bea95f1083aefe8a6bbffb4355398",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -3912,28 +3912,28 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098624,
+          "address": 2098176,
           "alignment": 8,
           "bytes": 24,
           "sha256": "962e02d2a58996e8adb23da28c593cfeaf52a1e052682fc8c6753a3b567b91b2",
           "symbol": "topal.region-instance.root-region.literal.int.2"
         },
         {
-          "address": 2098648,
+          "address": 2098200,
           "alignment": 8,
           "bytes": 24,
           "sha256": "65ed87568af5a633e8523a2ae605631d01f25523d03f0760e60c2aa27bf4a046",
           "symbol": "topal.region-instance.root-region.literal.int.3"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -3942,19 +3942,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -3962,15 +3962,15 @@
       ]
     },
     "runtime": {
-      "artifact_provenance_sha256": "a1fcc915ea6cc72e00a1b242d6c530c5fd7814c600fa234076c6e8d531175cd5",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/251",
-      "boot_image_sha256": "ef80834362ff05bd969d79de90731b2261c0ca55a75256a0bedbfa8bd35ce30c",
-      "boot_provenance_sha256": "fea997031cf3a5d476b243c35ab832a510a9a2f5ec781023cee5a4212df84680",
+      "artifact_provenance_sha256": "67ad7d8348381e88116326ec850e170de2e9672128e8df68630aad850a4c0a62",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/252",
+      "boot_image_sha256": "975149b7a764102f54bdeedba0362d6abf1380c0ecccc64f7c6b271ed803ec74",
+      "boot_provenance_sha256": "5914528ee05af2a6eb4659fb7e3e2267c492d7650a4e3cee159d3ac92c474b0a",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
       "boot_resource_sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
-      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/151",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/152",
       "clean_environment_mode": "maximum",
       "cpu": "qemu64-v1",
       "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
@@ -3978,7 +3978,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "a430646323bad5f42706884ceee6f69e8b92a62f0176a657cabf5427f88a0fb5",
+      "linked_kernel_sha256": "f78a42fcbae2d9a6524383d8eef8d43e3a16273eda6286d562b02dca8c86c5dc",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -4246,10 +4246,10 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/238",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/239",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/251",
+      "schema": "topal-kernel-toolchain-gate-qemu/252",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
       "source_sha256": "9fe4c6afe542029bbc17fb49e248a5117d8d1cc707a1c4d630466981fe47d3fc",
@@ -4460,7 +4460,7 @@
         "topal_kernel_region_frame_root_region_abort_v1"
       ],
       "instance": "root-region",
-      "llvm_sha256": "7001bd358f9730d9f0267144284f76ba55209a7480151a8622080caf329a2186",
+      "llvm_sha256": "54843a020244c319d4cd911a171a76e38a48a9e7544e18ea2b63936ba33446a4",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-region-gpr-only/1",
       "maximum_stack_bytes": 544,
@@ -4485,7 +4485,7 @@
       ],
       "native_abi": "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1",
       "native_export": "topal_kernel_region_frame_root_region_apply_v1",
-      "object_sha256": "c893a8b2aaff0e6c01f30630614470a81ffd686215dad50a66e332880d3f096c",
+      "object_sha256": "495568f5a4c693abdc7d81fad3bd759a5f68b23558a7079fecf4cef1cfe60ec3",
       "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
       "read_only_data": [
         {
@@ -4519,13 +4519,13 @@
           "symbol": "topal.region-instance.root-region.runtime.int.zero"
         }
       ],
-      "retained_llvm_sha256": "a95416103f5ae611fd6e43e78f90a63ebf5e162f8811d706ec7541fb5623dfaa",
+      "retained_llvm_sha256": "e3c4f9e590a8cec7d002c83bd5b4fb97eae49ed5e975c0b9d8140a4059da39dc",
       "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
       "scalar_count": 0,
       "schema": "topal.kernel-region-frame-source-object.x86_64/2",
       "source": "policy/bootstrap-byte-copy-frame.t",
       "source_export": "apply",
-      "source_name": "/tmp/topal-root-region-c0csn9of/store24/library/policy/bootstrap-byte-copy-frame.t",
+      "source_name": "/tmp/topal-root-region-oc5d9qb6/store24/library/policy/bootstrap-byte-copy-frame.t",
       "source_sha256": "b51eeb6c2ee2deb86585ecb9d0588b6bdeae341a22178e08f5205dd6bf757c8e",
       "stack_limit_bytes": 4096,
       "target": "x86_64-unknown-none"
@@ -4533,7 +4533,7 @@
   },
   "wrong-helper": {
     "debugger_completed_before_teardown": true,
-    "linked_kernel_sha256": "fd463e28c39a266a4142f13cd4036944586d57be60b81ae1c39c629edbbdc2d6",
+    "linked_kernel_sha256": "64d2450fd0b81c9f22808d8aec35412af8fb716808dc483ace44a24e6f0238d6",
     "observation": {
       "finalized": false,
       "frame_sp": 1572808,
@@ -4545,14 +4545,14 @@
         "topal_x86_systems_region_library_apply_v1",
         "_topal_kernel_entry"
       ],
-      "helper_file": "/tmp/topal-root-region-c0csn9of/wrong-helper/library/support/bytes.t",
+      "helper_file": "/tmp/topal-root-region-oc5d9qb6/wrong-helper/library/support/bytes.t",
       "helper_file_exists": true,
       "helpers": 1,
       "minimum_rsp": 1572296,
       "observed_arena_bytes": 136,
-      "owner": 3465216,
+      "owner": 3461120,
       "result": "expected-owner-byte-guard-refusal",
-      "root_return_pc": 2193951,
+      "root_return_pc": 2193503,
       "root_returns": 1,
       "scalar_transport": {
         "address": 0,
@@ -4567,27 +4567,27 @@
       "caller_alignment_bytes": 32,
       "code": [
         {
-          "address": 3193456,
+          "address": 3193008,
           "bytes": 1088,
-          "sha256": "a0fe4f23d665d42ceeb401679f5b352a7371e38a6fc854e728cb1a8385df8281",
+          "sha256": "fa3edf618bd5e6e59c2696ff5fac44e6cfbaf84d6e08ec8e3a45c9bfc9c56d9e",
           "symbol": "topal_x86_systems_region_library_apply_v1"
         },
         {
-          "address": 3194544,
+          "address": 3194096,
           "bytes": 295,
-          "sha256": "17a229c4a1589b413b1e731653cd7531743606841863c8933a9402cce4ee26b5",
+          "sha256": "543c3d4704c61e052ea25422607a5a2e29a79df92cd566ce2435c095d91b85f9",
           "symbol": "topal_kernel_region_frame_root_region_allocate_v1"
         },
         {
-          "address": 3193440,
+          "address": 3192992,
           "bytes": 4,
           "sha256": "a7413110d0afeaa3ef808b851d8c1c7cdd074fbface71b286cf1fde0d19dd226",
           "symbol": "topal_kernel_region_frame_root_region_abort_v1"
         },
         {
-          "address": 3194848,
+          "address": 3194400,
           "bytes": 272,
-          "sha256": "309b25eb31ef5aa85649c71b945c754cd848bb4532a84dd79ea5bcf9df24311a",
+          "sha256": "84b6178e1371b8dfa3e2ae2a14841f598c4cdd5bd1eb7e21e03cdf4851ebce75",
           "symbol": "topal_x86_systems_region_library_finalize_v1"
         }
       ],
@@ -4602,109 +4602,109 @@
       "schema": "topal.root-region-invocation.x86_64/3",
       "source_code": [
         {
-          "address": 3207600,
+          "address": 3204016,
           "bytes": 73,
           "sha256": "cb9c496ef5234e5129bb5b82975701cdc84ec32909a090bae9dd90fe1a7490e4",
           "symbol": "topal.region-instance.root-region.memset"
         },
         {
-          "address": 3208032,
+          "address": 3204448,
           "bytes": 11,
-          "sha256": "6b1827ca1dab45d4f8e2d30e3af4c9bca9a8e8778ac45b1a6aa1cd7b47306ec2",
+          "sha256": "a6d4424710c29a12dbb90989353222a43104cf707136ecbd7b411e087477fb6c",
           "symbol": "topal.region-instance.root-region.platform.allocate"
         },
         {
-          "address": 3208048,
+          "address": 3204464,
           "bytes": 9,
-          "sha256": "be47f00b8c4df43e68b9bf3ede8aa07fd3ddd58b66ccbed8b297bb78c9857f9b",
+          "sha256": "051e5dce2d405914a0173a3246953bdc097a9ecc079df7f36074055f18be876d",
           "symbol": "topal.region-instance.root-region.platform.exit"
         },
         {
-          "address": 3208064,
+          "address": 3204480,
           "bytes": 9,
-          "sha256": "da5a4f5630456adf672d4146dbc3e27f3ae2f9d50ab9c1435d329d58b9272258",
+          "sha256": "976cb66ad21bda43eb4f54b70f71fd29e6f648c43b42a22f9b8a80ffeb33bb93",
           "symbol": "topal.region-instance.root-region.primitive.abort"
         },
         {
-          "address": 3208080,
+          "address": 3204496,
           "bytes": 435,
           "sha256": "c3ed18d282bdffbc4dbe037cf584aea057c96e7262ff2f25ef2aad6ab3ac6c66",
           "symbol": "topal.region-instance.root-region.primitive.guard"
         },
         {
-          "address": 3208528,
+          "address": 3204944,
           "bytes": 136,
           "sha256": "02d0339a7291019104943f0991a01b1cdfd0fbc335e9ef56078b5015b86b2653",
           "symbol": "topal.region-instance.root-region.primitive.index"
         },
         {
-          "address": 3207824,
+          "address": 3204240,
           "bytes": 79,
           "sha256": "8507d23c7422850d92a2970a3a369334ab839683233fad2a68dd556793b71887",
           "symbol": "topal.region-instance.root-region.runtime.int.allocate"
         },
         {
-          "address": 3207904,
+          "address": 3204320,
           "bytes": 127,
-          "sha256": "0582d5e43f5b465c8cb39d9f15d9d443c0f5e437964fe960a323dd779dc351f9",
+          "sha256": "c260011c6019302bda20bc6a7385802ba5bffd1a9c7084a80d60be65f65a38ad",
           "symbol": "topal.region-instance.root-region.runtime.int.from.u64"
         },
         {
-          "address": 3207728,
+          "address": 3204144,
           "bytes": 31,
           "sha256": "c500900738fa9033873741bfbccb53860134186093d6d1d52a59657897a077c6",
           "symbol": "topal.region-instance.root-region.runtime.optional.none"
         },
         {
-          "address": 3207680,
+          "address": 3204096,
           "bytes": 43,
           "sha256": "56499293a911351158d5241c421a213708e4c2638bc93220e1b155e5340559a7",
           "symbol": "topal.region-instance.root-region.runtime.optional.some"
         },
         {
-          "address": 3208672,
+          "address": 3205088,
           "bytes": 101,
           "sha256": "19da728498a63a78a759409b3245ad705088471228aac63bd5f9a877fac1009e",
           "symbol": "topal.region-instance.root-region.primitive.load"
         },
         {
-          "address": 3208784,
+          "address": 3205200,
           "bytes": 151,
           "sha256": "a7cc1a4f029c412cc09113c7ce2a650a085ec55719f9a0021936711473a38640",
           "symbol": "topal.region-instance.root-region.primitive.store"
         },
         {
-          "address": 3207760,
+          "address": 3204176,
           "bytes": 48,
           "sha256": "8572df87c597c9f82d51cd38866833628f3187c308091242edc7da5c429341d4",
           "symbol": "topal.region-instance.root-region.runtime.optional.is.some"
         },
         {
-          "address": 3207808,
+          "address": 3204224,
           "bytes": 10,
           "sha256": "e65d0e5b3e004bca7221190010f8d17cf9cccee4894c85ad38b21fc472e35095",
           "symbol": "topal.region-instance.root-region.runtime.optional.payload"
         },
         {
-          "address": 3208944,
+          "address": 3205360,
           "bytes": 97,
           "sha256": "aab5d015a306955d3ef2a54653993eab82b4715e6025da5c95b7d85d98879ca5",
           "symbol": "topal.region-instance.root-region.topal.fn.support_2ebytes_2ecopy_2dbyte.0"
         },
         {
-          "address": 3209056,
+          "address": 3205472,
           "bytes": 43,
-          "sha256": "e75349c825ea8515f63fb0c8a16c610265a4a70aa09734efc824fcc2534a78af",
+          "sha256": "6361d1ab1fd2e7bf5524f176aae8643953ecab1cadf388fa200a9ae9e24f3373",
           "symbol": "topal.region-instance.root-region.topal.fn.policy_2ebootstrap_2dbyte_2dcopy_2eapply.1"
         },
         {
-          "address": 3209104,
+          "address": 3205520,
           "bytes": 25,
           "sha256": "6b7e044017e227c55a609dbd78e4ec40ac13aad9c12003f14a32466c73cc15c8",
           "symbol": "topal.region-instance.root-region.topal.fn.apply.2"
         },
         {
-          "address": 3209136,
+          "address": 3205552,
           "bytes": 685,
           "sha256": "ca40ff1609122ee93281714d875347933f3cbbdbae3e4350aa1142c7cf202bf2",
           "symbol": "topal_kernel_region_frame_root_region_apply_v1"
@@ -4719,14 +4719,14 @@
           "symbol": "topal.region-instance.root-region.literal.int.0"
         },
         {
-          "address": 2098600,
+          "address": 2098152,
           "alignment": 8,
           "bytes": 24,
           "sha256": "ab25350e3e65efebe24584461683ecda68725576e825e550038b90e7b1479946",
           "symbol": "topal.region-instance.root-region.literal.int.1"
         },
         {
-          "address": 2098584,
+          "address": 2098136,
           "alignment": 8,
           "bytes": 16,
           "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
@@ -4735,19 +4735,19 @@
       ],
       "storage": [
         {
-          "address": 3526656,
+          "address": 3522560,
           "alignment": 4096,
           "bytes": 65536,
           "symbol": "topal_x86_systems_region_arena"
         },
         {
-          "address": 3592192,
+          "address": 3588096,
           "alignment": 8,
           "bytes": 64,
           "symbol": "topal_x86_systems_region_control"
         },
         {
-          "address": 3592256,
+          "address": 3588160,
           "alignment": 8,
           "bytes": 8,
           "symbol": "topal_x86_systems_region_history"
@@ -4956,7 +4956,7 @@
         "topal_kernel_region_frame_root_region_abort_v1"
       ],
       "instance": "root-region",
-      "llvm_sha256": "121d82ddb93f66f4b9839950e6c2090279604f6df79251e9767873314fe56369",
+      "llvm_sha256": "5002ed0ebcf24429ae7cfafa638808ac65b617375923e4b686ae623e9de0ece0",
       "llvm_version": "22.1.6",
       "machine_profile": "x86_64-owned-region-gpr-only/1",
       "maximum_stack_bytes": 544,
@@ -4981,7 +4981,7 @@
       ],
       "native_abi": "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1",
       "native_export": "topal_kernel_region_frame_root_region_apply_v1",
-      "object_sha256": "7849be8726abaca52c43467f333fc9b365d84201553dcde1cd752719e2995a6d",
+      "object_sha256": "feebf6fe97a673c3ff4ff8e171d765cbb37971750d630fbded338d5350ad3f64",
       "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
       "read_only_data": [
         {
@@ -5003,13 +5003,13 @@
           "symbol": "topal.region-instance.root-region.runtime.int.zero"
         }
       ],
-      "retained_llvm_sha256": "150196e2fa49e5ce1452e2f2cb43356d83b39139cda7e26232bb7aa1677c7bb5",
+      "retained_llvm_sha256": "acac0bd830b0ee0643976b22b9553ce440f667b8c730f4fa10a2ed3f413ff47f",
       "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
       "scalar_count": 0,
       "schema": "topal.kernel-region-frame-source-object.x86_64/2",
       "source": "policy/bootstrap-byte-copy-frame.t",
       "source_export": "apply",
-      "source_name": "/tmp/topal-root-region-c0csn9of/wrong-helper/library/policy/bootstrap-byte-copy-frame.t",
+      "source_name": "/tmp/topal-root-region-oc5d9qb6/wrong-helper/library/policy/bootstrap-byte-copy-frame.t",
       "source_sha256": "b51eeb6c2ee2deb86585ecb9d0588b6bdeae341a22178e08f5205dd6bf757c8e",
       "stack_limit_bytes": 4096,
       "target": "x86_64-unknown-none"

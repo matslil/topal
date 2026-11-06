@@ -43,6 +43,15 @@ retain the exact command results and complete logs. No workflow-location
 exception is needed for that local result. See the
 [current report](../../step-4-source-ram-page-allocation.md).
 
+TK279 also completed locally on committed revision
+`9e3d0277c692b6fafacff617b3480ab6b5fa6bd6`: locked workspace all-target checking,
+all 2280 tests across 41 targets with no failures or ignored tests, and the
+separate doc-test command pass. The latter currently discovers no executable
+doc tests. Its [verbatim record](results/tk279/final/qualification.json) and
+three complete compressed logs retain command, tree, tool and hash evidence.
+See the [unsigned-field report](../../step-4-unsigned-region-fields.md) for the
+distinct native/kernel/VM qualification scope.
+
 Archived logs use lossless `.log.gz` files to keep execution output compact and
 preserve its exact bytes, including trailing blank lines. The unchanged driver
 records name the original `.log` files; their `log_sha256` digests apply to the
