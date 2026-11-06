@@ -12329,3 +12329,19 @@ observed native components before enabling the real file-position application;
 retain its arithmetic, admission, owner and cleanup laws. Keep existing source
 resource limits and qualify every affected changed-kernel cohort. See
 [TK-DEC-279](../../linux-kernel/design/unsigned-region-fields.md).
+
+## TOPAL-COMP-SYSTEMS-INODE-MODE-001 — Ordinary shared metadata service
+
+Realize `TOPAL-SYSTEMS-INODE-MODE-STATE-001`,
+`TOPAL-SYSTEMS-INODE-MODE-ABI-001` and
+`TOPAL-SYSTEMS-INODE-MODE-ACTION-001` through existing scoped instance actions.
+Qualify ordinary source on actual persistent inode bytes with complete source,
+runtime, code/data, caller, storage and cost bindings and fresh history. Preserve
+type and untouched fields; keep all Linux argument/credential/mount/clock
+admission before mutation, true-only guarded completion and complete temporary
+cleanup before owner resumption. Bind new exact layouts without enlarging owner
+extents or temporary limits. Independently test all four native adapters, error
+ordering, real source/helper effects, read-only/alias/unlinked/reused objects,
+mutable directories and both pipe endpoints against byte, pinned Linux, native
+and physical oracles. Preserve explicit older dispatch/ABI controls and initial
+acceptance scope. See [TK-DEC-280](../../linux-kernel/design/shared-inode-mode-actions.md).

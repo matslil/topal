@@ -156,6 +156,16 @@ publication contracts** pass. The existing source arena and core language
 meaning are unchanged. This qualifies the unsigned-field increment; the initial
 acceptance areas below remain unfinished.
 
+The next [shared-inode mode stage](step-4-shared-inode-modes.md) defines the
+chmod-family boundary and an ordinary source action on real inode metadata.
+Its portable regular-file/directory/pipe model passes all 199 semantics tests,
+including nine new independent state/lifetime cases and every permission pattern
+for all three types. Exact pinned Linux source bytes were verified against the
+manifest archive. The changed workspace all-target check and formatting pass
+under the unchanged memory policy after the user freed RAM. This is the first
+definition/model stage; source/native/adapter/VM qualification remains, and the
+current native kernel still selects 61 Linux operations.
+
 Ordinary effectful functions now execute over actual
 [borrowed kernel regions](design/borrowed-kernel-regions.md). The
 [model foundation](step-4-borrowed-region-model.md) and

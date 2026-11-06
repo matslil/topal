@@ -1892,6 +1892,19 @@ Independently verify encoding, refused payload access, source fact order and
 actual owning application effects. Keep byte-only and earlier callable controls.
 See [TK-DEC-279](../linux-kernel/design/unsigned-region-fields.md).
 
+## TOPAL-REQ-SYSTEMS-INODE-MODE-001 — Shared source-controlled inode modes
+
+Qualify chmod-family changes on existing mutable RAM regular files, directory
+and anonymous pipes, preserving inode/description separation, object lifetime,
+native Linux argument/error ordering and the prepared credential boundary.
+Use ordinary source on actual shared metadata through independently bound
+scoped region actions, with complete resource/ownership admission and guarded
+true-only completion after reclamation. Keep direct model laws, independent
+source/native qualification and fresh affected machine evidence distinct.
+Retain current core language meaning and unfinished general credentials,
+distribution/container/VM-host acceptance. See
+[TK-DEC-280](../linux-kernel/design/shared-inode-mode-actions.md).
+
 ## TOPAL-REQ-C-ABI-001 — Explicit checked C boundary
 
 The first foreign-language boundary shall be a separately selected,

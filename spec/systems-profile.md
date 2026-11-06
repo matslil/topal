@@ -10082,3 +10082,80 @@ fact evaluation order. Independent native execution and debugger observations
 SHALL prove actual source/helper/owner operations, refused payload access,
 caller preservation and complete temporary cleanup. Model transitions and
 cleanup flags SHALL NOT be reported as source execution or physical evidence.
+
+### TOPAL-SYSTEMS-INODE-MODE-STATE-001 — Shared mutable inode metadata
+
+The bounded Linux personality MAY qualify mode changes for owned RAM regular
+files, its mutable directory and anonymous pipes under the prepared owning root
+credential. Permissions and atime/mtime/ctime SHALL belong to the inode, shared
+by independent opens, aliases and both pipe endpoints. Observation copies and
+numeric inode identities SHALL NOT grant mutation authority. Live-owner and
+reference validation SHALL precede model or native mutation.
+
+A successful mode change SHALL preserve type, identity, links, contents, size,
+page ownership, directory entries, description positions/rights/flags and
+atime/mtime. It SHALL replace precisely the low 07777 permission bits and update
+ctime from the admitted mutation clock, including when mode is unchanged.
+Umask SHALL NOT mask this operation. Existing read-only descriptions SHALL NOT
+be rejected merely for their access mode. Retain the prepared credential's
+set-ID/sticky bits; general credential, ACL and set-ID execution semantics
+SHALL NOT be inferred from this bounded profile.
+
+Unlinked inodes SHALL retain metadata through live descriptions. Recreated
+names and reused slots SHALL receive independent creation metadata. Namespace
+creation/unlink SHALL preserve the parent directory's mode while updating its
+mtime/ctime. Pipe creation time SHALL remain distinct from its mutable ctime.
+Invalid/stale/foreign owner or reference admissions SHALL preserve complete
+state. A reference model SHALL use the same owned metadata for these operations
+and normal observations/lifetime laws, without claiming compiled source,
+physical erasure or complete syscall qualification.
+
+### TOPAL-SYSTEMS-INODE-MODE-ABI-001 — Chmod family adaptation
+
+The pinned x86-64 personality SHALL separately adapt chmod (90), fchmod (91),
+fchmodat (268) and fchmodat2 (452). The original fchmodat SHALL use zero flags
+regardless of unused native argument registers. Adapt native mode through
+umode_t and 07777 masking only at the Linux boundary, preserving actual inode
+type. This SHALL NOT change core Nat conversion rules.
+
+Fchmodat2 SHALL reject flags outside AT_SYMLINK_NOFOLLOW and AT_EMPTY_PATH before
+path acquisition. Fd and flags SHALL first be adapted through their declared
+32-bit native types. Nonempty paths SHALL retain complete copied-name, absolute/
+relative dirfd, cwd, dot and trailing-component laws. An empty string SHALL
+require AT_EMPTY_PATH and select the referenced inode or cwd for AT_FDCWD;
+unreadable/null names SHALL retain EFAULT. Invalid descriptors SHALL yield
+EBADF. Read-only descriptions SHALL not cause access-mode denial. Ordinary
+chmod lookup SHALL precede target mount-write denial; immutable mount objects
+SHALL NOT acquire mutation through descriptor/path aliases. Unsupported object,
+credential or symlink semantics SHALL NOT be reported as successful coverage.
+Qualification SHALL independently compare argument/error ordering with the
+pinned Linux reference, including flag truncation, bad pointers/fds, empty
+names, mode masking and immutable targets.
+
+### TOPAL-SYSTEMS-INODE-MODE-ACTION-001 — Actual ordinary metadata effects
+
+The ordinary inode action SHALL use a distinct bound instance of the existing
+two-Nat/Boolean framed region context, with admitted permission/time facts and
+an actual owned 32-byte mode/atime/mtime/ctime block encoded as four explicit
+little-endian eight-byte fields. Source SHALL preflight the complete extent,
+fact ranges and mode encoding before mutation, preserve type through ordinary
+arithmetic and write mode/ctime through checked unsigned field operations.
+Copied candidates or native mutation SHALL NOT substitute for that real loan.
+
+The controller SHALL establish live object/reference, prepared credential,
+mount/clock, exclusive access, exact source/code/data/bounds and clean disjoint
+resources before entry. After true and complete frame/view/arena/control/stack
+reclamation, it SHALL validate requested mode/ctime and preserved type/atime/
+mtime before owner resumption. False, malformed state, abandonment or incomplete
+cleanup after admission SHALL be terminal without rollback or ordinary Linux
+error/owner resumption. Source data refusal before stores SHALL preserve bytes;
+successful earlier stores SHALL NOT be undone by later failure.
+
+Invocation history SHALL remain distinct from object identities and survive
+fork/exec/process restoration and intermediate object destruction. Placement,
+schema, actual owner/extent and complete resource certificates SHALL reject
+stale/overlapping/undercharged evidence. Keep existing temporary/stack limits.
+Qualification SHALL distinguish portable state laws from actual loans, opaque
+source, independent native/GDB execution and physical cleanup; all mutable
+target kinds, aliases, unlink/recreate, active/inactive process lifetime and
+unmodified utility workloads SHALL require fresh affected machine evidence.

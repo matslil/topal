@@ -1,7 +1,9 @@
 //! Owned FIFO and readiness model; numeric observations grant no authority.
-use crate::SystemsModelError;
+use crate::{SystemsInodeMetadata, SystemsModelError};
 use std::collections::BTreeMap;
 use std::sync::Arc;
+#[path = "systems_inode_pipe_modes.rs"]
+mod inode_modes;
 
 const CAPACITY: usize = 4096;
 const OBJECTS: usize = 4;
@@ -43,10 +45,12 @@ pub struct SystemsPipeMetadata {
     pub created_seconds: u64,
     pub accessed_seconds: u64,
     pub modified_seconds: u64,
+    pub changed_seconds: u64,
+    pub mode: u16,
     pub nonblocking: bool,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Pipe {
     generation: u64,
     bytes: Vec<u8>,
@@ -54,9 +58,10 @@ struct Pipe {
     count: usize,
     references: [usize; 2],
     nonblocking: bool,
-    times: [u64; 3],
+    created_seconds: u64,
+    inode: SystemsInodeMetadata,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct Wait {
     generation: u64,
     endpoint: u64,
@@ -173,7 +178,8 @@ impl SystemsPipePool {
             count: 0,
             references: [1, 1],
             nonblocking,
-            times: [observed_seconds; 3],
+            created_seconds: observed_seconds,
+            inode: SystemsInodeMetadata::new(0o10000, 0o600, observed_seconds),
         });
         self.endpoints
             .insert(read.ticket, (generation, Direction::Read));
@@ -221,9 +227,11 @@ impl SystemsPipePool {
             buffered: p.count,
             readers: p.references[0],
             writers: p.references[1],
-            created_seconds: p.times[0],
-            accessed_seconds: p.times[1],
-            modified_seconds: p.times[2],
+            created_seconds: p.created_seconds,
+            accessed_seconds: p.inode.accessed_seconds(),
+            modified_seconds: p.inode.modified_seconds(),
+            changed_seconds: p.inode.changed_seconds(),
+            mode: p.inode.permissions(),
             nonblocking: p.nonblocking,
         })
     }
@@ -314,7 +322,7 @@ impl SystemsPipePool {
             p.head = (p.head + 1) % CAPACITY;
         }
         p.count -= size;
-        p.times[1] = observed_seconds;
+        p.inode.accessed(observed_seconds);
         self.notify(index);
         Ok(SystemsPipeTransfer::Complete(result))
     }
@@ -356,7 +364,7 @@ impl SystemsPipePool {
             p.bytes[(p.head + p.count + offset) % CAPACITY] = *value;
         }
         p.count += size;
-        p.times[2] = observed_seconds;
+        p.inode.modified(observed_seconds);
         self.notify(index);
         Ok(SystemsPipeTransfer::Complete(size))
     }

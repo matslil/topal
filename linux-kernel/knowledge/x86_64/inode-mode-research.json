@@ -1,0 +1,106 @@
+{
+  "schema": "topal-linux-inode-mode-research/1",
+  "decision": "TK-DEC-280",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "arch/x86/entry/syscalls/syscall_64.tbl": {
+      "sha256": "93e42d351de2002418bf499b9a538f189fd683e8ecd52b4adc8a0bbe59130455",
+      "archive_member": "linux-7.2.9/arch/x86/entry/syscalls/syscall_64.tbl",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "90:chmod",
+        "91:fchmod",
+        "268:fchmodat",
+        "452:fchmodat2"
+      ]
+    },
+    "fs/attr.c": {
+      "sha256": "d9c2a263ba8cb1b0ac262005473e87246f8d3981fb080666810b29413a1fb6c2",
+      "archive_member": "linux-7.2.9/fs/attr.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "setattr_prepare",
+        "notify_change",
+        "setattr_copy"
+      ]
+    },
+    "fs/namei.c": {
+      "sha256": "d5498d87be97efd71286e27a30c34ce92a5e059e37540de11e93d1b8aad36c4a",
+      "archive_member": "linux-7.2.9/fs/namei.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "do_getname",
+        "getname_uflags"
+      ]
+    },
+    "fs/open.c": {
+      "sha256": "760e4f46650c1ce710809097bee916a66daa7e8a9c761e43f420638eceeb5de0",
+      "archive_member": "linux-7.2.9/fs/open.c",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "chmod_common",
+        "vfs_fchmod",
+        "do_fchmodat",
+        "chmod",
+        "fchmod",
+        "fchmodat",
+        "fchmodat2"
+      ]
+    },
+    "include/linux/stat.h": {
+      "sha256": "189c21c895c453c9b1022da7b2d907e09dc4e0fef5e7bbd165dd32f930a30e1b",
+      "archive_member": "linux-7.2.9/include/linux/stat.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "S_IALLUGO"
+      ]
+    },
+    "include/linux/types.h": {
+      "sha256": "b12aab0f1569ba0dd6843839aa15515a414c171d3fedd583c9aa835a81b4561b",
+      "archive_member": "linux-7.2.9/include/linux/types.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "umode_t"
+      ]
+    },
+    "include/uapi/linux/stat.h": {
+      "sha256": "c900a05e031d999074db5ac3567f651ce2cf2f9f9e0a686810d6453c9f8b9526",
+      "archive_member": "linux-7.2.9/include/uapi/linux/stat.h",
+      "cached_bytes_match_pinned_archive": true,
+      "research_symbols": [
+        "S_IFMT",
+        "S_IFREG",
+        "S_IFDIR",
+        "S_IFIFO"
+      ]
+    }
+  },
+  "facts": {
+    "syscalls": {
+      "chmod": 90,
+      "fchmod": 91,
+      "fchmodat": 268,
+      "fchmodat2": 452
+    },
+    "fchmodat_argument_count": 3,
+    "fchmodat2_allowed_flags": [
+      "AT_SYMLINK_NOFOLLOW",
+      "AT_EMPTY_PATH"
+    ],
+    "native_mode_type": "umode_t",
+    "mode_mask_octal": "07777",
+    "mode_change_attributes": [
+      "ATTR_MODE",
+      "ATTR_CTIME"
+    ],
+    "null_path_uses_copied_string_acquisition": true,
+    "descriptor_write_access_required_by_vfs_fchmod": false
+  },
+  "scope": "Primary source research only; no Topal source/native/syscall/VM qualification."
+}

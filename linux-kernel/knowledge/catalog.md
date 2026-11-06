@@ -14,6 +14,7 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-UAPI-SYSCALL-001` | native syscall protocol ledger | x86-64 | source-indexed | [UAPI](common/linux-uapi.md), [inventory](../inventory/7.2.9/x86_64/syscalls.json) |
 | `LK-UAPI-PROCESS-001` | process/ELF/signal ABI family | x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-FD-001` | file descriptor and VFS ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
+| `LK-X64-INODE-MODE-001` | chmod-family source semantics | Linux 7.2.9/x86-64, existing root credential | source-indexed | [exact source hashes/facts](x86_64/inode-mode-research.json), [implementation design](../design/shared-inode-mode-actions.md); reference VM/error-order qualification remains |
 | `LK-UAPI-NET-001` | socket and Netlink ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-DEVICE-001` | ioctl and device ABI | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |
 | `LK-UAPI-PSEUDOFS-001` | proc/sys/dev/cgroup surfaces | common/x86-64 | mapped | [UAPI](common/linux-uapi.md) |

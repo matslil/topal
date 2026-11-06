@@ -437,3 +437,18 @@ Exercise actual persistent field/map loans and their independent completion
 guards. Format data and model cleanup flags shall not become native authority
 or physical execution/erasure evidence. See
 [TK-DEC-279](../../linux-kernel/design/unsigned-region-fields.md).
+
+## TOPAL-SEM-SYSTEMS-INODE-MODE-001 — Owned shared inode mode transitions
+
+Model `TOPAL-SYSTEMS-INODE-MODE-STATE-001` on the same actual metadata bytes
+used by regular-file, mutable-directory and pipe observations and transfer/
+lifetime laws. Keep mode/ctime shared across independent descriptions, aliases
+and pipe endpoints; preserve type, atime/mtime, contents, positions, rights,
+allocation and waits. Cover every permission pattern, native high-bit masking,
+unchanged-mode ctime, read-only descriptions, retained unlinked objects, name
+recreation, reuse, stale/foreign authority and complete failure-state preservation.
+Directory namespace mutation shall retain its mode and pipe creation time shall
+remain separate. Subsequent source-loan modeling shall retain independent
+opaque-completion and cleanup obligations; direct model updates shall not claim
+source/native execution or complete syscall error-order/physical evidence. See
+[TK-DEC-280](../../linux-kernel/design/shared-inode-mode-actions.md).

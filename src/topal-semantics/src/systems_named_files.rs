@@ -21,7 +21,7 @@ pub struct SystemsNamedDirectoryEntry {
     pub directory: bool,
     pub native_x86_64_bytes: usize,
 }
-fn valid_name(name: &[u8]) -> Result<(), SystemsModelError> {
+pub(super) fn valid_name(name: &[u8]) -> Result<(), SystemsModelError> {
     if name.len() > 255 {
         return Err(error("ENAMETOOLONG"));
     }
@@ -32,7 +32,7 @@ fn valid_name(name: &[u8]) -> Result<(), SystemsModelError> {
     Ok(())
 }
 impl SystemsVolatileFilePool {
-    fn named_object(&self, name: &[u8]) -> Option<usize> {
+    pub(super) fn named_object(&self, name: &[u8]) -> Option<usize> {
         self.state
             .objects
             .iter()
@@ -100,17 +100,19 @@ impl SystemsVolatileFilePool {
                 identity,
                 name: Some(name.to_vec()),
                 size: 0,
-                mode: request.umask.apply(request.mode),
-                times: [seconds; 3],
+                inode: SystemsInodeMetadata::new(
+                    0o100000,
+                    request.umask.apply(request.mode),
+                    seconds,
+                ),
             });
             self.state.next_identity = next;
-            self.state.directory_times = [seconds; 2];
+            self.state.directory_inode.modified(seconds);
         } else if plan == SystemsFileOpenPlan::TruncateDescription {
             let o = self.state.objects[object].as_mut().unwrap();
             let identity = o.identity;
             o.size = 0;
-            o.times[1] = seconds;
-            o.times[2] = seconds;
+            o.inode.modified(seconds);
             for (slot, page) in self
                 .state
                 .pages
@@ -161,14 +163,17 @@ impl SystemsVolatileFilePool {
         let index = self.named_object(name).ok_or_else(|| error("ENOENT"))?;
         let object = self.state.objects[index].as_mut().unwrap();
         object.name = None;
-        object.times[2] = seconds;
-        self.state.directory_times = [seconds; 2];
+        object.inode.changed(seconds);
+        self.state.directory_inode.modified(seconds);
         self.reclaim_unlinked(index);
         Ok(())
     }
     pub fn directory_times(&self, owner: &str) -> Result<[u64; 2], SystemsModelError> {
         self.owned(owner)?;
-        Ok(self.state.directory_times)
+        Ok([
+            self.state.directory_inode.modified_seconds(),
+            self.state.directory_inode.changed_seconds(),
+        ])
     }
     pub fn directory_entries(
         &self,
@@ -443,7 +448,7 @@ mod tests {
         );
         assert!(p.state.objects.iter().all(Option::is_none));
         assert!(p.state.descriptions.is_empty() && p.state.references.is_empty());
-        assert_eq!(p.state.directory_times, [0, 0]);
+        assert_eq!(p.state.directory_inode.encoded(), &[0; 32]);
     }
     #[test]
     fn exact_long_raw_names_directory_cookies_and_rejected_copies_are_independent() {

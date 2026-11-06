@@ -1,11 +1,13 @@
 //! Independent sparse-file laws. No modeled number or buffer is native authority.
 //! TOPAL-SYSTEMS-VOLATILE-FILE-{OWNERSHIP,TRANSFER,PERSONALITY}-001.
-use crate::SystemsModelError;
+use crate::{SystemsInodeMetadata, SystemsModelError};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 #[path = "systems_named_files.rs"]
 mod named;
 pub use named::*;
+#[path = "systems_inode_file_modes.rs"]
+mod inode_modes;
 #[path = "systems_positional_files.rs"]
 mod positional;
 #[path = "systems_file_region_actions.rs"]
@@ -87,8 +89,7 @@ struct Object {
     identity: u64,
     name: Option<Vec<u8>>,
     size: u64,
-    mode: u16,
-    times: [u64; 3],
+    inode: SystemsInodeMetadata,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Description {
@@ -128,7 +129,7 @@ struct State {
     references: BTreeMap<u64, u64>,
     next_identity: u64,
     next_description: u64,
-    directory_times: [u64; 2],
+    directory_inode: SystemsInodeMetadata,
     next_ticket: u64,
     live: bool,
     position_actions: crate::systems_region_library::ControllerActionState,
@@ -172,7 +173,7 @@ impl SystemsVolatileFilePool {
                 references: BTreeMap::new(),
                 next_identity: 7,
                 next_description: 1,
-                directory_times: [0; 2],
+                directory_inode: SystemsInodeMetadata::new(0o40000, 0o1777, 0),
                 next_ticket: 1,
                 live: true,
                 position_actions: Default::default(),
@@ -276,8 +277,7 @@ impl SystemsVolatileFilePool {
             identity,
             name: None,
             size: 0,
-            mode: umask.apply(mode),
-            times: [seconds; 3],
+            inode: SystemsInodeMetadata::new(0o100000, umask.apply(mode), seconds),
         });
         self.state.descriptions.insert(
             description,
@@ -334,7 +334,7 @@ impl SystemsVolatileFilePool {
             links: u64::from(o.name.is_some()),
             size: o.size,
             position,
-            mode: o.mode,
+            mode: o.inode.permissions(),
             allocated_bytes: self
                 .state
                 .pages
@@ -342,9 +342,9 @@ impl SystemsVolatileFilePool {
                 .filter(|p| p.owner == Some(o.identity))
                 .count()
                 * PAGE,
-            accessed_seconds: o.times[0],
-            modified_seconds: o.times[1],
-            changed_seconds: o.times[2],
+            accessed_seconds: o.inode.accessed_seconds(),
+            modified_seconds: o.inode.modified_seconds(),
+            changed_seconds: o.inode.changed_seconds(),
         }
     }
     pub fn read(
@@ -468,8 +468,7 @@ impl SystemsVolatileFilePool {
         let end = position + length as u64;
         let o = self.state.objects[object].as_mut().unwrap();
         o.size = o.size.max(end);
-        o.times[1] = seconds;
-        o.times[2] = seconds;
+        o.inode.modified(seconds);
         if supplied.is_none() {
             self.state
                 .descriptions
@@ -584,8 +583,7 @@ impl SystemsVolatileFilePool {
         }
         let o = self.state.objects[object].as_mut().unwrap();
         o.size = length;
-        o.times[1] = seconds;
-        o.times[2] = seconds;
+        o.inode.modified(seconds);
         Ok(())
     }
     pub fn close(
@@ -619,7 +617,7 @@ impl SystemsVolatileFilePool {
         self.state.references.clear();
         self.state.next_identity = 0;
         self.state.next_description = 0;
-        self.state.directory_times = [0; 2];
+        self.state.directory_inode.erase();
         self.state.next_ticket = 0;
         self.state.position_actions = Default::default();
         self.state.page_actions = Default::default();
