@@ -253,6 +253,17 @@ refresh its versioned publication contracts. The 17 targeted Topal VM runs above
 do not replace that obligation. TK279's 158 VM observations and complete workspace
 results remain historical evidence for its preceding kernel, not this kernel.
 
+The [first full committed Rust run](tools/rust-qualification/results/tk280/before-legacy-position-fixture-fix/qualification.json)
+passes all-target checking and the separate doc-test command, but records 2304
+passed tests and one failed test across 41 targets. The legacy file-position
+snapshot refusal fixture inherited V5's mandatory inode declaration, so its
+default empty snapshot bundle reached the earlier inode guard. Explicitly
+selecting frozen V4 and omitting the unrelated page/inode slots restores the
+fixture's intended position-guard check; the focused test passes. The same test
+also verifies that neither unrelated native controller is imported. Production
+admission and the selected kernel remain unchanged. Complete logs are preserved;
+a fresh qualification on committed corrected sources is still required.
+
 No core language change is needed for this design. General credentials,
 filesystem/device services, dynamic programs, distribution replacement,
 containers and VM hosting remain part of the original unfinished acceptance.

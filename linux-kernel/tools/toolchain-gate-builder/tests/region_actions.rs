@@ -320,9 +320,15 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     )
     .unwrap();
     // Keep this legacy position-snapshot refusal independent of the current
-    // root's optional page-source declaration and its earlier admission guard.
-    // Missing page snapshots are covered by ram_page_binding.rs.
+    // root's optional page/inode declarations and their earlier admission guards.
+    // Select the frozen v4 dispatch so this control needs no inode action;
+    // the selected v5 root and missing inode snapshots are checked separately.
     program.ram_page_pool_library = None;
+    program.inode_mode_library = None;
+    let dispatch = program.dispatch_library.as_mut().unwrap();
+    dispatch.interface =
+        topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
+    dispatch.source = "arch/x86_64/policy/static-linux-dispatch-v4.t".into();
     assert_eq!(
         program
             .file_position_library
@@ -334,6 +340,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     );
     let object = generate_x86_64_systems_provider_object(&program).unwrap();
     assert!(object.plan.ram_page_pool_library_interface.is_none());
+    assert!(object.plan.inode_mode_library_interface.is_none());
     assert_eq!(
         object.plan.file_position_library_interface,
         Some("borrowed-byte-region-action-v1")
@@ -359,6 +366,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     );
     assert_eq!(native_calls("topal_kernel_region_action_apply_v1"), 1);
     assert_eq!(native_calls("topal_x86_systems_ram_page_apply_v1"), 0);
+    assert_eq!(native_calls("topal_x86_systems_inode_mode_apply_v1"), 0);
     let destination = directory.join("refused");
     let error = publish_x86_64_systems_artifact_with_kernel_libraries(
         &program,
