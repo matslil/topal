@@ -1,0 +1,707 @@
+{
+  "schema": "topal.namespace-machine-qualification.x86_64/1",
+  "result": "pass",
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "qualified_code_tree": "6e897b7c6181291b20d831c53688b33781003db2",
+  "rust_record_sha256": "9fbe4a86f0849109d78b4d18c3f515453b5959d9a90d519dae10e4cc56c57069",
+  "primary_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+  "cohort_sha256": "d7c1206a7d8a59850f21761670a870454fb8a3d85f7227f2b73d697ad7c6244a",
+  "archive_index_sha256": "729d27656dac291aa3e00c2e8b3b4bfe7af51e355a9cfeb8d440fbeccc497b09",
+  "source_snapshots": [
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/children_gate.py",
+      "snapshot": "sources/children_gate.py",
+      "sha256": "893c89007f1c3ab6cbe9e4929822701a5cc71fbac8877ad92880ed60ada4ffbc"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/deadline_gate.py",
+      "snapshot": "sources/deadline_gate.py",
+      "sha256": "d06c8b413304d8f1962e033b11b3c1b95d871bf40db6c6702b261b013511d5f8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/dispatch_gate.py",
+      "snapshot": "sources/dispatch_gate.py",
+      "sha256": "ca4c12b43b6da07a1663e677130467559b21783465a0c3baa2141ea721c4202b"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/dispatch_inspect.py",
+      "snapshot": "sources/dispatch_inspect.py",
+      "sha256": "5baf45a96e605eda97bfb52df618045af97d68b9f8822df9b7b66cbcc36df67b"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/file_open_gate.py",
+      "snapshot": "sources/file_open_gate.py",
+      "sha256": "054b74a37783878e3a8ae6dbe0a5e8137184311a5df1a7eeed89b46200dc205c"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/file_open_inspect.py",
+      "snapshot": "sources/file_open_inspect.py",
+      "sha256": "3d7f83d63a5d79d93b931f1786037848655aa7d46908e157aa5fbaf9c007b590"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/file_region_gate.py",
+      "snapshot": "sources/file_region_gate.py",
+      "sha256": "75ae28bdeb296e54c053ef14f9e53cde3111389f11e2a6b2dda81ae5dba4299a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/file_region_inspect.py",
+      "snapshot": "sources/file_region_inspect.py",
+      "sha256": "55853f924c5493d9d1fbb1e1545737a266efc394cceed45d66a599aeb0073a2b"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/header_gate.py",
+      "snapshot": "sources/header_gate.py",
+      "sha256": "a7babd0e394d9710e848d21b1cddd20dac1683abb5acfb009e7f9f0582b96c91"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/header_inspect.py",
+      "snapshot": "sources/header_inspect.py",
+      "sha256": "25648db06918eaf84d20648c1cd9cd1d38493fdab622493cb95b9ad78ae986d1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/identity_gate.py",
+      "snapshot": "sources/identity_gate.py",
+      "sha256": "f3ac1865f2ab01f2e489fe3814e27d74b3afd1d8a2cd746105657e5711f17181"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/identity_inspect.py",
+      "snapshot": "sources/identity_inspect.py",
+      "sha256": "28f88660096da4f87b1f20f84407737eeb6d6b85bcdd31c8887fff8b52334671"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_archive.py",
+      "snapshot": "sources/inode_mode_archive.py",
+      "sha256": "e859f2248914304226c7c02eb94f01848442c303fcf3142b7e6a8c3fd66755ec"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_client.c",
+      "snapshot": "sources/inode_mode_client.c",
+      "sha256": "4c0f2e3c0ae527bef9ab9755cd2770a210364371fbe05ef4d82c6ba7c3a3451e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_debug.py",
+      "snapshot": "sources/inode_mode_debug.py",
+      "sha256": "7a48af9f00aec663d2caac8e7d24f7169a255f67d9b5abdc7a22cda65951f2aa"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_gate.py",
+      "snapshot": "sources/inode_mode_gate.py",
+      "sha256": "2ccc4d357aecaddfcbc338dd603f1bfbf86a76f3d95be118a3e9b019fb214186"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_inspect.py",
+      "snapshot": "sources/inode_mode_inspect.py",
+      "sha256": "1a9aa7c60a8ee814b067ddf2aacf2f1fb9addeb73f82695cca294e87cdce7ecd"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_linux.py",
+      "snapshot": "sources/inode_mode_linux.py",
+      "sha256": "a2620c542066fa81355114a7f6b74f5ed2b529cf49420504b7937ce766963115"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_linux_guest.py",
+      "snapshot": "sources/inode_mode_linux_guest.py",
+      "sha256": "305ba2f4b5ac9cf22a23555ff4d052a80fe8d8aa4876e8cf4674bab214dd0042"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_refresh.py",
+      "snapshot": "sources/inode_mode_refresh.py",
+      "sha256": "994710b9c1aba4e911cc53e9208a3ada9ac6b15e4017bd2feb827b597e24663a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_suite.py",
+      "snapshot": "sources/inode_mode_suite.py",
+      "sha256": "80922f77c9fc9169106001190e2453683a761c9914056bf9c08784a52aba87ea"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/inode_mode_utilities.py",
+      "snapshot": "sources/inode_mode_utilities.py",
+      "sha256": "49a5d006286d369574c373ba47ff92aa03dd2704009e723794a189785182cd6b"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/library_gate.py",
+      "snapshot": "sources/library_gate.py",
+      "sha256": "ef0bc7c8decdbe8c5ae3baf6a4779578ce91e766b57563fec690a9fe689416a1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/modular_gate.py",
+      "snapshot": "sources/modular_gate.py",
+      "sha256": "be4098872715554a97db4588c5305978076facc2c168664a86aa4050d244e405"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/modular_provenance.py",
+      "snapshot": "sources/modular_provenance.py",
+      "sha256": "7f11693922c8199e9a95d3fc8b00da36bebf3fa3561d2003fac2b2a7185ce56e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/named_control.py",
+      "snapshot": "sources/named_control.py",
+      "sha256": "53d71b9e3215cc0eb6b4b73d07d9ba923ea2753b60b9edff91786263ea5314df"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/named_file_control.c",
+      "snapshot": "sources/named_file_control.c",
+      "sha256": "75bd1380eeefcd3f1501b015b288b55df4ae1f0200eb2076e9e9f23437f972cf"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/named_file_inspect.py",
+      "snapshot": "sources/named_file_inspect.py",
+      "sha256": "19722d9b842c7f3cdb3807787a94c8f99255faa8e949f21e200d4b3744542cfe"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/named_gate.py",
+      "snapshot": "sources/named_gate.py",
+      "sha256": "7bc6dfe29b4984681e80f07251b4750b843c0c6463653bda21396709fabb1909"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_action_client.c",
+      "snapshot": "sources/namespace_action_client.c",
+      "sha256": "613e6476b9a8e678a0f8d1c7b22d71f24005e5e884833de8d22fec6bc1dec3e6"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_action_debug.py",
+      "snapshot": "sources/namespace_action_debug.py",
+      "sha256": "354724ad3b0176cbce4c2a215381272f02bc5fbe0074c45e50903dcfa3562193"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_archive.py",
+      "snapshot": "sources/namespace_archive.py",
+      "sha256": "92ff6f12c9847074954836faed8396ecb5c42fee8531f2286e773233f26ed31c"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_bytes_client.c",
+      "snapshot": "sources/namespace_bytes_client.c",
+      "sha256": "00a203a856114300150e1c2c3f9428b3e9bcfca3fb2b6aad53973fa0f725bc48"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_cancel_gate.py",
+      "snapshot": "sources/namespace_cancel_gate.py",
+      "sha256": "739fa6f9e6ad0720c0124a05b026ead45582adcc9d46aabdd580cf091c5a1480"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_cancel_inspect.py",
+      "snapshot": "sources/namespace_cancel_inspect.py",
+      "sha256": "7f4f1af2d915486551bfffb0a0c432eb619c22026dca3626bb221c5d3d7fdcd1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_clock_gate.py",
+      "snapshot": "sources/namespace_clock_gate.py",
+      "sha256": "4eae87f06ea7360a042155b8e790defaa85bf4ff9f2b8eff3cb9ba79abe735ce"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_clock_inspect.py",
+      "snapshot": "sources/namespace_clock_inspect.py",
+      "sha256": "05c63361968a72f50b03ab2cb1e4c4a6250330d225b2c2ddfda3df03d16ea2ca"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_clock_probe.py",
+      "snapshot": "sources/namespace_clock_probe.py",
+      "sha256": "c4af013f14c064db779939d4faa62f6f6bc1b722d371370163a2e80f86f353b1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_controller_gate.py",
+      "snapshot": "sources/namespace_controller_gate.py",
+      "sha256": "f9758265fc6b6bfa2fc2b8600b98f5405ac5ab739df8781df7b27d49284fa63f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_controller_inspect.py",
+      "snapshot": "sources/namespace_controller_inspect.py",
+      "sha256": "68ce6c2af865d2f1ac68376482389038cffbd3d589e04d5c200201b7b5642a9e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_directory_gate.py",
+      "snapshot": "sources/namespace_directory_gate.py",
+      "sha256": "7497ee9d46d73e8784c6d42173c08355c518912a1e46f0ed17bc0e21492a3752"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_entries_client.c",
+      "snapshot": "sources/namespace_entries_client.c",
+      "sha256": "0f7f59d323d98798ab0289c85fa725dd3e118e1a2db5ec02ec44ea6b8d3862b1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_entries_debug.py",
+      "snapshot": "sources/namespace_entries_debug.py",
+      "sha256": "33249baf932280f556382a829c568585a5c1eff032c02f814f2a0a598d813444"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_exec_gate.py",
+      "snapshot": "sources/namespace_exec_gate.py",
+      "sha256": "ffb7f1cda2fe22bb1eee855e79427131437cc8a00ac1a1f096b3ab63fd67ce60"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_fault_gate.py",
+      "snapshot": "sources/namespace_fault_gate.py",
+      "sha256": "2d88e4ca1a17a2ae66cc097373dc959899351f2ac10ef0c9ffeda9c634debca1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_fault_inspect.py",
+      "snapshot": "sources/namespace_fault_inspect.py",
+      "sha256": "ca136ce84d1e8741c0cf2f95ffac159b05dd10603ce0bdb55eec855f3fd94751"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_file_store_checks.py",
+      "snapshot": "sources/namespace_file_store_checks.py",
+      "sha256": "041b777d73bffe9d3d0d48b5e7151d95b16f25435afc8ad0b49ed27a515e935f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_final_client.c",
+      "snapshot": "sources/namespace_final_client.c",
+      "sha256": "d1f61b12a5cb9d90349b0b68dcc3fa18bfef2678e5a657ec4f7a81e1b9cfc945"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_fork_gate.py",
+      "snapshot": "sources/namespace_fork_gate.py",
+      "sha256": "c4062214f7e75eae9d82e499c322d4939ba163bdfc16c00b94916396c6d12c8d"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_gate.py",
+      "snapshot": "sources/namespace_gate.py",
+      "sha256": "0351dfedd0932ff4ab8316af96e6682d46348132811094fdcf94dc97b65472c1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_inode_guard_gate.py",
+      "snapshot": "sources/namespace_inode_guard_gate.py",
+      "sha256": "cabea731463e8e2d60d754cb4227a6026f10a2d2a060dd8e043d766743c812b3"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_inode_guard_inspect.py",
+      "snapshot": "sources/namespace_inode_guard_inspect.py",
+      "sha256": "f3f25801b94950365caf64bcdbc2ac03798d1912aaeb51366236bb61db791963"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_linux.py",
+      "snapshot": "sources/namespace_linux.py",
+      "sha256": "a8c783cbf4c73938c196274c71f9ece5b787bd3195291dc8c9e82e000acce9ce"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_linux_guest.py",
+      "snapshot": "sources/namespace_linux_guest.py",
+      "sha256": "e572f84fbb9f95e2973e3eb13969c0a4c6dbb2ea4bb0f5256ddb2c3e0f05e27d"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_oracle_client.c",
+      "snapshot": "sources/namespace_oracle_client.c",
+      "sha256": "c662d332fbfc0c951f2ce1a9ec0c0669c1bf80672eede0679e922f413520b070"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_oracle_debug.py",
+      "snapshot": "sources/namespace_oracle_debug.py",
+      "sha256": "491f786e56ab7d6501729b357ea9e8185db8b120d7fa961785a9d5f82c2409cb"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_source_physical.py",
+      "snapshot": "sources/namespace_source_physical.py",
+      "sha256": "5a4bb845163df72854c8f98ab446aa14f7355dcea6d05e6767e2cc9f0d491979"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_syscall_inspect.py",
+      "snapshot": "sources/namespace_syscall_inspect.py",
+      "sha256": "df65306a2fa92bcfd67a0b15a697fc9f0e9a2ae4dd596208425ee5bb92fad200"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_syscall_physical.py",
+      "snapshot": "sources/namespace_syscall_physical.py",
+      "sha256": "bb17b4d6bbd41ef02d605879a6ce725f48972c5fc3d13286d01442f809039166"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_utility_gate.py",
+      "snapshot": "sources/namespace_utility_gate.py",
+      "sha256": "42acac1ea3ce20bbbda9d0811fcdd61454ae04c744affe84c66b3d55c9ae2fa8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/namespace_walk_client.c",
+      "snapshot": "sources/namespace_walk_client.c",
+      "sha256": "839cf6c1fd8eae7f0c5bb89613557d622e730085c5dbc41a8420454a57b87e32"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/numeric_gate.py",
+      "snapshot": "sources/numeric_gate.py",
+      "sha256": "60953bd22c1a048f84f7582bae45f2e1cd205c01ba0caa16731dee627067fa4d"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/pair_gate.py",
+      "snapshot": "sources/pair_gate.py",
+      "sha256": "205ea5b52df68514cef9b12c2aa1e954c15f0fea7ff40a8f49c6b188e667a244"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/pipes_gate.py",
+      "snapshot": "sources/pipes_gate.py",
+      "sha256": "71693d987d53356f81862730a35f17c65952f4633261ddbc383a3eb68ee534af"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/positional_control.py",
+      "snapshot": "sources/positional_control.py",
+      "sha256": "1682d41c6059308ab3c66e0683af4b2ef03c622f99a6a03ac456474777a31c5c"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/positional_file_control.c",
+      "snapshot": "sources/positional_file_control.c",
+      "sha256": "75de8cacba43080cc32c8e767ef39c5bb191e2e05ecfa849cee890518d7f66fe"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/positional_file_inspect.py",
+      "snapshot": "sources/positional_file_inspect.py",
+      "sha256": "c1e889d68d5669d0c4219ec9a88b0957e5218dc59a630aabff0b382e4e601a3a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/positional_gate.py",
+      "snapshot": "sources/positional_gate.py",
+      "sha256": "0226644d05467e767114edf6b766614e3f5d6f03f0c2768da513f4296fc1bb13"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/qemu_control.py",
+      "snapshot": "sources/qemu_control.py",
+      "sha256": "23de918998fef666112a3d26d77c80d479fbb49a84262185900c19ba1a2ee55a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/qualification_archive.py",
+      "snapshot": "sources/qualification_archive.py",
+      "sha256": "7b53aa65bad4236bd7dc5b8ee1dbaf396391fea01d471e843e1307ea4a8d3d11"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/qualification_cohort.py",
+      "snapshot": "sources/qualification_cohort.py",
+      "sha256": "afaedc9ddcc87058ab45818e78c5c40f6301b84efff0308565020cb4e9cccfd8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/qualification_gate.py",
+      "snapshot": "sources/qualification_gate.py",
+      "sha256": "8c77a25d8523d3e987e8485d9df24df5b126e58bf20f21fcc252233a47a17cb8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/ram_page_gate.py",
+      "snapshot": "sources/ram_page_gate.py",
+      "sha256": "5c329a99ce56120a4dc0781f98b89485528c3a04470b1e489388efbb508371ee"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/ram_page_inspect.py",
+      "snapshot": "sources/ram_page_inspect.py",
+      "sha256": "74478d185e0ac82890cb7cfe28e96ff6b5f3fe966ef83c0362d1b82a92019361"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/ram_page_pool_client.c",
+      "snapshot": "sources/ram_page_pool_client.c",
+      "sha256": "3d07aeac05b749233531dbbab65616be589c6f10a51679a64ccc33e73b2e7a53"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/ram_page_pool_debug.py",
+      "snapshot": "sources/ram_page_pool_debug.py",
+      "sha256": "9cf27ec042cd5d7e8e6fa74c380c12e5db9d7657987ab8e2f927ce14f12a1997"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/realtime_gate.py",
+      "snapshot": "sources/realtime_gate.py",
+      "sha256": "80fb122b7e2f68fdaba32b955cfbeb02f88c5f089b8d7abfab83874d10b9b75a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_action_client.c",
+      "snapshot": "sources/region_action_client.c",
+      "sha256": "532181093de0b99388e73460d43f611819a82a615c79696bba89605f8fc24726"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_action_debug.py",
+      "snapshot": "sources/region_action_debug.py",
+      "sha256": "434665b9bc2ee3beb8e11c5b744a18b6520881ea5f020915d7b0573ca21379e4"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_frame_client.c",
+      "snapshot": "sources/region_frame_client.c",
+      "sha256": "3ef15fea4db70047692a487db18d4e9095019d6f93c7c41135495a981aecb43e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_frame_debug.py",
+      "snapshot": "sources/region_frame_debug.py",
+      "sha256": "4625cd0181914314f920943812221cfd47cb94dded3fae78907802d870fafe16"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_gate.py",
+      "snapshot": "sources/region_gate.py",
+      "sha256": "3041cf8cc608310fd310f47e664acc9ca7290e8c779b924d68a57e1a29ed4867"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_inspect.py",
+      "snapshot": "sources/region_inspect.py",
+      "sha256": "0c20f75fd8e333e666069022f26b710d08cdca0f50eb06994d997c5c33f780c1"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_instance_client.c",
+      "snapshot": "sources/region_instance_client.c",
+      "sha256": "eea8a269ebf36c8f87aeb31d85cc312a506c584dff95e8b9307c05aa2fdb485d"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_source_client.c",
+      "snapshot": "sources/region_source_client.c",
+      "sha256": "44e768e1bc774c9889b8208c6359a8a685048ad154d3d1ce71933930653d29bd"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_source_debug.py",
+      "snapshot": "sources/region_source_debug.py",
+      "sha256": "5614c435c8a571f9d78d27fe6dad97be05e2302b86be00763d64cff575f154e0"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_unsigned_client.c",
+      "snapshot": "sources/region_unsigned_client.c",
+      "sha256": "3e487ff2e977e629509a7fa6bcf4fb9457cb1e04df93da60967525debd55949e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/region_unsigned_debug.py",
+      "snapshot": "sources/region_unsigned_debug.py",
+      "sha256": "8504c27957d3441dbc3fa5fb360c785f9308bbcfc8cd3d98948a7c3846802918"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/retained_gate.py",
+      "snapshot": "sources/retained_gate.py",
+      "sha256": "575e917609630fd683e41b758609055879d8b975d47428654846c83cb8380db3"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/retained_identity_client.c",
+      "snapshot": "sources/retained_identity_client.c",
+      "sha256": "3cca0726f35829add5900c446db4207d41ffb2e2f9e19b0753b8c4868b58089f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/retained_inspect.py",
+      "snapshot": "sources/retained_inspect.py",
+      "sha256": "83abc5f4942ea30a4ba75e13dccec72cd9912fc593929305d0264a64aa300734"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_child_checks.py",
+      "snapshot": "sources/static_child_checks.py",
+      "sha256": "3b8c65151986060d5aa7882ae0c2dc41005508f2199bb3969828785e07836975"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_environment_checks.py",
+      "snapshot": "sources/static_environment_checks.py",
+      "sha256": "a44a09e90775a5039d740109eed8f415057ef498f2665a12ff20036affc2fa1a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_inode_mode_checks.py",
+      "snapshot": "sources/static_inode_mode_checks.py",
+      "sha256": "90e194a86a8f687eb96381c21261ebdf71bd048ad6a52db8dfce16acba3be399"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_named_file_checks.py",
+      "snapshot": "sources/static_named_file_checks.py",
+      "sha256": "bb34588522008debd60aa486e3e9fdf9cd31ec5f62f6c7eaf994207cf59878d8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_cancel_checks.py",
+      "snapshot": "sources/static_namespace_cancel_checks.py",
+      "sha256": "603e033b2e8edba552189ff15922bc9ffad93d68435d9da02210625e5dd2022a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_checks.py",
+      "snapshot": "sources/static_namespace_checks.py",
+      "sha256": "f1c8a4e7da5e36fff275e5b4801dce861d8450647625edb42aabbb2cc68d3931"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_clock_checks.py",
+      "snapshot": "sources/static_namespace_clock_checks.py",
+      "sha256": "779527bccdb8bde87305bede3a49252e5b971169da4325f787f14d3563bfb5b8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_directory_checks.py",
+      "snapshot": "sources/static_namespace_directory_checks.py",
+      "sha256": "4ac5f1295b2c59c79bf8c368379148a463716b786e6a487bf070059a7ab09035"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_disposition_checks.py",
+      "snapshot": "sources/static_namespace_disposition_checks.py",
+      "sha256": "1d9e46569eee1b77f96c46915a9a6de0d67fc48d5561b9a0e82f9ab281825244"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_exec_checks.py",
+      "snapshot": "sources/static_namespace_exec_checks.py",
+      "sha256": "101c326326b2ca468010d819efbd2fd8cb0afa26c4998191e59920cb5a8fe91f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_fault_checks.py",
+      "snapshot": "sources/static_namespace_fault_checks.py",
+      "sha256": "365504ac95e49843d1bba585e0b4d5c3f59f17d6a1609211d9c1fa3f21a1c4be"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_fork_checks.py",
+      "snapshot": "sources/static_namespace_fork_checks.py",
+      "sha256": "04a158cd6628b3742f8b40d0726da0bd101c8693a2e009da82757dd3f4f62f47"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_namespace_transaction_checks.py",
+      "snapshot": "sources/static_namespace_transaction_checks.py",
+      "sha256": "574d2fb84b05ac3cf2d8ca0fbd972245337cd9d014d56269720bf746c5327c1e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_observation_checks.py",
+      "snapshot": "sources/static_observation_checks.py",
+      "sha256": "198e623bb106e1124768ab06583c82b68ff00b6c00c545fbbf70ce19458147e4"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_pair_checks.py",
+      "snapshot": "sources/static_pair_checks.py",
+      "sha256": "87c666c9cf9bbac55b247e5ae51489754bb25132926a2107aa6edd5db7f49ea3"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_pipe_checks.py",
+      "snapshot": "sources/static_pipe_checks.py",
+      "sha256": "b6b4b14fd273b624ccb841feeb81e0e7a5a5f3039e665f37118fe53254b5471f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_positional_file_checks.py",
+      "snapshot": "sources/static_positional_file_checks.py",
+      "sha256": "d6d00102e4d34848ba9f01cbf9dad4fb26a4d4b0007878d5c1d3aa8e73fa3074"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_process_checks.py",
+      "snapshot": "sources/static_process_checks.py",
+      "sha256": "22da77b1de39684c073256a71e85f73b91bfd0db2f10d607b33ebc24e0b19388"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_time_checks.py",
+      "snapshot": "sources/static_time_checks.py",
+      "sha256": "891d359a52c82114fb3ecf1898f0d6801ac85ddc9d42a6e561455f381da9e597"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/static_volatile_file_checks.py",
+      "snapshot": "sources/static_volatile_file_checks.py",
+      "sha256": "0372f72b9630d932fea3fd48b6aab95596159c20c83a63173557fa01c027768f"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/structured_gate.py",
+      "snapshot": "sources/structured_gate.py",
+      "sha256": "95b340512112a4e2da2660d9ad0d78fa0eb49a61113da53c10c1150189839563"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/structured_identity_client.c",
+      "snapshot": "sources/structured_identity_client.c",
+      "sha256": "a40de9c077ecaee89d1b7c4dfc667492ac148740eae61c135f4dfd3762988d2e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/structured_inspect.py",
+      "snapshot": "sources/structured_inspect.py",
+      "sha256": "174c443ccc7eef830ba31b26668fb448b0cc52e52b3af3650366d40d22cdf66e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/structured_layout_client.c",
+      "snapshot": "sources/structured_layout_client.c",
+      "sha256": "8342b15c7e4f112f48805e8e94a52f1cff9e618b975c3324d22a0c0f62cf0200"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_inode_mode_gate.py",
+      "snapshot": "sources/test_inode_mode_gate.py",
+      "sha256": "7f5f1137a856c90bb9dd428c9c00024511b597716d7a112d33f9da37604b92a5"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_namespace_file_store_checks.py",
+      "snapshot": "sources/test_namespace_file_store_checks.py",
+      "sha256": "9e56cca1d41fa3dba79c6a28d53dd781ca70f0a0ba0e3588b6ad70da491452b6"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_namespace_gate.py",
+      "snapshot": "sources/test_namespace_gate.py",
+      "sha256": "fbb83e7eb62716113dc0b49c43dd4f2d5e71eeab554d8429d356736ed7bb53ce"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_ram_page_gate.py",
+      "snapshot": "sources/test_ram_page_gate.py",
+      "sha256": "5ca4592f46420eac2399903a285610d3670ce1ff25847eaa185cd597ac1c3d0c"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_topal_gate.py",
+      "snapshot": "sources/test_topal_gate.py",
+      "sha256": "8fe41ffed935f263994067622672aecf62fdfaef28bb83d6a10cd97794a8ba78"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/test_vm.py",
+      "snapshot": "sources/test_vm.py",
+      "sha256": "3b17e82ba8a61104cc3188c6297614c38fbf1f97d00c42b9f0e370c888044be0"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/time_gate.py",
+      "snapshot": "sources/time_gate.py",
+      "sha256": "f3711ccc4f19396b228f11d6fee681f46b392e875e4d072b4f414a4deacf5c08"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/topal_gate.py",
+      "snapshot": "sources/topal_gate.py",
+      "sha256": "82e0b6fb53f626734be9a1a151956c5c4458ca87833fdd5694453d9600f417b8"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/vm.py",
+      "snapshot": "sources/vm.py",
+      "sha256": "85818e16fae41e03e72decb69dcba426f2f3d8cd4bdc6086f21f139e18be819a"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/volatile_control.py",
+      "snapshot": "sources/volatile_control.py",
+      "sha256": "b47b003a83708c7912af62fe36db9620e1038c351c2331d5563ec12ec2b499dd"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/volatile_file_control.c",
+      "snapshot": "sources/volatile_file_control.c",
+      "sha256": "f8bcdc91beb26f010a2f52a969e80e043a7b359e67d0dbc2c569c0596098b85e"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/volatile_file_inspect.py",
+      "snapshot": "sources/volatile_file_inspect.py",
+      "sha256": "9e45f0681f18f79df5e8eb9c2c342dd0e1f1db7c6a81c38b5565a647ac9ddc62"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/volatile_gate.py",
+      "snapshot": "sources/volatile_gate.py",
+      "sha256": "5f4a8cd4b915990fc30096805ab9697839a78684abeb2fc6bc39f25bae78edbc"
+    },
+    {
+      "source": "linux-kernel/labs/qemu/x86_64/workload_gate.py",
+      "snapshot": "sources/workload_gate.py",
+      "sha256": "0337341b43ad25f3f7239f11e6fb93faa2d3f8713a62c2b6fbbde60d394a34e2"
+    }
+  ],
+  "proofs": {
+    "normal": "n0/caller-observation.json",
+    "directory": "n1/caller-observation.json",
+    "fork": "n2/fork-qualification.json",
+    "exec": "n3/exec-qualification.json",
+    "cancel": "n4/physical-observation.json",
+    "utilities": "n5/utility-qualification.json",
+    "fatal-source-false-link": "f00/physical-observation.json",
+    "fatal-source-false-linkat": "f01/physical-observation.json",
+    "fatal-source-false-move": "f02/physical-observation.json",
+    "fatal-source-false-replace": "f03/physical-observation.json",
+    "fatal-source-false-exchange": "f04/physical-observation.json",
+    "fatal-source-wrong-association-link": "f10/physical-observation.json",
+    "fatal-source-wrong-association-linkat": "f11/physical-observation.json",
+    "fatal-source-wrong-association-move": "f12/physical-observation.json",
+    "fatal-source-wrong-association-replace": "f13/physical-observation.json",
+    "fatal-source-wrong-association-exchange": "f14/physical-observation.json",
+    "fatal-runtime-abort-link": "f20/physical-observation.json",
+    "fatal-runtime-abort-linkat": "f21/physical-observation.json",
+    "fatal-runtime-abort-move": "f22/physical-observation.json",
+    "fatal-runtime-abort-replace": "f23/physical-observation.json",
+    "fatal-runtime-abort-exchange": "f24/physical-observation.json",
+    "clock-observe": "c0/physical-observation.json",
+    "clock-error-link": "c1/physical-observation.json",
+    "clock-error-linkat": "c2/physical-observation.json",
+    "clock-error-move": "c3/physical-observation.json",
+    "clock-error-replace": "c4/physical-observation.json",
+    "clock-error-exchange": "c5/physical-observation.json",
+    "inode-admission-bad-link-count": "g0/physical-observation.json",
+    "inode-admission-overlap-namespace": "g1/physical-observation.json",
+    "controller-normal": "k0/physical-observation.json",
+    "controller-runtime-abort": "k1/physical-observation.json",
+    "controller-post-frame": "k2/physical-observation.json",
+    "controller-post-control": "k3/physical-observation.json",
+    "controller-source-false": "k4/physical-observation.json",
+    "controller-source-wrong-association": "k5/physical-observation.json",
+    "controller-pre-owner": "k6/physical-observation.json",
+    "controller-pre-view": "k7/physical-observation.json",
+    "controller-pre-input": "k8/physical-observation.json",
+    "controller-pre-generation": "k9/physical-observation.json",
+    "controller-pre-overlap-position": "k10/physical-observation.json",
+    "controller-pre-overlap-page": "k11/physical-observation.json",
+    "controller-pre-overlap-inode": "k12/physical-observation.json"
+  },
+  "vm_observations": 47,
+  "steps": 42,
+  "unique_blobs": 1253,
+  "archived_files": 4074,
+  "archiver_sha256": "92ff6f12c9847074954836faed8396ecb5c42fee8531f2286e773233f26ed31c",
+  "scope": "fresh committed shared-namespace source/admission/lifetime/utility qualification; complete distribution, containers, remaining UAPI and VM hosting remain required"
+}

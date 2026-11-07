@@ -51,6 +51,8 @@ def observe(root, values, calls, timeout, *, lifetime=False, corrupt=False, term
     debug, failed, result, script = (root / name for name in ('debug.sock', 'failed.txt', 'observation.json', 'file.gdb'))
     config = dict(calls=calls, failed=str(failed), result=str(result), retained_for_exit=lifetime,
                   page_map_offset=profile.get('page_allocation_map_offset'),
+                  namespace_entries=profile.get('namespace_entries'),
+                  namespace_store_checker_sha256=GATE.digest(LAB/'namespace_file_store_checks.py'),
                   corrupt=corrupt, terminate_inactive=terminate)
     if corrupt:
         code, _ = CHECKS.code()
@@ -138,6 +140,7 @@ def verify(timeout=120, write_evidence=False):
             raise GATE.GateError('file fixtures changed the qualified kernel')
         record = dict(schema='topal-volatile-file-qemu/1', harness_sha256=GATE.digest(Path(__file__)),
             inspector_sha256=GATE.digest(LAB / 'volatile_file_inspect.py'),
+            namespace_store_checker_sha256=GATE.digest(LAB/'namespace_file_store_checks.py'),
             caller_sha256=GATE.digest(LAB / 'static_volatile_file_checks.py'), linux_control_sha256=GATE.digest(control_path))
         record['primary'] = observe(root / 'primary', primary, primary_calls, timeout)
         record['lifetime'] = observe(root / 'lifetime', lifetime, lifetime_calls, timeout, lifetime=True)

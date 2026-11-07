@@ -1,6 +1,6 @@
 {
   "clean": {
-    "linked_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
     "observation": {
       "calls": [
         {
@@ -83,10 +83,10 @@
       "terminal_thread_registrations_erased": true
     },
     "runtime": {
-      "artifact_provenance_sha256": "b3a7d9aa5875eadf3673ca87932833d16b656a053620b779614b9be848db6c4a",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/253",
-      "boot_image_sha256": "c88f41d5fbf5deb30eb5280a23d8a8e87a81b6453e062ff1fe8880b3cd3957fa",
-      "boot_provenance_sha256": "0da0e1507f087be35131ca952a9f9e887a8c56b8ae6fff9f353520b72c6af573",
+      "artifact_provenance_sha256": "f5453d2cb5b5b2d17e316c4006e90b294d89305229f9a5f3e25ea59e799838eb",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/255",
+      "boot_image_sha256": "edb8f81fc9668f1188fa5c4c8caf91a19cc729fbb344e3a2e06f6d2f3234b554",
+      "boot_provenance_sha256": "58192d732b8a1bac79064459cca7eb072bbc1c9ba1f69e1f4faed8dc89ed6ff0",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
@@ -99,7 +99,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+      "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -367,13 +367,13 @@
       "process_exit_status": 35,
       "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
       "process_workload": "true",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/240",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/242",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/253",
+      "schema": "topal-kernel-toolchain-gate-qemu/255",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
-      "source_sha256": "be23b4044c4f1e34b8e7062362188abdd8d968c5570645b6ea9dc62081c5764e",
+      "source_sha256": "40495fcdfa7c80fee6af4fb1c76b7b05303a2d0ab6db2039e1ab23bd9a794707",
       "static_boot_resource_member": "static-user.elf",
       "static_user_image_bytes": 2024544,
       "static_user_image_input": "supplied-clean-room-fixture",
@@ -383,7 +383,7 @@
   "counterexample": {
     "debugger_completed_before_teardown": true,
     "debugger_exit_delay_seconds": 0.2,
-    "linked_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
     "observation": {
       "exact_user_comparison": true,
       "execution": "stopped before completion after independent rejection",
@@ -398,7 +398,7 @@
     }
   },
   "external": {
-    "linked_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
     "observation": {
       "calls": [
         {
@@ -427,10 +427,10 @@
       "terminal_thread_registrations_erased": true
     },
     "runtime": {
-      "artifact_provenance_sha256": "3cd14df3782dc78be6c3ff62c8b3cbcb67ba1809839e5a12a0f8950cc086af80",
-      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/253",
-      "boot_image_sha256": "c88f41d5fbf5deb30eb5280a23d8a8e87a81b6453e062ff1fe8880b3cd3957fa",
-      "boot_provenance_sha256": "12ffb13bf34b854c849d7281f9412927879e80df6718c12b31b0f3f90e7ee6f4",
+      "artifact_provenance_sha256": "28becf824394a4ec71a3e264f457fbda55d9bfc9225bffe6527c7a7293cbc06e",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/255",
+      "boot_image_sha256": "edb8f81fc9668f1188fa5c4c8caf91a19cc729fbb344e3a2e06f6d2f3234b554",
+      "boot_provenance_sha256": "a638d5f48a6ba476a5ae6073625df2ce863d6010df4994fa6abb31e8240d5b41",
       "boot_resource_bytes": 2037200,
       "boot_resource_member": "init",
       "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
@@ -443,7 +443,7 @@
       "initial_user_image_bytes": 12288,
       "initial_user_image_input": "supplied",
       "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
-      "linked_kernel_sha256": "d22cb2d7500e7447a780856837d5872c072f20728755380caedb16e78bdae3b1",
+      "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
       "machine": "pc-q35-10.2",
       "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
       "observations": {
@@ -711,13 +711,13 @@
       "process_exit_status": 0,
       "process_output_utf8": "child\nparent\n",
       "process_workload": "child-echo",
-      "provider": "topal.provider.x86_64-qemu-pc-q35/240",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/242",
       "publication": "topalc-target-interface/1",
       "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
-      "schema": "topal-kernel-toolchain-gate-qemu/253",
+      "schema": "topal-kernel-toolchain-gate-qemu/255",
       "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
       "serial_input_utf8": "read",
-      "source_sha256": "be23b4044c4f1e34b8e7062362188abdd8d968c5570645b6ea9dc62081c5764e",
+      "source_sha256": "40495fcdfa7c80fee6af4fb1c76b7b05303a2d0ab6db2039e1ab23bd9a794707",
       "static_boot_resource_member": "static-user.elf",
       "static_user_image_bytes": 2024544,
       "static_user_image_input": "pinned-external-static-busybox",

@@ -64,6 +64,20 @@ from the successful corrected run. See the
 [inode-mode report](../../step-4-shared-inode-modes.md) for the distinct
 source/native/Linux/VM qualification scope.
 
+TK281 completed locally on committed revision
+`9e7875eb9731f231d74ed45e6e4c5b34efefddee`: locked workspace all-target checking,
+all **2349 tests across 41 targets** with no failures or ignored tests, and the
+separate doc-test command pass (zero executable doc tests). Its
+[final record](results/tk281/final/qualification.json) and complete compressed
+logs retain the actual command, tree, tool and hash evidence. The
+[earlier failed run](results/tk281/before-builder-fixture-fix/qualification.json)
+retains 2346 passing tests and three builder fixture failures on the preceding
+revision, together with the exact original fixture sources. The corrected
+fixtures explicitly select their intended dispatch profiles and source closure;
+no memory safeguard or production behavior changed to obtain this pass. See the
+[namespace report](../../step-4-shared-namespace-transactions.md) for the separate
+native, syscall, lifecycle and VM qualification scopes.
+
 Archived logs use lossless `.log.gz` files to keep execution output compact and
 preserve its exact bytes, including trailing blank lines. The unchanged driver
 records name the original `.log` files; their `log_sha256` digests apply to the

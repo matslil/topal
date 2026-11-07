@@ -1,0 +1,20 @@
+{
+  "code_commit": "88415f07a85b14d5ae80dde307fd35378c62c051",
+  "files": [
+    {
+      "source": "linux-kernel/tools/toolchain-gate-builder/src/main.rs",
+      "snapshot": "source-snapshots/main.rs.txt",
+      "sha256": "06aae90f9233fd299b2ca630e8c1c0cb0840772945316319418d8a28de77eb44"
+    },
+    {
+      "source": "linux-kernel/tools/toolchain-gate-builder/tests/ram_page_binding.rs",
+      "snapshot": "source-snapshots/ram_page_binding.rs.txt",
+      "sha256": "cb29e84a7fd7d78042a323fa4f381144e1aabc05f40d764d762c86d30196f3ba"
+    },
+    {
+      "source": "linux-kernel/tools/toolchain-gate-builder/tests/region_actions.rs",
+      "snapshot": "source-snapshots/region_actions.rs.txt",
+      "sha256": "5bb525bcde2cff5298c353f2b1a24857135537ff2b1f533bd6db5e853a3c073b"
+    }
+  ]
+}

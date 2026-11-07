@@ -9,13 +9,13 @@ systems abstractions; ARM64 implementation is outside the current focus.
 
 ## Current executed capabilities
 
-Shared regular/directory/pipe inode modes now change through actual ordinary
-source loans for all four chmod-family calls. The
-[current qualification](step-4-shared-inode-modes.md) passes 2305 Rust tests,
-176 Topal VM observations, 45 unchanged BusyBox workloads, 33 separate pinned
-Linux comparisons and 43 lab publication contracts. It covers the existing
-prepared root and bounded object kinds; general credentials and filesystems
-remain required below.
+Shared regular names now support hard links and rename/replacement/exchange
+through actual ordinary source loans. The
+[current qualification](step-4-shared-namespace-transactions.md) passes 2349 Rust
+tests, 230 Topal VM observations, 51 unchanged BusyBox workloads and 45 lab
+publication contracts. All four chmod-family calls retain shared inode behavior
+under V6 canonical metadata admission. This covers the prepared root and bounded
+object kinds; general credentials and filesystems remain required below.
 
 The [systems implementation maintenance](step-4-modular-systems-implementation.md)
 restores the existing size ceiling across all 381 owned Rust sources. Complete
@@ -74,8 +74,8 @@ contract; the preceding 137 VM observations remain separately retained evidence.
   allocation bounds and imported collection helpers using shared ordinary runtime.
 - Source ELF64 header interpretation over copied owned bytes, precommit exec
   refusal, independently selected header/time policies and complete reclamation.
-- Versioned ordinary source selection of 65 Linux operations plus Unsupported,
-  with frozen 55/57/59/61-operation compatibility, actual nominal tag adaptation and
+- Versioned ordinary source selection of 70 Linux operations plus Unsupported,
+  with frozen 55/57/59/61/65-operation compatibility, actual nominal tag adaptation and
   cleanup before native argument/handler access.
 - Source process-ID/cursor transitions over immutable Record snapshots, named
   scalar result extraction and owned state publication after complete cleanup.
@@ -120,12 +120,12 @@ witness does not establish general Linux compatibility.
 
 ## Remaining acceptance work
 
-The [shared namespace increment](step-4-shared-namespace-transactions.md) starts
-with independently owned entries and inodes and direct models for hard links,
-rename/replacement/exchange, anonymous link intent and complete lifetime/failure
-laws. No new native capability is claimed by that model. Ordinary source, V6
-adapters, changed native table consumers and full affected qualification remain
-its following stages; full initial acceptance remains below.
+The [shared namespace increment](step-4-shared-namespace-transactions.md)
+qualifies independently owned entries/inodes, ordinary source actions, all five
+V6 adapters and changed table consumers. Its 47 namespace VM observations cover
+refusals, source faults, clock failures, lifecycle, physical cleanup and unchanged
+mv/ln workloads. The complete 230-observation refresh and all 45 publication
+contracts pass; full initial acceptance remains below.
 
 The [reusable-page action stage](step-4-source-ram-page-allocation.md) was qualified
 at the TK278 checkpoint:
@@ -216,12 +216,18 @@ single-object naming restriction and binds each qualified caller independently.
 It retains the ordinary signature/frame transport and first integrates root and
 field owners; general persistent allocation and broader callers remain required.
 
+The [allocator and storage readiness inventory](knowledge/common/allocator-readiness.md)
+connects the approved frame/region ownership and ordinary recursion contracts
+to current compiler restrictions. General allocation still requires workload-
+derived extents, proven repeated source execution and complete temporary and
+persistent lifetime evidence.
+
 | Area | Required result | Current limit |
 | --- | --- | --- |
 | Freestanding Topal libraries | Kernel policy/subsystems in ordinary Topal modules over qualified machine elements, as approved in Step 2 | Ordinary byte helpers with actual root loans and persistent file-position actions, explicit controller exclusion, complete code/data binding and cleanup; finite Boolean/Enum and bounded numeric policy with closed imports, immutable Records/Arrays, checked Optional reads, copied header interpretation, nominal syscall selection and source-produced nested retained identity state; broader types, general persistent allocation and subsystem effects remain; native adapters still carry substantial Linux policy |
 | Processes and execution | Process/thread creation, wait, general executable/mapping selection, dynamic ELF and libraries | Initial parent and one additional resumable child; one pinned static executable/mapping profile |
 | Signals and scheduling | Delivery, interruption/restart, multiple runnable users, lifecycle and synchronization | Registration/masks, private thread registrations, kernel-context foundations, cooperative pair handoff and child/FIFO waits; no general user preemption, fairness or signal delivery |
-| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink, positional transfers and dynamic directory records; no persistent storage, new directories, rename or hard links; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
+| Filesystems/devices | Writable storage, root mount, general VFS and actual distribution device interfaces | Immutable boot files, `/tmp` and four named/anonymous sparse RAM files over eight shared pages; linked-file create/reopen/unlink, positional transfers and dynamic directory records; hard links and rename/replacement/exchange over independent entry slots; no persistent storage or new directories; four shared FIFOs and qualified serial/entropy/time hardware; broader pipe controls and nonignored SIGPIPE remain |
 | Board descriptions and Device Tree | Interoperate with the DTS-to-DTB toolchain, validate DTB inputs and selected board bindings with provenance (`LK-DT-001`–`004`) | [Research and binding inventory](knowledge/common/device-tree.md); pinned Q35 platform and architecture-provider qualification only; DTB consumption and binding-driven device construction remain |
 | Networking and isolation | Network stack, namespaces, credentials/capabilities, cgroups and other retained UAPI contracts | Research/design plus bounded initial-process views |
 | Reference distribution | Replace the Step 3 kernel and run declared command-line corpus from its ordinary prompt | Toolchain-gate VM and static BusyBox corpus |

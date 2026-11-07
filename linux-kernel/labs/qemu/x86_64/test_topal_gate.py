@@ -20,6 +20,11 @@ assert SPEC is not None and SPEC.loader is not None
 GATE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GATE)
 
+NAMESPACE_PROFILE = dict(schema='topal.namespace-entry-table.x86_64/1',
+    entry_offset=64,entry_count=4,entry_bytes=16,inode_link_count_offset=56,
+    inode_initial_link_intent_offset=64,metadata_lookup_stack_bytes=104,
+    admission_retired_stack_bytes=4096,namespace_caller_stack_bytes=256)
+
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -190,7 +195,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         # TOPAL-SYSTEMS-VOLATILE-FILE-{OWNERSHIP,TRANSFER,PERSONALITY}-001
         proof=json.loads((LAB/'results/topal-volatile-file-gate.json').read_text())
         self.assertEqual(proof['schema'],'topal-volatile-file-qemu/1')
-        for field,name in [('harness_sha256','volatile_gate.py'),('inspector_sha256','volatile_file_inspect.py'),('caller_sha256','static_volatile_file_checks.py')]:
+        for field,name in [('harness_sha256','volatile_gate.py'),('inspector_sha256','volatile_file_inspect.py'),('caller_sha256','static_volatile_file_checks.py'),("namespace_store_checker_sha256","namespace_file_store_checks.py")]:
             self.assertEqual(proof[field],sha256(LAB/name))
         control_path=LAB/'results/topal-volatile-file-linux-control.json'
         self.assertEqual(proof['linux_control_sha256'],sha256(control_path))
@@ -208,7 +213,8 @@ class TopalToolchainGateTests(unittest.TestCase):
             self.assertEqual(observation['result'],'pass')
             self.assertEqual(len(observation['calls']),count)
             self.assertTrue(observation['complete_store_erased'] and observation['complete_process_backing_erased'])
-            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/4')
+            self.assertEqual(profile['schema'],'topal.volatile-file.x86_64/6')
+            self.assertEqual(profile['namespace_entries'],NAMESPACE_PROFILE)
             self.assertEqual((profile['directory_metadata_offset'], profile['object_metadata_offset'],
                 profile['inode_metadata_bytes'], profile['pipe_pool_offset'], profile['pipe_record_bytes'],
                 profile['pipe_metadata_offset'], profile['pipe_creation_time_offset']),
@@ -1914,7 +1920,7 @@ class TopalToolchainGateTests(unittest.TestCase):
         evidence = self.external_evidence
         self.assertEqual(evidence["observations"]["static_process_runtime_profile"],
                          "external-busybox-runtime-arguments-console-exit-witness")
-        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/253")
+        self.assertEqual(evidence["schema"], "topal-kernel-toolchain-gate-qemu/255")
         self.assertEqual(
             evidence["static_user_image_input"],
             "pinned-external-static-busybox",
@@ -2589,7 +2595,7 @@ class NamedFileContractTests(unittest.TestCase):
         # TOPAL-SYSTEMS-NAMED-FILE-{OWNERSHIP,PATH,OBSERVATION}-001
         proof=json.loads((LAB/"results/topal-named-file-gate.json").read_text())
         self.assertEqual(proof["schema"],"topal-named-file-qemu/1")
-        for field,name in [("harness_sha256","named_gate.py"),("inspector_sha256","named_file_inspect.py"),("caller_sha256","static_named_file_checks.py")]:
+        for field,name in [("harness_sha256","named_gate.py"),("inspector_sha256","named_file_inspect.py"),("caller_sha256","static_named_file_checks.py"),("namespace_store_checker_sha256","namespace_file_store_checks.py")]:
             self.assertEqual(proof[field],sha256(LAB/name))
         control_path=LAB/"results/topal-named-file-linux-control.json"
         self.assertEqual(proof["linux_control_sha256"],sha256(control_path))
@@ -2607,7 +2613,8 @@ class NamedFileContractTests(unittest.TestCase):
             self.assertEqual(obs["result"],"pass")
             self.assertEqual(len(obs["calls"]),count)
             self.assertTrue(obs["complete_store_erased"] and obs["complete_process_backing_erased"])
-            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/4")
+            self.assertEqual(case["profile"]["schema"],"topal.volatile-file.x86_64/6")
+            self.assertEqual(case['profile']['namespace_entries'],NAMESPACE_PROFILE)
             self.assertEqual(len(obs["calls"][-1]["objects"]),2 if name=="lifetime" else 0)
             self.assertEqual(obs["calls"][-1]["resident_pages"],2 if name=="lifetime" else 0)
         inactive=proof["inactive_terminal"]
@@ -2627,7 +2634,7 @@ class PositionalFileContractTests(unittest.TestCase):
         # TOPAL-SYSTEMS-POSITIONAL-FILE-{TRANSFER,OBSERVATION}-001
         proof=json.loads((LAB/'results/topal-positional-file-gate.json').read_text())
         self.assertEqual(proof['schema'],'topal-positional-file-qemu/1')
-        for field,name in [('harness_sha256','positional_gate.py'),('inspector_sha256','positional_file_inspect.py'),('caller_sha256','static_positional_file_checks.py')]:
+        for field,name in [('harness_sha256','positional_gate.py'),('inspector_sha256','positional_file_inspect.py'),('caller_sha256','static_positional_file_checks.py'),("namespace_store_checker_sha256","namespace_file_store_checks.py")]:
             self.assertEqual(proof[field],sha256(LAB/name))
         control_path=LAB/'results/topal-positional-file-linux-control.json'
         self.assertEqual(proof['linux_control_sha256'],sha256(control_path))
@@ -2646,6 +2653,8 @@ class PositionalFileContractTests(unittest.TestCase):
         default=json.loads((LAB/'results/topal-toolchain-gate.json').read_text())
         for name,count,positional in [('primary',360,38),('lifetime',411,48)]:
             case=proof[name];observation=case['observation']
+            self.assertEqual(case['profile']['schema'],'topal.volatile-file.x86_64/6')
+            self.assertEqual(case['profile']['namespace_entries'],NAMESPACE_PROFILE)
             self.assertEqual(case['linked_kernel_sha256'],default['linked_kernel_sha256'])
             self.assertEqual(case['runtime']['observations']['result'],'pass')
             self.assertEqual(observation['result'],'pass')

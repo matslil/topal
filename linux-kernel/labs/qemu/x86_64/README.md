@@ -134,6 +134,15 @@ python3 -m unittest \
   linux-kernel/labs/qemu/x86_64/test_topal_gate.py -v
 ```
 
+Complete machine-proof archives can reference the pinned external BusyBox ELF
+and generated initramfs blobs through the ignored external cache. Before
+running publication contracts on a checkout without that cache, use the
+[archive hydration command](../../../tools/archive-publication/README.md) with
+the exact pinned BusyBox input. Every indexed artifact is reconstructed and
+checked against its original digest; missing dependencies are not skipped.
+The archive retains original producer records separately from publication
+metadata, and keeps the external binary outside version control.
+
 The first command first publishes the generated qualification image, derives a
 structurally compatible fixture with distinct initialized data, and then
 publishes the checked Topal source through the ordinary `topalc` systems target

@@ -1,0 +1,30 @@
+{
+  "scope": "Input-origin and storage review of the earlier namespace utility boot resource; no additional kernel acceptance claim",
+  "policy": "TK-BINARY-001",
+  "boot_resource_sha256": "10845339b3c6028920c2d2849bacf2015f10b74b0d7b2e5826d5f08e98c8a2a8",
+  "newc_members": [
+    {
+      "name": "init",
+      "bytes": 12288,
+      "sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+      "origin": "First-party compiler-generated initial-user fixture, with the lab's explicit initialized-byte change at offset 4097"
+    },
+    {
+      "name": "static-user.elf",
+      "bytes": 2024544,
+      "sha256": "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd",
+      "origin": "Exact pinned external BusyBox dependency; bytes remain outside version control"
+    },
+    {
+      "name": "TRAILER!!!",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "generated_initial_user_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+  "verified_initial_user_changed_offsets": [4097],
+  "boot_resource_generator": "src/topal-compiler/src/systems_boot_resource.rs",
+  "boot_resource_generator_sha256": "013f4211030be187268dba66ac968a3207f3c11b60851d2b165dcd09cbc98198",
+  "checked_origin_binding": "Parsed newc member lengths and hashes match boot-provenance.json and exact indexed initial/static image files; first-party generator emits only these two image members and the trailer",
+  "storage_disposition": "The exact external ELF and the initramfs containing it are reconstructed from the pinned dependency plus first-party init/header/padding/trailer bytes; original producer records and logical artifact hashes are retained"
+}

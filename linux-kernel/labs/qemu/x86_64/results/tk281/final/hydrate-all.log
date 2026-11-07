@@ -1,0 +1,6 @@
+bounded validation: waiting for exclusive host budget
+bounded validation: limit=2764MiB swap=0MiB host-reserve=1569MiB
+HYDRATE_PASS /home/mats/git/topal/linux-kernel/labs/qemu/x86_64/results/tk281/namespace-consumer external_blobs=2
+HYDRATE_PASS /home/mats/git/topal/linux-kernel/labs/qemu/x86_64/results/tk281/final external_blobs=2
+HYDRATE_PASS /home/mats/git/topal/linux-kernel/labs/qemu/x86_64/results/tk281/before-v6-consumer-fixture-refresh/namespace-consumer external_blobs=2
+HYDRATE_PASS /home/mats/git/topal/linux-kernel/labs/qemu/x86_64/results/tk281/before-v6-consumer-fixture-refresh/baseline-and-observer-preflight external_blobs=0

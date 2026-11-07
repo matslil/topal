@@ -1,0 +1,604 @@
+{
+  "schema": "topal.namespace-full-affected-qualification.x86_64/1",
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "qualified_code_tree": "6e897b7c6181291b20d831c53688b33781003db2",
+  "primary_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+  "vm_observations": {
+    "baseline": 117,
+    "corpus": 54,
+    "namespace": 47,
+    "inode": 12
+  },
+  "total_vm_observations": 230,
+  "unchanged_busybox_workloads": 51,
+  "lab_publication_contracts": 45,
+  "lab_contract_log_sha256": "ed3f22ad5e2639c7befd23c961b409cfbcee14ee07e98220e8ab090378c93765",
+  "commands": [
+    {
+      "cohort": "baseline",
+      "name": "ram_page",
+      "vm_observations": 21,
+      "stdout": "baseline/s000.stdout.log",
+      "stderr": "baseline/s000.stderr.log",
+      "stdout_sha256": "1425faef20a26f9ff999d74f85afd9bd22596a8bb4ea715bf72b626913a5b639",
+      "stderr_sha256": "f9f3d5861edc10d7413e2f65222d4c98219bcf505917ca9e1f9970fce4d10729"
+    },
+    {
+      "cohort": "baseline",
+      "name": "file_region",
+      "vm_observations": 13,
+      "stdout": "baseline/s001.stdout.log",
+      "stderr": "baseline/s001.stderr.log",
+      "stdout_sha256": "24662cdb7084563dbe547b761d7a58f1cf7a724cb7b3604d155cb1cd3e716894",
+      "stderr_sha256": "e4fae29f198e2b798315fbd757e57567475c9e05b399c911b25e15c97e954a77"
+    },
+    {
+      "cohort": "baseline",
+      "name": "region",
+      "vm_observations": 9,
+      "stdout": "baseline/s002.stdout.log",
+      "stderr": "baseline/s002.stderr.log",
+      "stdout_sha256": "f2b40ceb38815175560bfcb9b9e050ceebdd1a7f6079701c6d88d9c2b3940182",
+      "stderr_sha256": "22de6ab60becdf2cc33fd527363cf5f810b4d34b8601d7b69ecf539f9b768b08"
+    },
+    {
+      "cohort": "baseline",
+      "name": "positional",
+      "vm_observations": 4,
+      "stdout": "baseline/s003.stdout.log",
+      "stderr": "baseline/s003.stderr.log",
+      "stdout_sha256": "45a3f2a686ee9916279531dfde2f79a0399aa6dcc10e8a97f1724060851f47f3",
+      "stderr_sha256": "bce2d820c97ab7099e2cc2d6c7cf6a62be302fb9c5aa1f98a0b1d366ee3104d8"
+    },
+    {
+      "cohort": "baseline",
+      "name": "named",
+      "vm_observations": 4,
+      "stdout": "baseline/s004.stdout.log",
+      "stderr": "baseline/s004.stderr.log",
+      "stdout_sha256": "bef7597587f417c58b31e4f8f428ed866da67aa7e55ccb40eca70a185a92dd29",
+      "stderr_sha256": "fe0c664ea859193e30fccee7062f0e49e545a84cabcabd91ee5cdc26df28caae"
+    },
+    {
+      "cohort": "baseline",
+      "name": "file_open",
+      "vm_observations": 5,
+      "stdout": "baseline/s005.stdout.log",
+      "stderr": "baseline/s005.stderr.log",
+      "stdout_sha256": "0a86e5478bf71c2242789cfd67da3814bc51abef78a23c32d969df6291b0fba6",
+      "stderr_sha256": "7a4a0a638845f2e3eb3128e77b3fb49986d7347a0c3348f317ff148db8643f26"
+    },
+    {
+      "cohort": "baseline",
+      "name": "volatile",
+      "vm_observations": 4,
+      "stdout": "baseline/s006.stdout.log",
+      "stderr": "baseline/s006.stderr.log",
+      "stdout_sha256": "ee9c8608869ba1ade242f08d838b3e8a2f3b61edcbb77501a6a1303765caa339",
+      "stderr_sha256": "b78934765c30c5a7f53af9ae8f47d2e3eac969d11cc4c2679661caa44f3d4e51"
+    },
+    {
+      "cohort": "baseline",
+      "name": "header",
+      "vm_observations": 4,
+      "stdout": "baseline/s007.stdout.log",
+      "stderr": "baseline/s007.stderr.log",
+      "stdout_sha256": "5bd1586ed7063ea144b56fa6bd86d92f7227be2e5a07bd31cc19bb731d5ea99a",
+      "stderr_sha256": "3a29b8768ffcf3babc685d5d90f6574250d3a288196082c4526da24058f8b8b8"
+    },
+    {
+      "cohort": "baseline",
+      "name": "dispatch",
+      "vm_observations": 9,
+      "stdout": "baseline/s008.stdout.log",
+      "stderr": "baseline/s008.stderr.log",
+      "stdout_sha256": "7b6e0e99205e9010c0794a4e1512913c4bad75a6b482537cab727aae8ffea468",
+      "stderr_sha256": "039e7df55134c9eb3e9f00abfa6424c974d71e707e1c2fabbfb6b6b1c76e756e"
+    },
+    {
+      "cohort": "baseline",
+      "name": "identity",
+      "vm_observations": 5,
+      "stdout": "baseline/s009.stdout.log",
+      "stderr": "baseline/s009.stderr.log",
+      "stdout_sha256": "1f6dc59ccd27e4f6d5073a90987e74d1f74991d67277f1e0bce30cb14243b184",
+      "stderr_sha256": "bc1025c24fce9c4482016e81ba801030b8930f9f7b261646526d6297bd56dadb"
+    },
+    {
+      "cohort": "baseline",
+      "name": "retained",
+      "vm_observations": 5,
+      "stdout": "baseline/s010.stdout.log",
+      "stderr": "baseline/s010.stderr.log",
+      "stdout_sha256": "19f73196c0b3beb243dc808e91cbbf22494b54f487deafe5d6245478cb03e246",
+      "stderr_sha256": "da0ca1c35a8947ec713abf042321650016475fbb4daf0a2ad6439f88dfaa29bc"
+    },
+    {
+      "cohort": "baseline",
+      "name": "structured",
+      "vm_observations": 6,
+      "stdout": "baseline/s011.stdout.log",
+      "stderr": "baseline/s011.stderr.log",
+      "stdout_sha256": "c6bdeb02e327d877ef3b8c02a8f88d557d410370c09b22b393d4933a863c9089",
+      "stderr_sha256": "bb8ec1a6d7da0c71abfc244d2540c7540baff54ba1816ebff9d139963874312a"
+    },
+    {
+      "cohort": "baseline",
+      "name": "numeric",
+      "vm_observations": 4,
+      "stdout": "baseline/s012.stdout.log",
+      "stderr": "baseline/s012.stderr.log",
+      "stdout_sha256": "de8aba186853de883319cbe8ce2168e212bbfc1cb2cf94d0d19f7edfa0e7b570",
+      "stderr_sha256": "b9b740662c41c71ad326047b498b0983e954abeff9a9e2466d54333e0093b7df"
+    },
+    {
+      "cohort": "baseline",
+      "name": "library",
+      "vm_observations": 3,
+      "stdout": "baseline/s013.stdout.log",
+      "stderr": "baseline/s013.stderr.log",
+      "stdout_sha256": "9ef26d94701e3ecebeb96240ecbbf6677a67cad3f02a70d22b943af805bd2705",
+      "stderr_sha256": "68a75e91305a7815ae7a1c41cef17b2076d638c104591e366ce6ec0b84b06deb"
+    },
+    {
+      "cohort": "baseline",
+      "name": "realtime",
+      "vm_observations": 5,
+      "stdout": "baseline/s014.stdout.log",
+      "stderr": "baseline/s014.stderr.log",
+      "stdout_sha256": "fc8553409d912e7a9f15dad565ab62dbdf88d8a984e92caa5238ca48e38a9d0c",
+      "stderr_sha256": "f14892b5ae055325a3abb3357f259b7e2e078884878955e74fdea26368f0a208"
+    },
+    {
+      "cohort": "baseline",
+      "name": "time",
+      "vm_observations": 3,
+      "stdout": "baseline/s015.stdout.log",
+      "stderr": "baseline/s015.stderr.log",
+      "stdout_sha256": "01ba90494ccf1d4bc7c96d41a24328b0763f101439cf159098225e1c64e9630f",
+      "stderr_sha256": "4ab4b4ff27c63823de0222a1da7091a86516dc10eb88abe645b69dba46e607db"
+    },
+    {
+      "cohort": "baseline",
+      "name": "children",
+      "vm_observations": 3,
+      "stdout": "baseline/s016.stdout.log",
+      "stderr": "baseline/s016.stderr.log",
+      "stdout_sha256": "4a2629c2775d2a06a4537e8b4b5b35ffece2d0fb40e4ec90fb0a294d67688d98",
+      "stderr_sha256": "8d06a80f37753bd3f8634830cce0bcc59d583ec3a84004f08b2ce56fd8dc8c79"
+    },
+    {
+      "cohort": "baseline",
+      "name": "pair",
+      "vm_observations": 4,
+      "stdout": "baseline/s017.stdout.log",
+      "stderr": "baseline/s017.stderr.log",
+      "stdout_sha256": "f307ff92b1edbcba719a0711f0ca81c20e3cd6b1fcd24296c0e9c341cd56a999",
+      "stderr_sha256": "509c396e8c2ce3e5cd841dcd0c8412b7882ef6e601c846cf86f81536b4db217d"
+    },
+    {
+      "cohort": "baseline",
+      "name": "pipes",
+      "vm_observations": 4,
+      "stdout": "baseline/s018.stdout.log",
+      "stderr": "baseline/s018.stderr.log",
+      "stdout_sha256": "863c0bfaeba06f186e9e8c04a549d4a27c86a68411e21ee507402ae89f3ffd66",
+      "stderr_sha256": "f14892b5ae055325a3abb3357f259b7e2e078884878955e74fdea26368f0a208"
+    },
+    {
+      "cohort": "baseline",
+      "name": "deadline",
+      "vm_observations": 2,
+      "stdout": "baseline/s019.stdout.log",
+      "stderr": "baseline/s019.stderr.log",
+      "stdout_sha256": "2dd0d01d52855514939639c251218d078da885eea88c4b8f98d5e96c0adb9648",
+      "stderr_sha256": "cedac7be3f18c6b7da2bb8b3bf8ea2734cbf66fb955be87fa4ee9730fadc8d8f"
+    },
+    {
+      "cohort": "corpus",
+      "name": "complete-busybox-corpus",
+      "vm_observations": 54,
+      "stdout": "corpus/s000.stdout.log",
+      "stderr": "corpus/s000.stderr.log",
+      "stdout_sha256": "f820558e9e99826138c3f821dff2ac80440cda2277703624c782ee67861b096f",
+      "stderr_sha256": "039e7df55134c9eb3e9f00abfa6424c974d71e707e1c2fabbfb6b6b1c76e756e"
+    },
+    {
+      "cohort": "namespace",
+      "name": "normal",
+      "vm_observations": 1,
+      "stdout": "namespace/s000.stdout.log",
+      "stderr": "namespace/s000.stderr.log",
+      "stdout_sha256": "4c16137f89e6d8a3451081cce4d4a7996d051a10c3db4dfd90739523ba41e066",
+      "stderr_sha256": "958538e43c02e2d83f525cb19510328d8d1d30122e12766b96e81468d051e1e6"
+    },
+    {
+      "cohort": "namespace",
+      "name": "directory",
+      "vm_observations": 1,
+      "stdout": "namespace/s001.stdout.log",
+      "stderr": "namespace/s001.stderr.log",
+      "stdout_sha256": "86980d0083d01fa7350b6a1ea38399280bc478272d566eb6b7baa0adba5aca0b",
+      "stderr_sha256": "f4925e6c7b9e11c3086e73be2f07bc4e4ac1831f0a8c6432d65374f41b4cc7fa"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fork",
+      "vm_observations": 1,
+      "stdout": "namespace/s002.stdout.log",
+      "stderr": "namespace/s002.stderr.log",
+      "stdout_sha256": "a749d3128808d5e1c735d058ed17dfc5c3319e1b25d0673ba6f9bc855a254052",
+      "stderr_sha256": "4db3b2db8284bc224d6fdbe755bfa0e088409675119a4e0c2ad0e32a37f2f0ae"
+    },
+    {
+      "cohort": "namespace",
+      "name": "exec",
+      "vm_observations": 1,
+      "stdout": "namespace/s003.stdout.log",
+      "stderr": "namespace/s003.stderr.log",
+      "stdout_sha256": "3722d2cd70e46b11a19e8b8593e96035e1a435ac2e616c799af104d6d1c537a6",
+      "stderr_sha256": "278fdd3b32bca866d8e23f953720d586982914ee0392a01c9442bb7e0e315532"
+    },
+    {
+      "cohort": "namespace",
+      "name": "cancel",
+      "vm_observations": 1,
+      "stdout": "namespace/s004.stdout.log",
+      "stderr": "namespace/s004.stderr.log",
+      "stdout_sha256": "c2928b39ea9f42f3df81ded3856494273268992966e3e23b9407642f91fc8599",
+      "stderr_sha256": "fc86a18cac5d05e9bf81c4542e470472a1e04bf3bfeb9fa6f65994c3577b2383"
+    },
+    {
+      "cohort": "namespace",
+      "name": "utilities",
+      "vm_observations": 6,
+      "stdout": "namespace/s005.stdout.log",
+      "stderr": "namespace/s005.stderr.log",
+      "stdout_sha256": "ba50412f0a9065103e614173d49326f119601365df5518b7a71a01003150640b",
+      "stderr_sha256": "9945ba2fd389ee0116b72ea8ad93eb4bf4d036478b17476cbddf374431229247"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-false-link",
+      "vm_observations": 1,
+      "stdout": "namespace/s006.stdout.log",
+      "stderr": "namespace/s006.stderr.log",
+      "stdout_sha256": "91f3c4a573a3ad51730bfb16640df8e8d24b0dde4febd3d329a6622bdeecacd7",
+      "stderr_sha256": "975c4bcf9b790f0c9ef85c40bcacef0ac8baad026033659d04d065d0fbdb47b3"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-false-linkat",
+      "vm_observations": 1,
+      "stdout": "namespace/s007.stdout.log",
+      "stderr": "namespace/s007.stderr.log",
+      "stdout_sha256": "fd8c051190d7349799b209fba399c6604408b886529e891cc06771b547a6f2f5",
+      "stderr_sha256": "c90fbac1f6a60b8b81c396d8274b925a54df9b085c5ddeebaa70a7ecef201ec8"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-false-move",
+      "vm_observations": 1,
+      "stdout": "namespace/s008.stdout.log",
+      "stderr": "namespace/s008.stderr.log",
+      "stdout_sha256": "1baea98be4cc1b74368d9482954038defcea67fa45093a1e7d7a961e0b5c5e64",
+      "stderr_sha256": "c50b93f826c5592e1affd08c3cb2ec21d41ec04144598fea6858db137ace3d86"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-false-replace",
+      "vm_observations": 1,
+      "stdout": "namespace/s009.stdout.log",
+      "stderr": "namespace/s009.stderr.log",
+      "stdout_sha256": "acb8df0c95156c8f37bee9b335dabe9ba0b3d787555377d8258f4427d9caca1c",
+      "stderr_sha256": "7b48f55bce7afdea039fdcfc91323e00a7a22a7e99b3f6d10437d49c1eccfa31"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-false-exchange",
+      "vm_observations": 1,
+      "stdout": "namespace/s010.stdout.log",
+      "stderr": "namespace/s010.stderr.log",
+      "stdout_sha256": "9990feb7a20a4a898b61e465b832c76a23a4ffb9fb3e6dea52d1c8e8870e1029",
+      "stderr_sha256": "acd8f395f15e95677ab85e6511b3589bfb6fcd7b2774503bbd3f00f2f08ba8c5"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-wrong-association-link",
+      "vm_observations": 1,
+      "stdout": "namespace/s011.stdout.log",
+      "stderr": "namespace/s011.stderr.log",
+      "stdout_sha256": "d2f779dcf6ae0ae4b243fc8e8ba53a4147b37407571c3b130995305807ca1166",
+      "stderr_sha256": "be3d89eb403a451c2949c0091aca1579ceb268b75cb3ef80155e405ca364610c"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-wrong-association-linkat",
+      "vm_observations": 1,
+      "stdout": "namespace/s012.stdout.log",
+      "stderr": "namespace/s012.stderr.log",
+      "stdout_sha256": "ce93c0dfb3785e3597b2177be0d02b211a05772e36ab279371d83bec89c7b0e7",
+      "stderr_sha256": "9f4484bb9c3078280ca88c14a4e001fe2b33940bf4f04bc3dbdd446e0a8f52fb"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-wrong-association-move",
+      "vm_observations": 1,
+      "stdout": "namespace/s013.stdout.log",
+      "stderr": "namespace/s013.stderr.log",
+      "stdout_sha256": "1e2cfc420aa1f1f98462215598a58a52d11d8f3abdd7b07662313ca26e444aed",
+      "stderr_sha256": "eb8dc682b733059a5bfa72cb849eea42346452670d0c735b9ddddbe9070d494c"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-wrong-association-replace",
+      "vm_observations": 1,
+      "stdout": "namespace/s014.stdout.log",
+      "stderr": "namespace/s014.stderr.log",
+      "stdout_sha256": "81fbc4cbe6e04437beba9b86bbc11233e225d05be02d8e2eb5d5d5d4e4be8a01",
+      "stderr_sha256": "c50b93f826c5592e1affd08c3cb2ec21d41ec04144598fea6858db137ace3d86"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-source-wrong-association-exchange",
+      "vm_observations": 1,
+      "stdout": "namespace/s015.stdout.log",
+      "stderr": "namespace/s015.stderr.log",
+      "stdout_sha256": "02ce2b4834cd364d09abb25797abb4fe37ec1ce8c30a584c389197e2b23eac31",
+      "stderr_sha256": "278fdd3b32bca866d8e23f953720d586982914ee0392a01c9442bb7e0e315532"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-runtime-abort-link",
+      "vm_observations": 1,
+      "stdout": "namespace/s016.stdout.log",
+      "stderr": "namespace/s016.stderr.log",
+      "stdout_sha256": "e54d67beb5ff667935f8b1339cfc4da5705c49184930993b6e65760e04e3e552",
+      "stderr_sha256": "d5033d99b7af484ff7a6100602c931b8b60b06decb7e5cffd4013f049d0403a7"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-runtime-abort-linkat",
+      "vm_observations": 1,
+      "stdout": "namespace/s017.stdout.log",
+      "stderr": "namespace/s017.stderr.log",
+      "stdout_sha256": "e5fd403350f56537dd59df61e6b75921b68dcd0ad28460dfd8e73815d508766f",
+      "stderr_sha256": "485f97ced157087add8db6215499b721a3fd7280ece07d16c44c03edeac82068"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-runtime-abort-move",
+      "vm_observations": 1,
+      "stdout": "namespace/s018.stdout.log",
+      "stderr": "namespace/s018.stderr.log",
+      "stdout_sha256": "ec69d88739608b3f18dfb42d5182d700142013149b7bf550888ab11c7322b9cb",
+      "stderr_sha256": "f74fcfa1395b5ee5f5843ffcda897e87838e41ba1892213871705dc467e0b54b"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-runtime-abort-replace",
+      "vm_observations": 1,
+      "stdout": "namespace/s019.stdout.log",
+      "stderr": "namespace/s019.stderr.log",
+      "stdout_sha256": "41ba2c434a12ccd8020d2f1ed4ddb24a5545f991aae8544fefbfd14a4a854f45",
+      "stderr_sha256": "bfbb865f3289da4e11843ff1077217a34ff9991bbedd41c2d0adee85c7a8d27f"
+    },
+    {
+      "cohort": "namespace",
+      "name": "fatal-runtime-abort-exchange",
+      "vm_observations": 1,
+      "stdout": "namespace/s020.stdout.log",
+      "stderr": "namespace/s020.stderr.log",
+      "stdout_sha256": "be8f7611d0e249fd97d9976c1627374200192c6920ffd27ea2292c5893b1dab7",
+      "stderr_sha256": "9f4484bb9c3078280ca88c14a4e001fe2b33940bf4f04bc3dbdd446e0a8f52fb"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-observe",
+      "vm_observations": 1,
+      "stdout": "namespace/s021.stdout.log",
+      "stderr": "namespace/s021.stderr.log",
+      "stdout_sha256": "1e461e831a4b97fb8d8b5b05c0dcc677ff7a2c6ab356b60a208d595e40a998cc",
+      "stderr_sha256": "fe0c664ea859193e30fccee7062f0e49e545a84cabcabd91ee5cdc26df28caae"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-error-link",
+      "vm_observations": 1,
+      "stdout": "namespace/s022.stdout.log",
+      "stderr": "namespace/s022.stderr.log",
+      "stdout_sha256": "72dc02cd73a805af263a94501c9db11dfbc87cfe76fb8de31eac79e0988739f5",
+      "stderr_sha256": "c50b93f826c5592e1affd08c3cb2ec21d41ec04144598fea6858db137ace3d86"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-error-linkat",
+      "vm_observations": 1,
+      "stdout": "namespace/s023.stdout.log",
+      "stderr": "namespace/s023.stderr.log",
+      "stdout_sha256": "9a75432134364ebda277851dde6ea3214f4150d44808c7e3d87111c9a3e93c93",
+      "stderr_sha256": "ea7483e7934c7ba8106bfb4807da03e2186a58e2e2f4d56d5b0fb768cff57b76"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-error-move",
+      "vm_observations": 1,
+      "stdout": "namespace/s024.stdout.log",
+      "stderr": "namespace/s024.stderr.log",
+      "stdout_sha256": "47c54a431dd8fc5dfc33f8a8bc8c8a2fd299fb57012b90e5724a43e008913f89",
+      "stderr_sha256": "47846be10ce3382939b73dfd4cf1b706d65fdd5148409e8e08273792bda00f2c"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-error-replace",
+      "vm_observations": 1,
+      "stdout": "namespace/s025.stdout.log",
+      "stderr": "namespace/s025.stderr.log",
+      "stdout_sha256": "01fa25dcaead01c4005bb8dddac4631f88a7364b9db009eaa1663463eddc3e21",
+      "stderr_sha256": "e882158af6cbf7b16125bccc922099dec5f6b9567dcc782b6a9f692afed4f8d7"
+    },
+    {
+      "cohort": "namespace",
+      "name": "clock-error-exchange",
+      "vm_observations": 1,
+      "stdout": "namespace/s026.stdout.log",
+      "stderr": "namespace/s026.stderr.log",
+      "stdout_sha256": "0ed925a3e6014676a1d95942b3b1cc849749603a2b8d270d8d4af7002d479509",
+      "stderr_sha256": "fe0c664ea859193e30fccee7062f0e49e545a84cabcabd91ee5cdc26df28caae"
+    },
+    {
+      "cohort": "namespace",
+      "name": "inode-admission-bad-link-count",
+      "vm_observations": 1,
+      "stdout": "namespace/s027.stdout.log",
+      "stderr": "namespace/s027.stderr.log",
+      "stdout_sha256": "e43cc2d2dcd291b1a2a087c3af7c55851008d632ad0a7534f0e8024a50c32965",
+      "stderr_sha256": "3a29b8768ffcf3babc685d5d90f6574250d3a288196082c4526da24058f8b8b8"
+    },
+    {
+      "cohort": "namespace",
+      "name": "inode-admission-overlap-namespace",
+      "vm_observations": 1,
+      "stdout": "namespace/s028.stdout.log",
+      "stderr": "namespace/s028.stderr.log",
+      "stdout_sha256": "905a89eb71e7ad7cbb98b1b0317df4e740fac334ab25060f26be2f9a337afd3f",
+      "stderr_sha256": "9f4484bb9c3078280ca88c14a4e001fe2b33940bf4f04bc3dbdd446e0a8f52fb"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-normal",
+      "vm_observations": 1,
+      "stdout": "namespace/s029.stdout.log",
+      "stderr": "namespace/s029.stderr.log",
+      "stdout_sha256": "07ddcfac5714adcca90dd530a5bd66737c27a8241de6fe1911cad9da23cb4b6c",
+      "stderr_sha256": "1f6e31b7a51980b66752f783d21c36259cbcce40f5c68c6af81e641224819728"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-runtime-abort",
+      "vm_observations": 1,
+      "stdout": "namespace/s030.stdout.log",
+      "stderr": "namespace/s030.stderr.log",
+      "stdout_sha256": "5318568ed0465e856c76c7e880ecb30dc168148c5af35b8f4d8363face689f3b",
+      "stderr_sha256": "a062b395a705f9cd69403e0f1079265af47efb931224ce50adfab4954650b0bf"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-post-frame",
+      "vm_observations": 1,
+      "stdout": "namespace/s031.stdout.log",
+      "stderr": "namespace/s031.stderr.log",
+      "stdout_sha256": "6ca03c524acce4c29e4662b9e4b4a4cc0065edea0fd375334a74f130951e5021",
+      "stderr_sha256": "07e9258451d7d03d297c3a51d75a8818f76a56e3932aeec1817bc5081b86f3fb"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-post-control",
+      "vm_observations": 1,
+      "stdout": "namespace/s032.stdout.log",
+      "stderr": "namespace/s032.stderr.log",
+      "stdout_sha256": "400bd32a24d9a6f7a8e867b00f7732e4e4e17c240602d2c12da1c205b8a65e56",
+      "stderr_sha256": "eb8dc682b733059a5bfa72cb849eea42346452670d0c735b9ddddbe9070d494c"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-source-false",
+      "vm_observations": 1,
+      "stdout": "namespace/s033.stdout.log",
+      "stderr": "namespace/s033.stderr.log",
+      "stdout_sha256": "823f11276be01a2467c1ab53c179ecc270560da2535e1632af241cc26d2ff107",
+      "stderr_sha256": "6cd228efe6a8290da5dcc9a56b5797fa2d0a79e3d0654d4564ef313c47699c8e"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-source-wrong-association",
+      "vm_observations": 1,
+      "stdout": "namespace/s034.stdout.log",
+      "stderr": "namespace/s034.stderr.log",
+      "stdout_sha256": "7b7f57b527805f08838ec518221b6345dfd9c90874a397fbf90b6fac1fc0532f",
+      "stderr_sha256": "046d56b47b05fc4426e0ffa34dd95c6b2ab0ef07e75550a8a31fbaf5123466ca"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-owner",
+      "vm_observations": 1,
+      "stdout": "namespace/s035.stdout.log",
+      "stderr": "namespace/s035.stderr.log",
+      "stdout_sha256": "90331cbb616fd8ed5b1b8e0b222b26d500da78fd18f3f07e89652201ac67071a",
+      "stderr_sha256": "1d3f8d78e19e4b40847550d85072dbf2489e69879018336ec3425709f8c6553d"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-view",
+      "vm_observations": 1,
+      "stdout": "namespace/s036.stdout.log",
+      "stderr": "namespace/s036.stderr.log",
+      "stdout_sha256": "17bdcebab83845bcfe19b3f23bf548337f51804f79bfb2a0210f70be9f317513",
+      "stderr_sha256": "f14892b5ae055325a3abb3357f259b7e2e078884878955e74fdea26368f0a208"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-input",
+      "vm_observations": 1,
+      "stdout": "namespace/s037.stdout.log",
+      "stderr": "namespace/s037.stderr.log",
+      "stdout_sha256": "be0128dd4b74a045bf98a3928746fc64446cd8dacda5356062881d98b0873f1e",
+      "stderr_sha256": "fca23085984c1c9a60fe5489a2149b35d4e1a9ed47425039335a1111b0ac7eaa"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-generation",
+      "vm_observations": 1,
+      "stdout": "namespace/s038.stdout.log",
+      "stderr": "namespace/s038.stderr.log",
+      "stdout_sha256": "f13e02940b5b86c5f8af94a5f931c50e693a223cd5def982ccfe0334a246ee2a",
+      "stderr_sha256": "5c39e00be43af2ef77c652142954855eb5ce5d7c312229e85bc246d7e1ff571c"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-overlap-position",
+      "vm_observations": 1,
+      "stdout": "namespace/s039.stdout.log",
+      "stderr": "namespace/s039.stderr.log",
+      "stdout_sha256": "96aebb9ea1f794729c10e5e4dc21601c34d9bf6bd7ba33307916a0fc32e86792",
+      "stderr_sha256": "046d56b47b05fc4426e0ffa34dd95c6b2ab0ef07e75550a8a31fbaf5123466ca"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-overlap-page",
+      "vm_observations": 1,
+      "stdout": "namespace/s040.stdout.log",
+      "stderr": "namespace/s040.stderr.log",
+      "stdout_sha256": "7a8f1b95f6f98cf79c8523ef3c2e4068f1d9d5af45cc2e6941f46e05e044dfc8",
+      "stderr_sha256": "3deea97d274bf0248c2f76625b9dbe607f5e28314e918ceefcf90714a0c257f6"
+    },
+    {
+      "cohort": "namespace",
+      "name": "controller-pre-overlap-inode",
+      "vm_observations": 1,
+      "stdout": "namespace/s041.stdout.log",
+      "stderr": "namespace/s041.stderr.log",
+      "stdout_sha256": "7ff54b060486e538dda9755e541881683daef64f7d65946a166564e47263f708",
+      "stderr_sha256": "784ca3e6d607fafcaf02f178fc8cfaacc47264461681ad10ef0982f7dff414ff"
+    }
+  ],
+  "rust_record_sha256": "9fbe4a86f0849109d78b4d18c3f515453b5959d9a90d519dae10e4cc56c57069",
+  "namespace_record_sha256": "5112796e56a9b335d529938a8e5ba49f95eebfe5a6d775e53f7840b2af88ebd4",
+  "verification_revision_sha256": "399867e6acad43386211eee03274e500cc175a3f9205188afde00d2a613e7bcb",
+  "verification_revision_validator_sha256": "8ecbc81a0137ebab7c10725488face13a3a4b4d1f487da4c8c6b3554e468a1e8",
+  "inode_record_sha256": "2a89c1600d7f59e65fd5acc4c59228a1d9ac3d2a33103035cda01401f9c5ab4d",
+  "archived_files": 11272,
+  "unique_blobs": 2769,
+  "archive_index_sha256": "dceb14107209ea08b161fe789b74c0f97f53d3624ec2afa10bf71b826de8a88d",
+  "archiver_sha256": "a18726d5b1052d1f8bc62ffcb507c5f282ba108f1f53c0d675edd43dd5e1b70a",
+  "scope": "complete current shared-namespace affected qualification; full initial Linux/distribution/container/VM-host acceptance remains required",
+  "publication_projection_sha256": "bee974e56eaf8e9d3c4823dedc12b42be1e58ec56a656b9eb864e9213ca7ba0a",
+  "publication_raw_record_sha256": "62a36142d7f7d19a0958c1fdccf9a598f9e687d4fbad7ad89ffcebdedb7ce1a0",
+  "publication_external_blobs": 2,
+  "publication_repository_blobs": 2767,
+  "publication_contracts": 45,
+  "publication_contract_log_sha256": "4498422e9cd11302a29b259ba827174523b4d1f27c38cb3a07f6221e26410ab4",
+  "publication_hydration_log_sha256": "4e3d52dfa74994c6f19f410a74a83a5d14f94130c7609f4af0e79c3dea8cbd36",
+  "publication_binary_audit_log_sha256": "fd66105a5d4d38d6c4fdae7d0a403d1ca6fa629122de857fa59dc12bb99b58bc",
+  "publication_finalizer_sha256": "3f1ffcf4233d5fb3711bd41bf97a4808ce42bcf6a50544204caedcf7d9e5c410"
+}

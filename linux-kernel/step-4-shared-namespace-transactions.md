@@ -911,7 +911,98 @@ whitespace checks. All **49 Python files** in the complete integration diff
 parse. The retained runner and archive tools are included with the integration
 inputs so the next qualification can bind one committed revision.
 
-## Remaining stages and initial acceptance
+## Stage 4 committed qualification refresh
+
+The corrected committed revision `9e7875eb9731f231d74ed45e6e4c5b34efefddee`
+passes locked all-target workspace checking, all **2349 implementation tests
+across 41 targets** with no failures or ignored tests, and the separate doc-test
+command (zero executable doc tests). The
+[verbatim Rust record](tools/rust-qualification/results/tk281/final/qualification.json)
+and lossless logs bind the actual source tree, tool identities and unchanged
+bounded wrapper. The earlier three-fixture failure remains separately archived;
+its successful check and doc commands do not replace the corrected full run.
+
+The completed affected VM refresh passes **230 observations**: 117 baseline,
+54 application/environment, 47 namespace and 12 inode dispositions. All **45
+lab publication contracts** pass before and after external-dependency
+reconstruction. The [final manifest](labs/qemu/x86_64/results/tk281/final/qualification.json)
+binds the real command logs, original inputs, current namespace/inode records,
+verification revisions and publication audit. Its 11272 logical artifact files
+retain their exact original bytes and hashes.
+
+The fresh application corpus passes all **51 unchanged pinned BusyBox workloads**
+with exact output, status and exec-count checks. Together with clean primary
+boot and empty/null environment controls, it executes **54 actual VM runs**.
+Per-execution serial and QEMU log paths and hashes bind each workload to its
+real observation. The fresh V6 inode suite also passes all **12 physical
+dispositions**, including lifecycle cleanup, seven pre-entry refusals and two
+post-store source failures. Its
+[current consumer archive](labs/qemu/x86_64/results/tk281/inode-consumer/archive.json)
+retains the original machine records, five unchanged BusyBox mode observations
+and **46 exact compressed machine/application logs**, bound to the completed
+Rust run and current primary kernel. These dispositions are included in the
+230-observation total; they are not additional observations.
+
+The first baseline refresh passed its RAM-page, file-position-source and root-region
+groups, then stopped in the first positional-file observer. Its legacy assertion
+requires bytes 64–255 of filesystem metadata to be zero; V6 places independent
+entry associations in bytes 64–127. The named and anonymous file observers
+contained the same old layout assumption. This was an observer assertion failure,
+not a memory-limit failure. The failed command, original sources and complete
+artifacts remain in `linux-kernel/.cache/tk281-s4-baseline-1` and the
+[historical archive](labs/qemu/x86_64/results/tk281/before-v6-consumer-fixture-refresh/baseline-and-observer-preflight/archive.json).
+
+An independent V6 store checker now passes a component test for rotated slots,
+shared aliases, anonymous/unlinked lifetimes, malformed entries and inodes,
+exact link counts, page associations, payload tails and complete retired-byte
+zeroing. It consumes explicit versioned artifact geometry and checks its own
+source digest. Corrected observer branches were prepared separately while the
+existing namespace cohort retained its frozen sources. That cohort completed
+all **42 stages / 47 VM observations**, including all fifteen fatal source
+cases, clock failures, admission refusals and lifecycle/utility checks; its
+[verbatim archive](labs/qemu/x86_64/results/tk281/before-v6-consumer-fixture-refresh/namespace-consumer/qualification.json)
+retains those exact earlier inputs.
+
+The installed observer corrections pass **12 actual VM dispositions**: four
+each for positional, named and anonymous files, including lifetime/termination
+and deliberate payload-corruption controls. Legacy observer branches retain
+their existing assertions. No compiler or kernel source changed; the completed
+Rust run still qualifies that committed code. The completed VM refresh binds
+the updated observer snapshots and the additional component test, bringing the
+required lab publication count to **45**. All four VM cohorts and those
+contracts pass.
+
+The first complete publication-contract run exposed three old schema
+expectations and a stack check applied to source refusals that never created
+an admission frame. Corrected checks require the exact V6 geometry, require
+4096-byte retirement for admitted source and clock-error frames, and require
+no frame plus complete owner/history preservation on unentered refusal paths.
+A subsequently reached test-variable collision was also corrected. Both failed
+verification runs remain retained.
+
+The [verification revision](labs/qemu/x86_64/results/tk281/namespace-consumer/verification-revision.json)
+binds exactly the two publication-contract files and the post-run archive
+verifier separately from the unchanged experiment source snapshots. Original
+snapshots and VM outcomes are never relabeled. The revision validator refuses
+runtime-harness changes, damaged original snapshots and unrecorded verifier
+edits; both negative/round-trip tests pass. Kernel/compiler source and every
+executed VM input retain the completed run's provenance.
+
+Raw VM artifacts can include the pinned external BusyBox ELF and generated
+initramfs files containing it. Under [TK-BINARY-001](design/license-and-provenance.md),
+the [publication tool](tools/archive-publication/README.md) keeps those blobs
+in the ignored external cache. Original producer records and indexes remain
+verbatim; the published index retains every artifact's original length and
+digest, with exact reconstruction recipes using the pinned external input and
+first-party wrapper bytes. No observation or dependency entry is skipped.
+All three storage-publication tests pass, including complete recovery after
+cache loss and refusal of altered inputs, recipes and destinations. Current
+and historical archives have been projected and hydrated successfully. All
+45 contracts pass afterward. The completed binary-boundary audit checks all
+6520 prospective published gzip objects and finds no complete external BusyBox
+ELF inside Git-bound artifacts.
+
+## Completed increment and remaining initial acceptance
 
 Stage 2's ordinary source, canonical owner loans, native binding and controlled
 physical caller are implemented and component-validated. An encoded candidate
@@ -919,15 +1010,15 @@ followed by native publication remains insufficient for subsequent kernel integr
 Stage 3 integrates and qualifies all five Linux adapters, V6
 dispatch with frozen V1–V5 controls, new versioned entry-table consumers, exact
 source-driven effects, Linux/physical lifecycle/refusal cases and unchanged
-BusyBox mv/ln. Stage 4 must execute the complete affected committed Rust/lab/
-native/VM cohort and publish lossless evidence and accurate scope records.
+BusyBox mv/ln. Stage 4 completes the affected Rust/lab/native/VM qualification,
+lossless evidence and accurate publication scope for this increment.
 
 The preceding selected native kernel is documented in
 [TK280](step-4-shared-inode-modes.md). Its 2305 Rust tests, 176 VM observations,
 45 BusyBox workloads and 43 lab contracts qualify that distinct earlier native
 checkpoint. The earlier controlled components select no rename/link Linux
 handler; the V6 candidates execute the actual entries and six unchanged
-application workloads. Complete current committed publication evidence remains
-required. General directories/devices, whiteout, broader
+application workloads. Current complete affected publication evidence is linked
+above. General directories/devices, whiteout, broader
 credentials/VFS, allocation, dynamic userspace, distribution replacement,
 containers and VM hosting remain part of the unfinished original goal.

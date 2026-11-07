@@ -4,10 +4,13 @@ import hashlib
 import json
 from pathlib import Path
 import unittest
+import sys
 
 import topal_gate as GATE
 
 LAB=Path(__file__).resolve().parent
+sys.path.insert(0,str(GATE.LINUX_KERNEL/'tools/archive-publication'))
+import verification_revision
 
 
 class NamespaceEvidence(unittest.TestCase):
@@ -48,9 +51,8 @@ class NamespaceEvidence(unittest.TestCase):
         def load(name):
             return json.loads(read(name))
 
-        for entry in proof['source_snapshots']:
-            self.assertEqual(GATE.digest(GATE.REPOSITORY/entry['source']),entry['sha256'])
-            self.assertEqual(hashlib.sha256(read(entry['snapshot'])).hexdigest(),entry['sha256'])
+        verification_revision.validate(proof['source_snapshots'],GATE.REPOSITORY,read,
+            archive/'verification-revision.json')
         self.assertEqual(hashlib.sha256(read('cohort.json')).hexdigest(),proof['cohort_sha256'])
         cohort=load('cohort.json')
         self.assertTrue(cohort['complete'] and cohort['passed'])
@@ -103,14 +105,15 @@ class NamespaceEvidence(unittest.TestCase):
         self.assertEqual(sum(call['source_actions'] for call in observed['calls']),13)
         for call in observed['calls']:
             self.assertTrue(call['private_buffers_erased'])
-            self.assertEqual(call['admission_stack_erased'],4096)
             if call['source_actions']==0:
+                self.assertIsNone(call['admission_stack_erased'])
                 self.assertEqual(call['first_status_reads'],0)
                 self.assertTrue(call['complete_owner_preserved'] and call['history_preserved'])
             else:
+                self.assertEqual(call['admission_stack_erased'],4096)
                 self.assertGreater(call['first_status_reads'],0)
-        for index,operation in enumerate(('link','linkat','move','replace','exchange'),1):
-            failed=load('c'+str(index)+'/clock-observation.json')
+        for clock_index,operation in enumerate(('link','linkat','move','replace','exchange'),1):
+            failed=load('c'+str(clock_index)+'/clock-observation.json')
             self.assertTrue(failed['all_bound_native_code_and_data_verified'])
             self.assertTrue(failed['kernel_state_injections'])
             self.assertEqual(len(failed['calls']),1)

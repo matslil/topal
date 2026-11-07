@@ -11,6 +11,11 @@ BASE, SIZE, OBJECTS, PAGES, BUFFER = 0x43000, 0x9000, 256, 1024, 4096
 def install(config):
     page_map_offset = config.get('page_map_offset')
     assert page_map_offset in (None, 24)
+    namespace_profile=config.get('namespace_entries')
+    if namespace_profile is not None:
+        import namespace_file_store_checks
+        namespace_file_store_checks.validate_profile(namespace_profile,
+            config['namespace_store_checker_sha256'])
     records = []
     previous = None
     corrupted = False
@@ -25,6 +30,19 @@ def install(config):
 
     def inspect_store():
         store = memory(table + BASE, SIZE)
+        if namespace_profile is not None:
+            descriptions={}
+            for bank in (320,0x3d000):
+                for offset in range(0,1024,64):
+                    data=memory(table+bank+offset,64)
+                    if word(data,0)!=7: continue
+                    identity=word(data,32)
+                    assert 1<=word(data,8)<=32 and word(data,24)<1<<63
+                    descriptions[identity]=descriptions.get(identity,0)+1
+            objects,associations=namespace_file_store_checks.inspect(store,descriptions,page_map_offset)
+            assert not any(memory(table+1408,256)), 'retained transfer staging'
+            assert not any(memory(table+4096,4096)), 'retained copied name'
+            return store,objects,associations
         assert word(store, 0) >= 7
         assert not any(store[8:24])
         if page_map_offset is None: assert not any(store[24:32])

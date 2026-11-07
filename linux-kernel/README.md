@@ -11,23 +11,24 @@ kernel. Other architectures inform the abstraction of new Topal elements, but
 they do not receive code generation, a boot target, or conformance commitments
 in this phase.
 
-The latest Step 4 maintenance [restores reviewable systems implementation
+The preceding Step 4 maintenance [restores reviewable systems implementation
 files](step-4-modular-systems-implementation.md). The unchanged source-size ceiling,
 complete workspace checks and an independently compared primary VM pass; kernel
 interfaces and capabilities retain their preceding scope.
 
 The current functional Step 4 increment executes
-[shared inode mode actions](step-4-shared-inode-modes.md): all four chmod-family
-adapters lend actual regular/directory/pipe metadata to ordinary Topal source.
-Pinned Linux comparisons and complete affected qualification pass: 2305 Rust
-tests, 176 Topal VM observations, 45 unchanged BusyBox workloads and 43 lab
-contracts. The original distribution/container/VM-host goal is unfinished.
+[shared namespace transactions](step-4-shared-namespace-transactions.md): five
+rename/link adapters use ordinary Topal source on the actual metadata owner,
+with independent entry/inode slots, shared aliases and retained-open replacement
+lifetime. Complete affected qualification passes 2349 Rust tests, 230 Topal VM
+observations, 51 unchanged BusyBox workloads and 45 lab contracts, including
+post-publication reconstruction checks. External BusyBox inputs remain outside
+Git. The original distribution/container/VM-host goal is unfinished.
 
-The next [shared namespace increment](step-4-shared-namespace-transactions.md)
-separates directory entries from regular inodes and models hard links and
-rename/replacement/exchange, including retained-open lifetime and independent
-capacity. Its source/native adapters and machine qualification remain staged
-work; the current executed native checkpoint remains the inode-mode increment.
+The preceding [shared inode mode increment](step-4-shared-inode-modes.md)
+introduced all four chmod-family actions. Current V6 consumer qualification
+additionally checks canonical shared-entry metadata and loan exclusion while
+retaining earlier profile behavior.
 
 An earlier functional Step 4 increment adds
 [independent ordinary region instances](step-4-instance-scoped-region-actions.md):
