@@ -14,6 +14,7 @@ records, not this directory alone, define language meaning.
 - [Linux-to-Topal mapping](linux-to-topal-mapping.md)
 - [Decision register](decision-register.md)
 - [Owned retained source identity state](retained-source-identity-state.md)
+- [Repeated ordinary source traversal](repeated-source-tail-traversal.md)
 - [Initial x86-64 Linux boot adapter contract](x86-boot-adapter.md)
 - [Bootstrap-region source and provider contract](bootstrap-region.md)
 - [Portable boot-memory description contract](boot-memory-description.md)

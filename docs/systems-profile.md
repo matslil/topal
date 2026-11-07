@@ -2032,6 +2032,16 @@ scheduler, filesystem, or userspace service.
 
 ## Qualification
 
+A further freestanding qualification may execute checked ordinary tail
+traversal with runtime-derived work and bounded live temporary storage.
+Ordinary termination, arbitrary-precision values, effect order and ownership
+remain unchanged. A closed source plan must bind every back edge and helper;
+publication separately proves carried-value bounds, storage transfer, retirement,
+native stack and cleanup. Recycling storage requires all retiring dependencies
+to be dead while preserving every still-live value and borrowed capability.
+The initial source-plan inspector grants no executable profile and does not
+relax the existing acyclic source qualifiers. See the kernel's `TK-DEC-282`.
+
 Each systems element requires:
 
 1. architecture-independent semantic and negative tests;

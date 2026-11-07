@@ -7,6 +7,12 @@ Linux kernel for distribution, Docker/Podman or VM-host qualification.
 The approved implementation target remains x86-64. Other architectures inform
 systems abstractions; ARM64 implementation is outside the current focus.
 
+The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
+a source-only tail-plan inspector and an ordinary byte-traversal source.
+All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,
+native execution and real allocator integration remain its subsequent stages;
+this does not add an executed kernel capability.
+
 ## Current executed capabilities
 
 Shared regular names now support hard links and rename/replacement/exchange

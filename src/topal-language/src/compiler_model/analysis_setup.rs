@@ -731,8 +731,16 @@ fn analyze_for_compiler_options(
         }
         match entry {
             KernelRegionSelection::Entry(entry, profile) => {
-                analyzer.instantiate_kernel_region_entry(entry, *profile)?
+                analyzer.instantiate_kernel_region_entry(entry, *profile, false)?
             }
+            KernelRegionSelection::TailSource(entry, scalar_count) => analyzer
+                .instantiate_kernel_region_entry(
+                    entry,
+                    CompilerKernelRegionProfile::FramedAction {
+                        scalar_count: *scalar_count,
+                    },
+                    true,
+                )?,
             KernelRegionSelection::Modules(exports) => {
                 for export in *exports {
                     analyzer.instantiate_kernel_region_module(export)?;

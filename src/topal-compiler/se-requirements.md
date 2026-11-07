@@ -12382,3 +12382,15 @@ Bind nested lookup and complete caller/retired-stack costs. Reclaim abandoned
 admission helpers before recoverable or no-op returns using only the trusted
 captured entry frame; an unverified address must not authorize stack erasure.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-PLAN-001 — Checked tail-source plan
+
+Implement `TOPAL-SYSTEMS-TAIL-PLAN-001` as source-only inspection of the shared
+checked program. Bind source/dependencies, the exact entry/countdown guard,
+every direct tail decrement, invariant optional region input, complete acyclic
+helper graph and owner effects. Reject incomplete graphs, hidden/foreign
+authority, unsupported forms and unproved recursive edges. Preserve evaluation
+order and mark the result as insufficient for native emission. Publication
+shall separately satisfy `TOPAL-SYSTEMS-TAIL-REUSE-001`; existing freestanding
+profile refusal and source limits remain unchanged. See
+[TK-DEC-282](../../linux-kernel/design/repeated-source-tail-traversal.md).

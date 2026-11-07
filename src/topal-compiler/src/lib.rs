@@ -25,6 +25,7 @@ mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
 mod systems_root_region_boot;
+mod systems_tail_plan;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
 pub use systems_provider_object::inode_region::{
     SystemsInodeNamespaceAdmission, SystemsInodeRegionBinding,
@@ -44,6 +45,10 @@ pub use systems_region_library::{
     inspect_systems_region_read_only_data, verify_systems_region_action_library,
     verify_systems_region_framed_action_library, verify_systems_region_instance_library,
     verify_systems_region_library,
+};
+pub use systems_tail_plan::{
+    SystemsTailDependency, SystemsTailEdge, SystemsTailFunction, SystemsTailTraversalPlan,
+    analyze_systems_tail_traversal,
 };
 mod systems_pipeline;
 mod systems_provider;

@@ -10340,3 +10340,72 @@ stale/overlapping binding refusals, without enlarging existing owner extents or
 loans, independent source/native components, pinned Linux and physical GDB/QMP
 evidence, including replacement/exchange, aliases, exhaustion, false-after-store,
 cleanup, active/inactive lifetime and unmodified mv/ln workloads.
+
+### TOPAL-SYSTEMS-TAIL-PLAN-001 — Source-only natural tail traversal
+
+An initial tail-source inspector SHALL consume a shared checked program and
+one selected entry identity. It SHALL bind complete source/dependency bytes,
+parameter classifiers, the exact guard, every back edge and positive decrement,
+complete direct helper graph and inferred owner reads/writes. It SHALL NOT
+attest source origin for externally constructed IR or grant native emission.
+
+The entry SHALL have an ordinary ordered decision on one Nat parameter with
+exactly one `<= b` rule and an otherwise action, where `b` is a nonnegative
+integer literal. Base actions and earlier bindings SHALL contain no recursive
+edge. Each recursive edge SHALL be a direct self call in tail position within
+the otherwise action, preserve argument arity/classifiers, and pass that measure
+as the ordinary checked Int-to-Nat adaptation of `measure - d`, for a literal
+`0 < d <= b + 1`. Every optional region parameter SHALL be passed unchanged.
+Existing Nat-to-Int widening SHALL remain legal in checked call transport;
+inspection SHALL NOT invent an unchecked Int-to-Nat narrowing.
+Bindings and decision payloads SHALL NOT shadow the measure or invariant region
+parameter's storage identity. Display names alone SHALL NOT establish identity.
+Selected source SHALL have at most one region parameter per function and
+scalar Nat/Int/Boolean parameters, scalar or Unit results, ordinary numeric/
+Boolean bindings/decisions and checked region count/load/store operations.
+The initial inspector SHALL reject view/window construction and resource escape.
+
+Every helper SHALL be resolved, reachable, acyclic and free of foreign code,
+hidden captures or re-entry into the selected recursive function. The inspector
+SHALL examine every branch and argument in source order, including unselected
+branches. Its discovery limits SHALL be 64 functions, 16 scalar parameters per
+function, 16384 expression visits and 128 nested expression visits. Exceeding
+one SHALL be a diagnostic, never permission to skip a branch or assume a proof.
+The scalar budget SHALL count lowered fields, without enlarging the existing
+core syntactic operand limit. Additional source state SHALL use ordinary
+packages. Initial and recursive symbolic selection SHALL retain the same field
+order and overload identity, using existing checked termination/Nat evidence.
+These are systems inspection limits, not core recursion or function limits.
+
+Strict natural descent SHALL establish termination of the selected cycle.
+For initial measure `m`, minimum decrement `d` and bound `b`, the back-edge
+upper bound SHALL be zero for `m <= b` and `ceil((m-b)/d)` otherwise. Complete
+resource reasoning SHALL additionally charge the terminal step and all actual
+argument/helper evaluations; a decreasing measure alone SHALL NOT bound live
+storage, arithmetic widths, stack use or authority issuance.
+
+### TOPAL-SYSTEMS-TAIL-REUSE-001 — Separate executable reuse qualification
+
+A source-tail plan SHALL NOT relax existing freestanding source profiles or
+authorize emitting their recursive code. New executable qualification SHALL
+rebuild the plan from exact frontend inputs and separately prove complete
+carried-value ranges, effects, representations, transfer-root closure, helper/
+checkpoint stack cost, total identity issuance and simultaneous live storage.
+Initial x86-64 execution SHALL retain 65536 temporary bytes and 4096 stack bytes.
+Transfer banks, pinned values/control, source work area and checkpoint storage
+SHALL all be included in those complete bounds.
+
+Each reused extent SHALL have no remaining live dependency when erased.
+Complete next-state transfer SHALL precede retirement. Still-live caller values,
+borrowed owner/code bindings, logical lifetimes and nonwrapping fresh identities
+SHALL remain valid. Input evaluation and persistent effects SHALL retain source
+order. Pre-entry refusal SHALL preserve complete owner/history state. Failure
+after persistent stores SHALL preserve those stores, reclaim all temporary
+domains and reach the existing fatal boundary before owner resumption.
+
+Publication SHALL bind exact source, native code/data, runtime/checkpoint,
+resource certificates, calling convention and cleanup. Actual guarded native
+and physical owner/erasure/refusal/fatal evidence SHALL be required. A loop,
+tail-call optimization, runtime counter or observed high-water mark SHALL NOT
+substitute for these proofs. Target register, pointer, frame and ordering details
+SHALL remain provider-private; x86-64 evidence SHALL NOT qualify another target.

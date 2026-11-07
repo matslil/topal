@@ -1940,3 +1940,15 @@ target-independent and target-dependent transformations only where LLVM's
 semantics match Topal's proved facts, and record the disposition of applicable
 LLVM facilities. A deferred or deliberately unused facility shall have a
 documented reason.
+
+## TOPAL-REQ-SYSTEMS-TAIL-TRAVERSAL-001 — Repeated ordinary kernel work
+
+Freestanding qualification of repeated ordinary source work shall preserve
+checked termination, exact values, ordered effects and ownership. It shall
+separate closed tail-structure analysis from complete carried-value, allocation,
+stack, lifetime, native-binding and physical-cleanup evidence. Storage reuse
+shall preserve every still-live dependency and revoke retiring authority before
+owner resumption. A source-only plan shall grant no executable qualification.
+Initial x86-64 implementation shall retain existing memory reserves and legacy
+profile behavior; architecture-neutral obligations shall consider AArch64 and
+RISC-V. See `TK-DEC-282`.

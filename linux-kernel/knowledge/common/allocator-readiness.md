@@ -86,3 +86,10 @@ reproduces and corrects same-label authority, identity-exhaustion mutation,
 unchecked extent endpoints and malformed normalized-range admission. Its
 independent fragmented-allocation oracle and complete semantics suite validate
 the existing portable contract. Native general allocation remains required.
+
+[TK-DEC-282](../../step-4-repeated-source-tail-traversal.md) now supplies the
+source-plan stage for repeated ordinary work: exact natural progress, invariant
+region transport, closed helpers and input/effect binding. The
+[transfer inventory](tail-transfer-readiness.md) identifies actual representation,
+authority and resource obligations for the next executable stage. No new native
+profile is admitted by that source analysis.

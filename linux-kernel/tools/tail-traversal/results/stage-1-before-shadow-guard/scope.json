@@ -1,0 +1,7 @@
+{
+  "scope": "historical source-plan validation before the explicit parameter-shadow guard",
+  "current_qualification": false,
+  "result": "All recorded commands passed on the earlier inputs; later review required an additional storage-identity guard and regression tests.",
+  "provenance_limit": "This preliminary record retains exact input hashes and complete command logs but did not snapshot all source bytes. It is not a complete frozen-source or native qualification.",
+  "replacement": "../stage-1/qualification.json"
+}

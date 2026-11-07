@@ -21,6 +21,7 @@ pub const MAX_KERNEL_REGION_FRAME_SCALARS: u8 = 16;
 
 enum KernelRegionSelection<'a> {
     Entry(&'a str, CompilerKernelRegionProfile),
+    TailSource(&'a str, u8),
     Modules(&'a [CompilerKernelRegionModuleExport]),
 }
 
@@ -104,6 +105,41 @@ fn analyze_kernel_region_profile(
         ));
     }
     kernel_region_function_effects(&program)?;
+    Ok(program)
+}
+
+/// Shared ordinary source analysis for a future tail-traversal qualification.
+/// This selects symbolic entry types only: it deliberately grants no live view,
+/// acyclic profile certificate, native object or artifact-publication permission.
+/// The separate systems tail inspector must establish its complete shape proof;
+/// existing executable entry points retain their original qualification path.
+pub fn analyze_kernel_region_tail_source(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+    scalar_count: u8,
+) -> Result<CompilerProgram, Diagnostic> {
+    if scalar_count > MAX_KERNEL_REGION_FRAME_SCALARS {
+        return Err(Diagnostic::error(
+            "E-SYSTEMS-TAIL-SOURCE",
+            1,
+            1,
+            "tail source admits at most sixteen Nat inputs",
+        ));
+    }
+    let selection = KernelRegionSelection::TailSource(entry, scalar_count);
+    let program = analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
+    if !crate::published_function_names(text)
+        .iter()
+        .any(|name| canonically_equal(name, entry))
+    {
+        return Err(Diagnostic::error(
+            "E-SYSTEMS-TAIL-SOURCE",
+            1,
+            1,
+            "tail source needs a published entry",
+        ));
+    }
     Ok(program)
 }
 
@@ -295,6 +331,7 @@ impl Analyzer {
         &mut self,
         entry: &str,
         profile: CompilerKernelRegionProfile,
+        normalize_tail_source: bool,
     ) -> Result<(), Diagnostic> {
         let matches = self
             .functions
@@ -386,6 +423,17 @@ impl Analyzer {
             || self.parse_classifier(declaration.result)? != result
         {
             return Err(unsupported(&self.source, declaration.span, &signature));
+        }
+        if normalize_tail_source {
+            // The ordinary packaged operands already lower to these ordered
+            // fields. Recursive lookup must see that same declaration shape
+            // as initial symbolic entry, so the existing overload identity and
+            // checked Decreases/Nat adaptation refer to one function. This is
+            // local to the source-only selector; native qualifiers never set it.
+            *self
+                .functions
+                .get_mut(&name)
+                .expect("selected declaration exists") = vec![declaration.clone()];
         }
         let arguments = declaration
             .parameters
