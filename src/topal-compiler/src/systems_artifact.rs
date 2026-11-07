@@ -266,8 +266,8 @@ use crate::{
     X86_SYSTEMS_USER_SYSCALL_SYMBOL, generate_x86_64_systems_provider_object,
 };
 
-pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/253";
-pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/239";
+pub const X86_SYSTEMS_ARTIFACT_REVISION: &str = "topal.systems-artifact.x86_64-qemu-pc-q35/255";
+pub const X86_SYSTEMS_ROOT_OBJECT_REVISION: &str = "topal.systems-root-object.x86_64/241";
 pub const X86_SYSTEMS_ROOT_TEXT_SECTION: &str = ".text.topal.systems.root";
 pub const X86_SYSTEMS_KERNEL_ENTRY: &str = "_topal_kernel_entry";
 pub const X86_SYSTEMS_DEBUG_BREAK_ENTRY: &str = "topal_x86_systems_debug_break_entry";
@@ -1028,6 +1028,9 @@ fn publish_in_stage(
             crate::systems_provider_object::inode_region::inspect_linked(
                 &linked.kernel,
                 &inode.record,
+                program.dispatch_library.as_ref().is_some_and(|library|
+                    library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+                ),
             )
         })
         .transpose()?;
@@ -1037,6 +1040,9 @@ fn publish_in_stage(
             crate::systems_provider_object::namespace_region::inspect_linked(
                 &linked.kernel,
                 &namespace.record,
+                program.dispatch_library.as_ref().is_some_and(|library|
+                    library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+                ),
             )
         })
         .transpose()?;

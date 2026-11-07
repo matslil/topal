@@ -10,6 +10,7 @@ pub(crate) enum NumericPolicy {
     LinuxDispatchV3,
     LinuxDispatchV4,
     LinuxDispatchV5,
+    LinuxDispatchV6,
     ProcessIdentity,
     RetainedIdentity,
     StructuredIdentity,
@@ -30,6 +31,9 @@ impl NumericPolicy {
             }
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5 => {
                 Ok(Self::LinuxDispatchV5)
+            }
+            CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6 => {
+                Ok(Self::LinuxDispatchV6)
             }
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3 => {
                 Ok(Self::LinuxDispatchV3)
@@ -54,6 +58,7 @@ impl NumericPolicy {
                 | Self::LinuxDispatchV3
                 | Self::LinuxDispatchV4
                 | Self::LinuxDispatchV5
+                | Self::LinuxDispatchV6
         )
     }
     pub(crate) fn dispatch_choices(self) -> &'static [(&'static str, u64)] {
@@ -63,6 +68,7 @@ impl NumericPolicy {
             Self::LinuxDispatchV3 => &super::dispatch_choices::DISPATCH_V3_CHOICES,
             Self::LinuxDispatchV4 => &super::dispatch_choices::DISPATCH_V4_CHOICES,
             Self::LinuxDispatchV5 => &super::dispatch_choices::DISPATCH_V5_CHOICES,
+            Self::LinuxDispatchV6 => &super::dispatch_choices::DISPATCH_V6_CHOICES,
             _ => &[],
         }
     }
@@ -75,6 +81,7 @@ impl NumericPolicy {
             Self::LinuxDispatchV3 => "topal_kernel_static_linux_dispatch_policy_v3",
             Self::LinuxDispatchV4 => "topal_kernel_static_linux_dispatch_policy_v4",
             Self::LinuxDispatchV5 => "topal_kernel_static_linux_dispatch_policy_v5",
+            Self::LinuxDispatchV6 => "topal_kernel_static_linux_dispatch_policy_v6",
             Self::ProcessIdentity => "topal_kernel_process_identity_transition_v1",
             Self::RetainedIdentity => "topal_kernel_retained_process_identity_policy_v1",
             Self::StructuredIdentity => "topal_kernel_structured_process_identity_policy_v1",
@@ -88,7 +95,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => "topal.dispatch.",
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => "topal.dispatch.",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "topal.identity."
             }
@@ -102,7 +110,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => "dispatch-library",
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => "dispatch-library",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "process-identity-library"
             }
@@ -131,7 +140,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => {
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => {
                 vec![CompilerType::Nat]
             }
             Self::ProcessIdentity | Self::RetainedIdentity => vec![CompilerType::Record(vec![(
@@ -151,7 +161,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => false,
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => false,
             Self::ProcessIdentity | Self::RetainedIdentity => {
                 if let CompilerType::Record(fields) = result {
                     fields.len() == 2
@@ -208,7 +219,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => {
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => {
                 "dispatch interface requires nominal StaticLinuxOperation with the exact semantic vocabulary"
             }
         }))
@@ -231,7 +243,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => "topal.syscall.",
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => "topal.syscall.",
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => {
                 "topal.pid."
             }
@@ -267,7 +280,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => {
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => {
                 vec![range(0, u64::MAX)]
             }
             Self::ProcessIdentity | Self::RetainedIdentity => vec![Value::Record(BTreeMap::from(
@@ -284,7 +298,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => 24,
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => 24,
             Self::ProcessIdentity | Self::RetainedIdentity => 24,
         }
     }
@@ -299,7 +314,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => 64,
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => 64,
             Self::ProcessIdentity | Self::RetainedIdentity | Self::StructuredIdentity => 64,
         }
     }
@@ -326,7 +342,8 @@ impl NumericPolicy {
             | Self::LinuxDispatchV2
             | Self::LinuxDispatchV3
             | Self::LinuxDispatchV4
-            | Self::LinuxDispatchV5 => {
+            | Self::LinuxDispatchV5
+            | Self::LinuxDispatchV6 => {
                 format!("\nselector : Nat is 0\n{export} selector\n")
             }
             Self::ProcessIdentity | Self::RetainedIdentity => format!(

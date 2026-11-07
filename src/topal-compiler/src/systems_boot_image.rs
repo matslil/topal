@@ -312,6 +312,10 @@ fn validate_artifact_input(
         != crate::systems_provider_object::volatile_file_profile(
             artifact.ram_page_pool_library.is_some(),
             artifact.inode_mode_library.is_some(),
+            artifact
+                .dispatch_library
+                .as_ref()
+                .is_some_and(|library| library.interface == "static-linux-dispatch-v6"),
         )
     {
         return Err(CompileError::Tool(
@@ -405,6 +409,16 @@ fn validate_artifact_input(
         ));
     }
     crate::systems_root_region_boot::validate(kernel, artifact)?;
+    if artifact
+        .dispatch_library
+        .as_ref()
+        .is_some_and(|library| library.interface == "static-linux-dispatch-v6")
+        && artifact.namespace_runtime.is_none()
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-NAMESPACE: v6 dispatch requires its actual namespace action binding".into(),
+        ));
+    }
     crate::systems_region_library::validate_instance_namespaces(
         kernel,
         &[
@@ -471,6 +485,9 @@ fn validate_artifact_input(
         "static-linux-dispatch-v5" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
         }
+        "static-linux-dispatch-v6" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6
+        }
         "static-linux-dispatch-v3" => {
             crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
         }
@@ -482,6 +499,7 @@ fn validate_artifact_input(
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4,
         crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
     ]
     .into_iter()
     .any(|policy| {

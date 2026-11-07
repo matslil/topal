@@ -3,8 +3,20 @@
 use super::R::_Bp as Bp;
 #[path = "systems_namespace_named.rs"]
 mod named;
+#[path = "systems_namespace_transactions_native.rs"]
+mod transactions;
 #[path = "systems_namespace_walk.rs"]
 mod walk;
+#[cfg(test)]
+pub(in super::super) fn walk_component_object(
+    namespace_entries: bool,
+) -> Result<Vec<u8>, CompileError> {
+    walk::component_object(namespace_entries)
+}
+#[cfg(test)]
+pub(in super::super) fn final_component_object() -> Result<Vec<u8>, CompileError> {
+    transactions::final_component_object()
+}
 use super::file_descriptions::{DESCRIPTIONS, SLOTS, STAGING, TABLE_CONTEXT, wipe_staging};
 use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysret};
 
@@ -25,6 +37,7 @@ const _: () = {
 pub(in super::super) fn emit_dispatch(
     code: &mut X86FunctionEncoder,
     file_open_plan: bool,
+    namespace_entries: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     e.gs(0x8b, R11, TABLE_CONTEXT);
@@ -45,6 +58,18 @@ pub(in super::super) fn emit_dispatch(
     }
     if file_open_plan {
         for (number, label) in [(87, "namespace-unlink"), (263, "namespace-unlinkat")] {
+            e.cmp(A, number);
+            e.0.jump_if(0x84, label);
+        }
+    }
+    if namespace_entries {
+        for (number, label) in [
+            (82, "namespace-rename"),
+            (86, "namespace-link"),
+            (264, "namespace-renameat"),
+            (265, "namespace-linkat"),
+            (316, "namespace-renameat2"),
+        ] {
             e.cmp(A, number);
             e.0.jump_if(0x84, label);
         }
@@ -424,16 +449,20 @@ pub(in super::super) fn emit_services(
     code: &mut X86FunctionEncoder,
     source_bound: bool,
     file_open_plan: bool,
+    namespace_entries: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
-    walk::emit(&mut e, true)?;
+    walk::emit(&mut e, true, namespace_entries)?;
     emit_open(&mut e, source_bound, file_open_plan)?;
     emit_metadata(&mut e)?;
     emit_cwd(&mut e)?;
     // Directory encoding is emitted by its separate, narrowly scoped helper.
     emit_directory(&mut e)?;
-    named::emit_services(&mut e)?;
-    for (name, errno) in [
+    named::emit_services(&mut e, namespace_entries)?;
+    if namespace_entries {
+        transactions::emit(&mut e)?;
+    }
+    let mut errors = vec![
         ("namespace-efault", 14),
         ("namespace-enoent", 2),
         ("namespace-eexist", 17),
@@ -448,9 +477,20 @@ pub(in super::super) fn emit_services(
         ("namespace-eio", 5),
         ("namespace-einval", 22),
         ("namespace-erange", 34),
-    ] {
+    ];
+    if namespace_entries {
+        errors.extend([
+            ("namespace-exdev", 18),
+            ("namespace-ebusy", 16),
+            ("namespace-eperm", 1),
+        ]);
+    }
+    for (name, errno) in errors {
         e.0.bind(name)?;
         table(&mut e);
+        if namespace_entries {
+            transactions::retire_admission(&mut e);
+        }
         named::wipe_directory(&mut e);
         finish(&mut e, -errno);
     }

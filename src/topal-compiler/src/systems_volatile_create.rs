@@ -9,6 +9,7 @@ use super::*;
 pub(super) fn emit(
     code: &mut X86FunctionEncoder,
     file_open_plan: bool,
+    namespace_entries: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // R14 is a lowest-free descriptor; R15 is the checked directory identity.
@@ -49,6 +50,20 @@ pub(super) fn emit(
         e.0.jump_if(0x84, "fatal");
         e.0.bind("file-create-common")?;
     }
+    if namespace_entries {
+        e.0.call("file-entry-table-check");
+        if file_open_plan {
+            e.load(A, R12, namespace::LENGTH);
+            e.cmp(A, 0);
+            e.0.jump_if(0x84, "file-create-entry-budget-ready");
+            e.0.call("file-entry-free");
+            e.0.jump_if(0x82, "namespace-enospc");
+            // Private pre-admission staging, erased on every error/success.
+            // RTC owns transfer staging but leaves this directory area intact.
+            e.store(R12, DIRECTORY_STAGING, R11);
+            e.0.bind("file-create-entry-budget-ready")?;
+        }
+    }
     e.mov(R13, R12);
     e.add(R13, OBJECTS);
     e.imm(C, 4);
@@ -67,11 +82,13 @@ pub(super) fn emit(
     e.imm(C, 128 / 8);
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
     e.0.jump_if(0x85, "fatal");
-    name_pointer(&mut e, Di, R13);
-    e.imm(A, 0);
-    e.imm(C, 32);
-    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
-    e.0.jump_if(0x85, "fatal");
+    if !namespace_entries {
+        name_pointer(&mut e, Di, R13);
+        e.imm(A, 0);
+        e.imm(C, 32);
+        e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.load(R8, R12, BASE);
     e.cmp(R8, 7);
     e.0.jump_if(0x82, "fatal");
@@ -121,10 +138,23 @@ pub(super) fn emit(
     e.mov(R15, A);
     e.cmp(D, 0);
     e.0.jump_if(0x84, "file-create-name-ready");
-    name_pointer(&mut e, Di, R13);
+    if namespace_entries {
+        e.load(A, R12, DIRECTORY_STAGING);
+        e.mov(Di, A);
+        shift(&mut e, Di, true, 4);
+        e.rr(0x01, Di, R12);
+        e.add(Di, entries::ENTRIES);
+        e.store(Di, 0, R8);
+        e.store(Di, 8, D);
+        entries::name_pointer(&mut e, Di, A);
+    } else {
+        name_pointer(&mut e, Di, R13);
+    }
     e.mov(C, D);
     e.0.bytes(&[0xfc, 0xf3, 0xa4]);
-    e.store(R13, 72, D);
+    if !namespace_entries {
+        e.store(R13, 72, D);
+    }
     e.imm(A, 1);
     e.store(R13, 56, A);
     e.store(R12, DIRECTORY_METADATA + 16, R15);
@@ -146,8 +176,18 @@ pub(super) fn emit(
     e.mov(A, Bp);
     shift(&mut e, A, false, 7);
     e.arith(4, A, 1);
+    if namespace_entries {
+        e.arith(6, A, 1);
+    }
     e.0.bind("file-create-link-intent-ready")?;
     e.store(R13, 64, A);
+    if namespace_entries {
+        // The object is now complete, including link intent. Reuse no entry
+        // slot as an inode slot, and retire the private reservation fact.
+        e.mov(Di, R12);
+        e.add(Di, DIRECTORY_STAGING);
+        erase(&mut e, Di, 512);
+    }
     e.imm(A, KIND as u64);
     e.store(R10, 0, A);
     e.imm(A, 1);

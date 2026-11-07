@@ -23,6 +23,7 @@ fn program() -> CompilerSystemsProgram {
     program.file_position_library = None;
     program.ram_page_pool_library = None;
     program.inode_mode_library = None;
+    program.namespace_library = None;
     program
         .bootstrap
         .handler

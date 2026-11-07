@@ -298,6 +298,94 @@ fn inputs(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
+fn metadata(e: &mut E<'_>) -> Result<(), CompileError> {
+    e.load(A, R8, 0);
+    e.cmp(A, 7);
+    e.0.jump_if(0x82, "refuse");
+    e.load(A, R8, 32);
+    e.arith(4, A, !0o7777);
+    e.cmp(A, 0o40000);
+    e.0.jump_if(0x85, "refuse");
+    for (start, bytes) in [
+        (8, 16),
+        (128, 128),
+        (768, 256),
+        (1280, 256),
+        (2560, 512),
+        (3584, 512),
+    ] {
+        zero(e, start, bytes)?;
+    }
+    objects(e)?;
+    names(e)?;
+    pages(e)?;
+    Ok(())
+}
+
+/// Read-only byte consistency, not an owner/loan/credential grant. The directory
+/// staging is private to the current exclusive operation and may contain its
+/// pre-admission facts. The action's separate input checks still apply at entry.
+/// DI metadata, A Boolean; preserve all other GPRs and SIMD. Leaf stack: 72.
+pub(super) fn metadata_validator() -> Result<Code, CompileError> {
+    let mut code = Code::default();
+    let mut e = E(&mut code.encoder);
+    let saved = [
+        (C, 2),
+        (D, 1),
+        (Si, 4),
+        (Di, 5),
+        (R8, 8),
+        (R9, 9),
+        (R10, 10),
+        (R11, 11),
+    ];
+    for (index, (register, dwarf)) in saved.iter().enumerate() {
+        let n = *register as u8;
+        if n >= 8 {
+            e.0.bytes(&[0x41]);
+        }
+        e.0.bytes(&[0x50 | (n & 7)]);
+        code.unwind.push((
+            e.0.bytes.len() as u32,
+            vec![0x0e, 16 + index as u8 * 8, 0x80 | dwarf, index as u8 + 2],
+        ));
+    }
+    e.mov(R8, Di);
+    metadata(&mut e)?;
+    e.imm(A, 1);
+    e.0.jump("metadata-return");
+    e.0.bind("refuse")?;
+    e.imm(A, 0);
+    e.0.bind("metadata-return")?;
+    for (index, (register, dwarf)) in saved.iter().rev().enumerate() {
+        let n = *register as u8;
+        if n >= 8 {
+            e.0.bytes(&[0x41]);
+        }
+        e.0.bytes(&[0x58 | (n & 7)]);
+        code.unwind.push((
+            e.0.bytes.len() as u32,
+            vec![0x0e, 64 - index as u8 * 8, 0x08, *dwarf],
+        ));
+    }
+    // Preserve the Boolean and restored caller registers while retiring every
+    // popped spill. The caller still owns the live return-address word.
+    for offset in (-64..0).step_by(8) {
+        e.mem(0xc7, A, R::_Sp, offset);
+        e.0.bytes(&[0; 4]);
+    }
+    for offset in (-64..0).step_by(8) {
+        e.mem(0x81, Di, R::_Sp, offset);
+        e.0.bytes(&[0; 4]);
+        e.0.jump_if(0x85, "metadata-erasure-failed");
+    }
+    e.0.bytes(&[0xc3]);
+    e.0.bind("metadata-erasure-failed")?;
+    e.imm(A, 0);
+    e.0.bytes(&[0xc3]);
+    Ok(code)
+}
+
 /// DI readable admitted metadata page, SI operation, D clock. Returns Boolean;
 /// prepares only the private EXPECTED page, never writes to owner storage.
 pub(super) fn prepare() -> Result<Code, CompileError> {
@@ -314,26 +402,7 @@ pub(super) fn prepare() -> Result<Code, CompileError> {
     e.0.jump_if(0x85, "refuse"); // A nested preparation cannot erase a live oracle.
     e.cmp(R10, 3);
     e.0.jump_if(0x87, "refuse");
-    e.load(A, R8, 0);
-    e.cmp(A, 7);
-    e.0.jump_if(0x82, "refuse");
-    e.load(A, R8, 32);
-    e.arith(4, A, !0o7777);
-    e.cmp(A, 0o40000);
-    e.0.jump_if(0x85, "refuse");
-    for (start, bytes) in [
-        (8, 16),
-        (128, 128),
-        (768, 256),
-        (1280, 256),
-        (2560, 512),
-        (3584, 512),
-    ] {
-        zero(&mut e, start, bytes)?;
-    }
-    objects(&mut e)?;
-    names(&mut e)?;
-    pages(&mut e)?;
+    metadata(&mut e)?;
     inputs(&mut e)?;
     e.mov(Si, R8);
     e.mov(Di, R9);

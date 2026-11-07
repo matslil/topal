@@ -20,6 +20,7 @@ def install(config):
     library = artifact['namespace_library']
     geometry = artifact['namespace_runtime']
     binding = geometry['invocation']
+    retirement = geometry.get('admission_retirement')
     mode = config.get('mode', 'normal')
     current = None
     completed = []
@@ -124,6 +125,9 @@ def install(config):
         # recovery additionally clears the abandoned caller return-address word.
         count = 4096 + (184 if fatal else 176)
         zero(current['frame'] - 4096, count)
+        if fatal and retirement:
+            zero(current['entry_stack'] - retirement['retired_stack_bytes'], retirement['retired_stack_bytes'])
+            zero(current['entry_stack'] - retirement['owning_adapter_frame_bytes'], retirement['owning_adapter_frame_bytes'])
         expected_generation = current['old_generation'] + int(current['source_entries'] != 0)
         assert words(history, 1)[0] == expected_generation
         assert save_owner('completed') == cleaned_expected(), 'persistent bytes rolled back or changed during cleanup'
@@ -136,12 +140,17 @@ def install(config):
         (output / 'observation.json').write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
 
     def summary():
-        return dict(operation=current['operation'], seconds=current['seconds'],
+        result = dict(operation=current['operation'], seconds=current['seconds'],
             generation=words(history, 1)[0], source_entries=current['source_entries'],
             source_result=current.get('source_result'), source_stores=len(current['stores']),
             frame=current['frame'], recovery_before_abort=current.get('recovery_before_abort'),
             erased_private=[(s['symbol'], s['bytes']) for s in private],
             stack_erased=4096 + (184 if mode != 'normal' else 176), staging_erased=512)
+        if retirement and mode != 'normal':
+            result['admission_stack_erased'] = dict(start=current['entry_stack'] - retirement['retired_stack_bytes'],
+                bytes=retirement['retired_stack_bytes'], owning_frame_bytes=retirement['owning_adapter_frame_bytes'],
+                owning_frame_witness='0xbadc0ffee0ddf00d -> zero')
+        return result
 
     def enter_case(ordinal, return_pc, caller_stack):
         nonlocal current
@@ -168,6 +177,15 @@ def install(config):
             frame=frame, stack=stack, caller_stack=caller_stack, return_pc=return_pc,
             old_generation=words(history, 1)[0], source_entries=0, stores=[],
             registers=[reg(r) for r in registers], vectors=vectors())
+        if retirement:
+            entry_stack = words(reg('gs_base') + retirement['kernel_stack_context_offset'], 1)[0]
+            assert retirement['minimum_stack_pointer'] <= entry_stack <= retirement['maximum_stack_pointer']
+            assert entry_stack % retirement['stack_alignment'] == 0
+            current['entry_stack'] = entry_stack
+            if mode != 'normal':
+                # Controlled owning-frame witness above the injected APPLY
+                # frame; fatal completion abandons the enclosing dispatch.
+                put(entry_stack - retirement['owning_adapter_frame_bytes'], 0xbadc0ffee0ddf00d)
         current['before'] = save_owner('before')
         current['desired'] = desired_page(memory(metadata, 4096), operation, seconds)
         current['planned'] = desired_page(memory(metadata, 4096), operation, seconds, False)
@@ -317,4 +335,6 @@ def install(config):
     Store("*'topal.region-instance.namespace-metadata.primitive.unsigned.store'", internal=True)
     Aborted('*' + hex(addr('topal_kernel_region_frame_namespace_metadata_abort_v1')), internal=True)
     Checking('*topal_x86_systems_namespace_check_v1', internal=True)
-    Halted('*topal_x86_systems_namespace_halt_v1', internal=True)
+    halt = addr('topal_x86_systems_namespace_halt_v1')
+    if retirement: halt += retirement['halt_instruction_offset']
+    Halted('*' + hex(halt), internal=True)

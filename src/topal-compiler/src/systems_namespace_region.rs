@@ -15,8 +15,8 @@ use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 mod inspection;
 #[path = "systems_namespace_region_abort.rs"]
 mod recovery;
-pub use inspection::SystemsNamespaceRegionBinding;
 pub(crate) use inspection::inspect_linked;
+pub use inspection::{SystemsNamespaceAdmissionRetirement, SystemsNamespaceRegionBinding};
 
 pub(crate) const APPLY: &str = "topal_x86_systems_namespace_apply_v1";
 pub(crate) const FINALIZE: &str = "topal_x86_systems_namespace_finalize_v1";
@@ -31,6 +31,10 @@ pub(super) const LIVE_FRAME_BYTES: u64 = 8 + 14 * 8 + 64;
 pub(super) const CALL_ALIGNMENT_BYTES: u64 = 64;
 pub(super) const RECOVERY_BYTES: u64 = 32;
 pub(super) const PRIVATE_BSS_MINIMUM: u64 = 0x800000;
+pub(super) const ADMISSION_RETIRED_STACK_BYTES: u64 = 4096;
+pub(super) const ADMISSION_STACK_CONTEXT: u32 = 8;
+pub(super) const ADMISSION_STACK_MINIMUM: i32 = 0x108000;
+pub(super) const ADMISSION_STACK_MAXIMUM: i32 = 0x180000;
 pub(super) const METADATA: i32 = super::process_runtime::volatile_files::BASE;
 pub(super) const FRAME_DELTA: i32 = 14 * 8 + 64;
 pub(super) const STACK_ENTRY_MAXIMUM: i32 = 0x180000 - 8;
@@ -313,19 +317,32 @@ pub(super) fn finalize() -> Result<Code, CompileError> {
     Ok(code)
 }
 
-pub(super) fn templates() -> Result<Vec<(&'static str, Code)>, CompileError> {
+pub(super) fn templates(
+    namespace_entries: bool,
+) -> Result<Vec<(&'static str, Code)>, CompileError> {
     Ok(vec![
         (APPLY, apply()?),
         (NAMESPACE_FRAME_ALLOCATE, allocator()?),
         (NAMESPACE_FRAME_ABORT, recovery::abort()?),
         (FINALIZE, finalize()?),
-        (HALT, super::file_region::fatal_template()),
+        (
+            HALT,
+            if namespace_entries {
+                recovery::admission_halt()?.0
+            } else {
+                super::file_region::fatal_template()
+            },
+        ),
         (oracle::PREPARE, oracle::prepare()?),
         (oracle::CHECK, oracle::check()?),
     ])
 }
 
-pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), CompileError> {
+pub(super) fn append(
+    object: &mut Object<'_>,
+    text: SectionId,
+    namespace_entries: bool,
+) -> Result<(), CompileError> {
     for (name, bytes, alignment) in [
         (ARENA, ARENA_BYTES, 4096),
         (CONTROL, 64, 8),
@@ -351,8 +368,41 @@ pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), Com
         });
     }
     let debug = object.add_section(Vec::new(), b".debug_frame".to_vec(), SectionKind::Debug);
-    for (name, code) in templates()? {
+    for (name, code) in templates(namespace_entries)? {
         super::root_region::append_code(object, text, debug, name, code)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn namespace_runtime_v6_changes_only_the_bound_fatal_continuation() {
+        // TOPAL-SYSTEMS-NAMESPACE-ACTION-001: the component profile retains
+        // its seven templates; only V6's owning fatal continuation differs.
+        let old = templates(false).unwrap();
+        let new = templates(true).unwrap();
+        assert_eq!(old.len(), 7);
+        assert_eq!(new.len(), 7);
+        for ((old_name, old), (new_name, new)) in old.into_iter().zip(new) {
+            assert_eq!(old_name, new_name);
+            assert_eq!(old.references, new.references);
+            if old_name == HALT {
+                assert_eq!(old.encoder.finish().unwrap(), [0xfa, 0xf4, 0xeb, 0xfd]);
+                let (_, stop) = recovery::admission_halt().unwrap();
+                let bytes = new.encoder.finish().unwrap();
+                assert!(stop > 4);
+                assert_eq!(&bytes[stop as usize..], [0xfa, 0xf4, 0xeb, 0xfd]);
+            } else {
+                assert_eq!(old.unwind, new.unwind, "{old_name}");
+                assert_eq!(
+                    old.encoder.finish().unwrap(),
+                    new.encoder.finish().unwrap(),
+                    "{old_name}"
+                );
+            }
+        }
+    }
 }

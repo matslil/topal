@@ -324,8 +324,8 @@ qualification. Those remain the caller/consumer obligations in Stage 3.
 
 ## Stage 2 validation and review
 
-The current working tree has **2341 passing Rust tests across all 41 workspace
-test targets**, with no failed or ignored tests in the reconciled results.
+Stage 2 completed **2341 passing Rust tests across all 41 workspace test
+targets**, with no failed or ignored tests in the reconciled results.
 This is a composite of completed targets from the initial locked workspace run
 and a retry of the remaining packages. The initial run passed all **271 compiler
 unit tests** and **261 compiler CLI tests**, then failed when LLVM could no
@@ -361,21 +361,573 @@ ring-0 GDB/QMP observations. No independent human review is claimed. The current
 13-mode controller cohort uses one inspector revision and retains separate
 stdout, stderr, serial/QEMU logs, complete owner snapshots and physical records.
 
+## Stage 3 in progress: V6 selection and pinned Linux baseline
+
+The [V6 source](kernel/arch/x86_64/policy/static-linux-dispatch-v6.t) adds exactly
+Rename, Link, RenameAt, LinkAt and RenameAtFlags to the unchanged 65 V5
+operations, plus Unsupported. The shared selector model, library requirement,
+frontend, numeric source bridge and independent boot-version checks recognize
+this separate interface. It requires the actual namespace declaration and its
+three controller dependencies. Declaring a callback with V5 remains a separate
+component selection and does not select the new filesystem layout.
+
+All five dispatch tests pass across V1–V6, including the actual native compiled
+policies in original and reversed Enum order, holes through 65535 and full-width
+inputs. V6 makes **131362 independent native selector calls** across its two
+Enum orders. Its complete stack bound is **680 bytes** and its temporary bound
+and observed high-water mark are **56 bytes**, within the unchanged limits.
+All **232 semantics tests**, **636 language tests**, four coverage checks,
+locked workspace all-target checking and the unchanged Rust size ceiling pass.
+The policy-slot regression now enumerates all six dispatch versions, including
+the previously omitted V5 bit, across all 2047 nonempty policy subsets.
+
+The [Linux driver](labs/qemu/x86_64/namespace_linux.py) executes the
+[raw-syscall controls](labs/qemu/x86_64/namespace_linux_guest.py) only in the
+disposable, manifest-pinned Linux 7.2.9 VM. The first research run retained 61
+observations and complete refusal-state checks; a second run asserts every
+expected result explicitly and adds readonly-description and long-final-name
+controls. The [66-case baseline](knowledge/x86_64/namespace-native-dispositions.json)
+binds the kernel, manifest, actual guest/driver bytes and lossless guest,
+serial/QEMU and readiness logs. It checks shared bytes/rights/positions, inode
+metadata preservation, exact same-inode no-ops, replacement victims, exchange
+with unequal link counts, full entry-budget moves, initial anonymous linking,
+O_EXCL ineligibility and consumed link intent, 255-byte raw names, native casts
+and distinct rename/link error orders. Every refusal preserves complete
+observable namespace/inode/data/description state. This is a Linux reference
+baseline; it qualifies no Topal Linux handler.
+
+At the selection-foundation checkpoint, kernel publication of V6 failed closed
+with an explicit unqualified entry-table error, covered by a compiler test.
+The primary root remains V5; candidate V6 binding work follows below.
+The complete new native consumers, all five adapters, source-driven lifetime
+effects and unchanged mv/ln qualification still form the remaining cohesive
+Stage 3 implementation. These foundation changes are not a completed Stage 3
+or a fresh full-workspace/VM application qualification.
+
+## Stage 3 in progress: native entry consumers and cleanup components
+
+The new [private entry helpers](../src/topal-compiler/src/systems_namespace_entries.rs)
+use separate entry slots and stable inode identities. A shared canonical-byte
+checker validates the complete metadata page before lookup/free-slot selection;
+operation-private directory staging may contain admission facts. The earlier
+source PREPARE path retains its separate immutable-input checks. These private
+helpers are included in the existing bound process entry; they add no source
+callback, filesystem authority or persistent allocation.
+
+The guarded [native C client](labs/qemu/x86_64/namespace_entries_client.c)
+passes **1061 metadata checks and 6129 lookups**. It varies all four independent
+entry/inode rotations and every raw length 1..255, with each input ending at a
+guard page. Zero/256-byte lookup lengths use an unreadable pointer. It covers
+multiple aliases, independent inode/entry exhaustion, invalid metadata and
+duplicate raw names, large identities, nonzero private staging and terminal
+retirement. Four retirement controls compare all 4096 metadata bytes against
+an independent expected delta: remove every matching name, preserve every
+unrelated name and clear only the selected inode's link count.
+
+The [debugger control](labs/qemu/x86_64/namespace_entries_debug.py) observes the
+actual emitted metadata leaf on valid and invalid input. It seeds distinct
+nonzero caller-saved values, checks all fourteen other GPRs, restored RSP and
+all sixteen XMM registers, preserves all metadata and the caller return word,
+and observes physical zeroes in every **64-byte popped register spill**.
+Disassembly establishes eight pushes/eight pops and no nested call, callee-saved
+register use or SIMD instructions. Complete leaf/wrapper/lookup stack bounds
+are **72/88/96 bytes**. The wrapper also retires its popped DI and completed
+inner return word before checking success. The hosted component uses protected
+read-only metadata and inaccessible owner/payload pages; it establishes no
+live-kernel controller grant or complete V6 syscall path.
+
+Versioned native consumers now select the new layout only for V6: lookup,
+creation, reopening, unlink, directory enumeration, last-description release
+and terminal retirement share the entry associations. Names are erased by entry
+slot; an inode is reclaimed only after its last link and description. The new
+volatile-file profile is version 6 with exact entry geometry and caller costs;
+older profiles omit the optional record and retain their prior layout. Boot
+admission checks the complete source/caller sum against the unchanged 4096-byte
+reserve. These branches were unpublished at this component checkpoint: the
+temporary V6 guard rejected kernel creation. Later candidate binding work below
+replaces that refusal to permit VM qualification. The primary root remains V5.
+
+The targeted native tests, previous comparison regression, frozen namespace
+binding test, locked all-target workspace check and unchanged Rust size ceiling
+pass. After the register-spill cleanup change, the native component was retried
+successfully under the unchanged bounded wrapper, using about 2.7 GiB with
+1569 MiB reserved for the host and zero cgroup swap. The debugger controls above
+also pass. These component results do not claim a full current workspace run.
+
+Before the parent-walker additions below, the locked compiler-library retry
+completes with **273 passed,
+zero failed and zero ignored**, in **630.05 seconds**, including every native
+namespace/source/fault/binding test and the frozen dispatch controls. It uses
+the unchanged bounded wrapper with a 2763 MiB adaptive budget, 1569 MiB host
+reserve and zero cgroup swap. Complete stdout/stderr and command/result remain
+in `linux-kernel/.cache/tk281-stage3-compiler-retry-1`. This is current working-tree
+compiler evidence; Stage 4's complete committed workspace and VM qualification
+remain required.
+Final workspace/direct-included-file formatting checks, locked workspace
+all-target checking and the unchanged Rust size ceiling also pass after this
+retry. The changed Python parses, all 128 checked local Markdown targets resolve
+and the complete diff passes the strict whitespace check.
+
+## Stage 3 in progress: copied parent-path resolution
+
+The [native walker](../src/topal-compiler/src/systems_namespace_walk.rs) now
+separates copied-byte traversal from the preceding user-copy emission while
+preserving their production order. V6's parent-only mode returns the actual
+parent and final component offset/length/trailing facts before interpreting dot
+components, imposing final length limits or looking up the final child. It still
+resolves intermediate components normally. This supports rename's parent/mount/
+write/error ordering without reusing open or unlink semantics. Root-only paths
+retain their separate no-final-component disposition. Older profiles emit no
+parent-only branch.
+
+The [host adapters](../src/topal-compiler/src/systems_namespace_walk_component.rs)
+execute that same copied-byte emitter against independently prepared guarded
+buffers. The [C controls](labs/qemu/x86_64/namespace_walk_client.c) pass
+**20494 entry-table cases and 12296 legacy cases**. Existing lookup/open/unlink
+modes cover every final length 1..4090 with raw high bytes; the parent mode
+defers those final lengths and separately rejects overlong intermediate names.
+Literal controls cover live/missing names, immutable parents, dot/dot-dot,
+trailing slashes, intermediate regular/missing objects, root-only paths and
+all three supported working directories. Absolute paths ignore an invalid
+dirfd; relative paths exercise native AT_FDCWD with nonzero upper bits.
+
+The copied path and canonical metadata are read-only during execution; every
+case compares complete pages and permits changes only to the five walker fact
+words. Only the prefix/fact, copied-path and metadata pages are accessible;
+remaining owner/payload pages stay inaccessible. Real descriptor and
+user-copy services are outside this component: an attempted descriptor lookup
+traps, and user-copy code is excluded. The first harness attempt included that
+code and was correctly rejected by the unchanged pure-component instruction
+verifier; its logs remain retained. Separating emission allowed the actual walker
+component to pass that verifier without weakening its rules. These observations
+qualify copied-path traversal, not Linux syscall ordering or a live V6 kernel.
+
+V6 selection now requires the existing `file-open-decision-v1` kernel policy as
+well as the namespace/controller dependencies. This carries the named-file
+profile's open-plan requirement into the new mutable layout: creation, reopen,
+truncate and unlink cannot silently fall back to the boot-only policy. The
+systems design, formal ABI rule, tool requirements, frontend and shared semantic
+validation are aligned. Missing and boot-only policies have explicit refusal
+tests; older dispatch and standalone namespace components retain their selection
+rules. All five adapters and their physical/source/utility qualification remain
+unfinished at this checkpoint, with the temporary V6 refusal still in place.
+
+After these additions, all **232 semantics tests**, **636 frontend tests** and
+**15 namespace-filtered compiler tests** pass, with no failed or ignored tests.
+The compiler subset includes normal/fault source bindings, exact owner/stack
+admission, independent byte oracles, native entry/debugger controls and both
+copied-walker layouts. The separate V6 publication-refusal test and all **four
+requirement/specification coverage checks** also pass. Workspace all-target
+checking, workspace/direct included-file formatting and the unchanged Rust size
+ceiling pass under the normal bounded wrapper. Complete command/result and
+stdout/stderr logs remain in
+`linux-kernel/.cache/tk281-stage3-parent-integration-1`. All **156 checked local
+Markdown targets** resolve, changed Python parses and strict whitespace checks
+pass. The primary V5 root/policy files remain untouched. This is affected
+working-tree qualification; the complete current 274-test compiler suite,
+committed workspace and fresh complete VM/application cohort remain Stage 4
+obligations. Stage 3 still requires the five adapters and their Linux, physical
+and unchanged-utility qualification before its cohesive commit.
+
+## Stage 3 in progress: native adapters and source handoff
+
+The new [adapter emitter](../src/topal-compiler/src/systems_namespace_transactions_native.rs)
+normalizes rename, link, renameat, linkat and renameat2 arguments, including
+native low-32-bit flags and independently checked old/new dirfds. Selection is
+V6-only; the primary root and older dispatch branches remain unchanged.
+[Rename admission](../src/topal-compiler/src/systems_namespace_rename_native.rs)
+resolves both parents, distinguishes the shared readonly root/bin mount from
+the mutable mount, and orders final type, write, lookup, NOREPLACE/EXCHANGE and
+trailing-name checks. Same-inode cases skip the source action completely.
+[Link admission](../src/topal-compiler/src/systems_namespace_link_native.rs)
+resolves its old path/description first, then checks destination existence,
+trailing name, write and mount disposition before inode eligibility/capacity.
+This keeps anonymous-file eligibility behind destination errors. Whiteout and
+other unqualified inode kinds never become ordinary successful operations.
+
+The [commit helper](../src/topal-compiler/src/systems_namespace_transaction_commit.rs)
+keeps all eight checked plan words in registers across the clock, serializes
+the existing input representation and copies the new raw name with complete
+padding. It retires copied pathname and transfer staging before calling the
+actual ordinary namespace controller. It performs no native link/rename stores
+to persistent metadata. After the loan has retired, replacement-victim cleanup
+checks remaining names and descriptions before releasing object/pages. Completed
+inner/owning return words are erased. The added owning helper return word fits
+the declared 256-byte caller allowance; source/caller totals remain 4080/4096.
+
+V6 recoverable and no-op exits restore the trusted captured kernel-entry stack
+position, bound/alignment check it and erase/read back its retired 4096-byte
+call area. Completed clock calls are retired before source entry or a clock
+error. The versioned profile now binds the **104-byte nested lookup maximum**
+and **4096-byte admission retirement** separately from source/caller costs.
+The direct metadata leaf/wrapper/entry-helper bounds remain 72/88/96 bytes.
+
+The code-emission test constructs the complete V6 process personality directly
+through the private emitter, resolves every local branch and records exactly
+one namespace-controller handoff relocation. It preserves the object and
+external-call record without publishing or booting an unqualified kernel.
+The guarded [final-name component](labs/qemu/x86_64/namespace_final_client.c)
+executes those same final-kind/lookup helpers: **4099 classifications and 12300
+lookups** pass, including dot/root deferral, immutable names, independent
+mutable entry/object slots and every copied length through 4095. Long-name
+classification uses an unreadable pointer to prove that it defers byte access.
+Metadata is read-only and unchanged; the pure-component verifier is unchanged.
+These are final-stage component checks, not execution of complete syscall paths.
+
+Cleanup review found an advancing-DI readback error in the new erase usage:
+readback started after the erased bytes. The helper now rewinds DI before
+verification. A new native regression places 512 nonzero bytes at a page end,
+protects the following page, invokes the same erase emitter and checks exact
+prefix preservation and complete retirement. The entry/debugger and both
+parent-walker cohorts also pass with this correction.
+
+All-target workspace checking, emitter closure, final-name components, guarded
+entry/erasure/debugger components, both parent-walker layouts, the publication
+refusal and unchanged Rust size ceiling pass. Separate stdout/stderr and command
+results remain in `linux-kernel/.cache/tk281-stage3-adapter-checks-2`.
+The earlier emission/cohort is retained separately as
+`linux-kernel/.cache/tk281-stage3-adapter-checks-1`. No current full 276-test
+compiler or new V6 VM/application qualification is claimed.
+All four requirement/specification coverage checks also pass after the cleanup
+refinement; all 165 checked local Markdown targets resolve, changed Python parses
+and the complete diff passes strict whitespace checking.
+
+At this emission checkpoint the temporary guard still rejected V6. The five
+adapters had not executed as complete Linux entries. Fatal source recovery also
+needed to retire the new outer commit return frame before halt, while preserving
+the older component profile. Subsequent binding/VM work is recorded below.
+That integration, exact new bindings, pinned Linux
+comparisons, physical failure/lifetime/cleanup observations and unchanged mv/ln
+remain required before the cohesive Stage 3 commit.
+
+## Stage 3 in progress: V6 binding and real syscall execution
+
+The V6 fatal continuation restores only the protected kernel-entry stack
+context, validates its bounds/alignment and erases and reads back the complete
+4096-byte abandoned admission area, including the owning commit return word.
+Invalid stack contexts never authorize a write. Earlier recovery attempts all
+its owned cleanup before verification; persistent source effects remain on
+fatal exit. The final halt occurs after cleanup and register clearing. V6
+selects this continuation through owner/invocation binding version 2, with
+exact retirement geometry and halt offset. Version 1 templates/bindings retain
+their earlier behavior.
+
+Public candidate/boot admission checks the new binding and rejects 16 altered
+records plus explicit null retirement. Normal source plus the complete caller
+costs **4080 bytes**; the wrong-association variant reaches **4096 bytes**.
+Invocation-frame accounting remains separate from the additional owning return
+word. Both old and V6 bindings admit actual false-after-store and
+wrong-association source objects, retaining their complete linked/boot fixtures.
+The four-source admission test passes in
+`linux-kernel/.cache/tk281-stage3-v6-fault-bindings-1`.
+
+The development guard has been removed to execute private V6 candidates through
+the public compiler. The primary root still selects V5. Provider/artifact
+versions are 241/254. This is uncommitted Stage 3 qualification, with no final
+application or PR acceptance claim.
+
+The [transaction caller](labs/qemu/x86_64/static_namespace_transaction_checks.py)
+first passed **49 actual syscall returns**, covering all five entries, native
+upper-bit adaptation, alias counts, identity/data/rights/position, same-inode
+no-ops, open replacement-victim lifetime and anonymous initial-link eligibility.
+The failed first attempt exposed a caller defect: its inherited encoder emitted
+four registers while recording a fifth flags argument. A local six-register
+encoder with matching return PCs corrects that defect. Both attempts remain in
+`linux-kernel/.cache/tk281-stage3-v6-syscalls-1` and `-2`.
+
+The [disposition caller](labs/qemu/x86_64/static_namespace_disposition_checks.py)
+then passed **294 observed returns**, including **45 explicit error-ordering
+cases** checked against the retained pinned Linux baseline. The readonly
+reference file is represented by the immutable `/bin/busybox` object, with
+matching writable/readonly mount dispositions. Four descriptions' complete
+stat records are compared after each refusal; final content/position checks
+also complete. This does not claim an identical general filesystem topology
+or all 66 reference events. A further 294-return run adds read-only physical
+observation. Across 59 namespace entries, 52 refusals/no-ops preserve all
+311296 bytes of owned process/filesystem backing and the namespace generation.
+Seven mutating entries each invoke the actual controller exactly once.
+
+The extended caller adds distinct-inode exchange with unequal link counts,
+full name-table rename, independent inode capacity, closed replacement-victim
+reclamation and 255-byte raw filenames. It passes **350 total returns**.
+Its [physical observer](labs/qemu/x86_64/namespace_syscall_physical.py) observes
+**66 namespace entries**: **53 refusals/no-ops preserve the entire owner and
+generation**, with no source entry; **13 mutations use one source action each**.
+All observed namespace returns have zero source private buffers, copied path,
+transfer staging and directory input staging. The observer verifies actual
+user argument registers and SYSCALL instructions and injects no kernel state.
+Successful debugger detachment and completed user assertions/serial markers
+are required before the final result is accepted.
+
+Lossless outer command/stdout/stderr, VM/debugger logs and hash-bound records
+remain in `linux-kernel/.cache/tk281-stage3-v6-dispositions-1`,
+`linux-kernel/.cache/tk281-stage3-v6-refusals-physical-1` and
+`linux-kernel/.cache/tk281-v6-extended-1`. At this 350-return checkpoint, exact
+source-store deltas and real-entry stack retirement remained separate work;
+the subsequent run below adds those observations.
+
+All **13 V6 controlled controller modes** pass with QMP confirming a stopped
+target: normal, allocator abort, post-frame/control faults, actual source false
+and wrong association, and seven pre-entry owner/view/input/generation/overlap
+refusals. Fatal observations include the additional owning return-word marker
+and the whole 4096-byte abandoned admission area. Five results are in
+`linux-kernel/.cache/tk281-stage3-v6-controller-cohort-1`; the remaining eight
+are in `linux-kernel/.cache/tk281-v6-ctl-2`. The first wrong-association launch
+failed before boot because its Unix socket pathname exceeded the host limit;
+the retained retry uses a shorter output path. These remain controlled direct
+controller calls, separate from real user syscall qualification.
+
+The latest run passes **465 syscall returns**, retaining all preceding cases
+and filling the entire eight-page file budget after a closed replacement
+victim is retired. The surviving source owns one page and three new files use
+the other seven pages. An initial test incorrectly expected a large write to
+complete in one call; the corrected caller uses the existing 256-byte write
+quantum and checks each file's final size. The failed attempt remains in
+`linux-kernel/.cache/tk281-v6-extended-pages-1`; successful lossless evidence is
+in `linux-kernel/.cache/tk281-v6-extended-pages-2`.
+
+The new [source observer](labs/qemu/x86_64/namespace_source_physical.py) records
+**461 actual ordinary source stores** across the 13 mutating calls and all
+four actions. It checks the source frame, generation, oracle bytes and actual
+plan, replays every store against the complete owner, and independently
+compares the final owner delta before native victim reclamation. The ordinary
+source and owner returns preserve their declared GPRs/SIMD. Every source return
+has its 4272-byte frame/retired area erased; every one of the 66 namespace user
+returns has the entire 4096-byte owning admission area erased. No debugger
+state injection is used for these real syscall observations. At this checkpoint,
+actual syscall fatal paths, clock-failure, broader lifetimes and unchanged
+utilities still required separate qualification; the next section records
+subsequent fatal, clock and directory-consumer observations.
+
+Workspace and included-file formatting, locked all-target workspace checking,
+the **full 277-test compiler suite**, all **four coverage checks**, and the
+unchanged 2000-line Rust ceiling pass. The compiler suite completes in 712.51
+seconds. Of **43 lab contracts, 41 pass**: the two remaining failures detect
+the old checked-in gate schema and inode gate-script hash. Those retained
+records must be regenerated by the complete fresh qualification before
+publication; their expected hashes or assertions have not been weakened.
+Logs remain in `linux-kernel/.cache/tk281-stage3-retry-validation-1` and
+`linux-kernel/.cache/tk281-stage3-retry-sizes-1`. All commands use the unchanged
+resource wrapper, normal host reserve and zero validation swap, with no memory
+limit failure. The complete committed Stage 4 cohort remains unfinished.
+
+## Stage 3 in progress: real syscall failure and consumer qualification
+
+The [fatal caller](labs/qemu/x86_64/static_namespace_fault_checks.py) prepares
+one admitted operation through each actual Linux entry: path link, initial
+anonymous-file linkat, move, replacement through renameat and exchange through
+renameat2. The public compiler and boot builder produce each private candidate.
+Two variants contain real ordinary source that returns false after stores or
+writes a wrong association after an otherwise correct action. The allocator
+variant uses the normal source and exhausts its actual arena after the first
+store, taking that source's linked abort hook at its next allocation.
+
+All **15 combinations** pass the
+[real syscall fatal observer](labs/qemu/x86_64/namespace_fault_inspect.py).
+It verifies actual CPL3 arguments and the SYSCALL instruction, complete bound
+code/data, the real owner and two-Nat frame, source stores, consumed generation
+and exact complete-owner effects. Both genuine abandoned return-address words
+are observed before recovery and read back as zero. At the final fatal boundary,
+the **4280-byte source frame/reserve**, **4096-byte owning admission area**,
+all private runtime/input/path/transfer bytes and GPRs are erased. Persistent
+effects remain exact; no owner or user return occurs. The debugger disconnects
+and QMP independently confirms the target is stopped.
+
+The false/wrong source variants use **no debugger state injection**. Allocator
+failure explicitly injects arena exhaustion and clobbers saved GPRs at the
+actual noreturn abort hook to test recovery from its protected record. Exhaustion
+after the first store fails at the next allocation: replacement can complete
+a second constant-only store first. An initial observer incorrectly required
+exactly one store at abort; it now records and verifies every completed store.
+The failed attempt is retained. Successful store counts are 39/39/36/40/6 for
+false results, 40/40/37/41/7 for wrong associations, and 1/1/1/2/1 for allocator
+abort across link/linkat/move/replace/exchange.
+
+Thirteen successful observations and the failed replacement attempt remain in
+`linux-kernel/.cache/tk281-v6-fatal-suite-iy2k8a86`. Source snapshots preserve
+the exact earlier observer hashes before that assertion correction. The last
+two successful allocator observations and a fresh **465-return normal physical
+regression** are in `linux-kernel/.cache/tk281-v6-fatal-resume-c6j_isw4`.
+The normal regression again observes all 461 stores, exact owner deltas and
+source/admission retirement. No kernel code changed for these tests.
+
+The [clock observer](labs/qemu/x86_64/namespace_clock_inspect.py) binds the full
+native process function and identifies the actual RTC status-read instruction
+from the linked ELF. A read-only run of the existing 465-return image confirms
+that all **53 refusals/no-ops perform no RTC access and issue no source action**;
+the 13 mutating calls read the clock before their source action. Five separate
+callers force the guest's update-in-progress bit at that actual input instruction.
+Every entry executes all **1024 bounded retries**, returns `EIO`, preserves the
+complete 311296-byte owner and namespace history, issues no loan, and erases
+private buffers plus the 4096-byte admission area. User assertions, successful
+debugger detachment and serial completion must all finish. This VM input fault
+changes no host setting or resource allowance. Full raw evidence is in
+`linux-kernel/.cache/tk281-v6-clock-suite-r2385fr0`.
+
+The [directory caller](labs/qemu/x86_64/static_namespace_directory_checks.py)
+passes **64 real syscall returns** after arranging entry slots 0/1/2 to name
+inode slots 2/0/1. It checks raw directory records, shared inode identities,
+entry-slot cookies, short-buffer and failed-copy cursor preservation, sparse
+entries after unlink, and fresh enumeration after exchange. Path/descriptor
+chmod, fstat/fstatat, reopen/read and last-description cleanup continue to use
+the correct inode after names exchange. The same physical source observer
+checks the link/exchange actions and temporary retirement. Artifacts, complete
+logs and the separately bound caller record are in
+`linux-kernel/.cache/tk281-v6-directory-yfasg_y_`.
+
+These remain Stage 3 candidate observations. Shared namespace history and inode
+lifetime through fork, exec and inactive cancellation, unchanged BusyBox mv/ln,
+primary-root activation and the complete committed Stage 4 evidence refresh
+were still required at that checkpoint; the following observations qualify
+the lifecycle and utility paths. The committed Stage 4 evidence refresh remains
+required.
+
+## Stage 3 lifecycle and unchanged utility qualification
+
+The [fork caller](labs/qemu/x86_64/static_namespace_fork_checks.py) exposed a
+real consumer defect: the older inode-mode native guard rejected a valid inode
+with two names. The first run stopped on the child's chmod after nine observed
+returns and timed out; its artifacts remain in
+`linux-kernel/.cache/tk281-v6-fork-first-1`. V6 now selects inode invocation
+schema 2, validates the complete canonical metadata through the existing closed
+read-only leaf, accepts zero through four links and refuses overlapping
+position/page/namespace loans before source entry. Its added leaf requires
+72 complete stack bytes and erases both popped spills and the completed return
+word. Sequential admission and source paths retain the **1544-byte** maximum.
+Earlier selections retain their exact schema 1 code and omitted optional field.
+
+Current provider/root artifact versions are **242/255**. Exact V6 binding tests
+reject seven altered inode admission records and explicit null, in addition to
+the earlier namespace refusals. The legacy inode binding control, locked
+all-target workspace check, formatting, unchanged Rust ceiling and four coverage
+checks pass in `linux-kernel/.cache/tk281-v6-inode-admit-w2phln00`.
+
+The corrected fork candidate passes **37 real returns**. The child adds an
+alias, renames and unlinks names, changes shared permissions, writes through a
+duplicated description and exits. The parent waits, checks status, identity,
+rights, shared/independent positions and both payloads, then mutates and retires
+the remaining names. Explicit protected-history checkpoints prove epochs
+1/2/3/3/4/5/5 without rewind across parent restoration. A fresh **465-return**
+normal physical regression and **64-return** directory regression also pass on
+this native provider. All three are in
+`linux-kernel/.cache/tk281-v6-fork-positive-9hvrjiaw`; the exact earlier observer
+version is retained there by its recorded hash.
+
+Two [physical inode-admission faults](labs/qemu/x86_64/namespace_inode_guard_gate.py)
+follow the actual child's chmod lookup. An injected three-link count with only
+two associations reaches the metadata checker and is refused; a marked-active
+namespace control is refused before that checker. Neither enters ordinary mode
+source or resumes user code. The complete injected owner and all captured runtime/
+control bytes remain exact; the executed checker retires all 72 stack bytes.
+QMP confirms stopped targets. These VM-only fault injections and the complete
+**277-test compiler pass** (711.39 seconds) are in
+`linux-kernel/.cache/tk281-v6-fork-guard-_xocn51e`.
+
+The [exec caller](labs/qemu/x86_64/static_namespace_exec_checks.py) passes
+**39 real returns** through the existing three successful same-image execs.
+It verifies CLOEXEC closure, retained independent reader/shared writer positions,
+aliases, identity and link counts. The entire **36864-byte filesystem** is
+captured before the first successful exec and compared byte-for-byte afterward.
+Explicit epochs stay at two across that exec and advance to three before the
+later two execs. After final reference release, a fresh inode has identity eight
+rather than reusing seven; its link and rename advance history to four/five.
+No guest state is injected. Artifacts, snapshots and physical source evidence
+are in `linux-kernel/.cache/tk281-v6-exec-44j8tkxt/candidate`.
+
+The [cancellation caller](labs/qemu/x86_64/static_namespace_cancel_checks.py)
+uses actual fork, child sched_yield and parent exit instructions, without
+debugger register or memory edits. It passes **22 ordinary returns** and three
+observed source actions. Before exit, the parent observes the child's shared
+payload, permissions, positions and two aliases while the child remains parked.
+At namespace finalizer entry, both descriptor banks, names, inode, pages and
+the complete **311296-byte owner** have been erased; history is still three.
+The finalizer resets history to zero, and the native process controller returns
+with the complete owner and namespace runtime still zero. Neither parent exit
+nor child yield resumes user code. Full before/after snapshots, debugger logs,
+physical source evidence and QMP stop confirmation are in
+`linux-kernel/.cache/tk281-v6-cancel-first-1`.
+
+The [utility gate](labs/qemu/x86_64/namespace_utility_gate.py) passes six fresh
+workloads using the exact unchanged pinned BusyBox ELF: mv to an absent name,
+ln with equal reported link counts, replacement with a retained victim reader,
+chmod through an alias, unlink of both names with a retained reader, and relative
+ln/mv followed by directory enumeration. Every run checks exact output, exit
+status and successful exec count. These functional application observations use
+the same real services as the separate physical callers; no command-text rule
+selects namespace behavior. Artifacts and complete serial logs remain in
+`linux-kernel/.cache/tk281-v6-utilities-first-1`.
+
+The primary source now selects V6 and the namespace library. Existing lab
+consumers accept that explicit new vocabulary, dispatch qualification retains
+all five frozen older selections, and the native-only page absence control
+explicitly selects V5 without the namespace source dependency. Six utility
+commands have been added to the primary qualification workload set. These
+changes require fresh complete Stage 4 publication records; old checked-in
+records and hashes are not substitutes. All heavy commands retain the normal
+resource wrapper, host reserve and zero validation swap.
+
+The primary clean boot smoke passes on the new root. After activation, all
+**636 language tests** and the complete **277 compiler tests** pass; the latter
+finishes in 978.47 seconds. The first language run exposed one test still
+replacing V5 selector text in the now-V6 primary root. Its failed 635/636 result
+is retained; the corrected control explicitly selects each frozen version and
+also tests V6. Page/position absence, provider relocation and structural-plan
+controls likewise explicitly retain their original profiles. Current successful
+suite logs are in `linux-kernel/.cache/tk281-stage3-primary-validation-2`.
+The current inode publication contract requires a fresh V6 consumer archive
+under `results/tk281/inode-consumer`; the historical TK280 archive remains intact.
+Final workspace and included-file formatting, locked all-target workspace
+checking, all four coverage tests, the unchanged Rust source ceiling and
+whitespace checks pass. All **39 changed Python files** parse and all **194**
+checked local documentation targets resolve. Complete final-check logs are in
+`linux-kernel/.cache/tk281-stage3-primary-finish-u316ia6u`. These checks complete
+the integration stage; full committed qualification and publication records
+remain Stage 4 work.
+
+The first committed Stage 4 workspace run, at `88415f0`, completed with **2346
+passing tests and three fixture failures across 41 targets**. Locked all-target
+checking and the separate doc-test command passed; no memory limit failed.
+The packaging fixture omitted the newly required namespace snapshot and supplied
+V5 dispatch to the V6 root. Its independent source closure now explicitly supplies
+V6 and both namespace helper modules. The four-instance RAM-page and legacy
+unframed-position controls now explicitly select their original profiles before
+removing or changing source declarations. Their original bounds, isolation,
+refusal and native-service assertions remain intact. All **10 targeted builder
+tests** pass after those corrections.
+
+The new qualification wrapper passed a real primary boot and retained its
+complete kernel/provenance/serial/QEMU artifacts on repository disk after the
+temporary context exited. A short owned `/tmp` alias keeps debugger socket names
+within their platform limit. The initial queued cohort used a filename already
+assigned to the retained-identity gate; that gate was restored exactly, the
+wrapper received its own name, and the queued attempt failed argument parsing
+before any VM ran. The failed setup record remains separate from kernel results.
+The complete workspace failure and original fixture snapshots are retained in
+`tools/rust-qualification/results/tk281/before-builder-fixture-fix`.
+Fresh committed full qualification is still required before publication.
+The corrected integration preflight again passes formatting, locked all-target
+workspace checking, all four coverage checks, the unchanged Rust ceiling and
+whitespace checks. All **49 Python files** in the complete integration diff
+parse. The retained runner and archive tools are included with the integration
+inputs so the next qualification can bind one committed revision.
+
 ## Remaining stages and initial acceptance
 
 Stage 2's ordinary source, canonical owner loans, native binding and controlled
 physical caller are implemented and component-validated. An encoded candidate
 followed by native publication remains insufficient for subsequent kernel integration.
-Stage 3 must implement all five Linux adapters, V6
+Stage 3 integrates and qualifies all five Linux adapters, V6
 dispatch with frozen V1–V5 controls, new versioned entry-table consumers, exact
 source-driven effects, Linux/physical lifecycle/refusal cases and unchanged
 BusyBox mv/ln. Stage 4 must execute the complete affected committed Rust/lab/
 native/VM cohort and publish lossless evidence and accurate scope records.
 
-The selected native kernel is unchanged from
+The preceding selected native kernel is documented in
 [TK280](step-4-shared-inode-modes.md). Its 2305 Rust tests, 176 VM observations,
 45 BusyBox workloads and 43 lab contracts qualify that distinct earlier native
-checkpoint. The new controlled caller observations select no rename/link Linux
-handler and qualify no new application workload. General directories/devices, whiteout, broader
+checkpoint. The earlier controlled components select no rename/link Linux
+handler; the V6 candidates execute the actual entries and six unchanged
+application workloads. Complete current committed publication evidence remains
+required. General directories/devices, whiteout, broader
 credentials/VFS, allocation, dynamic userspace, distribution replacement,
 containers and VM hosting remain part of the unfinished original goal.

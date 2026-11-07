@@ -408,10 +408,14 @@ pub fn generate_x86_64_systems_provider_object(
         &static_image_deliver_entropy_initial_random()?,
     );
     if program.inode_mode_library.is_some() {
-        inode_region::append(&mut object, text)?;
+        inode_region::append(&mut object, text, program.dispatch_library.as_ref().is_some_and(|library|
+            library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+        ))?;
     }
     if program.namespace_library.is_some() {
-        namespace_region::append(&mut object, text)?;
+        namespace_region::append(&mut object, text, program.dispatch_library.as_ref().is_some_and(|library|
+            library.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+        ))?;
     }
     if program.ram_page_pool_library.is_some() {
         ram_page_region::append(&mut object, text)?;

@@ -211,6 +211,10 @@ fn artifact_provenance(
         volatile_files: crate::systems_provider_object::volatile_file_profile(
             program.ram_page_pool_library.is_some(),
             program.inode_mode_library.is_some(),
+            program.dispatch_library.as_ref().is_some_and(|library| {
+                library.interface
+                    == topal_semantics::SystemsSourceLibraryInterface::StaticLinuxDispatchV6
+            }),
         ),
         inputs,
         outputs,

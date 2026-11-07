@@ -16,8 +16,9 @@ def digest(path):
 class InodeModeEvidence(unittest.TestCase):
     def test_actual_source_mutation_admission_lifetime_and_physical_cleanup(self):
         # TOPAL-SYSTEMS-INODE-MODE-{STATE,ABI,ACTION}-001.
-        # TOPAL-SYSTEMS-LINUX-DISPATCH-V5-001.
-        archive = LAB/'results/tk280/stage-3'
+        # TOPAL-SYSTEMS-NAMESPACE-OWNERSHIP-001. Retain TK280's historical
+        # evidence; current consumer bindings require a fresh archive.
+        archive = LAB/'results/tk281/inode-consumer'
         proof = json.loads((archive/'inode-qualification.json').read_text())
         self.assertEqual((proof['schema'], proof['result']), ('topal-inode-mode-qualification/1', 'pass'))
         self.assertEqual(proof['suite_sha256'], digest(LAB/'inode_mode_suite.py'))
@@ -42,6 +43,10 @@ class InodeModeEvidence(unittest.TestCase):
         for name, calls, actions in [('primary', 82, 14), ('lifetime', 131, 20), ('inactive_terminal', 106, 16)]:
             case = cases[name]
             state, bound = case['observation'], case['binding']
+            self.assertEqual(bound['schema'], 'topal.inode-region-invocation.x86_64/2')
+            self.assertEqual(bound['namespace_admission'], dict(metadata_offset=0x43000,
+                metadata_bytes=4096, maximum_link_count=4, validation_stack_bytes=72))
+            self.assertEqual(len(bound['code']), 5)
             self.assertTrue(state['finalized'])
             self.assertEqual((len(state['syscalls']), len(state['calls']), state['generation']), (calls, actions, actions))
             self.assertEqual((bound['maximum_source_stack_bytes'], bound['live_frame_bytes'],
@@ -102,7 +107,22 @@ class InodeModeEvidence(unittest.TestCase):
         self.assertEqual(events['chmod-missing-target-before-readonly-mount-denial']['errno'], 2)
         self.assertEqual(events['fchmodat2-flags-before-copy-and-fd']['errno'], 22)
         index = json.loads((archive/'archive.json').read_text())
-        self.assertEqual((index['machine_dispositions'], index['busybox_workloads'], len(index['logs'])), (12, 5, 49))
+        self.assertEqual(index['schema'],'topal.inode-consumer-archive/1')
+        self.assertEqual(index['archiver_sha256'],digest(LAB/'inode_mode_archive.py'))
+        rust_path=GATE.LINUX_KERNEL/'tools/rust-qualification/results/tk281/final/qualification.json'
+        self.assertEqual(digest(rust_path),index['rust_record_sha256'])
+        rust=json.loads(rust_path.read_text())
+        self.assertTrue(rust['complete'] and rust['passed'])
+        self.assertEqual((rust['head'],rust['tree']),
+            (index['qualified_code_commit'],index['qualified_code_tree']))
+        self.assertEqual((index['machine_dispositions'], index['busybox_workloads'], len(index['logs'])), (12, 5, 46))
+        expected_logs={'machine/'+name+'/'+filename+'.gz' for name in cases
+            for filename in ('serial.log','qemu.log','debug.log')}
+        expected_logs.update('busybox/'+name+'/'+filename+'.gz'
+            for name in ('mode-numeric','mode-symbolic','mode-directory',
+                'mode-retained-reader','mode-umask-independent')
+            for filename in ('serial.log','qemu.log'))
+        self.assertEqual({entry['path'] for entry in index['logs']},expected_logs)
         for entry in index['logs']:
             data = gzip.decompress((archive/entry['path']).read_bytes())
             self.assertEqual(len(data), entry['uncompressed_bytes'])

@@ -1045,6 +1045,25 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             ));
         }
     }
+    if program.dispatch_library.as_ref().is_some_and(|library| {
+        library.interface == crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV6
+    }) && program.namespace_library.is_none()
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-NAMESPACE",
+            "static-linux-dispatch-v6 requires namespace-library",
+        ));
+    }
+    if program.dispatch_library.as_ref().is_some_and(|library| {
+        library.interface == crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV6
+    }) && !program.kernel_library.as_ref().is_some_and(|library| {
+        library.interface == crate::SystemsSourceLibraryInterface::FileOpenDecisionV1
+    }) {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-NAMESPACE",
+            "static-linux-dispatch-v6 requires kernel-library with file-open-decision-v1",
+        ));
+    }
     if let Some(library) = &program.inode_mode_library {
         library.validate()?;
         if library.interface
@@ -1144,6 +1163,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV4
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV5
+                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV6
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",

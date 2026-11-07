@@ -5,6 +5,8 @@ use super::file_descriptions::{STAGING, TABLE_CONTEXT, wipe_staging};
 use super::{CompileError, E, R::*, X86FunctionEncoder, emit_static_process_sysret};
 #[path = "systems_volatile_create.rs"]
 mod create;
+#[path = "systems_namespace_entries.rs"]
+pub(in super::super) mod entries;
 #[path = "systems_volatile_transfer.rs"]
 mod transfer;
 
@@ -38,14 +40,33 @@ const _: () = {
 pub(in super::super) fn profile(
     source_page: bool,
     source_inode: bool,
+    namespace_entries: bool,
 ) -> crate::SystemsVolatileFileProfile {
     crate::SystemsVolatileFileProfile {
-        schema: if source_page {
+        schema: if namespace_entries {
+            "topal.volatile-file.x86_64/6"
+        } else if source_page {
             "topal.volatile-file.x86_64/4"
         } else {
             "topal.volatile-file.x86_64/5"
         }
         .into(),
+        namespace_entries: namespace_entries.then(|| crate::SystemsNamespaceEntryTableProfile {
+            schema: "topal.namespace-entry-table.x86_64/1".into(),
+            entry_offset: (entries::ENTRIES - BASE) as u64,
+            entry_count: entries::COUNT,
+            entry_bytes: 16,
+            inode_link_count_offset: 56,
+            inode_initial_link_intent_offset: 64,
+            metadata_lookup_stack_bytes: entries::LOOKUP_STACK_BYTES + 8,
+            admission_retired_stack_bytes:
+                super::super::namespace_region::ADMISSION_RETIRED_STACK_BYTES,
+            // Distinct, sequential call paths must not combine the page
+            // reclamation caller's bound with the namespace source's stack.
+            namespace_caller_stack_bytes: super::super::namespace_region::LIVE_FRAME_BYTES
+                + super::super::namespace_region::CALL_ALIGNMENT_BYTES
+                + 8,
+        }),
         process_storage_symbol: super::super::X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL
             .into(),
         process_storage_bytes: super::children::STORAGE_BYTES,
@@ -102,7 +123,13 @@ pub(in super::super) fn profile(
 
 pub(super) fn erase(e: &mut E<'_>, base: super::R, bytes: u64) {
     for verify in [false, true] {
-        e.mov(Di, base);
+        if verify && matches!(base, Di) {
+            // REP advanced DI; it cannot also serve as the preserved base.
+            // Rewind before checking the exact bytes just retired.
+            e.add(Di, -(bytes as i32));
+        } else {
+            e.mov(Di, base);
+        }
         e.imm(A, 0);
         e.imm(C, bytes / 8);
         e.0.bytes(if verify {
@@ -168,7 +195,7 @@ pub(in super::super) fn emit_initialize(code: &mut X86FunctionEncoder) {
     e.store(R12, UMASK, A);
 }
 
-fn emit_lookup(e: &mut E<'_>) -> Result<(), CompileError> {
+fn emit_lookup(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     // Sampling uses shared staging before a transfer has copied any payload.
     // Preserve all service state; return seconds in A and carry after unwinding.
     e.0.bind("file-clock")?;
@@ -192,6 +219,9 @@ fn emit_lookup(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bytes(&[0xc3]);
     // Checked descriptor lookup preserves transfer arguments and object identity.
     e.0.bind("file-object-lookup")?;
+    if namespace_entries {
+        e.0.call("file-entry-table-check");
+    }
     e.load(A, R14, 0);
     e.cmp(A, KIND);
     e.0.jump_if(0x85, "fatal");
@@ -202,6 +232,9 @@ fn emit_lookup(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump("file-object-find");
     // R15 is the owner's resolved object identity, never a user grant.
     e.0.bind("file-object-by-identity")?;
+    if namespace_entries {
+        e.0.call("file-entry-table-check");
+    }
     e.mov(A, R15);
     e.0.bind("file-object-find")?;
     e.mov(R11, A);
@@ -263,7 +296,11 @@ pub(super) fn name_pointer(e: &mut E<'_>, destination: super::R, object: super::
     e.rr(0x01, destination, R12);
     e.add(destination, NAMES);
 }
-fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
+fn emit_lifetime(
+    e: &mut E<'_>,
+    source_page: bool,
+    namespace_entries: bool,
+) -> Result<(), CompileError> {
     // Object R10 -> CF set if neither bank holds a live independent description.
     e.0.bind("file-live-description")?;
     e.mov(R11, R12);
@@ -298,8 +335,15 @@ fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.0.bytes(&[0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53, 0x41, 0x57]);
     e.0.call("file-object-lookup");
     e.load(A, R10, 56);
-    e.cmp(A, 1);
-    e.0.jump_if(0x84, "file-last-description-retained");
+    if namespace_entries {
+        e.cmp(A, entries::COUNT as i32);
+        e.0.jump_if(0x87, "fatal");
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "file-last-description-retained");
+    } else {
+        e.cmp(A, 1);
+        e.0.jump_if(0x84, "file-last-description-retained");
+    }
     e.cmp(A, 0);
     e.0.jump_if(0x85, "fatal");
     e.0.call("file-live-description");
@@ -311,9 +355,14 @@ fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     ]);
     // Only the owned object/page/name domain is erased, preserving R10/R13+.
     e.0.bind("file-destroy-object")?;
+    if namespace_entries {
+        entries::assert_unlinked(e);
+    }
     e.0.call("file-release-pages");
-    name_pointer(e, R11, R10);
-    erase(e, R11, 256);
+    if !namespace_entries {
+        name_pointer(e, R11, R10);
+        erase(e, R11, 256);
+    }
     erase(e, R10, 128);
     e.0.bytes(&[0xc3]);
     e.0.bind("file-release-pages")?;
@@ -339,6 +388,9 @@ fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.0.bytes(&[0xc3]);
     e.0.bind("file-terminal-release")?;
     e.0.bytes(&[0x41, 0x50, 0x41, 0x51, 0x41, 0x52, 0x41, 0x53, 0x41, 0x57]);
+    if namespace_entries {
+        e.0.call("file-entry-table-check");
+    }
     e.mov(R10, R12);
     e.add(R10, OBJECTS);
     e.imm(R15, 0);
@@ -349,10 +401,20 @@ fn emit_lifetime(e: &mut E<'_>, source_page: bool) -> Result<(), CompileError> {
     e.cmp(A, 1);
     e.0.jump_if(0x85, "fatal");
     e.load(A, R10, 56);
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fatal");
+    if namespace_entries {
+        e.cmp(A, entries::COUNT as i32);
+        e.0.jump_if(0x87, "fatal");
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "fatal");
+    } else {
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.0.call("file-live-description");
     e.0.jump_if(0x83, "fatal");
+    if namespace_entries {
+        entries::retire_inode_names(e)?;
+    }
     e.0.call("file-destroy-object");
     e.0.bind("file-terminal-object-next")?;
     e.add(R10, 128);
@@ -389,12 +451,16 @@ pub(in super::super) fn emit_services(
     file_open_plan: bool,
     source_position: bool,
     source_page: bool,
+    namespace_entries: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
-    emit_lookup(&mut e)?;
-    emit_lifetime(&mut e, source_page)?;
+    if namespace_entries {
+        entries::emit(e.0)?;
+    }
+    emit_lookup(&mut e, namespace_entries)?;
+    emit_lifetime(&mut e, source_page, namespace_entries)?;
     transfer::emit(e.0, source_position, source_page)?;
-    create::emit(e.0, file_open_plan)?;
+    create::emit(e.0, file_open_plan, namespace_entries)?;
     e.0.bind("file-umask")?;
     e.gs(0x8b, R12, TABLE_CONTEXT);
     e.load(R15, R12, UMASK);

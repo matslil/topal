@@ -41,6 +41,30 @@ INTERACTIVE_BANNER = (
     b"Enter 'help' for a list of built-in commands.\n\n"
 )
 PROCESS_WORKLOADS = {
+    "namespace-move": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/a; /bin/busybox mv /tmp/a /tmp/b; exec /bin/busybox cat /tmp/b'\n",
+        b"alpha\n", 0
+    ),
+    "namespace-link": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/a; /bin/busybox ln /tmp/a /tmp/b; exec /bin/busybox stat -c %h /tmp/a /tmp/b'\n",
+        b"2\n2\n", 0
+    ),
+    "namespace-replace-retained-reader": (
+        b"exec /bin/busybox sh -c 'echo source >/tmp/a; echo victim >/tmp/b; exec 4</tmp/b; /bin/busybox mv /tmp/a /tmp/b; /bin/busybox cat <&4; exec /bin/busybox cat /tmp/b'\n",
+        b"victim\nsource\n", 0
+    ),
+    "namespace-alias-mode": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/a; /bin/busybox ln /tmp/a /tmp/b; /bin/busybox chmod 640 /tmp/b; exec /bin/busybox stat -c %a /tmp/a /tmp/b'\n",
+        b"640\n640\n", 0
+    ),
+    "namespace-unlink-retained-reader": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/a; /bin/busybox ln /tmp/a /tmp/b; exec 4</tmp/b; /bin/busybox rm /tmp/a /tmp/b; exec /bin/busybox cat <&4'\n",
+        b"alpha\n", 0
+    ),
+    "namespace-relative-directory": (
+        b"exec /bin/busybox sh -c 'echo alpha >/tmp/a; cd /tmp; /bin/busybox ln a b; /bin/busybox mv b c; exec /bin/busybox ls -1 /tmp'\n",
+        b"a\nc\n", 0
+    ),
     "mode-numeric": (
         b"exec /bin/busybox sh -c 'echo payload >/tmp/item; /bin/busybox chmod 2751 /tmp/item; exec /bin/busybox stat -c %a /tmp/item'\n",
         b"2751\n", 0
@@ -1392,7 +1416,7 @@ def evidence_record(
     if boot["static_user_image_sha256"] != digest(static_user_image):
         raise GateError("boot provenance does not bind the static user image")
     return {
-        "schema": "topal-kernel-toolchain-gate-qemu/253",
+        "schema": "topal-kernel-toolchain-gate-qemu/255",
         "publication": "topalc-target-interface/1",
         "process_exec_commits": serial.count(EXEC_COMMIT_MARKER),
         "source_sha256": digest(SOURCE_PATH),
@@ -1837,6 +1861,8 @@ def verify(
                                 "named-reopen":3,"named-remove":3,"named-list":2}.get(process_workload, 1)
             if process_workload.startswith('mode-'):
                 expected_commits = 3
+            if process_workload.startswith('namespace-'):
+                expected_commits = 3 if process_workload in ('namespace-move','namespace-link') else 4
         if serial.count(EXEC_COMMIT_MARKER) != expected_commits:
             raise GateError("unexpected successful image-replacement count")
         record = evidence_record(

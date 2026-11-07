@@ -1,6 +1,16 @@
 //! Copied-name lookup with separate final-component facts (TK-DEC-267).
 use super::super::volatile_files::{self as files, OBJECTS};
 use super::*;
+#[cfg(test)]
+#[path = "systems_namespace_walk_component.rs"]
+mod component;
+
+#[cfg(test)]
+pub(in super::super::super) fn component_object(
+    namespace_entries: bool,
+) -> Result<Vec<u8>, CompileError> {
+    component::object(namespace_entries)
+}
 
 fn reject_final_dot(e: &mut E<'_>, label: &str) -> Result<(), CompileError> {
     e.load(A, R12, MODE);
@@ -70,8 +80,14 @@ fn normal_component(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x87, "namespace-enametoolong");
     Ok(())
 }
-fn lookup_temporary_name(e: &mut E<'_>) -> Result<(), CompileError> {
+fn lookup_temporary_name(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-tmp-lookup")?;
+    if namespace_entries {
+        e.0.call("file-entry-by-name");
+        e.0.jump_if(0x82, "namespace-missing-component");
+        e.0.jump("namespace-component");
+        return Ok(());
+    }
     e.mov(R10, R12);
     e.add(R10, OBJECTS);
     e.imm(R11, 0);
@@ -107,7 +123,16 @@ fn lookup_temporary_name(e: &mut E<'_>) -> Result<(), CompileError> {
     Ok(())
 }
 
-pub(super) fn emit(e: &mut E<'_>, named: bool) -> Result<(), CompileError> {
+pub(super) fn emit(
+    e: &mut E<'_>,
+    named: bool,
+    namespace_entries: bool,
+) -> Result<(), CompileError> {
+    emit_copy(e, named)?;
+    emit_walk(e, named, namespace_entries)
+}
+
+fn emit_copy(e: &mut E<'_>, named: bool) -> Result<(), CompileError> {
     // R8 candidate; B dirfd and BP flags survive. R13 is copied length.
     e.0.bind("namespace-copy-name")?;
     table(e);
@@ -138,7 +163,10 @@ pub(super) fn emit(e: &mut E<'_>, named: bool) -> Result<(), CompileError> {
     e.0.jump("namespace-copy-byte");
     e.0.bind("namespace-copy-complete")?;
     e.0.bytes(&[0xc3]);
+    Ok(())
+}
 
+fn emit_walk(e: &mut E<'_>, named: bool, namespace_entries: bool) -> Result<(), CompileError> {
     // Return R15 object. Only private copied bytes are traversed below.
     e.0.bind("namespace-walk")?;
     e.mov(R13, R12);
@@ -208,6 +236,19 @@ pub(super) fn emit(e: &mut E<'_>, named: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-component-end")?;
     if named {
         component_facts(e)?;
+        if namespace_entries {
+            // Rename resolves both parents before deciding the final name.
+            // Keep dot, trailing-slash, length and child lookup facts intact;
+            // the two-path adapter applies their independently qualified order.
+            e.load(A, R12, MODE);
+            e.cmp(A, 3);
+            e.0.jump_if(0x85, "namespace-final-parent-ready");
+            e.load(A, R12, FINAL);
+            e.cmp(A, 1);
+            e.0.jump_if(0x85, "namespace-final-parent-ready");
+            e.0.bytes(&[0xc3]);
+            e.0.bind("namespace-final-parent-ready")?;
+        }
     }
     e.cmp(D, 1);
     e.0.jump_if(0x85, "namespace-check-parent");
@@ -335,7 +376,7 @@ pub(super) fn emit(e: &mut E<'_>, named: bool) -> Result<(), CompileError> {
         e.0.jump_if(0x85, "namespace-enoent");
         e.imm(R15, 0);
         e.0.bytes(&[0xc3]);
-        lookup_temporary_name(e)?;
+        lookup_temporary_name(e, namespace_entries)?;
     }
     Ok(())
 }

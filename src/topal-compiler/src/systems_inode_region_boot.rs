@@ -36,7 +36,11 @@ pub(crate) fn validate(
         ));
     }
     let names = choices[choice.unwrap_or(0)];
-    let native_names = [
+    let namespace_entries = artifact
+        .dispatch_library
+        .as_ref()
+        .is_some_and(|library| library.interface == "static-linux-dispatch-v6");
+    let mut native_names = vec![
         native::APPLY,
         native::FINALIZE,
         native::ARENA,
@@ -46,7 +50,10 @@ pub(crate) fn validate(
         names.1,
         names.2,
     ];
-    for name in native_names {
+    if namespace_entries {
+        native_names.push(native::NAMESPACE_CHECK);
+    }
+    for &name in &native_names {
         if file
             .symbols()
             .filter(|s| s.is_definition() && s.name().ok() == Some(name))
@@ -160,7 +167,7 @@ pub(crate) fn validate(
             return Err(invalid("action source/object output binding mismatch"));
         }
     }
-    let expected = native::inspect_linked(kernel, action)?;
+    let expected = native::inspect_linked(kernel, action, namespace_entries)?;
     if artifact.inode_mode_runtime.as_ref() != Some(&expected) {
         return Err(invalid(
             "persistent action runtime/caller/source/data or bounds mismatch",

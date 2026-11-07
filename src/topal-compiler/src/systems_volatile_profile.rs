@@ -3,8 +3,28 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
+pub struct SystemsNamespaceEntryTableProfile {
+    pub schema: String,
+    pub entry_offset: u64,
+    pub entry_count: u64,
+    pub entry_bytes: u64,
+    pub inode_link_count_offset: u64,
+    pub inode_initial_link_intent_offset: u64,
+    pub metadata_lookup_stack_bytes: u64,
+    pub admission_retired_stack_bytes: u64,
+    pub namespace_caller_stack_bytes: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct SystemsVolatileFileProfile {
     pub schema: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_entries: Option<SystemsNamespaceEntryTableProfile>,
     pub process_storage_symbol: String,
     pub process_storage_bytes: u64,
     pub filesystem_offset: u64,

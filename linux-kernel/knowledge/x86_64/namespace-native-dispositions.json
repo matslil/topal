@@ -1,0 +1,537 @@
+{
+  "architecture": "x86_64",
+  "decision": "TK-DEC-281",
+  "driver": "linux-kernel/labs/qemu/x86_64/namespace_linux.py",
+  "driver_sha256": "a8c783cbf4c73938c196274c71f9ece5b787bd3195291dc8c9e82e000acce9ce",
+  "events": [
+    {
+      "asserted_errno": true,
+      "case": "link-shared-inode",
+      "errno": 0,
+      "result": 0,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-moves-name",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "renameat-native-dirfd-casts",
+      "errno": 0,
+      "result": 0,
+      "syscall": 264
+    },
+    {
+      "asserted_errno": true,
+      "case": "linkat-native-dirfd-and-flags-casts",
+      "errno": 0,
+      "result": 0,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "hard-link-does-not-widen-readonly-description",
+      "complete_state_preserved": true,
+      "errno": 9,
+      "result": -1,
+      "syscall": 1
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-same-inode-alias",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "renameat2-same-inode-exchange",
+      "errno": 0,
+      "result": 0,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-identical-path",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "noreplace-before-same-inode-noop",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "renameat2-noreplace-native-flags-cast",
+      "errno": 0,
+      "result": 0,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-replacement-retains-open-victim",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "unlinked-once-linked-fd-cannot-resurrect",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-before-exchange",
+      "errno": 0,
+      "result": 0,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "renameat2-exchange-unequal-link-counts",
+      "errno": 0,
+      "result": 0,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-full-entry-budget-to-absent",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "linkat-initial-tmpfile-readonly-description",
+      "errno": 0,
+      "result": 0,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "linkat-already-linked-temporary-description",
+      "errno": 0,
+      "result": 0,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "initial-link-eligibility-not-recreated-after-unlink",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "exclusive-anonymous-is-ineligible",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-long-raw-component",
+      "errno": 0,
+      "result": 0,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "linkat-empty-descriptor-to-raw-name",
+      "errno": 0,
+      "result": 0,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-flags-before-bad-names",
+      "complete_state_preserved": true,
+      "errno": 22,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-exchange-noreplace-invalid",
+      "complete_state_preserved": true,
+      "errno": 22,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-exchange-whiteout-invalid",
+      "complete_state_preserved": true,
+      "errno": 22,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-flags-before-bad-names",
+      "complete_state_preserved": true,
+      "errno": 22,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-null",
+      "complete_state_preserved": true,
+      "errno": 14,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-new-null",
+      "complete_state_preserved": true,
+      "errno": 14,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-null-with-empty-flag",
+      "complete_state_preserved": true,
+      "errno": 14,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-empty-without-flag-before-bad-fd",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-empty-bad-fd",
+      "complete_state_preserved": true,
+      "errno": 9,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-bad-old-dirfd",
+      "complete_state_preserved": true,
+      "errno": 9,
+      "result": -1,
+      "syscall": 264
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-bad-new-dirfd",
+      "complete_state_preserved": true,
+      "errno": 9,
+      "result": -1,
+      "syscall": 264
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-relative-nondirectory",
+      "complete_state_preserved": true,
+      "errno": 20,
+      "result": -1,
+      "syscall": 265
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-parent-missing-before-new-copy",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-final-missing-before-new-copy",
+      "complete_state_preserved": true,
+      "errno": 14,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-old-missing-before-new-copy",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-missing-new-parent-missing",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-missing-source-existing-noreplace",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-missing-source-cross-mount",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-existing-source-cross-mount-existing-noreplace",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-readonly-missing-source",
+      "complete_state_preserved": true,
+      "errno": 30,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-readonly-existing-noreplace",
+      "complete_state_preserved": true,
+      "errno": 30,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-dot-cross-mount",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-old-dot-same-mount",
+      "complete_state_preserved": true,
+      "errno": 16,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-new-dot-noreplace",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-new-dot-plain",
+      "complete_state_preserved": true,
+      "errno": 16,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-existing-old-trailing-cross-mount",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-existing-old-trailing",
+      "complete_state_preserved": true,
+      "errno": 20,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-missing-old-trailing",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-new-trailing-existing-regular",
+      "complete_state_preserved": true,
+      "errno": 20,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-new-trailing-missing",
+      "complete_state_preserved": true,
+      "errno": 20,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-missing-old-before-readonly-new",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-cross-mount-new-missing-readonly",
+      "complete_state_preserved": true,
+      "errno": 30,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-cross-mount-new-existing-readonly",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-readonly-old-to-mutable-missing",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-readonly-old-to-mutable-existing",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-new-dot",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-new-trailing-missing",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-new-trailing-existing",
+      "complete_state_preserved": true,
+      "errno": 17,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-old-regular-trailing",
+      "complete_state_preserved": true,
+      "errno": 20,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-long-final-cross-mount",
+      "complete_state_preserved": true,
+      "errno": 18,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-readonly-long-final",
+      "complete_state_preserved": true,
+      "errno": 30,
+      "result": -1,
+      "syscall": 82
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-long-old-before-readonly-new",
+      "complete_state_preserved": true,
+      "errno": 36,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "link-readonly-new-long-final",
+      "complete_state_preserved": true,
+      "errno": 36,
+      "result": -1,
+      "syscall": 86
+    },
+    {
+      "asserted_errno": true,
+      "case": "rename-exchange-missing-target",
+      "complete_state_preserved": true,
+      "errno": 2,
+      "result": -1,
+      "syscall": 316
+    },
+    {
+      "asserted_errno": true,
+      "case": "renameat-bad-old-fd-ignored-for-absolute-new-fault",
+      "complete_state_preserved": true,
+      "errno": 14,
+      "result": -1,
+      "syscall": 264
+    }
+  ],
+  "guest_source": "linux-kernel/labs/qemu/x86_64/namespace_linux_guest.py",
+  "guest_source_sha256": "e572f84fbb9f95e2973e3eb13969c0a4c6dbb2ea4bb0f5256ddb2c3e0f05e27d",
+  "kernel_sha256": "c005235648520b35e104e3d8025abf48f6f523697a54f491b9cf692db53fae0c",
+  "linux_release": "7.2.9",
+  "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+  "prepared_effective_uid": 0,
+  "raw_logs": {
+    "command.json": "3bf06ea427cfc60336c629eb5329fc72273e097ae4176dd2ebe2616130da7823",
+    "guest.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "guest.stdout.log": "edb95de421e36ee91d3977698388aebfce12184b8d24730b25d6ede6a89d3767",
+    "qemu.log": "d7c1313dd1fff9cdea4305db583097401924d11c566f40fd386ca1e32f4a5ba4",
+    "ready.stderr.log": "31723d3f801438d7e44d5f54181d0d823f69422cc73af8470c6ffcbd4a5f5253",
+    "ready.stdout.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "serial.log": "2bc7c58905060dbcbd260c780cae28fc28ed206808de806cc8185ba7f495a86d"
+  },
+  "schema": "topal-linux-namespace-dispositions/1",
+  "scope": "Pinned Linux-only baseline: 66 explicit errno/result assertions, metadata/alias/no-op/replacement/initial-link laws and complete refusal-state preservation. No Topal V6 kernel, native entry layout, pathname/errno implementation or BusyBox qualification is claimed."
+}

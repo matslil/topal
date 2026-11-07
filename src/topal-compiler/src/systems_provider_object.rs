@@ -37,7 +37,7 @@ use crate::{
 };
 
 pub const X86_SYSTEMS_PROVIDER_OBJECT_REVISION: &str =
-    "topal.provider-object.x86_64-qemu-pc-q35/232";
+    "topal.provider-object.x86_64-qemu-pc-q35/234";
 pub const X86_SYSTEMS_PROVIDER_TEXT_SECTION: &str = ".text.topal.systems.provider";
 pub const X86_SYSTEMS_BOOTSTRAP_STORAGE_SECTION: &str = ".bss.topal.bootstrap";
 pub const X86_SYSTEMS_DMA_STORAGE_SECTION: &str = ".bss.topal.dma";
@@ -54,8 +54,62 @@ pub const X86_SYSTEMS_PROVIDER_NOTE_SECTION: &str = ".note.topal.provider";
 pub(crate) fn volatile_file_profile(
     source_page: bool,
     source_inode: bool,
+    namespace_entries: bool,
 ) -> crate::SystemsVolatileFileProfile {
-    process_runtime::volatile_files::profile(source_page, source_inode)
+    process_runtime::volatile_files::profile(source_page, source_inode, namespace_entries)
+}
+
+#[cfg(test)]
+pub(crate) fn namespace_entry_component_object() -> Result<Vec<u8>, CompileError> {
+    process_runtime::volatile_files::entries::component_object()
+}
+
+#[cfg(test)]
+pub(crate) fn namespace_walk_component_object(
+    namespace_entries: bool,
+) -> Result<Vec<u8>, CompileError> {
+    process_runtime::namespace::walk_component_object(namespace_entries)
+}
+
+#[cfg(test)]
+pub(crate) fn namespace_personality_emission_object() -> Result<Vec<u8>, CompileError> {
+    // Exercise complete local branch/label closure without publishing an
+    // unqualified V6 kernel or bypassing the public provider plan's guard.
+    let code = static_image_process_enter(
+        true,
+        true,
+        true,
+        true,
+        true,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+    )?;
+    let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
+    let text = object.add_section(
+        Vec::new(),
+        b".text.namespace.personality.emission".to_vec(),
+        SectionKind::Text,
+    );
+    append_linkable_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+        &code,
+    )?;
+    object
+        .write()
+        .map_err(|e| CompileError::Tool(e.to_string()))
+}
+
+#[cfg(test)]
+pub(crate) fn namespace_final_component_object() -> Result<Vec<u8>, CompileError> {
+    process_runtime::namespace::final_component_object()
 }
 
 /// Verify the expanded process/child backing before it can reach a boot image.

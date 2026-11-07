@@ -101,7 +101,7 @@ pub(super) fn emit_open_plan(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bind("named-plan-existing-ready")?;
     Ok(())
 }
-fn reopen(e: &mut E<'_>) -> Result<(), CompileError> {
+fn reopen(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-open-linked")?;
     e.mov(R10, R12);
     e.add(R10, DESCRIPTIONS);
@@ -128,8 +128,15 @@ fn reopen(e: &mut E<'_>) -> Result<(), CompileError> {
     e.mov(R13, R10);
     e.0.call("file-object-by-identity");
     e.load(A, R10, 56);
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fatal");
+    if namespace_entries {
+        e.cmp(A, files::entries::COUNT as i32);
+        e.0.jump_if(0x87, "fatal");
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "fatal");
+    } else {
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.mov(A, Bp);
     e.arith(4, A, 0x200);
     e.cmp(A, 0);
@@ -170,7 +177,7 @@ fn reopen(e: &mut E<'_>) -> Result<(), CompileError> {
     emit_static_process_sysret(e.0);
     Ok(())
 }
-fn unlink(e: &mut E<'_>) -> Result<(), CompileError> {
+fn unlink(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     e.0.bind("namespace-unlink")?;
     e.mov(R8, Di);
     e.imm(B, 0xffff_ff9c);
@@ -194,21 +201,49 @@ fn unlink(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.call("namespace-walk");
     e.cmp(R15, 7);
     e.0.jump_if(0x82, "namespace-eisdir");
+    if namespace_entries {
+        e.mov(B, R11);
+    }
     e.0.call("file-object-by-identity");
     e.load(A, R10, 56);
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fatal");
+    if namespace_entries {
+        e.cmp(A, files::entries::COUNT as i32);
+        e.0.jump_if(0x87, "fatal");
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "fatal");
+    } else {
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
     e.0.call("file-clock");
     e.0.jump_if(0x82, "namespace-eio");
     e.mov(R13, A);
-    e.imm(A, 0);
-    e.store(R10, 56, A);
-    e.store(R10, 72, A);
-    files::name_pointer(e, R11, R10);
-    files::erase(e, R11, 256);
+    if namespace_entries {
+        e.load(A, R10, 56);
+        e.add(A, -1);
+        e.store(R10, 56, A);
+        e.mov(R11, B);
+        files::shift(e, R11, true, 4);
+        e.rr(0x01, R11, R12);
+        e.add(R11, files::entries::ENTRIES);
+        files::erase(e, R11, 16);
+        files::entries::name_pointer(e, R11, B);
+        files::erase(e, R11, 256);
+    } else {
+        e.imm(A, 0);
+        e.store(R10, 56, A);
+        e.store(R10, 72, A);
+        files::name_pointer(e, R11, R10);
+        files::erase(e, R11, 256);
+    }
     e.store(R10, 48, R13);
     e.store(R12, files::DIRECTORY_METADATA + 16, R13);
     e.store(R12, files::DIRECTORY_METADATA + 24, R13);
+    if namespace_entries {
+        e.load(A, R10, 56);
+        e.cmp(A, 0);
+        e.0.jump_if(0x85, "named-unlink-retained");
+    }
     e.0.call("file-live-description");
     e.0.jump_if(0x83, "named-unlink-retained");
     e.0.call("file-destroy-object");
@@ -217,8 +252,11 @@ fn unlink(e: &mut E<'_>) -> Result<(), CompileError> {
     finish(e, 0);
     Ok(())
 }
-fn directory(e: &mut E<'_>) -> Result<(), CompileError> {
+fn directory(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
     e.0.bind("named-directory")?;
+    if namespace_entries {
+        e.0.call("file-entry-table-check");
+    }
     e.0.bytes(&[0x89, 0xd5]); // Linux unsigned count admission.
     e.cmp(Bp, 512);
     e.0.jump_if(0x86, "named-directory-budget");
@@ -237,26 +275,42 @@ fn directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.jump_if(0x84, "named-directory-parent");
     e.mov(R10, R13);
     e.add(R10, -2);
-    files::shift(e, R10, true, 7);
+    files::shift(e, R10, true, if namespace_entries { 4 } else { 7 });
     e.rr(0x01, R10, R12);
-    e.add(R10, files::OBJECTS);
+    e.add(
+        R10,
+        if namespace_entries {
+            files::entries::ENTRIES
+        } else {
+            files::OBJECTS
+        },
+    );
     e.load(A, R10, 0);
     e.cmp(A, 0);
     e.0.jump_if(0x84, "named-directory-skip");
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fatal");
-    e.load(A, R10, 56);
-    e.cmp(A, 0);
-    e.0.jump_if(0x84, "named-directory-skip");
-    e.cmp(A, 1);
-    e.0.jump_if(0x85, "fatal");
-    e.load(D, R10, 72);
+    if !namespace_entries {
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+        e.load(A, R10, 56);
+        e.cmp(A, 0);
+        e.0.jump_if(0x84, "named-directory-skip");
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fatal");
+    }
+    e.load(D, R10, if namespace_entries { 8 } else { 72 });
     e.cmp(D, 1);
     e.0.jump_if(0x82, "fatal");
     e.cmp(D, 255);
     e.0.jump_if(0x87, "fatal");
-    files::name_pointer(e, Si, R10);
-    e.load(B, R10, 8);
+    if namespace_entries {
+        e.mov(R8, R13);
+        e.add(R8, -2);
+        files::entries::name_pointer(e, Si, R8);
+        e.load(B, R10, 0);
+    } else {
+        files::name_pointer(e, Si, R10);
+        e.load(B, R10, 8);
+    }
     e.imm(R8, 8);
     e.0.jump("named-directory-record");
     e.0.bind("named-directory-dot")?;
@@ -323,9 +377,9 @@ fn directory(e: &mut E<'_>) -> Result<(), CompileError> {
     e.0.bytes(b"..\0");
     Ok(())
 }
-pub(super) fn emit_services(e: &mut E<'_>) -> Result<(), CompileError> {
-    reopen(e)?;
-    unlink(e)?;
-    directory(e)?;
+pub(super) fn emit_services(e: &mut E<'_>, namespace_entries: bool) -> Result<(), CompileError> {
+    reopen(e, namespace_entries)?;
+    unlink(e, namespace_entries)?;
+    directory(e, namespace_entries)?;
     Ok(())
 }

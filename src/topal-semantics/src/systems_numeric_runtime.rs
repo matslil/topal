@@ -44,6 +44,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV5
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV6
             ) && std::mem::replace(&mut dispatch_selected, true)
             {
                 return Err(invalid());
@@ -66,6 +67,7 @@ impl SystemsNumericRuntimeArena {
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV3
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV4
                     | SystemsSourceLibraryInterface::StaticLinuxDispatchV5
+                    | SystemsSourceLibraryInterface::StaticLinuxDispatchV6
                     | SystemsSourceLibraryInterface::ProcessIdentityTransitionV1
                     | SystemsSourceLibraryInterface::RetainedProcessIdentityV1
                     | SystemsSourceLibraryInterface::StructuredProcessIdentityV1
@@ -245,6 +247,7 @@ mod tests {
             StaticLinuxDispatchV3,
             StaticLinuxDispatchV4,
             StaticLinuxDispatchV5,
+            StaticLinuxDispatchV6,
         ];
         let requirement = |interface| SystemsSourceLibraryRequirement {
             source: "policy/identity.t".into(),
@@ -262,7 +265,7 @@ mod tests {
             },
         };
         let mut accepted = 0;
-        for mask in 1u32..512 {
+        for mask in 1u32..(1 << policies.len()) {
             let selected = policies
                 .iter()
                 .enumerate()
@@ -270,7 +273,9 @@ mod tests {
                 .map(|(_, interface)| requirement(*interface))
                 .collect::<Vec<_>>();
             let result = SystemsNumericRuntimeArena::new_with_policies(&selected, "root");
-            if (mask & 56).count_ones() > 1 || (mask & 452).count_ones() > 1 {
+            // Identity alternatives occupy bits 3..5; all six dispatch
+            // versions occupy bit 2 and bits 6..10, sharing one policy slot.
+            if (mask & 56).count_ones() > 1 || (mask & 1988).count_ones() > 1 {
                 assert!(result.is_err());
                 continue;
             }
@@ -285,7 +290,9 @@ mod tests {
             arena.return_to_root("process").unwrap();
             assert!(arena.is_reclaimed());
         }
-        assert_eq!(accepted, 79);
+        // Optional time/header, zero or one of three identity versions, and
+        // zero or one of six dispatch versions, excluding the empty set.
+        assert_eq!(accepted, 4 * 4 * 7 - 1);
     }
     #[test]
     fn distinct_numeric_policies_share_only_inactive_clean_storage() {

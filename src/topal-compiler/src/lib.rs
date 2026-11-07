@@ -26,8 +26,12 @@ mod systems_region_library;
 mod systems_region_root_tests;
 mod systems_root_region_boot;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
-pub use systems_provider_object::inode_region::SystemsInodeRegionBinding;
-pub use systems_provider_object::namespace_region::SystemsNamespaceRegionBinding;
+pub use systems_provider_object::inode_region::{
+    SystemsInodeNamespaceAdmission, SystemsInodeRegionBinding,
+};
+pub use systems_provider_object::namespace_region::{
+    SystemsNamespaceAdmissionRetirement, SystemsNamespaceRegionBinding,
+};
 pub use systems_provider_object::ram_page_region::SystemsRamPageRegionBinding;
 pub use systems_provider_object::root_region::{
     SystemsRootRegionBinding, SystemsRootRegionCode, SystemsRootRegionStorage,
@@ -45,7 +49,7 @@ mod systems_pipeline;
 mod systems_provider;
 mod systems_provider_object;
 mod systems_volatile_profile;
-pub use systems_volatile_profile::SystemsVolatileFileProfile;
+pub use systems_volatile_profile::{SystemsNamespaceEntryTableProfile, SystemsVolatileFileProfile};
 mod toolchain;
 
 use std::fmt;

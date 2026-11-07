@@ -312,8 +312,11 @@ fn emit_static_process_start(
             || matches!(
                 dispatch_policy,
                 crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
-                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4 | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
+                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
+                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
+                    | crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6
             ),
+        dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
     )?;
     process_runtime::realtime::emit_dispatch(code)?;
     process_runtime::credentials::emit_dispatch(code)?;

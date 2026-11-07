@@ -306,7 +306,12 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     // TOPAL-SYSTEMS-REGION-ACTION-OWNER-001, -RETURN-001, -POSITION-001.
     // Structural provider evidence only; a declaration supplies no source snapshot.
     // Actual source/link/controller/boot binding is checked by a separate test.
-    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let mut source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t")
+        .replace("static-linux-dispatch-v6", "static-linux-dispatch-v4");
+    if let Some(start) = source.find("  namespace-library is") {
+        let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+        source.replace_range(start..end, "");
+    }
     let start = source.find("  file-position-library is").unwrap();
     let end = start + source[start..].find("  ),\n").unwrap() + 5;
     let legacy = source[start..end].replace(
@@ -322,7 +327,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     // Keep this legacy position-snapshot refusal independent of the current
     // root's optional page/inode declarations and their earlier admission guards.
     // Select the frozen v4 dispatch so this control needs no inode action;
-    // the selected v5 root and missing inode snapshots are checked separately.
+    // the selected current root and missing inode snapshots are checked separately.
     program.ram_page_pool_library = None;
     program.inode_mode_library = None;
     let dispatch = program.dispatch_library.as_mut().unwrap();

@@ -102,7 +102,12 @@ def verify(timeout=120,write_evidence=False):
         finally:GATE.SOURCE_PATH,GATE.build_image=original_source,original_build
         # The legacy open profile remains an explicitly selected compatibility run.
         legacy=root/'frozen-root.t'
-        legacy.write_text(original_source.read_text().replace('policy/file-open-access.t','policy/boot-open-access.t')
+        frozen_source=original_source.read_text().replace('static-linux-dispatch-v6','static-linux-dispatch-v5')
+        if '  namespace-library is' in frozen_source:
+            start=frozen_source.index('  namespace-library is')
+            end=frozen_source.index('  ),\n',start)+len('  ),\n')
+            frozen_source=frozen_source[:start]+frozen_source[end:]
+        legacy.write_text(frozen_source.replace('policy/file-open-access.t','policy/boot-open-access.t')
             .replace('export is file-open-decision','export is boot-open-decision')
             .replace('interface is file-open-decision-v1','interface is boot-open-decision-v1'))
         GATE.SOURCE_PATH=legacy

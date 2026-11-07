@@ -5,6 +5,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct SystemsInodeNamespaceAdmission {
+    pub metadata_offset: u64,
+    pub metadata_bytes: u64,
+    pub maximum_link_count: u64,
+    pub validation_stack_bytes: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SystemsInodeRegionBinding {
     pub schema: String,
     pub interface: String,
@@ -43,10 +52,17 @@ pub struct SystemsInodeRegionBinding {
     pub pipe_metadata_offset: u64,
     pub pipe_creation_time_offset: u64,
     pub metadata_bytes: u64,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_admission: Option<SystemsInodeNamespaceAdmission>,
 }
 pub(crate) fn inspect_linked(
     bytes: &[u8],
     library: &crate::SystemsRegionLibraryArtifact,
+    namespace_entries: bool,
 ) -> Result<SystemsInodeRegionBinding, CompileError> {
     use super::super::file_region::{InvocationTemplate, fatal_template, inspect_owned};
     use crate::systems_region_library::INODE_INSTANCE;
@@ -59,12 +75,25 @@ pub(crate) fn inspect_linked(
         ));
     }
     library.native_symbols()?;
+    let mut code = vec![
+        (APPLY, apply(namespace_entries)?),
+        (INODE_FRAME_ALLOCATE, allocator()?),
+        (INODE_FRAME_ABORT, fatal_template()),
+        (FINALIZE, finalize()?),
+    ];
+    if namespace_entries {
+        code.push((NAMESPACE_CHECK, namespace_check()?));
+    }
     let binding = inspect_owned(
         bytes,
         library,
         InvocationTemplate {
             framed: true,
-            schema: "topal.inode-region-invocation.x86_64/1",
+            schema: if namespace_entries {
+                "topal.inode-region-invocation.x86_64/2"
+            } else {
+                "topal.inode-region-invocation.x86_64/1"
+            },
             interface: "borrowed-byte-region-instance-action-v1",
             export: INODE_FRAME_EXPORT,
             allocate: INODE_FRAME_ALLOCATE,
@@ -75,14 +104,21 @@ pub(crate) fn inspect_linked(
             extra_storage: Vec::new(),
             live_frame_bytes: LIVE_FRAME_BYTES,
             call_alignment_bytes: CALL_ALIGNMENT_BYTES,
-            code: vec![
-                (APPLY, apply()?),
-                (INODE_FRAME_ALLOCATE, allocator()?),
-                (INODE_FRAME_ABORT, fatal_template()),
-                (FINALIZE, finalize()?),
-            ],
+            code,
         },
     )?;
+    let combined_stack_bytes = if namespace_entries {
+        binding
+            .combined_stack_bytes
+            .max(LIVE_FRAME_BYTES + NAMESPACE_CHECK_STACK_BYTES)
+    } else {
+        binding.combined_stack_bytes
+    };
+    if combined_stack_bytes > library.stack_limit_bytes {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: namespace admission exceeds the complete stack budget".into(),
+        ));
+    }
     Ok(SystemsInodeRegionBinding {
         schema: binding.schema,
         interface: binding.interface,
@@ -91,7 +127,7 @@ pub(crate) fn inspect_linked(
         maximum_source_stack_bytes: binding.maximum_source_stack_bytes,
         caller_alignment_bytes: binding.caller_alignment_bytes,
         live_frame_bytes: binding.live_frame_bytes,
-        combined_stack_bytes: binding.combined_stack_bytes,
+        combined_stack_bytes,
         retired_stack_reserve_bytes: binding.retired_stack_reserve_bytes,
         imported_hook_stack_bytes: binding.imported_hook_stack_bytes,
         storage: binding.storage,
@@ -111,5 +147,11 @@ pub(crate) fn inspect_linked(
         pipe_metadata_offset: 64,
         pipe_creation_time_offset: 96,
         metadata_bytes: 32,
+        namespace_admission: namespace_entries.then_some(SystemsInodeNamespaceAdmission {
+            metadata_offset: (DIRECTORY - 32) as u64,
+            metadata_bytes: 4096,
+            maximum_link_count: 4,
+            validation_stack_bytes: NAMESPACE_CHECK_STACK_BYTES,
+        }),
     })
 }

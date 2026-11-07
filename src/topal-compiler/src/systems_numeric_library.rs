@@ -666,7 +666,8 @@ pub(crate) fn check_numeric_library(
             | NumericPolicy::LinuxDispatchV2
             | NumericPolicy::LinuxDispatchV3
             | NumericPolicy::LinuxDispatchV4
-            | NumericPolicy::LinuxDispatchV5 => {
+            | NumericPolicy::LinuxDispatchV5
+            | NumericPolicy::LinuxDispatchV6 => {
                 "dispatch interface is not declared-type Nat -> StaticLinuxOperation"
             }
         }));

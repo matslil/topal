@@ -134,7 +134,7 @@ fn extended_dispatch_rejects_cross_version_vocabulary_and_preserves_the_frozen_p
 
 #[test]
 fn native_dispatch_matches_independent_selector_set_across_holes_and_wide_inputs() {
-    for version in 1..=5 {
+    for version in 1..=6 {
         native_dispatch_profile(version);
     }
 }
@@ -166,6 +166,13 @@ fn native_dispatch_profile(version: u8) {
     if version == 5 {
         requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5;
         requirement.source = "arch/x86_64/policy/static-linux-dispatch-v5.t".into();
+        let root =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
+        input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
+    }
+    if version == 6 {
+        requirement.interface = CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6;
+        requirement.source = "arch/x86_64/policy/static-linux-dispatch-v6.t".into();
         let root =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel");
         input = crate::systems_library::load_source_library(&requirement, &root).unwrap();
@@ -255,7 +262,7 @@ int main(void) {
     } else {
         driver_source
     };
-    let driver_source = if version == 5 {
+    let driver_source = if version >= 5 {
         driver_source
             .replace(
                 "static_linux_dispatch_policy_v4",
@@ -264,6 +271,18 @@ int main(void) {
             .replace("80,81,87,95", "80,81,87,90,91,95")
             .replace("263,267,273", "263,267,268,273")
             .replace("318,334", "318,334,452")
+    } else {
+        driver_source
+    };
+    let driver_source = if version == 6 {
+        driver_source
+            .replace(
+                "static_linux_dispatch_policy_v5",
+                "static_linux_dispatch_policy_v6",
+            )
+            .replace("80,81,87", "80,81,82,86,87")
+            .replace("262,263,267", "262,263,264,265,267")
+            .replace("302,318,334", "302,316,318,334")
     } else {
         driver_source
     };
@@ -277,12 +296,20 @@ int main(void) {
         .arg(&executable)
         .output()
         .unwrap();
+    if version == 6 {
+        std::fs::write(directory.join("compile.stdout.log"), &compiled.stdout).unwrap();
+        std::fs::write(directory.join("compile.stderr.log"), &compiled.stderr).unwrap();
+    }
     assert!(
         compiled.status.success(),
         "{}",
         String::from_utf8_lossy(&compiled.stderr)
     );
     let output = std::process::Command::new(&executable).output().unwrap();
+    if version == 6 {
+        std::fs::write(directory.join("native.stdout.log"), &output.stdout).unwrap();
+        std::fs::write(directory.join("native.stderr.log"), &output.stderr).unwrap();
+    }
     assert!(
         output.status.success(),
         "status={:?}: {}",
@@ -324,10 +351,10 @@ int main(void) {
         .iter()
         .zip(&second.record.source_tags)
     {
-        let last_tag = if version == 5 {
-            65
-        } else {
-            55 + 2 * u32::from(version - 1)
+        let last_tag = match version {
+            6 => 70,
+            5 => 65,
+            _ => 55 + 2 * u32::from(version - 1),
         };
         assert_eq!(original + reversed, last_tag);
     }
@@ -339,12 +366,36 @@ int main(void) {
         .arg(&executable)
         .output()
         .unwrap();
+    if version == 6 {
+        std::fs::write(
+            directory.join("reordered-compile.stdout.log"),
+            &compiled.stdout,
+        )
+        .unwrap();
+        std::fs::write(
+            directory.join("reordered-compile.stderr.log"),
+            &compiled.stderr,
+        )
+        .unwrap();
+    }
     assert!(
         compiled.status.success(),
         "{}",
         String::from_utf8_lossy(&compiled.stderr)
     );
     let output = std::process::Command::new(&executable).output().unwrap();
+    if version == 6 {
+        std::fs::write(
+            directory.join("reordered-native.stdout.log"),
+            &output.stdout,
+        )
+        .unwrap();
+        std::fs::write(
+            directory.join("reordered-native.stderr.log"),
+            &output.stderr,
+        )
+        .unwrap();
+    }
     assert!(
         output.status.success(),
         "reordered status={:?}: {}",
@@ -357,7 +408,20 @@ int main(void) {
         second.record.allocation.maximum_bytes,
         String::from_utf8_lossy(&output.stdout).trim()
     );
-    std::fs::remove_dir_all(directory).unwrap();
+    if version == 6 {
+        std::fs::write(
+            directory.join("normal.record.json"),
+            serde_json::to_vec_pretty(&library.record).unwrap(),
+        )
+        .unwrap();
+        std::fs::write(
+            directory.join("reordered.record.json"),
+            serde_json::to_vec_pretty(&second.record).unwrap(),
+        )
+        .unwrap();
+    } else {
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 }
 
 #[test]
@@ -371,6 +435,7 @@ fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4,
         CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5,
+        CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6,
     ];
     for (version, interface) in versions.iter().enumerate() {
         let mut q = legacy.clone();
@@ -387,7 +452,11 @@ fn all_dispatch_versions_admit_only_their_exact_nominal_vocabulary() {
         let checked = check_numeric_library(&q, &input).unwrap();
         assert_eq!(
             checked.source_tags.len(),
-            if version == 4 { 66 } else { 56 + 2 * version }
+            match version {
+                4 => 66,
+                5 => 71,
+                _ => 56 + 2 * version,
+            }
         );
         for other in versions {
             if other == *interface {

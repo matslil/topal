@@ -697,6 +697,7 @@ fn parse_artifact_root(
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4
                     | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5
+                    | CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
             ) {
                 return Err(source_diagnostic(
                     source,
@@ -818,6 +819,29 @@ fn parse_artifact_root(
             "E-SYSTEMS-INODE-MODE",
             *span,
             "static-linux-dispatch-v5 requires inode-mode-library",
+        ));
+    }
+    if dispatch_library.as_ref().is_some_and(|requirement| {
+        requirement.interface == CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+    }) && namespace_library.is_none()
+    {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-NAMESPACE",
+            *span,
+            "static-linux-dispatch-v6 requires namespace-library",
+        ));
+    }
+    if dispatch_library.as_ref().is_some_and(|requirement| {
+        requirement.interface == CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV6
+    }) && !kernel_library.as_ref().is_some_and(|requirement| {
+        requirement.interface == CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1
+    }) {
+        return Err(source_diagnostic(
+            source,
+            "E-SYSTEMS-NAMESPACE",
+            *span,
+            "static-linux-dispatch-v6 requires kernel-library with file-open-decision-v1",
         ));
     }
     Ok(ArtifactEntries {

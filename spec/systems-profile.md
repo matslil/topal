@@ -10168,6 +10168,17 @@ cleanup after admission SHALL be terminal without rollback or ordinary Linux
 error/owner resumption. Source data refusal before stores SHALL preserve bytes;
 successful earlier stores SHALL NOT be undone by later failure.
 
+When the shared namespace entry-table refinement is selected, inode-mode
+admission SHALL validate the complete canonical entry/inode metadata and SHALL
+accept a live regular inode's link count through the declared four-entry bound.
+A count inconsistent with actual associations or overlapping position, page or
+namespace loan SHALL be refused before ordinary source entry. The versioned
+invocation certificate SHALL bind the additional read-only validation and its
+complete 72-byte stack, including retirement of its spills and popped return
+word. Sequential validation and source paths SHALL be charged by their maximum
+complete depth. Earlier invocation profiles SHALL retain their exact guards,
+code, schema and costs.
+
 Invocation history SHALL remain distinct from object identities and survive
 fork/exec/process restoration and intermediate object destruction. Placement,
 schema, actual owner/extent and complete resource certificates SHALL reject
@@ -10271,6 +10282,11 @@ SHALL remain frozen. V6 SHALL require an explicit `namespace-library` declaratio
 using `borrowed-byte-region-instance-action-v1`, two Nat facts and Boolean
 result, with the caller-derived `namespace-metadata` instance. Source selection
 SHALL NOT itself establish inode, mount, credential or controller authority.
+V6 SHALL also require `kernel-library` with `file-open-decision-v1`, retaining
+the named-file profile's `TOPAL-SYSTEMS-FILE-OPEN-PLAN-001` dependency. A missing
+or boot-only open policy SHALL NOT select the new mutable entry-table profile.
+These V6 dependencies SHALL NOT alter older dispatch selection rules or the
+separate namespace-controller component declaration.
 
 ### TOPAL-SYSTEMS-NAMESPACE-ACTION-001 — Actual source namespace publication
 
@@ -10312,6 +10328,11 @@ owned temporary erasures before any readback failure can skip another region;
 normal retirement SHALL clear popped caller spill slots before resumption.
 Untrusted recovery addresses SHALL NOT authorize arbitrary erasure. These
 requirements add no source pointer/address constructor or frame-transport ABI.
+V6 admission/refusal and no-op exits SHALL reclaim abandoned helper frames from
+the trusted captured kernel-entry stack position before user resumption. Native
+evidence SHALL bind complete nested lookup, owning caller and retired-stack
+costs separately from source costs; unverified entry-frame addresses SHALL NOT
+authorize erasure. Fatal retirement SHALL include any added owning adapter frame.
 
 New table geometry SHALL require exact new evidence versions and changed-byte/
 stale/overlapping binding refusals, without enlarging existing owner extents or

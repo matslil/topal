@@ -133,7 +133,14 @@ def verify(timeout=30, write_evidence=False):
     with tempfile.TemporaryDirectory(prefix="topal-library-", dir="/tmp") as directory:
         root = Path(directory)
         legacy=root/'legacy-root.t'
-        legacy.write_text(original_source.read_text().replace('policy/file-open-access.t','policy/boot-open-access.t')
+        # This is the frozen boot-open component. V6's mutable namespace
+        # selection independently requires the named-file open plan.
+        frozen_source=original_source.read_text().replace('static-linux-dispatch-v6','static-linux-dispatch-v5')
+        if '  namespace-library is' in frozen_source:
+            start=frozen_source.index('  namespace-library is')
+            end=frozen_source.index('  ),\n',start)+len('  ),\n')
+            frozen_source=frozen_source[:start]+frozen_source[end:]
+        legacy.write_text(frozen_source.replace('policy/file-open-access.t','policy/boot-open-access.t')
             .replace('export is file-open-decision','export is boot-open-decision')
             .replace('interface is file-open-decision-v1','interface is boot-open-decision-v1'))
         GATE.SOURCE_PATH=legacy

@@ -8,14 +8,16 @@ use object::{SectionKind, SymbolFlags, SymbolKind, SymbolScope};
 
 #[path = "systems_inode_region_inspection.rs"]
 mod inspection;
-pub use inspection::SystemsInodeRegionBinding;
 pub(crate) use inspection::inspect_linked;
+pub use inspection::{SystemsInodeNamespaceAdmission, SystemsInodeRegionBinding};
 
 pub(crate) const APPLY: &str = "topal_x86_systems_inode_mode_apply_v1";
 pub(crate) const FINALIZE: &str = "topal_x86_systems_inode_mode_finalize_v1";
 pub(crate) const ARENA: &str = "topal_x86_systems_inode_mode_arena";
 pub(crate) const CONTROL: &str = "topal_x86_systems_inode_mode_control";
 pub(crate) const HISTORY: &str = "topal_x86_systems_inode_mode_history";
+pub(crate) const NAMESPACE_CHECK: &str = "topal_x86_systems_inode_mode_namespace_check_v1";
+pub(super) const NAMESPACE_CHECK_STACK_BYTES: u64 = 72;
 pub(super) const ARENA_BYTES: u64 = 65536;
 pub(super) const RETIRED_STACK_BYTES: u64 = 4096;
 pub(super) const LIVE_FRAME_BYTES: u64 = 8 + 14 * 8 + 64;
@@ -97,7 +99,7 @@ fn pipe_description(e: &mut E<'_>, offset: i32, kind: u64) -> Result<(), Compile
 /// DI actual controller, SI owned record (or directory block), D kind 0/1/2,
 /// C admitted permissions and R8 admitted clock seconds. Preserve all GPRs
 /// except A. The source, not this guard, performs the metadata writes.
-pub(super) fn apply() -> Result<Code, CompileError> {
+pub(super) fn apply(namespace_entries: bool) -> Result<Code, CompileError> {
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
     e.cmp(_Sp, 0x108000);
@@ -158,6 +160,30 @@ pub(super) fn apply() -> Result<Code, CompileError> {
     e.load(A, R13, 0);
     e.cmp(A, 1);
     e.0.jump_if(0x85, "fail");
+    if namespace_entries {
+        // Only the actual captured owner supplies the canonical page address.
+        // Another filesystem loan cannot overlap this metadata action.
+        for other in [
+            super::file_region::CONTROL,
+            super::ram_page_region::CONTROL,
+            super::namespace_region::CONTROL,
+        ] {
+            address(&mut e, &mut code.references, R11, other);
+            zero_readback(&mut e, R11, 64);
+        }
+        e.mov(Di, R13);
+        e.add(Di, DIRECTORY - 32);
+        branch(&mut e, &mut code.references, NAMESPACE_CHECK, true);
+        // The leaf retires its spills. Retire the completed return word while
+        // retaining the Boolean and admitted object/kind/frame facts.
+        e.mem(0xc7, A, _Sp, -8);
+        e.0.bytes(&[0; 4]);
+        e.mem(0x81, Di, _Sp, -8);
+        e.0.bytes(&[0; 4]);
+        e.0.jump_if(0x85, "fail");
+        e.cmp(A, 1);
+        e.0.jump_if(0x85, "fail");
+    }
     e.cmp(D, 1);
     e.0.jump_if(0x84, "directory");
     e.cmp(D, 2);
@@ -167,7 +193,7 @@ pub(super) fn apply() -> Result<Code, CompileError> {
     e.cmp(A, 7);
     e.0.jump_if(0x82, "fail");
     e.load(A, R14, 56);
-    e.cmp(A, 1);
+    e.cmp(A, if namespace_entries { 4 } else { 1 });
     e.0.jump_if(0x87, "fail");
     e.add(R14, 24);
     e.imm(D, 0o100000);
@@ -323,7 +349,11 @@ pub(super) fn finalize() -> Result<Code, CompileError> {
     branch(&mut e, &mut code.references, INODE_FRAME_ABORT, false);
     Ok(code)
 }
-pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), CompileError> {
+pub(super) fn append(
+    object: &mut Object<'_>,
+    text: SectionId,
+    namespace_entries: bool,
+) -> Result<(), CompileError> {
     for (name, bytes, alignment) in [
         (ARENA, ARENA_BYTES, 4096),
         (CONTROL, 64, 8),
@@ -349,11 +379,24 @@ pub(super) fn append(object: &mut Object<'_>, text: SectionId) -> Result<(), Com
     super::append_encoded_function(object, text, INODE_FRAME_ABORT, &[0xfa, 0xf4, 0xeb, 0xfd]);
     let debug = object.add_section(Vec::new(), b".debug_frame".to_vec(), SectionKind::Debug);
     for (name, code) in [
-        (APPLY, apply()?),
+        (APPLY, apply(namespace_entries)?),
         (INODE_FRAME_ALLOCATE, allocator()?),
         (FINALIZE, finalize()?),
     ] {
         super::root_region::append_code(object, text, debug, name, code)?;
     }
+    if namespace_entries {
+        super::root_region::append_code(object, text, debug, NAMESPACE_CHECK, namespace_check()?)?;
+    }
     Ok(())
+}
+
+pub(super) fn namespace_check() -> Result<Code, CompileError> {
+    let code = super::namespace_oracle::metadata_validator()?;
+    if !code.references.is_empty() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: namespace admission must remain a closed read-only leaf".into(),
+        ));
+    }
+    Ok(code)
 }

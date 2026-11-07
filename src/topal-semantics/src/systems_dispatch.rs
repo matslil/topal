@@ -37,6 +37,11 @@ pub enum SystemsStaticLinuxOperation {
     ChangeModeByFile,
     ChangeModeAt,
     ChangeModeAtFlags,
+    Rename,
+    Link,
+    RenameAt,
+    LinkAt,
+    RenameAtFlags,
     WorkingDirectory,
     ChangeDirectory,
     ChangeDirectoryByFile,
@@ -155,6 +160,17 @@ mod tests {
     }
 }
 impl SystemsStaticLinuxOperation {
+    #[must_use]
+    pub const fn from_selector_v6(selector: u64) -> Self {
+        match selector {
+            82 => Self::Rename,
+            86 => Self::Link,
+            264 => Self::RenameAt,
+            265 => Self::LinkAt,
+            316 => Self::RenameAtFlags,
+            _ => Self::from_selector_v5(selector),
+        }
+    }
     #[must_use]
     pub const fn from_selector_v5(selector: u64) -> Self {
         match selector {
@@ -286,6 +302,11 @@ impl SystemsStaticLinuxOperation {
             Self::ChangeModeByFile => "ChangeModeByFile",
             Self::ChangeModeAt => "ChangeModeAt",
             Self::ChangeModeAtFlags => "ChangeModeAtFlags",
+            Self::Rename => "Rename",
+            Self::Link => "Link",
+            Self::RenameAt => "RenameAt",
+            Self::LinkAt => "LinkAt",
+            Self::RenameAtFlags => "RenameAtFlags",
             Self::WorkingDirectory => "WorkingDirectory",
             Self::ChangeDirectory => "ChangeDirectory",
             Self::ChangeDirectoryByFile => "ChangeDirectoryByFile",
@@ -426,5 +447,45 @@ mod inode_tests {
             }
         }
         assert_eq!(Op::from_selector_v5(u64::MAX), Op::Unsupported);
+    }
+}
+
+#[cfg(test)]
+mod namespace_tests {
+    use super::SystemsStaticLinuxOperation as Op;
+
+    #[test]
+    fn v6_adds_exactly_five_namespace_choices_and_preserves_all_frozen_versions() {
+        // TOPAL-SYSTEMS-NAMESPACE-ABI-001. This is selector meaning, not an
+        // inode/mount grant or proof of any Linux handler's argument behavior.
+        for selector in 0..65536 {
+            let expected = match selector {
+                82 => Op::Rename,
+                86 => Op::Link,
+                264 => Op::RenameAt,
+                265 => Op::LinkAt,
+                316 => Op::RenameAtFlags,
+                _ => Op::from_selector_v5(selector),
+            };
+            assert_eq!(Op::from_selector_v6(selector), expected);
+        }
+        for selector in [82, 86, 264, 265, 316] {
+            for old in [
+                Op::from_selector,
+                Op::from_selector_v2,
+                Op::from_selector_v3,
+                Op::from_selector_v4,
+                Op::from_selector_v5,
+            ] {
+                assert_eq!(old(selector), Op::Unsupported);
+            }
+        }
+        for selector in 0..65536 {
+            for high in [1_u64 << 32, 1_u64 << 63] {
+                assert_eq!(Op::from_selector_v6(high | selector), Op::Unsupported);
+            }
+        }
+        assert_eq!(Op::from_selector_v6(u64::MAX), Op::Unsupported);
+        assert_eq!(Op::RenameAtFlags.as_str(), "RenameAtFlags");
     }
 }

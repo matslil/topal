@@ -217,6 +217,7 @@ fn static_image_process_enter(
         source_page,
         source_inode,
         source_namespace,
+        dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
     )?;
     code.finish_linkable()
 }

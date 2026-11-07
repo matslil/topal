@@ -124,9 +124,9 @@ mod tests {
             }],
         };
         let dispatch = SystemsSourceLibraryInput {
-            source: "arch/x86_64/policy/static-linux-dispatch-v5.t".into(),
-            source_name: "arch/x86_64/policy/static-linux-dispatch-v5.t".into(),
-            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v5.t")
+            source: "arch/x86_64/policy/static-linux-dispatch-v6.t".into(),
+            source_name: "arch/x86_64/policy/static-linux-dispatch-v6.t".into(),
+            text: include_str!("../../../kernel/arch/x86_64/policy/static-linux-dispatch-v6.t")
                 .into(),
             modules: vec![SystemsSourceModuleInput {
                 source: "support/syscall.t".into(),
@@ -198,13 +198,30 @@ mod tests {
                 text: include_str!("../../../kernel/support/inode-metadata.t").into(),
             }],
         };
-        publish_x86_64_systems_artifact_with_kernel_libraries(
+        let namespace = SystemsSourceLibraryInput {
+            source: "policy/namespace-action.t".into(),
+            source_name: "policy/namespace-action.t".into(),
+            text: include_str!("../../../kernel/policy/namespace-action.t").into(),
+            modules: vec![
+                SystemsSourceModuleInput {
+                    source: "support/namespace-bytes.t".into(),
+                    identity: vec!["support".into(), "namespace-bytes".into()],
+                    text: include_str!("../../../kernel/support/namespace-bytes.t").into(),
+                },
+                SystemsSourceModuleInput {
+                    source: "support/namespace-metadata.t".into(),
+                    identity: vec!["support".into(), "namespace-metadata".into()],
+                    text: include_str!("../../../kernel/support/namespace-metadata.t").into(),
+                },
+            ],
+        };
+        let artifact = publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
-                namespace: None,
+                namespace: Some(&namespace),
                 inode_mode: Some(&inode),
                 ram_page_pool: Some(&page),
                 file_position: Some(&position),
@@ -218,6 +235,14 @@ mod tests {
             &linked,
         )
         .unwrap();
+        assert_eq!(
+            artifact.record.dispatch_library.as_ref().unwrap().interface,
+            "static-linux-dispatch-v6"
+        );
+        assert_eq!(
+            artifact.record.namespace_runtime.as_ref().unwrap().schema,
+            "topal.namespace-owner-binding.x86_64/2"
+        );
         let boot = parent.join("boot");
         publish(&linked, &boot).unwrap();
         assert!(boot.join(X86_BOOT_IMAGE_FILE).is_file());

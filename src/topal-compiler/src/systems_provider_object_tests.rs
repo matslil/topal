@@ -22,13 +22,21 @@ fn generated_with_sources(source_page: bool, source_inode: bool) -> GeneratedSys
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .unwrap();
+    // These machine-instruction/relocation controls retain the exact V5
+    // provider. V6's additional namespace closure is qualified independently.
+    program.namespace_library = None;
+    let dispatch = program.dispatch_library.as_mut().unwrap();
+    dispatch.interface =
+        topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV5;
+    dispatch.source = "arch/x86_64/policy/static-linux-dispatch-v5.t".into();
     if !source_page {
         program.ram_page_pool_library = None;
     }
     if !source_inode {
         program.inode_mode_library = None;
         let dispatch = program.dispatch_library.as_mut().unwrap();
-        dispatch.interface = topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
+        dispatch.interface =
+            topal_language::compiler::CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV4;
         dispatch.source = "arch/x86_64/policy/static-linux-dispatch-v4.t".into();
     }
     generate_x86_64_systems_provider_object(&program).unwrap()
@@ -149,7 +157,8 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
     // TOPAL-COMP-SYSTEMS-X64-001, TOPAL-SYSTEMS-ARTIFACT-001;
     // TOPAL-COMP-SYSTEMS-REGION-PAGE-001. Source imports are explicit for each
     // selected caller; retaining native page allocation keeps its old closure.
-    for (source_page, source_inode) in [(false, false), (false, true), (true, false), (true, true)] {
+    for (source_page, source_inode) in [(false, false), (false, true), (true, false), (true, true)]
+    {
         let first = generated_with_sources(source_page, source_inode);
         let repeated = generated_with_sources(source_page, source_inode);
         assert_eq!(first.bytes, repeated.bytes);
@@ -197,7 +206,10 @@ fn emits_a_closed_relocatable_elf64_provider_object() {
             let section = file
                 .section_by_index(definition.section_index().unwrap())
                 .unwrap();
-            assert_eq!(section.name().unwrap(), X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION);
+            assert_eq!(
+                section.name().unwrap(),
+                X86_SYSTEMS_STATIC_PROCESS_STORAGE_SECTION
+            );
             assert_eq!(section.kind(), SectionKind::UninitializedData);
             undefined.insert(X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL);
         }

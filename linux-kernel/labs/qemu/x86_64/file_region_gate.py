@@ -29,6 +29,16 @@ def selected_source(text):
     return text.replace('  region-library is', declaration + '  region-library is')
 
 
+def legacy_source(text):
+    """Keep frozen transports/absence independent of V6 instance requirements."""
+    if 'interface is static-linux-dispatch-v6' in text:
+        text=text.replace('static-linux-dispatch-v6','static-linux-dispatch-v5')
+        start=text.index('  namespace-library is')
+        end=text.index('  ),\n',start)+len('  ),\n')
+        text=text[:start]+text[end:]
+    return text
+
+
 def build(destination, lifetime, source_path=None, *, library_root=None):
     original = POSITIONAL.GATE.SOURCE_PATH
     original_build = POSITIONAL.GATE.build_image
@@ -174,7 +184,7 @@ def verify(timeout=120, write_evidence=False):
             ('unscoped_frame', 'borrowed-byte-region-framed-action-v1', 'topal.kernel-region-frame-source-object.x86_64/1'),
         ):
             legacy = root/(name+'-root.t')
-            text = selected_source(GATE.SOURCE_PATH.read_text())
+            text = legacy_source(selected_source(GATE.SOURCE_PATH.read_text()))
             start = text.index('  file-position-library is')
             end = text.index('  ),\n', start)+len('  ),\n')
             declaration = text[start:end].replace('borrowed-byte-region-instance-action-v1', interface)
@@ -212,7 +222,7 @@ def verify(timeout=120, write_evidence=False):
                 GATE.SOURCE_PATH = original
             record[name] = observe(root/name/'observe', values, timeout, **mode)
         absent = root/'absent-root.t'
-        source = selected_source(GATE.SOURCE_PATH.read_text())
+        source = legacy_source(selected_source(GATE.SOURCE_PATH.read_text()))
         start = source.index('  file-position-library is')
         end = source.index('  ),\n', start)+len('  ),\n')
         absent.write_text(source[:start]+source[end:])

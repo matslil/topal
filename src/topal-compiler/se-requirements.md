@@ -12359,6 +12359,10 @@ dispatch vocabularies, exact new layouts, replacement/alias/capacity/lifetime
 laws, malformed bindings and source failures using independent byte/native/
 Linux/physical oracles and unchanged utility binaries. Keep existing owner
 extents, source resource limits, core meaning and initial acceptance scope.
+Bind the V6 inode-mode consumer's complete canonical metadata admission,
+four-entry link-count bound, clean peer-controller exclusion and 72-byte
+validation stack/return retirement. Charge sequential paths by their maximum
+complete depth; retain exact earlier inode invocation guards and certificates.
 When ordinary helper specialization exceeds the existing function budget,
 validate every original checked body before sharing equivalent instances of
 one declaration, erase only lowering-independent integer-range metadata and
@@ -12371,4 +12375,10 @@ pipeline. Bind and erase private comparison/recovery storage, preserve the
 consumed epoch through runtime abort, and recover the caller frame without
 trusting aborting callee registers. Preserve the reserved user-address window
 when additional supervisor code/storage requires a different placement.
+Require V6's existing named-file open-plan policy as well as its namespace and
+filesystem controllers; reject missing or boot-only policies before publishing
+the new mutable entry-table layout. Preserve older dispatch selection rules.
+Bind nested lookup and complete caller/retired-stack costs. Reclaim abandoned
+admission helpers before recoverable or no-op returns using only the trusted
+captured entry frame; an unverified address must not authorize stack erasure.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

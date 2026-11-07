@@ -171,6 +171,70 @@ its versioned entry consumers remain a separate selection. Kernel-controller
 components may supply a canonical page under the actual live owner, but cannot
 claim those later Linux entry paths or final victim reclamation from that test.
 
+V6 selects the separate entry-table layout independently of the presence of a
+namespace callback. It also requires `kernel-library` to select the existing
+`file-open-decision-v1`, as required by the named-file profile: create, reopen,
+truncate and unlink must use the same independently owned entry table. A missing
+or frozen boot-only open policy cannot select this mutable profile. Namespace
+controller components with older dispatch versions retain their existing
+selection rules. Its two-path adapters validate native flags first. Rename
+resolves both parents before mount comparison, final-component classification,
+write admission and final lookup; link resolves its old object before destination
+creation, whose existing-target/trailing-name errors can precede mount-write or
+cross-mount denial. The pinned Linux execution baseline is recorded in
+[native dispositions](../knowledge/x86_64/namespace-native-dispositions.json).
+The existing open/unlink walker modes cannot substitute for those different
+orders, particularly for a missing final source or trailing regular component.
+
+The two-path construction can retain the old final component in the first
+256 bytes of the existing 512-byte directory staging and its checked parent/
+length/type/trailing facts in the next 64 bytes. The second copied path still
+uses the private 4096-byte pathname buffer. No source loan or history is issued
+during this admission phase. Before invocation, derive the complete plan under
+the same exclusive operation, retain its scalar facts across clock observation,
+copy the new component from the private path buffer into the final input's
+offset 128, write the eight admitted words and clear all input padding. Retire
+the pre-admission representation completely; neither it nor an added live
+pathname frame may silently enlarge the complete source/caller stack bound.
+Every recoverable refusal erases directory staging, private pathname and normal
+transfer staging before returning. The final source input representation and
+ordinary two-Nat/Boolean transport remain unchanged.
+
+The V6 native evidence uses volatile-file profile version 6 with an explicit
+entry-table record; older profiles omit that record. The record binds four
+16-byte entries at offset 64, link count at inode offset 56, initial-link intent
+at offset 64, and the complete native lookup and namespace caller bounds. Native
+lookup verifies canonical metadata before consuming entry/inode associations.
+This read-only consistency check grants no owner, credential or source authority.
+Its eight saved registers and return word require 72 stack bytes; the private
+controller wrapper requires 88 and a lookup/free caller requires 96. Restore
+registers and erase/read back popped spills and completed inner return words
+before returning. These costs are separate from the later source invocation.
+The parent walker and final-name lookup each add one enclosing return word;
+bind their complete metadata-lookup maximum as 104 bytes. Recoverable V6 exits
+restore the trusted captured kernel-entry stack position, validate its owned
+extent and erase/read back the retired 4096-byte call area before resuming user
+code. No-op exits retire the same area without issuing a source action. Retire
+completed clock calls before source entry, including on clock failure; a live
+helper frame must not survive by jumping directly into a user-return path.
+
+V6 inode-mode admission also selects a distinct binding version: a regular
+inode may have zero through four current names. Validate the complete canonical
+entry/inode page through the same closed read-only metadata leaf before the
+32-byte inode loan, and refuse an overlapping position/page/namespace loan.
+Bind this additional leaf, its 72-byte complete stack cost and the maximum
+link count. Retire its completed return word as well as its popped spills.
+The leaf's admission path is sequential with ordinary source invocation; use
+the larger complete cost rather than adding the two paths. Preserve earlier
+inode-mode code and bindings under earlier dispatch selection. The mode action
+still receives the same actual 32-byte block and two ordinary Nat facts.
+
+The namespace entry adapter's additional live return word makes the complete
+source/caller allowance 256 bytes, including the existing 184-byte controller
+and 64-byte alignment allowance. Together with the normal 3824-byte source this
+is 4080 bytes; the wrong-association witness reaches exactly 4096. Independently
+check the sum before boot packaging; the source limit remains unchanged.
+
 The x86-64 controller keeps a private 32-byte recovery record: trusted caller
 frame, consumed epoch, admitted operation and admitted clock. Establish the
 frame under the private stack/interrupt preconditions before entering source;
@@ -186,6 +250,18 @@ as well as source temporaries before clearing the recovery record. The normal
 caller return-address word remains part of its calling convention; fatal
 recovery additionally erases that abandoned word. Other architectures must
 preserve the same recovery/retirement laws using their own calling conventions.
+
+The V6 owning commit helper adds one outer return word beyond the component
+caller's frame. Its fatal continuation uses a separately selected namespace
+owner/invocation evidence version 2. After the existing recovery has attempted
+all source-domain erasures, this continuation loads the protected captured
+kernel-entry stack position, validates its bounds/alignment and erases/read backs
+the retired 4096-byte admission call area, including the outer return word.
+It then clears registers and halts without owner resumption or persistent
+rollback. An invalid captured address authorizes no erasure. Bind this geometry
+and the final halt-instruction offset to the exact native code; observe fatal
+cleanup after that continuation, rather than at its entry. Older component
+selection retains all seven earlier templates and evidence version 1.
 
 Bind the oracle and recovery storage to exact zero-initialized, writable,
 disjoint ELF allocations along with code, immutable inputs and stack costs.

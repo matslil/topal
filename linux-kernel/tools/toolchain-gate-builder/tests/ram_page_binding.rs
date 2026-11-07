@@ -7,7 +7,14 @@ use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_f
 #[test]
 fn real_ram_page_owner_binds_four_disjoint_instances_and_rejects_tampering() {
     // TOPAL-SYSTEMS-REGION-PAGE-{OWNER,ALLOCATE,RELEASE}-001.
-    let text = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    // Retain this exact four-instance/native-absence compatibility control.
+    // The primary V6 five-instance binding is independently tested.
+    let mut text = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t")
+        .replace("static-linux-dispatch-v6", "static-linux-dispatch-v5");
+    if let Some(start) = text.find("  namespace-library is") {
+        let end = start + text[start..].find("\n  ),\n").unwrap() + 6;
+        text.replace_range(start..end, "");
+    }
     let declaration = "  ram-page-pool-library is lang systems source-library (\n    source is \"memory/ram-page-pool.t\",\n    export is apply,\n    interface is borrowed-byte-region-instance-action-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
     let text = if text.contains("  ram-page-pool-library is") {
         text.to_owned()

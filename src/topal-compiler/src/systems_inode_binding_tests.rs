@@ -3,11 +3,18 @@
 fn inode_binding_requires_exact_actual_owner_geometry_costs_and_source() {
     // TOPAL-SYSTEMS-INODE-MODE-ACTION-001; TOPAL-SYSTEMS-LINUX-DISPATCH-V5-001.
     let parent = temporary_parent();
-    let (kernel, initial, user, artifact) = linked_kernel_source(&parent, SOURCE);
+    // Keep this exact schema-1 compatibility control after primary activation.
+    let mut source = SOURCE.replace("static-linux-dispatch-v6", "static-linux-dispatch-v5");
+    if let Some(start) = source.find("  namespace-library is") {
+        let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
+        source.replace_range(start..end, "");
+    }
+    let (kernel, initial, user, artifact) = linked_kernel_source(&parent, &source);
     generate_x86_64_linux_boot_image(&kernel, &artifact, &initial, &user).unwrap();
     let binding = artifact.inode_mode_runtime.as_ref().unwrap();
     let library = artifact.inode_mode_library.as_ref().unwrap();
     assert_eq!(binding.schema, "topal.inode-region-invocation.x86_64/1");
+    assert!(binding.namespace_admission.is_none());
     assert_eq!(binding.instance.as_deref(), Some("inode-metadata"));
     assert_eq!(binding.scalar_count, Some(2));
     assert_eq!(

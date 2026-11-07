@@ -474,4 +474,7 @@ obligations shall not claim compiled source or physical execution.
 Validate the optional namespace source declaration against its instance
 interface and the qualified filesystem-controller dependencies. Preserve the
 older root and dispatch meanings when that declaration is absent.
+Validate V6's existing named-file open-plan dependency separately from a
+namespace-controller component declaration; missing and boot-only open policies
+must not select the new mutable entry-table profile.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

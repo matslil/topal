@@ -5,6 +5,18 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct SystemsNamespaceAdmissionRetirement {
+    pub kernel_stack_context_offset: u64,
+    pub minimum_stack_pointer: u64,
+    pub maximum_stack_pointer: u64,
+    pub stack_alignment: u64,
+    pub retired_stack_bytes: u64,
+    pub owning_adapter_frame_bytes: u64,
+    pub halt_instruction_offset: u64,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SystemsNamespaceRegionBinding {
     pub schema: String,
     pub invocation: SystemsFilePositionRegionBinding,
@@ -16,11 +28,18 @@ pub struct SystemsNamespaceRegionBinding {
     pub recovery_bytes: u64,
     pub helper_stack_bytes: u64,
     pub private_bss_minimum_address: u64,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub admission_retirement: Option<SystemsNamespaceAdmissionRetirement>,
 }
 
 pub(crate) fn inspect_linked(
     bytes: &[u8],
     library: &crate::SystemsRegionLibraryArtifact,
+    namespace_entries: bool,
 ) -> Result<SystemsNamespaceRegionBinding, CompileError> {
     use super::super::file_region::{InvocationTemplate, inspect_owned};
     if library.schema != "topal.kernel-region-frame-source-object.x86_64/4"
@@ -40,7 +59,11 @@ pub(crate) fn inspect_linked(
         library,
         InvocationTemplate {
             framed: true,
-            schema: "topal.namespace-region-invocation.x86_64/1",
+            schema: if namespace_entries {
+                "topal.namespace-region-invocation.x86_64/2"
+            } else {
+                "topal.namespace-region-invocation.x86_64/1"
+            },
             interface: "borrowed-byte-region-instance-action-v1",
             export: NAMESPACE_FRAME_EXPORT,
             allocate: NAMESPACE_FRAME_ALLOCATE,
@@ -54,7 +77,7 @@ pub(crate) fn inspect_linked(
             ],
             live_frame_bytes: LIVE_FRAME_BYTES,
             call_alignment_bytes: CALL_ALIGNMENT_BYTES,
-            code: templates()?,
+            code: templates(namespace_entries)?,
         },
     )?;
     if invocation
@@ -68,7 +91,12 @@ pub(crate) fn inspect_linked(
         ));
     }
     Ok(SystemsNamespaceRegionBinding {
-        schema: "topal.namespace-owner-binding.x86_64/1".into(),
+        schema: if namespace_entries {
+            "topal.namespace-owner-binding.x86_64/2"
+        } else {
+            "topal.namespace-owner-binding.x86_64/1"
+        }
+        .into(),
         invocation,
         metadata_offset: METADATA as u64,
         metadata_bytes: 4096,
@@ -78,5 +106,18 @@ pub(crate) fn inspect_linked(
         recovery_bytes: RECOVERY_BYTES,
         helper_stack_bytes: oracle::HELPER_STACK_BYTES,
         private_bss_minimum_address: PRIVATE_BSS_MINIMUM,
+        admission_retirement: if namespace_entries {
+            Some(SystemsNamespaceAdmissionRetirement {
+                kernel_stack_context_offset: ADMISSION_STACK_CONTEXT as u64,
+                minimum_stack_pointer: ADMISSION_STACK_MINIMUM as u64,
+                maximum_stack_pointer: ADMISSION_STACK_MAXIMUM as u64,
+                stack_alignment: 8,
+                retired_stack_bytes: ADMISSION_RETIRED_STACK_BYTES,
+                owning_adapter_frame_bytes: 8,
+                halt_instruction_offset: recovery::admission_halt()?.1,
+            })
+        } else {
+            None
+        },
     })
 }

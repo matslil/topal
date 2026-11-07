@@ -132,7 +132,7 @@ def verify(root, timeout, lifetime=False, bad_action=None):
         path.write_text(source.replace(old, new))
     values, calls = build(root, lifetime, libraries)
     artifact = json.loads(values[3].read_text())
-    assert artifact['dispatch_library']['interface'] == 'static-linux-dispatch-v5'
+    assert artifact['dispatch_library']['interface'] in ('static-linux-dispatch-v5','static-linux-dispatch-v6')
     assert artifact['inode_mode_runtime']['combined_stack_bytes'] <= 4096
     if not bad_action: assert artifact['inode_mode_runtime']['combined_stack_bytes'] == 1544
     if bad_action:

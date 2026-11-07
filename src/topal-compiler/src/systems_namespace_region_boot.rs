@@ -177,7 +177,29 @@ pub(crate) fn validate(
             "namespace action lacks the required exclusive filesystem controllers",
         ));
     }
-    let expected = native::inspect_linked(kernel, action)?;
+    let namespace_entries = artifact.volatile_files.namespace_entries.is_some();
+    if namespace_entries
+        && !artifact
+            .kernel_library
+            .as_ref()
+            .is_some_and(|library| library.interface == "file-open-decision-v1")
+    {
+        return Err(invalid(
+            "V6 requires its actual named-file open-plan binding",
+        ));
+    }
+    let expected = native::inspect_linked(kernel, action, namespace_entries)?;
+    if let Some(entries) = &artifact.volatile_files.namespace_entries {
+        if action
+            .maximum_stack_bytes
+            .checked_add(entries.namespace_caller_stack_bytes)
+            .is_none_or(|bound| bound > 4096)
+        {
+            return Err(invalid(
+                "complete namespace source/entry caller exceeds its stack reserve",
+            ));
+        }
+    }
     if artifact.namespace_runtime.as_ref() != Some(&expected) {
         return Err(invalid(
             "persistent action runtime/caller/source/data or bounds mismatch",

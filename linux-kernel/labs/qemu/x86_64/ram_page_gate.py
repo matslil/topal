@@ -217,6 +217,13 @@ def verify(timeout=120, write_evidence=False, smoke=False, keep=None):
                     name = fault+('-release' if release else '-allocation')
                     record[name] = observe(root/name, values, calls, timeout, fault=fault, release_fault=release)
             text = selected_source(GATE.SOURCE_PATH.read_text())
+            # Retain an explicit native-only V5 control: V6 requires the page
+            # and namespace source controllers and cannot select this absence.
+            if 'interface is static-linux-dispatch-v6' in text:
+                text = text.replace('static-linux-dispatch-v6','static-linux-dispatch-v5')
+                start = text.index('  namespace-library is')
+                end = text.index('  ),\n', start)+len('  ),\n')
+                text = text[:start]+text[end:]
             start = text.index('  ram-page-pool-library is')
             end = text.index('  ),\n', start)+len('  ),\n')
             absent, absent_calls = build(root/'native-only-artifact', source_text=text[:start]+text[end:])

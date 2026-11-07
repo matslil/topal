@@ -8,6 +8,41 @@ fn zero_only(e: &mut E<'_>, base: R, bytes: u64) {
     e.0.bytes(&[0xfc, 0xf3, 0x48, 0xab]);
 }
 
+/// The V6 owning adapter frame remains above APPLY's recovery frame. It is
+/// abandoned on fatal source completion; retire it using only protected entry
+/// context, independently of aborting source registers or its live stack.
+pub(super) fn admission_halt() -> Result<(Code, u64), CompileError> {
+    let mut code = Code::default();
+    code.unwind.push((0, vec![0x07, 16]));
+    let mut e = E(&mut code.encoder);
+    e.0.bytes(&[0xfa]);
+    e.gs(0x8b, _Sp, ADMISSION_STACK_CONTEXT);
+    e.cmp(_Sp, ADMISSION_STACK_MINIMUM);
+    e.0.jump_if(0x82, "clear");
+    e.cmp(_Sp, ADMISSION_STACK_MAXIMUM);
+    e.0.jump_if(0x87, "clear");
+    e.mov(A, _Sp);
+    e.arith(4, A, 7);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "clear");
+    e.mov(R11, _Sp);
+    e.add(R11, -(ADMISSION_RETIRED_STACK_BYTES as i32));
+    zero_only(&mut e, R11, ADMISSION_RETIRED_STACK_BYTES);
+    e.mov(Di, R11);
+    e.imm(C, ADMISSION_RETIRED_STACK_BYTES / 8);
+    e.0.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+    // A failed readback still reaches the same non-returning halt. Source
+    // recovery has already attempted every other owned temporary erasure.
+    e.0.bind("clear")?;
+    clear_temporaries(&mut e);
+    for register in [B, R12, R13, R14, R15, _Bp] {
+        e.imm(register, 0);
+    }
+    let halt_offset = e.0.bytes.len() as u64;
+    e.0.bytes(&[0xfa, 0xf4, 0xeb, 0xfd]);
+    Ok((code, halt_offset))
+}
+
 pub(super) fn abort() -> Result<Code, CompileError> {
     let mut code = Code::default();
     let mut e = E(&mut code.encoder);
