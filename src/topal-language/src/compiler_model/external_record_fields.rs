@@ -1137,7 +1137,7 @@ fn remap_returned_aggregate_captures(
 }
 
 fn compiler_function_parameter_supported(value_type: &CompilerType) -> bool {
-    matches!(value_type, CompilerType::Scope | CompilerType::Function)
+    matches!(value_type, CompilerType::Scope | CompilerType::Function | CompilerType::KernelByteRegion)
         || is_admitted_function_generator_type(value_type)
         || compiler_function_result_supported(value_type)
 }

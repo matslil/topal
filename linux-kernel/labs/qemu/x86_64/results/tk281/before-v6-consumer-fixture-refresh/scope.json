@@ -1,0 +1,7 @@
+{
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "scope": "completed earlier frozen-source namespace/inode observations; baseline positional observer failed; not a full affected pass",
+  "rust_record_sha256": "9fbe4a86f0849109d78b4d18c3f515453b5959d9a90d519dae10e4cc56c57069",
+  "failed_baseline_record_sha256": "5b882b83f68cc098b6c252d3545a49c7f0e205860939fb737f19b3ac8dead5d6",
+  "observer_preflight_record_sha256": "0ebf20920c7f6cd9ac41d2bffdbb62c3ca0b9710d68f3b4620278cef92d237ea"
+}

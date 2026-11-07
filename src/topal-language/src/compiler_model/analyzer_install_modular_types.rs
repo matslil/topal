@@ -600,6 +600,17 @@ impl Analyzer {
 
     fn parse_classifier(&self, span: Span) -> Result<CompilerType, Diagnostic> {
         let classifier = compact_classifier(self.source.slice(span));
+        if classifier == "KernelByteRegion" && self.kernel_region_vocabulary(span) {
+            return Ok(CompilerType::KernelByteRegion);
+        }
+        if self.kernel_region_vocabulary(span)
+            && classifier.contains("KernelByteRegion")
+            && let Some(value_type) = parse_compact_classifier_with(&classifier, &|name| {
+                (name == "KernelByteRegion").then_some(CompilerType::KernelByteRegion)
+            })
+        {
+            return Ok(value_type);
+        }
         if classifier == "DecimalText"
             && self
                 .source

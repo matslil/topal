@@ -29,6 +29,14 @@ pub const SYSTEMS_KERNEL_CONTEXT_PREEMPT_CURRENT: &str =
     "topal.systems.disposition.kernel-context-preempt-current/1";
 pub const SYSTEMS_KERNEL_CONTEXT_TAKE_PREEMPTED: &str =
     "topal.systems.context.kernel.take-preempted/1";
+pub const SYSTEMS_KERNEL_COMPLETION_CREATE: &str =
+    "topal.systems.context.kernel.completion.create/1";
+pub const SYSTEMS_KERNEL_COMPLETION_BLOCK_ONCE: &str =
+    "topal.systems.context.kernel.completion.block-once/2";
+pub const SYSTEMS_KERNEL_COMPLETION_SIGNAL: &str =
+    "topal.systems.context.kernel.completion.signal/2";
+pub const SYSTEMS_KERNEL_COMPLETION_CONSUME: &str =
+    "topal.systems.context.kernel.completion.consume/1";
 
 pub const INITIAL_PROCESSOR_IDENTITY: &str = "topal.systems.processor.initial/1";
 pub const INITIAL_ADDRESS_SPACE_IDENTITY: &str = "topal.systems.address-space.initial-kernel/1";
@@ -38,6 +46,8 @@ pub const COOPERATIVE_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.cooperative/1";
 pub const DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.deadline-preemptible/1";
+pub const COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY: &str =
+    "topal.systems.entry.resumed.kernel-thread.completion-blocking/1";
 pub const TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY: &str =
     "topal.systems.entry.resumed.kernel-thread.terminal/1";
 
@@ -45,6 +55,7 @@ pub const TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY: &str =
 pub enum KernelContextEntryProtocol {
     CooperativeOnce,
     DeadlinePreemptedOnce,
+    BlocksOnCompletionOnce,
     Terminal,
 }
 
@@ -99,6 +110,55 @@ pub struct PreemptedKernelContextTransfer {
     delivery: DeadlineEventDelivery,
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub struct KernelCompletionWaitEndpoint {
+    provider_identity: String,
+    processor_identity: String,
+    address_space_identity: String,
+    completion_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct KernelCompletionSignalEndpoint {
+    provider_identity: String,
+    processor_identity: String,
+    address_space_identity: String,
+    completion_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct BlockedKernelContextTransfer {
+    suspended: SuspendedKernelContext,
+    completion_identity: u64,
+    caller_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct SuspendedCompletionDispatcher {
+    provider_identity: String,
+    processor_identity: String,
+    address_space_identity: String,
+    completion_identity: u64,
+    context_identity: u64,
+    caller_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct ReadyKernelCompletion {
+    provider_identity: String,
+    processor_identity: String,
+    address_space_identity: String,
+    completion_identity: u64,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct CompletedKernelCompletion {
+    provider_identity: String,
+    processor_identity: String,
+    address_space_identity: String,
+    completion_identity: u64,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct KernelContextCompletion {
     pub context_identity: u64,
@@ -146,6 +206,7 @@ pub struct SystemsKernelContextProtocol {
     entry_identity: String,
     next_context_identity: u64,
     next_caller_identity: u64,
+    next_completion_identity: u64,
 }
 
 impl SystemsKernelContextProtocol {
@@ -158,7 +219,33 @@ impl SystemsKernelContextProtocol {
             entry_identity: INITIAL_KERNEL_THREAD_ENTRY_IDENTITY.into(),
             next_context_identity: 1,
             next_caller_identity: 1,
+            next_completion_identity: 1,
         }
+    }
+
+    /// Create matching affine endpoints for one fresh one-shot completion.
+    #[must_use]
+    pub fn create_completion(
+        &mut self,
+    ) -> (KernelCompletionWaitEndpoint, KernelCompletionSignalEndpoint) {
+        let completion_identity = self.next_completion_identity;
+        self.next_completion_identity = completion_identity
+            .checked_add(1)
+            .expect("sealed completion identity space is not exhausted");
+        (
+            KernelCompletionWaitEndpoint {
+                provider_identity: self.provider_identity.clone(),
+                processor_identity: self.processor_identity.clone(),
+                address_space_identity: self.address_space_identity.clone(),
+                completion_identity,
+            },
+            KernelCompletionSignalEndpoint {
+                provider_identity: self.provider_identity.clone(),
+                processor_identity: self.processor_identity.clone(),
+                address_space_identity: self.address_space_identity.clone(),
+                completion_identity,
+            },
+        )
     }
 
     /// Construct an empty fixed-capacity runnable queue.
@@ -421,6 +508,210 @@ impl SystemsKernelContextProtocol {
         Ok((preempted.suspended, preempted.delivery))
     }
 
+    /// Consume a fresh worker and wait endpoint into an opaque blocked outcome.
+    ///
+    /// The returned dispatcher token represents the exact continuation which
+    /// was registered before the worker could publish its blocked state.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for mismatched identity, the wrong entry
+    /// protocol, a repeated wait, or an incompatible live obligation.
+    pub fn block_on_completion_once(
+        &mut self,
+        mut suspended: SuspendedKernelContext,
+        wait: KernelCompletionWaitEndpoint,
+        incompatible_live_obligations: usize,
+    ) -> Result<(BlockedKernelContextTransfer, SuspendedCompletionDispatcher), SystemsModelError>
+    {
+        self.validate_identity(
+            &suspended.provider_identity,
+            &suspended.processor_identity,
+            &suspended.address_space_identity,
+            &suspended.entry_identity,
+        )?;
+        self.validate_completion_identity(
+            &wait.provider_identity,
+            &wait.processor_identity,
+            &wait.address_space_identity,
+        )?;
+        if suspended.entry_protocol != KernelContextEntryProtocol::BlocksOnCompletionOnce
+            || suspended.activation_count != 0
+        {
+            return Err(context_error(
+                "completion blocking requires one fresh closed block-once context",
+            ));
+        }
+        if incompatible_live_obligations != 0 {
+            return Err(context_error(
+                "completion blocking requires no incompatible live obligation",
+            ));
+        }
+        let caller_identity = self.next_caller_identity;
+        self.next_caller_identity = caller_identity
+            .checked_add(1)
+            .ok_or_else(|| context_error("suspended-caller identity exhausted"))?;
+        suspended.activation_count = 1;
+        let dispatcher = SuspendedCompletionDispatcher {
+            provider_identity: self.provider_identity.clone(),
+            processor_identity: self.processor_identity.clone(),
+            address_space_identity: self.address_space_identity.clone(),
+            completion_identity: wait.completion_identity,
+            context_identity: suspended.context_identity,
+            caller_identity,
+        };
+        Ok((
+            BlockedKernelContextTransfer {
+                suspended,
+                completion_identity: wait.completion_identity,
+                caller_identity,
+            },
+            dispatcher,
+        ))
+    }
+
+    /// Consume a matching signal, blocked worker, and exact dispatcher token.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic unless all completion, context, provider,
+    /// processor, address-space, and continuation identities match.
+    pub fn signal_blocked_completion(
+        &self,
+        signal: KernelCompletionSignalEndpoint,
+        blocked: BlockedKernelContextTransfer,
+        dispatcher: SuspendedCompletionDispatcher,
+    ) -> Result<(SuspendedKernelContext, CompletedKernelCompletion), SystemsModelError> {
+        self.validate_completion_identity(
+            &signal.provider_identity,
+            &signal.processor_identity,
+            &signal.address_space_identity,
+        )?;
+        self.validate_completion_identity(
+            &dispatcher.provider_identity,
+            &dispatcher.processor_identity,
+            &dispatcher.address_space_identity,
+        )?;
+        self.validate_identity(
+            &blocked.suspended.provider_identity,
+            &blocked.suspended.processor_identity,
+            &blocked.suspended.address_space_identity,
+            &blocked.suspended.entry_identity,
+        )?;
+        if signal.completion_identity != blocked.completion_identity
+            || signal.completion_identity != dispatcher.completion_identity
+            || blocked.suspended.context_identity != dispatcher.context_identity
+            || blocked.caller_identity != dispatcher.caller_identity
+        {
+            return Err(context_error(
+                "completion signal requires the matching blocked context and exact dispatcher",
+            ));
+        }
+        Ok((
+            blocked.suspended,
+            CompletedKernelCompletion {
+                provider_identity: signal.provider_identity,
+                processor_identity: signal.processor_identity,
+                address_space_identity: signal.address_space_identity,
+                completion_identity: signal.completion_identity,
+            },
+        ))
+    }
+
+    /// Consume a signal endpoint before its waiter and persist readiness.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for an endpoint from another protocol.
+    pub fn signal_completion_before_wait(
+        &self,
+        signal: KernelCompletionSignalEndpoint,
+    ) -> Result<ReadyKernelCompletion, SystemsModelError> {
+        self.validate_completion_identity(
+            &signal.provider_identity,
+            &signal.processor_identity,
+            &signal.address_space_identity,
+        )?;
+        Ok(ReadyKernelCompletion {
+            provider_identity: signal.provider_identity,
+            processor_identity: signal.processor_identity,
+            address_space_identity: signal.address_space_identity,
+            completion_identity: signal.completion_identity,
+        })
+    }
+
+    /// Consume persistent readiness and the matching wait without sleeping.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for mismatched identities, the wrong entry
+    /// protocol, a repeated wait, or an incompatible live obligation.
+    pub fn observe_ready_completion(
+        &self,
+        mut suspended: SuspendedKernelContext,
+        wait: KernelCompletionWaitEndpoint,
+        ready: ReadyKernelCompletion,
+        incompatible_live_obligations: usize,
+    ) -> Result<(SuspendedKernelContext, CompletedKernelCompletion), SystemsModelError> {
+        self.validate_identity(
+            &suspended.provider_identity,
+            &suspended.processor_identity,
+            &suspended.address_space_identity,
+            &suspended.entry_identity,
+        )?;
+        self.validate_completion_identity(
+            &wait.provider_identity,
+            &wait.processor_identity,
+            &wait.address_space_identity,
+        )?;
+        self.validate_completion_identity(
+            &ready.provider_identity,
+            &ready.processor_identity,
+            &ready.address_space_identity,
+        )?;
+        if suspended.entry_protocol != KernelContextEntryProtocol::BlocksOnCompletionOnce
+            || suspended.activation_count != 0
+            || wait.completion_identity != ready.completion_identity
+        {
+            return Err(context_error(
+                "ready completion requires its matching fresh block-once context and wait endpoint",
+            ));
+        }
+        if incompatible_live_obligations != 0 {
+            return Err(context_error(
+                "completion wait requires no incompatible live obligation",
+            ));
+        }
+        suspended.activation_count = 1;
+        Ok((
+            suspended,
+            CompletedKernelCompletion {
+                provider_identity: ready.provider_identity,
+                processor_identity: ready.processor_identity,
+                address_space_identity: ready.address_space_identity,
+                completion_identity: ready.completion_identity,
+            },
+        ))
+    }
+
+    /// Consume a completed one-shot state after its worker lifecycle ends.
+    ///
+    /// # Errors
+    ///
+    /// Returns a stable diagnostic for a completion from another protocol.
+    pub fn consume_completed_completion(
+        &self,
+        completed: CompletedKernelCompletion,
+    ) -> Result<(), SystemsModelError> {
+        self.validate_completion_identity(
+            &completed.provider_identity,
+            &completed.processor_identity,
+            &completed.address_space_identity,
+        )?;
+        let _completion_identity = completed.completion_identity;
+        Ok(())
+    }
+
     /// Retire the running worker and resume exactly its suspended caller.
     ///
     /// # Errors
@@ -483,6 +774,7 @@ impl SystemsKernelContextProtocol {
             }
             (KernelContextEntryProtocol::CooperativeOnce, 1)
             | (KernelContextEntryProtocol::DeadlinePreemptedOnce, 1)
+            | (KernelContextEntryProtocol::BlocksOnCompletionOnce, 1)
             | (KernelContextEntryProtocol::Terminal, 0) => {
                 if live_obligations != 0 {
                     return Err(context_error(
@@ -510,6 +802,12 @@ impl SystemsKernelContextProtocol {
             )),
             (KernelContextEntryProtocol::DeadlinePreemptedOnce, _) => Err(context_error(
                 "deadline-preemptible kernel context may be preempted exactly once before retirement",
+            )),
+            (KernelContextEntryProtocol::BlocksOnCompletionOnce, 0) => Err(context_error(
+                "a fresh completion-blocking context requires a completion-bound transfer",
+            )),
+            (KernelContextEntryProtocol::BlocksOnCompletionOnce, _) => Err(context_error(
+                "completion-blocking kernel context may block exactly once before retirement",
             )),
             (KernelContextEntryProtocol::Terminal, _) => Err(context_error(
                 "terminal kernel context cannot be selected after retirement",
@@ -551,6 +849,7 @@ impl SystemsKernelContextProtocol {
         let valid_entry = entry_identity == self.entry_identity
             || entry_identity == COOPERATIVE_KERNEL_THREAD_ENTRY_IDENTITY
             || entry_identity == DEADLINE_PREEMPTIBLE_KERNEL_THREAD_ENTRY_IDENTITY
+            || entry_identity == COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY
             || entry_identity == TERMINAL_KERNEL_THREAD_ENTRY_IDENTITY;
         if provider_identity != self.provider_identity
             || self.provider_identity != "topal.systems.context-provider.initial/1"
@@ -560,6 +859,23 @@ impl SystemsKernelContextProtocol {
         {
             return Err(context_error(
                 "kernel-context transfer requires matching provider, processor, address space, and entry identities",
+            ));
+        }
+        Ok(())
+    }
+
+    fn validate_completion_identity(
+        &self,
+        provider_identity: &str,
+        processor_identity: &str,
+        address_space_identity: &str,
+    ) -> Result<(), SystemsModelError> {
+        if provider_identity != self.provider_identity
+            || processor_identity != self.processor_identity
+            || address_space_identity != self.address_space_identity
+        {
+            return Err(context_error(
+                "kernel completion requires matching provider, processor, and address-space identities",
             ));
         }
         Ok(())
@@ -1023,6 +1339,144 @@ mod tests {
         };
         assert_eq!(
             protocol.dispatch(cooperative, 1).unwrap_err().code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+    }
+
+    #[test]
+    fn blocks_signals_and_redispatches_one_completion_worker() {
+        // TOPAL-SYSTEMS-CONTEXT-005.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "completion-block-first",
+        )
+        .unwrap();
+        let mut protocol = SystemsKernelContextProtocol::initial();
+        let worker = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::BlocksOnCompletionOnce,
+            )
+            .unwrap();
+        let (wait, signal) = protocol.create_completion();
+
+        let (blocked, dispatcher) = protocol.block_on_completion_once(worker, wait, 0).unwrap();
+        let (worker, completed_completion) = protocol
+            .signal_blocked_completion(signal, blocked, dispatcher)
+            .unwrap();
+        let KernelContextTransferOutcome::Retired(worker) = protocol.dispatch(worker, 0).unwrap()
+        else {
+            panic!("awakened completion worker must retire after its block")
+        };
+        let (_, stack) = protocol.reclaim(worker).unwrap();
+        protocol
+            .consume_completed_completion(completed_completion)
+            .unwrap();
+        storage.release(stack).unwrap();
+        storage.complete_bootstrap().unwrap();
+    }
+
+    #[test]
+    fn preserves_signal_before_wait_without_sleeping() {
+        // TOPAL-SYSTEMS-CONTEXT-005.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "completion-signal-first",
+        )
+        .unwrap();
+        let mut protocol = SystemsKernelContextProtocol::initial();
+        let worker = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::BlocksOnCompletionOnce,
+            )
+            .unwrap();
+        let (wait, signal) = protocol.create_completion();
+        let ready = protocol.signal_completion_before_wait(signal).unwrap();
+        let (worker, completed_completion) = protocol
+            .observe_ready_completion(worker, wait, ready, 0)
+            .unwrap();
+        let KernelContextTransferOutcome::Retired(worker) = protocol.dispatch(worker, 0).unwrap()
+        else {
+            panic!("signal-first completion worker must continue without sleeping")
+        };
+        let (_, stack) = protocol.reclaim(worker).unwrap();
+        protocol
+            .consume_completed_completion(completed_completion)
+            .unwrap();
+        storage.release(stack).unwrap();
+        storage.complete_bootstrap().unwrap();
+    }
+
+    #[test]
+    fn rejects_wrong_completion_dispatcher_and_live_blocking_obligations() {
+        // TOPAL-SYSTEMS-CONTEXT-005.
+        let mut storage = BootstrapStorageState::new(
+            BootstrapStorageDescriptor {
+                capacity_bytes: 65_536,
+                alignment_bytes: 4096,
+            },
+            "completion-negative",
+        )
+        .unwrap();
+        let mut protocol = SystemsKernelContextProtocol::initial();
+        let worker = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::BlocksOnCompletionOnce,
+            )
+            .unwrap();
+        let (wait, signal) = protocol.create_completion();
+        assert_eq!(
+            protocol
+                .block_on_completion_once(worker, wait, 1)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+
+        let worker = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::BlocksOnCompletionOnce,
+            )
+            .unwrap();
+        let (wait, _) = protocol.create_completion();
+        let (blocked, mut dispatcher) = protocol.block_on_completion_once(worker, wait, 0).unwrap();
+        dispatcher.caller_identity += 1;
+        assert_eq!(
+            protocol
+                .signal_blocked_completion(signal, blocked, dispatcher)
+                .unwrap_err()
+                .code,
+            "E-SYSTEMS-CONTEXT-TRANSFER"
+        );
+
+        let worker = protocol
+            .create_with_protocol(
+                stack(&mut storage),
+                COMPLETION_BLOCKING_KERNEL_THREAD_ENTRY_IDENTITY,
+                KernelContextEntryProtocol::BlocksOnCompletionOnce,
+            )
+            .unwrap();
+        let (wait, _) = protocol.create_completion();
+        let (_, foreign_signal) = protocol.create_completion();
+        let (blocked, dispatcher) = protocol.block_on_completion_once(worker, wait, 0).unwrap();
+        assert_eq!(
+            protocol
+                .signal_blocked_completion(foreign_signal, blocked, dispatcher)
+                .unwrap_err()
+                .code,
             "E-SYSTEMS-CONTEXT-TRANSFER"
         );
     }

@@ -351,6 +351,8 @@ pub enum CompilerType {
     Generator(CompilerGeneratorType),
     Task(Box<CompilerTaskType>),
     ExternalLocation(Box<CompilerLocationType>),
+    /// Sealed systems loan; has no source constructor or numeric conversion.
+    KernelByteRegion,
     Refined { constraint: String, base: Box<Self> },
     Character,
     String,
@@ -399,6 +401,7 @@ impl CompilerType {
                 | Self::Generator(_)
                 | Self::Task(_)
                 | Self::ExternalLocation(_)
+                | Self::KernelByteRegion
                 | Self::Character
                 | Self::String
         ) || matches!(self, Self::Refined { base, .. } if base.machine_scalar())
@@ -456,6 +459,7 @@ impl CompilerType {
             ),
             Self::Task(task) => task.classifier.clone(),
             Self::ExternalLocation(location) => location.identity.clone(),
+            Self::KernelByteRegion => "KernelByteRegion".into(),
             Self::Refined { constraint, .. } => constraint.clone(),
             Self::Character => "Character".into(),
             Self::String => "String".into(),
@@ -673,6 +677,13 @@ pub enum CompilerExpressionKind {
     ExternalLocationRead {
         location: Box<CompilerExpression>,
         metadata: CompilerLocation,
+    },
+    KernelRegion {
+        operation: CompilerKernelRegionOperation,
+        region: Box<CompilerExpression>,
+        arguments: Vec<CompilerExpression>,
+        /// Canonical native argument slot for each source-ordered expression.
+        argument_roles: Vec<usize>,
     },
     Serialize {
         bytes: Vec<u8>,

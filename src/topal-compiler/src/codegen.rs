@@ -22,6 +22,15 @@ use crate::{DATA_LAYOUT, TARGET_TRIPLE};
 
 include!("codegen/generator_support.rs");
 include!("codegen/generator_new.rs");
+include!("codegen/freestanding_library.rs");
+include!("codegen/freestanding_numeric_library.rs");
+include!("codegen/freestanding_region_library.rs");
+include!("codegen/freestanding_region_frame.rs");
+include!("codegen/freestanding_header_library.rs");
+include!("codegen/freestanding_dispatch_library.rs");
+include!("codegen/freestanding_identity_library.rs");
+include!("codegen/freestanding_retained_identity.rs");
+include!("codegen/freestanding_structured_identity.rs");
 include!("codegen/generator_emit_expression.rs");
 include!("codegen/generator_emit_expression_remaining.rs");
 include!("codegen/generator_emit_custom_character_handled_close.rs");

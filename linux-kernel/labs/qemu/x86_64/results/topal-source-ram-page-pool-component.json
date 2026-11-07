@@ -1,0 +1,2208 @@
+{
+  "client_sha256": "3d07aeac05b749233531dbbab65616be589c6f10a51679a64ccc33e73b2e7a53",
+  "controlled_metadata_refusals": 11,
+  "debugger_sha256": "9cf27ec042cd5d7e8e6fa74c380c12e5db9d7657987ab8e2f927ce14f12a1997",
+  "frame_client_sha256": "3ef15fea4db70047692a487db18d4e9095019d6f93c7c41135495a981aecb43e",
+  "gdb_samples": 110,
+  "helper_sha256": "f6f37bae2f752f86a646d710bd375ea590734d944938ead5b57b6db18ffe71b8",
+  "kernel_retired_stack_erasure_qualified": false,
+  "live_kernel_caller_qualified": false,
+  "native_calls": 4646,
+  "native_pre_entry_refusals": 32,
+  "observations": [
+    {
+      "gdb_result": "RAM_PAGE_POOL_DEBUG_PASS samples=55 helper-kinds=2 observed-depth=936 source-bound=1152 owner-stores=19",
+      "gdb_samples": 55,
+      "linked_read_only_data": [
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.0"
+        },
+        {
+          "address": 4208448,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.1"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.10"
+        },
+        {
+          "address": 4208568,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.11"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.12"
+        },
+        {
+          "address": 4208592,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.13"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.14"
+        },
+        {
+          "address": 4208616,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.15"
+        },
+        {
+          "address": 4208640,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "43b499e4812c7aa3f0df8999e24e69d2df63e816748ddcce4b992825a27a25c3",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.16"
+        },
+        {
+          "address": 4208664,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "11bb3f5c7019118bac58dfc6e5d7635f56de7812358859e619df458f35e11369",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.17"
+        },
+        {
+          "address": 4208688,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "7f202a05cbccc5913cfc9a464ad9c8108c58a64df93a4b8b935307dd836066ff",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.18"
+        },
+        {
+          "address": 4208712,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ded7ac4001b8954c085519bfc2b55a0e15371d34351d5b5032a70a13f80d0b94",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.19"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.2"
+        },
+        {
+          "address": 4208736,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "20a63514f83dec263f520fc6444731f7ff049af9db76456c05503e3f8fd1e117",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.20"
+        },
+        {
+          "address": 4208760,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ab25350e3e65efebe24584461683ecda68725576e825e550038b90e7b1479946",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.21"
+        },
+        {
+          "address": 4208784,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.22"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.23"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.24"
+        },
+        {
+          "address": 4208808,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.25"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.26"
+        },
+        {
+          "address": 4208832,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.27"
+        },
+        {
+          "address": 4208856,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.28"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.29"
+        },
+        {
+          "address": 4208472,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.3"
+        },
+        {
+          "address": 4208880,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.30"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.4"
+        },
+        {
+          "address": 4208496,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.5"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.6"
+        },
+        {
+          "address": 4208520,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.7"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.8"
+        },
+        {
+          "address": 4208544,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.9"
+        },
+        {
+          "address": 4208432,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.runtime.int.zero"
+        }
+      ],
+      "native_calls": 2323,
+      "native_client_sha256": "9114546f81972eec4cf302d8acb25e22ba6bda2c6a046e4f7124f89c9b41bc8d",
+      "native_output": "RAM_PAGE_POOL_NATIVE_PASS calls=2323 samples=55 refusals=16 peak=440\n",
+      "native_pre_entry_refusals": 16,
+      "placement": "first",
+      "source_record": {
+        "allocation": {
+          "adapter_family_sha256": "c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe",
+          "adapter_sha256": "70e7230605470670149bd4c9a3832ca5ff02d7b38b4509cc5fee3ad82c4269d4",
+          "control_bytes": 64,
+          "maximum_view_nodes": 1,
+          "numeric": {
+            "bridge_bytes": 112,
+            "certificate": "topal.kernel-region-frame-allocation/1",
+            "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+            "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
+            "header_bytes": 32,
+            "limit_bytes": 65536,
+            "maximum_bytes": 488,
+            "maximum_operand_bits": 64,
+            "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
+            "source_evaluation_bytes": 344
+          },
+          "region_runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+          "view_bytes": 64
+        },
+        "data_layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128",
+        "declared_entry": "(KernelByteRegion, Nat, Nat) -> Boolean",
+        "disassembly_sha256": "5fb7bc3d47ed9c6280a2f1f438be3bb22c9034c66906ee567cb15744e7475e64",
+        "effects": [
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.allocate.24",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.apply.30",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.dispatch.29",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.release_2dor_2drefuse.28",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease.27",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease_2dslot.26",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve.23",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d1.22",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d2.21",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d3.20",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d4.19",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d5.18",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d6.17",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d7.16",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.1",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.11",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.13",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.15",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.3",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.5",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.7",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.9",
+            "write_owner": true
+          }
+        ],
+        "functions": [
+          {
+            "callees": [],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 48,
+            "symbol": "topal.region-instance.ram-page-pool.memset"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_allocate_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.platform.allocate"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_abort_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.platform.exit"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_abort_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.abort"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.abort"
+            ],
+            "frame_bytes": 88,
+            "maximum_call_path_bytes": 120,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.guard"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate",
+              "topal.region-instance.ram-page-pool.platform.exit"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.allocate"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.allocate"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 104,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.from.u64"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 152,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.count"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.abort"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 72,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.index"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 40,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.none"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.some"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.primitive.index",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64",
+              "topal.region-instance.ram-page-pool.runtime.optional.none",
+              "topal.region-instance.ram-page-pool.runtime.optional.some"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 168,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.load"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.primitive.index"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 200,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.store"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 64,
+            "maximum_call_path_bytes": 72,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.compare.absolute"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare.absolute"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 120,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.compare"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.exit"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.is.some"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 16,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.payload"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.15"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.15"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 376,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d7.16"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.13"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d7.16",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.13"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 424,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d6.17"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.11"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d6.17",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.11"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 472,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d5.18"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.9"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d5.18",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.9"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 520,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d4.19"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.7"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d4.19",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.7"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 568,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d3.20"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.5"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d3.20",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.5"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 616,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d2.21"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.3"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d2.21",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.3"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 664,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d1.22"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.1"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d1.22",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.1"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 712,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve.23"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve.23"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 776,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.allocate.24"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dslot.26"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dslot.26"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 408,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease.27"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease.27"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 488,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.release_2dor_2drefuse.28"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.allocate.24",
+              "topal.region-instance.ram-page-pool.topal.fn.release_2dor_2drefuse.28"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 856,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.dispatch.29"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.count",
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.dispatch.29"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 936,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.apply.30"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate",
+              "topal.region-instance.ram-page-pool.primitive.abort",
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64",
+              "topal.region-instance.ram-page-pool.topal.fn.apply.30"
+            ],
+            "frame_bytes": 200,
+            "maximum_call_path_bytes": 1144,
+            "symbol": "topal_kernel_region_frame_ram_page_pool_apply_v1"
+          }
+        ],
+        "imported_hook_stack_bytes": 8,
+        "imported_hooks": [
+          "topal_kernel_region_frame_ram_page_pool_allocate_v1",
+          "topal_kernel_region_frame_ram_page_pool_abort_v1"
+        ],
+        "instance": "ram-page-pool",
+        "llvm_sha256": "994793768e3ca3e0e702ace2de62d79dc9ce7b25d9b4f23448bf92373fb0fbcf",
+        "llvm_version": "22.1.6",
+        "machine_profile": "x86_64-owned-region-gpr-only/1",
+        "maximum_stack_bytes": 1152,
+        "module_snapshot_sha256": "cfcbf1b70fcf5b9499190c5f148015f8189df772cb80ba77b5c866ecf98cb47a",
+        "modules": [
+          {
+            "identity": [
+              "support",
+              "page-slots"
+            ],
+            "sha256": "f6f37bae2f752f86a646d710bd375ea590734d944938ead5b57b6db18ffe71b8",
+            "source": "support/page-slots.t"
+          }
+        ],
+        "native_abi": "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1",
+        "native_export": "topal_kernel_region_frame_ram_page_pool_apply_v1",
+        "object_sha256": "1bd1e6778ad0693e95a3fd7243833821b29d2c445bda18e6e27a980d2d138bfc",
+        "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
+        "read_only_data": [
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.0"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.1"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.10"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.11"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.12"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.13"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.14"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.15"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "43b499e4812c7aa3f0df8999e24e69d2df63e816748ddcce4b992825a27a25c3",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.16"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "11bb3f5c7019118bac58dfc6e5d7635f56de7812358859e619df458f35e11369",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.17"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "7f202a05cbccc5913cfc9a464ad9c8108c58a64df93a4b8b935307dd836066ff",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.18"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ded7ac4001b8954c085519bfc2b55a0e15371d34351d5b5032a70a13f80d0b94",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.19"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.2"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "20a63514f83dec263f520fc6444731f7ff049af9db76456c05503e3f8fd1e117",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.20"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ab25350e3e65efebe24584461683ecda68725576e825e550038b90e7b1479946",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.21"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.22"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.23"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.24"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.25"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.26"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.27"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.28"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.29"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.3"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.30"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.4"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.5"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.6"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.7"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.8"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.9"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.zero"
+          }
+        ],
+        "retained_llvm_sha256": "d97193588f0834e8cbf9a95736ebb9cb2f44daa31ed95e822c9be1faf7b96abc",
+        "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+        "scalar_count": 2,
+        "schema": "topal.kernel-region-frame-source-object.x86_64/2",
+        "source": "memory/ram-page-pool.t",
+        "source_export": "apply",
+        "source_name": "memory/ram-page-pool.t",
+        "source_sha256": "5f2ccd8b549fa43d40955c47474f020601677bb1c1b15e974ef1ce91a88a1693",
+        "stack_limit_bytes": 4096,
+        "target": "x86_64-unknown-none"
+      }
+    },
+    {
+      "gdb_result": "RAM_PAGE_POOL_DEBUG_PASS samples=55 helper-kinds=2 observed-depth=936 source-bound=1152 owner-stores=19",
+      "gdb_samples": 55,
+      "linked_read_only_data": [
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.0"
+        },
+        {
+          "address": 4208448,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.1"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.10"
+        },
+        {
+          "address": 4208568,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.11"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.12"
+        },
+        {
+          "address": 4208592,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.13"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.14"
+        },
+        {
+          "address": 4208616,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.15"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.16"
+        },
+        {
+          "address": 4208640,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.17"
+        },
+        {
+          "address": 4208664,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ab25350e3e65efebe24584461683ecda68725576e825e550038b90e7b1479946",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.18"
+        },
+        {
+          "address": 4208688,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "20a63514f83dec263f520fc6444731f7ff049af9db76456c05503e3f8fd1e117",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.19"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.2"
+        },
+        {
+          "address": 4208712,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ded7ac4001b8954c085519bfc2b55a0e15371d34351d5b5032a70a13f80d0b94",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.20"
+        },
+        {
+          "address": 4208736,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "7f202a05cbccc5913cfc9a464ad9c8108c58a64df93a4b8b935307dd836066ff",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.21"
+        },
+        {
+          "address": 4208760,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "11bb3f5c7019118bac58dfc6e5d7635f56de7812358859e619df458f35e11369",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.22"
+        },
+        {
+          "address": 4208784,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "43b499e4812c7aa3f0df8999e24e69d2df63e816748ddcce4b992825a27a25c3",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.23"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.24"
+        },
+        {
+          "address": 4208808,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.25"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.26"
+        },
+        {
+          "address": 4208832,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.27"
+        },
+        {
+          "address": 4208856,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.28"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.29"
+        },
+        {
+          "address": 4208472,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.3"
+        },
+        {
+          "address": 4208880,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.30"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.4"
+        },
+        {
+          "address": 4208496,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.5"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.6"
+        },
+        {
+          "address": 4208520,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.7"
+        },
+        {
+          "address": 4208904,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.8"
+        },
+        {
+          "address": 4208544,
+          "alignment": 8,
+          "bytes": 24,
+          "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+          "symbol": "topal.region-instance.ram-page-pool.literal.int.9"
+        },
+        {
+          "address": 4208432,
+          "alignment": 8,
+          "bytes": 16,
+          "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+          "symbol": "topal.region-instance.ram-page-pool.runtime.int.zero"
+        }
+      ],
+      "native_calls": 2323,
+      "native_client_sha256": "83b9f59608f63bf179cbf85f6037d5228bee8c2eed628971a6e524ff8051e141",
+      "native_output": "RAM_PAGE_POOL_NATIVE_PASS calls=2323 samples=55 refusals=16 peak=440\n",
+      "native_pre_entry_refusals": 16,
+      "placement": "last",
+      "source_record": {
+        "allocation": {
+          "adapter_family_sha256": "c33b5beb0f1869341bf24493e867f5d3101a578a12962b525c2613c1e09e3bbe",
+          "adapter_sha256": "70e7230605470670149bd4c9a3832ca5ff02d7b38b4509cc5fee3ad82c4269d4",
+          "control_bytes": 64,
+          "maximum_view_nodes": 1,
+          "numeric": {
+            "bridge_bytes": 112,
+            "certificate": "topal.kernel-region-frame-allocation/1",
+            "collection_layout_sha256": "73ccaed62678c8170247f02ab6b46632919ba768765cb53c0ca804696cd66561",
+            "collection_runtime_sha256": "a740ddaf6b69935187c18cdc010597f575940fa1e59a3f799c362a9fd1d176d3",
+            "header_bytes": 32,
+            "limit_bytes": 65536,
+            "maximum_bytes": 488,
+            "maximum_operand_bits": 64,
+            "runtime_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
+            "source_evaluation_bytes": 344
+          },
+          "region_runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+          "view_bytes": 64
+        },
+        "data_layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128",
+        "declared_entry": "(KernelByteRegion, Nat, Nat) -> Boolean",
+        "disassembly_sha256": "5fb7bc3d47ed9c6280a2f1f438be3bb22c9034c66906ee567cb15744e7475e64",
+        "effects": [
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.allocate.24",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.apply.30",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.dispatch.29",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.release_2dor_2drefuse.28",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease.27",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2erelease_2dslot.26",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve.23",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d1.22",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d2.21",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d3.20",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d4.19",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d5.18",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d6.17",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2d7.16",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6",
+            "write_owner": true
+          },
+          {
+            "read_owner": false,
+            "symbol": "topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.1",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.11",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.13",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.15",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.3",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.5",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.7",
+            "write_owner": true
+          },
+          {
+            "read_owner": true,
+            "symbol": "topal.fn.support_2epage_2dslots_2etry_2dreserve.9",
+            "write_owner": true
+          }
+        ],
+        "functions": [
+          {
+            "callees": [],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 48,
+            "symbol": "topal.region-instance.ram-page-pool.memset"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_allocate_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.platform.allocate"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_abort_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.platform.exit"
+          },
+          {
+            "callees": [
+              "topal_kernel_region_frame_ram_page_pool_abort_v1"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 24,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.abort"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.abort"
+            ],
+            "frame_bytes": 88,
+            "maximum_call_path_bytes": 120,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.guard"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate",
+              "topal.region-instance.ram-page-pool.platform.exit"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.allocate"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.allocate"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 104,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.from.u64"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 152,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.count"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.abort"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 72,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.index"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate"
+            ],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 40,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.none"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.some"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.primitive.index",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64",
+              "topal.region-instance.ram-page-pool.runtime.optional.none",
+              "topal.region-instance.ram-page-pool.runtime.optional.some"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 168,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.load"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.primitive.index"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 200,
+            "symbol": "topal.region-instance.ram-page-pool.primitive.store"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 64,
+            "maximum_call_path_bytes": 72,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.compare.absolute"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare.absolute"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 120,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.compare"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.exit"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 56,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.is.some"
+          },
+          {
+            "callees": [],
+            "frame_bytes": 8,
+            "maximum_call_path_bytes": 16,
+            "symbol": "topal.region-instance.ram-page-pool.runtime.optional.payload"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.14"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.15"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.15"
+            ],
+            "frame_bytes": 24,
+            "maximum_call_path_bytes": 376,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d7.16"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.12"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.13"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d7.16",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.13"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 424,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d6.17"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.10"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.11"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d6.17",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.11"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 472,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d5.18"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.8"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.9"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d5.18",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.9"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 520,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d4.19"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.6"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.7"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d4.19",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.7"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 568,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d3.20"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.4"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.5"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d3.20",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.5"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 616,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d2.21"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.2"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.3"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d2.21",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.3"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 664,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d1.22"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2dif_2dfree.0"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.1"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve_2d1.22",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2etry_2dreserve.1"
+            ],
+            "frame_bytes": 40,
+            "maximum_call_path_bytes": 712,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve.23"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2ereserve.23"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 776,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.allocate.24"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.store",
+              "topal.region-instance.ram-page-pool.runtime.int.compare"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 280,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.load",
+              "topal.region-instance.ram-page-pool.runtime.optional.is.some",
+              "topal.region-instance.ram-page-pool.runtime.optional.payload",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dif_2doccupied.25"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 344,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dslot.26"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease_2dslot.26"
+            ],
+            "frame_bytes": 56,
+            "maximum_call_path_bytes": 408,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease.27"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.support_2epage_2dslots_2erelease.27"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 488,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.release_2dor_2drefuse.28"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.allocate.24",
+              "topal.region-instance.ram-page-pool.topal.fn.release_2dor_2drefuse.28"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 856,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.dispatch.29"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.primitive.count",
+              "topal.region-instance.ram-page-pool.runtime.int.compare",
+              "topal.region-instance.ram-page-pool.topal.fn.dispatch.29"
+            ],
+            "frame_bytes": 72,
+            "maximum_call_path_bytes": 936,
+            "symbol": "topal.region-instance.ram-page-pool.topal.fn.apply.30"
+          },
+          {
+            "callees": [
+              "topal.region-instance.ram-page-pool.platform.allocate",
+              "topal.region-instance.ram-page-pool.primitive.abort",
+              "topal.region-instance.ram-page-pool.primitive.guard",
+              "topal.region-instance.ram-page-pool.runtime.int.from.u64",
+              "topal.region-instance.ram-page-pool.topal.fn.apply.30"
+            ],
+            "frame_bytes": 200,
+            "maximum_call_path_bytes": 1144,
+            "symbol": "topal_kernel_region_frame_ram_page_pool_apply_v1"
+          }
+        ],
+        "imported_hook_stack_bytes": 8,
+        "imported_hooks": [
+          "topal_kernel_region_frame_ram_page_pool_allocate_v1",
+          "topal_kernel_region_frame_ram_page_pool_abort_v1"
+        ],
+        "instance": "ram-page-pool",
+        "llvm_sha256": "2c5ffbd1e53fe110957e709103fb7c8fbbf487cf41e94bfb9294555446dc4973",
+        "llvm_version": "22.1.6",
+        "machine_profile": "x86_64-owned-region-gpr-only/1",
+        "maximum_stack_bytes": 1152,
+        "module_snapshot_sha256": "a9f50eed5212290c10cd3b3c9e0a1237786da39ddcc8ebebd7ad1370ac2b768c",
+        "modules": [
+          {
+            "identity": [
+              "support",
+              "page-slots"
+            ],
+            "sha256": "2ac2f569068723bfd6a966d24cd9fe26ff2fcc1c765fba423e887b5ad0ce9f21",
+            "source": "support/page-slots.t"
+          }
+        ],
+        "native_abi": "topal.kernel-region-frame-control-view64-u64frame-bool.x86_64-sysv/1",
+        "native_export": "topal_kernel_region_frame_ram_page_pool_apply_v1",
+        "object_sha256": "3c5e2dfaa546c3de18b6be26f6b59377ff819737d743ff3aa49dc5c1b9058809",
+        "platform_hooks_sha256": "9824eb2c9aad1d50930568754400cd68c80ce7aaa781b0e4b1b02fb0f3c7de8e",
+        "read_only_data": [
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.0"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.1"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.10"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.11"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.12"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.13"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.14"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.15"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.16"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.17"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ab25350e3e65efebe24584461683ecda68725576e825e550038b90e7b1479946",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.18"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "20a63514f83dec263f520fc6444731f7ff049af9db76456c05503e3f8fd1e117",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.19"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.2"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ded7ac4001b8954c085519bfc2b55a0e15371d34351d5b5032a70a13f80d0b94",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.20"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "7f202a05cbccc5913cfc9a464ad9c8108c58a64df93a4b8b935307dd836066ff",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.21"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "11bb3f5c7019118bac58dfc6e5d7635f56de7812358859e619df458f35e11369",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.22"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "43b499e4812c7aa3f0df8999e24e69d2df63e816748ddcce4b992825a27a25c3",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.23"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.24"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.25"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.26"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.27"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.28"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.29"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.3"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "65d51e60017d97150350d2de8bd420ccb99ba004e6fc6b0daa12a7860337d12f",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.30"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.4"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.5"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.6"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.7"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.8"
+          },
+          {
+            "alignment": 8,
+            "bytes": 24,
+            "sha256": "ccb1ac866b7d8de3db4992f9c5da769f92cd86385176a657eb30053355c72732",
+            "symbol": "topal.region-instance.ram-page-pool.literal.int.9"
+          },
+          {
+            "alignment": 8,
+            "bytes": 16,
+            "sha256": "374708fff7719dd5979ec875d56cd2286f6d3cf7ec317a3b25632aab28ec37bb",
+            "symbol": "topal.region-instance.ram-page-pool.runtime.int.zero"
+          }
+        ],
+        "retained_llvm_sha256": "c81d7facf9401d85e15c769a6eba1d5f4ae06d8ec549acdb56bbefebadfcbf45",
+        "runtime_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+        "scalar_count": 2,
+        "schema": "topal.kernel-region-frame-source-object.x86_64/2",
+        "source": "memory/ram-page-pool.t",
+        "source_export": "apply",
+        "source_name": "memory/ram-page-pool.t",
+        "source_sha256": "5f2ccd8b549fa43d40955c47474f020601677bb1c1b15e974ef1ce91a88a1693",
+        "stack_limit_bytes": 4096,
+        "target": "x86_64-unknown-none"
+      }
+    }
+  ],
+  "qualification": "ordinary-source-object-only",
+  "schema": "topal.source-ram-page-pool-component/1",
+  "source_sha256": "5f2ccd8b549fa43d40955c47474f020601677bb1c1b15e974ef1ce91a88a1693",
+  "test_sha256": "4a777cda36d604dbfcfc576ce153a9efd25c26cff7c15226f9e01510725bdb0b"
+}

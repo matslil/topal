@@ -1,0 +1,16 @@
+{
+  "qualified_code_commit": "9e7875eb9731f231d74ed45e6e4c5b34efefddee",
+  "baseline_passed": false,
+  "failed_baseline_step": "positional",
+  "failed_baseline_exit_code": 1,
+  "observer_preflight_passed": true,
+  "observer_preflight_vm_observations": 12,
+  "archived_files": 4352,
+  "unique_blobs": 1166,
+  "index_sha256": "6d91739d99a203c3712eb01807f9e17b2d78e11bf5719de9da084f0d84db433c",
+  "scope": "failed earlier baseline and successful observer-only preflight; neither substitutes for the required fresh complete affected qualification",
+  "publication_projection_sha256": "d2b9592654b90638e3417503a2af461b12c6f34f04a0e84a859a04d51ee4cf87",
+  "publication_raw_record_sha256": "a950898cb29c9745e977f35a25586462226b647b5dd2cf222f3a7f2f1c20c5dc",
+  "publication_external_blobs": 0,
+  "publication_repository_blobs": 1166
+}

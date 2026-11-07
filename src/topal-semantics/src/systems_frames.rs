@@ -1,13 +1,154 @@
 //! Architecture-independent affine physical-frame allocation.
 
+#[cfg(test)]
+#[path = "systems_frames_validation_tests.rs"]
+mod validation_tests;
+
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Arc;
 
 use crate::{BootMemoryClass, BootMemoryProvenance, MemoryDescribedContext};
 
 pub const SYSTEMS_FRAME_ALLOCATOR_CREATE: &str = "topal.systems.memory.create-frame-allocator/1";
 pub const SYSTEMS_FRAMES_ALLOCATE: &str = "topal.systems.frames.allocate/1";
 pub const SYSTEMS_FRAMES_RELEASE: &str = "topal.systems.frames.release/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PREPARE: &str =
+    "topal.systems.static-image.construction.prepare/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_PAYLOAD: &str =
+    "topal.systems.static-image.construction.zero-payload/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ZERO_STACK_BACKING: &str =
+    "topal.systems.static-image.construction.zero-stack-backing/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_PUBLISH_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.publish-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_LEAF: &str =
+    "topal.systems.static-image.construction.revoke-stack-leaf/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_INITIALIZE_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.initialize-stack-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_CLEAR_STACK_ENTRY: &str =
+    "topal.systems.static-image.construction.clear-stack-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PAGESZ: &str =
+    "topal.systems.static-image.construction.add-stack-pagesz/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PAGESZ: &str =
+    "topal.systems.static-image.construction.remove-stack-pagesz/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.add-stack-entry-fact/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_ENTRY_FACT: &str =
+    "topal.systems.static-image.construction.remove-stack-entry-fact/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PROGRAM_HEADERS: &str =
+    "topal.systems.static-image.construction.add-stack-program-headers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PROGRAM_HEADERS: &str =
+    "topal.systems.static-image.construction.remove-stack-program-headers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_EXECUTABLE_NAME: &str =
+    "topal.systems.static-image.construction.add-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_EXECUTABLE_NAME: &str =
+    "topal.systems.static-image.construction.remove-stack-executable-name/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.add-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CREDENTIALS: &str =
+    "topal.systems.static-image.construction.remove-stack-credentials/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.add-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_SECURE_MODE: &str =
+    "topal.systems.static-image.construction.remove-stack-secure-mode/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.add-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_CLOCK_TICK_RATE: &str =
+    "topal.systems.static-image.construction.remove-stack-clock-tick-rate/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.add-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_PLATFORM: &str =
+    "topal.systems.static-image.construction.remove-stack-platform/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.add-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_HARDWARE_CAPABILITIES: &str =
+    "topal.systems.static-image.construction.remove-stack-hardware-capabilities/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ADD_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.add-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REMOVE_STACK_LOAD_METADATA: &str =
+    "topal.systems.static-image.construction.remove-stack-load-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.authorize-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RETAIN_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.retain-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_RETAINED_DISJOINT_WORK: &str =
+    "topal.systems.static-image.construction.qualify-retained-disjoint-work/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.authorize-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.authorize-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_ACQUISITION: &str =
+    "topal.systems.static-image.construction.revoke-entropy-acquisition/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DEVICE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-device/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_TRANSPORT: &str =
+    "topal.systems.static-image.construction.qualify-entropy-transport/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_NEGOTIATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-negotiation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_BUS_MASTER: &str =
+    "topal.systems.static-image.construction.qualify-entropy-bus-master/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_BUFFERS: &str =
+    "topal.systems.static-image.construction.qualify-entropy-dma-buffers/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SPLIT_RING: &str =
+    "topal.systems.static-image.construction.qualify-entropy-split-ring/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_DMA_PREPARATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-dma-preparation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ADDRESSES: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-addresses/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_QUEUE_ACTIVATION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-queue-activation/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_REQUEST_COMPLETION: &str =
+    "topal.systems.static-image.construction.qualify-entropy-request-completion/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_CAPTURE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-capture/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_SAMPLE_QUALITY: &str =
+    "topal.systems.static-image.construction.qualify-entropy-sample-quality/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_POOL_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-pool-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_QUALIFY_ENTROPY_GENERATOR_LIFECYCLE: &str =
+    "topal.systems.static-image.construction.qualify-entropy-generator-lifecycle/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DELIVER_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.deliver-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_INITIAL_RANDOM: &str =
+    "topal.systems.static-image.construction.revoke-entropy-initial-random/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_ENTER: &str =
+    "topal.systems.static-image.process.enter.initial-process-name/1";
+pub const SYSTEMS_STATIC_IMAGE_PROCESS_RESTORE_ENTRY: &str =
+    "topal.systems.static-image.process.restore-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTROPY_HANDOFF: &str =
+    "topal.systems.static-image.construction.revoke-entropy-handoff/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_PREPARED_PROCESS: &str =
+    "topal.systems.static-image.construction.restore-prepared-process/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_RANDOM_SLOT: &str =
+    "topal.systems.static-image.construction.revoke-stack-random-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_COPY_PAYLOAD: &str =
+    "topal.systems.static-image.construction.copy-payload/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_SEAL_PERMISSIONS: &str =
+    "topal.systems.static-image.construction.seal-permissions/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ATTACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.attach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_ACTIVATE_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.activate-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RESTORE_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.restore-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_ENTRY: &str =
+    "topal.systems.static-image.construction.authorize-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_AUTHORIZE_STACK_SLOT: &str =
+    "topal.systems.static-image.construction.authorize-stack-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_STACK_SLOT: &str =
+    "topal.systems.static-image.construction.revoke-stack-slot/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_ENTRY: &str =
+    "topal.systems.static-image.construction.revoke-entry/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_DETACH_ADDRESS_SPACE: &str =
+    "topal.systems.static-image.construction.detach-address-space/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_HIERARCHY: &str =
+    "topal.systems.static-image.construction.reclaim-hierarchy/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_REVOKE_METADATA: &str =
+    "topal.systems.static-image.construction.revoke-metadata/1";
+pub const SYSTEMS_STATIC_IMAGE_CONSTRUCTION_RECLAIM_PAYLOAD: &str =
+    "topal.systems.static-image.construction.reclaim-payload/1";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PhysicalFrameRequest {
@@ -18,6 +159,7 @@ pub struct PhysicalFrameRequest {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PhysicalFrameExtent {
     allocator_identity: String,
+    allocator_instance: AllocatorInstance,
     extent_identity: u64,
     model_start_frame: u64,
     pub frame_count: u64,
@@ -93,10 +235,36 @@ struct LiveFrameExtent {
     mapped: bool,
 }
 
+impl LiveFrameExtent {
+    fn matches(&self, extent: &PhysicalFrameExtent) -> bool {
+        extent.frame_count != 0
+            && extent.alignment_frames.is_power_of_two()
+            && extent
+                .model_start_frame
+                .is_multiple_of(extent.alignment_frames)
+            && self.start_frame == extent.model_start_frame
+            && Some(self.end_frame) == extent.model_start_frame.checked_add(extent.frame_count)
+            && self.alignment_frames == extent.alignment_frames
+            && self.provenance == extent.provenance
+    }
+}
+
+/// A model snapshot retains its owner; a separately created same-label
+/// allocator has no authority over that owner's extents.
+#[derive(Clone, Debug)]
+struct AllocatorInstance(Arc<()>);
+impl PartialEq for AllocatorInstance {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl Eq for AllocatorInstance {}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FrameAllocatorContext {
     pub handoff_identity: String,
     allocator_identity: String,
+    allocator_instance: AllocatorInstance,
     page_size: u64,
     free: Vec<FreeFrameRun>,
     live: BTreeMap<u64, LiveFrameExtent>,
@@ -110,7 +278,22 @@ impl MemoryDescribedContext {
         allocator_identity: impl Into<String>,
     ) -> FrameAllocatorResult {
         let allocator_identity = allocator_identity.into();
-        if self.memory.page_size == 0 || !self.memory.page_size.is_power_of_two() {
+        let mut ranges = self.memory.ranges.iter().collect::<Vec<_>>();
+        ranges.sort_by_key(|range| range.start);
+        if !self.memory.page_size.is_power_of_two()
+            || ranges.iter().any(|range| {
+                range.start >= range.end
+                    || range.provenance.is_empty()
+                    || (range.class == BootMemoryClass::Allocatable
+                        && (!range.start.is_multiple_of(self.memory.page_size)
+                            || !range.end.is_multiple_of(self.memory.page_size)
+                            || range
+                                .provenance
+                                .iter()
+                                .any(|source| source.class != BootMemoryClass::Allocatable)))
+            })
+            || ranges.windows(2).any(|pair| pair[0].end > pair[1].start)
+        {
             return FrameAllocatorResult::Failure(FrameAllocatorFailureContext {
                 handoff_identity: self.handoff_identity,
                 error: PhysicalFrameError::InvalidDescription,
@@ -138,6 +321,7 @@ impl MemoryDescribedContext {
         FrameAllocatorResult::Ready(FrameAllocatorContext {
             handoff_identity: self.handoff_identity,
             allocator_identity,
+            allocator_instance: AllocatorInstance(Arc::new(())),
             page_size: self.memory.page_size,
             free,
             live: BTreeMap::new(),
@@ -173,6 +357,10 @@ impl FrameAllocatorContext {
         {
             return Err(PhysicalFrameError::InvalidRequest);
         }
+        let next_extent_identity = self
+            .next_extent_identity
+            .checked_add(1)
+            .ok_or(PhysicalFrameError::Exhausted)?;
         for index in 0..self.free.len() {
             let run = &self.free[index];
             let Some(aligned_start) = align_up(run.start_frame, request.alignment_frames) else {
@@ -201,10 +389,7 @@ impl FrameAllocatorContext {
             }
             self.free.sort_by_key(|free| free.start_frame);
             let extent_identity = self.next_extent_identity;
-            self.next_extent_identity = self
-                .next_extent_identity
-                .checked_add(1)
-                .ok_or(PhysicalFrameError::Exhausted)?;
+            self.next_extent_identity = next_extent_identity;
             self.live.insert(
                 extent_identity,
                 LiveFrameExtent {
@@ -217,6 +402,7 @@ impl FrameAllocatorContext {
             );
             return Ok(PhysicalFrameExtent {
                 allocator_identity: self.allocator_identity.clone(),
+                allocator_instance: self.allocator_instance.clone(),
                 extent_identity,
                 model_start_frame: aligned_start,
                 frame_count: request.frame_count,
@@ -235,7 +421,9 @@ impl FrameAllocatorContext {
     /// extent.
     #[allow(clippy::needless_pass_by_value)] // Release consumes the affine extent token.
     pub fn release(&mut self, extent: PhysicalFrameExtent) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
@@ -245,11 +433,7 @@ impl FrameAllocatorContext {
         if live.mapped {
             return Err(PhysicalFrameError::MappedExtent);
         }
-        if live.start_frame != extent.model_start_frame
-            || live.end_frame != extent.model_start_frame + extent.frame_count
-            || live.alignment_frames != extent.alignment_frames
-            || live.provenance != extent.provenance
-        {
+        if !live.matches(&extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         let Some(live) = self.live.remove(&extent.extent_identity) else {
@@ -282,7 +466,9 @@ impl FrameAllocatorContext {
         &mut self,
         extent: &PhysicalFrameExtent,
     ) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
@@ -292,11 +478,7 @@ impl FrameAllocatorContext {
         if live.mapped {
             return Err(PhysicalFrameError::MappedExtent);
         }
-        if live.start_frame != extent.model_start_frame
-            || live.end_frame != extent.model_start_frame + extent.frame_count
-            || live.alignment_frames != extent.alignment_frames
-            || live.provenance != extent.provenance
-        {
+        if !live.matches(extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         live.mapped = true;
@@ -307,14 +489,16 @@ impl FrameAllocatorContext {
         &mut self,
         extent: &PhysicalFrameExtent,
     ) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
             .live
             .get_mut(&extent.extent_identity)
             .ok_or(PhysicalFrameError::UnknownExtent)?;
-        if !live.mapped {
+        if !live.mapped || !live.matches(extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         live.mapped = false;

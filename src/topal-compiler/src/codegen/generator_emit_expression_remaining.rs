@@ -1353,6 +1353,8 @@ impl Generator<'_> {
                     ));
                 }
                 let arguments = machine_arguments.join(", ");
+                let linkage_symbol = format!("{}{}", self.kernel_function_prefix, symbol);
+                let symbol = linkage_symbol.as_str();
                 if !result_captures.is_empty() {
                     let aggregate = body.instruction(
                         &format!("call fastcc {function_return_type} @{symbol}({arguments})"),
@@ -1454,7 +1456,8 @@ impl Generator<'_> {
                         | CompilerType::TraversalControl(_)
                         | CompilerType::TaskResponse(_)
                         | CompilerType::Task(_)
-                        | CompilerType::ExternalLocation(_) => {
+                        | CompilerType::ExternalLocation(_)
+                        | CompilerType::KernelByteRegion => {
                             unreachable!("checked functions do not return this static object kind")
                         }
                         CompilerType::Generator(ref generator) => LlValue::Generator {

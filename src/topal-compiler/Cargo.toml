@@ -17,6 +17,7 @@ topal-c-abi = { path = "../topal-c-abi" }
 topal-language = { path = "../topal-language" }
 topal-semantics = { path = "../topal-semantics" }
 topal-source = { path = "../topal-source" }
+topal-syntax = { path = "../topal-syntax" }
 
 [lints]
 workspace = true

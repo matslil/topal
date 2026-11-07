@@ -1,0 +1,522 @@
+//! Checked pure source units and their private kernel-library boundary.
+use crate::CompileError;
+#[path = "systems_library_modules.rs"]
+pub(crate) mod modules;
+#[path = "systems_library_object.rs"]
+mod native_object;
+pub use modules::{SystemsSourceModuleArtifact, SystemsSourceModuleInput};
+pub(crate) use native_object::{
+    build_source_library, inspect_instructions, inspect_linked_library, stack_sizes,
+};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+use topal_language::compiler::{
+    CompilerBinary, CompilerBlock, CompilerExpression, CompilerExpressionKind as K,
+    CompilerProgram, CompilerStatement, CompilerSystemsSourceLibraryRequirement, CompilerType,
+};
+use topal_language::published_function_names;
+use topal_source::{Diagnostic, Span, canonically_equal};
+
+#[path = "systems_finite_interface.rs"]
+pub(crate) mod finite;
+pub(crate) const EXPORT_SYMBOL: &str = "topal_kernel_boot_open_policy_v1";
+pub(crate) const CHOICES: [&str; 4] = [
+    "ReadDescription",
+    "NotDirectory",
+    "DirectoryWrite",
+    "ReadOnlyView",
+];
+
+/// Explicit source snapshot for the import declared by a checked systems root.
+#[derive(Clone, Debug)]
+pub struct SystemsSourceLibraryInput {
+    pub source: String,
+    pub source_name: String,
+    pub text: String,
+    pub modules: Vec<SystemsSourceModuleInput>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SystemsLibraryFunctionStack {
+    pub symbol: String,
+    pub frame_bytes: u64,
+    pub maximum_call_path_bytes: u64,
+    pub callees: Vec<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SystemsSourceLibraryArtifact {
+    pub schema: String,
+    pub interface: String,
+    pub source: String,
+    pub source_name: String,
+    pub source_sha256: String,
+    pub modules: Vec<SystemsSourceModuleArtifact>,
+    pub module_snapshot_sha256: String,
+    pub checked_client_sha256: String,
+    pub llvm_sha256: String,
+    pub object_sha256: String,
+    pub native_export: String,
+    pub source_export: String,
+    pub source_tags: Vec<u32>,
+    pub llvm_version: String,
+    pub machine_profile: String,
+    pub disassembly_sha256: String,
+    pub native_alignment_reserve_bytes: u64,
+    pub maximum_stack_bytes: u64,
+    pub stack_limit_bytes: u64,
+    pub functions: Vec<SystemsLibraryFunctionStack>,
+    pub sections: Vec<crate::SystemsPolicySection>,
+    pub linked_inputs: Option<crate::SystemsPolicyLinkedInputs>,
+}
+
+pub(crate) struct CheckedFiniteLibrary {
+    program: CompilerProgram,
+    source_name: String,
+    entry_symbol: String,
+    source_tags: Vec<u32>,
+    policy: finite::FinitePolicy,
+    calls: BTreeMap<String, BTreeSet<String>>,
+}
+impl CheckedFiniteLibrary {
+    pub(crate) fn program(&self) -> &CompilerProgram {
+        &self.program
+    }
+    pub(crate) fn source_name(&self) -> &str {
+        &self.source_name
+    }
+    pub(crate) fn entry_symbol(&self) -> &str {
+        &self.entry_symbol
+    }
+    pub(crate) fn source_tags(&self) -> &[u32] {
+        &self.source_tags
+    }
+    pub(crate) fn policy(&self) -> finite::FinitePolicy {
+        self.policy
+    }
+    pub(crate) fn calls(&self) -> &BTreeMap<String, BTreeSet<String>> {
+        &self.calls
+    }
+}
+
+fn invalid(message: impl Into<String>) -> CompileError {
+    CompileError::Tool(format!("E-SYSTEMS-LIBRARY: {}", message.into()))
+}
+fn finite(value: &CompilerType, allow_enum: bool) -> bool {
+    matches!(value, CompilerType::Boolean) || (allow_enum && matches!(value, CompilerType::Enum(_)))
+}
+fn check_block(
+    block: &CompilerBlock,
+    calls: &mut BTreeSet<String>,
+    allow_enum: bool,
+) -> Result<(), String> {
+    for statement in &block.statements {
+        let expression = match statement {
+            CompilerStatement::Binding(binding) => &binding.value,
+            CompilerStatement::Discard(expression) => expression,
+        };
+        check_expression(expression, calls, allow_enum)?;
+    }
+    check_expression(&block.result, calls, allow_enum)
+}
+fn check_expression(
+    value: &CompilerExpression,
+    calls: &mut BTreeSet<String>,
+    allow_enum: bool,
+) -> Result<(), String> {
+    if !finite(&value.value_type, allow_enum) {
+        return Err(if allow_enum { "library values must be Boolean or nominal Enum" }
+            else { "imported finite-module values must be Boolean; cross-unit nominal values are unqualified" }.into());
+    }
+    match &value.kind {
+        K::Boolean(_) | K::Local(_) => Ok(()),
+        K::Enum(tag) => match &value.value_type {
+            CompilerType::Enum(kind) if (*tag as usize)<kind.alternatives.len() => Ok(()),
+            _ => Err("invalid checked Enum literal".into()),
+        },
+        K::Not(input) => check_expression(input,calls,allow_enum),
+        K::Binary { operation: CompilerBinary::Equal | CompilerBinary::NotEqual, left,right } => {
+            check_expression(left,calls,allow_enum)?; check_expression(right,calls,allow_enum)
+        }
+        K::Block(block) => check_block(block,calls,allow_enum),
+        K::Call { symbol,arguments } => {
+            for argument in arguments { check_expression(argument,calls,allow_enum)?; }
+            calls.insert(symbol.clone()); Ok(())
+        }
+        K::BooleanDecision { subject,when_true,when_false } => {
+            check_expression(subject,calls,allow_enum)?; check_expression(when_true,calls,allow_enum)?;
+            check_expression(when_false,calls,allow_enum)
+        }
+        K::EnumDecision { subject,rules,otherwise } => {
+            check_expression(subject,calls,allow_enum)?;
+            for rule in rules { check_expression(&rule.action,calls,allow_enum)?; }
+            if let Some(fallback)=otherwise { check_expression(fallback,calls,allow_enum)?; }
+            Ok(())
+        }
+        _ => Err("unqualified freestanding form: only finite pure values, bindings, decisions and direct calls are admitted".into()),
+    }
+}
+
+pub(crate) fn check_source_library(
+    requirement: &CompilerSystemsSourceLibraryRequirement,
+    input: &SystemsSourceLibraryInput,
+) -> Result<CheckedFiniteLibrary, CompileError> {
+    requirement.validate().map_err(|e| invalid(e.to_string()))?;
+    let policy = finite::FinitePolicy::from_interface(requirement.interface.as_str())?;
+    let modules = modules::validate(input)?;
+    if input.source != requirement.source {
+        return Err(invalid(
+            "source snapshot does not match the declared import",
+        ));
+    }
+    if !published_function_names(&input.text)
+        .iter()
+        .any(|name| canonically_equal(name, &requirement.export))
+    {
+        return Err(invalid(format!(
+            "{}: selected export is not a public function",
+            input.source_name
+        )));
+    }
+    // Ordinary instantiation retains unconstrained Boolean parameters. The
+    // client is only a type/overload-selection root and is never emitted.
+    let arguments = vec!["false"; policy.arguments()].join(", ");
+    let client = format!("{}\n{} ({arguments})\n", input.text, requirement.export);
+    let program = topal_language::analyze_for_compiler_with_modules(&client, &modules)
+        .map_err(|diagnostic| CompileError::Tool(diagnostic.render(&input.source_name)))?;
+    if !program.main.statements.is_empty() {
+        return Err(invalid(
+            "source-library unit must contain declarations, not runtime initializers",
+        ));
+    }
+    let K::Call { symbol, arguments } = &program.main.result.kind else {
+        return Err(invalid(
+            "public export did not instantiate as an ordinary function",
+        ));
+    };
+    if arguments.len() != policy.arguments()
+        || arguments
+            .iter()
+            .any(|a| a.value_type != CompilerType::Boolean)
+    {
+        return Err(invalid(
+            "selected finite open interface has the wrong Boolean facts",
+        ));
+    }
+    let entry = program
+        .functions
+        .iter()
+        .find(|f| &f.symbol == symbol)
+        .ok_or_else(|| invalid("missing instantiated export"))?;
+    if entry.parameters.len() != policy.arguments()
+        || entry
+            .parameters
+            .iter()
+            .any(|p| p.value_type != CompilerType::Boolean)
+    {
+        return Err(invalid("export has hidden or non-Boolean inputs"));
+    }
+    let CompilerType::Enum(result) = &entry.result_type else {
+        return Err(invalid(
+            "selected finite interface requires its nominal Enum result",
+        ));
+    };
+    if !canonically_equal(&result.name, policy.classifier())
+        || result.alternatives.len() != policy.choices().len()
+    {
+        return Err(invalid("wrong finite open result classifier"));
+    }
+    let mut tags = vec![0; policy.choices().len()];
+    for (index, name) in policy.choices().iter().enumerate() {
+        tags[index] = result
+            .alternatives
+            .iter()
+            .position(|candidate| canonically_equal(candidate, name))
+            .ok_or_else(|| invalid(format!("missing semantic result {name}")))?
+            as u32;
+    }
+    let entry_symbol = entry.symbol.clone();
+    let mut seen = BTreeSet::new();
+    let mut all_calls = BTreeMap::new();
+    for function in &program.functions {
+        let allow_enum = function.module_identity.is_none();
+        if function.foreign.is_some()
+            || !function.result_captures.is_empty()
+            || !function.pattern_identities.is_empty()
+            || function
+                .declared_effects
+                .as_ref()
+                .is_some_and(|row| !row.identities.is_empty())
+            || !finite(&function.result_type, allow_enum)
+            || function
+                .parameters
+                .iter()
+                .any(|p| !finite(&p.value_type, allow_enum) || p.int_range.is_some())
+        {
+            return Err(invalid(format!(
+                "{}: unqualified function interface or effect/capture",
+                function.source_name
+            )));
+        }
+        let mut edges = BTreeSet::new();
+        check_block(&function.body, &mut edges, allow_enum).map_err(|message| {
+            let position = program.source.position(function.span.start);
+            CompileError::Tool(
+                Diagnostic::error(
+                    "E-SYSTEMS-LIBRARY-PROFILE",
+                    position.line,
+                    position.column,
+                    message,
+                )
+                .with_source_span(Span::new(function.span.start, function.span.end))
+                .render(&input.source_name),
+            )
+        })?;
+        // Shared model promises callee-before-caller order. A recursive or
+        // unresolved edge cannot obtain a kernel binding under this profile.
+        if edges.iter().any(|target| !seen.contains(target)) {
+            return Err(invalid("recursive or unresolved library call graph"));
+        }
+        seen.insert(function.symbol.clone());
+        all_calls.insert(function.symbol.clone(), edges);
+    }
+    let mut reachable = BTreeSet::new();
+    let mut pending = vec![entry_symbol.clone()];
+    while let Some(symbol) = pending.pop() {
+        if reachable.insert(symbol.clone()) {
+            pending.extend(all_calls[&symbol].iter().cloned());
+        }
+    }
+    if reachable != seen {
+        return Err(invalid(
+            "source unit retained functions outside the selected export closure",
+        ));
+    }
+    modules::check_isolation(input, &program)?;
+    Ok(CheckedFiniteLibrary {
+        program,
+        source_name: input.source_name.clone(),
+        entry_symbol,
+        source_tags: tags,
+        policy,
+        calls: all_calls,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn requirement() -> CompilerSystemsSourceLibraryRequirement {
+        CompilerSystemsSourceLibraryRequirement {
+            source: "policy/boot-open-access.t".into(),
+            export: "boot-open-decision".into(),
+            interface:
+                topal_language::compiler::CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1,
+            stack_limit_bytes: 1024,
+            runtime_limit_bytes: None,
+            state_limit_bytes: None,
+        }
+    }
+    fn input() -> SystemsSourceLibraryInput {
+        load_source_library(
+            &requirement(),
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap()
+    }
+    #[test]
+    fn finite_library_uses_ordinary_frontend_and_codegen() {
+        let checked = check_source_library(&requirement(), &input()).unwrap();
+        assert_eq!(*checked.source_tags(), [0, 1, 2, 3]);
+        assert!(checked.program().functions.len() > 1);
+        let llvm = crate::codegen::emit_finite_kernel_library(&checked).unwrap();
+        assert!(llvm.contains("call fastcc i32"));
+        assert!(llvm.contains("noredzone noimplicitfloat"));
+        assert!(!llvm.contains("@_start"));
+        assert!(!llvm.contains("@malloc"));
+        let mut reordered = input();
+        reordered.text = reordered.text.replace(
+            "ReadDescription, NotDirectory, DirectoryWrite, ReadOnlyView",
+            "ReadOnlyView, DirectoryWrite, NotDirectory, ReadDescription",
+        );
+        assert_eq!(
+            *check_source_library(&requirement(), &reordered)
+                .unwrap()
+                .source_tags(),
+            [3, 2, 1, 0]
+        );
+    }
+    #[test]
+    fn native_finite_library_has_bounded_stack_and_preserves_enum_meaning() {
+        let tools = crate::LlvmTools::discover(None).unwrap();
+        let parent =
+            std::env::temp_dir().join(format!("topal-finite-policy-{}", std::process::id()));
+        std::fs::create_dir_all(&parent).unwrap();
+        for reordered in [false, true] {
+            let directory = parent.join(if reordered { "reordered" } else { "normal" });
+            std::fs::create_dir_all(&directory).unwrap();
+            let mut source = input();
+            if reordered {
+                source.text = source.text.replace(
+                    "ReadDescription, NotDirectory, DirectoryWrite, ReadOnlyView",
+                    "ReadOnlyView, DirectoryWrite, NotDirectory, ReadDescription",
+                );
+            }
+            let library =
+                build_source_library(&requirement(), &source, &tools, &directory).unwrap();
+            assert!(library.record.maximum_stack_bytes <= 1024);
+            assert!(library.record.maximum_stack_bytes > 32);
+            assert_eq!(library.record.modules.len(), 2);
+            assert!(library.record.functions.len() >= 7);
+            let driver = directory.join("driver.c");
+            std::fs::write(&driver, r#"
+#include <stdint.h>
+extern uint64_t topal_kernel_boot_open_policy_v1(uint64_t);
+int main(void) {
+  const uint64_t expected[8]={0,3,0,2,1,1,0,2};
+  for(uint64_t i=0;i<8;i++) if(topal_kernel_boot_open_policy_v1(i)!=expected[i]) return 1;
+  return topal_kernel_boot_open_policy_v1(8)!=UINT64_MAX || topal_kernel_boot_open_policy_v1(UINT64_MAX)!=UINT64_MAX;
+}
+"#).unwrap();
+            let executable = directory.join("policy");
+            let output = std::process::Command::new("cc")
+                .arg("-no-pie")
+                .arg(&driver)
+                .arg(directory.join("kernel-library.o"))
+                .arg("-o")
+                .arg(&executable)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                std::process::Command::new(&executable)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        }
+        std::fs::remove_dir_all(parent).unwrap();
+    }
+    #[test]
+    fn compiled_stack_metadata_rejects_an_excessive_acyclic_call_path() {
+        let tools = crate::LlvmTools::discover(None).unwrap();
+        let directory =
+            std::env::temp_dir().join(format!("topal-finite-policy-stack-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let mut source = input();
+        source.text="use language (version is v0.1)\npub BootOpenDecision is Enum (ReadDescription, NotDirectory, DirectoryWrite, ReadOnlyView)\n".into();
+        source.modules.clear();
+        let parameters = (0..160)
+            .map(|i| format!("p{i} : Boolean"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        source.text.push_str(&format!("wide is fn (({parameters})) -> BootOpenDecision\n  p159\n    true then ReadDescription\n    false then ReadOnlyView\n"));
+        let arguments = (0..160)
+            .map(|i| ["a", "b", "c"][i % 3])
+            .collect::<Vec<_>>()
+            .join(", ");
+        source.text.push_str(&format!("pub boot-open-decision is fn ((a : Boolean, b : Boolean, c : Boolean)) -> BootOpenDecision\n  wide ({arguments})\n"));
+        let error = match build_source_library(&requirement(), &source, &tools, &directory) {
+            Ok(_) => panic!("excessive stack was admitted"),
+            Err(error) => error,
+        };
+        assert!(
+            error.to_string().contains("library stack requires"),
+            "{error}"
+        );
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+    #[test]
+    fn finite_profile_rejects_nonfinite_values_and_cycles() {
+        let mut source = input();
+        source.text = source
+            .text
+            .replace("  directory\n", "  text is \"unqualified\"\n  directory\n");
+        let error = match check_source_library(&requirement(), &source) {
+            Ok(_) => panic!("nonfinite local admitted"),
+            Err(error) => error,
+        };
+        assert!(
+            error.to_string().contains("E-SYSTEMS-LIBRARY-PROFILE"),
+            "{error}"
+        );
+        let mut source = input();
+        source.text = source
+            .text
+            .replace("false then ReadOnlyView", "false then deny-write directory");
+        assert!(check_source_library(&requirement(), &source).is_err());
+    }
+    #[test]
+    fn source_loading_rejects_symlink_escape_and_missing_units() {
+        let root = std::env::temp_dir().join(format!("topal-policy-path-{}", std::process::id()));
+        std::fs::create_dir_all(root.join("policy")).unwrap();
+        assert!(load_source_library(&requirement(), &root).is_err());
+        let outside = root.with_extension("t");
+        std::fs::write(&outside, &input().text).unwrap();
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink(&outside, root.join(&requirement().source)).unwrap();
+            assert!(load_source_library(&requirement(), &root).is_err());
+        }
+        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_file(outside).unwrap();
+    }
+    #[test]
+    fn declared_library_never_uses_missing_or_private_source() {
+        let mut imported = input();
+        imported.text = imported.text.replacen(
+            "use language (version is v0.1)",
+            "use language (version is v0.1)\nuse library unavailable (version is v0.1)",
+            1,
+        );
+        assert!(check_source_library(&requirement(), &imported).is_err());
+        let mut source = input();
+        source.source = "other.t".into();
+        assert!(check_source_library(&requirement(), &source).is_err());
+        let mut source = input();
+        source.text = source
+            .text
+            .replace("pub boot-open-decision", "boot-open-decision");
+        assert!(check_source_library(&requirement(), &source).is_err());
+        let mut source = input();
+        source.text = source.text.replace("-> BootOpenDecision", "-> Boolean");
+        assert!(check_source_library(&requirement(), &source).is_err());
+    }
+}
+
+/// Resolve a declared unit under the explicitly selected library root.
+pub(crate) fn load_source_library(
+    requirement: &CompilerSystemsSourceLibraryRequirement,
+    root: &std::path::Path,
+) -> Result<SystemsSourceLibraryInput, CompileError> {
+    requirement.validate().map_err(|e| invalid(e.to_string()))?;
+    let root = root
+        .canonicalize()
+        .map_err(|e| invalid(format!("library root: {e}")))?;
+    let path = root
+        .join(&requirement.source)
+        .canonicalize()
+        .map_err(|e| invalid(format!("{}: {e}", requirement.source)))?;
+    if !path.starts_with(&root) || !path.is_file() {
+        return Err(invalid("source unit escapes the selected library root"));
+    }
+    let text = std::fs::read_to_string(&path).map_err(|e| invalid(e.to_string()))?;
+    let mut input = SystemsSourceLibraryInput {
+        source: requirement.source.clone(),
+        source_name: path.display().to_string(),
+        text,
+        modules: Vec::new(),
+    };
+    modules::load(&mut input, &root)?;
+    Ok(input)
+}
+
+#[cfg(test)]
+#[path = "systems_file_open_tests.rs"]
+mod file_open_tests;

@@ -519,6 +519,8 @@ fn execute(
             ..OptimizationRequest::default()
         },
         standard_library: None,
+        initial_user_image: None,
+        static_user_image: None,
     };
     compile_source(&source, &options).map_err(|error| render_error(error, identity))?;
     let output = Command::new(&executable)

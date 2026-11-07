@@ -13,6 +13,9 @@ impl<'a> Generator<'a> {
             debug.enum_type(&constraint_value_enumeration(program));
         }
         Self {
+            kernel_library_mode: false,
+            kernel_parameter_debug_storage: false,
+            kernel_function_prefix: "",
             program,
             source_name,
             globals: Vec::new(),
@@ -250,6 +253,7 @@ impl<'a> Generator<'a> {
             self.emit_foreign_function(function);
             return;
         }
+        let linkage_symbol = format!("{}{}",self.kernel_function_prefix,function.symbol);
         let return_type = function_llvm_return_type(function);
         let parameter_types = function
             .parameters
@@ -258,7 +262,7 @@ impl<'a> Generator<'a> {
             .collect::<Vec<_>>();
         let subprogram = self.debug.subprogram(
             &function.source_name,
-            &function.symbol,
+            &linkage_symbol,
             function.span,
             &function.result_type,
             &parameter_types,
@@ -338,6 +342,7 @@ impl<'a> Generator<'a> {
                 | LlValue::SerializationStream { stream: value, .. }
                 | LlValue::Task { value, .. }
                 | LlValue::ExternalLocation { value, .. }
+                | LlValue::KernelRegion(value)
                 | LlValue::Int(value)
                 | LlValue::Modular { value, .. }
                 | LlValue::Rational(value)
@@ -401,9 +406,10 @@ impl<'a> Generator<'a> {
                 }
             }
         }
+        let extra_attributes=if self.kernel_library_mode { " noredzone noimplicitfloat \"disable-tail-calls\"=\"true\"" } else { "" };
         self.functions.push(format!(
-            "define internal fastcc {return_type} @{}({parameters}) nounwind noinline !dbg !{subprogram} {{\n{}\n}}\n",
-            function.symbol,
+            "define internal fastcc {return_type} @{}({parameters}) nounwind noinline{extra_attributes} !dbg !{subprogram} {{\n{}\n}}\n",
+            linkage_symbol,
             body.render()
         ));
     }
@@ -591,7 +597,8 @@ impl<'a> Generator<'a> {
                 && function.body.statements.is_empty()
                 && matches!(function.body.result.kind, CompilerExpressionKind::Unit);
             let retained_context_capture = function_parameter_is_context_capture(parameter);
-            if retained_character_generator_source
+            if self.kernel_parameter_debug_storage
+                || retained_character_generator_source
                 || retained_value_generator_source
                 || retained_unused_enum
                 || retained_context_capture

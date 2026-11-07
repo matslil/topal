@@ -1,0 +1,265 @@
+{
+  "effective_uid": 0,
+  "events": [
+    {
+      "case": "chmod-high-native-mode-and-file-type-bits",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o107321",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 90
+    },
+    {
+      "case": "fchmod-readonly-description",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o106754",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmod-native-unsigned-fd-cast",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o104755",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmodat-ignores-fourth-argument",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o101234",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 268
+    },
+    {
+      "case": "fchmodat2-absolute-ignores-bad-dirfd",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o107777",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-native-unsigned-flags-cast",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100600",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-nofollow-existing-nonsymlink",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100640",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-empty-readonly-regular",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100601",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-empty-readonly-alias",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100602",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmod-equal-mode-still-valid",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100602",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmod-existing-description-retains-write-grant",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100000",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmod-bad-fd",
+      "errno": 9,
+      "result": -1,
+      "syscall": 91
+    },
+    {
+      "case": "fchmodat2-flags-before-copy-and-fd",
+      "errno": 22,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-null-empty-flag-before-bad-fd",
+      "errno": 14,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-null-empty-flag-valid-fd",
+      "errno": 14,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-null-without-empty-flag",
+      "errno": 14,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-empty-without-flag-before-bad-fd",
+      "errno": 2,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-empty-bad-fd",
+      "errno": 9,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-relative-bad-fd",
+      "errno": 9,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "fchmodat2-relative-nondirectory-fd",
+      "errno": 20,
+      "result": -1,
+      "syscall": 452
+    },
+    {
+      "case": "chmod-regular-trailing-slash",
+      "errno": 20,
+      "result": -1,
+      "syscall": 90
+    },
+    {
+      "case": "chmod-missing",
+      "errno": 2,
+      "result": -1,
+      "syscall": 90
+    },
+    {
+      "case": "fchmodat-relative-cwd",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o100640",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 268
+    },
+    {
+      "case": "fchmodat2-empty-cwd",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o42750",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "fchmod-readonly-directory",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o41777",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmod-retained-unlinked-inode",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o104701",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "chmod-recreated-name-distinct-from-unlinked",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o104222",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 90
+    },
+    {
+      "case": "fchmod-pipe-read-end",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o16754",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 91
+    },
+    {
+      "case": "fchmodat2-empty-pipe-write-end",
+      "ctime_not_earlier": true,
+      "errno": 0,
+      "mode_octal": "0o11234",
+      "preserved_type_identity_links_size_atime_mtime": true,
+      "result": 0,
+      "syscall": 452
+    },
+    {
+      "case": "chmod-readonly-existing-target",
+      "errno": 30,
+      "result": -1,
+      "syscall": 90
+    },
+    {
+      "case": "fchmod-readonly-existing-target",
+      "errno": 30,
+      "result": -1,
+      "syscall": 91
+    },
+    {
+      "case": "chmod-missing-target-before-readonly-mount-denial",
+      "errno": 2,
+      "result": -1,
+      "syscall": 90
+    },
+    {
+      "case": "fchmodat2-empty-readonly-existing-target",
+      "errno": 30,
+      "result": -1,
+      "syscall": 452
+    }
+  ],
+  "kernel_release": "7.2.9",
+  "passed": true,
+  "schema": "topal-linux-inode-mode-control/1",
+  "kernel_sha256": "c005235648520b35e104e3d8025abf48f6f523697a54f491b9cf692db53fae0c",
+  "guest_source_sha256": "305ba2f4b5ac9cf22a23555ff4d052a80fe8d8aa4876e8cf4674bab214dd0042",
+  "driver_sha256": "a2620c542066fa81355114a7f6b74f5ed2b529cf49420504b7937ce766963115",
+  "vm_manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+  "qemu_snapshot": true
+}

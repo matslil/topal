@@ -1,6 +1,20 @@
 impl Analyzer {
-    #[allow(clippy::too_many_lines)] // Exhaustive expression admission keeps the subset boundary visible.
     fn analyze_expression(
+        &mut self,
+        expression: &Expression,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<CompilerExpression, Diagnostic> {
+        // Ordinary helper composition must not retain the other expression
+        // variants' analysis storage on every recursive application.
+        match expression {
+            Expression::Application { items, span } => {
+                self.analyze_application(items, *span, environment)
+            }
+            _ => self.analyze_expression_form(expression, environment),
+        }
+    }
+    #[allow(clippy::too_many_lines)] // Exhaustive expression admission keeps the subset boundary visible.
+    fn analyze_expression_form(
         &mut self,
         expression: &Expression,
         environment: &BTreeMap<String, BindingFacts>,
@@ -508,8 +522,8 @@ impl Analyzer {
                     span,
                 })
             }
-            Expression::Application { items, .. } => {
-                self.analyze_application(items, span, environment)
+            Expression::Application { .. } => {
+                unreachable!("application dispatched before expression-form analysis")
             }
             Expression::DecisionTable { subject, rules, .. } => {
                 self.analyze_decision(subject, rules, span, environment)

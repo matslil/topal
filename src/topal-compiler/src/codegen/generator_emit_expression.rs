@@ -7,6 +7,59 @@ impl Generator<'_> {
         environment: &BTreeMap<String, LlValue>,
     ) -> LlValue {
         match &expression.kind {
+            CompilerExpressionKind::KernelRegion {
+                operation,
+                region,
+                arguments,
+                argument_roles,
+            } => {
+                use topal_language::compiler::CompilerKernelRegionOperation as O;
+                let region = self.emit_expression(region, body, environment);
+                let mut native = vec![String::new(); arguments.len()];
+                for (argument, role) in arguments.iter().zip(argument_roles) {
+                    native[*role] = self.emit_expression(argument, body, environment).argument();
+                }
+                let mut arguments = native;
+                arguments.insert(0, format!("ptr {}", region.kernel_region_pointer()));
+                let (name, result) = match operation {
+                    O::Count => ("count", "ptr"),
+                    O::Load => ("load", "ptr"),
+                    O::Store => ("store", "i1"),
+                    O::UnsignedLoad(format) | O::UnsignedStore(format) => {
+                        arguments.push(format!("i64 {}", format.byte_count()));
+                        arguments.push(format!(
+                            "i1 {}",
+                            format.byte_order()
+                                == topal_semantics::RegionLibraryByteOrder::BigEndian
+                        ));
+                        (
+                            if matches!(operation, O::UnsignedLoad(_)) {
+                                "unsigned.load"
+                            } else {
+                                "unsigned.store"
+                            },
+                            if matches!(operation, O::UnsignedLoad(_)) {
+                                "ptr"
+                            } else {
+                                "i1"
+                            },
+                        )
+                    }
+                    O::Window { write } => {
+                        arguments.push(format!("i1 {write}"));
+                        ("window", "ptr")
+                    }
+                };
+                let value = body.instruction(
+                    &format!(
+                        "call {result} @topal.kernel.region.{name}({})",
+                        arguments.join(", ")
+                    ),
+                    expression.span,
+                    &mut self.debug,
+                );
+                machine_value(&expression.value_type, value)
+            }
             CompilerExpressionKind::Unit
             | CompilerExpressionKind::Identity(_)
             | CompilerExpressionKind::TypeView(_)

@@ -10,14 +10,21 @@ use object::{
 use serde::{Deserialize, Serialize};
 
 use crate::artifact::sha256;
+use crate::systems_boot_resource::{
+    X86_INITIAL_BOOT_RESOURCE_FILE, X86_INITIAL_BOOT_RESOURCE_MEMBER,
+    X86_INITIAL_BOOT_RESOURCE_REVISION, X86_STATIC_BOOT_RESOURCE_MEMBER,
+    generate_initial_boot_resource,
+};
 use crate::{
-    CompileError, SYSTEMS_KERNEL_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
+    CompileError, SYSTEMS_INITIAL_USER_IMAGE_FILE, SYSTEMS_KERNEL_FILE,
+    SYSTEMS_STATIC_USER_IMAGE_FILE, SystemsArtifactProvenance, X86_SYSTEMS_ARTIFACT_REVISION,
     X86_SYSTEMS_DEADLINE_ENTRY, X86_SYSTEMS_DEBUG_BREAK_ENTRY, X86_SYSTEMS_KERNEL_ENTRY,
     X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY, X86_SYSTEMS_PROVIDER_REVISION,
+    X86_SYSTEMS_USER_COPY_FAULT_SYMBOL,
 };
 
 pub const X86_LINUX_BOOT_ADAPTER_REVISION: &str =
-    "topal.boot-adapter.linux-x86-protocol-2.15-q35/5";
+    "topal.boot-adapter.linux-x86-protocol-2.15-q35/153";
 pub const X86_LINUX_BOOT_PROTOCOL: u16 = 0x020f;
 pub const X86_LINUX_SETUP_SECTORS: u8 = 4;
 pub const X86_PROTECTED_PAYLOAD_ADDRESS: u64 = 0x0010_0000;
@@ -47,6 +54,7 @@ const HPET_MMIO_LEAF_ADDRESS: u64 = 0xfec0_0000;
 const LOCAL_APIC_PAGE_ADDRESS: u64 = 0xfee0_0000;
 const LOCAL_NOTIFICATION_VECTOR: usize = 0xf1;
 const DEADLINE_VECTOR: usize = 0xf2;
+const PAGE_FAULT_VECTOR: usize = 14;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
@@ -68,16 +76,27 @@ pub struct X86LinuxBootImageProvenance {
     pub provider: String,
     pub linked_kernel_sha256: String,
     pub boot_image_sha256: String,
+    pub boot_resource_schema: String,
+    pub boot_resource_member: String,
+    pub static_boot_resource_member: String,
+    pub boot_resource_bytes: u64,
+    pub boot_resource_sha256: String,
+    pub initial_user_image_bytes: u64,
+    pub initial_user_image_sha256: String,
+    pub static_user_image_bytes: u64,
+    pub static_user_image_sha256: String,
     pub protected_payload_bytes: u64,
     pub kernel_entry: u64,
     pub debug_break_entry: u64,
     pub local_notification_entry: u64,
     pub deadline_entry: u64,
+    pub user_copy_fault_entry: u64,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GeneratedX86LinuxBootImage {
     pub bytes: Vec<u8>,
+    pub boot_resource: Vec<u8>,
     pub provenance: X86LinuxBootImageProvenance,
 }
 
@@ -85,6 +104,7 @@ pub struct GeneratedX86LinuxBootImage {
 pub struct PublishedX86LinuxBootImage {
     pub directory: PathBuf,
     pub image: PathBuf,
+    pub boot_resource: PathBuf,
     pub provenance: PathBuf,
     pub record: X86LinuxBootImageProvenance,
 }
@@ -106,8 +126,10 @@ struct KernelLoadSegment<'data> {
 pub fn generate_x86_64_linux_boot_image(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
+    initial_user_image: &[u8],
+    static_user_image: &[u8],
 ) -> Result<GeneratedX86LinuxBootImage, CompileError> {
-    validate_artifact_input(kernel, artifact)?;
+    validate_artifact_input(kernel, initial_user_image, static_user_image, artifact)?;
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked kernel ELF: {error}")))?;
     if file.format() != BinaryFormat::Elf
@@ -131,6 +153,8 @@ pub fn generate_x86_64_linux_boot_image(
     let local_notification_entry =
         required_executable_symbol(&file, &segments, X86_SYSTEMS_LOCAL_NOTIFICATION_ENTRY)?;
     let deadline_entry = required_executable_symbol(&file, &segments, X86_SYSTEMS_DEADLINE_ENTRY)?;
+    let user_copy_fault_entry =
+        required_executable_symbol(&file, &segments, X86_SYSTEMS_USER_COPY_FAULT_SYMBOL)?;
     let mut protected = materialize_protected_payload(&segments)?;
     install_transition_support(
         &mut protected,
@@ -138,6 +162,7 @@ pub fn generate_x86_64_linux_boot_image(
         debug_break_entry,
         local_notification_entry,
         deadline_entry,
+        user_copy_fault_entry,
     )?;
     pad_to(&mut protected, 16);
 
@@ -151,8 +176,10 @@ pub fn generate_x86_64_linux_boot_image(
     bytes.extend_from_slice(&protected);
     let linked_kernel_sha256 = sha256(kernel);
     let boot_image_sha256 = sha256(&bytes);
+    let boot_resource = generate_initial_boot_resource(initial_user_image, static_user_image)?;
     Ok(GeneratedX86LinuxBootImage {
         bytes,
+        boot_resource: boot_resource.clone(),
         provenance: X86LinuxBootImageProvenance {
             schema: X86_LINUX_BOOT_ADAPTER_REVISION.into(),
             protocol: X86_LINUX_BOOT_PROTOCOL,
@@ -168,11 +195,27 @@ pub fn generate_x86_64_linux_boot_image(
             provider: artifact.provider.clone(),
             linked_kernel_sha256,
             boot_image_sha256,
+            boot_resource_schema: X86_INITIAL_BOOT_RESOURCE_REVISION.into(),
+            boot_resource_member: X86_INITIAL_BOOT_RESOURCE_MEMBER.into(),
+            static_boot_resource_member: X86_STATIC_BOOT_RESOURCE_MEMBER.into(),
+            boot_resource_bytes: u64::try_from(boot_resource.len()).map_err(|_| {
+                CompileError::Tool("initial boot resource size exceeds provenance limits".into())
+            })?,
+            boot_resource_sha256: sha256(&boot_resource),
+            initial_user_image_bytes: u64::try_from(initial_user_image.len()).map_err(|_| {
+                CompileError::Tool("initial user image size exceeds provenance limits".into())
+            })?,
+            initial_user_image_sha256: sha256(initial_user_image),
+            static_user_image_bytes: u64::try_from(static_user_image.len()).map_err(|_| {
+                CompileError::Tool("static user image size exceeds provenance limits".into())
+            })?,
+            static_user_image_sha256: sha256(static_user_image),
             protected_payload_bytes: u64::from(protected_size),
             kernel_entry,
             debug_break_entry,
             local_notification_entry,
             deadline_entry,
+            user_copy_fault_entry,
         },
     })
 }
@@ -186,9 +229,12 @@ pub fn generate_x86_64_linux_boot_image(
 pub fn publish_x86_64_linux_boot_image(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
+    initial_user_image: &[u8],
+    static_user_image: &[u8],
     destination: &Path,
 ) -> Result<PublishedX86LinuxBootImage, CompileError> {
-    let generated = generate_x86_64_linux_boot_image(kernel, artifact)?;
+    let generated =
+        generate_x86_64_linux_boot_image(kernel, artifact, initial_user_image, static_user_image)?;
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent).map_err(io_error("create boot-image parent", parent))?;
     if destination.exists() {
@@ -201,6 +247,9 @@ pub fn publish_x86_64_linux_boot_image(
     let result = (|| {
         let image = stage.join(X86_BOOT_IMAGE_FILE);
         fs::write(&image, &generated.bytes).map_err(io_error("write staged boot image", &image))?;
+        let boot_resource = stage.join(X86_INITIAL_BOOT_RESOURCE_FILE);
+        fs::write(&boot_resource, &generated.boot_resource)
+            .map_err(io_error("write staged boot resource", &boot_resource))?;
         let mut encoded = serde_json::to_vec_pretty(&generated.provenance).map_err(|error| {
             CompileError::Tool(format!("cannot encode boot-image provenance: {error}"))
         })?;
@@ -224,6 +273,7 @@ pub fn publish_x86_64_linux_boot_image(
     Ok(PublishedX86LinuxBootImage {
         directory: destination.to_owned(),
         image: destination.join(X86_BOOT_IMAGE_FILE),
+        boot_resource: destination.join(X86_INITIAL_BOOT_RESOURCE_FILE),
         provenance: destination.join(X86_BOOT_PROVENANCE_FILE),
         record: generated.provenance,
     })
@@ -231,6 +281,8 @@ pub fn publish_x86_64_linux_boot_image(
 
 fn validate_artifact_input(
     kernel: &[u8],
+    initial_user_image: &[u8],
+    static_user_image: &[u8],
     artifact: &SystemsArtifactProvenance,
 ) -> Result<(), CompileError> {
     if artifact.schema != X86_SYSTEMS_ARTIFACT_REVISION
@@ -253,6 +305,278 @@ fn validate_artifact_input(
     if expected.sha256 != sha256(kernel) {
         return Err(CompileError::Tool(
             "linked kernel bytes do not match artifact provenance".into(),
+        ));
+    }
+    crate::systems_provider_object::inspect_linked_process_backing(kernel)?;
+    if artifact.volatile_files
+        != crate::systems_provider_object::volatile_file_profile(
+            artifact.ram_page_pool_library.is_some(),
+            artifact.inode_mode_library.is_some(),
+            artifact
+                .dispatch_library
+                .as_ref()
+                .is_some_and(|library| library.interface == "static-linux-dispatch-v6"),
+        )
+    {
+        return Err(CompileError::Tool(
+            "unqualified volatile filesystem ownership/capacity evidence".into(),
+        ));
+    }
+    let expected = artifact
+        .outputs
+        .iter()
+        .find(|output| output.identity == SYSTEMS_INITIAL_USER_IMAGE_FILE)
+        .ok_or_else(|| {
+            CompileError::Tool("artifact provenance omits the initial user-image digest".into())
+        })?;
+    if expected.sha256 != sha256(initial_user_image) {
+        return Err(CompileError::Tool(
+            "initial user-image bytes do not match artifact provenance".into(),
+        ));
+    }
+    let expected = artifact
+        .outputs
+        .iter()
+        .find(|output| output.identity == SYSTEMS_STATIC_USER_IMAGE_FILE)
+        .ok_or_else(|| {
+            CompileError::Tool("artifact provenance omits the static user-image digest".into())
+        })?;
+    if expected.sha256 != sha256(static_user_image) {
+        return Err(CompileError::Tool(
+            "static user-image bytes do not match artifact provenance".into(),
+        ));
+    }
+    let file = object::File::parse(kernel).map_err(|e| CompileError::Tool(e.to_string()))?;
+    let slots = [
+        (artifact.kernel_library.is_some(), "kernel-library"),
+        (artifact.time_library.is_some(), "time-library"),
+        (artifact.image_library.is_some(), "image-library"),
+        (artifact.dispatch_library.is_some(), "dispatch-library"),
+        (
+            artifact.process_identity_library.is_some(),
+            "process-identity-library",
+        ),
+    ]
+    .into_iter()
+    .filter_map(|(present, slot)| present.then_some(slot))
+    .collect::<Vec<_>>();
+    crate::systems_policy_inputs::validate_slots(kernel, &slots)?;
+    let exports = [
+        crate::systems_library::EXPORT_SYMBOL,
+        "topal_kernel_file_open_policy_v1",
+    ];
+    let present: Vec<_> = exports
+        .into_iter()
+        .filter(|name| file.symbol_by_name(name).is_some())
+        .collect();
+    let expected = artifact
+        .kernel_library
+        .as_ref()
+        .map(|library| library.native_export.as_str());
+    if present.as_slice() != expected.as_slice() {
+        return Err(CompileError::Tool(
+            "source-library code and selected binding disagree".into(),
+        ));
+    }
+    if let Some(library) = &artifact.kernel_library {
+        crate::systems_policy_inputs::validate_object_output(
+            &artifact.outputs,
+            "kernel-library",
+            &library.object_sha256,
+        )?;
+        crate::systems_library::modules::validate_binding(
+            &library.modules,
+            &library.module_snapshot_sha256,
+            &artifact.inputs,
+            &artifact.outputs,
+            "kernel-source-module:",
+            "kernel-library.modules.json",
+        )?;
+        crate::systems_library::inspect_linked_library(kernel, library)?;
+    }
+    crate::systems_file_region_boot::validate(kernel, artifact)?;
+    crate::systems_ram_page_region_boot::validate(kernel, artifact)?;
+    crate::systems_inode_region_boot::validate(kernel, artifact)?;
+    crate::systems_namespace_region_boot::validate(kernel, artifact)?;
+    if artifact
+        .dispatch_library
+        .as_ref()
+        .is_some_and(|library| library.interface == "static-linux-dispatch-v5")
+        && artifact.inode_mode_library.is_none()
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-INODE-MODE: v5 dispatch requires its actual inode action binding".into(),
+        ));
+    }
+    crate::systems_root_region_boot::validate(kernel, artifact)?;
+    if artifact
+        .dispatch_library
+        .as_ref()
+        .is_some_and(|library| library.interface == "static-linux-dispatch-v6")
+        && artifact.namespace_runtime.is_none()
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-NAMESPACE: v6 dispatch requires its actual namespace action binding".into(),
+        ));
+    }
+    crate::systems_region_library::validate_instance_namespaces(
+        kernel,
+        &[
+            artifact.region_library.as_ref(),
+            artifact.file_position_library.as_ref(),
+            artifact.ram_page_pool_library.as_ref(),
+            artifact.inode_mode_library.as_ref(),
+            artifact.namespace_library.as_ref(),
+        ],
+    )?;
+    let identity_interface = artifact
+        .process_identity_library
+        .as_ref()
+        .map_or("process-identity-transition-v1", |r| r.interface.as_str());
+    let identity_policy = match identity_interface {
+        "process-identity-transition-v1" => {
+            crate::systems_numeric_library::NumericPolicy::ProcessIdentity
+        }
+        "retained-process-identity-v1" => {
+            crate::systems_numeric_library::NumericPolicy::RetainedIdentity
+        }
+        "structured-process-identity-v1" => {
+            crate::systems_numeric_library::NumericPolicy::StructuredIdentity
+        }
+        _ => {
+            return Err(CompileError::Tool(
+                "unqualified process identity interface".into(),
+            ));
+        }
+    };
+    let retained_identity =
+        identity_policy != crate::systems_numeric_library::NumericPolicy::ProcessIdentity;
+    if [
+        crate::systems_numeric_library::NumericPolicy::ProcessIdentity,
+        crate::systems_numeric_library::NumericPolicy::RetainedIdentity,
+        crate::systems_numeric_library::NumericPolicy::StructuredIdentity,
+    ]
+    .into_iter()
+    .any(|policy| {
+        policy != identity_policy && file.symbol_by_name(policy.native_export()).is_some()
+    }) || file
+        .symbol_by_name(crate::systems_numeric_library::STATE_SYMBOL)
+        .is_some()
+        != retained_identity
+    {
+        return Err(CompileError::Tool(
+            "identity interface/store ownership bindings disagree".into(),
+        ));
+    }
+    let dispatch_interface = artifact
+        .dispatch_library
+        .as_ref()
+        .map_or("static-linux-dispatch-v1", |library| {
+            library.interface.as_str()
+        });
+    let dispatch_policy = match dispatch_interface {
+        "static-linux-dispatch-v1" => crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+        "static-linux-dispatch-v2" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2
+        }
+        "static-linux-dispatch-v4" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4
+        }
+        "static-linux-dispatch-v5" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5
+        }
+        "static-linux-dispatch-v6" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6
+        }
+        "static-linux-dispatch-v3" => {
+            crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3
+        }
+        _ => return Err(CompileError::Tool("unqualified dispatch interface".into())),
+    };
+    if [
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatch,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV2,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV3,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV4,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV5,
+        crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
+    ]
+    .into_iter()
+    .any(|policy| {
+        policy != dispatch_policy && file.symbol_by_name(policy.native_export()).is_some()
+    }) {
+        return Err(CompileError::Tool(
+            "duplicate or cross-version dispatch code binding".into(),
+        ));
+    }
+    for (library, interface, policy, prefix, stem) in [
+        (
+            &artifact.time_library,
+            "relative-sleep-deadline-v1",
+            crate::systems_numeric_library::NumericPolicy::Deadline,
+            "kernel-time-source-module:",
+            "time-library",
+        ),
+        (
+            &artifact.image_library,
+            "static-elf64-header-v1",
+            crate::systems_numeric_library::NumericPolicy::Elf64Header,
+            "kernel-image-source-module:",
+            "image-library",
+        ),
+        (
+            &artifact.dispatch_library,
+            dispatch_interface,
+            dispatch_policy,
+            "kernel-dispatch-source-module:",
+            "dispatch-library",
+        ),
+        (
+            &artifact.process_identity_library,
+            identity_interface,
+            identity_policy,
+            "kernel-process-identity-source-module:",
+            "process-identity-library",
+        ),
+    ] {
+        let has_numeric = file.symbol_by_name(policy.native_export()).is_some();
+        if has_numeric != library.is_some() {
+            return Err(CompileError::Tool(
+                "numeric code and artifact binding disagree".into(),
+            ));
+        }
+        if let Some(library) = library {
+            crate::systems_policy_inputs::validate_object_output(
+                &artifact.outputs,
+                stem,
+                &library.object_sha256,
+            )?;
+            if library.interface != interface || library.native_export != policy.native_export() {
+                return Err(CompileError::Tool(
+                    "numeric source binding is in the wrong policy slot".into(),
+                ));
+            }
+            crate::systems_library::modules::validate_binding(
+                &library.modules,
+                &library.module_snapshot_sha256,
+                &artifact.inputs,
+                &artifact.outputs,
+                prefix,
+                &format!("{stem}.modules.json"),
+            )?;
+            crate::systems_numeric_library::inspect_linked_numeric_library(kernel, library)?;
+        }
+    }
+    if file
+        .symbol_by_name("topal_x86_systems_numeric_arena")
+        .is_some()
+        != (artifact.time_library.is_some()
+            || artifact.image_library.is_some()
+            || artifact.dispatch_library.is_some()
+            || artifact.process_identity_library.is_some())
+    {
+        return Err(CompileError::Tool(
+            "numeric arena and complete policy set disagree".into(),
         ));
     }
     Ok(())
@@ -387,6 +711,7 @@ fn install_transition_support(
     debug_break_entry: u64,
     local_notification_entry: u64,
     deadline_entry: u64,
+    user_copy_fault_entry: u64,
 ) -> Result<(), CompileError> {
     if X86_KERNEL_MINIMUM_ADDRESS < TRANSITION_RESERVED_END {
         return Err(CompileError::Tool(
@@ -407,6 +732,7 @@ fn install_transition_support(
         debug_break_entry,
         local_notification_entry,
         deadline_entry,
+        user_copy_fault_entry,
     )?;
     Ok(())
 }
@@ -447,6 +773,9 @@ fn transition_code(kernel_entry: u64) -> Result<Vec<u8>, CompileError> {
     code.extend_from_slice(&[
         0x8e, 0xd8, 0x8e, 0xc0, 0x8e, 0xd0, 0x8e, 0xe0, 0x8e, 0xe8, 0xfc,
     ]);
+    // SeaBIOS leaves the legacy PIC timer live. Mask both PICs before source
+    // later restores IF; admitted interrupts are routed explicitly by APIC.
+    code.extend_from_slice(&[0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]);
     code.extend_from_slice(&[0x48, 0xbc]);
     code.extend_from_slice(&X86_INITIAL_STACK_TOP.to_le_bytes());
     code.extend_from_slice(&[0x48, 0xb8]);
@@ -490,12 +819,14 @@ fn install_page_tables(protected: &mut [u8]) -> Result<(), CompileError> {
 }
 
 fn install_gdt(protected: &mut [u8]) -> Result<(), CompileError> {
-    let gdt = payload_offset(GDT_ADDRESS, 32, protected.len())?;
+    let gdt = payload_offset(GDT_ADDRESS, 48, protected.len())?;
     let descriptors = [
         0_u64,
         0x00cf_9a00_0000_ffff,
         0x00af_9a00_0000_ffff,
         0x00cf_9200_0000_ffff,
+        0x00cf_f200_0000_ffff,
+        0x00af_fa00_0000_ffff,
     ];
     for (index, descriptor) in descriptors.into_iter().enumerate() {
         write_u64(protected, gdt + index * 8, descriptor);
@@ -508,6 +839,7 @@ fn install_idt(
     debug_break_entry: u64,
     local_notification_entry: u64,
     deadline_entry: u64,
+    user_copy_fault_entry: u64,
 ) -> Result<(), CompileError> {
     let idt = payload_offset(IDT_ADDRESS, 4096, protected.len())?;
     let gate = idt + 3 * 16;
@@ -531,6 +863,33 @@ fn install_idt(
         gate + 8,
         u32::try_from(debug_break_entry >> 32)
             .map_err(|_| CompileError::Tool("debug entry high word does not fit u32".into()))?,
+    );
+    write_u32(protected, gate + 12, 0);
+
+    let gate = idt + PAGE_FAULT_VECTOR * 16;
+    write_u16(
+        protected,
+        gate,
+        u16::try_from(user_copy_fault_entry & 0xffff).map_err(|_| {
+            CompileError::Tool("user-copy fault entry low word does not fit u16".into())
+        })?,
+    );
+    write_u16(protected, gate + 2, 0x10);
+    protected[gate + 4] = 0;
+    protected[gate + 5] = 0x8e;
+    write_u16(
+        protected,
+        gate + 6,
+        u16::try_from((user_copy_fault_entry >> 16) & 0xffff).map_err(|_| {
+            CompileError::Tool("user-copy fault entry middle word does not fit u16".into())
+        })?,
+    );
+    write_u32(
+        protected,
+        gate + 8,
+        u32::try_from(user_copy_fault_entry >> 32).map_err(|_| {
+            CompileError::Tool("user-copy fault entry high word does not fit u32".into())
+        })?,
     );
     write_u32(protected, gate + 12, 0);
 
@@ -742,7 +1101,7 @@ fn real_mode_continuation_code() -> Result<Vec<u8>, CompileError> {
         &narrow_u32(X86_PROTECTED_PAYLOAD_ADDRESS, "protected payload")?.to_le_bytes(),
     );
     code.extend_from_slice(&0x08_u16.to_le_bytes());
-    code.extend_from_slice(&31_u16.to_le_bytes());
+    code.extend_from_slice(&47_u16.to_le_bytes());
     code.extend_from_slice(&narrow_u32(GDT_ADDRESS, "GDT")?.to_le_bytes());
     Ok(code)
 }
@@ -835,20 +1194,119 @@ mod tests {
     use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_for_compiler};
 
     use super::*;
-    use crate::{LlvmTools, publish_x86_64_systems_artifact};
+    use crate::{LlvmTools, qualified_x86_64_static_user_image_fixture};
+
+    include!("systems_inode_binding_tests.rs");
+    include!("systems_namespace_binding_tests.rs");
 
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
-    fn linked_kernel(parent: &Path) -> (Vec<u8>, SystemsArtifactProvenance) {
+    fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
+        linked_kernel_source(parent, SOURCE)
+    }
+    fn linked_kernel_source(
+        parent: &Path,
+        source_text: &str,
+    ) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
+        linked_kernel_source_with_namespace(parent, source_text, None)
+    }
+    fn linked_kernel_source_with_namespace(
+        parent: &Path,
+        source_text: &str,
+        namespace_override: Option<&crate::SystemsSourceLibraryInput>,
+    ) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
         let program = analyze_systems_for_compiler(
-            SOURCE,
+            source_text,
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();
         let tools = LlvmTools::discover(None).unwrap();
-        let linked =
-            publish_x86_64_systems_artifact(&program, &tools, &parent.join("linked")).unwrap();
-        (fs::read(linked.kernel).unwrap(), linked.record)
+        let source = crate::systems_library::load_source_library(
+            program.kernel_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let time = crate::systems_library::load_source_library(
+            program.time_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let image = crate::systems_library::load_source_library(
+            program.image_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let process_identity = crate::systems_library::load_source_library(
+            program.process_identity_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let dispatch = crate::systems_library::load_source_library(
+            program.dispatch_library.as_ref().unwrap(),
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+        )
+        .unwrap();
+        let region = program.region_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
+        let page = program.ram_page_pool_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
+        let position = program.file_position_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
+        let inode = program.inode_mode_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
+        let namespace = program.namespace_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
+        let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
+            &program,
+            &tools,
+            None,
+            Some(&qualified_x86_64_static_user_image_fixture()),
+            crate::SystemsKernelLibraries {
+                inode_mode: inode.as_ref(),
+                namespace: namespace_override.or(namespace.as_ref()),
+                ram_page_pool: page.as_ref(),
+                file_position: position.as_ref(),
+                region: region.as_ref(),
+                policy: Some(&source),
+                time: Some(&time),
+                image: Some(&image),
+                dispatch: Some(&dispatch),
+                process_identity: Some(&process_identity),
+            },
+            &parent.join("linked"),
+        )
+        .unwrap();
+        (
+            fs::read(linked.kernel).unwrap(),
+            fs::read(linked.initial_user_image).unwrap(),
+            fs::read(linked.static_user_image.unwrap()).unwrap(),
+            linked.record,
+        )
     }
 
     fn temporary_parent() -> PathBuf {
@@ -862,11 +1320,454 @@ mod tests {
     }
 
     #[test]
+    fn file_open_binding_boots_only_with_its_exact_export_and_tag_vocabulary() {
+        // TOPAL-SYSTEMS-FILE-OPEN-PLAN-001: admission before boot publication.
+        let parent = temporary_parent();
+        let selected = SOURCE
+            .replace("policy/boot-open-access.t", "policy/file-open-access.t")
+            .replace(
+                "export is boot-open-decision",
+                "export is file-open-decision",
+            )
+            .replace(
+                "interface is boot-open-decision-v1",
+                "interface is file-open-decision-v1",
+            );
+        let (kernel, initial, user, artifact) = linked_kernel_source(&parent, &selected);
+        generate_x86_64_linux_boot_image(&kernel, &artifact, &initial, &user).unwrap();
+        for case in 0..5 {
+            let mut wrong = artifact.clone();
+            let binding = wrong.kernel_library.as_mut().unwrap();
+            match case {
+                0 => binding.interface = "boot-open-decision-v1".into(),
+                1 => binding.native_export = crate::systems_library::EXPORT_SYMBOL.into(),
+                2 => {
+                    binding.source_tags.pop();
+                }
+                3 => binding.source_tags[7] = binding.source_tags[0],
+                _ => wrong.kernel_library = None,
+            }
+            let output = parent.join(format!("rejected-{case}"));
+            assert!(
+                publish_x86_64_linux_boot_image(&kernel, &wrong, &initial, &user, &output).is_err()
+            );
+            assert!(!output.exists());
+        }
+        std::fs::remove_dir_all(parent).unwrap();
+    }
+    #[test]
+    fn rejects_truncated_or_user_visible_child_backing_before_boot() {
+        // TOPAL-SYSTEMS-STATIC-PROCESS-CHILD-001
+        use object::{ObjectSection as _, ObjectSymbol as _};
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        let file = object::File::parse(kernel.as_slice()).unwrap();
+        let symbol = file
+            .symbol_by_name(
+                crate::systems_provider_object::X86_SYSTEMS_STATIC_PROCESS_DESCRIPTOR_TABLE_SYMBOL,
+            )
+            .unwrap();
+        let (start, _) = file
+            .section_by_name(".symtab")
+            .unwrap()
+            .file_range()
+            .unwrap();
+        let entry = start as usize + symbol.index().0 * 24;
+        assert_eq!(symbol.size(), 0x4c000);
+        for (field, value) in [
+            (16, 8192_u64),
+            (16, 0x3e000),
+            (16, 0x43000),
+            (16, u64::MAX),
+            (8, 0x3ff000),
+            (8, 0x400000),
+            (8, 0x800001),
+        ] {
+            let mut changed = kernel.clone();
+            changed[entry + field..entry + field + 8].copy_from_slice(&value.to_le_bytes());
+            assert!(
+                crate::systems_provider_object::inspect_linked_process_backing(&changed).is_err()
+            );
+            let mut provenance = artifact.clone();
+            provenance
+                .outputs
+                .iter_mut()
+                .find(|o| o.identity == SYSTEMS_KERNEL_FILE)
+                .unwrap()
+                .sha256 = sha256(&changed);
+            assert!(
+                generate_x86_64_linux_boot_image(&changed, &provenance, &initial, &static_image)
+                    .is_err()
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_wrong_sparse_filesystem_capacity_private_layout_and_profile_evidence() {
+        // TOPAL-SYSTEMS-VOLATILE-FILE-{OWNERSHIP,PERSONALITY}-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        assert_eq!(artifact.volatile_files.private_umask_offset, 1664);
+        assert_eq!(artifact.volatile_files.filesystem_bytes, 0x9000);
+        assert_eq!(artifact.volatile_files.process_storage_bytes, 0x4c000);
+        let value = serde_json::to_value(&artifact).unwrap();
+        let mut missing = value.clone();
+        missing.as_object_mut().unwrap().remove("volatile_files");
+        assert!(serde_json::from_value::<SystemsArtifactProvenance>(missing).is_err());
+        let changes = [
+            ("schema", serde_json::json!("topal.volatile-file.x86_64/0")),
+            ("process_storage_symbol", serde_json::json!("unowned")),
+            ("process_storage_bytes", serde_json::json!(0x43000)),
+            ("filesystem_offset", serde_json::json!(0x3e000)),
+            ("filesystem_bytes", serde_json::json!(0x8000)),
+            ("object_offset", serde_json::json!(0)),
+            ("object_count", serde_json::json!(5)),
+            ("object_bytes", serde_json::json!(120)),
+            ("page_metadata_offset", serde_json::json!(256)),
+            ("page_metadata_bytes", serde_json::json!(24)),
+            ("resident_pages", serde_json::json!(9)),
+            ("page_bytes", serde_json::json!(2048)),
+            ("payload_offset", serde_json::json!(2048)),
+            ("name_offset", serde_json::json!(1024)),
+            ("name_bytes", serde_json::json!(128)),
+            ("maximum_name_bytes", serde_json::json!(256)),
+            ("directory_staging_offset", serde_json::json!(1536)),
+            ("directory_staging_bytes", serde_json::json!(256)),
+            ("private_umask_offset", serde_json::json!(32)),
+            ("initial_umask", serde_json::json!(0)),
+            ("transfer_staging_offset", serde_json::json!(1664)),
+            ("transfer_quantum", serde_json::json!(4096)),
+            ("maximum_file_offset", serde_json::json!(u64::MAX)),
+            ("maximum_native_helper_stack_bytes", serde_json::json!(111)),
+            ("timestamp_policy", serde_json::json!("constant")),
+        ];
+        for (field, changed) in changes {
+            let mut altered = value.clone();
+            altered["volatile_files"][field] = changed;
+            let altered: SystemsArtifactProvenance = serde_json::from_value(altered).unwrap();
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &altered, &initial, &static_image)
+                    .is_err(),
+                "{field}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_missing_cross_policy_or_incomplete_nominal_dispatch_binding() {
+        // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..8 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.dispatch_library = None,
+                1 => std::mem::swap(&mut changed.dispatch_library, &mut changed.time_library),
+                2 => {
+                    changed.dispatch_library.as_mut().unwrap().source_tags.pop();
+                }
+                3 => {
+                    let tags = &mut changed.dispatch_library.as_mut().unwrap().source_tags;
+                    tags[0] = tags[1];
+                }
+                4 => changed.time_library.as_mut().unwrap().source_tags.push(0),
+                5 => changed
+                    .inputs
+                    .retain(|i| !i.identity.starts_with("kernel-dispatch-source-module:")),
+                6 => {
+                    changed
+                        .dispatch_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes = 0
+                }
+                7 => {
+                    changed
+                        .dispatch_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_structured_layout_domain_projection_and_transport_evidence_tampering() {
+        // TOPAL-SYSTEMS-RETAINED-STRUCTURED-STATE-001; TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..24 {
+            let mut changed = artifact.clone();
+            let library = changed.process_identity_library.as_mut().unwrap();
+            let bound = library.retained_state.as_mut().unwrap();
+            macro_rules! layout {
+                () => {
+                    bound.value_layout.as_mut().unwrap()
+                };
+            }
+            match mutation {
+                0 => bound.value_layout = None,
+                1 => layout!().schema.push('x'),
+                2 => layout!().llvm_type = layout!().llvm_type.replace("i1", "i8"),
+                3 => layout!().numbers[0].minimum = 0,
+                4 => layout!().numbers[0].maximum = u32::MAX as u64,
+                5 => layout!().numbers[0].input_maximum = u64::MAX,
+                6 => layout!().numbers[0].node_offset += 8,
+                7 => layout!().numbers[1].pointer_offset += 8,
+                8 => layout!().booleans[0].offset += 1,
+                9 => layout!().booleans[0].indices.reverse(),
+                10 => layout!().orders[0].offsets.reverse(),
+                11 => layout!().orders[1].fields.reverse(),
+                12 => {
+                    layout!().zero_masks.pop();
+                }
+                13 => bound.maximum_prepared_validation_words = 261,
+                14 => bound.maximum_projection_words = 11,
+                15 => bound.maximum_value_bits = 32,
+                16 => bound.maximum_source_numeric_read_operations = 8,
+                17 => bound.maximum_source_result_record_words = 3,
+                18 => bound.source_result_order_values = 2,
+                19 => library.interface = "retained-process-identity-v1".into(),
+                20 => layout!().graph_bytes = 40,
+                21 => bound.source_result_boolean_values = 0,
+                22 => {
+                    layout!().numbers.remove(0);
+                }
+                23 => layout!().numbers[1].node_offset = layout!().numbers[0].node_offset,
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_incomplete_or_cross_policy_retained_state_certificates() {
+        // TOPAL-SYSTEMS-RETAINED-NUMERIC-STATE-001; TOPAL-SYSTEMS-RETAINED-PROCESS-IDENTITY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..12 {
+            let mut changed = artifact.clone();
+            let identity = changed.process_identity_library.as_mut().unwrap();
+            match mutation {
+                0 => identity.retained_state = None,
+                1 => identity.retained_state.as_mut().unwrap().schema.push('x'),
+                2 => identity.retained_state.as_mut().unwrap().limit_bytes = 8192,
+                3 => identity.retained_state.as_mut().unwrap().bank_count = 1,
+                4 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_retained_graph_bytes = 32
+                }
+                5 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_prepared_validation_words = 260
+                }
+                6 => identity
+                    .retained_state
+                    .as_mut()
+                    .unwrap()
+                    .store_symbol
+                    .push('x'),
+                7 => identity.interface = "process-identity-transition-v1".into(),
+                8 => identity.native_export = "topal_kernel_process_identity_transition_v1".into(),
+                9 => identity
+                    .retained_state
+                    .as_mut()
+                    .unwrap()
+                    .publication_protocol
+                    .push('x'),
+                10 => {
+                    changed.time_library.as_mut().unwrap().retained_state =
+                        identity.retained_state.clone();
+                }
+                11 => {
+                    identity
+                        .retained_state
+                        .as_mut()
+                        .unwrap()
+                        .maximum_retirement_words = 252
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_missing_cross_policy_or_incomplete_identity_record_binding() {
+        // TOPAL-SYSTEMS-NUMERIC-RESULT-RECORD-001; TOPAL-SYSTEMS-PROCESS-IDENTITY-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..10 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.process_identity_library = None,
+                1 => std::mem::swap(
+                    &mut changed.process_identity_library,
+                    &mut changed.time_library,
+                ),
+                2 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .result_field_order
+                        .pop();
+                }
+                3 => changed
+                    .process_identity_library
+                    .as_mut()
+                    .unwrap()
+                    .result_field_order
+                    .reverse(),
+                4 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .result_order_suffix = false
+                }
+                5 => changed.time_library.as_mut().unwrap().result_order_suffix = true,
+                6 => changed.inputs.retain(|i| {
+                    !i.identity
+                        .starts_with("kernel-process-identity-source-module:")
+                }),
+                7 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes = 0
+                }
+                8 => {
+                    changed
+                        .process_identity_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                9 => changed
+                    .process_identity_library
+                    .as_mut()
+                    .unwrap()
+                    .source_tags
+                    .push(0),
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn rejects_cross_policy_missing_or_undercharged_header_binding_before_boot() {
+        // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
+        let parent = temporary_parent();
+        let (kernel, initial, static_image, artifact) = linked_kernel(&parent);
+        for mutation in 0..10 {
+            let mut changed = artifact.clone();
+            match mutation {
+                0 => changed.image_library = None,
+                1 => std::mem::swap(&mut changed.image_library, &mut changed.time_library),
+                2 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .native_invocation_save_bytes = 0
+                }
+                3 => changed
+                    .image_library
+                    .as_mut()
+                    .unwrap()
+                    .machine_profile
+                    .push_str("-unknown"),
+                4 => changed
+                    .inputs
+                    .retain(|i| !i.identity.starts_with("kernel-image-source-module:")),
+                5 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .maximum_bytes = 65537
+                }
+                6 => changed.image_library.as_mut().unwrap().maximum_stack_bytes -= 8,
+                7 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .bridge_bytes -= 8
+                }
+                8 => {
+                    changed
+                        .image_library
+                        .as_mut()
+                        .unwrap()
+                        .allocation
+                        .maximum_bytes -= 8
+                }
+                9 => {
+                    changed.image_library.as_mut().unwrap().functions[0].maximum_call_path_bytes -=
+                        8
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                generate_x86_64_linux_boot_image(&kernel, &changed, &initial, &static_image)
+                    .is_err(),
+                "mutation={mutation}"
+            );
+        }
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
     fn generates_the_approved_linux_boot_header_and_transition_layout() {
         // TOPAL-COMP-SYSTEMS-ARTIFACT-001, LK-X64-BOOT-001.
         let parent = temporary_parent();
-        let (kernel, artifact) = linked_kernel(&parent);
-        let generated = generate_x86_64_linux_boot_image(&kernel, &artifact).unwrap();
+        let (kernel, initial_user_image, static_user_image, artifact) = linked_kernel(&parent);
+        let generated = generate_x86_64_linux_boot_image(
+            &kernel,
+            &artifact,
+            &initial_user_image,
+            &static_user_image,
+        )
+        .unwrap();
         assert_eq!(generated.bytes[0x1f1], X86_LINUX_SETUP_SECTORS);
         assert_eq!(&generated.bytes[0x1fe..0x200], &[0x55, 0xaa]);
         assert_eq!(&generated.bytes[0x202..0x206], b"HdrS");
@@ -902,17 +1803,35 @@ mod tests {
             1
         );
         let protected = &generated.bytes[SETUP_BYTES..];
+        assert!(
+            protected[..4096]
+                .windows(6)
+                .any(|bytes| bytes == [0xb0, 0xff, 0xe6, 0x21, 0xe6, 0xa1]),
+            "long-mode handoff must mask both legacy PICs before source restores IF"
+        );
         let pml4 =
             usize::try_from(PAGE_TABLE_PML4_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
         assert_eq!(
             u64::from_le_bytes(protected[pml4..pml4 + 8].try_into().unwrap()),
             PAGE_TABLE_PDPT_ADDRESS | 3
         );
+        let gdt = usize::try_from(GDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap();
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 32..gdt + 40].try_into().unwrap()),
+            0x00cf_f200_0000_ffff
+        );
+        assert_eq!(
+            u64::from_le_bytes(protected[gdt + 40..gdt + 48].try_into().unwrap()),
+            0x00af_fa00_0000_ffff
+        );
         let gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap() + 3 * 16;
         assert_eq!(protected[gate + 5], 0x8f);
         let local_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
             + LOCAL_NOTIFICATION_VECTOR * 16;
         assert_eq!(protected[local_gate + 5], 0x8e);
+        let page_fault_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
+            + PAGE_FAULT_VECTOR * 16;
+        assert_eq!(protected[page_fault_gate + 5], 0x8e);
         let deadline_gate = usize::try_from(IDT_ADDRESS - X86_PROTECTED_PAYLOAD_ADDRESS).unwrap()
             + DEADLINE_VECTOR * 16;
         assert_eq!(protected[deadline_gate + 5], 0x8e);
@@ -979,19 +1898,51 @@ mod tests {
             generated.provenance.boot_image_sha256,
             sha256(&generated.bytes)
         );
+        assert_eq!(
+            generated.provenance.boot_resource_sha256,
+            sha256(&generated.boot_resource)
+        );
+        assert_eq!(
+            generated.provenance.boot_resource_schema,
+            X86_INITIAL_BOOT_RESOURCE_REVISION
+        );
+        assert_eq!(
+            generated.provenance.boot_resource_member,
+            X86_INITIAL_BOOT_RESOURCE_MEMBER
+        );
+        assert_eq!(
+            generated.provenance.static_boot_resource_member,
+            X86_STATIC_BOOT_RESOURCE_MEMBER
+        );
+        assert_eq!(
+            generated.provenance.static_user_image_sha256,
+            sha256(&static_user_image)
+        );
         fs::remove_dir_all(parent).unwrap();
     }
 
     #[test]
-    fn atomically_publishes_a_deterministic_image_and_provenance_pair() {
+    fn atomically_publishes_a_deterministic_image_resource_and_provenance() {
         // TOPAL-SYSTEMS-ARTIFACT-001, TOPAL-SYSTEMS-QUALIFY-001.
         let parent = temporary_parent();
-        let (kernel, artifact) = linked_kernel(&parent);
-        let first =
-            publish_x86_64_linux_boot_image(&kernel, &artifact, &parent.join("first")).unwrap();
-        let second =
-            publish_x86_64_linux_boot_image(&kernel, &artifact, &parent.join("second")).unwrap();
-        assert_eq!(fs::read_dir(&first.directory).unwrap().count(), 2);
+        let (kernel, initial_user_image, static_user_image, artifact) = linked_kernel(&parent);
+        let first = publish_x86_64_linux_boot_image(
+            &kernel,
+            &artifact,
+            &initial_user_image,
+            &static_user_image,
+            &parent.join("first"),
+        )
+        .unwrap();
+        let second = publish_x86_64_linux_boot_image(
+            &kernel,
+            &artifact,
+            &initial_user_image,
+            &static_user_image,
+            &parent.join("second"),
+        )
+        .unwrap();
+        assert_eq!(fs::read_dir(&first.directory).unwrap().count(), 3);
         assert_eq!(
             fs::read(&first.image).unwrap(),
             fs::read(&second.image).unwrap()
@@ -999,6 +1950,10 @@ mod tests {
         assert_eq!(
             fs::read(&first.provenance).unwrap(),
             fs::read(&second.provenance).unwrap()
+        );
+        assert_eq!(
+            fs::read(&first.boot_resource).unwrap(),
+            fs::read(&second.boot_resource).unwrap()
         );
         let decoded: X86LinuxBootImageProvenance =
             serde_json::from_slice(&fs::read(&first.provenance).unwrap()).unwrap();

@@ -1,0 +1,5534 @@
+{
+  "caller_sha256": "0372f72b9630d932fea3fd48b6aab95596159c20c83a63173557fa01c027768f",
+  "counterexample": {
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+    "observation": {
+      "actual": 7523094288207667937,
+      "calls": [
+        {
+          "index": 0,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 1,
+          "number": 5,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 2,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 48,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 3,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 4,
+          "number": 81,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 5,
+          "number": 79,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 6,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 7,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 8,
+          "number": 80,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 9,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 10,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 11,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 12,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 13,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 14,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 15,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 16,
+          "number": 257,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 17,
+          "number": 5,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 18,
+          "number": 72,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 4292610,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 19,
+          "number": 0,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 20,
+          "number": 0,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 21,
+          "number": 1,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 22,
+          "number": 1,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "21c59bcf28e8183e86779e7c7951fce9d496b025099d98eb651d530f3c497c80"
+        },
+        {
+          "index": 23,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "97e4990aab5a52b4feab22fda887d5e0cccf4049a31543a7ead25d7e5c795a6a"
+        },
+        {
+          "index": 24,
+          "number": 32,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 5,
+          "store_sha256": "8eea6c67125849c9b86dc9560e18087f7cb9275c9133ea051fbe3ef9681dd539"
+        },
+        {
+          "index": 25,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "8eea6c67125849c9b86dc9560e18087f7cb9275c9133ea051fbe3ef9681dd539"
+        },
+        {
+          "index": 26,
+          "number": 0,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "8eea6c67125849c9b86dc9560e18087f7cb9275c9133ea051fbe3ef9681dd539"
+        }
+      ],
+      "controlled_payload_corruption": true,
+      "expected": 7523094288207667809,
+      "result": "expected-wrong-file-data-rejection",
+      "stopped_at_independent_user_comparison": true
+    },
+    "profile": {
+      "directory_metadata_offset": 32,
+      "directory_staging_bytes": 512,
+      "directory_staging_offset": 3072,
+      "filesystem_bytes": 36864,
+      "filesystem_offset": 274432,
+      "initial_umask": 18,
+      "inode_metadata_bytes": 32,
+      "maximum_file_offset": 9223372036854775807,
+      "maximum_name_bytes": 255,
+      "maximum_native_helper_stack_bytes": 328,
+      "name_bytes": 256,
+      "name_offset": 1536,
+      "namespace_entries": {
+        "admission_retired_stack_bytes": 4096,
+        "entry_bytes": 16,
+        "entry_count": 4,
+        "entry_offset": 64,
+        "inode_initial_link_intent_offset": 64,
+        "inode_link_count_offset": 56,
+        "metadata_lookup_stack_bytes": 104,
+        "namespace_caller_stack_bytes": 256,
+        "schema": "topal.namespace-entry-table.x86_64/1"
+      },
+      "object_bytes": 128,
+      "object_count": 4,
+      "object_metadata_offset": 24,
+      "object_offset": 256,
+      "page_allocation_map_bytes": 8,
+      "page_allocation_map_offset": 24,
+      "page_bytes": 4096,
+      "page_metadata_bytes": 32,
+      "page_metadata_offset": 1024,
+      "payload_offset": 4096,
+      "pipe_creation_time_offset": 96,
+      "pipe_metadata_offset": 64,
+      "pipe_pool_offset": 253952,
+      "pipe_record_bytes": 128,
+      "private_umask_offset": 1664,
+      "process_storage_bytes": 311296,
+      "process_storage_symbol": "topal_x86_static_process_descriptor_table",
+      "resident_pages": 8,
+      "schema": "topal.volatile-file.x86_64/6",
+      "timestamp_policy": "realtime-seconds-noatime",
+      "transfer_quantum": 256,
+      "transfer_staging_offset": 1408
+    },
+    "runtime": null,
+    "static_user_image_sha256": "7aa47d0a12ce65f138a48ab089c2700c8292531104b54833804c11aba6c68de5"
+  },
+  "harness_sha256": "5f4a8cd4b915990fc30096805ab9697839a78684abeb2fc6bc39f25bae78edbc",
+  "inactive_terminal": {
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+    "observation": {
+      "calls": [
+        {
+          "index": 0,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 1,
+          "number": 257,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "5b5fdd6e940618e8d799e3cf231876658297d502e4018ae3271bb336e2c5f9bc"
+        },
+        {
+          "index": 2,
+          "number": 33,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 15,
+          "store_sha256": "5b5fdd6e940618e8d799e3cf231876658297d502e4018ae3271bb336e2c5f9bc"
+        },
+        {
+          "index": 3,
+          "number": 3,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "5b5fdd6e940618e8d799e3cf231876658297d502e4018ae3271bb336e2c5f9bc"
+        },
+        {
+          "index": 4,
+          "number": 72,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 14,
+          "store_sha256": "5b5fdd6e940618e8d799e3cf231876658297d502e4018ae3271bb336e2c5f9bc"
+        },
+        {
+          "index": 5,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 6,
+          "number": 59,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 7,
+          "number": 72,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -9,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 8,
+          "number": 95,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 63,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 9,
+          "number": 5,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 10,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 11,
+          "number": 0,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "24eb8f3c603652bb0ba3bb95fb41fdb379c3a25908d705cf57ceee56836484e5"
+        },
+        {
+          "index": 12,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 13,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 14,
+          "number": 5,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 15,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 48,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 16,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 17,
+          "number": 81,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 18,
+          "number": 79,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 19,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 20,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 21,
+          "number": 80,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 22,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 23,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 24,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 25,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 26,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 27,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 28,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 29,
+          "number": 257,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 30,
+          "number": 5,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 31,
+          "number": 72,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 4292610,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 32,
+          "number": 0,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 33,
+          "number": 0,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 34,
+          "number": 1,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 35,
+          "number": 1,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 36,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 37,
+          "number": 32,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 5,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 38,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 39,
+          "number": 0,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 40,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 41,
+          "number": 0,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 42,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 43,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 44,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 45,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 46,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -9,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 47,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "56b37d359a31f172371b3a7dbbb71b9377cebc47700284d2dec127fe5623f445"
+        },
+        {
+          "index": 48,
+          "number": 77,
+          "objects": {
+            "8": 3
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "9aa61d030a70495e6a53ada6a4334a41334e71bd4fba2d259b86425eaabb956f"
+        },
+        {
+          "index": 49,
+          "number": 8,
+          "objects": {
+            "8": 3
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "9aa61d030a70495e6a53ada6a4334a41334e71bd4fba2d259b86425eaabb956f"
+        },
+        {
+          "index": 50,
+          "number": 77,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 51,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 52,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 53,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 4093,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 54,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 3,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 55,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 56,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 57,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 58,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 59,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 60,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "4452b302811e44bdb96ccd79013a548d41fdf22bf2313ecc66709784486ca567"
+        },
+        {
+          "index": 61,
+          "number": 77,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 62,
+          "number": 5,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 63,
+          "number": 8,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 281474976710669,
+          "store_sha256": "f425fe84a9c4fe75c977fd2b9c19e77c225c506de19812cfc382eb0a7aa4f1a3"
+        },
+        {
+          "index": 64,
+          "number": 1,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 65,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710656,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 66,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710677,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 67,
+          "number": 5,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 68,
+          "number": 3,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 69,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710669,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 70,
+          "number": 0,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "3abfcfdce9d9672a9887526df359791af3151b8232056a42cc338ce9378e9bef"
+        },
+        {
+          "index": 71,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 72,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 73,
+          "number": 257,
+          "objects": {
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "cc458e2e6a2043d73d79471c5d2a429be19d0fc5e114bdd72d9d22486ef5e005"
+        },
+        {
+          "index": 74,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "5bc919c201a8707b108ea4ce67ffdce6237fad02a5ac4a8660e05d9f0ab59a7a"
+        },
+        {
+          "index": 75,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "5bc919c201a8707b108ea4ce67ffdce6237fad02a5ac4a8660e05d9f0ab59a7a"
+        },
+        {
+          "index": 76,
+          "number": 257,
+          "objects": {
+            "10": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "1a0acc2540fa58d346f4e1b8fae7493c6550aee3727292520f08af9ab2eb77a3"
+        },
+        {
+          "index": 77,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "628e9c93223c05adf575c2524d0693fa443f4d7f3ac6278891de8cf827c1e4b5"
+        },
+        {
+          "index": 78,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0
+          },
+          "resident_pages": 0,
+          "result": 6,
+          "store_sha256": "d45aa59743407baa2c0253f791d4d8bfbad26598cf7c839568ba3e51425330ee"
+        },
+        {
+          "index": 79,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 7,
+          "store_sha256": "b63874d494a5883accc332f10a2fddcf49e686e5b82729baef41677cb562284e"
+        },
+        {
+          "index": 80,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": -28,
+          "store_sha256": "b63874d494a5883accc332f10a2fddcf49e686e5b82729baef41677cb562284e"
+        },
+        {
+          "index": 81,
+          "number": 8,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "b63874d494a5883accc332f10a2fddcf49e686e5b82729baef41677cb562284e"
+        },
+        {
+          "index": 82,
+          "number": 1,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "720e9d51cbc63bd69101c5047eb87fac8faf504f39222a42b3a50b73ae492a05"
+        },
+        {
+          "index": 83,
+          "number": 8,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "720e9d51cbc63bd69101c5047eb87fac8faf504f39222a42b3a50b73ae492a05"
+        },
+        {
+          "index": 84,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 2,
+          "result": 8,
+          "store_sha256": "959484cf102a6f3cfac2427258bb46d102daa10109a22ab1c62a54712d7cb9b5"
+        },
+        {
+          "index": 85,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "959484cf102a6f3cfac2427258bb46d102daa10109a22ab1c62a54712d7cb9b5"
+        },
+        {
+          "index": 86,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 3,
+          "result": 8,
+          "store_sha256": "7dc25ff111014a072b6dc508d229f714d2a646490b2f4ad449671a0409386607"
+        },
+        {
+          "index": 87,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 3,
+          "result": 4096,
+          "store_sha256": "7dc25ff111014a072b6dc508d229f714d2a646490b2f4ad449671a0409386607"
+        },
+        {
+          "index": 88,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 4,
+          "result": 8,
+          "store_sha256": "639df8a92852d755b8c5068dc554b8109b46487007e47c37aaeb9609ab7d1c26"
+        },
+        {
+          "index": 89,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "639df8a92852d755b8c5068dc554b8109b46487007e47c37aaeb9609ab7d1c26"
+        },
+        {
+          "index": 90,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "13": 0
+          },
+          "resident_pages": 5,
+          "result": 8,
+          "store_sha256": "efccb33ae146d94b3adfe2aebe003321a9990d52b6d5eaa099fa0368b4514956"
+        },
+        {
+          "index": 91,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "13": 0
+          },
+          "resident_pages": 5,
+          "result": 4096,
+          "store_sha256": "efccb33ae146d94b3adfe2aebe003321a9990d52b6d5eaa099fa0368b4514956"
+        },
+        {
+          "index": 92,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 0
+          },
+          "resident_pages": 6,
+          "result": 8,
+          "store_sha256": "ebd2fad92b0b9898079ad79fb9dc62b1f5b79a52dde1e716d04734522f4214ac"
+        },
+        {
+          "index": 93,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 0
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "ebd2fad92b0b9898079ad79fb9dc62b1f5b79a52dde1e716d04734522f4214ac"
+        },
+        {
+          "index": 94,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 8
+          },
+          "resident_pages": 7,
+          "result": 8,
+          "store_sha256": "9c016406a2e4c41d4e820fb637b8e41029f130b1842904d569bffad31fe73d62"
+        },
+        {
+          "index": 95,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 8
+          },
+          "resident_pages": 7,
+          "result": 4096,
+          "store_sha256": "9c016406a2e4c41d4e820fb637b8e41029f130b1842904d569bffad31fe73d62"
+        },
+        {
+          "index": 96,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 97,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 98,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": -28,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 99,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 100,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 0,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 101,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "370a11ad783255bfc7849fdf2c53b6eb21ea9111a233d2e45016a11069b4ea55"
+        },
+        {
+          "index": 102,
+          "number": 3,
+          "objects": {
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "a10d8b3b64d83e69772aa61b594da53ddf1384be1c1fe14e58bd70a04e22f2df"
+        },
+        {
+          "index": 103,
+          "number": 3,
+          "objects": {
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "fc5114a9387d3ffa8113608042e9c760787e1f0ebeab1ac8c0e1972cbf32b17d"
+        },
+        {
+          "index": 104,
+          "number": 3,
+          "objects": {
+            "13": 4104
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "2584b8fd2912a1829ebaf08fa784bcc762dccb500cc2bd2abdce26e6d6dbde9b"
+        },
+        {
+          "index": 105,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "70ce4d90bcd49869511de66b389c3a93e1734d6d647a9acec2465115acbd86ef"
+        },
+        {
+          "index": 106,
+          "number": 257,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "c1f879e5fb077d4a528ed3739a76fa40671e1903cc491e6979d8e6b99ac0360d"
+        },
+        {
+          "index": 107,
+          "number": 8,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 9223372036854775806,
+          "store_sha256": "c1f879e5fb077d4a528ed3739a76fa40671e1903cc491e6979d8e6b99ac0360d"
+        },
+        {
+          "index": 108,
+          "number": 1,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "c1f879e5fb077d4a528ed3739a76fa40671e1903cc491e6979d8e6b99ac0360d"
+        },
+        {
+          "index": 109,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 110,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 111,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 112,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 9223372036854775806,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 113,
+          "number": 0,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 114,
+          "number": 0,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "c3b5ce2423c18ebef3cb664f185a32fd48a47b04f25780176b27bc741ff53771"
+        },
+        {
+          "index": 115,
+          "number": 77,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "c1f879e5fb077d4a528ed3739a76fa40671e1903cc491e6979d8e6b99ac0360d"
+        },
+        {
+          "index": 116,
+          "number": 8,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "c1f879e5fb077d4a528ed3739a76fa40671e1903cc491e6979d8e6b99ac0360d"
+        },
+        {
+          "index": 117,
+          "number": 1,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 118,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 119,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 120,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 121,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 122,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 123,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "31acf329e96c905d240b5c81b9f78fae646c2bf65b50ef49eda20cfa54475b09"
+        },
+        {
+          "index": 124,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "8f64bfcc5f4ea750a013e68b51bd2b662c1406d19c81d48ec31c4ed81811fef2"
+        },
+        {
+          "index": 125,
+          "number": 257,
+          "objects": {
+            "15": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "690227b1d1faf5896b678f7e6c1751a794a79a21dddf03be8182c92592a1ef6e"
+        },
+        {
+          "index": 126,
+          "number": 1,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "49f9597a50e03e5126efc0cf05667e3cd3a11a9809e1202134215f2deb4706fb"
+        },
+        {
+          "index": 127,
+          "number": 8,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "49f9597a50e03e5126efc0cf05667e3cd3a11a9809e1202134215f2deb4706fb"
+        },
+        {
+          "index": 128,
+          "number": 1,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "49f9597a50e03e5126efc0cf05667e3cd3a11a9809e1202134215f2deb4706fb"
+        },
+        {
+          "index": 129,
+          "number": 8,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "49f9597a50e03e5126efc0cf05667e3cd3a11a9809e1202134215f2deb4706fb"
+        },
+        {
+          "index": 130,
+          "number": 1,
+          "objects": {
+            "15": 16
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "0431c1743f19db9618f8aa773e4dcadaa43a804d9bba5d1b95070bff64630af5"
+        },
+        {
+          "index": 131,
+          "number": 8,
+          "objects": {
+            "15": 16
+          },
+          "resident_pages": 1,
+          "result": 16,
+          "store_sha256": "0431c1743f19db9618f8aa773e4dcadaa43a804d9bba5d1b95070bff64630af5"
+        },
+        {
+          "index": 132,
+          "number": 77,
+          "objects": {
+            "15": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "234f3c653b06a7d2403053c669737f53b4b937705497d4fbb1b0a48e6a3b7429"
+        },
+        {
+          "index": 133,
+          "number": 8,
+          "objects": {
+            "15": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "234f3c653b06a7d2403053c669737f53b4b937705497d4fbb1b0a48e6a3b7429"
+        },
+        {
+          "index": 134,
+          "number": 1,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 1,
+          "store_sha256": "f309f878429dbecb7531673546c08b6ea647c86fc35f945f3dc55d6468edbdde"
+        },
+        {
+          "index": 135,
+          "number": 8,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "f309f878429dbecb7531673546c08b6ea647c86fc35f945f3dc55d6468edbdde"
+        },
+        {
+          "index": 136,
+          "number": 1,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": -27,
+          "store_sha256": "f309f878429dbecb7531673546c08b6ea647c86fc35f945f3dc55d6468edbdde"
+        },
+        {
+          "index": 137,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "142fac2a16cd87deebed43d272fea69c3b6d171e29b2b89756786b7b4a1db0c0"
+        },
+        {
+          "index": 138,
+          "number": 257,
+          "objects": {
+            "16": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "3bc1acaba9f66bcc96fe81d75876fd6f4f83952b835e9439f19368e6e7798633"
+        },
+        {
+          "index": 139,
+          "number": 0,
+          "objects": {
+            "16": 0
+          },
+          "resident_pages": 0,
+          "result": -9,
+          "store_sha256": "3bc1acaba9f66bcc96fe81d75876fd6f4f83952b835e9439f19368e6e7798633"
+        },
+        {
+          "index": 140,
+          "number": 1,
+          "objects": {
+            "16": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "f3a61c3f2bfa4e42c1a90903a3e8d4667e197636543b970efd72ec000be6ffd2"
+        },
+        {
+          "index": 141,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "7da7a443fae3e9226dbd04d862fe6c095e436cbd83bb5ed756173b0245cabe1e"
+        },
+        {
+          "index": 142,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 63,
+          "store_sha256": "7da7a443fae3e9226dbd04d862fe6c095e436cbd83bb5ed756173b0245cabe1e"
+        },
+        {
+          "index": 143,
+          "number": 257,
+          "objects": {
+            "17": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "ae3df7a425585b4cc21e934d87f04cf25fb0e73a590bf27235780dae05169273"
+        },
+        {
+          "index": 144,
+          "number": 32,
+          "objects": {
+            "17": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "ae3df7a425585b4cc21e934d87f04cf25fb0e73a590bf27235780dae05169273"
+        },
+        {
+          "index": 145,
+          "number": 1,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "b7a6e695296993c676705de6453a716ebb959a60621afc9b8f726a574af963ca"
+        },
+        {
+          "index": 146,
+          "number": 57,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "b7a6e695296993c676705de6453a716ebb959a60621afc9b8f726a574af963ca"
+        },
+        {
+          "index": 150,
+          "number": 57,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 11,
+          "store_sha256": "b7a6e695296993c676705de6453a716ebb959a60621afc9b8f726a574af963ca"
+        }
+      ],
+      "complete_process_backing_erased": true,
+      "complete_store_erased": true,
+      "controlled_child_yield_and_parent_exit": true,
+      "result": "pass-controlled-inactive-file-terminal"
+    },
+    "profile": {
+      "directory_metadata_offset": 32,
+      "directory_staging_bytes": 512,
+      "directory_staging_offset": 3072,
+      "filesystem_bytes": 36864,
+      "filesystem_offset": 274432,
+      "initial_umask": 18,
+      "inode_metadata_bytes": 32,
+      "maximum_file_offset": 9223372036854775807,
+      "maximum_name_bytes": 255,
+      "maximum_native_helper_stack_bytes": 328,
+      "name_bytes": 256,
+      "name_offset": 1536,
+      "namespace_entries": {
+        "admission_retired_stack_bytes": 4096,
+        "entry_bytes": 16,
+        "entry_count": 4,
+        "entry_offset": 64,
+        "inode_initial_link_intent_offset": 64,
+        "inode_link_count_offset": 56,
+        "metadata_lookup_stack_bytes": 104,
+        "namespace_caller_stack_bytes": 256,
+        "schema": "topal.namespace-entry-table.x86_64/1"
+      },
+      "object_bytes": 128,
+      "object_count": 4,
+      "object_metadata_offset": 24,
+      "object_offset": 256,
+      "page_allocation_map_bytes": 8,
+      "page_allocation_map_offset": 24,
+      "page_bytes": 4096,
+      "page_metadata_bytes": 32,
+      "page_metadata_offset": 1024,
+      "payload_offset": 4096,
+      "pipe_creation_time_offset": 96,
+      "pipe_metadata_offset": 64,
+      "pipe_pool_offset": 253952,
+      "pipe_record_bytes": 128,
+      "private_umask_offset": 1664,
+      "process_storage_bytes": 311296,
+      "process_storage_symbol": "topal_x86_static_process_descriptor_table",
+      "resident_pages": 8,
+      "schema": "topal.volatile-file.x86_64/6",
+      "timestamp_policy": "realtime-seconds-noatime",
+      "transfer_quantum": 256,
+      "transfer_staging_offset": 1408
+    },
+    "runtime": null,
+    "static_user_image_sha256": "0fe960a68bb40de13dcb0f366490c32b23162a2cb134225d078ea1656240339a"
+  },
+  "inspector_sha256": "9e45f0681f18f79df5e8eb9c2c342dd0e1f1db7c6a81c38b5565a647ac9ddc62",
+  "lifetime": {
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+    "observation": {
+      "calls": [
+        {
+          "index": 0,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 1,
+          "number": 257,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "adac71c7df15f8b88bdba8d6c7297a72a241e7e46ded23503ca504f41237d09b"
+        },
+        {
+          "index": 2,
+          "number": 33,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 15,
+          "store_sha256": "adac71c7df15f8b88bdba8d6c7297a72a241e7e46ded23503ca504f41237d09b"
+        },
+        {
+          "index": 3,
+          "number": 3,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "adac71c7df15f8b88bdba8d6c7297a72a241e7e46ded23503ca504f41237d09b"
+        },
+        {
+          "index": 4,
+          "number": 72,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 14,
+          "store_sha256": "adac71c7df15f8b88bdba8d6c7297a72a241e7e46ded23503ca504f41237d09b"
+        },
+        {
+          "index": 5,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 6,
+          "number": 59,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 7,
+          "number": 72,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -9,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 8,
+          "number": 95,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 63,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 9,
+          "number": 5,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 10,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 11,
+          "number": 0,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d34ae7a5c31812f1a79aa59c45469a1c363e7bd3597d87bcf7a9048054e078f5"
+        },
+        {
+          "index": 12,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 13,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 14,
+          "number": 5,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 15,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 48,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 16,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 17,
+          "number": 81,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 18,
+          "number": 79,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 19,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 20,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 21,
+          "number": 80,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 22,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 23,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 24,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 25,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 26,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 27,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 28,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 29,
+          "number": 257,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 30,
+          "number": 5,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 31,
+          "number": 72,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 4292610,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 32,
+          "number": 0,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 33,
+          "number": 0,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 34,
+          "number": 1,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 35,
+          "number": 1,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 36,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 37,
+          "number": 32,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 5,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 38,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 39,
+          "number": 0,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 40,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 41,
+          "number": 0,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 42,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 43,
+          "number": 1,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 44,
+          "number": 8,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 45,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 46,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -9,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 47,
+          "number": 77,
+          "objects": {
+            "8": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "19cf699b830a990b9f3a155fd43e806352c8f11bef627326eb540baf9206c4bd"
+        },
+        {
+          "index": 48,
+          "number": 77,
+          "objects": {
+            "8": 3
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d449eca178c928b681faff36a260499e58178b2a92aa72077fa0df7e9f3dd861"
+        },
+        {
+          "index": 49,
+          "number": 8,
+          "objects": {
+            "8": 3
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d449eca178c928b681faff36a260499e58178b2a92aa72077fa0df7e9f3dd861"
+        },
+        {
+          "index": 50,
+          "number": 77,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 51,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 52,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 53,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 4093,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 54,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 3,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 55,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 56,
+          "number": 0,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 57,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 58,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 59,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 60,
+          "number": 8,
+          "objects": {
+            "8": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "d1679092b1e31e45341236b3f4458517e0e5d6a305a8f25fa9b6857f6bfa9a02"
+        },
+        {
+          "index": 61,
+          "number": 77,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 62,
+          "number": 5,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 63,
+          "number": 8,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 281474976710669,
+          "store_sha256": "d4b7934194545feddcbe9159a6900b34ab812d09736a1a987e0b279bd1b3bba3"
+        },
+        {
+          "index": 64,
+          "number": 1,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 65,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710656,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 66,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710677,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 67,
+          "number": 5,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 68,
+          "number": 3,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 69,
+          "number": 8,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710669,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 70,
+          "number": 0,
+          "objects": {
+            "8": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "50ec5cb353aa1d2ba385bb25ed51d6b46144aa436f85feaae7550b94c06d3f01"
+        },
+        {
+          "index": 71,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 72,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 73,
+          "number": 257,
+          "objects": {
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "f2191e270068e5b432c8151694fd483228bffae5a1152ccc55eb21bc394764d7"
+        },
+        {
+          "index": 74,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "5bc919c201a8707b108ea4ce67ffdce6237fad02a5ac4a8660e05d9f0ab59a7a"
+        },
+        {
+          "index": 75,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "5bc919c201a8707b108ea4ce67ffdce6237fad02a5ac4a8660e05d9f0ab59a7a"
+        },
+        {
+          "index": 76,
+          "number": 257,
+          "objects": {
+            "10": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "6922245dbecffd093621c768c7c2dc558f5c8b829fca07da39b7875c60537ae1"
+        },
+        {
+          "index": 77,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "fd1177c524f0996ba53e9f2cc03a77be2b797f680fc19afba68679e92f029af8"
+        },
+        {
+          "index": 78,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0
+          },
+          "resident_pages": 0,
+          "result": 6,
+          "store_sha256": "112b78cf666ffd99d6a60a87caf9ed5d8a3f0babcf8e88aff07da40d411d6089"
+        },
+        {
+          "index": 79,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 7,
+          "store_sha256": "e65bdc9bc1f783c70719f2ece21149d83a04c7da268ac0a4641653917624f4cf"
+        },
+        {
+          "index": 80,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": -28,
+          "store_sha256": "e65bdc9bc1f783c70719f2ece21149d83a04c7da268ac0a4641653917624f4cf"
+        },
+        {
+          "index": 81,
+          "number": 8,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e65bdc9bc1f783c70719f2ece21149d83a04c7da268ac0a4641653917624f4cf"
+        },
+        {
+          "index": 82,
+          "number": 1,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "b08e6ead4ce4db4736b8dd6e92827133ff58bde510d80e852ac14ee0190b302d"
+        },
+        {
+          "index": 83,
+          "number": 8,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "b08e6ead4ce4db4736b8dd6e92827133ff58bde510d80e852ac14ee0190b302d"
+        },
+        {
+          "index": 84,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 2,
+          "result": 8,
+          "store_sha256": "2203509e522cf2bc11b3eee04b15a2b554815962219979d46d5e65d916b7fbcf"
+        },
+        {
+          "index": 85,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "2203509e522cf2bc11b3eee04b15a2b554815962219979d46d5e65d916b7fbcf"
+        },
+        {
+          "index": 86,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 3,
+          "result": 8,
+          "store_sha256": "f23ac016d493553c5ebf2538c18808bcca2a3b845d6aa96af312ec4a93685059"
+        },
+        {
+          "index": 87,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 3,
+          "result": 4096,
+          "store_sha256": "f23ac016d493553c5ebf2538c18808bcca2a3b845d6aa96af312ec4a93685059"
+        },
+        {
+          "index": 88,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 4,
+          "result": 8,
+          "store_sha256": "e2f664e2cc402d3c35c28df9d1c081a90848100707bf7d853832577a8badd00c"
+        },
+        {
+          "index": 89,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "13": 0
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "e2f664e2cc402d3c35c28df9d1c081a90848100707bf7d853832577a8badd00c"
+        },
+        {
+          "index": 90,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "13": 0
+          },
+          "resident_pages": 5,
+          "result": 8,
+          "store_sha256": "156396c2a87f45a3450d97c428604464f710d5639a100e66562a0756c8cc4a8b"
+        },
+        {
+          "index": 91,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "13": 0
+          },
+          "resident_pages": 5,
+          "result": 4096,
+          "store_sha256": "156396c2a87f45a3450d97c428604464f710d5639a100e66562a0756c8cc4a8b"
+        },
+        {
+          "index": 92,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 0
+          },
+          "resident_pages": 6,
+          "result": 8,
+          "store_sha256": "3e08324eac3f137dc9d7483d214a4cfeac410bcda7243bd60c648d8ba44cdbed"
+        },
+        {
+          "index": 93,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 0
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "3e08324eac3f137dc9d7483d214a4cfeac410bcda7243bd60c648d8ba44cdbed"
+        },
+        {
+          "index": 94,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 8
+          },
+          "resident_pages": 7,
+          "result": 8,
+          "store_sha256": "bf748a60c0713953353f6e921d293d8a2f518a44afee3cd7df0a9d682a357c9c"
+        },
+        {
+          "index": 95,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 8
+          },
+          "resident_pages": 7,
+          "result": 4096,
+          "store_sha256": "bf748a60c0713953353f6e921d293d8a2f518a44afee3cd7df0a9d682a357c9c"
+        },
+        {
+          "index": 96,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 97,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 98,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": -28,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 99,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 100,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 0,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 101,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "4176d8b7c39904cb79976974ebd6a42e9608e2d59a3204dd53ce1a98973d009e"
+        },
+        {
+          "index": 102,
+          "number": 3,
+          "objects": {
+            "11": 4104,
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "5d50b7c8e713bae45f2faab9d013c2cb1a7ffd725f8b9482848bb6897e0fbe1e"
+        },
+        {
+          "index": 103,
+          "number": 3,
+          "objects": {
+            "12": 4104,
+            "13": 4104
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "82c7ab022c79b786046b15a99ed56e1a0b5ba9639019136f82f4246857fa8684"
+        },
+        {
+          "index": 104,
+          "number": 3,
+          "objects": {
+            "13": 4104
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "dccdd0fa35ec9612f029174286ffaf3bc24a741e340d7ae5bef4fb47cdd41cce"
+        },
+        {
+          "index": 105,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "70ce4d90bcd49869511de66b389c3a93e1734d6d647a9acec2465115acbd86ef"
+        },
+        {
+          "index": 106,
+          "number": 257,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "86a3e6a46116aeca211a4ff99fbfeed8106311fa7a5c1c2daeca81a08592215b"
+        },
+        {
+          "index": 107,
+          "number": 8,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 9223372036854775806,
+          "store_sha256": "86a3e6a46116aeca211a4ff99fbfeed8106311fa7a5c1c2daeca81a08592215b"
+        },
+        {
+          "index": 108,
+          "number": 1,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "86a3e6a46116aeca211a4ff99fbfeed8106311fa7a5c1c2daeca81a08592215b"
+        },
+        {
+          "index": 109,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 110,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 111,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 112,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 9223372036854775806,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 113,
+          "number": 0,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 114,
+          "number": 0,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "f79f252812a28f13d6b44ed024d286dec3c119a08042e217eeb983b56ae4e385"
+        },
+        {
+          "index": 115,
+          "number": 77,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "86a3e6a46116aeca211a4ff99fbfeed8106311fa7a5c1c2daeca81a08592215b"
+        },
+        {
+          "index": 116,
+          "number": 8,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "86a3e6a46116aeca211a4ff99fbfeed8106311fa7a5c1c2daeca81a08592215b"
+        },
+        {
+          "index": 117,
+          "number": 1,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 118,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 119,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 120,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 121,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 122,
+          "number": 0,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 123,
+          "number": 8,
+          "objects": {
+            "14": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "aa03a2bc23397408f243f7623d4f5eaa95f9deadcb86c0b43164323c72590981"
+        },
+        {
+          "index": 124,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "8f64bfcc5f4ea750a013e68b51bd2b662c1406d19c81d48ec31c4ed81811fef2"
+        },
+        {
+          "index": 125,
+          "number": 257,
+          "objects": {
+            "15": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "cbe11776ca84b149d726a6e3194a03038755507f2aef4bc0bf5d90d4c87e9e0c"
+        },
+        {
+          "index": 126,
+          "number": 1,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "61d3a66a2cd2348f3cb67a2c64cc1342eca9ab303906e875a8e68341bd2859da"
+        },
+        {
+          "index": 127,
+          "number": 8,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "61d3a66a2cd2348f3cb67a2c64cc1342eca9ab303906e875a8e68341bd2859da"
+        },
+        {
+          "index": 128,
+          "number": 1,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "61d3a66a2cd2348f3cb67a2c64cc1342eca9ab303906e875a8e68341bd2859da"
+        },
+        {
+          "index": 129,
+          "number": 8,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "61d3a66a2cd2348f3cb67a2c64cc1342eca9ab303906e875a8e68341bd2859da"
+        },
+        {
+          "index": 130,
+          "number": 1,
+          "objects": {
+            "15": 16
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "0f270e8317d0be4a8469bacdb39ca8741277cfbefca5cbe92929095ce307ba70"
+        },
+        {
+          "index": 131,
+          "number": 8,
+          "objects": {
+            "15": 16
+          },
+          "resident_pages": 1,
+          "result": 16,
+          "store_sha256": "0f270e8317d0be4a8469bacdb39ca8741277cfbefca5cbe92929095ce307ba70"
+        },
+        {
+          "index": 132,
+          "number": 77,
+          "objects": {
+            "15": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "3323f8ffd5bdcf46cc4e4bc248748e5a92ae66a074699ad073c3654ab4d96a82"
+        },
+        {
+          "index": 133,
+          "number": 8,
+          "objects": {
+            "15": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "3323f8ffd5bdcf46cc4e4bc248748e5a92ae66a074699ad073c3654ab4d96a82"
+        },
+        {
+          "index": 134,
+          "number": 1,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 1,
+          "store_sha256": "1769595acb91eb8407c6e3338c0329786692ea86cd52e449fe6c5fae81bda6b1"
+        },
+        {
+          "index": 135,
+          "number": 8,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "1769595acb91eb8407c6e3338c0329786692ea86cd52e449fe6c5fae81bda6b1"
+        },
+        {
+          "index": 136,
+          "number": 1,
+          "objects": {
+            "15": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": -27,
+          "store_sha256": "1769595acb91eb8407c6e3338c0329786692ea86cd52e449fe6c5fae81bda6b1"
+        },
+        {
+          "index": 137,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "142fac2a16cd87deebed43d272fea69c3b6d171e29b2b89756786b7b4a1db0c0"
+        },
+        {
+          "index": 138,
+          "number": 257,
+          "objects": {
+            "16": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "74ac9800a5edf45e8bdedebaf84eb1e3156a47c7377d9f7a0b41b67d1ac8f442"
+        },
+        {
+          "index": 139,
+          "number": 0,
+          "objects": {
+            "16": 0
+          },
+          "resident_pages": 0,
+          "result": -9,
+          "store_sha256": "74ac9800a5edf45e8bdedebaf84eb1e3156a47c7377d9f7a0b41b67d1ac8f442"
+        },
+        {
+          "index": 140,
+          "number": 1,
+          "objects": {
+            "16": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "865fd88931ba947ed536a3fed36327e70346c8fb33a5f7e0f95211946de6065b"
+        },
+        {
+          "index": 141,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "7da7a443fae3e9226dbd04d862fe6c095e436cbd83bb5ed756173b0245cabe1e"
+        },
+        {
+          "index": 142,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 63,
+          "store_sha256": "7da7a443fae3e9226dbd04d862fe6c095e436cbd83bb5ed756173b0245cabe1e"
+        },
+        {
+          "index": 143,
+          "number": 257,
+          "objects": {
+            "17": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "87a803a29956f3b31469e7179fc52903e084ad28abf00bd4cfffad843765d79d"
+        },
+        {
+          "index": 144,
+          "number": 32,
+          "objects": {
+            "17": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "87a803a29956f3b31469e7179fc52903e084ad28abf00bd4cfffad843765d79d"
+        },
+        {
+          "index": 145,
+          "number": 1,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "cab9fec1d89c1ce60eed0aefbdd9db0d6d8559d7f59ac42e1a17d3a40d94942f"
+        },
+        {
+          "index": 146,
+          "number": 57,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "cab9fec1d89c1ce60eed0aefbdd9db0d6d8559d7f59ac42e1a17d3a40d94942f"
+        },
+        {
+          "index": 147,
+          "number": 95,
+          "objects": {
+            "17": 8
+          },
+          "resident_pages": 1,
+          "result": 18,
+          "store_sha256": "cab9fec1d89c1ce60eed0aefbdd9db0d6d8559d7f59ac42e1a17d3a40d94942f"
+        },
+        {
+          "index": 148,
+          "number": 1,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 149,
+          "number": 3,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 150,
+          "number": 57,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 11,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 151,
+          "number": 95,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 18,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 152,
+          "number": 61,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 11,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 153,
+          "number": 8,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 16,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 154,
+          "number": 8,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 155,
+          "number": 0,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 16,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 156,
+          "number": 3,
+          "objects": {
+            "17": 16
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "ee0365d73cf5308efff61148f8e90ca74787b709d57065b53da17172e893643a"
+        },
+        {
+          "index": 157,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "c037ba8dae46cb402d7c2a88eaa1561de5fd130d383eca1b0317501afab32117"
+        },
+        {
+          "index": 158,
+          "number": 257,
+          "objects": {
+            "18": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "c89883769c53b1a91111486dba8052dc165aca32764a5a925e527a78fbc4fdfc"
+        },
+        {
+          "index": 159,
+          "number": 32,
+          "objects": {
+            "18": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "c89883769c53b1a91111486dba8052dc165aca32764a5a925e527a78fbc4fdfc"
+        },
+        {
+          "index": 160,
+          "number": 1,
+          "objects": {
+            "18": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "a69565e9bf8e6da6ae4a6c135605bfdca6b45abb6ddd3df68b701d6e4dcd1ce9"
+        }
+      ],
+      "complete_process_backing_erased": true,
+      "complete_store_erased": true,
+      "controlled_child_yield_and_parent_exit": false,
+      "result": "pass"
+    },
+    "profile": {
+      "directory_metadata_offset": 32,
+      "directory_staging_bytes": 512,
+      "directory_staging_offset": 3072,
+      "filesystem_bytes": 36864,
+      "filesystem_offset": 274432,
+      "initial_umask": 18,
+      "inode_metadata_bytes": 32,
+      "maximum_file_offset": 9223372036854775807,
+      "maximum_name_bytes": 255,
+      "maximum_native_helper_stack_bytes": 328,
+      "name_bytes": 256,
+      "name_offset": 1536,
+      "namespace_entries": {
+        "admission_retired_stack_bytes": 4096,
+        "entry_bytes": 16,
+        "entry_count": 4,
+        "entry_offset": 64,
+        "inode_initial_link_intent_offset": 64,
+        "inode_link_count_offset": 56,
+        "metadata_lookup_stack_bytes": 104,
+        "namespace_caller_stack_bytes": 256,
+        "schema": "topal.namespace-entry-table.x86_64/1"
+      },
+      "object_bytes": 128,
+      "object_count": 4,
+      "object_metadata_offset": 24,
+      "object_offset": 256,
+      "page_allocation_map_bytes": 8,
+      "page_allocation_map_offset": 24,
+      "page_bytes": 4096,
+      "page_metadata_bytes": 32,
+      "page_metadata_offset": 1024,
+      "payload_offset": 4096,
+      "pipe_creation_time_offset": 96,
+      "pipe_metadata_offset": 64,
+      "pipe_pool_offset": 253952,
+      "pipe_record_bytes": 128,
+      "private_umask_offset": 1664,
+      "process_storage_bytes": 311296,
+      "process_storage_symbol": "topal_x86_static_process_descriptor_table",
+      "resident_pages": 8,
+      "schema": "topal.volatile-file.x86_64/6",
+      "timestamp_policy": "realtime-seconds-noatime",
+      "transfer_quantum": 256,
+      "transfer_staging_offset": 1408
+    },
+    "runtime": {
+      "artifact_provenance_sha256": "fe6c0e1216fa0022da1404fa2f9bc6ba22d5dab77c8c139ff89b5d261b068f52",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/255",
+      "boot_image_sha256": "edb8f81fc9668f1188fa5c4c8caf91a19cc729fbb344e3a2e06f6d2f3234b554",
+      "boot_provenance_sha256": "ca3df811d1900afddc2eb431eee7fce7601d4d5b434a6c7d8108ac24c3643ec9",
+      "boot_resource_bytes": 2037200,
+      "boot_resource_member": "init",
+      "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
+      "boot_resource_sha256": "49b624297402f83d2d712de8ab5898ba8d794e79078744705d1250364632bed2",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/153",
+      "clean_environment_mode": "maximum",
+      "cpu": "qemu64-v1",
+      "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
+      "generated_initial_user_image_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+      "initial_user_image_bytes": 12288,
+      "initial_user_image_input": "supplied",
+      "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+      "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+      "machine": "pc-q35-10.2",
+      "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+      "observations": {
+        "markers_in_order": [
+          "TOPAL_KERNEL_FRAME_ALLOCATED",
+          "TOPAL_KERNEL_FRAME_MAPPED",
+          "TOPAL_KERNEL_TRANSLATION_ACTIVE",
+          "TOPAL_KERNEL_TRANSLATION_EDITED",
+          "TOPAL_KERNEL_FRAME_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
+          "TOPAL_KERNEL_INTERRUPTS_MASKED",
+          "TOPAL_KERNEL_MEMORY_DESCRIBED",
+          "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
+          "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK",
+          "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED",
+          "TOPAL_KERNEL_PCI_BUS_MASTER_OK",
+          "TOPAL_KERNEL_DMA_BUFFERS_OK",
+          "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
+          "TOPAL_KERNEL_DMA_DEVICE_OWNED",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK",
+          "TOPAL_KERNEL_BOOT",
+          "TOPAL_KERNEL_FAULT_RESUMED",
+          "TOPAL_KERNEL_ATOMIC_OK",
+          "TOPAL_KERNEL_MEMORY_OK",
+          "TOPAL_KERNEL_INTERRUPT_OK",
+          "TOPAL_KERNEL_TIME_OK",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
+          "TOPAL_KERNEL_DEADLINE_PREEMPTED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
+          "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+          "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
+          "TOPAL_KERNEL_USER_IMAGE_READY",
+          "TOPAL_KERNEL_BOOT_RESOURCE_OK",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
+          "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
+          "TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+          "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
+          "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
+          "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
+          "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+          "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
+          "TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
+          "TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
+          "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
+          "TOPAL_KERNEL_USER_WRITE_OK",
+          "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK",
+          "TOPAL_KERNEL_USER_READ_OK",
+          "TOPAL_KERNEL_USER_CLOSE_OK",
+          "TOPAL_KERNEL_USER_DUP_OK",
+          "TOPAL_KERNEL_USER_FCNTL_OK",
+          "TOPAL_KERNEL_USER_FSTAT_OK",
+          "TOPAL_KERNEL_USER_TCGETS_OK",
+          "TOPAL_KERNEL_USER_WINSIZE_OK",
+          "TOPAL_KERNEL_USER_LSEEK_OK",
+          "TOPAL_KERNEL_USER_COPY_TO_OK",
+          "TOPAL_KERNEL_USER_COPY_FROM_OK",
+          "TOPAL_KERNEL_USER_SYSCALL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_STACK_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK",
+          "TOPAL_KERNEL_USER_IMAGE_ELF_OK",
+          "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_BSS_OK",
+          "TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
+          "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+          "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RETAINED",
+          "TOPAL_KERNEL_USER_MAPPING_OK",
+          "TOPAL_KERNEL_FRAME_DISJOINT_OK",
+          "TOPAL_KERNEL_USER_BACKING_OK"
+        ],
+        "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
+        "qemu_running_after_markers": true,
+        "readonly_open_access_profile": "lookup-and-type-errors-before-immutable-view-write-denial",
+        "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
+        "result": "pass",
+        "reusable_clean_boundary_corpus": true,
+        "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
+        "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
+        "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
+        "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",
+        "serial_quiescent_after_fatal_disposition": true,
+        "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+        "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\nTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OKTOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OKTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_PCI_VIRTIO_RNG_OKTOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OKTOPAL_KERNEL_VIRTIO_PCI_NEGOTIATEDTOPAL_KERNEL_VIRTIO_QUEUE_DISCOVEREDTOPAL_KERNEL_PCI_BUS_MASTER_OKTOPAL_KERNEL_DMA_BUFFERS_OKTOPAL_KERNEL_VIRTIO_SPLIT_RING_OKTOPAL_KERNEL_DMA_DEVICE_OWNEDTOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OKTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTEREDTOPAL_KERNEL_DEADLINE_PREEMPTEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_RETIREDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMEDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIREDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIREDTOPAL_KERNEL_USER_IMAGE_READYTOPAL_KERNEL_BOOT_RESOURCE_OKTOPAL_KERNEL_VIRTIO_QUEUE_ACTIVETOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIEDTOPAL_KERNEL_VIRTIO_COMPLETION_SIGNALTOPAL_KERNEL_VIRTIO_USED_RING_OKTOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNEDTOPAL_KERNEL_ENTROPY_SAMPLE_CAPTUREDTOPAL_KERNEL_ENTROPY_SAMPLE_CREDITEDTOPAL_KERNEL_ENTROPY_POOL_CREATEDTOPAL_KERNEL_ENTROPY_POOL_MIXEDTOPAL_KERNEL_ENTROPY_POOL_CREDITEDTOPAL_KERNEL_ENTROPY_GENERATOR_READYTOPAL_KERNEL_ENTROPY_OUTPUT_READYTOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OKTOPAL_KERNEL_USER_WRITE_OKTOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OKTOPAL_KERNEL_USER_GETRANDOM_OKTOPAL_KERNEL_USER_GETRANDOM_REPEATED_OKTOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OKTOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OKTOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OKTOPAL_KERNEL_USER_READ_OKTOPAL_KERNEL_USER_CLOSE_OKTOPAL_KERNEL_USER_DUP_OKTOPAL_KERNEL_USER_FCNTL_OKTOPAL_KERNEL_USER_FSTAT_OKTOPAL_KERNEL_USER_TCGETS_OKTOPAL_KERNEL_USER_WINSIZE_OKTOPAL_KERNEL_USER_LSEEK_OKTOPAL_KERNEL_USER_COPY_TO_OKTOPAL_KERNEL_USER_COPY_FROM_OKTOPAL_KERNEL_USER_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_STACK_OKTOPAL_KERNEL_USER_IMAGE_AUXV_OKTOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OKTOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OKTOPAL_KERNEL_USER_IMAGE_ELF_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OKTOPAL_KERNEL_USER_IMAGE_BSS_OKTOPAL_KERNEL_USER_IMAGE_DATA_OKTOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OKTOPAL_KERNEL_USER_IMAGE_COPY_TO_OKTOPAL_KERNEL_USER_IMAGE_COPY_FROM_OKTOPAL_KERNEL_USER_IMAGE_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_RETAINEDTOPAL_KERNEL_USER_MAPPING_OKTOPAL_KERNEL_FRAME_DISJOINT_OKTOPAL_KERNEL_USER_BACKING_OK",
+        "static_applet_newline_count": 21,
+        "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
+        "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
+        "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
+        "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+        "static_process_runtime_profile": "clean-negative-retry-maximum-aggregate-console-status-witness",
+        "static_process_time_profile": "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines",
+        "static_shell_banner_profile": "clean-exact-109-byte-shell-banner-witness",
+        "static_shell_bin_busybox_artifact_size_profile": "clean-sealed-2024544-byte-bin-busybox-artifact-witness",
+        "static_shell_bin_busybox_condition_output_profile": "clean-exact-bin-busybox-file-condition-output-witness",
+        "static_shell_bin_busybox_entry_profile": "clean-sealed-bin-busybox-dirent-witness",
+        "static_shell_bin_busybox_executable_condition_output_profile": "clean-exact-bin-busybox-executable-condition-output-witness",
+        "static_shell_bin_busybox_executable_credential_profile": "clean-effective-root-witness",
+        "static_shell_bin_busybox_executable_metadata_profile": "clean-repeated-complete-bin-busybox-metadata-witness",
+        "static_shell_bin_busybox_explicit_close_condition_output_profile": "clean-exact-bin-busybox-close-output-witness",
+        "static_shell_bin_busybox_explicit_close_duplicate_profile": "clean-exact-f-dupfd-cloexec-ten-witness",
+        "static_shell_bin_busybox_explicit_close_profile": "clean-ordered-three-then-ten-close-witness",
+        "static_shell_bin_busybox_explicit_close_terminal_absence_profile": "clean-pre-reopen-proved-closed-description-witness",
+        "static_shell_bin_busybox_header_poll_profile": "clean-header-poll-not-issued",
+        "static_shell_bin_busybox_header_read_condition_output_profile": "clean-exact-bin-busybox-read-output-witness",
+        "static_shell_bin_busybox_header_read_profile": "clean-four-byte-elf-header-read-witness",
+        "static_shell_bin_busybox_header_read_terminal_revoke_profile": "clean-explicit-close-revoked-header-read-state-witness",
+        "static_shell_bin_busybox_header_terminal_probe_profile": "clean-header-terminal-probes-not-issued",
+        "static_shell_bin_busybox_metadata_profile": "clean-complete-bin-busybox-file-metadata-witness",
+        "static_shell_bin_busybox_nonempty_condition_output_profile": "clean-exact-bin-busybox-nonempty-condition-output-witness",
+        "static_shell_bin_busybox_nonempty_metadata_profile": "clean-third-complete-positive-bin-busybox-metadata-witness",
+        "static_shell_bin_busybox_open_condition_output_profile": "clean-exact-bin-busybox-open-output-witness",
+        "static_shell_bin_busybox_open_terminal_revoke_profile": "clean-reopen-terminal-revoked-live-bin-busybox-description-witness",
+        "static_shell_bin_busybox_read_only_open_profile": "clean-exact-bin-busybox-read-only-open-witness",
+        "static_shell_bin_busybox_reopen_profile": "clean-fresh-generation-descriptor-three-witness",
+        "static_shell_bin_busybox_reopen_terminal_revoke_profile": "clean-terminal-revoked-reopened-description-witness",
+        "static_shell_cd_root_profile": "clean-exact-root-chdir-witness",
+        "static_shell_console_fstat_profile": "clean-complete-console-fstat-witness",
+        "static_shell_dev_tty_open_profile": "clean-dev-tty-open-enoent-witness",
+        "static_shell_echo_command_profile": "clean-sealed-echo-command-witness",
+        "static_shell_empty_bin_close_profile": "clean-explicit-bin-directory-close-witness",
+        "static_shell_empty_bin_enumeration_profile": "clean-three-record-bin-busybox-enumeration-witness",
+        "static_shell_empty_bin_fstat_profile": "clean-complete-bin-directory-fstat-witness",
+        "static_shell_empty_bin_open_profile": "clean-exact-bin-directory-open-witness",
+        "static_shell_empty_bin_output_profile": "clean-exact-bin-busybox-glob-match-witness",
+        "static_shell_getpid_profile": "clean-pid-one-witness",
+        "static_shell_getppid_profile": "clean-no-parent-witness",
+        "static_shell_mailpath_stat_profile": "clean-root-mailpath-enoent-witness",
+        "static_shell_named_root_condition_profile": "clean-selected-bin-busybox-glob-condition-witness",
+        "static_shell_named_root_entry_profile": "clean-sealed-bin-directory-entry-witness",
+        "static_shell_named_root_metadata_profile": "clean-complete-bin-directory-metadata-witness",
+        "static_shell_post_banner_getcwd_profile": "clean-post-banner-sealed-root-witness",
+        "static_shell_post_banner_geteuid_profile": "clean-post-banner-effective-root-witness",
+        "static_shell_post_banner_terminal_probe_profile": "clean-post-banner-stdin-enotty-witness",
+        "static_shell_profile_close_profile": "clean-consumed-system-profile-description-witness",
+        "static_shell_profile_fstat_profile": "clean-complete-system-profile-metadata-witness",
+        "static_shell_profile_open_profile": "clean-read-only-system-profile-descriptor-three-witness",
+        "static_shell_profile_read_profile": "clean-empty-system-profile-eof-witness",
+        "static_shell_prompt_profile": "clean-exact-root-prompt-witness",
+        "static_shell_pwd_command_profile": "clean-command-getcwd-root-output-witness",
+        "static_shell_pwd_console_fstat_profile": "clean-command-console-fstat-absent",
+        "static_shell_pwd_getcwd_profile": "clean-command-getcwd-root-witness",
+        "static_shell_pwd_output_profile": "clean-exact-application-root-line-witness",
+        "static_shell_pwd_terminal_probe_profile": "clean-command-stdout-terminal-probe-absent",
+        "static_shell_refill_input_profile": "clean-five-publication-command-refill-witness",
+        "static_shell_root_glob_enumeration_profile": "clean-three-record-root-directory-enumeration-witness",
+        "static_shell_root_glob_fstat_profile": "clean-complete-root-directory-metadata-witness",
+        "static_shell_root_glob_open_profile": "clean-exact-root-directory-open-witness",
+        "static_shell_root_glob_output_profile": "clean-exact-named-root-glob-match-witness",
+        "static_shell_sigchld_profile": "clean-installed-cleared-witness",
+        "static_shell_stack_profile": "clean-affine-two-page-rw-nx-stack-witness",
+        "static_shell_standard_terminal_probe_profile": "clean-stderr-stdout-stdin-enotty-witness",
+        "static_shell_terminal_warning_profile": "clean-three-segment-stderr-warning-witness",
+        "static_unknown_syscall_profile": "normalized-selector-enosys-without-argument-or-state-access"
+      },
+      "process_command_sha256": "f29e3aeccbf2528bea57c96761fe8a75fdd7e092e7ad6b37b837f0b6af792113",
+      "process_command_utf8": "exec /bin/busybox true\n",
+      "process_exec_commits": 3,
+      "process_exit_status": 35,
+      "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "process_workload": "true",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/242",
+      "publication": "topalc-target-interface/1",
+      "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+      "schema": "topal-kernel-toolchain-gate-qemu/255",
+      "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
+      "serial_input_utf8": "read",
+      "source_sha256": "40495fcdfa7c80fee6af4fb1c76b7b05303a2d0ab6db2039e1ab23bd9a794707",
+      "static_boot_resource_member": "static-user.elf",
+      "static_user_image_bytes": 2024544,
+      "static_user_image_input": "supplied-clean-room-fixture",
+      "static_user_image_sha256": "0fe960a68bb40de13dcb0f366490c32b23162a2cb134225d078ea1656240339a"
+    },
+    "static_user_image_sha256": "0fe960a68bb40de13dcb0f366490c32b23162a2cb134225d078ea1656240339a"
+  },
+  "linux_control_sha256": "706052d3748b376473e2b16d25efbd9f85b102cae70a1d0e79d213c5296a9e75",
+  "namespace_store_checker_sha256": "041b777d73bffe9d3d0d48b5e7151d95b16f25435afc8ad0b49ed27a515e935f",
+  "primary": {
+    "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+    "observation": {
+      "calls": [
+        {
+          "index": 0,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 1,
+          "number": 5,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 2,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 48,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 3,
+          "number": 217,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 4,
+          "number": 81,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 5,
+          "number": 79,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 6,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 7,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 8,
+          "number": 80,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 9,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 10,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 18,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 11,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 12,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 13,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 14,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 15,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "e43a67341554a3f557dc78ec284f57534c523c44656d23b7251841a43fa6751a"
+        },
+        {
+          "index": 16,
+          "number": 257,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 17,
+          "number": 5,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 18,
+          "number": 72,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 4292610,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 19,
+          "number": 0,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 20,
+          "number": 0,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 21,
+          "number": 1,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": -14,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 22,
+          "number": 1,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 23,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 24,
+          "number": 32,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 5,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 25,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 26,
+          "number": 0,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 27,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 28,
+          "number": 0,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 29,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 30,
+          "number": 1,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 31,
+          "number": 8,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 32,
+          "number": 77,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 33,
+          "number": 77,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -9,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 34,
+          "number": 77,
+          "objects": {
+            "7": 8
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "d2d790415e8f13b0c777c1384035463c2bad00b86c4e8425ec51edeb9a1d6968"
+        },
+        {
+          "index": 35,
+          "number": 77,
+          "objects": {
+            "7": 3
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "4f45ec6d53a852deb79fefbe8e4dccb03b0313a8edeb474460cfb8bbcf241059"
+        },
+        {
+          "index": 36,
+          "number": 8,
+          "objects": {
+            "7": 3
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "4f45ec6d53a852deb79fefbe8e4dccb03b0313a8edeb474460cfb8bbcf241059"
+        },
+        {
+          "index": 37,
+          "number": 77,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 38,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 39,
+          "number": 0,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 40,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 4093,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 41,
+          "number": 0,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 3,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 42,
+          "number": 0,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 43,
+          "number": 0,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 44,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 45,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 46,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 47,
+          "number": 8,
+          "objects": {
+            "7": 4097
+          },
+          "resident_pages": 1,
+          "result": -6,
+          "store_sha256": "e659d45c6b17c95729b396b6fa1fb1197a6823088fb62c788204c38223fe5c49"
+        },
+        {
+          "index": 48,
+          "number": 77,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 49,
+          "number": 5,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 50,
+          "number": 8,
+          "objects": {
+            "7": 0
+          },
+          "resident_pages": 0,
+          "result": 281474976710669,
+          "store_sha256": "d1092c3e4377548492bc547632f4aaa56859c97838f27fdca07186ee2a9c753a"
+        },
+        {
+          "index": 51,
+          "number": 1,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 52,
+          "number": 8,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710656,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 53,
+          "number": 8,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710677,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 54,
+          "number": 5,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 55,
+          "number": 3,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 56,
+          "number": 8,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 281474976710669,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 57,
+          "number": 0,
+          "objects": {
+            "7": 281474976710677
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "26e2f7013b0d282119dc5a597faf1d33f3bc99fed1af78caab10aa64363aae0f"
+        },
+        {
+          "index": 58,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 59,
+          "number": 257,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "f01cf64f90d27b266fb35dbc5cac26e7888f73acb09bfc246db707be31a4fec0"
+        },
+        {
+          "index": 60,
+          "number": 257,
+          "objects": {
+            "8": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "3e03c816b3f3a5bcc718e91d097092864ebc98c2b62ea961e2eccbfc9d03616e"
+        },
+        {
+          "index": 61,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 62,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "49ced6075804d24cbe2313e57683a586d7276324830131d0550f339091fae7f3"
+        },
+        {
+          "index": 63,
+          "number": 257,
+          "objects": {
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "3f6a07e8adbf1341469fef7875625c9fee199d40835cd1eb8cc2b0a76f77ad12"
+        },
+        {
+          "index": 64,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 5,
+          "store_sha256": "bce03ff1da74bc3a03224466f34c931b8f8044a94ea5415be787cfbc3932c5cc"
+        },
+        {
+          "index": 65,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 6,
+          "store_sha256": "caa9de52554991f0c7ef703deaf47a92aae0d898133e9abbcf71f5bc729cdf9a"
+        },
+        {
+          "index": 66,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 7,
+          "store_sha256": "d49b1c778f4c9c139fe95547036669c9420ca8b59fdc1156683cfec1b0255297"
+        },
+        {
+          "index": 67,
+          "number": 257,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": -28,
+          "store_sha256": "d49b1c778f4c9c139fe95547036669c9420ca8b59fdc1156683cfec1b0255297"
+        },
+        {
+          "index": 68,
+          "number": 8,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "d49b1c778f4c9c139fe95547036669c9420ca8b59fdc1156683cfec1b0255297"
+        },
+        {
+          "index": 69,
+          "number": 1,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "c1cf2366addeb578b81937df29850e5935d71f6d85146f91694af45cec8a707b"
+        },
+        {
+          "index": 70,
+          "number": 8,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 8
+          },
+          "resident_pages": 1,
+          "result": 4096,
+          "store_sha256": "c1cf2366addeb578b81937df29850e5935d71f6d85146f91694af45cec8a707b"
+        },
+        {
+          "index": 71,
+          "number": 1,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 2,
+          "result": 8,
+          "store_sha256": "eb15b9f9b456dbd2cfcf38bfed5640053abadb1f5d21de550b2033d356e1efe2"
+        },
+        {
+          "index": 72,
+          "number": 8,
+          "objects": {
+            "10": 0,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "eb15b9f9b456dbd2cfcf38bfed5640053abadb1f5d21de550b2033d356e1efe2"
+        },
+        {
+          "index": 73,
+          "number": 1,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 3,
+          "result": 8,
+          "store_sha256": "b8d9f6fe70f004ce8dbbacaf788d9f8226477b02af6d9aa8cebdc8599a8f40e6"
+        },
+        {
+          "index": 74,
+          "number": 8,
+          "objects": {
+            "10": 8,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 3,
+          "result": 4096,
+          "store_sha256": "b8d9f6fe70f004ce8dbbacaf788d9f8226477b02af6d9aa8cebdc8599a8f40e6"
+        },
+        {
+          "index": 75,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 4,
+          "result": 8,
+          "store_sha256": "fc10f4ddd802fa69f76761271cc2039174c6364b6a20c7c7bdfc898194c1e36b"
+        },
+        {
+          "index": 76,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 0,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "fc10f4ddd802fa69f76761271cc2039174c6364b6a20c7c7bdfc898194c1e36b"
+        },
+        {
+          "index": 77,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 5,
+          "result": 8,
+          "store_sha256": "6be567ec7f9cd907c11dac7e470f79dbd07e386722b9dbc10e95211127b668c1"
+        },
+        {
+          "index": 78,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 8,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 5,
+          "result": 4096,
+          "store_sha256": "6be567ec7f9cd907c11dac7e470f79dbd07e386722b9dbc10e95211127b668c1"
+        },
+        {
+          "index": 79,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 6,
+          "result": 8,
+          "store_sha256": "3b878c27a31910f30b9ca4d96eb8186c35fca34169c2810e780b9c5dd30b01bc"
+        },
+        {
+          "index": 80,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 0,
+            "9": 4104
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "3b878c27a31910f30b9ca4d96eb8186c35fca34169c2810e780b9c5dd30b01bc"
+        },
+        {
+          "index": 81,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "9": 4104
+          },
+          "resident_pages": 7,
+          "result": 8,
+          "store_sha256": "d7ad3f303123186e2ed43c56caabe1151c7853c0c1b0980b0e744fcf89fb21ae"
+        },
+        {
+          "index": 82,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 8,
+            "9": 4104
+          },
+          "resident_pages": 7,
+          "result": 4096,
+          "store_sha256": "d7ad3f303123186e2ed43c56caabe1151c7853c0c1b0980b0e744fcf89fb21ae"
+        },
+        {
+          "index": 83,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 84,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 85,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": -28,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 86,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": 8192,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 87,
+          "number": 8,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": 0,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 88,
+          "number": 1,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104,
+            "9": 4104
+          },
+          "resident_pages": 8,
+          "result": 8,
+          "store_sha256": "3b460c6e41618aaa9fa795a244d597d4d5eec14bb2fcbb1b082dc75bad444679"
+        },
+        {
+          "index": 89,
+          "number": 3,
+          "objects": {
+            "10": 4104,
+            "11": 4104,
+            "12": 4104
+          },
+          "resident_pages": 6,
+          "result": 0,
+          "store_sha256": "369f03f57c68c46cae9fa199451c7094bd166e29d93dc9343b8358bdde1e3323"
+        },
+        {
+          "index": 90,
+          "number": 3,
+          "objects": {
+            "11": 4104,
+            "12": 4104
+          },
+          "resident_pages": 4,
+          "result": 0,
+          "store_sha256": "7862d3e78e183941d5eaa25a5b599f7fad1ffbdb4b867228db4edcae6118cb3d"
+        },
+        {
+          "index": 91,
+          "number": 3,
+          "objects": {
+            "12": 4104
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "720265ecd00adfe5536df27b1a7da3f9c6808ddd0a5b97ddf03b92e2a31b4c54"
+        },
+        {
+          "index": 92,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "25a6a2a03db9294ca20f3dd8c0b88dcf557bc87e7b5c924a0d1cb31385146f92"
+        },
+        {
+          "index": 93,
+          "number": 257,
+          "objects": {
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "a6f8c0cbd20d2c4547745813210abe518425bed007ab08ea9cdda8f8b2746b19"
+        },
+        {
+          "index": 94,
+          "number": 8,
+          "objects": {
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 9223372036854775806,
+          "store_sha256": "a6f8c0cbd20d2c4547745813210abe518425bed007ab08ea9cdda8f8b2746b19"
+        },
+        {
+          "index": 95,
+          "number": 1,
+          "objects": {
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": -22,
+          "store_sha256": "a6f8c0cbd20d2c4547745813210abe518425bed007ab08ea9cdda8f8b2746b19"
+        },
+        {
+          "index": 96,
+          "number": 1,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 97,
+          "number": 1,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 98,
+          "number": 8,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 99,
+          "number": 8,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 9223372036854775806,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 100,
+          "number": 0,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": -22,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 101,
+          "number": 0,
+          "objects": {
+            "13": 9223372036854775807
+          },
+          "resident_pages": 1,
+          "result": 1,
+          "store_sha256": "deb0931d0fca740307bd61b03d24f79f861f9ce683271d25da3f65da65f5877e"
+        },
+        {
+          "index": 102,
+          "number": 77,
+          "objects": {
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "a6f8c0cbd20d2c4547745813210abe518425bed007ab08ea9cdda8f8b2746b19"
+        },
+        {
+          "index": 103,
+          "number": 8,
+          "objects": {
+            "13": 0
+          },
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "a6f8c0cbd20d2c4547745813210abe518425bed007ab08ea9cdda8f8b2746b19"
+        },
+        {
+          "index": 104,
+          "number": 1,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 105,
+          "number": 8,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 106,
+          "number": 0,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 107,
+          "number": 0,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": -14,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 108,
+          "number": 8,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 109,
+          "number": 0,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 110,
+          "number": 8,
+          "objects": {
+            "13": 256
+          },
+          "resident_pages": 1,
+          "result": 256,
+          "store_sha256": "59d6cb70da711c2ab9d9963d6b75b15e030290b26fabf9bce69eb1a1f267bbd9"
+        },
+        {
+          "index": 111,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "70ce4d90bcd49869511de66b389c3a93e1734d6d647a9acec2465115acbd86ef"
+        },
+        {
+          "index": 112,
+          "number": 257,
+          "objects": {
+            "14": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "565b1c20a328835b2f15e920bea086250db452fca0a31bb3392b18e9e1cbf455"
+        },
+        {
+          "index": 113,
+          "number": 1,
+          "objects": {
+            "14": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "fa618960f3b20d1ca237163b3492f5cfc84979b4eeaf3e89b1e7e28c5e8cc644"
+        },
+        {
+          "index": 114,
+          "number": 8,
+          "objects": {
+            "14": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "fa618960f3b20d1ca237163b3492f5cfc84979b4eeaf3e89b1e7e28c5e8cc644"
+        },
+        {
+          "index": 115,
+          "number": 1,
+          "objects": {
+            "14": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "fa618960f3b20d1ca237163b3492f5cfc84979b4eeaf3e89b1e7e28c5e8cc644"
+        },
+        {
+          "index": 116,
+          "number": 8,
+          "objects": {
+            "14": 8
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "fa618960f3b20d1ca237163b3492f5cfc84979b4eeaf3e89b1e7e28c5e8cc644"
+        },
+        {
+          "index": 117,
+          "number": 1,
+          "objects": {
+            "14": 16
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "af1405e73cbe959d5f0e0994fb67d83554ef3747f208e1df70c925e81ba833bb"
+        },
+        {
+          "index": 118,
+          "number": 8,
+          "objects": {
+            "14": 16
+          },
+          "resident_pages": 1,
+          "result": 16,
+          "store_sha256": "af1405e73cbe959d5f0e0994fb67d83554ef3747f208e1df70c925e81ba833bb"
+        },
+        {
+          "index": 119,
+          "number": 77,
+          "objects": {
+            "14": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "a171223a30cf63ca3c82b2381a49c90b0ed9cc9b127b6b3480267324b6249578"
+        },
+        {
+          "index": 120,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775806
+          },
+          "resident_pages": 1,
+          "result": 0,
+          "store_sha256": "a171223a30cf63ca3c82b2381a49c90b0ed9cc9b127b6b3480267324b6249578"
+        },
+        {
+          "index": 121,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 1,
+          "store_sha256": "4f735be5fe468918ad96d3b3e2b79c597f3602188a0686bef1638e0214ab046a"
+        },
+        {
+          "index": 122,
+          "number": 8,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": 0,
+          "store_sha256": "4f735be5fe468918ad96d3b3e2b79c597f3602188a0686bef1638e0214ab046a"
+        },
+        {
+          "index": 123,
+          "number": 1,
+          "objects": {
+            "14": 9223372036854775807
+          },
+          "resident_pages": 2,
+          "result": -27,
+          "store_sha256": "4f735be5fe468918ad96d3b3e2b79c597f3602188a0686bef1638e0214ab046a"
+        },
+        {
+          "index": 124,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "8f64bfcc5f4ea750a013e68b51bd2b662c1406d19c81d48ec31c4ed81811fef2"
+        },
+        {
+          "index": 125,
+          "number": 257,
+          "objects": {
+            "15": 0
+          },
+          "resident_pages": 0,
+          "result": 4,
+          "store_sha256": "f1c67d958c3c0d59151c4adc549af01cd022f094a0239b2b95e44e7a259d35f9"
+        },
+        {
+          "index": 126,
+          "number": 0,
+          "objects": {
+            "15": 0
+          },
+          "resident_pages": 0,
+          "result": -9,
+          "store_sha256": "f1c67d958c3c0d59151c4adc549af01cd022f094a0239b2b95e44e7a259d35f9"
+        },
+        {
+          "index": 127,
+          "number": 1,
+          "objects": {
+            "15": 8
+          },
+          "resident_pages": 1,
+          "result": 8,
+          "store_sha256": "e6e3ec24d495ab64d1861ac7d819c85fd9fc698d0b3d58eb8c413922346611a7"
+        },
+        {
+          "index": 128,
+          "number": 3,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 0,
+          "store_sha256": "142fac2a16cd87deebed43d272fea69c3b6d171e29b2b89756786b7b4a1db0c0"
+        },
+        {
+          "index": 129,
+          "number": 95,
+          "objects": {},
+          "resident_pages": 0,
+          "result": 63,
+          "store_sha256": "142fac2a16cd87deebed43d272fea69c3b6d171e29b2b89756786b7b4a1db0c0"
+        }
+      ],
+      "complete_process_backing_erased": true,
+      "complete_store_erased": true,
+      "controlled_child_yield_and_parent_exit": false,
+      "result": "pass"
+    },
+    "profile": {
+      "directory_metadata_offset": 32,
+      "directory_staging_bytes": 512,
+      "directory_staging_offset": 3072,
+      "filesystem_bytes": 36864,
+      "filesystem_offset": 274432,
+      "initial_umask": 18,
+      "inode_metadata_bytes": 32,
+      "maximum_file_offset": 9223372036854775807,
+      "maximum_name_bytes": 255,
+      "maximum_native_helper_stack_bytes": 328,
+      "name_bytes": 256,
+      "name_offset": 1536,
+      "namespace_entries": {
+        "admission_retired_stack_bytes": 4096,
+        "entry_bytes": 16,
+        "entry_count": 4,
+        "entry_offset": 64,
+        "inode_initial_link_intent_offset": 64,
+        "inode_link_count_offset": 56,
+        "metadata_lookup_stack_bytes": 104,
+        "namespace_caller_stack_bytes": 256,
+        "schema": "topal.namespace-entry-table.x86_64/1"
+      },
+      "object_bytes": 128,
+      "object_count": 4,
+      "object_metadata_offset": 24,
+      "object_offset": 256,
+      "page_allocation_map_bytes": 8,
+      "page_allocation_map_offset": 24,
+      "page_bytes": 4096,
+      "page_metadata_bytes": 32,
+      "page_metadata_offset": 1024,
+      "payload_offset": 4096,
+      "pipe_creation_time_offset": 96,
+      "pipe_metadata_offset": 64,
+      "pipe_pool_offset": 253952,
+      "pipe_record_bytes": 128,
+      "private_umask_offset": 1664,
+      "process_storage_bytes": 311296,
+      "process_storage_symbol": "topal_x86_static_process_descriptor_table",
+      "resident_pages": 8,
+      "schema": "topal.volatile-file.x86_64/6",
+      "timestamp_policy": "realtime-seconds-noatime",
+      "transfer_quantum": 256,
+      "transfer_staging_offset": 1408
+    },
+    "runtime": {
+      "artifact_provenance_sha256": "9931f7604787bd1302293a1333d4e4a717963984be320d7bb51283cd0494b757",
+      "artifact_schema": "topal.systems-artifact.x86_64-qemu-pc-q35/255",
+      "boot_image_sha256": "edb8f81fc9668f1188fa5c4c8caf91a19cc729fbb344e3a2e06f6d2f3234b554",
+      "boot_provenance_sha256": "f71afcd5d776f752f5f6a624ceab7177cecc027ee9800f949fc66b584b51537b",
+      "boot_resource_bytes": 2037200,
+      "boot_resource_member": "init",
+      "boot_resource_schema": "topal.boot-resource.x86_64-initial-newc/2",
+      "boot_resource_sha256": "e84d3168678e7a5fd4ea3d9cd3f67fe3c8eabc988f903cfce18c44d923900257",
+      "boot_schema": "topal.boot-adapter.linux-x86-protocol-2.15-q35/153",
+      "clean_environment_mode": "maximum",
+      "cpu": "qemu64-v1",
+      "firmware_sha256": "3068c0b80988e2f2b04eaeda0b950e139b1760f5d269fc3587b819ff1f9f06c1",
+      "generated_initial_user_image_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+      "initial_user_image_bytes": 12288,
+      "initial_user_image_input": "supplied",
+      "initial_user_image_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+      "linked_kernel_sha256": "faecc930d4020a720cff8a6e2228aa16e9687c893a48fe6be5bb9d3669d447ac",
+      "machine": "pc-q35-10.2",
+      "manifest_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+      "observations": {
+        "markers_in_order": [
+          "TOPAL_KERNEL_FRAME_ALLOCATED",
+          "TOPAL_KERNEL_FRAME_MAPPED",
+          "TOPAL_KERNEL_TRANSLATION_ACTIVE",
+          "TOPAL_KERNEL_TRANSLATION_EDITED",
+          "TOPAL_KERNEL_FRAME_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OK",
+          "TOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OK",
+          "TOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OK",
+          "TOPAL_KERNEL_INTERRUPTS_MASKED",
+          "TOPAL_KERNEL_MEMORY_DESCRIBED",
+          "TOPAL_KERNEL_PCI_VIRTIO_RNG_OK",
+          "TOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OK",
+          "TOPAL_KERNEL_VIRTIO_PCI_NEGOTIATED",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_DISCOVERED",
+          "TOPAL_KERNEL_PCI_BUS_MASTER_OK",
+          "TOPAL_KERNEL_DMA_BUFFERS_OK",
+          "TOPAL_KERNEL_VIRTIO_SPLIT_RING_OK",
+          "TOPAL_KERNEL_DMA_DEVICE_OWNED",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OK",
+          "TOPAL_KERNEL_BOOT",
+          "TOPAL_KERNEL_FAULT_RESUMED",
+          "TOPAL_KERNEL_ATOMIC_OK",
+          "TOPAL_KERNEL_MEMORY_OK",
+          "TOPAL_KERNEL_INTERRUPT_OK",
+          "TOPAL_KERNEL_TIME_OK",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTERED",
+          "TOPAL_KERNEL_DEADLINE_PREEMPTED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTERED",
+          "TOPAL_KERNEL_CONTEXT_TERMINAL_ENTERED",
+          "TOPAL_KERNEL_CONTEXT_TERMINAL_RETIRED",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMED",
+          "TOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIRED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMED",
+          "TOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIRED",
+          "TOPAL_KERNEL_USER_IMAGE_READY",
+          "TOPAL_KERNEL_BOOT_RESOURCE_OK",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_ACTIVE",
+          "TOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIED",
+          "TOPAL_KERNEL_VIRTIO_COMPLETION_SIGNAL",
+          "TOPAL_KERNEL_VIRTIO_USED_RING_OK",
+          "TOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNED",
+          "TOPAL_KERNEL_ENTROPY_SAMPLE_CAPTURED",
+          "TOPAL_KERNEL_ENTROPY_SAMPLE_CREDITED",
+          "TOPAL_KERNEL_ENTROPY_POOL_CREATED",
+          "TOPAL_KERNEL_ENTROPY_POOL_MIXED",
+          "TOPAL_KERNEL_ENTROPY_POOL_CREDITED",
+          "TOPAL_KERNEL_ENTROPY_GENERATOR_READY",
+          "TOPAL_KERNEL_ENTROPY_OUTPUT_READY",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OK",
+          "TOPAL_KERNEL_USER_WRITE_OK",
+          "TOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_REPEATED_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OK",
+          "TOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OK",
+          "TOPAL_KERNEL_USER_READ_OK",
+          "TOPAL_KERNEL_USER_CLOSE_OK",
+          "TOPAL_KERNEL_USER_DUP_OK",
+          "TOPAL_KERNEL_USER_FCNTL_OK",
+          "TOPAL_KERNEL_USER_FSTAT_OK",
+          "TOPAL_KERNEL_USER_TCGETS_OK",
+          "TOPAL_KERNEL_USER_WINSIZE_OK",
+          "TOPAL_KERNEL_USER_LSEEK_OK",
+          "TOPAL_KERNEL_USER_COPY_TO_OK",
+          "TOPAL_KERNEL_USER_COPY_FROM_OK",
+          "TOPAL_KERNEL_USER_SYSCALL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_STACK_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OK",
+          "TOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OK",
+          "TOPAL_KERNEL_USER_IMAGE_ELF_OK",
+          "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_BSS_OK",
+          "TOPAL_KERNEL_USER_IMAGE_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OK",
+          "TOPAL_KERNEL_USER_IMAGE_COPY_TO_OK",
+          "TOPAL_KERNEL_USER_IMAGE_COPY_FROM_OK",
+          "TOPAL_KERNEL_USER_IMAGE_SYSCALL_OK",
+          "TOPAL_KERNEL_USER_IMAGE_RETAINED",
+          "TOPAL_KERNEL_USER_MAPPING_OK",
+          "TOPAL_KERNEL_FRAME_DISJOINT_OK",
+          "TOPAL_KERNEL_USER_BACKING_OK"
+        ],
+        "prepared_process_observation_profile": "retained-pid-tid-parent-and-immutable-390-byte-uts-view",
+        "qemu_running_after_markers": true,
+        "readonly_open_access_profile": "lookup-and-type-errors-before-immutable-view-write-denial",
+        "realtime_seconds_profile": "coherent-q35-rtc-utc-seconds-1970-through-2261",
+        "result": "pass",
+        "reusable_clean_boundary_corpus": true,
+        "reusable_file_description_profile": "sixteen-owned-slots-shared-offsets-original-member-backing",
+        "reusable_namespace_profile": "owned-path-bytes-independent-opens-directory-cookies-and-cwd",
+        "reusable_signal_registration_profile": "process-owned-actions-and-blocked-mask-without-delivery",
+        "root_credentials_profile": "borrowed-prepared-root-identity-independent-of-metadata-order",
+        "serial_quiescent_after_fatal_disposition": true,
+        "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+        "serial_utf8": "TOPAL_KERNEL_FRAME_ALLOCATEDTOPAL_KERNEL_FRAME_MAPPEDTOPAL_KERNEL_TRANSLATION_ACTIVETOPAL_KERNEL_TRANSLATION_EDITEDTOPAL_KERNEL_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_FRAME_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_MAPPING_RESOURCES_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_LEAVES_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_PAYLOAD_COPIED_OKTOPAL_KERNEL_STATIC_ELF_PERMISSIONS_OKTOPAL_KERNEL_STATIC_ELF_HIERARCHY_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_ACTIVE_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_EXTENT_OKTOPAL_KERNEL_STATIC_ELF_STACK_BACKING_ZEROED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_PUBLISHED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_INITIALIZED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RETAINED_OKTOPAL_KERNEL_STATIC_ELF_RETAINED_DISJOINT_WORK_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_AUTHORIZED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DEVICE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_TRANSPORT_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_NEGOTIATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_BUS_MASTER_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_BUFFERS_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SPLIT_RING_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_DMA_PREPARATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ADDRESSES_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_QUEUE_ACTIVATION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_REQUEST_COMPLETION_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_CAPTURE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_SAMPLE_QUALITY_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_POOL_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_GENERATOR_LIFECYCLE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK\nsh: can't access tty; job control turned off\n\n\nBusyBox v1.37.0 (Debian 1:1.37.0-6+b9) built-in shell (ash)\nEnter 'help' for a list of built-in commands.\n\n/ # topal\n/ # / # /bin\n/bin/busybox\nbusybox-file\nbusybox-executable\nbusybox-nonempty\nbusybox-open\nbusybox-read\nbusybox-close\n/ # /\n/ # \nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\n\nTOPAL_KERNEL_PROCESS_EXEC_COMMITTED\nruntime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz\nTOPAL_KERNEL_PROCESS_EXIT_STATUS=23\nTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_X64_FS_BASE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CLEAR_TID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_EMPTY_ROBUST_LIST_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RSEQ_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_STACK_LIMIT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_READLINKAT_FALLBACK_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_REUSABLE_GETRANDOM_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_QUERY_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_GROWTH_OKTOPAL_KERNEL_STATIC_ELF_POST_RANDOM_BRK_PAGE_ALIGNMENT_OKTOPAL_KERNEL_STATIC_ELF_RELRO_MPROTECT_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_PROCESS_NAME_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_GETUID_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CONFIG_STAT_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_CREDENTIAL_TAIL_PROFILE_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_EXITED_OKTOPAL_KERNEL_STATIC_ELF_PROCESS_ENTRY_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_ACQUISITION_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTROPY_HANDOFF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_PREPARED_PROCESS_RESTORED_OKTOPAL_KERNEL_STATIC_ELF_RANDOM_SLOT_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_LOAD_METADATA_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_HWCAP_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PLATFORM_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CLKTCK_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_SECURE_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_CREDENTIALS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_EXECFN_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PROGRAM_HEADERS_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_ENTRY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_AUXV_PAGESZ_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_ENTRY_CLEARED_OKTOPAL_KERNEL_STATIC_ELF_STACK_LEAF_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_STACK_SLOT_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ENTRY_AUTHORITY_REVOKED_OKTOPAL_KERNEL_STATIC_ELF_ADDRESS_SPACE_DETACHED_OKTOPAL_KERNEL_INTERRUPTS_MASKEDTOPAL_KERNEL_MEMORY_DESCRIBEDTOPAL_KERNEL_PCI_VIRTIO_RNG_OKTOPAL_KERNEL_VIRTIO_PCI_CAPABILITIES_OKTOPAL_KERNEL_VIRTIO_PCI_NEGOTIATEDTOPAL_KERNEL_VIRTIO_QUEUE_DISCOVEREDTOPAL_KERNEL_PCI_BUS_MASTER_OKTOPAL_KERNEL_DMA_BUFFERS_OKTOPAL_KERNEL_VIRTIO_SPLIT_RING_OKTOPAL_KERNEL_DMA_DEVICE_OWNEDTOPAL_KERNEL_VIRTIO_QUEUE_ADDRESSES_OKTOPAL_KERNEL_BOOTTOPAL_KERNEL_FAULT_RESUMEDTOPAL_KERNEL_ATOMIC_OKTOPAL_KERNEL_MEMORY_OKTOPAL_KERNEL_INTERRUPT_OKTOPAL_KERNEL_TIME_OKTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_ENTEREDTOPAL_KERNEL_DEADLINE_PREEMPTEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_ENTEREDTOPAL_KERNEL_CONTEXT_TERMINAL_RETIREDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RESUMEDTOPAL_KERNEL_CONTEXT_PREEMPTIBLE_RETIREDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RESUMEDTOPAL_KERNEL_CONTEXT_COMPLETION_BLOCKING_RETIREDTOPAL_KERNEL_USER_IMAGE_READYTOPAL_KERNEL_BOOT_RESOURCE_OKTOPAL_KERNEL_VIRTIO_QUEUE_ACTIVETOPAL_KERNEL_VIRTIO_QUEUE_NOTIFIEDTOPAL_KERNEL_VIRTIO_COMPLETION_SIGNALTOPAL_KERNEL_VIRTIO_USED_RING_OKTOPAL_KERNEL_VIRTIO_PAYLOAD_CPU_OWNEDTOPAL_KERNEL_ENTROPY_SAMPLE_CAPTUREDTOPAL_KERNEL_ENTROPY_SAMPLE_CREDITEDTOPAL_KERNEL_ENTROPY_POOL_CREATEDTOPAL_KERNEL_ENTROPY_POOL_MIXEDTOPAL_KERNEL_ENTROPY_POOL_CREDITEDTOPAL_KERNEL_ENTROPY_GENERATOR_READYTOPAL_KERNEL_ENTROPY_OUTPUT_READYTOPAL_KERNEL_USER_IMAGE_AUXV_RANDOM_OKTOPAL_KERNEL_USER_WRITE_OKTOPAL_KERNEL_USER_IMAGE_MULTIPAGE_EXEC_OKTOPAL_KERNEL_USER_GETRANDOM_OKTOPAL_KERNEL_USER_GETRANDOM_REPEATED_OKTOPAL_KERNEL_USER_GETRANDOM_FULL_OUTPUT_OKTOPAL_KERNEL_USER_GETRANDOM_SMALL_REQUEST_OKTOPAL_KERNEL_USER_GETRANDOM_LARGE_REQUEST_OKTOPAL_KERNEL_USER_READ_OKTOPAL_KERNEL_USER_CLOSE_OKTOPAL_KERNEL_USER_DUP_OKTOPAL_KERNEL_USER_FCNTL_OKTOPAL_KERNEL_USER_FSTAT_OKTOPAL_KERNEL_USER_TCGETS_OKTOPAL_KERNEL_USER_WINSIZE_OKTOPAL_KERNEL_USER_LSEEK_OKTOPAL_KERNEL_USER_COPY_TO_OKTOPAL_KERNEL_USER_COPY_FROM_OKTOPAL_KERNEL_USER_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_STACK_OKTOPAL_KERNEL_USER_IMAGE_AUXV_OKTOPAL_KERNEL_USER_IMAGE_AUXV_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_AUXV_EXECFN_OKTOPAL_KERNEL_USER_IMAGE_AUXV_CREDENTIALS_OKTOPAL_KERNEL_USER_IMAGE_ELF_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_OKTOPAL_KERNEL_USER_IMAGE_EXTERNAL_COPY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_EXTENT_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_ENTRY_OKTOPAL_KERNEL_USER_IMAGE_RUNTIME_DATA_OKTOPAL_KERNEL_USER_IMAGE_BSS_OKTOPAL_KERNEL_USER_IMAGE_DATA_OKTOPAL_KERNEL_USER_IMAGE_WRITABLE_DATA_OKTOPAL_KERNEL_USER_IMAGE_COPY_TO_OKTOPAL_KERNEL_USER_IMAGE_COPY_FROM_OKTOPAL_KERNEL_USER_IMAGE_SYSCALL_OKTOPAL_KERNEL_USER_IMAGE_RETAINEDTOPAL_KERNEL_USER_MAPPING_OKTOPAL_KERNEL_FRAME_DISJOINT_OKTOPAL_KERNEL_USER_BACKING_OK",
+        "static_applet_newline_count": 21,
+        "static_execve_descriptor_inheritance": "reopened-non-cloexec-fd-three",
+        "static_execve_environment": "caller-owned-up-to-sixteen-entries-and-1024-bytes",
+        "static_execve_random_profile": "fresh-generator-extraction-before-reentry",
+        "static_execve_stack_payload_profile": "above-entry-vectors-separated-argv0-independent-execution-name",
+        "static_process_runtime_profile": "clean-negative-retry-maximum-aggregate-console-status-witness",
+        "static_process_time_profile": "borrowed-root-clock-normalized-observations-and-saturating-relative-deadlines",
+        "static_shell_banner_profile": "clean-exact-109-byte-shell-banner-witness",
+        "static_shell_bin_busybox_artifact_size_profile": "clean-sealed-2024544-byte-bin-busybox-artifact-witness",
+        "static_shell_bin_busybox_condition_output_profile": "clean-exact-bin-busybox-file-condition-output-witness",
+        "static_shell_bin_busybox_entry_profile": "clean-sealed-bin-busybox-dirent-witness",
+        "static_shell_bin_busybox_executable_condition_output_profile": "clean-exact-bin-busybox-executable-condition-output-witness",
+        "static_shell_bin_busybox_executable_credential_profile": "clean-effective-root-witness",
+        "static_shell_bin_busybox_executable_metadata_profile": "clean-repeated-complete-bin-busybox-metadata-witness",
+        "static_shell_bin_busybox_explicit_close_condition_output_profile": "clean-exact-bin-busybox-close-output-witness",
+        "static_shell_bin_busybox_explicit_close_duplicate_profile": "clean-exact-f-dupfd-cloexec-ten-witness",
+        "static_shell_bin_busybox_explicit_close_profile": "clean-ordered-three-then-ten-close-witness",
+        "static_shell_bin_busybox_explicit_close_terminal_absence_profile": "clean-pre-reopen-proved-closed-description-witness",
+        "static_shell_bin_busybox_header_poll_profile": "clean-header-poll-not-issued",
+        "static_shell_bin_busybox_header_read_condition_output_profile": "clean-exact-bin-busybox-read-output-witness",
+        "static_shell_bin_busybox_header_read_profile": "clean-four-byte-elf-header-read-witness",
+        "static_shell_bin_busybox_header_read_terminal_revoke_profile": "clean-explicit-close-revoked-header-read-state-witness",
+        "static_shell_bin_busybox_header_terminal_probe_profile": "clean-header-terminal-probes-not-issued",
+        "static_shell_bin_busybox_metadata_profile": "clean-complete-bin-busybox-file-metadata-witness",
+        "static_shell_bin_busybox_nonempty_condition_output_profile": "clean-exact-bin-busybox-nonempty-condition-output-witness",
+        "static_shell_bin_busybox_nonempty_metadata_profile": "clean-third-complete-positive-bin-busybox-metadata-witness",
+        "static_shell_bin_busybox_open_condition_output_profile": "clean-exact-bin-busybox-open-output-witness",
+        "static_shell_bin_busybox_open_terminal_revoke_profile": "clean-reopen-terminal-revoked-live-bin-busybox-description-witness",
+        "static_shell_bin_busybox_read_only_open_profile": "clean-exact-bin-busybox-read-only-open-witness",
+        "static_shell_bin_busybox_reopen_profile": "clean-fresh-generation-descriptor-three-witness",
+        "static_shell_bin_busybox_reopen_terminal_revoke_profile": "clean-terminal-revoked-reopened-description-witness",
+        "static_shell_cd_root_profile": "clean-exact-root-chdir-witness",
+        "static_shell_console_fstat_profile": "clean-complete-console-fstat-witness",
+        "static_shell_dev_tty_open_profile": "clean-dev-tty-open-enoent-witness",
+        "static_shell_echo_command_profile": "clean-sealed-echo-command-witness",
+        "static_shell_empty_bin_close_profile": "clean-explicit-bin-directory-close-witness",
+        "static_shell_empty_bin_enumeration_profile": "clean-three-record-bin-busybox-enumeration-witness",
+        "static_shell_empty_bin_fstat_profile": "clean-complete-bin-directory-fstat-witness",
+        "static_shell_empty_bin_open_profile": "clean-exact-bin-directory-open-witness",
+        "static_shell_empty_bin_output_profile": "clean-exact-bin-busybox-glob-match-witness",
+        "static_shell_getpid_profile": "clean-pid-one-witness",
+        "static_shell_getppid_profile": "clean-no-parent-witness",
+        "static_shell_mailpath_stat_profile": "clean-root-mailpath-enoent-witness",
+        "static_shell_named_root_condition_profile": "clean-selected-bin-busybox-glob-condition-witness",
+        "static_shell_named_root_entry_profile": "clean-sealed-bin-directory-entry-witness",
+        "static_shell_named_root_metadata_profile": "clean-complete-bin-directory-metadata-witness",
+        "static_shell_post_banner_getcwd_profile": "clean-post-banner-sealed-root-witness",
+        "static_shell_post_banner_geteuid_profile": "clean-post-banner-effective-root-witness",
+        "static_shell_post_banner_terminal_probe_profile": "clean-post-banner-stdin-enotty-witness",
+        "static_shell_profile_close_profile": "clean-consumed-system-profile-description-witness",
+        "static_shell_profile_fstat_profile": "clean-complete-system-profile-metadata-witness",
+        "static_shell_profile_open_profile": "clean-read-only-system-profile-descriptor-three-witness",
+        "static_shell_profile_read_profile": "clean-empty-system-profile-eof-witness",
+        "static_shell_prompt_profile": "clean-exact-root-prompt-witness",
+        "static_shell_pwd_command_profile": "clean-command-getcwd-root-output-witness",
+        "static_shell_pwd_console_fstat_profile": "clean-command-console-fstat-absent",
+        "static_shell_pwd_getcwd_profile": "clean-command-getcwd-root-witness",
+        "static_shell_pwd_output_profile": "clean-exact-application-root-line-witness",
+        "static_shell_pwd_terminal_probe_profile": "clean-command-stdout-terminal-probe-absent",
+        "static_shell_refill_input_profile": "clean-five-publication-command-refill-witness",
+        "static_shell_root_glob_enumeration_profile": "clean-three-record-root-directory-enumeration-witness",
+        "static_shell_root_glob_fstat_profile": "clean-complete-root-directory-metadata-witness",
+        "static_shell_root_glob_open_profile": "clean-exact-root-directory-open-witness",
+        "static_shell_root_glob_output_profile": "clean-exact-named-root-glob-match-witness",
+        "static_shell_sigchld_profile": "clean-installed-cleared-witness",
+        "static_shell_stack_profile": "clean-affine-two-page-rw-nx-stack-witness",
+        "static_shell_standard_terminal_probe_profile": "clean-stderr-stdout-stdin-enotty-witness",
+        "static_shell_terminal_warning_profile": "clean-three-segment-stderr-warning-witness",
+        "static_unknown_syscall_profile": "normalized-selector-enosys-without-argument-or-state-access"
+      },
+      "process_command_sha256": "f29e3aeccbf2528bea57c96761fe8a75fdd7e092e7ad6b37b837f0b6af792113",
+      "process_command_utf8": "exec /bin/busybox true\n",
+      "process_exec_commits": 3,
+      "process_exit_status": 35,
+      "process_output_utf8": "runtime-alias\nruntime-clean\nzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "process_workload": "true",
+      "provider": "topal.provider.x86_64-qemu-pc-q35/242",
+      "publication": "topalc-target-interface/1",
+      "qemu": "QEMU emulator version 10.2.2 (qemu-10.2.2-1.fc44)",
+      "schema": "topal-kernel-toolchain-gate-qemu/255",
+      "serial_input_sha256": "3316348dbadfb7b11c7c2ea235949419e23f9fa898ad2c198f999617912a9925",
+      "serial_input_utf8": "read",
+      "source_sha256": "40495fcdfa7c80fee6af4fb1c76b7b05303a2d0ab6db2039e1ab23bd9a794707",
+      "static_boot_resource_member": "static-user.elf",
+      "static_user_image_bytes": 2024544,
+      "static_user_image_input": "supplied-clean-room-fixture",
+      "static_user_image_sha256": "7aa47d0a12ce65f138a48ab089c2700c8292531104b54833804c11aba6c68de5"
+    },
+    "static_user_image_sha256": "7aa47d0a12ce65f138a48ab089c2700c8292531104b54833804c11aba6c68de5"
+  },
+  "schema": "topal-volatile-file-qemu/1"
+}
