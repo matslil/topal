@@ -212,7 +212,7 @@ fn false_wrong_bytes_or_incomplete_reclamation_poison_without_undoing_successful
             assert!(action.load_byte(&view, 0).is_err());
             drop(action);
         }
-        let inode = &pool.state.objects[0].as_ref().unwrap().inode;
+        let inode = &pool.state.object(0).unwrap().inode;
         assert_eq!(inode.mode(), 0o100755);
         assert_eq!(
             inode.changed_seconds(),
@@ -227,7 +227,7 @@ fn false_wrong_bytes_or_incomplete_reclamation_poison_without_undoing_successful
                 .is_err()
         );
         pool.terminate("owner").unwrap();
-        assert!(pool.state.objects.iter().all(Option::is_none));
+        assert!(pool.state.objects().iter().all(Option::is_none));
         assert_eq!(pool.state.inode_actions, Default::default());
     }
 }
@@ -271,7 +271,7 @@ fn invalid_facts_foreign_references_mode_and_exhaustion_reject_before_publishing
     );
     assert_eq!(pool.state, before);
     pool.state.inode_actions.generation = 0;
-    pool.state.objects[0].as_mut().unwrap().inode.bytes[7] = 1;
+    pool.state.object_inode_bytes_mut(0)[7] = 1;
     let before = pool.state.clone();
     assert!(
         pool.borrow_inode_mode_after_admission("owner", &file, 0, 999, &graph)

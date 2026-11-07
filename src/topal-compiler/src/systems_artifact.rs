@@ -455,6 +455,18 @@ pub struct SystemsArtifactProvenance {
         deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
     )]
     pub inode_mode_runtime: Option<crate::SystemsInodeRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_library: Option<crate::SystemsRegionLibraryArtifact>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub namespace_runtime: Option<crate::SystemsNamespaceRegionBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_library: Option<crate::SystemsNumericLibraryArtifact>,
     pub image_library: Option<crate::SystemsNumericLibraryArtifact>,
@@ -611,6 +623,7 @@ pub struct SystemsKernelLibraries<'a> {
     pub file_position: Option<&'a crate::SystemsSourceLibraryInput>,
     pub ram_page_pool: Option<&'a crate::SystemsSourceLibraryInput>,
     pub inode_mode: Option<&'a crate::SystemsSourceLibraryInput>,
+    pub namespace: Option<&'a crate::SystemsSourceLibraryInput>,
     pub policy: Option<&'a crate::SystemsSourceLibraryInput>,
     pub time: Option<&'a crate::SystemsSourceLibraryInput>,
     pub image: Option<&'a crate::SystemsSourceLibraryInput>,
@@ -640,6 +653,7 @@ pub fn publish_x86_64_systems_artifact_with_libraries(
             file_position: None,
             ram_page_pool: None,
             inode_mode: None,
+            namespace: None,
             region: None,
             policy: source_library,
             time: time_library,
@@ -668,12 +682,19 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         file_position: file_position_library,
         ram_page_pool: ram_page_pool_library,
         inode_mode: inode_mode_library,
+        namespace: namespace_library,
         policy: source_library,
         time: time_library,
         image: image_library,
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if program.namespace_library.is_some() != namespace_library.is_some() {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-NAMESPACE: declaration requires its matching explicit source snapshot"
+                .into(),
+        ));
+    }
     if program.inode_mode_library.is_some() != inode_mode_library.is_some() {
         return Err(CompileError::Tool(
             "E-SYSTEMS-INODE-MODE: declaration requires its matching explicit source snapshot"
@@ -747,6 +768,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         file_position_library,
         ram_page_pool_library,
         inode_mode_library,
+        namespace_library,
         &stage,
     );
     let record = match result {
@@ -793,6 +815,7 @@ fn publish_in_stage(
     file_position_library: Option<&crate::SystemsSourceLibraryInput>,
     ram_page_pool_library: Option<&crate::SystemsSourceLibraryInput>,
     inode_mode_library: Option<&crate::SystemsSourceLibraryInput>,
+    namespace_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
@@ -902,6 +925,31 @@ fn publish_in_stage(
             )
         })
         .transpose()?;
+    let namespace = program
+        .namespace_library
+        .as_ref()
+        .zip(namespace_library)
+        .map(|(requirement, input)| {
+            if requirement.source != input.source {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-NAMESPACE: source path does not match the declared entry".into(),
+                ));
+            }
+            let namespace_work = work.join("namespace");
+            fs::create_dir(&namespace_work).map_err(io_error(
+                "create namespace object work space",
+                &namespace_work,
+            ))?;
+            crate::build_systems_region_instance_library(
+                input,
+                &requirement.export,
+                2,
+                crate::systems_region_library::NAMESPACE_INSTANCE,
+                tools,
+                &namespace_work,
+            )
+        })
+        .transpose()?;
     if program.time_library.is_some()
         || program.image_library.is_some()
         || program.dispatch_library.is_some()
@@ -980,6 +1028,15 @@ fn publish_in_stage(
             crate::systems_provider_object::inode_region::inspect_linked(
                 &linked.kernel,
                 &inode.record,
+            )
+        })
+        .transpose()?;
+    let namespace_runtime = namespace
+        .as_ref()
+        .map(|namespace| {
+            crate::systems_provider_object::namespace_region::inspect_linked(
+                &linked.kernel,
+                &namespace.record,
             )
         })
         .transpose()?;
@@ -1144,6 +1201,42 @@ fn publish_in_stage(
             }));
         record.inode_mode_library = Some(inode.record);
         record.inode_mode_runtime = inode_mode_runtime;
+        record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+        record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
+    }
+    if let Some(namespace) = namespace {
+        for (name, bytes) in [
+            ("namespace-library.t", namespace.source.as_bytes()),
+            ("namespace-library.ll", namespace.llvm.as_bytes()),
+            (
+                "namespace-library.retained.ll",
+                namespace.retained_llvm.as_bytes(),
+            ),
+            ("namespace-library.o", namespace.object.as_slice()),
+            (
+                "namespace-library.modules.json",
+                namespace.module_snapshot.as_slice(),
+            ),
+        ] {
+            fs::write(stage.join(name), bytes)
+                .map_err(io_error("write namespace source artifact", stage))?;
+            record.outputs.push(DigestEntry {
+                identity: name.into(),
+                sha256: sha256(bytes),
+            });
+        }
+        record.inputs.push(DigestEntry {
+            identity: format!("kernel-namespace-source:{}", namespace.record.source),
+            sha256: namespace.record.source_sha256.clone(),
+        });
+        record
+            .inputs
+            .extend(namespace.record.modules.iter().map(|module| DigestEntry {
+                identity: format!("kernel-namespace-source-module:{}", module.source),
+                sha256: module.sha256.clone(),
+            }));
+        record.namespace_library = Some(namespace.record);
+        record.namespace_runtime = namespace_runtime;
         record.inputs.sort_by(|a, b| a.identity.cmp(&b.identity));
         record.outputs.sort_by(|a, b| a.identity.cmp(&b.identity));
     }

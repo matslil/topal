@@ -9456,7 +9456,16 @@ MMIO, device, atomic, DMA, firmware and user-memory authority SHALL NOT be
 derived by this boundary. Ordinary core Memory values SHALL retain immutable
 meaning. Native publication SHALL require separately qualified source/code,
 ownership, ABI, access, stack and allocation evidence. The initial model binding
-SHALL contain at most 64 selected function identities.
+SHALL contain at most 64 selected function identities. If specialization would
+exceed that budget, the systems compiler MAY share equivalent checked instances
+of the same source declaration. It SHALL validate the complete original closed
+graph before sharing, preserve types, literals, operations, arguments, call
+order, effects, source/module identity and captures, and remove only analysis
+integer-range annotations unused by lowering. It SHALL revalidate the retained
+closure against the unchanged budget and charge each actual call separately in
+all resource proofs. Closures already within the budget SHALL retain their
+prior representations. This strategy SHALL NOT change core meaning or grant
+additional authority.
 
 ### TOPAL-SYSTEMS-REGION-LIBRARY-CALL-001 — Nested borrowing and alias effects
 
@@ -10265,6 +10274,12 @@ SHALL NOT itself establish inode, mount, credential or controller authority.
 
 ### TOPAL-SYSTEMS-NAMESPACE-ACTION-001 — Actual source namespace publication
 
+The `namespace-library` root member SHALL require exactly one qualified region
+instance action declaration, derived context `namespace-metadata`, two Nat
+facts and Boolean completion. The first native profile SHALL require the
+instance position, page and inode controllers. Its declaration SHALL NOT alter
+an older dispatch vocabulary or select incompatible entry-table consumers.
+
 The selected ordinary source SHALL mutate the actual owned metadata page,
 including entry/name associations, checked link counts and inode/parent times;
 a copied candidate or native mutation SHALL NOT substitute for that grant.
@@ -10287,6 +10302,16 @@ stores SHALL be fatal without rollback or resumed owner/Linux error. No-op and
 pre-admission refusal SHALL issue no action. Histories SHALL not rewind during
 link/rename, object reuse, exec/fork or process restoration. Overlapping
 filesystem loans SHALL conflict; distinct instance storage SHALL remain disjoint.
+
+Native recovery SHALL preserve trusted caller/frame facts outside the borrowed
+page before source entry and SHALL NOT depend on an aborting callee restoring
+its live registers. A consumed epoch SHALL survive a source runtime abort.
+The comparison and recovery allocations SHALL be included in exact native
+storage/code bindings and complete cleanup. Fatal cleanup SHALL attempt all
+owned temporary erasures before any readback failure can skip another region;
+normal retirement SHALL clear popped caller spill slots before resumption.
+Untrusted recovery addresses SHALL NOT authorize arbitrary erasure. These
+requirements add no source pointer/address constructor or frame-transport ABI.
 
 New table geometry SHALL require exact new evidence versions and changed-byte/
 stale/overlapping binding refusals, without enlarging existing owner extents or

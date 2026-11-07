@@ -89,7 +89,9 @@ fn analyze_kernel_region_profile(
     profile: CompilerKernelRegionProfile,
 ) -> Result<CompilerProgram, Diagnostic> {
     let selection = KernelRegionSelection::Entry(entry, profile);
-    let program = analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
+    let mut program =
+        analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
+    coalesce_kernel_region_helpers(&mut program)?;
     if !crate::published_function_names(text)
         .iter()
         .any(|name| canonically_equal(name, entry))
@@ -148,8 +150,9 @@ pub fn analyze_kernel_region_module_exports(
         .iter()
         .map(|export| format!("{}.{}", export.module.join("."), export.name))
         .collect::<Vec<_>>();
-    let program = analyze_for_compiler_options(&source, modules, &names, Some(&selection))?;
+    let mut program = analyze_for_compiler_options(&source, modules, &names, Some(&selection))?;
     if !exports.is_empty() {
+        coalesce_kernel_region_helpers(&mut program)?;
         kernel_region_function_effects(&program)?;
     }
     Ok(program)

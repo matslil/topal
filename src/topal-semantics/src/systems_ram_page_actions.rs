@@ -1,6 +1,5 @@
 //! Real allocation-map loans; model facts and cleanup flags are not native proof.
 use super::*;
-use crate::systems_region_library::ControllerActionState;
 use crate::{
     RegionActionReclamation, RegionLibraryBinding, RegionLibraryError, RegionLibraryInvocation,
     RegionLibraryView,
@@ -23,9 +22,7 @@ enum Transition {
 /// Its private construction validates live authority before release preparation.
 #[derive(Debug)]
 pub(crate) struct PageActionStorage<'a> {
-    map: &'a mut [u8; PAGES],
-    pages: &'a mut [Page],
-    domain: &'a mut ControllerActionState,
+    state: &'a mut State,
     controller: String,
     identity: Arc<()>,
     before: [u8; PAGES],
@@ -49,8 +46,9 @@ impl SystemsVolatileFilePool {
             .description(owner, file)
             .map_err(|_| RegionLibraryError::Owner)?;
         let description = &self.state.descriptions[&description];
-        let object = self.state.objects[description.object]
-            .as_ref()
+        let object = self
+            .state
+            .object(description.object)
             .ok_or(RegionLibraryError::Owner)?
             .identity;
         let (transition, inputs) = match request {
@@ -63,13 +61,12 @@ impl SystemsVolatileFilePool {
                 }
                 if self
                     .state
-                    .pages
-                    .iter()
+                    .page_records()
                     .any(|page| page.owner == Some(object) && page.index == logical_page)
                 {
                     return Err(RegionLibraryError::Owner);
                 }
-                if !self.state.page_allocation.contains(&0) {
+                if !self.state.page_allocation().contains(&0) {
                     return Err(RegionLibraryError::Capacity);
                 }
                 (
@@ -85,8 +82,8 @@ impl SystemsVolatileFilePool {
                 if index >= PAGES {
                     return Err(RegionLibraryError::Bounds);
                 }
-                if self.state.page_allocation[index] != 1
-                    || self.state.pages[index].owner != Some(object)
+                if self.state.page_allocation()[index] != 1
+                    || self.state.page_owner(index) != Some(object)
                 {
                     return Err(RegionLibraryError::Owner);
                 }
@@ -105,13 +102,11 @@ impl SystemsVolatileFilePool {
             self.state.pages[slot].bytes.fill(0);
             debug_assert!(self.state.pages[slot].bytes.iter().all(|byte| *byte == 0));
         }
-        let before = self.state.page_allocation;
+        let before = self.state.page_allocation();
         self.state.page_actions.generation = generation;
         self.state.page_actions.active = true;
         let storage = PageActionStorage {
-            map: &mut self.state.page_allocation,
-            pages: &mut self.state.pages,
-            domain: &mut self.state.page_actions,
+            state: &mut self.state,
             controller: self.owner.clone(),
             identity: self.identity.clone(),
             before,
@@ -140,21 +135,26 @@ impl PageActionStorage<'_> {
         self.inputs
     }
     pub(crate) fn load(&self, offset: u64) -> Result<u8, RegionLibraryError> {
-        if !self.domain.active || self.domain.poisoned {
+        if !self.state.page_actions.active || self.state.page_actions.poisoned {
             return Err(RegionLibraryError::Owner);
         }
         let offset = usize::try_from(offset).map_err(|_| RegionLibraryError::Bounds)?;
-        self.map
+        self.state
+            .page_allocation()
             .get(offset)
             .copied()
             .ok_or(RegionLibraryError::Bounds)
     }
     pub(crate) fn store(&mut self, offset: u64, value: u8) -> Result<(), RegionLibraryError> {
-        if !self.domain.active || self.domain.poisoned {
+        if !self.state.page_actions.active || self.state.page_actions.poisoned {
             return Err(RegionLibraryError::Owner);
         }
         let offset = usize::try_from(offset).map_err(|_| RegionLibraryError::Bounds)?;
-        *self.map.get_mut(offset).ok_or(RegionLibraryError::Bounds)? = value;
+        *self
+            .state
+            .page_allocation_mut()
+            .get_mut(offset)
+            .ok_or(RegionLibraryError::Bounds)? = value;
         Ok(())
     }
     pub(crate) fn finish(
@@ -167,49 +167,52 @@ impl PageActionStorage<'_> {
                 let changed = self
                     .before
                     .iter()
-                    .zip(self.map.iter())
+                    .zip(self.state.page_allocation().iter())
                     .enumerate()
                     .filter(|(_, (before, after))| before != after)
                     .map(|(slot, _)| slot)
                     .collect::<Vec<_>>();
                 match changed.as_slice() {
-                    [slot] if self.before[*slot] == 0 && self.map[*slot] == 1 => Some(*slot),
+                    [slot]
+                        if self.before[*slot] == 0 && self.state.page_allocation()[*slot] == 1 =>
+                    {
+                        Some(*slot)
+                    }
                     _ => None,
                 }
             }
             Transition::Release { slot } => {
                 let mut expected = self.before;
                 expected[slot] = 0;
-                (*self.map == expected).then_some(slot)
+                (self.state.page_allocation() == expected).then_some(slot)
             }
         };
         let valid_payload = selected.is_some_and(|slot| {
-            self.pages[slot].bytes.iter().all(|byte| *byte == 0)
+            self.state.pages[slot].bytes.iter().all(|byte| *byte == 0)
                 && match self.transition {
                     Transition::Allocate { .. } => {
-                        self.pages[slot].owner.is_none() && self.pages[slot].index == 0
+                        self.state.page_owner(slot).is_none() && self.state.page_index(slot) == 0
                     }
-                    Transition::Release { .. } => self.pages[slot].owner.is_some(),
+                    Transition::Release { .. } => self.state.page_owner(slot).is_some(),
                 }
         });
         if !result || !proof.complete() || !valid_payload {
-            self.domain.poisoned = true;
+            self.state.page_actions.poisoned = true;
             return Err(RegionLibraryError::Invariant);
         }
         let slot = selected.unwrap();
         match self.transition {
             Transition::Allocate { object, index } => {
-                self.pages[slot].owner = Some(object);
-                self.pages[slot].index = index;
+                self.state.associate_page(slot, object, index);
             }
-            Transition::Release { .. } => self.pages[slot].erase(),
+            Transition::Release { .. } => self.state.erase_page(slot),
         }
-        self.domain.active = false;
+        self.state.page_actions.active = false;
         Ok(slot as u64)
     }
     pub(crate) fn abandon(&mut self) {
-        if self.domain.active {
-            self.domain.poisoned = true;
+        if self.state.page_actions.active {
+            self.state.page_actions.poisoned = true;
         }
     }
 }

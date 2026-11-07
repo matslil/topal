@@ -51,7 +51,8 @@ pub(crate) fn publish(
             })
         })
         .transpose()?;
-    if program.inode_mode_library.is_some()
+    if program.namespace_library.is_some()
+        || program.inode_mode_library.is_some()
         || program.ram_page_pool_library.is_some()
         || program.file_position_library.is_some()
         || program.region_library.is_some()
@@ -61,6 +62,11 @@ pub(crate) fn publish(
         || program.dispatch_library.is_some()
         || program.process_identity_library.is_some()
     {
+        let namespace = program
+            .namespace_library
+            .as_ref()
+            .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
+            .transpose()?;
         let ram_page_pool = program
             .ram_page_pool_library
             .as_ref()
@@ -123,6 +129,7 @@ pub(crate) fn publish(
                 file_position: file_position.as_ref(),
                 ram_page_pool: ram_page_pool.as_ref(),
                 inode_mode: inode_mode.as_ref(),
+                namespace: namespace.as_ref(),
                 region: region.as_ref(),
                 policy: source.as_ref(),
                 time: time.as_ref(),

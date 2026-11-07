@@ -72,6 +72,7 @@ pub(crate) fn inspect_linked(
             arena: ARENA,
             control: CONTROL,
             history: HISTORY,
+            extra_storage: Vec::new(),
             live_frame_bytes: LIVE_FRAME_BYTES,
             call_alignment_bytes: CALL_ALIGNMENT_BYTES,
             code: vec![

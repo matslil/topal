@@ -54,6 +54,7 @@ pub(super) enum Storage<'a> {
         expected: u64,
     },
     PagePool(crate::systems_volatile_files::page_actions::PageActionStorage<'a>),
+    Namespace(crate::systems_volatile_files::namespace_actions::NamespaceActionStorage<'a>),
     Inode {
         field: &'a mut [u8; 32],
         domain: &'a mut ControllerActionState,
@@ -71,6 +72,7 @@ impl Storage<'_> {
             Self::Position { owner, .. } => owner.clone(),
             Self::Inode { owner, .. } => owner.clone(),
             Self::PagePool(storage) => storage.owner(),
+            Self::Namespace(storage) => storage.owner(),
         }
     }
     pub(super) fn scope(&self) -> Option<ControllerOwner> {
@@ -79,6 +81,7 @@ impl Storage<'_> {
             Self::Position { scope, .. } => Some(scope.clone()),
             Self::Inode { scope, .. } => Some(scope.clone()),
             Self::PagePool(storage) => Some(ControllerOwner(storage.identity())),
+            Self::Namespace(storage) => Some(ControllerOwner(storage.identity())),
         }
     }
     pub(super) fn count(&self) -> u64 {
@@ -87,6 +90,7 @@ impl Storage<'_> {
             Self::Position { .. } => 8,
             Self::PagePool(_) => 8,
             Self::Inode { .. } => 32,
+            Self::Namespace(_) => 4096,
         }
     }
     pub(super) fn resource(&self) -> ResourceIdentity {
@@ -103,6 +107,11 @@ impl Storage<'_> {
             Self::Position { resource, .. } => resource.clone(),
             Self::Inode { resource, .. } => resource.clone(),
             Self::PagePool(storage) => ResourceIdentity(QualifiedName(vec![
+                "systems".into(),
+                "file-controller".into(),
+                storage.controller().into(),
+            ])),
+            Self::Namespace(storage) => ResourceIdentity(QualifiedName(vec![
                 "systems".into(),
                 "file-controller".into(),
                 storage.controller().into(),
@@ -124,6 +133,7 @@ impl Storage<'_> {
                     .ok_or(RegionLibraryError::Bounds)
             }
             Self::PagePool(storage) => storage.load(offset),
+            Self::Namespace(storage) => storage.load(offset),
             Self::Inode { field, domain, .. } => {
                 if !domain.active || domain.poisoned {
                     return Err(RegionLibraryError::Owner);
@@ -148,6 +158,7 @@ impl Storage<'_> {
                 Ok(())
             }
             Self::PagePool(storage) => storage.store(offset, value),
+            Self::Namespace(storage) => storage.store(offset, value),
             Self::Inode { field, domain, .. } => {
                 if !domain.active || domain.poisoned {
                     return Err(RegionLibraryError::Owner);
@@ -183,6 +194,9 @@ impl Storage<'_> {
         if let Self::PagePool(storage) = self {
             storage.abandon();
         }
+        if let Self::Namespace(storage) = self {
+            storage.abandon();
+        }
         if let Self::Position { domain, .. } = self {
             if domain.active {
                 domain.poisoned = true;
@@ -200,7 +214,7 @@ impl Storage<'_> {
     pub(super) fn is_controller(&self) -> bool {
         matches!(
             self,
-            Self::Position { .. } | Self::PagePool(_) | Self::Inode { .. }
+            Self::Position { .. } | Self::PagePool(_) | Self::Namespace(_) | Self::Inode { .. }
         )
     }
 }

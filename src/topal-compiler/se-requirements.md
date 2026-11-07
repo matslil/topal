@@ -12359,4 +12359,16 @@ dispatch vocabularies, exact new layouts, replacement/alias/capacity/lifetime
 laws, malformed bindings and source failures using independent byte/native/
 Linux/physical oracles and unchanged utility binaries. Keep existing owner
 extents, source resource limits, core meaning and initial acceptance scope.
+When ordinary helper specialization exceeds the existing function budget,
+validate every original checked body before sharing equivalent instances of
+one declaration, erase only lowering-independent integer-range metadata and
+revalidate against the unchanged budget. Preserve every call and charge its
+complete temporary and view costs independently; retain the exact earlier
+representation of already-qualified smaller closures.
+Qualify the unique `namespace-library` declaration and its existing controller
+dependencies through both the shared semantic model and public compiler
+pipeline. Bind and erase private comparison/recovery storage, preserve the
+consumed epoch through runtime abort, and recover the caller frame without
+trusting aborting callee registers. Preserve the reserved user-address window
+when additional supervisor code/storage requires a different placement.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

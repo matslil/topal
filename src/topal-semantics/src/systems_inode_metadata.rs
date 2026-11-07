@@ -71,6 +71,7 @@ impl SystemsInodeMetadata {
         self.changed(seconds);
     }
 
+    #[cfg(test)]
     pub(crate) fn erase(&mut self) {
         self.bytes.fill(0);
     }

@@ -295,6 +295,7 @@ fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
         file_position_library: None,
         ram_page_pool_library: None,
         inode_mode_library: None,
+        namespace_library: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,

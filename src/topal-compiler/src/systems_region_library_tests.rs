@@ -2,6 +2,8 @@ use super::*;
 
 #[path = "systems_inode_mode_tests.rs"]
 mod inode_modes;
+#[path = "systems_namespace_action_tests.rs"]
+mod namespace_actions;
 #[path = "systems_region_unsigned_tests.rs"]
 mod unsigned;
 

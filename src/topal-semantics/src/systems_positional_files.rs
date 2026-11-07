@@ -126,11 +126,10 @@ mod tests {
         p.close("owner", &f).unwrap();
         assert_eq!(p.read_at("owner", &other, 3, 0, OK).unwrap(), b"old");
         p.close("owner", &other).unwrap();
-        assert!(p.state.objects.iter().all(Option::is_none));
+        assert!(p.state.objects().iter().all(Option::is_none));
         assert!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.owner.is_none() && page.bytes.iter().all(|&b| b == 0))
         );
     }

@@ -18,6 +18,14 @@ fn build_linked_outputs(
             .arg("-static")
             .arg("--no-dynamic-linker")
             .arg("--build-id=none")
+            // The namespace component no longer fits below the reserved
+            // [4MiB,8MiB) user window. Keep every supervisor BSS allocation
+            // above that window; older selections retain their exact layout.
+            .args(
+                work.join("namespace/kernel-region.o")
+                    .is_file()
+                    .then_some("--section-start=.bss=0x800000"),
+            )
             .arg("--entry")
             .arg(X86_SYSTEMS_KERNEL_ENTRY)
             .arg("-z")
@@ -26,8 +34,14 @@ fn build_linked_outputs(
             .arg("root.o")
             .arg("provider.o")
             .args(
+                work.join("namespace/kernel-region.o")
+                    .is_file()
+                    .then_some("namespace/kernel-region.o"),
+            )
+            .args(
                 work.join("inode-mode/kernel-region.o")
-                    .is_file().then_some("inode-mode/kernel-region.o"),
+                    .is_file()
+                    .then_some("inode-mode/kernel-region.o"),
             )
             .args(
                 work.join("ram-page-pool/kernel-region.o")
@@ -187,6 +201,8 @@ fn artifact_provenance(
         ram_page_pool_runtime: None,
         inode_mode_library: None,
         inode_mode_runtime: None,
+        namespace_library: None,
+        namespace_runtime: None,
         region_runtime: None,
         time_library: None,
         image_library: None,

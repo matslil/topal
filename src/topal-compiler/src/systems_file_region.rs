@@ -28,6 +28,7 @@ pub(super) struct InvocationTemplate {
     pub(super) arena: &'static str,
     pub(super) control: &'static str,
     pub(super) history: &'static str,
+    pub(super) extra_storage: Vec<(&'static str, u64, u64)>,
     pub(super) live_frame_bytes: u64,
     pub(super) call_alignment_bytes: u64,
     pub(super) code: Vec<(&'static str, Code)>,

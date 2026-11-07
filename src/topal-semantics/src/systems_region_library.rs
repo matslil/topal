@@ -248,6 +248,47 @@ impl<'a> RegionLibraryInvocation<'a> {
         )
     }
 
+    pub(crate) fn begin_namespace(
+        storage: crate::systems_volatile_files::namespace_actions::NamespaceActionStorage<'a>,
+        binding: &'a RegionLibraryBinding,
+        generation: u64,
+    ) -> (Self, RegionLibraryView) {
+        Self::from_storage(
+            Storage::Namespace(storage),
+            binding,
+            generation,
+            RegionLibraryAccess::ReadWrite,
+        )
+    }
+
+    /// Admitted operation/time facts, not execution of a compiled source body.
+    pub fn namespace_action_inputs(&self) -> Result<(u64, u64), RegionLibraryError> {
+        self.active()?;
+        match &self.storage {
+            Storage::Namespace(storage) => Ok(storage.inputs()),
+            _ => Err(RegionLibraryError::Binding),
+        }
+    }
+
+    /// Validate the real metadata and logical cleanup obligations. The model
+    /// neither executes an opaque body nor proves physical temporary erasure.
+    pub fn complete_namespace_action(
+        &mut self,
+        result: bool,
+        proof: RegionActionReclamation,
+    ) -> Result<(), RegionLibraryError> {
+        self.active()?;
+        if self.frames.len() != 1 {
+            return Err(RegionLibraryError::NotRoot);
+        }
+        let Storage::Namespace(storage) = &mut self.storage else {
+            return Err(RegionLibraryError::Binding);
+        };
+        let completion = storage.finish(result, proof);
+        self.revoke();
+        completion
+    }
+
     /// Admitted model facts, without execution of a source body.
     pub fn page_action_inputs(&self) -> Result<(u64, u64), RegionLibraryError> {
         self.active()?;

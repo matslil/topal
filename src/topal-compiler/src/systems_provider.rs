@@ -759,6 +759,7 @@ pub struct X86SystemsProviderPlan {
     pub file_position_library_interface: Option<&'static str>,
     pub ram_page_pool_library_interface: Option<&'static str>,
     pub inode_mode_library_interface: Option<&'static str>,
+    pub namespace_library_interface: Option<&'static str>,
     pub source_library_interface: Option<&'static str>,
     pub time_library_interface: Option<&'static str>,
     pub revision: &'static str,
@@ -835,6 +836,10 @@ pub fn plan_x86_64_systems_provider(
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(X86SystemsProviderPlan {
+        namespace_library_interface: program
+            .namespace_library
+            .as_ref()
+            .map(|r| r.interface.as_str()),
         inode_mode_library_interface: program
             .inode_mode_library
             .as_ref()

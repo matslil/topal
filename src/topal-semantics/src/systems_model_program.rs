@@ -117,6 +117,7 @@ pub struct SystemsProgram {
     pub file_position_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub ram_page_pool_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub inode_mode_library: Option<crate::SystemsSourceLibraryRequirement>,
+    pub namespace_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub time_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub image_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub dispatch_library: Option<crate::SystemsSourceLibraryRequirement>,
@@ -1027,18 +1028,42 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             ));
         }
     }
-    if let Some(library) = &program.inode_mode_library {
+    if let Some(library) = &program.namespace_library {
         library.validate()?;
-        if library.interface != crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1 {
-            return Err(SystemsModelError::new("E-SYSTEMS-INODE-MODE",
-                "inode-mode-library requires the qualified region instance action interface"));
+        if library.interface
+            != crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+            || program.inode_mode_library.is_none()
+            || program.ram_page_pool_library.is_none()
+            || !program.file_position_library.as_ref().is_some_and(|r| {
+                r.interface
+                    == crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+            })
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-NAMESPACE",
+                "namespace-library requires the region instance interface and the inode, page and instance-position controllers",
+            ));
         }
     }
-    if program.dispatch_library.as_ref().is_some_and(|library|
-        library.interface == crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV5)
-        && program.inode_mode_library.is_none() {
-        return Err(SystemsModelError::new("E-SYSTEMS-INODE-MODE",
-            "static-linux-dispatch-v5 requires inode-mode-library"));
+    if let Some(library) = &program.inode_mode_library {
+        library.validate()?;
+        if library.interface
+            != crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-INODE-MODE",
+                "inode-mode-library requires the qualified region instance action interface",
+            ));
+        }
+    }
+    if program.dispatch_library.as_ref().is_some_and(|library| {
+        library.interface == crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV5
+    }) && program.inode_mode_library.is_none()
+    {
+        return Err(SystemsModelError::new(
+            "E-SYSTEMS-INODE-MODE",
+            "static-linux-dispatch-v5 requires inode-mode-library",
+        ));
     }
     if let Some(library) = &program.ram_page_pool_library {
         library.validate()?;
@@ -1117,7 +1142,8 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV1
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV2
                 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV3
-                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV4 | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV5
+                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV4
+                | crate::SystemsSourceLibraryInterface::StaticLinuxDispatchV5
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-LIBRARY",

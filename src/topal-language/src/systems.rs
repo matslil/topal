@@ -365,6 +365,7 @@ pub fn analyze_systems_for_compiler(
         file_position_library: root_entries.file_position_library,
         ram_page_pool_library: root_entries.ram_page_pool_library,
         inode_mode_library: root_entries.inode_mode_library,
+        namespace_library: root_entries.namespace_library,
         time_library: root_entries.time_library,
         image_library: root_entries.image_library,
         dispatch_library: root_entries.dispatch_library,
@@ -532,6 +533,7 @@ struct ArtifactEntries {
     file_position_library: Option<CompilerSystemsSourceLibraryRequirement>,
     ram_page_pool_library: Option<CompilerSystemsSourceLibraryRequirement>,
     inode_mode_library: Option<CompilerSystemsSourceLibraryRequirement>,
+    namespace_library: Option<CompilerSystemsSourceLibraryRequirement>,
     time_library: Option<CompilerSystemsSourceLibraryRequirement>,
     image_library: Option<CompilerSystemsSourceLibraryRequirement>,
     dispatch_library: Option<CompilerSystemsSourceLibraryRequirement>,
@@ -584,6 +586,7 @@ fn parse_artifact_root(
     let mut file_position_library = None;
     let mut ram_page_pool_library = None;
     let mut inode_mode_library = None;
+    let mut namespace_library = None;
     let mut time_library = None;
     let mut image_library = None;
     let mut dispatch_library = None;
@@ -592,7 +595,21 @@ fn parse_artifact_root(
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "inode-mode-library" {
+        if label_text == "namespace-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface
+                != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                || namespace_library.replace(requirement).is_some()
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-NAMESPACE",
+                    label,
+                    "namespace-library requires one qualified region instance action entry",
+                ));
+            }
+            continue;
+        } else if label_text == "inode-mode-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if requirement.interface
                 != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
@@ -809,6 +826,7 @@ fn parse_artifact_root(
         file_position_library,
         ram_page_pool_library,
         inode_mode_library,
+        namespace_library,
         time_library,
         image_library,
         dispatch_library,

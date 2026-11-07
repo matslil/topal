@@ -16,7 +16,7 @@ impl SystemsPipePool {
             .endpoint(owner, endpoint)
             .map_err(|_| RegionLibraryError::Owner)?;
         RegionLibraryInvocation::begin_inode(
-            &mut self.objects[index].as_mut().unwrap().inode,
+            &mut self.objects[index].as_mut().unwrap().inode.bytes,
             &mut self.inode_actions,
             (&self.owner, self.identity.clone(), InodeController::Pipe),
             0o10000,

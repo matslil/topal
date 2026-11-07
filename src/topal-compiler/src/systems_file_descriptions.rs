@@ -655,6 +655,7 @@ pub(in super::super) fn emit_reclamation(
     source_position: bool,
     source_page: bool,
     source_inode: bool,
+    source_namespace: bool,
 ) -> Result<(), CompileError> {
     let mut e = E(code);
     // An inactive parent retains references in this same description store.
@@ -736,6 +737,9 @@ pub(in super::super) fn emit_reclamation(
     }
     if source_inode {
         e.0.external_call(super::super::inode_region::FINALIZE);
+    }
+    if source_namespace {
+        e.0.external_call(super::super::namespace_region::FINALIZE);
     }
     e.0.bind("fd-release-return")?;
     e.0.bytes(&[0xc3]);

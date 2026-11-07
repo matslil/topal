@@ -43,12 +43,15 @@ impl SystemsVolatileFilePool {
         seconds: u64,
         binding: &'a RegionLibraryBinding,
     ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
+        let State {
+            metadata,
+            inode_actions,
+            ..
+        } = &mut self.state;
+        let base = 256 + object * 128 + 24;
         RegionLibraryInvocation::begin_inode(
-            &mut self.state.objects[object]
-                .as_mut()
-                .ok_or(RegionLibraryError::Owner)?
-                .inode,
-            &mut self.state.inode_actions,
+            (&mut metadata[base..base + 32]).try_into().unwrap(),
+            inode_actions,
             (
                 &self.owner,
                 self.identity.clone(),
@@ -68,9 +71,14 @@ impl SystemsVolatileFilePool {
         binding: &'a RegionLibraryBinding,
     ) -> Result<(RegionLibraryInvocation<'a>, RegionLibraryView), RegionLibraryError> {
         self.owned(owner).map_err(|_| RegionLibraryError::Owner)?;
+        let State {
+            metadata,
+            inode_actions,
+            ..
+        } = &mut self.state;
         RegionLibraryInvocation::begin_inode(
-            &mut self.state.directory_inode,
-            &mut self.state.inode_actions,
+            (&mut metadata[32..64]).try_into().unwrap(),
+            inode_actions,
             (
                 &self.owner,
                 self.identity.clone(),
@@ -93,11 +101,8 @@ impl SystemsVolatileFilePool {
     ) -> Result<(), SystemsModelError> {
         let description = self.description(owner, file)?;
         let object = self.state.descriptions[&description].object;
-        self.state.objects[object]
-            .as_mut()
-            .unwrap()
-            .inode
-            .chmod(native_mode, seconds);
+        self.state
+            .update_object(object, |object| object.inode.chmod(native_mode, seconds));
         Ok(())
     }
 
@@ -111,11 +116,8 @@ impl SystemsVolatileFilePool {
         self.owned(owner)?;
         named::valid_name(name)?;
         let object = self.named_object(name).ok_or_else(|| error("ENOENT"))?;
-        self.state.objects[object]
-            .as_mut()
-            .unwrap()
-            .inode
-            .chmod(native_mode, seconds);
+        self.state
+            .update_object(object, |object| object.inode.chmod(native_mode, seconds));
         Ok(())
     }
 
@@ -126,7 +128,8 @@ impl SystemsVolatileFilePool {
         seconds: u64,
     ) -> Result<(), SystemsModelError> {
         self.owned(owner)?;
-        self.state.directory_inode.chmod(native_mode, seconds);
+        self.state
+            .update_directory_inode(|inode| inode.chmod(native_mode, seconds));
         Ok(())
     }
 
@@ -135,7 +138,7 @@ impl SystemsVolatileFilePool {
         owner: &str,
     ) -> Result<SystemsInodeMetadata, SystemsModelError> {
         self.owned(owner)?;
-        Ok(self.state.directory_inode.clone())
+        Ok(self.state.directory_inode().clone())
     }
 }
 
@@ -185,7 +188,7 @@ mod tests {
         pool.chmod("owner", &reader, 0xfedcba9876540ed1, 102)
             .unwrap();
         let mut expected = before;
-        let inode = &mut expected.objects[0].as_mut().unwrap().inode.bytes;
+        let inode = expected.object_inode_bytes_mut(0);
         // The full state oracle below changes only the two specified words.
         inode[..8].copy_from_slice(&0o107321_u64.to_le_bytes());
         inode[24..].copy_from_slice(&102_u64.to_le_bytes());
@@ -265,7 +268,7 @@ mod tests {
         assert_eq!(after.changed_seconds(), 111);
         pool.close("owner", &file).unwrap();
         pool.terminate("owner").unwrap();
-        assert_eq!(pool.state.directory_inode.encoded(), &[0; 32]);
+        assert_eq!(pool.state.directory_inode().encoded(), &[0; 32]);
         assert!(pool.chmod_directory("owner", 0o777, 999).is_err());
         assert!(pool.chmod_by_name("owner", b"entry", 0o777, 999).is_err());
     }

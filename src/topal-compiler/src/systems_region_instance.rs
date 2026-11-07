@@ -6,6 +6,14 @@ pub(crate) const ROOT_INSTANCE: &str = "root-region";
 pub(crate) const FILE_INSTANCE: &str = "file-position";
 pub(crate) const PAGE_INSTANCE: &str = "ram-page-pool";
 pub(crate) const INODE_INSTANCE: &str = "inode-metadata";
+pub(crate) const NAMESPACE_INSTANCE: &str = "namespace-metadata";
+pub(crate) const NAMESPACE_FRAME_PREFIX: &str = "topal.region-instance.namespace-metadata.";
+pub(crate) const NAMESPACE_FRAME_EXPORT: &str =
+    "topal_kernel_region_frame_namespace_metadata_apply_v1";
+pub(crate) const NAMESPACE_FRAME_ALLOCATE: &str =
+    "topal_kernel_region_frame_namespace_metadata_allocate_v1";
+pub(crate) const NAMESPACE_FRAME_ABORT: &str =
+    "topal_kernel_region_frame_namespace_metadata_abort_v1";
 pub(crate) const INODE_FRAME_PREFIX: &str = "topal.region-instance.inode-metadata.";
 pub(crate) const INODE_FRAME_EXPORT: &str = "topal_kernel_region_frame_inode_metadata_apply_v1";
 pub(crate) const INODE_FRAME_ALLOCATE: &str =

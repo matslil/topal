@@ -40,10 +40,8 @@ impl SystemsVolatileFilePool {
         let file = self.create(owner, rights, mode, umask, append, seconds)?;
         let description = self.state.references[&file.ticket];
         let object = self.state.descriptions[&description].object;
-        self.state.objects[object]
-            .as_mut()
-            .unwrap()
-            .may_link_unlinked = false;
+        self.state
+            .update_object(object, |inode| inode.may_link_unlinked = false);
         Ok(file)
     }
 
@@ -84,24 +82,31 @@ impl SystemsVolatileFilePool {
         if self.named_entry(destination).is_some() {
             return Err(error("EEXIST"));
         }
-        let inode = self.state.objects[object].as_ref().unwrap();
+        let inode = self.state.object(object).unwrap();
         if self.links(inode.identity) == 0 && !inode.may_link_unlinked {
             return Err(error("ENOENT"));
         }
         let slot = self
             .state
-            .names
+            .names()
             .iter()
             .position(Option::is_none)
             .ok_or_else(|| error("ENOSPC"))?;
-        let inode = self.state.objects[object].as_mut().unwrap();
-        self.state.names[slot] = Some(NameEntry {
-            identity: inode.identity,
-            name: destination.to_vec(),
+        let identity = self.state.object(object).unwrap().identity;
+        self.state.set_name(
+            slot,
+            Some(NameEntry {
+                identity,
+                name: destination.to_vec(),
+            }),
+        );
+        self.state.update_object(object, |inode| {
+            inode.link_count += 1;
+            inode.may_link_unlinked = false;
+            inode.inode.changed(seconds);
         });
-        inode.may_link_unlinked = false;
-        inode.inode.changed(seconds);
-        self.state.directory_inode.modified(seconds);
+        self.state
+            .update_directory_inode(|inode| inode.modified(seconds));
         Ok(())
     }
 
@@ -124,8 +129,8 @@ impl SystemsVolatileFilePool {
         if operation == SystemsFileRename::Exchange && new.is_none() {
             return Err(error("ENOENT"));
         }
-        let old_identity = self.state.names[old].as_ref().unwrap().identity;
-        let new_identity = new.map(|index| self.state.names[index].as_ref().unwrap().identity);
+        let old_identity = self.state.name(old).unwrap().identity;
+        let new_identity = new.map(|index| self.state.name(index).unwrap().identity);
         // Linux vfs_rename's same-inode return precedes timestamp mutation.
         if new_identity == Some(old_identity) {
             return Ok(());
@@ -134,28 +139,29 @@ impl SystemsVolatileFilePool {
         let victim = self.named_object(destination);
         if operation == SystemsFileRename::Exchange {
             let new = new.unwrap();
-            self.state.names[old].as_mut().unwrap().identity = new_identity.unwrap();
-            self.state.names[new].as_mut().unwrap().identity = old_identity;
+            self.state
+                .update_name(old, |entry| entry.identity = new_identity.unwrap());
+            self.state
+                .update_name(new, |entry| entry.identity = old_identity);
         } else if let Some(new) = new {
-            self.state.names[new].as_mut().unwrap().identity = old_identity;
-            self.state.names[old] = None;
+            self.state
+                .update_name(new, |entry| entry.identity = old_identity);
+            self.state.set_name(old, None);
+            self.state
+                .update_object(victim.unwrap(), |object| object.link_count -= 1);
         } else {
-            self.state.names[old].as_mut().unwrap().name = destination.to_vec();
+            self.state
+                .update_name(old, |entry| entry.name = destination.to_vec());
         }
-        self.state.objects[source_object]
-            .as_mut()
-            .unwrap()
-            .inode
-            .changed(seconds);
+        self.state
+            .update_object(source_object, |object| object.inode.changed(seconds));
         if let Some(object) = victim {
-            self.state.objects[object]
-                .as_mut()
-                .unwrap()
-                .inode
-                .changed(seconds);
+            self.state
+                .update_object(object, |object| object.inode.changed(seconds));
             self.reclaim_unlinked(object);
         }
-        self.state.directory_inode.modified(seconds);
+        self.state
+            .update_directory_inode(|inode| inode.modified(seconds));
         Ok(())
     }
 }

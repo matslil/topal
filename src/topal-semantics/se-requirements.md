@@ -462,6 +462,16 @@ Cover hard-link aliases, per-description state, initial anonymous link intent,
 unlink/recreation, rename replacement/exchange/no-op, exact independent entry/
 inode capacity, metadata changes, directory cookies, foreign/stale/poisoned
 refusal and complete terminal retirement. Preserve entire state on recoverable
-failure. Later loans shall retain independent source-completion/reclamation
-obligations; direct transitions shall not claim source or physical execution.
+failure. Namespace, inode and page-map loans shall share the actual canonical
+metadata used by normal observations. Independently compare the full persistent
+delta and immutable input, erase staging before resumption, and retain stores
+while poisoning the owner on false completion, changed association, abandonment
+or incomplete reclamation. Expected-state snapshots shall never publish or
+roll back opaque effects. Preserve separate nonwrapping invocation histories
+and reject overlapping domains, stale/foreign references and malformed raw
+metadata/descriptions before staging. Direct transitions and logical cleanup
+obligations shall not claim compiled source or physical execution.
+Validate the optional namespace source declaration against its instance
+interface and the qualified filesystem-controller dependencies. Preserve the
+older root and dispatch meanings when that declaration is absent.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).

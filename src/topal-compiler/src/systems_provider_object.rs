@@ -6,6 +6,10 @@ use std::collections::BTreeMap;
 pub(crate) mod file_region;
 #[path = "systems_inode_region.rs"]
 pub(crate) mod inode_region;
+#[path = "systems_namespace_region_oracle.rs"]
+pub(crate) mod namespace_oracle;
+#[path = "systems_namespace_region.rs"]
+pub(crate) mod namespace_region;
 #[path = "systems_process_runtime.rs"]
 mod process_runtime;
 #[path = "systems_ram_page_region.rs"]
@@ -88,7 +92,13 @@ pub(crate) fn inspect_linked_process_backing(bytes: &[u8]) -> Result<(), Compile
         || end > 0x40000000
         || (symbol.address() < 0x800000 && end > 0x400000)
     {
-        return Err(invalid());
+        return Err(CompileError::Tool(format!(
+            "unqualified linked process/child backing: address={:#x} end={end:#x} bytes={} expected={} kind={:?}",
+            symbol.address(),
+            symbol.size(),
+            process_runtime::children::STORAGE_BYTES,
+            symbol.kind()
+        )));
     }
     let section = file
         .section_by_index(symbol.section_index().ok_or_else(invalid)?)

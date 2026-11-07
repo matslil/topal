@@ -204,6 +204,7 @@ mod tests {
             None,
             Some(&qualified_x86_64_static_user_image_fixture()),
             SystemsKernelLibraries {
+                namespace: None,
                 inode_mode: Some(&inode),
                 ram_page_pool: Some(&page),
                 file_position: Some(&position),

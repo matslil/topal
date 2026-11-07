@@ -19,6 +19,12 @@ pub use region_actions::SystemsPositionTransfer;
 #[path = "systems_ram_page_actions.rs"]
 pub(crate) mod page_actions;
 pub use page_actions::SystemsRamPageAction;
+#[path = "systems_namespace_region_actions.rs"]
+pub(crate) mod namespace_actions;
+pub use namespace_actions::SystemsNamespaceRequest;
+
+#[path = "systems_file_metadata_backing.rs"]
+mod metadata_backing;
 
 const PAGE: usize = 4096;
 const PAGES: usize = 8;
@@ -92,6 +98,7 @@ pub struct SystemsVolatileFileMetadata {
 struct Object {
     identity: u64,
     may_link_unlinked: bool,
+    link_count: u64,
     size: u64,
     inode: SystemsInodeMetadata,
 }
@@ -118,33 +125,21 @@ impl Description {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Page {
-    owner: Option<u64>,
-    index: u64,
     bytes: Vec<u8>,
-}
-impl Page {
-    fn erase(&mut self) {
-        self.bytes.fill(0);
-        self.owner = None;
-        self.index = 0;
-    }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct State {
-    objects: Vec<Option<Object>>,
-    names: Vec<Option<NameEntry>>,
+    metadata: [u8; PAGE],
     pages: Vec<Page>,
-    page_allocation: [u8; PAGES],
     descriptions: BTreeMap<u64, Description>,
     references: BTreeMap<u64, u64>,
-    next_identity: u64,
     next_description: u64,
-    directory_inode: SystemsInodeMetadata,
     next_ticket: u64,
     live: bool,
     position_actions: crate::systems_region_library::ControllerActionState,
     page_actions: crate::systems_region_library::ControllerActionState,
     inode_actions: crate::systems_region_library::ControllerActionState,
+    namespace_actions: crate::systems_region_library::ControllerActionState,
 }
 
 #[derive(Debug)]
@@ -170,27 +165,28 @@ impl SystemsVolatileFilePool {
         Ok(Self {
             owner: owner.into(),
             identity: Arc::new(()),
-            state: State {
-                objects: (0..OBJECTS).map(|_| None).collect(),
-                names: (0..NAMES).map(|_| None).collect(),
-                pages: (0..PAGES)
-                    .map(|_| Page {
-                        owner: None,
-                        index: 0,
-                        bytes: vec![0; PAGE],
-                    })
-                    .collect(),
-                page_allocation: [0; PAGES],
-                descriptions: BTreeMap::new(),
-                references: BTreeMap::new(),
-                next_identity: 7,
-                next_description: 1,
-                directory_inode: SystemsInodeMetadata::new(0o40000, 0o1777, 0),
-                next_ticket: 1,
-                live: true,
-                position_actions: Default::default(),
-                page_actions: Default::default(),
-                inode_actions: Default::default(),
+            state: {
+                let mut state = State {
+                    metadata: [0; PAGE],
+                    pages: (0..PAGES)
+                        .map(|_| Page {
+                            bytes: vec![0; PAGE],
+                        })
+                        .collect(),
+                    descriptions: BTreeMap::new(),
+                    references: BTreeMap::new(),
+                    next_description: 1,
+                    next_ticket: 1,
+                    live: true,
+                    position_actions: Default::default(),
+                    page_actions: Default::default(),
+                    inode_actions: Default::default(),
+                    namespace_actions: Default::default(),
+                };
+                state.set_next_identity(7);
+                state.metadata[32..64]
+                    .copy_from_slice(&SystemsInodeMetadata::new(0o40000, 0o1777, 0).bytes);
+                state
             },
         })
     }
@@ -203,6 +199,8 @@ impl SystemsVolatileFilePool {
             || self.state.page_actions.poisoned
             || self.state.inode_actions.active
             || self.state.inode_actions.poisoned
+            || self.state.namespace_actions.active
+            || self.state.namespace_actions.poisoned
         {
             return Err(error("wrong or released filesystem owner"));
         }
@@ -212,24 +210,54 @@ impl SystemsVolatileFilePool {
         if !self.namespace_consistent() {
             return Err(error("inconsistent namespace owner"));
         }
+        if !self.descriptions_consistent() {
+            return Err(error("inconsistent description owner"));
+        }
         Ok(())
+    }
+
+    fn descriptions_consistent(&self) -> bool {
+        self.state.references.len() <= 32
+            && self.state.next_description != 0
+            && self.state.next_ticket != 0
+            && self.state.references.iter().all(|(&ticket, description)| {
+                ticket != 0 && self.state.descriptions.contains_key(description)
+            })
+            && self
+                .state
+                .descriptions
+                .iter()
+                .all(|(&identity, description)| {
+                    identity != 0
+                        && description.object < OBJECTS
+                        && self.state.object(description.object).is_some()
+                        && description.position() <= MAX_OFFSET
+                        && description.references != 0
+                        && self
+                            .state
+                            .references
+                            .values()
+                            .filter(|&&value| value == identity)
+                            .count()
+                            == description.references
+                })
     }
 
     fn namespace_consistent(&self) -> bool {
         let mut names = std::collections::BTreeSet::new();
         let mut identities = std::collections::BTreeSet::new();
-        self.state.objects.len() == OBJECTS
-            && self
-                .state
-                .objects
-                .iter()
-                .flatten()
-                .all(|object| object.identity >= 7 && identities.insert(object.identity))
-            && self.state.names.len() == NAMES
-            && self.state.names.iter().flatten().all(|entry| {
+        self.state.metadata_layout_consistent()
+            && self.state.objects().iter().flatten().all(|object| {
+                object.identity >= 7
+                    && object.identity < self.state.next_identity()
+                    && identities.insert(object.identity)
+                    && object.link_count == self.links(object.identity)
+            })
+            && self.state.names().len() == NAMES
+            && self.state.names().iter().flatten().all(|entry| {
                 valid_name(&entry.name).is_ok()
-                    && names.insert(entry.name.as_slice())
-                    && self.state.objects.iter().flatten().any(|object| {
+                    && names.insert(entry.name.clone())
+                    && self.state.objects().iter().flatten().any(|object| {
                         object.identity == entry.identity && !object.may_link_unlinked
                     })
             })
@@ -237,7 +265,7 @@ impl SystemsVolatileFilePool {
 
     fn links(&self, identity: u64) -> u64 {
         self.state
-            .names
+            .names()
             .iter()
             .flatten()
             .filter(|entry| entry.identity == identity)
@@ -247,15 +275,15 @@ impl SystemsVolatileFilePool {
     fn allocation_consistent(&self) -> bool {
         let mut associations = std::collections::BTreeSet::new();
         self.state.pages.len() == PAGES
-            && self.state.pages.iter().enumerate().all(|(slot, page)| {
+            && self.state.page_records().enumerate().all(|(slot, page)| {
                 page.bytes.len() == PAGE
-                    && match (self.state.page_allocation[slot], page.owner) {
+                    && match (self.state.page_allocation()[slot], page.owner) {
                         (0, None) => page.index == 0 && page.bytes.iter().all(|byte| *byte == 0),
                         (1, Some(identity)) => {
                             page.index <= MAX_OFFSET / PAGE as u64
                                 && self
                                     .state
-                                    .objects
+                                    .objects()
                                     .iter()
                                     .flatten()
                                     .any(|o| o.identity == identity)
@@ -308,11 +336,11 @@ impl SystemsVolatileFilePool {
         let (ticket, next_ticket) = self.ticket()?;
         let index = self
             .state
-            .objects
+            .objects()
             .iter()
             .position(Option::is_none)
             .ok_or_else(|| error("ENOSPC"))?;
-        let identity = self.state.next_identity;
+        let identity = self.state.next_identity();
         let next_identity = identity
             .checked_add(1)
             .ok_or_else(|| error("object identity exhausted"))?;
@@ -320,12 +348,16 @@ impl SystemsVolatileFilePool {
         let next_description = description
             .checked_add(1)
             .ok_or_else(|| error("description identity exhausted"))?;
-        self.state.objects[index] = Some(Object {
-            identity,
-            may_link_unlinked: true,
-            size: 0,
-            inode: SystemsInodeMetadata::new(0o100000, umask.apply(mode), seconds),
-        });
+        self.state.set_object(
+            index,
+            Some(Object {
+                identity,
+                may_link_unlinked: true,
+                link_count: 0,
+                size: 0,
+                inode: SystemsInodeMetadata::new(0o100000, umask.apply(mode), seconds),
+            }),
+        );
         self.state.descriptions.insert(
             description,
             Description {
@@ -338,7 +370,7 @@ impl SystemsVolatileFilePool {
         );
         self.state.references.insert(ticket, description);
         self.state.next_description = next_description;
-        self.state.next_identity = next_identity;
+        self.state.set_next_identity(next_identity);
         self.state.next_ticket = next_ticket;
         Ok(SystemsVolatileFile {
             pool: self.identity.clone(),
@@ -375,7 +407,7 @@ impl SystemsVolatileFilePool {
         Ok(self.object_metadata(d.object, d.position()))
     }
     fn object_metadata(&self, object: usize, position: u64) -> SystemsVolatileFileMetadata {
-        let o = self.state.objects[object].as_ref().unwrap();
+        let o = self.state.object(object).unwrap();
         SystemsVolatileFileMetadata {
             identity: o.identity,
             links: self.links(o.identity),
@@ -384,8 +416,7 @@ impl SystemsVolatileFilePool {
             mode: o.inode.permissions(),
             allocated_bytes: self
                 .state
-                .pages
-                .iter()
+                .page_records()
                 .filter(|p| p.owner == Some(o.identity))
                 .count()
                 * PAGE,
@@ -421,7 +452,7 @@ impl SystemsVolatileFilePool {
         }
         let position = supplied.unwrap_or(d.position());
         verify_range(position, count)?;
-        let o = self.state.objects[d.object].as_ref().unwrap();
+        let o = self.state.object(d.object).unwrap();
         if count == 0 || position >= o.size {
             return Ok(vec![]);
         }
@@ -435,8 +466,7 @@ impl SystemsVolatileFilePool {
         }
         let bytes = match self
             .state
-            .pages
-            .iter()
+            .page_records()
             .find(|p| p.owner == Some(o.identity) && p.index == position / PAGE as u64)
         {
             Some(p) => p.bytes[offset..offset + length].to_vec(),
@@ -484,7 +514,7 @@ impl SystemsVolatileFilePool {
             return Ok(0);
         }
         let object = d.object;
-        let o = self.state.objects[object].as_ref().unwrap();
+        let o = self.state.object(object).unwrap();
         let object_identity = o.identity;
         let position = if d.append { o.size } else { supplied_position };
         if position == MAX_OFFSET {
@@ -499,23 +529,29 @@ impl SystemsVolatileFilePool {
         let page_index = position / PAGE as u64;
         let slot = self
             .state
-            .pages
-            .iter()
+            .page_records()
             .position(|p| p.owner == Some(object_identity) && p.index == page_index)
-            .or_else(|| self.state.page_allocation.iter().position(|bit| *bit == 0))
+            .or_else(|| {
+                self.state
+                    .page_allocation()
+                    .iter()
+                    .position(|bit| *bit == 0)
+            })
             .ok_or_else(|| error("ENOSPC"))?;
-        let page = &mut self.state.pages[slot];
-        if page.owner.is_none() {
-            debug_assert!(page.index == 0 && page.bytes.iter().all(|&b| b == 0));
-            page.owner = Some(object_identity);
-            page.index = page_index;
-            self.state.page_allocation[slot] = 1;
+        if self.state.page_owner(slot).is_none() {
+            debug_assert!(
+                self.state.page_index(slot) == 0
+                    && self.state.pages[slot].bytes.iter().all(|&b| b == 0)
+            );
+            self.state.associate_page(slot, object_identity, page_index);
+            self.state.page_allocation_mut()[slot] = 1;
         }
-        page.bytes[offset..offset + length].copy_from_slice(&bytes[..length]);
+        self.state.pages[slot].bytes[offset..offset + length].copy_from_slice(&bytes[..length]);
         let end = position + length as u64;
-        let o = self.state.objects[object].as_mut().unwrap();
-        o.size = o.size.max(end);
-        o.inode.modified(seconds);
+        self.state.update_object(object, |o| {
+            o.size = o.size.max(end);
+            o.inode.modified(seconds);
+        });
         if supplied.is_none() {
             self.state
                 .descriptions
@@ -534,7 +570,7 @@ impl SystemsVolatileFilePool {
     ) -> Result<u64, SystemsModelError> {
         let identity = self.description(owner, file)?;
         let d = &self.state.descriptions[&identity];
-        let object = self.state.objects[d.object].as_ref().unwrap();
+        let object = self.state.object(d.object).unwrap();
         let size = object.size;
         let object_identity = object.identity;
         let position = match whence {
@@ -558,16 +594,14 @@ impl SystemsVolatileFilePool {
                 let index = position / PAGE as u64;
                 let has = |index| {
                     self.state
-                        .pages
-                        .iter()
+                        .page_records()
                         .any(|p| p.owner == Some(object_identity) && p.index == index)
                 };
                 match whence {
                     SystemsFileSeek::Data if has(index) => position,
                     SystemsFileSeek::Data => self
                         .state
-                        .pages
-                        .iter()
+                        .page_records()
                         .filter(|p| p.owner == Some(object_identity) && p.index > index)
                         .map(|p| p.index * PAGE as u64)
                         .filter(|&n| n < size)
@@ -604,7 +638,7 @@ impl SystemsVolatileFilePool {
             return Err(error("EINVAL"));
         }
         let object = d.object;
-        let o = self.state.objects[object].as_ref().unwrap();
+        let o = self.state.object(object).unwrap();
         let old_size = o.size;
         let object_identity = o.identity;
         let length = length as u64;
@@ -612,25 +646,22 @@ impl SystemsVolatileFilePool {
             return Ok(());
         }
         if length < old_size {
-            for (slot, page) in self
-                .state
-                .pages
-                .iter_mut()
-                .enumerate()
-                .filter(|(_, p)| p.owner == Some(object_identity))
-            {
-                let start = page.index * PAGE as u64;
+            for slot in 0..PAGES {
+                if self.state.page_owner(slot) != Some(object_identity) {
+                    continue;
+                }
+                let start = self.state.page_index(slot) * PAGE as u64;
                 if start >= length {
-                    page.erase();
-                    self.state.page_allocation[slot] = 0;
+                    self.state.erase_page(slot);
                 } else if length - start < PAGE as u64 {
-                    page.bytes[(length - start) as usize..].fill(0);
+                    self.state.pages[slot].bytes[(length - start) as usize..].fill(0);
                 }
             }
         }
-        let o = self.state.objects[object].as_mut().unwrap();
-        o.size = length;
-        o.inode.modified(seconds);
+        self.state.update_object(object, |o| {
+            o.size = length;
+            o.inode.modified(seconds);
+        });
         Ok(())
     }
     pub fn close(
@@ -656,20 +687,17 @@ impl SystemsVolatileFilePool {
             return Err(error("wrong or released filesystem owner"));
         }
         for page in &mut self.state.pages {
-            page.erase();
+            page.bytes.fill(0);
         }
-        self.state.page_allocation.fill(0);
-        self.state.objects.fill(None);
-        self.state.names.fill(None);
+        self.state.metadata.fill(0);
         self.state.descriptions.clear();
         self.state.references.clear();
-        self.state.next_identity = 0;
         self.state.next_description = 0;
-        self.state.directory_inode.erase();
         self.state.next_ticket = 0;
         self.state.position_actions = Default::default();
         self.state.page_actions = Default::default();
         self.state.inode_actions = Default::default();
+        self.state.namespace_actions = Default::default();
         self.state.live = false;
         Ok(())
     }
@@ -801,8 +829,7 @@ mod tests {
         p.close("owner", &inherited).unwrap();
         assert!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.owner.is_none() && page.bytes.iter().all(|&b| b == 0))
         );
     }
@@ -830,8 +857,7 @@ mod tests {
         assert_eq!(metadata(&p, &alias).allocated_bytes, 0);
         assert!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.bytes.iter().all(|&b| b == 0))
         );
     }
@@ -881,12 +907,11 @@ mod tests {
         let old_identity = metadata(&p, &files[1]).identity;
         let alias = p.alias("owner", &files[1]).unwrap();
         p.close("owner", &files[1]).unwrap();
-        assert!(p.state.pages.iter().all(|page| page.owner.is_some()));
+        assert!(p.state.page_records().all(|page| page.owner.is_some()));
         p.close("owner", &alias).unwrap();
         assert_eq!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .filter(|page| page.owner.is_none())
                 .count(),
             2
@@ -1023,9 +1048,8 @@ mod tests {
         let index = p.state.descriptions[&identity].object;
         assert_eq!(
             &p.state
-                .pages
-                .iter()
-                .find(|page| page.owner == Some(p.state.objects[index].as_ref().unwrap().identity))
+                .page_records()
+                .find(|page| page.owner == Some(p.state.object(index).unwrap().identity))
                 .unwrap()
                 .bytes[..2],
             b"ab"
@@ -1062,7 +1086,7 @@ mod tests {
         assert!(p.alias("owner", &f).is_err());
         assert_eq!(p.state, before);
         p.state.next_ticket = 100;
-        p.state.next_identity = u64::MAX;
+        p.state.set_next_identity(u64::MAX);
         let before = p.state.clone();
         assert!(
             p.create(
@@ -1079,12 +1103,12 @@ mod tests {
         p.write("owner", &f, b"erase retained data", OK, 101)
             .unwrap();
         p.terminate("owner").unwrap();
-        assert!(p.state.pages.iter().all(|page| page.owner.is_none()
+        assert!(p.state.page_records().all(|page| page.owner.is_none()
             && page.index == 0
             && page.bytes.iter().all(|&b| b == 0)));
-        assert!(p.state.objects.iter().all(Option::is_none));
+        assert!(p.state.objects().iter().all(Option::is_none));
         assert!(p.state.descriptions.is_empty() && p.state.references.is_empty());
-        assert_eq!((p.state.next_identity, p.state.next_ticket), (0, 0));
+        assert_eq!((p.state.next_identity(), p.state.next_ticket), (0, 0));
         let before = p.state.clone();
         assert!(p.close("owner", &f).is_err());
         assert!(p.metadata("owner", &aliases[0]).is_err());

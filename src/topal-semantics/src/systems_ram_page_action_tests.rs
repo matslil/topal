@@ -49,9 +49,8 @@ fn fixture(mask: u8) -> (SystemsVolatileFilePool, SystemsVolatileFile) {
     // associations and distinctive occupied payloads agree for every mask.
     for slot in 0..PAGES {
         if mask & (1 << slot) != 0 {
-            pool.state.page_allocation[slot] = 1;
-            pool.state.pages[slot].owner = Some(identity);
-            pool.state.pages[slot].index = slot as u64;
+            pool.state.page_allocation_mut()[slot] = 1;
+            pool.state.associate_page(slot, identity, slot as u64);
             pool.state.pages[slot].bytes.fill(slot as u8 + 1);
         }
     }
@@ -119,7 +118,7 @@ fn every_occupancy_mask_accepts_actual_first_or_last_free_source_delta() {
             for slot in 0..PAGES {
                 assert_eq!(
                     call.load_byte(&view, slot as u64).unwrap(),
-                    before.page_allocation[slot]
+                    before.page_allocation()[slot]
                 );
             }
             let nested = call
@@ -141,17 +140,25 @@ fn every_occupancy_mask_accepts_actual_first_or_last_free_source_delta() {
             assert!(call.load_byte(&view, 0).is_err());
             drop(call);
             assert!(pool.allocation_consistent());
+            let mut expected_metadata = before.metadata;
+            expected_metadata[24 + selected] = 1;
+            let identity = pool.metadata("fs", &file).unwrap().identity;
+            let record = 1024 + selected * 32;
+            for (offset, value) in [(record, identity), (record + 8, 49_u64)] {
+                expected_metadata[offset..offset + 8].copy_from_slice(&value.to_le_bytes());
+            }
+            assert_eq!(pool.state.metadata, expected_metadata);
             for slot in 0..PAGES {
                 if slot != selected {
                     assert_eq!(pool.state.pages[slot], before.pages[slot]);
                     assert_eq!(
-                        pool.state.page_allocation[slot],
-                        before.page_allocation[slot]
+                        pool.state.page_allocation()[slot],
+                        before.page_allocation()[slot]
                     );
                 }
             }
-            assert_eq!(pool.state.page_allocation[selected], 1);
-            assert_eq!(pool.state.pages[selected].index, 49);
+            assert_eq!(pool.state.page_allocation()[selected], 1);
+            assert_eq!(pool.state.page_index(selected), 49);
             assert_eq!(
                 pool.read_at("fs", &file, 3, 49 * PAGE as i64, OK).unwrap(),
                 [0, 0, 0]
@@ -188,9 +195,13 @@ fn every_release_slot_erases_real_payload_and_reuses_it_with_a_fresh_loan() {
             slot as u64
         );
         drop(release);
-        assert!(pool.state.pages[slot].owner.is_none());
+        let mut expected_metadata = before.metadata;
+        expected_metadata[24 + slot] = 0;
+        expected_metadata[1024 + slot * 32..1056 + slot * 32].fill(0);
+        assert_eq!(pool.state.metadata, expected_metadata);
+        assert!(pool.state.page_owner(slot).is_none());
         assert!(pool.state.pages[slot].bytes.iter().all(|byte| *byte == 0));
-        assert_eq!(pool.state.pages[slot].index, 0);
+        assert_eq!(pool.state.page_index(slot), 0);
         for other in 0..PAGES {
             if other != slot {
                 assert_eq!(pool.state.pages[other], before.pages[other]);
@@ -226,7 +237,7 @@ fn every_release_slot_erases_real_payload_and_reuses_it_with_a_fresh_loan() {
         assert!(pool.allocation_consistent());
         pool.close("fs", &alias).unwrap();
         pool.close("fs", &file).unwrap();
-        assert_eq!(pool.state.page_allocation, [0; PAGES]);
+        assert_eq!(pool.state.page_allocation(), [0; PAGES]);
         assert_eq!(pool.state.page_actions.generation, 2);
         pool.terminate("fs").unwrap();
         assert_eq!(pool.state.page_actions, Default::default());
@@ -321,22 +332,21 @@ fn failed_or_abandoned_action_preserves_source_stores_and_poisoned_owner_exclusi
         drop(call);
         assert!(pool.state.page_actions.poisoned);
         assert_eq!(
-            pool.state.page_allocation[1],
+            pool.state.page_allocation()[1],
             match case {
                 8 => 2,
                 9 => 0,
                 _ => 1,
             }
         );
-        assert!(pool.state.pages[1].owner.is_none());
+        assert!(pool.state.page_owner(1).is_none());
         assert!(pool.metadata("fs", &file).is_err());
         assert!(pool.write("fs", &file, b"blocked", OK, 11).is_err());
         pool.terminate("fs").unwrap();
-        assert_eq!(pool.state.page_allocation, [0; PAGES]);
+        assert_eq!(pool.state.page_allocation(), [0; PAGES]);
         assert!(
             pool.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.owner.is_none() && page.bytes.iter().all(|b| *b == 0))
         );
         assert_eq!(pool.state.page_actions, Default::default());
@@ -403,9 +413,9 @@ fn normal_filesystem_laws_share_the_same_bitmap_through_truncate_and_final_close
         pool.write_at("fs", &file, b"payload", index * PAGE as i64, OK, 11)
             .unwrap();
     }
-    assert_eq!(&pool.state.page_allocation[..4], &[1, 1, 1, 0]);
+    assert_eq!(&pool.state.page_allocation()[..4], &[1, 1, 1, 0]);
     pool.truncate("fs", &alias, PAGE as i64 + 2, 12).unwrap();
-    assert_eq!(&pool.state.page_allocation[..4], &[1, 1, 0, 0]);
+    assert_eq!(&pool.state.page_allocation()[..4], &[1, 1, 0, 0]);
     assert_eq!(
         pool.read_at("fs", &file, 4, PAGE as i64, OK).unwrap(),
         b"pa"
@@ -415,11 +425,11 @@ fn normal_filesystem_laws_share_the_same_bitmap_through_truncate_and_final_close
         pool.read_at("fs", &alias, 5, PAGE as i64 + 2, OK).unwrap(),
         [0; 5]
     );
-    assert_eq!(&pool.state.page_allocation[..4], &[1, 1, 0, 0]);
+    assert_eq!(&pool.state.page_allocation()[..4], &[1, 1, 0, 0]);
     pool.close("fs", &file).unwrap();
-    assert_eq!(&pool.state.page_allocation[..4], &[1, 1, 0, 0]);
+    assert_eq!(&pool.state.page_allocation()[..4], &[1, 1, 0, 0]);
     pool.close("fs", &alias).unwrap();
-    assert_eq!(pool.state.page_allocation, [0; PAGES]);
+    assert_eq!(pool.state.page_allocation(), [0; PAGES]);
     assert!(pool.allocation_consistent());
 }
 
@@ -457,11 +467,11 @@ fn release_failure_cannot_resume_or_undo_admitted_payload_erasure() {
         }
         drop(call);
         assert!(pool.state.page_actions.poisoned);
-        assert!(pool.state.pages[3].owner.is_some());
+        assert!(pool.state.page_owner(3).is_some());
         assert!(pool.state.pages[3].bytes.iter().all(|byte| *byte == 0));
         assert!(pool.metadata("fs", &file).is_err());
         pool.terminate("fs").unwrap();
-        assert_eq!(pool.state.page_allocation, [0; PAGES]);
+        assert_eq!(pool.state.page_allocation(), [0; PAGES]);
     }
 }
 
@@ -472,11 +482,11 @@ fn malformed_map_or_association_refuses_before_any_loan_or_payload_change() {
     for case in 0..5 {
         let (mut pool, file) = fixture(1 << 3);
         match case {
-            0 => pool.state.page_allocation[0] = 2,
-            1 => pool.state.page_allocation[0] = 1,
-            2 => pool.state.page_allocation[3] = 0,
+            0 => pool.state.page_allocation_mut()[0] = 2,
+            1 => pool.state.page_allocation_mut()[0] = 1,
+            2 => pool.state.page_allocation_mut()[3] = 0,
             3 => pool.state.pages[0].bytes[0] = 9,
-            4 => pool.state.pages[3].index = u64::MAX,
+            4 => pool.state.put_word(1032 + 3 * 32, u64::MAX),
             _ => unreachable!(),
         }
         let before = pool.state.clone();

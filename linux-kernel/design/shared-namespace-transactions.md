@@ -123,6 +123,15 @@ becomes a checked link count, offset 64 carries explicit temporary-link intent,
 and the former per-object name-length word at 72 becomes reserved zero.
 Object and metadata/page/payload placements stay disjoint and unchanged.
 
+The portable owner uses that encoded 4096-byte metadata page from construction
+onward. Normal lookup, inode observation, link counts, directory entries, page
+map/associations and scoped loans use the same authoritative bytes. Decoded
+observations may support direct portable model transitions; an opaque loan
+always writes the actual page. A completion oracle is comparison-only and must
+never be copied back, whether an action succeeds or fails. Preserve the existing
+32-byte page-record encoding: owner identity at zero, logical page at eight and
+reserved zero at sixteen through thirty-one; there is no separate live word.
+
 The exclusive controller lends the actual first metadata page, not file payload
 pages. It places independently checked operation inputs and the copied new
 component in the existing 512-byte directory staging at offset 3072 before
@@ -152,6 +161,55 @@ code/data/hooks/storage; overlapping filesystem loans conflict with existing
 position/page/inode actions. No-op and pre-admission failures issue no action.
 The existing 65536/4096 source temporary/stack limits remain; prove complete
 source and owning-controller costs before native binding.
+
+For the first native caller, `namespace-library` selects the existing instance
+action interface and the fixed `namespace-metadata` context. It requires the
+instance position, page and inode controllers so that filesystem exclusion
+checks have concrete, independently bound domains. The declaration alone adds
+no syscall tag or reinterpretation of an older dispatch's file tables. V6 and
+its versioned entry consumers remain a separate selection. Kernel-controller
+components may supply a canonical page under the actual live owner, but cannot
+claim those later Linux entry paths or final victim reclamation from that test.
+
+The x86-64 controller keeps a private 32-byte recovery record: trusted caller
+frame, consumed epoch, admitted operation and admitted clock. Establish the
+frame under the private stack/interrupt preconditions before entering source;
+consume the nonwrapping history before the source call. Preserve these facts
+outside the borrowed page and compare them with the source frame on return.
+An aborting callee is not obliged to restore its frame or saved registers, so
+fatal recovery uses this private record rather than live callee registers.
+Attempt every erasure before a failed readback can prevent cleanup of another
+region. Clear staging, oracle, arena, control, the retired reserve and abandoned
+caller frame before the bound fatal halt, without copying persistent bytes back.
+On normal return, restore caller registers and erase their popped spill slots
+as well as source temporaries before clearing the recovery record. The normal
+caller return-address word remains part of its calling convention; fatal
+recovery additionally erases that abandoned word. Other architectures must
+preserve the same recovery/retirement laws using their own calling conventions.
+
+Bind the oracle and recovery storage to exact zero-initialized, writable,
+disjoint ELF allocations along with code, immutable inputs and stack costs.
+This profile's added code/storage no longer fits below the reserved x86 user
+window at 4..8 MiB, so selection places supervisor BSS at or above 8 MiB.
+Keep the same filesystem/process extents and offsets and retain the overlap
+guards; a low placement that crosses that user window is invalid. Older roots
+without the declaration retain their prior placement. The 3824-byte source,
+184-byte live caller and 64-byte alignment allowance total 4072 bytes; the
+qualified wrong-association witness totals 4088 bytes. Neither increases the
+4096-byte complete stack limit. Sequential comparison helpers have eight-byte
+leaf bounds and require no extra simultaneous source frame.
+
+Ordinary helper composition must not consume the 64-function qualification
+budget merely by duplicating equivalent checked instances. For closures that
+would exceed that budget, first validate the complete original closed graph,
+then share equivalent instances of the same source declaration after removing
+analysis-only integer-range annotations. Preserve types, literals, operation
+and call order, arguments, effects, source/module identity and captures; rewrite
+callee references only to an equivalent retained instance. Revalidate the
+retained closure and enforce the same 64-function budget. Charge each actual
+call in resource proofs even when its code is shared. Smaller existing closures
+must retain their exact prior representations. This is a systems-profile
+compiler strategy, not new core meaning, authority or larger runtime limits.
 
 This describes required source integration; the first stage is a direct
 portable ownership model, not opaque source execution or physical cleanup.

@@ -25,8 +25,9 @@ impl SystemsVolatileFilePool {
             .description(owner, file)
             .map_err(|_| RegionLibraryError::Owner)?;
         let description = &self.state.descriptions[&identity];
-        let object = self.state.objects[description.object]
-            .as_ref()
+        let object = self
+            .state
+            .object(description.object)
             .ok_or(RegionLibraryError::Owner)?;
         let allowed = match operation {
             SystemsPositionTransfer::Read => description.rights != SystemsFileRights::Write,
@@ -247,8 +248,7 @@ mod tests {
             assert!(pool.state.descriptions.is_empty());
             assert!(
                 pool.state
-                    .pages
-                    .iter()
+                    .page_records()
                     .all(|p| p.owner.is_none() && p.bytes.iter().all(|b| *b == 0))
             );
             assert_eq!(pool.state.position_actions, Default::default());

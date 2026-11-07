@@ -34,14 +34,16 @@ pub(super) fn valid_name(name: &[u8]) -> Result<(), SystemsModelError> {
 impl SystemsVolatileFilePool {
     pub(super) fn named_entry(&self, name: &[u8]) -> Option<usize> {
         self.state
-            .names
+            .names()
             .iter()
             .position(|entry| entry.as_ref().is_some_and(|entry| entry.name == name))
     }
     pub(super) fn named_object(&self, name: &[u8]) -> Option<usize> {
-        let identity = self.state.names[self.named_entry(name)?].as_ref()?.identity;
+        let identity = self.state.names()[self.named_entry(name)?]
+            .as_ref()?
+            .identity;
         self.state
-            .objects
+            .objects()
             .iter()
             .position(|o| o.as_ref().is_some_and(|o| o.identity == identity))
     }
@@ -85,7 +87,7 @@ impl SystemsVolatileFilePool {
             Some(index) => index,
             None => self
                 .state
-                .objects
+                .objects()
                 .iter()
                 .position(Option::is_none)
                 .ok_or_else(|| error("ENOSPC"))?,
@@ -94,11 +96,11 @@ impl SystemsVolatileFilePool {
         let created = if existing.is_none() {
             let name_slot = self
                 .state
-                .names
+                .names()
                 .iter()
                 .position(Option::is_none)
                 .ok_or_else(|| error("ENOSPC"))?;
-            let identity = self.state.next_identity;
+            let identity = self.state.next_identity();
             Some((
                 identity,
                 identity
@@ -110,36 +112,40 @@ impl SystemsVolatileFilePool {
             None
         };
         if let Some((identity, next, name_slot)) = created {
-            self.state.objects[object] = Some(Object {
-                identity,
-                may_link_unlinked: false,
-                size: 0,
-                inode: SystemsInodeMetadata::new(
-                    0o100000,
-                    request.umask.apply(request.mode),
-                    seconds,
-                ),
-            });
-            self.state.names[name_slot] = Some(NameEntry {
-                identity,
-                name: name.to_vec(),
-            });
-            self.state.next_identity = next;
-            self.state.directory_inode.modified(seconds);
+            self.state.set_object(
+                object,
+                Some(Object {
+                    identity,
+                    may_link_unlinked: false,
+                    link_count: 1,
+                    size: 0,
+                    inode: SystemsInodeMetadata::new(
+                        0o100000,
+                        request.umask.apply(request.mode),
+                        seconds,
+                    ),
+                }),
+            );
+            self.state.set_name(
+                name_slot,
+                Some(NameEntry {
+                    identity,
+                    name: name.to_vec(),
+                }),
+            );
+            self.state.set_next_identity(next);
+            self.state
+                .update_directory_inode(|inode| inode.modified(seconds));
         } else if plan == SystemsFileOpenPlan::TruncateDescription {
-            let o = self.state.objects[object].as_mut().unwrap();
+            let mut o = self.state.object(object).unwrap();
             let identity = o.identity;
             o.size = 0;
             o.inode.modified(seconds);
-            for (slot, page) in self
-                .state
-                .pages
-                .iter_mut()
-                .enumerate()
-                .filter(|(_, p)| p.owner == Some(identity))
-            {
-                page.erase();
-                self.state.page_allocation[slot] = 0;
+            self.state.set_object(object, Some(o));
+            for slot in 0..PAGES {
+                if self.state.page_owner(slot) == Some(identity) {
+                    self.state.erase_page(slot);
+                }
             }
         }
         self.state.descriptions.insert(
@@ -180,18 +186,21 @@ impl SystemsVolatileFilePool {
         valid_name(name)?;
         let index = self.named_object(name).ok_or_else(|| error("ENOENT"))?;
         let name_slot = self.named_entry(name).unwrap();
-        let object = self.state.objects[index].as_mut().unwrap();
-        self.state.names[name_slot] = None;
-        object.inode.changed(seconds);
-        self.state.directory_inode.modified(seconds);
+        self.state.set_name(name_slot, None);
+        self.state.update_object(index, |object| {
+            object.link_count -= 1;
+            object.inode.changed(seconds);
+        });
+        self.state
+            .update_directory_inode(|inode| inode.modified(seconds));
         self.reclaim_unlinked(index);
         Ok(())
     }
     pub fn directory_times(&self, owner: &str) -> Result<[u64; 2], SystemsModelError> {
         self.owned(owner)?;
         Ok([
-            self.state.directory_inode.modified_seconds(),
-            self.state.directory_inode.changed_seconds(),
+            self.state.directory_inode().modified_seconds(),
+            self.state.directory_inode().changed_seconds(),
         ])
     }
     pub fn directory_entries(
@@ -211,7 +220,7 @@ impl SystemsVolatileFilePool {
             let candidate = match current {
                 0 => Some((6, b".".to_vec(), true)),
                 1 => Some((3, b"..".to_vec(), true)),
-                _ => self.state.names[(current - 2) as usize]
+                _ => self.state.names()[(current - 2) as usize]
                     .as_ref()
                     .map(|entry| (entry.identity, entry.name.clone(), false)),
             };
@@ -240,23 +249,28 @@ impl SystemsVolatileFilePool {
         Ok((entries, current))
     }
     pub(super) fn reclaim_unlinked(&mut self, object: usize) {
-        if self.links(self.state.objects[object].as_ref().unwrap().identity) != 0
-            || self.state.descriptions.values().any(|d| d.object == object)
+        self.state.reclaim_unlinked(object);
+    }
+}
+
+impl State {
+    pub(super) fn reclaim_unlinked(&mut self, object: usize) {
+        let identity = self.object(object).unwrap().identity;
+        if self
+            .names()
+            .iter()
+            .flatten()
+            .any(|entry| entry.identity == identity)
+            || self.descriptions.values().any(|d| d.object == object)
         {
             return;
         }
-        let identity = self.state.objects[object].as_ref().unwrap().identity;
-        for (slot, page) in self
-            .state
-            .pages
-            .iter_mut()
-            .enumerate()
-            .filter(|(_, p)| p.owner == Some(identity))
-        {
-            page.erase();
-            self.state.page_allocation[slot] = 0;
+        for slot in 0..PAGES {
+            if self.page_owner(slot) == Some(identity) {
+                self.erase_page(slot);
+            }
         }
-        self.state.objects[object] = None;
+        self.set_object(object, None);
     }
 }
 
@@ -345,9 +359,9 @@ mod tests {
             .unwrap();
         p.close("owner", &a).unwrap();
         assert_eq!(p.read("owner", &b, 9, ADMITTED).unwrap(), b"old bytes");
-        assert!(p.state.pages.iter().any(|page| page.owner == Some(old)));
+        assert!(p.state.page_records().any(|page| page.owner == Some(old)));
         p.close("owner", &b).unwrap();
-        assert!(p.state.pages.iter().all(|page| page.owner != Some(old)));
+        assert!(p.state.page_records().all(|page| page.owner != Some(old)));
         assert_eq!(p.metadata_by_name("owner", b"same").unwrap().links, 1);
         rewind(&mut p, &replacement);
         assert_eq!(p.read("owner", &replacement, 9, ADMITTED).unwrap(), b"new");
@@ -461,13 +475,12 @@ mod tests {
         p.terminate("owner").unwrap();
         assert!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.owner.is_none() && page.bytes.iter().all(|&b| b == 0))
         );
-        assert!(p.state.objects.iter().all(Option::is_none));
+        assert!(p.state.objects().iter().all(Option::is_none));
         assert!(p.state.descriptions.is_empty() && p.state.references.is_empty());
-        assert_eq!(p.state.directory_inode.encoded(), &[0; 32]);
+        assert_eq!(p.state.directory_inode().encoded(), &[0; 32]);
     }
     #[test]
     fn exact_long_raw_names_directory_cookies_and_rejected_copies_are_independent() {

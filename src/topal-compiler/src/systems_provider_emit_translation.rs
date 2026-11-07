@@ -394,6 +394,10 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
         note.push_str(&format!("inode-mode-library-interface={interface}\ninode-mode-instance=inode-metadata\ninode-mode-runtime-bytes=65536\ninode-mode-control-bytes=64\ninode-mode-history-bytes=8\ninode-mode-metadata-bytes=32\ninode-mode-retired-stack-bytes=4096\ninode-mode-live-frame-bytes={}\ninode-mode-call-alignment-bytes={}\ninode-mode-domain=serialized-single-processor-masked\n",
             inode_region::LIVE_FRAME_BYTES, inode_region::CALL_ALIGNMENT_BYTES));
     }
+    if let Some(interface) = plan.namespace_library_interface {
+        note.push_str(&format!("namespace-library-interface={interface}\nnamespace-instance=namespace-metadata\nnamespace-runtime-bytes=65536\nnamespace-control-bytes=64\nnamespace-history-bytes=8\nnamespace-metadata-bytes=4096\nnamespace-input-bytes=512\nnamespace-comparison-bytes=4096\nnamespace-recovery-bytes=32\nnamespace-retired-stack-bytes=4096\nnamespace-live-frame-bytes={}\nnamespace-call-alignment-bytes={}\nnamespace-helper-stack-bytes={}\nnamespace-domain=serialized-single-processor-masked\n",
+            namespace_region::LIVE_FRAME_BYTES, namespace_region::CALL_ALIGNMENT_BYTES, namespace_oracle::HELPER_STACK_BYTES));
+    }
     if let Some(interface) = plan.region_library_interface {
         note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
     }

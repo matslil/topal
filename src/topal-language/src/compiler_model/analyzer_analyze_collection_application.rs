@@ -1,11 +1,25 @@
 impl Analyzer {
-    #[allow(clippy::too_many_lines)] // Collection operations and final call resolution remain ordered.
+    // Collection/builtin matching must release its large analysis frame before
+    // recursive ordinary-call instantiation. Dispatch order and diagnostics stay
+    // in the existing matcher; None means precisely its former final fallback.
     fn analyze_collection_application(
         &mut self,
         items: &[Expression],
         span: Span,
         environment: &BTreeMap<String, BindingFacts>,
     ) -> Result<CompilerExpression, Diagnostic> {
+        match self.try_analyze_collection_application(items, span, environment)? {
+            Some(value) => Ok(value),
+            None => self.analyze_call(items, span, environment),
+        }
+    }
+    #[allow(clippy::too_many_lines)] // Collection operations and final call resolution remain ordered.
+    fn try_analyze_collection_application(
+        &mut self,
+        items: &[Expression],
+        span: Span,
+        environment: &BTreeMap<String, BindingFacts>,
+    ) -> Result<Option<CompilerExpression>, Diagnostic> {
         if let [
             list,
             Expression::Identifier(operation),
@@ -58,7 +72,7 @@ impl Analyzer {
                         &CompilerType::Int,
                         &inserted.value_type,
                     )?;
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::ListInsertEverywhere {
                             list: Box::new(body_list),
                             value: Box::new(inserted),
@@ -67,7 +81,8 @@ impl Analyzer {
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
             }
             let nested_int_map = operation == "map"
@@ -125,13 +140,14 @@ impl Analyzer {
                     body: Box::new(body),
                 }
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind,
                 value_type,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(operation), generator] = items
             && self.source.slice(*operation) == "collect"
@@ -178,11 +194,12 @@ impl Analyzer {
                         if admitted_predicate_bound {
                             continue;
                         }
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             function_span,
                             &format!("captured {role} value `{capture}`"),
-                        ));
+                        )))
+                        .map(Some);
                     }
                 }
             }
@@ -193,7 +210,7 @@ impl Analyzer {
                 range,
             } = generator.kind
             {
-                return Ok(CompilerExpression {
+                return (Ok(CompilerExpression {
                     kind: CompilerExpressionKind::StringRangeCharactersCollect {
                         text,
                         characters,
@@ -203,7 +220,8 @@ impl Analyzer {
                     int_range: None,
                     rational_value: None,
                     span,
-                });
+                }))
+                .map(Some);
             }
             if let CompilerExpressionKind::StringProvenanceCharactersGenerator {
                 text,
@@ -211,15 +229,16 @@ impl Analyzer {
             } = generator.kind
             {
                 if characters.is_empty() {
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::StringDynamicScalarCharactersCollect(text),
                         value_type: CompilerType::List(Box::new(CompilerType::Character)),
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
-                return Ok(CompilerExpression {
+                return (Ok(CompilerExpression {
                     kind: CompilerExpressionKind::StringProvenanceCharactersCollect {
                         text,
                         characters,
@@ -228,7 +247,8 @@ impl Analyzer {
                     int_range: None,
                     rational_value: None,
                     span,
-                });
+                }))
+                .map(Some);
             }
             if let CompilerExpressionKind::StringCharactersGenerator { characters, .. } =
                 &generator.kind
@@ -260,7 +280,7 @@ impl Analyzer {
                         span,
                     };
                 }
-                return Ok(list);
+                return (Ok(list)).map(Some);
             }
             require_type(
                 &self.source,
@@ -275,7 +295,7 @@ impl Analyzer {
                 } if retained_generator.is_none()
                     && matches!(source.kind, CompilerExpressionKind::IterateGenerator { .. }) =>
                 {
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::GeneratorCollect(Box::new(
                             collection_generator.clone(),
                         )),
@@ -283,7 +303,8 @@ impl Analyzer {
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
                 CompilerExpressionKind::UnfoldGenerator { .. }
                     if directly_collectable_list_uncons_unfold(
@@ -291,7 +312,7 @@ impl Analyzer {
                         environment,
                     ) =>
                 {
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::GeneratorCollect(Box::new(
                             collection_generator.clone(),
                         )),
@@ -299,22 +320,25 @@ impl Analyzer {
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
                 CompilerExpressionKind::IterateGenerator { .. } => {
-                    return Err(source_diagnostic(
+                    return (Err(source_diagnostic(
                         &self.source,
                         "E-UNBOUNDED-GENERATOR-COLLECT",
                         generator.span,
                         "collect requires a statically finite generated traversal",
-                    ));
+                    )))
+                    .map(Some);
                 }
                 _ => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         generator.span,
                         "collection through a non-direct Generator value",
-                    ));
+                    )))
+                    .map(Some);
                 }
             }
         }
@@ -344,14 +368,15 @@ impl Analyzer {
                 span,
                 environment,
             )?;
-            return self.analyze_int_generator_take_while(
+            return (self.analyze_int_generator_take_while(
                 generator,
                 predicate_parameters,
                 predicate_body,
                 *predicate_span,
                 span,
                 environment,
-            );
+            ))
+            .map(Some);
         }
         if let [
             initial,
@@ -364,14 +389,15 @@ impl Analyzer {
         ] = items
             && self.source.slice(*operation) == "iterate"
         {
-            return self.analyze_int_iterate_generator(
+            return (self.analyze_int_iterate_generator(
                 initial,
                 parameters,
                 body,
                 *function_span,
                 span,
                 environment,
-            );
+            ))
+            .map(Some);
         }
         if let [
             generator,
@@ -385,14 +411,15 @@ impl Analyzer {
             && self.source.slice(*operation) == "take-while"
         {
             let generator = self.analyze_expression(generator, environment)?;
-            return self.analyze_int_generator_take_while(
+            return (self.analyze_int_generator_take_while(
                 generator,
                 parameters,
                 body,
                 *function_span,
                 span,
                 environment,
-            );
+            ))
+            .map(Some);
         }
         if let [
             seed,
@@ -405,14 +432,15 @@ impl Analyzer {
         ] = items
             && self.source.slice(*operation) == "unfold"
         {
-            return self.analyze_int_list_unfold_generator(
+            return (self.analyze_int_list_unfold_generator(
                 seed,
                 parameters,
                 body,
                 *function_span,
                 span,
                 environment,
-            );
+            ))
+            .map(Some);
         }
         if let [
             list,
@@ -470,7 +498,7 @@ impl Analyzer {
                     &int_list_type(),
                     &right.value_type,
                 )?;
-                return Ok(CompilerExpression {
+                return (Ok(CompilerExpression {
                     kind: CompilerExpressionKind::ListCartesianStringInt {
                         left: Box::new(list),
                         right: Box::new(right),
@@ -479,7 +507,8 @@ impl Analyzer {
                     int_range: None,
                     rational_value: None,
                     span,
-                });
+                }))
+                .map(Some);
             }
             if matches!(&list.value_type, CompilerType::List(element)
                 if compiler_nat_pair(element.as_ref()))
@@ -691,18 +720,20 @@ impl Analyzer {
                     )
                 }
                 (CompilerType::List(_), _) => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         list.span,
                         "fold subject and state classifier combination",
-                    ));
+                    )))
+                    .map(Some);
                 }
                 _ => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         list.span,
                         "fold subject for this List element type",
-                    ));
+                    )))
+                    .map(Some);
                 }
             };
             if element_type == CompilerType::Int && self.compiler_proven_nonnegative_list(&list) {
@@ -749,7 +780,7 @@ impl Analyzer {
                     &body.result.value_type,
                 )?;
             }
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListFold {
                     list: Box::new(list),
                     initial: Box::new(initial),
@@ -760,7 +791,8 @@ impl Analyzer {
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [
             list,
@@ -819,13 +851,14 @@ impl Analyzer {
                     body: Box::new(body),
                 }
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind,
                 value_type: CompilerType::List(Box::new(CompilerType::Int)),
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [
             list,
@@ -863,7 +896,7 @@ impl Analyzer {
                 function_span,
             )?;
             require_int_fold_result(&self.source, &body.result)?;
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ListFold {
                     list: Box::new(list),
                     initial: Box::new(initial),
@@ -874,7 +907,8 @@ impl Analyzer {
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [collection, Expression::Identifier(operation), selector] = items
             && matches!(self.source.slice(*operation), "select" | "select-index")
@@ -911,7 +945,7 @@ impl Analyzer {
                                 || compiler_int_triple(element.as_ref()))) =>
                 {
                     let value_type = CompilerType::List(element);
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::ListRangeSelect {
                             list: Box::new(collection),
                             range: Box::new(selector),
@@ -921,7 +955,8 @@ impl Analyzer {
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
                 CompilerType::String if operation == "select-index" => {
                     let text = Self::known_string_value(&collection, environment);
@@ -939,15 +974,16 @@ impl Analyzer {
                                 range.contains(&BigInt::from(index)).then_some(character)
                             })
                             .collect();
-                        return Ok(CompilerExpression {
+                        return (Ok(CompilerExpression {
                             kind: CompilerExpressionKind::String(selected),
                             value_type: CompilerType::String,
                             int_range: None,
                             rational_value: None,
                             span,
-                        });
+                        }))
+                        .map(Some);
                     }
-                    return Ok(CompilerExpression {
+                    return (Ok(CompilerExpression {
                         kind: CompilerExpressionKind::StringRangeSelect {
                             text: Box::new(collection),
                             characters: text_characters,
@@ -957,28 +993,32 @@ impl Analyzer {
                         int_range: None,
                         rational_value: None,
                         span,
-                    });
+                    }))
+                    .map(Some);
                 }
                 CompilerType::List(_) => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         collection.span,
                         "range selection for this List element type",
-                    ));
+                    )))
+                    .map(Some);
                 }
                 CompilerType::String => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         collection.span,
                         "Range Int value selection for String",
-                    ));
+                    )))
+                    .map(Some);
                 }
                 _ => {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         collection.span,
                         "range selection source",
-                    ));
+                    )))
+                    .map(Some);
                 }
             }
         }
@@ -991,11 +1031,12 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
             let CompilerType::List(element) = &list.value_type else {
-                return Err(unsupported(
+                return (Err(unsupported(
                     &self.source,
                     list.span,
                     "List containment subject",
-                ));
+                )))
+                .map(Some);
             };
             let element = element.as_ref().clone();
             let list_type = list.value_type.clone();
@@ -1006,11 +1047,12 @@ impl Analyzer {
                 || compiler_integer_pair(&element)
                     && matches!(operation.as_str(), "contains-entry" | "contains-sequence"))
             {
-                return Err(unsupported(
+                return (Err(unsupported(
                     &self.source,
                     span,
                     "containment for this List element type",
-                ));
+                )))
+                .map(Some);
             }
             let operand = if operation == "contains-entry" {
                 self.analyze_expression_with_expected(operand, environment, Some(&element))?
@@ -1041,13 +1083,14 @@ impl Analyzer {
                 }
                 _ => unreachable!(),
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind,
                 value_type: CompilerType::Boolean,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [list, Expression::Identifier(operation), value] = items
             && matches!(self.source.slice(*operation), "remove-first" | "remove-all")
@@ -1055,16 +1098,18 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             let list = self.analyze_expression(list, environment)?;
             let CompilerType::List(element) = &list.value_type else {
-                return Err(unsupported(&self.source, list.span, "List removal subject"));
+                return (Err(unsupported(&self.source, list.span, "List removal subject")))
+                    .map(Some);
             };
             let element = element.as_ref().clone();
             let list_type = list.value_type.clone();
             if element != CompilerType::Int {
-                return Err(unsupported(
+                return (Err(unsupported(
                     &self.source,
                     span,
                     "removal for this List element type",
-                ));
+                )))
+                .map(Some);
             }
             let value = self.analyze_expression(value, environment)?;
             require_same_type(&self.source, value.span, &element, &value.value_type)?;
@@ -1079,13 +1124,14 @@ impl Analyzer {
                     value: Box::new(value),
                 }
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind,
                 value_type: list_type,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(operation), operands] = items
             && matches!(
@@ -1096,31 +1142,34 @@ impl Analyzer {
             let operation = self.source.slice(*operation).to_owned();
             let operands = self.analyze_expression(operands, environment)?;
             let CompilerExpressionKind::Tuple(mut fields) = operands.kind else {
-                return Err(source_diagnostic(
+                return (Err(source_diagnostic(
                     &self.source,
                     "E-COLLECTION-QUERY-ARGUMENT",
                     operands.span,
                     format!("{operation} requires one two-field product"),
-                ));
+                )))
+                .map(Some);
             };
             if fields.len() != 2 {
-                return Err(source_diagnostic(
+                return (Err(source_diagnostic(
                     &self.source,
                     "E-COLLECTION-QUERY-ARGUMENT",
                     operands.span,
                     format!("{operation} requires one two-field product"),
-                ));
+                )))
+                .map(Some);
             }
             let query = fields.pop().expect("checked two query fields");
             let collection = fields.pop().expect("checked two query fields");
             let (kind, value_type) = match operation.as_str() {
                 "array-at?" => {
                     let CompilerType::Array { element, .. } = &collection.value_type else {
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             collection.span,
                             "array-at? collection kind",
-                        ));
+                        )))
+                        .map(Some);
                     };
                     let element = element.clone();
                     require_type(
@@ -1142,22 +1191,24 @@ impl Analyzer {
                 }
                 "map-lookup" => {
                     let CompilerType::Map { key, value } = &collection.value_type else {
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             collection.span,
                             "map-lookup collection kind",
-                        ));
+                        )))
+                        .map(Some);
                     };
                     let key_type = key.as_ref().clone();
                     let value = value.clone();
                     require_same_type(&self.source, query.span, &key_type, &query.value_type)?;
                     let exact_key = Self::known_string_expression(&query, environment);
                     if value.as_ref() == &CompilerType::Function && exact_key.is_none() {
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             query.span,
                             "dynamic Map Function lookup key",
-                        ));
+                        )))
+                        .map(Some);
                     }
                     (
                         CompilerExpressionKind::MapLookup {
@@ -1170,11 +1221,12 @@ impl Analyzer {
                 }
                 "set-contains?" => {
                     let CompilerType::Set(element) = &collection.value_type else {
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             collection.span,
                             "set-contains? collection kind",
-                        ));
+                        )))
+                        .map(Some);
                     };
                     require_same_type(&self.source, query.span, element, &query.value_type)?;
                     (
@@ -1187,11 +1239,12 @@ impl Analyzer {
                 }
                 "bag-multiplicity" => {
                     let CompilerType::Bag(element) = &collection.value_type else {
-                        return Err(unsupported(
+                        return (Err(unsupported(
                             &self.source,
                             collection.span,
                             "bag-multiplicity collection kind",
-                        ));
+                        )))
+                        .map(Some);
                     };
                     require_same_type(&self.source, query.span, element, &query.value_type)?;
                     (
@@ -1204,26 +1257,28 @@ impl Analyzer {
                 }
                 _ => unreachable!("collection query spelling selected above"),
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind,
                 value_type,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(constructor), value] = items
             && self.source.slice(*constructor) == "Some"
         {
             let value = self.analyze_expression(value, environment)?;
             require_optional_payload(&self.source, value.span, &value.value_type)?;
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 value_type: CompilerType::Optional(Box::new(value.value_type.clone())),
                 kind: CompilerExpressionKind::OptionalSome(Box::new(value)),
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(operation), operand] = items
             && matches!(
@@ -1232,12 +1287,13 @@ impl Analyzer {
             )
         {
             let operation = self.source.slice(*operation).to_owned();
-            return self.analyze_static_unicode_transform(&operation, operand, span, environment);
+            return (self.analyze_static_unicode_transform(&operation, operand, span, environment))
+                .map(Some);
         }
         if let [text, Expression::Identifier(operation), index] = items
             && self.source.slice(*operation) == "character-at"
         {
-            return self.analyze_static_character_at(text, index, span, environment);
+            return (self.analyze_static_character_at(text, index, span, environment)).map(Some);
         }
         if let [
             base,
@@ -1248,7 +1304,7 @@ impl Analyzer {
             && !fields.is_empty()
             && fields.iter().all(|field| field.label.is_some())
         {
-            return self.analyze_record_reconstruction(base, fields, span, environment);
+            return (self.analyze_record_reconstruction(base, fields, span, environment)).map(Some);
         }
         if let [
             text,
@@ -1258,12 +1314,13 @@ impl Analyzer {
             && self.source.slice(*operation) == "normalize"
         {
             let form = self.source.slice(*form).to_owned();
-            return self.analyze_static_normalization(text, &form, span, environment);
+            return (self.analyze_static_normalization(text, &form, span, environment)).map(Some);
         }
         if let [left, Expression::Identifier(operation), right] = items
             && self.source.slice(*operation) == "canonically-equals"
         {
-            return self.analyze_static_canonical_equality(left, right, span, environment);
+            return (self.analyze_static_canonical_equality(left, right, span, environment))
+                .map(Some);
         }
         if let [
             Expression::Identifier(constructor),
@@ -1272,7 +1329,7 @@ impl Analyzer {
             && self.source.slice(*constructor) == "None"
         {
             let payload = self.parse_classifier(*payload)?;
-            return self.finish_optional_none(payload, span);
+            return (self.finish_optional_none(payload, span)).map(Some);
         }
         if let [
             Expression::Identifier(constructor),
@@ -1284,15 +1341,16 @@ impl Analyzer {
             let mut payload = Vec::with_capacity(fields.len());
             for field in fields {
                 let Expression::Identifier(classifier) = &field.value else {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         field.value.span(),
                         "Optional product payload classifier",
-                    ));
+                    )))
+                    .map(Some);
                 };
                 payload.push(self.parse_classifier(*classifier)?);
             }
-            return self.finish_optional_none(CompilerType::Tuple(payload), span);
+            return (self.finish_optional_none(CompilerType::Tuple(payload), span)).map(Some);
         }
         if let [
             value,
@@ -1302,12 +1360,13 @@ impl Analyzer {
             && self.source.slice(*operation) == "byte-count"
         {
             if self.source.slice(*encoding) != "Utf8" {
-                return Err(source_diagnostic(
+                return (Err(source_diagnostic(
                     &self.source,
                     "E-NO-APPLICABLE-OVERLOAD",
                     *encoding,
                     "the compiler String byte-count operation requires Utf8",
-                ));
+                )))
+                .map(Some);
             }
             let value = self.analyze_expression(value, environment)?;
             require_type(
@@ -1316,13 +1375,14 @@ impl Analyzer {
                 &CompilerType::String,
                 &value.value_type,
             )?;
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::StringUtf8ByteCount(Box::new(value)),
                 value_type: CompilerType::Int,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [
             Expression::Identifier(namespace),
@@ -1335,13 +1395,14 @@ impl Analyzer {
                 self.source.slice(*code),
             )
         {
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::ErrorCode(value),
                 value_type: CompilerType::ErrorCode,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [
             Expression::Identifier(namespace),
@@ -1354,13 +1415,14 @@ impl Analyzer {
                 self.source.slice(*code),
             )
         {
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Enum(value),
                 value_type: CompilerType::Enum(enumeration),
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [
             Expression::Identifier(operation),
@@ -1369,7 +1431,7 @@ impl Analyzer {
             && matches!(self.source.slice(*operation), "zero" | "one")
         {
             let one = self.source.slice(*operation) == "one";
-            return match self.source.slice(*domain) {
+            return (match self.source.slice(*domain) {
                 "Int" | "Nat" => {
                     let value = BigInt::from(u8::from(one));
                     let value_type = if self.source.slice(*domain) == "Nat" {
@@ -1400,20 +1462,25 @@ impl Analyzer {
                     *domain,
                     "numeric identity domain",
                 )),
-            };
+            })
+            .map(Some);
         }
         if let [Expression::Identifier(constructor), argument] = items {
             match self.source.slice(*constructor) {
-                "Int" => return self.analyze_int_constructor(argument, span, environment),
-                "Nat" => return self.analyze_nat_constructor(argument, span, environment),
+                "Int" => {
+                    return (self.analyze_int_constructor(argument, span, environment)).map(Some);
+                }
+                "Nat" => {
+                    return (self.analyze_nat_constructor(argument, span, environment)).map(Some);
+                }
                 "Character" => {
                     let value = self.analyze_expression(argument, environment)?;
-                    return self.finish_character_conversion(value, argument.span());
+                    return (self.finish_character_conversion(value, argument.span())).map(Some);
                 }
                 "String" => {
                     let value = self.analyze_expression(argument, environment)?;
                     let value = self.finish_character_conversion(value, argument.span())?;
-                    return Ok(forget_character_evidence(value));
+                    return (Ok(forget_character_evidence(value))).map(Some);
                 }
                 _ => {}
             }
@@ -1421,7 +1488,7 @@ impl Analyzer {
         if let [Expression::Identifier(constructor), argument] = items
             && self.source.slice(*constructor) == "Rational"
         {
-            return self.analyze_rational_constructor(argument, span, environment);
+            return (self.analyze_rational_constructor(argument, span, environment)).map(Some);
         }
         if let [Expression::Identifier(operation), operand] = items
             && matches!(
@@ -1434,12 +1501,13 @@ impl Analyzer {
             )
         {
             let operation = self.source.slice(*operation).to_owned();
-            return self.analyze_range_observation(&operation, operand, span, environment);
+            return (self.analyze_range_observation(&operation, operand, span, environment))
+                .map(Some);
         }
         if let [record, Expression::Identifier(field)] = items
             && self.record_selection_candidate(record, environment)
         {
-            return self.analyze_record_field(record, *field, span, environment);
+            return (self.analyze_record_field(record, *field, span, environment)).map(Some);
         }
         if let [error, Expression::Identifier(field)] = items
             && matches!(
@@ -1449,7 +1517,7 @@ impl Analyzer {
             && !matches!(error, Expression::Identifier(name)
                 if !environment.contains_key(self.source.slice(*name)))
         {
-            return self.analyze_error_field(error, *field, span, environment);
+            return (self.analyze_error_field(error, *field, span, environment)).map(Some);
         }
         if let [
             Expression::Callable {
@@ -1464,13 +1532,14 @@ impl Analyzer {
                 let int_range = exact_int(&operand)
                     .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
                     .or_else(|| Some(modular_range(&modular)));
-                return Ok(CompilerExpression {
+                return (Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Negate(Box::new(operand)),
                     value_type: CompilerType::Modular(modular),
                     int_range,
                     rational_value: None,
                     span,
-                });
+                }))
+                .map(Some);
             }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
@@ -1486,13 +1555,14 @@ impl Analyzer {
             } else {
                 operand.value_type.clone()
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Negate(Box::new(operand)),
                 value_type,
                 int_range: range,
                 rational_value,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(operation), operand] = items
             && matches!(self.source.slice(*operation), "negate" | "absolute")
@@ -1501,22 +1571,24 @@ impl Analyzer {
             let operand = self.analyze_expression(operand, environment)?;
             if let CompilerType::Modular(modular) = operand.value_type.clone() {
                 if !negate {
-                    return Err(unsupported(
+                    return (Err(unsupported(
                         &self.source,
                         span,
                         "absolute value over a modular value",
-                    ));
+                    )))
+                    .map(Some);
                 }
                 let int_range = exact_int(&operand)
                     .map(|value| IntRange::exact(reduce_modular(-value, &modular)))
                     .or_else(|| Some(modular_range(&modular)));
-                return Ok(CompilerExpression {
+                return (Ok(CompilerExpression {
                     kind: CompilerExpressionKind::Negate(Box::new(operand)),
                     value_type: CompilerType::Modular(modular),
                     int_range,
                     rational_value: None,
                     span,
-                });
+                }))
+                .map(Some);
             }
             require_exact_numeric(&self.source, operand.span, &operand.value_type)?;
             let range = (operand.value_type == CompilerType::Int)
@@ -1544,7 +1616,7 @@ impl Analyzer {
             } else {
                 operand.value_type.clone()
             };
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: if negate {
                     CompilerExpressionKind::Negate(Box::new(operand))
                 } else {
@@ -1554,7 +1626,8 @@ impl Analyzer {
                 int_range: range,
                 rational_value,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if let [Expression::Identifier(operation), operand] = items
             && self.source.slice(*operation) == "not"
@@ -1566,13 +1639,14 @@ impl Analyzer {
                 &CompilerType::Boolean,
                 &operand.value_type,
             )?;
-            return Ok(CompilerExpression {
+            return (Ok(CompilerExpression {
                 kind: CompilerExpressionKind::Not(Box::new(operand)),
                 value_type: CompilerType::Boolean,
                 int_range: None,
                 rational_value: None,
                 span,
-            });
+            }))
+            .map(Some);
         }
         if items.len() >= 5
             && items.len() % 2 == 1
@@ -1592,12 +1666,13 @@ impl Analyzer {
                     span: Span::new(items[0].span().start, pair[1].span().end),
                 };
             }
-            return self
+            return (self
                 .analyze_expression(&grouped, environment)
                 .map(|mut value| {
                     value.span = span;
                     value
-                });
+                }))
+            .map(Some);
         }
         if items.len() >= 5
             && items.len() % 2 == 1
@@ -1616,10 +1691,10 @@ impl Analyzer {
                     span: Span::new(items[0].span().start, pair[1].span().end),
                 };
             }
-            return self.analyze_expression(&grouped, environment).map(|mut value| {
+            return (self.analyze_expression(&grouped, environment).map(|mut value| {
                 value.span = span;
                 value
-            });
+            })).map(Some);
         }
         if let [
             record,
@@ -1633,10 +1708,11 @@ impl Analyzer {
                 items: vec![record.clone(), Expression::Identifier(*field)],
                 span: Span::new(record.span().start, field.end),
             };
-            return self.analyze_symbolic_binary(*kind, &left, right, span, environment);
+            return (self.analyze_symbolic_binary(*kind, &left, right, span, environment))
+                .map(Some);
         }
         if let [left, Expression::Callable { kind, .. }, right] = items {
-            return self.analyze_symbolic_binary(*kind, left, right, span, environment);
+            return (self.analyze_symbolic_binary(*kind, left, right, span, environment)).map(Some);
         }
         if let [left, Expression::Identifier(operation), right] = items
             && matches!(
@@ -1645,11 +1721,12 @@ impl Analyzer {
             )
         {
             let operation = self.source.slice(*operation).to_owned();
-            return self.analyze_identifier_binary(&operation, left, right, span, environment);
+            return (self.analyze_identifier_binary(&operation, left, right, span, environment))
+                .map(Some);
         }
         if let Some(value) = self.analyze_function_value_chain(items, span, environment)? {
-            return Ok(value);
+            return (Ok(value)).map(Some);
         }
-        self.analyze_call(items, span, environment)
+        Ok(None)
     }
 }

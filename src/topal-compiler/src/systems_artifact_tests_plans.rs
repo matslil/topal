@@ -100,6 +100,7 @@ fn declared_library_requires_checked_snapshot_before_publication() {
             None,
             None,
             SystemsKernelLibraries {
+                namespace: None,
                 inode_mode: None,
                 ram_page_pool: None,
                 file_position: None,

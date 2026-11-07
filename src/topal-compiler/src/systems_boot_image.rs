@@ -393,6 +393,7 @@ fn validate_artifact_input(
     crate::systems_file_region_boot::validate(kernel, artifact)?;
     crate::systems_ram_page_region_boot::validate(kernel, artifact)?;
     crate::systems_inode_region_boot::validate(kernel, artifact)?;
+    crate::systems_namespace_region_boot::validate(kernel, artifact)?;
     if artifact
         .dispatch_library
         .as_ref()
@@ -411,6 +412,7 @@ fn validate_artifact_input(
             artifact.file_position_library.as_ref(),
             artifact.ram_page_pool_library.as_ref(),
             artifact.inode_mode_library.as_ref(),
+            artifact.namespace_library.as_ref(),
         ],
     )?;
     let identity_interface = artifact
@@ -1177,6 +1179,7 @@ mod tests {
     use crate::{LlvmTools, qualified_x86_64_static_user_image_fixture};
 
     include!("systems_inode_binding_tests.rs");
+    include!("systems_namespace_binding_tests.rs");
 
     const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
 
@@ -1186,6 +1189,13 @@ mod tests {
     fn linked_kernel_source(
         parent: &Path,
         source_text: &str,
+    ) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
+        linked_kernel_source_with_namespace(parent, source_text, None)
+    }
+    fn linked_kernel_source_with_namespace(
+        parent: &Path,
+        source_text: &str,
+        namespace_override: Option<&crate::SystemsSourceLibraryInput>,
     ) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
         let program = analyze_systems_for_compiler(
             source_text,
@@ -1246,6 +1256,13 @@ mod tests {
             )
             .unwrap()
         });
+        let namespace = program.namespace_library.as_ref().map(|requirement| {
+            crate::systems_library::load_source_library(
+                requirement,
+                &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/kernel"),
+            )
+            .unwrap()
+        });
         let linked = crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
@@ -1253,6 +1270,7 @@ mod tests {
             Some(&qualified_x86_64_static_user_image_fixture()),
             crate::SystemsKernelLibraries {
                 inode_mode: inode.as_ref(),
+                namespace: namespace_override.or(namespace.as_ref()),
                 ram_page_pool: page.as_ref(),
                 file_position: position.as_ref(),
                 region: region.as_ref(),

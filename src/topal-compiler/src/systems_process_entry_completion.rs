@@ -11,6 +11,7 @@ fn emit_static_process_completion(
     source_position: bool,
     source_page: bool,
     source_inode: bool,
+    source_namespace: bool,
 ) -> Result<(), CompileError> {
     code.bind("static-process-shell-banner")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -1591,7 +1592,13 @@ fn emit_static_process_completion(
     process_files::emit_initialize(code)?;
     process_files::emit_lifetime_services(code)?;
     process_files::emit_transfer_services(code, source_position)?;
-    process_files::emit_reclamation(code, source_position, source_page, source_inode)?;
+    process_files::emit_reclamation(
+        code,
+        source_position,
+        source_page,
+        source_inode,
+        source_namespace,
+    )?;
     process_runtime::signals::emit_services(code)?;
     if source_inode {
         process_runtime::inode_services::emit_services(code)?;

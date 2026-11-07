@@ -104,3 +104,59 @@ fn inode_source_is_unique_qualified_and_required_by_v5() {
             .is_none()
     );
 }
+
+#[test]
+fn namespace_source_requires_a_unique_instance_and_all_filesystem_controllers() {
+    // TOPAL-SYSTEMS-NAMESPACE-ACTION-001. This selects the component controller;
+    // V6 handlers/entry consumers remain a separate integration obligation.
+    let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    let declaration = "  namespace-library is lang systems source-library (\n    source is \"policy/namespace-action.t\",\n    export is apply,\n    interface is borrowed-byte-region-instance-action-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
+    let selected = source.replace(
+        "  inode-mode-library is",
+        &format!("{declaration}  inode-mode-library is"),
+    );
+    let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
+    let program = analyze_systems_for_compiler(&selected, &target).unwrap();
+    assert_eq!(
+        program.namespace_library.as_ref().unwrap().interface,
+        CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+    );
+    for changed in [
+        declaration.repeat(2),
+        declaration.replace("65536", "65535"),
+        declaration.replace("4096", "4095"),
+        declaration.replace("policy/namespace-action.t", "../outside.t"),
+        declaration.replace(
+            "    export is",
+            "    instance is inode-metadata,\n    export is",
+        ),
+        declaration.replace(
+            "borrowed-byte-region-instance-action-v1",
+            "borrowed-byte-region-framed-action-v1",
+        ),
+    ] {
+        assert!(
+            analyze_systems_for_compiler(&selected.replace(declaration, &changed), &target)
+                .is_err()
+        );
+    }
+    for missing in 0..4 {
+        let mut wrong = program.clone();
+        match missing {
+            0 => wrong.inode_mode_library = None,
+            1 => wrong.ram_page_pool_library = None,
+            2 => wrong.file_position_library = None,
+            _ => {
+                wrong.file_position_library.as_mut().unwrap().interface =
+                    CompilerSystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
+            }
+        }
+        assert!(topal_semantics::validate_systems_program(&wrong).is_err());
+    }
+    assert!(
+        analyze_systems_for_compiler(source, &target)
+            .unwrap()
+            .namespace_library
+            .is_none()
+    );
+}

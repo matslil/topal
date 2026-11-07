@@ -123,8 +123,7 @@ fn each_name_owns_a_link_and_last_unlink_waits_for_all_descriptions() {
     p.close("owner", &inherited).unwrap();
     assert!(
         p.state
-            .pages
-            .iter()
+            .page_records()
             .all(|page| page.owner != Some(identity))
     );
     assert_eq!(bytes(&mut p, &new), b"new");
@@ -139,9 +138,9 @@ fn absent_destination_rename_needs_no_free_entry_and_changes_only_name_and_times
         create(&mut p, name, b"");
     }
     let mut expected = p.state.clone();
-    expected.names[0].as_mut().unwrap().name = b"moved".to_vec();
-    expected.objects[0].as_mut().unwrap().inode.changed(200);
-    expected.directory_inode.modified(200);
+    expected.update_name(0, |entry| entry.name = b"moved".to_vec());
+    expected.update_object(0, |object| object.inode.changed(200));
+    expected.update_directory_inode(|inode| inode.modified(200));
     p.rename("owner", b"a", b"moved", SystemsFileRename::Replace, 200)
         .unwrap();
     assert_eq!(p.state, expected);
@@ -197,8 +196,7 @@ fn replacement_keeps_victim_alive_through_other_links_and_open_descriptions() {
     p.close("owner", &victim).unwrap();
     assert!(
         p.state
-            .pages
-            .iter()
+            .page_records()
             .all(|page| page.owner != Some(victim_before.identity))
     );
     assert_eq!(bytes(&mut p, &source), b"source data");
@@ -213,8 +211,8 @@ fn replacing_a_closed_last_link_reclaims_victim_pages_without_reusing_its_identi
     p.close("owner", &victim).unwrap();
     p.rename("owner", b"a", b"b", SystemsFileRename::Replace, 130)
         .unwrap();
-    assert!(p.state.pages.iter().all(|page| page.owner != Some(old)));
-    assert_eq!(p.state.objects.iter().flatten().count(), 1);
+    assert!(p.state.page_records().all(|page| page.owner != Some(old)));
+    assert_eq!(p.state.objects().iter().flatten().count(), 1);
     let fresh = create(&mut p, b"c", b"");
     assert!(p.metadata("owner", &fresh).unwrap().identity > old);
     assert_eq!(bytes(&mut p, &source), b"source");
@@ -228,7 +226,7 @@ fn exchange_changes_associations_and_ctimes_without_moving_data_positions_or_lin
     p.hard_link("owner", b"a", b"a2", 110).unwrap();
     let old_a = p.metadata("owner", &a).unwrap();
     let old_b = p.metadata("owner", &b).unwrap();
-    let pages = p.state.pages.clone();
+    let pages = p.state.page_snapshot();
     let descriptions = p.state.descriptions.clone();
     p.rename("owner", b"a", b"b", SystemsFileRename::Exchange, 140)
         .unwrap();
@@ -254,7 +252,7 @@ fn exchange_changes_associations_and_ctimes_without_moving_data_positions_or_lin
             ..old_b
         }
     );
-    assert_eq!(p.state.pages, pages);
+    assert_eq!(p.state.page_snapshot(), pages);
     assert_eq!(p.state.descriptions, descriptions);
     assert_eq!(p.directory_times("owner").unwrap(), [140, 140]);
 }
@@ -293,7 +291,7 @@ fn entry_and_inode_capacity_are_independent_and_refusals_preserve_all_state() {
         p.hard_link("owner", b"a", name, 110).unwrap();
     }
     assert_eq!(p.metadata("owner", &first).unwrap().links, 4);
-    assert_eq!(p.state.objects.iter().flatten().count(), 1);
+    assert_eq!(p.state.objects().iter().flatten().count(), 1);
     let before = p.state.clone();
     failed(p.hard_link("owner", b"a", b"fifth", 120), "ENOSPC");
     assert_eq!(p.state, before);
@@ -303,7 +301,7 @@ fn entry_and_inode_capacity_are_independent_and_refusals_preserve_all_state() {
     assert_eq!(p.metadata("owner", &temporary).unwrap().links, 0);
     let mut q = pool();
     let files: Vec<_> = (0..4).map(|_| anonymous(&mut q)).collect();
-    assert!(q.state.names.iter().all(Option::is_none));
+    assert!(q.state.names().iter().all(Option::is_none));
     q.hard_link_by_file("owner", &files[2], b"first-name", 130)
         .unwrap();
     let before = q.state.clone();
@@ -450,27 +448,28 @@ fn malformed_tables_refuse_normal_access_but_terminal_cleanup_retires_all_state(
     for fault in 0..5 {
         p.state = good.clone();
         match fault {
-            0 => p.state.names[0].as_mut().unwrap().identity = u64::MAX,
-            1 => p.state.names[1].as_mut().unwrap().name = b"a".to_vec(),
-            2 => p.state.names[0].as_mut().unwrap().name = b"..".to_vec(),
-            3 => p.state.objects[0].as_mut().unwrap().may_link_unlinked = true,
-            _ => p.state.objects[1] = p.state.objects[0].clone(),
+            0 => p.state.update_name(0, |entry| entry.identity = u64::MAX),
+            1 => p.state.update_name(1, |entry| entry.name = b"a".to_vec()),
+            2 => p.state.update_name(0, |entry| entry.name = b"..".to_vec()),
+            3 => p
+                .state
+                .update_object(0, |object| object.may_link_unlinked = true),
+            _ => p.state.set_object(1, p.state.object(0)),
         }
         let before = p.state.clone();
         assert!(p.metadata("owner", &a).is_err());
         assert!(p.hard_link("owner", b"a", b"x", 999).is_err());
         assert_eq!(p.state, before);
         p.terminate("owner").unwrap();
-        assert!(p.state.names.iter().all(Option::is_none));
-        assert!(p.state.objects.iter().all(Option::is_none));
+        assert!(p.state.names().iter().all(Option::is_none));
+        assert!(p.state.objects().iter().all(Option::is_none));
         assert!(
             p.state
-                .pages
-                .iter()
+                .page_records()
                 .all(|page| page.owner.is_none() && page.bytes.iter().all(|byte| *byte == 0))
         );
         assert!(p.state.references.is_empty() && p.state.descriptions.is_empty());
-        assert_eq!(p.state.directory_inode.encoded(), &[0; 32]);
+        assert_eq!(p.state.directory_inode().encoded(), &[0; 32]);
     }
 }
 

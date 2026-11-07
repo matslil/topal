@@ -86,6 +86,7 @@ fn real_ram_page_owner_binds_four_disjoint_instances_and_rejects_tampering() {
     let tools = LlvmTools::discover(None).unwrap();
     let libraries = SystemsKernelLibraries {
         inode_mode: inode.as_ref(),
+        namespace: None,
         ram_page_pool: page.as_ref(),
         region: region.as_ref(),
         file_position: position.as_ref(),

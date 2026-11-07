@@ -1,7 +1,6 @@
 //! Actual shared inode byte loans; no source execution or physical erasure proof.
 //! TOPAL-SYSTEMS-INODE-MODE-ACTION-001.
 use super::*;
-use crate::SystemsInodeMetadata;
 use std::sync::Arc;
 
 /// Which already validated controller lends this block. Not a numeric grant.
@@ -13,7 +12,7 @@ pub(crate) enum InodeController {
 
 impl<'a> RegionLibraryInvocation<'a> {
     pub(crate) fn begin_inode(
-        inode: &'a mut SystemsInodeMetadata,
+        field: &'a mut [u8; 32],
         domain: &'a mut ControllerActionState,
         controller: (&str, Arc<()>, InodeController),
         kind: u16,
@@ -26,7 +25,7 @@ impl<'a> RegionLibraryInvocation<'a> {
         if inputs.0 > 0o7777 {
             return Err(RegionLibraryError::Bounds);
         }
-        let mode = u64::from_le_bytes(inode.bytes[..8].try_into().unwrap());
+        let mode = u64::from_le_bytes(field[..8].try_into().unwrap());
         if mode & !0o7777 != u64::from(kind)
             || !matches!(
                 (controller.2, kind),
@@ -40,7 +39,7 @@ impl<'a> RegionLibraryInvocation<'a> {
             .generation
             .checked_add(1)
             .ok_or(RegionLibraryError::IdentityExhausted)?;
-        let mut expected = inode.bytes;
+        let mut expected = *field;
         expected[..8].copy_from_slice(&(u64::from(kind) | inputs.0).to_le_bytes());
         expected[24..].copy_from_slice(&inputs.1.to_le_bytes());
         let (label, identity, controller_kind) = controller;
@@ -53,7 +52,7 @@ impl<'a> RegionLibraryInvocation<'a> {
         domain.active = true;
         Ok(Self::from_storage(
             Storage::Inode {
-                field: &mut inode.bytes,
+                field,
                 domain,
                 owner: (label.into(), owner_class),
                 scope: owner::ControllerOwner(identity),

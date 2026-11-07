@@ -43,13 +43,23 @@ pub fn kernel_region_unsigned_runtime_required(
 fn kernel_region_analysis(
     program: &CompilerProgram,
 ) -> Result<(Vec<CompilerKernelRegionEffects>, bool), Diagnostic> {
+    kernel_region_analysis_with_budget(program, Some(64))
+}
+
+fn kernel_region_analysis_with_budget(
+    program: &CompilerProgram,
+    maximum_functions: Option<usize>,
+) -> Result<(Vec<CompilerKernelRegionEffects>, bool), Diagnostic> {
     let invalid = |span, message| unsupported(&program.source, span, message);
     let functions = program
         .functions
         .iter()
         .map(|f| (f.symbol.clone(), f))
         .collect::<BTreeMap<_, _>>();
-    if functions.len() != program.functions.len() || functions.is_empty() || functions.len() > 64 {
+    if functions.len() != program.functions.len()
+        || functions.is_empty()
+        || maximum_functions.is_some_and(|limit| functions.len() > limit)
+    {
         return Err(invalid(
             program.main.result.span,
             "region-library function identity budget",

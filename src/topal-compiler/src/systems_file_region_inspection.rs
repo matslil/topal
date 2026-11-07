@@ -108,6 +108,7 @@ pub(crate) fn inspect_linked(
             arena: ARENA,
             control: CONTROL,
             history: HISTORY,
+            extra_storage: Vec::new(),
             live_frame_bytes: LIVE_FRAME_BYTES,
             call_alignment_bytes: CALL_ALIGNMENT_BYTES,
             code: vec![
@@ -137,6 +138,7 @@ pub(in super::super) fn inspect_owned(
         arena,
         control,
         history,
+        extra_storage,
         live_frame_bytes,
         call_alignment_bytes,
         code,
@@ -342,7 +344,13 @@ pub(in super::super) fn inspect_owned(
         (arena, ARENA_BYTES, 4096),
         (control, 64, 8),
         (history, 8, 8),
-    ] {
+    ]
+    .into_iter()
+    .chain(extra_storage)
+    {
+        if count == 0 || count % 8 != 0 || !alignment.is_power_of_two() || alignment < 8 {
+            return Err(invalid("invalid private action storage geometry"));
+        }
         let symbol = file
             .symbol_by_name(name)
             .ok_or_else(|| invalid(format!("missing action storage {name}")))?;
