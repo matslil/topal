@@ -1,0 +1,48 @@
+from pathlib import Path
+import hashlib
+import json
+import os
+import subprocess
+import time
+
+root = Path('/home/mats/git/topal')
+out = root / 'linux-kernel/tools/allocator-readiness/results'
+out.mkdir(parents=True, exist_ok=True)
+paths = ['src/topal-semantics/src/systems_frames.rs',
+         'src/topal-semantics/src/systems_frames_validation_tests.rs',
+         'scripts/run_bounded.py']
+digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+record = {'schema': 'topal.frame-allocator-model-validation/1',
+          'base_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
+          'scope': 'reference model only; no native or VM qualification',
+          'complete': False, 'passed': False,
+          'sources': {p: digest(root / p) for p in paths}, 'commands': []}
+commands = [
+    ('semantics', ['cargo', 'test', '-p', 'topal-semantics', '--lib', '--locked']),
+    ('check', ['cargo', 'check', '--workspace', '--all-targets', '--locked', '-j1']),
+    ('coverage', ['cargo', 'test', '-p', 'topal-language', '--test', 'core_language_coverage', '--locked']),
+    ('format', ['cargo', 'fmt', '--all', '--', '--check']),
+    ('source-size', ['python3', 'scripts/check_rust_file_sizes.py']),
+]
+target = out / 'qualification.json'
+def save():
+    target.write_text(json.dumps(record, indent=2) + '\n')
+save()
+for name, argv in commands:
+    started = time.monotonic()
+    env = dict(os.environ)
+    env['RUST_MIN_STACK'] = '16777216'
+    with (out / (name + '.log')).open('wb') as log:
+        result = subprocess.run(argv, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+    record['commands'].append({'name': name, 'argv': argv, 'exit_code': result.returncode,
+                               'elapsed_seconds': time.monotonic() - started,
+                               'log': name + '.log', 'sha256': digest(out / (name + '.log'))})
+    save()
+    print(name, 'exit', result.returncode, flush=True)
+    if result.returncode:
+        raise SystemExit(result.returncode)
+if record['sources'] != {p: digest(root / p) for p in paths}:
+    raise SystemExit('qualification inputs changed during run')
+record.update(complete=True, passed=True)
+save()
+print('FRAME_ALLOCATOR_MODEL_VALIDATION_PASS', flush=True)

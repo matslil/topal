@@ -80,3 +80,9 @@ General allocation is a prerequisite for expanding VFS, processes and virtual
 memory toward the declared distribution and container workloads. It remains
 part of the original implementation goal alongside drivers/Device Tree,
 networking/isolation, full retained UAPI and VM hosting.
+
+The subsequent [frame-owner model repair](../../step-4-frame-allocator-readiness.md)
+reproduces and corrects same-label authority, identity-exhaustion mutation,
+unchecked extent endpoints and malformed normalized-range admission. Its
+independent fragmented-allocation oracle and complete semantics suite validate
+the existing portable contract. Native general allocation remains required.

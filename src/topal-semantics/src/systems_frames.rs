@@ -1,7 +1,12 @@
 //! Architecture-independent affine physical-frame allocation.
 
+#[cfg(test)]
+#[path = "systems_frames_validation_tests.rs"]
+mod validation_tests;
+
 use std::collections::BTreeMap;
 use std::fmt;
+use std::sync::Arc;
 
 use crate::{BootMemoryClass, BootMemoryProvenance, MemoryDescribedContext};
 
@@ -154,6 +159,7 @@ pub struct PhysicalFrameRequest {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PhysicalFrameExtent {
     allocator_identity: String,
+    allocator_instance: AllocatorInstance,
     extent_identity: u64,
     model_start_frame: u64,
     pub frame_count: u64,
@@ -229,10 +235,36 @@ struct LiveFrameExtent {
     mapped: bool,
 }
 
+impl LiveFrameExtent {
+    fn matches(&self, extent: &PhysicalFrameExtent) -> bool {
+        extent.frame_count != 0
+            && extent.alignment_frames.is_power_of_two()
+            && extent
+                .model_start_frame
+                .is_multiple_of(extent.alignment_frames)
+            && self.start_frame == extent.model_start_frame
+            && Some(self.end_frame) == extent.model_start_frame.checked_add(extent.frame_count)
+            && self.alignment_frames == extent.alignment_frames
+            && self.provenance == extent.provenance
+    }
+}
+
+/// A model snapshot retains its owner; a separately created same-label
+/// allocator has no authority over that owner's extents.
+#[derive(Clone, Debug)]
+struct AllocatorInstance(Arc<()>);
+impl PartialEq for AllocatorInstance {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+impl Eq for AllocatorInstance {}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FrameAllocatorContext {
     pub handoff_identity: String,
     allocator_identity: String,
+    allocator_instance: AllocatorInstance,
     page_size: u64,
     free: Vec<FreeFrameRun>,
     live: BTreeMap<u64, LiveFrameExtent>,
@@ -246,7 +278,22 @@ impl MemoryDescribedContext {
         allocator_identity: impl Into<String>,
     ) -> FrameAllocatorResult {
         let allocator_identity = allocator_identity.into();
-        if self.memory.page_size == 0 || !self.memory.page_size.is_power_of_two() {
+        let mut ranges = self.memory.ranges.iter().collect::<Vec<_>>();
+        ranges.sort_by_key(|range| range.start);
+        if !self.memory.page_size.is_power_of_two()
+            || ranges.iter().any(|range| {
+                range.start >= range.end
+                    || range.provenance.is_empty()
+                    || (range.class == BootMemoryClass::Allocatable
+                        && (!range.start.is_multiple_of(self.memory.page_size)
+                            || !range.end.is_multiple_of(self.memory.page_size)
+                            || range
+                                .provenance
+                                .iter()
+                                .any(|source| source.class != BootMemoryClass::Allocatable)))
+            })
+            || ranges.windows(2).any(|pair| pair[0].end > pair[1].start)
+        {
             return FrameAllocatorResult::Failure(FrameAllocatorFailureContext {
                 handoff_identity: self.handoff_identity,
                 error: PhysicalFrameError::InvalidDescription,
@@ -274,6 +321,7 @@ impl MemoryDescribedContext {
         FrameAllocatorResult::Ready(FrameAllocatorContext {
             handoff_identity: self.handoff_identity,
             allocator_identity,
+            allocator_instance: AllocatorInstance(Arc::new(())),
             page_size: self.memory.page_size,
             free,
             live: BTreeMap::new(),
@@ -309,6 +357,10 @@ impl FrameAllocatorContext {
         {
             return Err(PhysicalFrameError::InvalidRequest);
         }
+        let next_extent_identity = self
+            .next_extent_identity
+            .checked_add(1)
+            .ok_or(PhysicalFrameError::Exhausted)?;
         for index in 0..self.free.len() {
             let run = &self.free[index];
             let Some(aligned_start) = align_up(run.start_frame, request.alignment_frames) else {
@@ -337,10 +389,7 @@ impl FrameAllocatorContext {
             }
             self.free.sort_by_key(|free| free.start_frame);
             let extent_identity = self.next_extent_identity;
-            self.next_extent_identity = self
-                .next_extent_identity
-                .checked_add(1)
-                .ok_or(PhysicalFrameError::Exhausted)?;
+            self.next_extent_identity = next_extent_identity;
             self.live.insert(
                 extent_identity,
                 LiveFrameExtent {
@@ -353,6 +402,7 @@ impl FrameAllocatorContext {
             );
             return Ok(PhysicalFrameExtent {
                 allocator_identity: self.allocator_identity.clone(),
+                allocator_instance: self.allocator_instance.clone(),
                 extent_identity,
                 model_start_frame: aligned_start,
                 frame_count: request.frame_count,
@@ -371,7 +421,9 @@ impl FrameAllocatorContext {
     /// extent.
     #[allow(clippy::needless_pass_by_value)] // Release consumes the affine extent token.
     pub fn release(&mut self, extent: PhysicalFrameExtent) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
@@ -381,11 +433,7 @@ impl FrameAllocatorContext {
         if live.mapped {
             return Err(PhysicalFrameError::MappedExtent);
         }
-        if live.start_frame != extent.model_start_frame
-            || live.end_frame != extent.model_start_frame + extent.frame_count
-            || live.alignment_frames != extent.alignment_frames
-            || live.provenance != extent.provenance
-        {
+        if !live.matches(&extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         let Some(live) = self.live.remove(&extent.extent_identity) else {
@@ -418,7 +466,9 @@ impl FrameAllocatorContext {
         &mut self,
         extent: &PhysicalFrameExtent,
     ) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
@@ -428,11 +478,7 @@ impl FrameAllocatorContext {
         if live.mapped {
             return Err(PhysicalFrameError::MappedExtent);
         }
-        if live.start_frame != extent.model_start_frame
-            || live.end_frame != extent.model_start_frame + extent.frame_count
-            || live.alignment_frames != extent.alignment_frames
-            || live.provenance != extent.provenance
-        {
+        if !live.matches(extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         live.mapped = true;
@@ -443,14 +489,16 @@ impl FrameAllocatorContext {
         &mut self,
         extent: &PhysicalFrameExtent,
     ) -> Result<(), PhysicalFrameError> {
-        if extent.allocator_identity != self.allocator_identity {
+        if extent.allocator_identity != self.allocator_identity
+            || extent.allocator_instance != self.allocator_instance
+        {
             return Err(PhysicalFrameError::WrongAllocator);
         }
         let live = self
             .live
             .get_mut(&extent.extent_identity)
             .ok_or(PhysicalFrameError::UnknownExtent)?;
-        if !live.mapped {
+        if !live.mapped || !live.matches(extent) {
             return Err(PhysicalFrameError::UnknownExtent);
         }
         live.mapped = false;

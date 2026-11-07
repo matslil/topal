@@ -17,6 +17,11 @@ publication contracts. All four chmod-family calls retain shared inode behavior
 under V6 canonical metadata admission. This covers the prepared root and bounded
 object kinds; general credentials and filesystems remain required below.
 
+The subsequent [frame-owner model repair](step-4-frame-allocator-readiness.md)
+passes all 239 semantics tests and locked workspace all-target checking. It
+strengthens the reference allocator's authority, refusal and range checks;
+general native allocation remains required.
+
 The [systems implementation maintenance](step-4-modular-systems-implementation.md)
 restores the existing size ceiling across all 381 owned Rust sources. Complete
 workspace checks, preserved function/assertion inventories and an independently
