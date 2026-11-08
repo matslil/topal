@@ -19,10 +19,19 @@ pub(super) fn append(
     function: SymbolId,
     bytes: u64,
     rows: &[(u32, Vec<u8>)],
+    discontinuous: bool,
 ) -> Result<(), CompileError> {
     // length, CIE_id, version, augmentation, address/segment sizes,
     // code alignment=1, data alignment=-8, return-address register=RIP.
-    let mut cie = vec![0, 0, 0, 0, 255, 255, 255, 255, 4, 0, 8, 0, 1, 0x78, 16];
+    let mut cie = vec![0, 0, 0, 0, 255, 255, 255, 255, 4];
+    // GNU 'S' marks a stack discontinuity for target debuggers. GDB otherwise
+    // rejects a valid high-private-stack -> low-kernel-stack recovery as an
+    // inward older frame. This does not introduce a source signal event or
+    // runtime unwinding; all saved-register/CFA rules remain exact.
+    if discontinuous {
+        cie.push(b'S');
+    }
+    cie.extend_from_slice(&[0, 8, 0, 1, 0x78, 16]);
     cie.extend_from_slice(&[0x0c, 7, 8, 0x90, 1]); // CFA=RSP+8; RIP=[CFA-8]
     // The bridge preserves all SysV callee-saved registers before saving them.
     for register in [3, 6, 12, 13, 14, 15] {

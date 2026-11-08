@@ -24,7 +24,9 @@ const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8
 }
 
 #[allow(clippy::too_many_lines)] // Every typed provider dependency is constructed in one closed root boundary.
-fn generate_root_object(program: &CompilerSystemsProgram) -> Result<Vec<u8>, CompileError> {
+pub(crate) fn generate_root_object(
+    program: &CompilerSystemsProgram,
+) -> Result<Vec<u8>, CompileError> {
     generate_x86_64_systems_provider_object(program)?;
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
     object.add_file_symbol(b"topal-generated-x86-systems-root".to_vec());

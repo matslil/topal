@@ -25,6 +25,31 @@ mod systems_region_library;
 #[cfg(test)]
 mod systems_region_root_tests;
 mod systems_root_region_boot;
+mod systems_tail_component;
+mod systems_tail_linked;
+mod systems_tail_model;
+mod systems_tail_owner;
+mod systems_tail_publication;
+pub use systems_tail_linked::{
+    Placement as SystemsTailInputPlacement, Section as SystemsTailInputSection,
+};
+pub use systems_tail_publication::{
+    Binding as SystemsTailRootBinding, InputObject as SystemsTailRootObject,
+    NativeBounds as SystemsTailRootBounds, Source as SystemsTailRootSource,
+};
+mod systems_tail_runtime;
+pub use systems_tail_model::inspect_systems_tail_session_binding;
+pub use systems_tail_owner::{SystemsTailOwnerComponent, emit_systems_tail_owner_component};
+pub use systems_tail_runtime::{
+    SystemsTailRuntimeComponent, SystemsTailRuntimeLayout, emit_systems_tail_runtime_component,
+};
+/// Emit an experimental private stack-boundary object; not a kernel publication certificate.
+///
+/// # Errors
+/// Returns an error if target code, CFI or ELF construction fails.
+pub fn emit_systems_tail_boundary_component() -> Result<Vec<u8>, CompileError> {
+    systems_provider_object::tail_boundary::component_object()
+}
 mod systems_tail_plan;
 pub use systems_provider_object::file_region::SystemsFilePositionRegionBinding;
 pub use systems_provider_object::inode_region::{
@@ -45,6 +70,10 @@ pub use systems_region_library::{
     inspect_systems_region_read_only_data, verify_systems_region_action_library,
     verify_systems_region_framed_action_library, verify_systems_region_instance_library,
     verify_systems_region_library,
+};
+pub use systems_tail_component::{
+    SystemsTailComponentFunction, SystemsTailReadonlyRoot, SystemsTailStepComponent,
+    emit_systems_tail_step_component,
 };
 pub use systems_tail_plan::{
     SystemsTailDependency, SystemsTailEdge, SystemsTailFunction, SystemsTailTraversalPlan,
@@ -87,7 +116,8 @@ pub use systems_artifact::{
     publish_x86_64_systems_artifact_with_libraries,
     publish_x86_64_systems_artifact_with_source_library,
     publish_x86_64_systems_artifact_with_static_user_image,
-    publish_x86_64_systems_artifact_with_user_images, qualified_x86_64_static_user_image_fixture,
+    publish_x86_64_systems_artifact_with_user_images, publish_x86_64_systems_tail_artifact,
+    qualified_x86_64_static_user_image_fixture,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,
@@ -106,7 +136,8 @@ pub use systems_library::{
 };
 pub use systems_numeric_library::{
     SystemsNumericAllocationBound, SystemsNumericLibraryArtifact, SystemsRegionAllocationBound,
-    SystemsRetainedStateBound,
+    SystemsRetainedStateBound, SystemsTailStorageBound, SystemsTailValueBound,
+    analyze_systems_tail_storage,
 };
 pub use systems_policy_inputs::{
     SystemsPolicyLinkedInputs, SystemsPolicyLinkedSection, SystemsPolicySection,

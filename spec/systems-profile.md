@@ -10409,3 +10409,271 @@ and physical owner/erasure/refusal/fatal evidence SHALL be required. A loop,
 tail-call optimization, runtime counter or observed high-water mark SHALL NOT
 substitute for these proofs. Target register, pointer, frame and ordering details
 SHALL remain provider-private; x86-64 evidence SHALL NOT qualify another target.
+
+### TOPAL-SYSTEMS-TAIL-BOUNDS-001 — Conditional carried-state and step bounds
+
+The initial x86-64 tail-storage analysis SHALL bind initial native-word facts:
+Nat in 0..2^64-1, Int in -(2^64-1)..2^64-1 and ordinary Boolean values. These
+SHALL NOT introduce wrapping arithmetic or authority from numeric values. A
+native interface SHALL independently establish the corresponding input domain.
+The analysis SHALL rebuild the exact source plan and preserve storage identity,
+ordinary argument order and every evaluated helper/branch/terminal action.
+
+An affine update x'=x+c with measure decrease d MAY use upper/lower natural
+weights wp,wn satisfying c-wp*d<=0 and -c-wn*d<=0. Baseline bounds SHALL contain
+initial values and proven constant resets. The global envelope SHALL follow
+from those potentials and the measure's initial bound. A non-affine reset SHALL
+be proven within the baseline; membership in the wider global interval alone
+SHALL NOT establish induction. Unknown updates or unchecked Nat narrowing
+SHALL be refused. Ordinary helper/binding resolution SHALL preserve every
+possible result and effect; symbolic reasoning SHALL NOT remove evaluation.
+
+Source-step allocation SHALL reuse exact reviewed numeric/region runtime
+versions and retain the 256-bit arithmetic-proof ceiling. Any additionally
+qualified subtraction SHALL be charged for its complete finite runtime path
+without relaxing legacy profiles. Bounds SHALL include prefix/guard work,
+terminal actions, each tail argument once, both simultaneously live transfer
+banks, pinned private metadata and initial bridge values. Caller-owned input
+storage SHALL remain distinguished from erasable source scratch. Missing,
+overflowing or above-65536-byte proofs SHALL fail before publication.
+
+Source-call/region-loan counts SHALL cover multiplicities through the helper
+DAG rather than merely distinct functions or maximum depth. A caller SHALL
+admit the complete runtime step bound against nonwrapping identity history
+before mutation. Admission SHALL reserve the initial root and a representable
+successor/next counter; a fresh-invocation ceiling SHALL NOT reset existing
+history. Range/allocation evidence SHALL bind source, graph, domain
+and runtime identities, and SHALL NOT grant native stack, checkpoint, lifetime,
+source-origin or execution qualification without their separate evidence.
+
+### TOPAL-SYSTEMS-TAIL-STEP-001 — Private source step component
+
+A separately inspected source-step component MAY lower the checked tail cycle
+to private terminal/successor outcomes. It SHALL reuse ordinary expression,
+binding, helper, comparison and payload lowering and preserve complete argument
+evaluation order. A successor SHALL copy all next-state scalar roots before
+returning; a terminal SHALL preserve its actual result. Private tags/context
+operands SHALL NOT change the source signature or source return meaning.
+
+The bridge SHALL reclaim work/retired banks only after the source step and all
+helpers have returned, with no remaining live dependency on their storage.
+Complete readonly/numeric representations and scoped view provenance SHALL be
+bound. Helpers SHALL preserve the closed call graph, fresh logical identities,
+frame/loan lifetime and nonwrapping history despite descriptor reuse. Each
+region operation SHALL validate its current scoped view. Admission SHALL use
+the actual remaining history before mutation.
+
+A distinct tail-region runtime MAY admit a larger caller-proven mapped owner
+extent with complete pointer/end and contained-view checks. It SHALL bind its
+exact bytes and allocation review without weakening an existing profile's
+runtime, extent/view caps or certificate. Source facts SHALL NOT grant extent
+authority. New helper-loan history SHALL remain distinct from derived-window
+accounting; the initial family SHALL reject Window construction.
+
+Components SHALL bind exact source/graph/ranges, generated code, readonly
+roots, hooks and runtime versions and SHALL NOT attest externally constructed
+IR as source. Debug state SHALL distinguish a synthetic tail step and private
+outcome from a source return. A component SHALL NOT grant kernel publication:
+complete actual layout, stack/register cleanup, transfer/reclamation and fatal
+evidence under the existing reserves SHALL separately satisfy
+`TOPAL-SYSTEMS-TAIL-REUSE-001` before execution qualification.
+
+### TOPAL-SYSTEMS-TAIL-BOUNDARY-001 — Private stack return and abort
+
+A private step boundary SHALL bind an owning caller's mapped, exclusive source
+stack and temporary storage, disjoint from owner bytes, readonly inputs, code/
+data, persistent history and live caller frames. Geometry tests SHALL NOT grant
+that authority. Total temporary storage, including recovery metadata/cells,
+SHALL remain within 65536 bytes and the source stack within 4096 bytes.
+
+The x86-64 component SHALL reserve one eight-byte instance recovery cell and
+65528 supplied temporary bytes, including a 64-byte recovery header before the
+opaque source context. Busy/malformed pre-entry refusal SHALL preserve active
+state and history. The exact step and nonreturning fatal entries SHALL be bound.
+
+Normal return SHALL restore the caller stack before complete source-stack
+erasure/readback, recovery-binding reclamation and volatile-register cleanup.
+Still-live banks/caller values SHALL remain valid. Invalid outcomes SHALL NOT
+resume the owner. Admitted abort SHALL recover independently of source register
+contents, erase all invocation temporaries and the source stack on a live
+recovery stack, preserve persistent effects/history and enter trusted fatal
+cleanup without owner resumption. CFI SHALL accurately describe the pivot and
+saved caller state. Source/runtime/provider code SHALL satisfy the qualified
+register/stack contract; user-mode test callbacks SHALL NOT qualify a kernel
+provider's machine-context assumptions or grant publication.
+
+Failure/cancellation between source steps SHALL use a separate target entry
+with the owning controller's same still-owned stack/temporary extents. It SHALL
+NOT recover ownership from an inactive instance cell or trust source-context/
+header contents to identify erasable storage. On the live controller stack it
+SHALL reclaim/read back both complete extents and enter bound nonreturning
+fatal handling, preserving persistent stores/history. Invalid controller
+protocol SHALL NOT erase unproven addresses or resume the owner. Numeric
+geometry alone SHALL NOT grant extent authority.
+
+### TOPAL-SYSTEMS-TAIL-SESSION-001 — Owned transfer and scoped retirement
+
+A reference traversal session SHALL exclusively borrow the actual live owner.
+Pre-entry admission SHALL check complete native-word initial facts, root
+classifiers/ranges, bounded private buffers, natural step bound and remaining
+frame/loan history before advancing generation or history. Identity counters
+SHALL belong to the allocation, remain nonwrapping and persist across sessions;
+each issuance SHALL reserve a representable next counter.
+
+The session SHALL distinguish ready, running, returned, terminal, complete and
+fatal dispositions. It SHALL retain the existing closed acyclic helper binding,
+fresh current-frame loans and owner effects. The initial wrapper SHALL expose
+no derived-window operation. Scalar references SHALL bind the actual session,
+epoch and issued bank/work/constant root. Transfer SHALL copy complete values
+into disjoint storage, including sign, all limbs, Boolean values and aliases.
+
+After source/helper return, checkpoint SHALL validate every successor and exact
+admitted natural decrement before retiring any dependency. It SHALL erase work
+and the old bank, revoke the old root frame/view, issue fresh root identities
+and install the complete next state. Retired references/views SHALL NOT revive
+on physical reuse. Terminal completion SHALL preserve the actual result, erase
+both banks/work and require complete explicit reclamation before owner release.
+
+Pre-entry refusal SHALL preserve owner bytes, observations, generation and
+history. Invalid admitted operations, cancellation and abandonment SHALL retain
+performed stores/history, erase modeled temporaries, revoke loans and record
+fatal owner exclusion until terminal reclamation. Logical/reference cleanup
+SHALL NOT establish physical erasure, source execution, complete native storage
+or kernel publication without the separate target/provider evidence.
+
+Ordinary byte bounds/rights/value refusal SHALL preserve complete session and
+storage observations/history and return the existing source None/false outcome.
+Natural arguments SHALL NOT be truncated to target words. Invalid view/frame/
+owner provenance SHALL take precedence over normal refusal and SHALL remain a
+fatal protocol failure.
+
+### TOPAL-SYSTEMS-TAIL-RUNTIME-001 — Provider-owned source hooks
+
+A native tail-hook component SHALL rebuild source/range constraints and bind
+its exact private layout, root descriptors, helper identities/call edges and
+readonly provenance. Complete context/frame/bank/work/provenance/result/padding
+costs and recovery header/cell SHALL fit the existing temporary reserve. Linked
+stack, controller retirement and kernel context SHALL remain separate proofs.
+
+Reached hooks SHALL use only the qualified freestanding integer-register
+contract, without implicit host services. They SHALL validate the active
+recovery/context/history binding before dereferencing context fields; retain
+owner, generation, current-frame/view and per-step/invocation budgets; and copy
+complete numeric values only from issued work/current-bank/exact readonly roots.
+Helper retirement SHALL revoke its entire descriptor and SHALL NOT reset history.
+
+The runtime-bound boundary SHALL pin the admitted caller's persistent history
+independently of mutable source-context fields. Source abort/invalid machine
+outcome SHALL mark that domain fatal/inactive before complete private cleanup
+and nonreturning fatal handling. Existing component ABIs SHALL remain unchanged.
+Geometry and test initialization SHALL NOT establish kernel ownership/context,
+physical refinement or executable publication without their separate evidence.
+
+### TOPAL-SYSTEMS-TAIL-CHECKPOINT-001 — Native controller return and retirement
+
+A native checkpoint SHALL run only after source return, through a distinct
+target entry bound to its exact controller role. The caller SHALL supply actual
+owned temporary/stack/history facts independently of mutable context. Source
+and checkpoint bodies SHALL reuse the same existing private stack sequentially;
+each boundary SHALL reclaim its complete retired stack/header and volatile state
+before caller return. Role/geometry tests SHALL NOT create ownership.
+
+Before retirement or identity publication the controller SHALL validate outcome,
+root scope, retired helpers, complete staged/result state, canonical scalar
+values, exact admitted natural decrement and remaining per-step/invocation
+budgets. Successor retirement SHALL erase whole work/provenance/old bank, issue
+fresh root frame/loan identities and install the complete successor. Terminal
+retirement SHALL erase both banks while preserving the actual result.
+
+Admitted failure SHALL recover through independently pinned history, preserve
+performed stores/issuance, reclaim all private domains and enter nonreturning
+fatal handling. An unexpected target refusal inside an already admitted kernel
+invocation SHALL NOT resume the owner. Complete normal invocation reclamation,
+kernel context/owner refinement and publication SHALL remain separate proofs.
+
+### TOPAL-SYSTEMS-TAIL-COMPLETION-001 — Native whole-invocation retirement
+
+After a terminal checkpoint, a native completion body SHALL run under a distinct
+fixed role on the same sequential private stack. Its caller SHALL supply actual
+owned, mapped, exclusive, disjoint history, temporary, stack and output facts.
+The separately owned caller output frame SHALL have an explicit complete cost;
+it SHALL NOT create additional invocation temporary or stack authority.
+
+Completion SHALL validate terminal scope/result, completed-step bounds and full
+bank/work/helper/provenance retirement before copying and reading back the whole
+actual scalar/Unit result to the independently pinned, initially empty output.
+The target SHALL reclaim the entire invocation temporary/stack/header and revoke
+active recovery before clearing persistent history activity and returning to the
+caller. Persistent issuance/generation and performed owner stores SHALL remain.
+
+Running-body and returned-body failures SHALL retain trusted history/output pins
+through reclamation, erase even a partially copied output, attempt every private
+domain's cleanup and enter nonreturning fatal handling without owner resumption.
+Pre-entry refusal SHALL preserve complete state. Component geometry, initializers
+and observations SHALL NOT qualify kernel admission, interrupt context, complete
+owning-caller resource bounds, owner refinement or executable publication.
+
+### TOPAL-SYSTEMS-TAIL-ADMISSION-001 — Actual invocation admission
+
+An owning traversal controller SHALL construct native context from rebuilt
+source/layout constraints and actual caller-owned extent, immutable complete
+word-bounded scalar facts, allocation-owned history, temporary/stack and output
+domains. Numeric geometry SHALL NOT create mapped ownership or truncate a larger
+natural. Write permission SHALL follow the actual caller grant, never geometry.
+Complete domain/layout/state and nonwrapping generation/total identity
+admission SHALL precede every mutation. Refusal SHALL preserve all observations.
+
+Fresh history SHALL be entirely zero; admitted initialization SHALL establish
+next counters two and generation one. Reuse SHALL retain actual next counters
+and advance generation without reset. Root identity one SHALL be scoped by that
+new owner-generation. The controller SHALL use the exact native roles, retain
+independent history/output pins and reject unexpected private outcomes through
+nonreturning cleanup, preserving prior owner stores and issued identities.
+
+Its full owning-caller stack/frame/argument/recovery/retirement costs, actual
+kernel ownership/interrupt context and owner-specific result invariants SHALL
+remain separate proofs before kernel execution or publication is qualified.
+
+### TOPAL-SYSTEMS-TAIL-KERNEL-001 — Typed kernel root traversal
+
+The explicit tail root interface SHALL retain the existing actual live exclusive
+64-byte plain bootstrap owner call, supply complete Nat facts (64, 0, 1) and
+require actual Boolean true before owner resumption. It SHALL preserve ordinary
+source value/effect/termination meaning and existing acyclic profile refusals.
+The target SHALL bind actual privileged interrupt/stack context, mapped disjoint
+private/history/output domains, complete combined caller/argument/frame bounds
+and independent recovery through source/controller failure.
+
+It SHALL retire all inner domains and caller temporaries/spills before normal
+resumption, preserve performed stores and issuance on failure, poison admitted
+history and enter nonreturning fatal handling. Pre-entry refusal SHALL NOT create
+cleanup authority over unproven addresses. Final root retirement SHALL erase
+remaining scalar history. Canonical publication SHALL refuse until complete
+source/module/native/caller/ownership/context/boot binding is established. An
+unpublished exact VM experiment SHALL NOT satisfy that publication or broader
+allocation/userspace/container/VM-host acceptance requirement.
+
+### TOPAL-SYSTEMS-TAIL-BINDING-001 — Reconstructed tail-root publication
+
+Tail-root publication SHALL retain the root source and exact selected ordinary
+source/module closure. It SHALL reconstruct the checked caller, source graph,
+resource bounds, LLVM/native closure and target adapters with the qualified
+toolchain. Program-only or serialized native/range/hash metadata SHALL NOT supply
+source-origin or caller-ownership authority.
+
+Packaging SHALL compare all allocated root/provider/source/runtime/controller/
+adapter sections, including anonymous constants and writable/zero storage. It
+SHALL check exact section contributions, permissions, alignment, symbol identity
+and relocation targets against freshly rebuilt objects. Local definitions SHALL
+resolve within their own object; external definitions SHALL be unambiguous.
+Unsupported relocation or placement forms SHALL be refused.
+The actual load-segment projection SHALL agree with the reconstructed bytes and
+permissions, including initialized bytes overlapping zero storage. Matching
+section-table bytes alone SHALL NOT satisfy this obligation. The ELF entry SHALL
+select the reconstructed bootstrap entry.
+
+The distinct tail binding SHALL preserve the actual typed owner lifecycle,
+complete caller/private resource and retirement obligations. Missing, null,
+duplicate, mixed, orphan, changed or unreconstructable bindings SHALL be refused
+before canonical publication or boot packaging. Toolchain reconstruction SHALL
+be a packaging requirement and SHALL NOT become a guest runtime dependency.

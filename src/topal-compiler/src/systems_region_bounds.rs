@@ -56,7 +56,7 @@ impl Bounds<'_> {
         }
         let number = |maximum| Value::Number(Range(BigInt::from(0), BigInt::from(maximum)));
         let (value, cost) = match operation {
-            RegionOp::Count => (number(65536), 24),
+            RegionOp::Count => (number(if self.tail { u64::MAX } else { 65536 }), 24),
             RegionOp::Load => (
                 Value::Optional {
                     some: Some(Box::new(number(255))),
@@ -186,6 +186,8 @@ pub(crate) fn bound_region_library_profile(
         active: BTreeSet::new(),
         maximum_bits: 0,
         regions: true,
+        tail: false,
+        tail_visits: 0,
     };
     let (inputs, bridge_bytes) = match profile {
         CompilerKernelRegionProfile::Unit => (vec![Value::Region], 64),

@@ -12394,3 +12394,124 @@ order and mark the result as insufficient for native emission. Publication
 shall separately satisfy `TOPAL-SYSTEMS-TAIL-REUSE-001`; existing freestanding
 profile refusal and source limits remain unchanged. See
 [TK-DEC-282](../../linux-kernel/design/repeated-source-tail-traversal.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-BOUNDS-001 — All-step carried storage bounds
+
+Implement `TOPAL-SYSTEMS-TAIL-BOUNDS-001` by rebuilding the source plan and
+proving every carried scalar over the complete admitted input domain. Resolve
+storage bindings and closed helper results; prove affine measure potentials or
+bounded resets without widening away the induction obligation. Reuse reviewed
+ordinary numeric/region costs, charge every actual argument/terminal step and
+both transfer banks, and keep legacy profiles unchanged. Bind exact source,
+graph/runtime identities and actual source-call/loan multiplicities. Reject
+missing or oversized proofs. Range/allocation metadata alone shall not grant
+native stack, transfer, lifetime or execution qualification. See
+[the proof method](../../linux-kernel/design/tail-state-bounds.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-STEP-001 — Shared lowering of private tail steps
+
+Implement `TOPAL-SYSTEMS-TAIL-STEP-001` under the separate component boundary.
+Rebuild source/range evidence, preserve ordinary lowering and ordered argument
+evaluation, and expose private terminal/successor transport only. Preserve fresh
+logical helper/frame/loan history and current-view checks through explicit
+provider-private hooks. Bind readonly roots and the distinct tail-region runtime
+without modifying legacy profile contracts. Treat emitted components as
+unqualified for kernel publication until complete native evidence exists.
+Follow [the return-boundary design](../../linux-kernel/design/tail-step-component.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-BOUNDARY-001 — Target-owned source stack and recovery
+
+Implement `TOPAL-SYSTEMS-TAIL-BOUNDARY-001` as a distinct private x86-64 provider
+component. Preserve live caller state, bind recovery before entering the source
+stack, reclaim that stack after return, and recover admitted aborts independently
+of source registers. Keep complete temporary/stack bounds and accurate CFI.
+Retain pre-entry refusal, persistent effects/history and nonreturning fatal
+dispositions. Do not qualify kernel invocation through C test hooks alone.
+See [the boundary contract](../../linux-kernel/design/tail-stack-boundary.md).
+
+Provide the distinct between-step controller failure entry under that contract.
+Bind the owning caller's actual extents independently of inactive recovery or
+possibly inconsistent source-context fields, reclaim both domains and reach
+nonreturning fatal handling before any owner resumption. Check source-step and
+controller failure paths independently, including preserved stores/history.
+
+## TOPAL-COMP-SYSTEMS-TAIL-SESSION-001 — Source-to-reference session binding
+
+Rebuild the source-tail graph and complete carried/storage analysis before
+constructing `TOPAL-SYSTEMS-TAIL-SESSION-001` model constraints. Preserve the
+exact helper graph, invariant region, classifiers/ranges, measure/decrements,
+step issuance and work/bank layout. Reject missing or unrepresentable facts.
+Distinguish reference constraints from actual source execution, native readonly
+roots, target layout, code/hooks/context, physical erasure and publication.
+See [the session contract](../../linux-kernel/design/tail-session-model.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-RUNTIME-001 — Freestanding traversal hooks
+
+Implement `TOPAL-SYSTEMS-TAIL-RUNTIME-001` from rebuilt source analysis and exact
+provider layout/tables. Bind source/context/history/readonly identities, complete
+numeric copies, aligned allocation provenance, scoped helpers and both issuance
+budgets. Emit no implicit host-service dependency and retain separate data/stack/
+context/owner proofs. Pin fatal history independently of mutable source fields
+in the runtime-specific boundary, preserving older component contracts. Compare
+actual emitted objects with independent guarded byte/value/history oracles.
+See [the hook contract](../../linux-kernel/design/tail-provider-hooks.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-CHECKPOINT-001 — Native checkpoint controller
+
+Implement `TOPAL-SYSTEMS-TAIL-CHECKPOINT-001` with an exact controller-role target
+entry and independently supplied owner history. Run the return body on the same
+private stack as completed source steps. Validate complete state/progress/budgets
+before retirement, erase all retired domains and retain fresh persistent logical
+identity history. Preserve source effects and trusted fatal cleanup. Bind actual
+object closure, role-specific stack/CFI/register evidence and independent whole
+value/byte/history oracles. Do not infer normal kernel completion/publication
+from component tests. See [the checkpoint design](../../linux-kernel/design/tail-native-checkpoint.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-COMPLETION-001 — Native invocation completion
+
+Implement `TOPAL-SYSTEMS-TAIL-COMPLETION-001` with fixed completion-role lowering,
+the existing sequential private stack and an explicitly costed caller-owned
+scalar/Unit output frame. Validate complete terminal state and copy/read back the
+actual result before target-owned whole-invocation reclamation. Independently
+pin actual history/output through running-body and late cleanup failures; erase
+partial output, preserve performed stores/history and forbid successful fatal
+resumption. Bind complete native object/stack/CFI/register and guarded value/
+history/byte evidence. Keep actual kernel admission, context, owning-caller bounds
+and publication separate. See [completion design](../../linux-kernel/design/tail-native-completion.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-ADMISSION-001 — Owned invocation controller
+
+Implement `TOPAL-SYSTEMS-TAIL-ADMISSION-001` from actual rebuilt source/layout
+constraints. Admit all complete facts, domains, persistent generation and total
+identity budgets before mutation; construct exact source context/banks/views and
+run the fixed source/checkpoint/completion roles. Preserve whole refusal state,
+performed stores and actual persistent history across reuse and admitted failure.
+Keep original history/output independent of mutable context. Bind native object/
+import/stack evidence and independent repeated invocation/refusal oracles. Actual
+kernel caller ownership/context, complete caller retirement and publication remain
+separate. See [admission design](../../linux-kernel/design/tail-owner-admission.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-KERNEL-001 — Kernel root tail adapter
+
+Implement `TOPAL-SYSTEMS-TAIL-KERNEL-001` with an explicit systems-only interface
+and actual typed root owner call. Preserve legacy profiles. Bind CPL/IF/stack,
+owned extents, complete caller/inner bounds, independent recovery, Boolean owner
+postcondition and normal/fatal physical retirement. Keep canonical publication
+refused until complete source/native/caller/boot verification exists; distinguish
+exact unpublished VM experiments from that qualification. See the kernel
+[root design](../../linux-kernel/design/tail-kernel-root.md).
+
+## TOPAL-COMP-SYSTEMS-TAIL-BINDING-001 — Reconstructed tail publication
+
+Implement `TOPAL-SYSTEMS-TAIL-BINDING-001` through explicit immutable root and
+ordinary-source/module inputs, fresh checked lowering and qualified toolchain
+reconstruction. Compare every allocated linked contribution against fresh object
+bytes with checked local/external relocation resolution, section/symbol identity,
+permissions, alignment, actual load projection, bootstrap entry and zero-storage
+ownership. Preserve complete kernel
+caller, result, resource and retirement requirements. Reject missing, forged,
+mixed or unreconstructable bindings before publication/boot packaging; retain
+program-only refusal until the complete source-bearing route is qualified.
+
+Trace: [binding design](../../linux-kernel/design/tail-publication-binding.md),
+[formal rule](../../spec/systems-profile.md#topal-systems-tail-binding-001--reconstructed-tail-root-publication).

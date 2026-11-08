@@ -22,9 +22,9 @@ fn build_linked_outputs(
             // [4MiB,8MiB) user window. Keep every supervisor BSS allocation
             // above that window; older selections retain their exact layout.
             .args(
-                work.join("namespace/kernel-region.o")
-                    .is_file()
-                    .then_some("--section-start=.bss=0x800000"),
+                (work.join("namespace/kernel-region.o").is_file()
+                    || work.join("tail/source.o").is_file())
+                .then_some("--section-start=.bss=0x800000"),
             )
             .arg("--entry")
             .arg(X86_SYSTEMS_KERNEL_ENTRY)
@@ -33,6 +33,12 @@ fn build_linked_outputs(
             .arg(format!("-Map=../{SYSTEMS_MAP_FILE}"))
             .arg("root.o")
             .arg("provider.o")
+            .args(
+                ["source", "runtime", "owner", "boundary", "kernel-owner"]
+                    .into_iter()
+                    .filter(|_| work.join("tail/source.o").is_file())
+                    .map(|name| format!("tail/{name}.o")),
+            )
             .args(
                 work.join("namespace/kernel-region.o")
                     .is_file()
@@ -204,6 +210,7 @@ fn artifact_provenance(
         namespace_library: None,
         namespace_runtime: None,
         region_runtime: None,
+        tail_root: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,
@@ -226,18 +233,18 @@ fn inspect_linked_kernel(
     debug: &[u8],
     map: &[u8],
     storage_capacity: u64,
-    requires_bootstrap_memory: bool,
+    bootstrap_bytes: Option<(u8, u8)>,
 ) -> Result<(), CompileError> {
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
-    inspect_kernel_elf(&file, storage_capacity, requires_bootstrap_memory)?;
+    inspect_kernel_elf(&file, storage_capacity, bootstrap_bytes)?;
     inspect_debug_and_map(debug, map)
 }
 
 fn inspect_kernel_elf(
     file: &object::File<'_>,
     storage_capacity: u64,
-    requires_bootstrap_memory: bool,
+    bootstrap_bytes: Option<(u8, u8)>,
 ) -> Result<(), CompileError> {
     if file.format() != BinaryFormat::Elf
         || file.architecture() != Architecture::X86_64
@@ -261,8 +268,8 @@ fn inspect_kernel_elf(
         ));
     }
     inspect_bootstrap_reservation_floor(file)?;
-    if requires_bootstrap_memory {
-        inspect_bootstrap_memory_instructions(file)?;
+    if let Some((store, load)) = bootstrap_bytes {
+        inspect_bootstrap_memory_instructions(file, store, load)?;
     }
     if file
         .symbols()
@@ -349,7 +356,11 @@ fn inspect_bootstrap_reservation_floor(file: &object::File<'_>) -> Result<(), Co
     Ok(())
 }
 
-fn inspect_bootstrap_memory_instructions(file: &object::File<'_>) -> Result<(), CompileError> {
+fn inspect_bootstrap_memory_instructions(
+    file: &object::File<'_>,
+    store: u8,
+    load: u8,
+) -> Result<(), CompileError> {
     let entry = file
         .symbol_by_name(X86_SYSTEMS_KERNEL_ENTRY)
         .ok_or_else(|| CompileError::Tool("generated bootstrap root is absent".into()))?;
@@ -379,10 +390,10 @@ fn inspect_bootstrap_memory_instructions(file: &object::File<'_>) -> Result<(), 
     })?;
     let retains_store = root
         .windows(7)
-        .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == 90);
+        .any(|bytes| bytes[..2] == [0xc6, 0x05] && bytes[6] == store);
     let retains_load_and_check = root
         .windows(15)
-        .any(|bytes| bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, 90, 0x0f, 0x85]);
+        .any(|bytes| bytes[..3] == [0x0f, 0xb6, 0x05] && bytes[7..11] == [0x3c, load, 0x0f, 0x85]);
     if !retains_store || !retains_load_and_check {
         return Err(CompileError::Tool(
             "linked bootstrap root omits its checked byte store/load path".into(),
@@ -458,7 +469,9 @@ fn inspect_debug_and_map(debug: &[u8], map: &[u8]) -> Result<(), CompileError> {
 }
 
 #[allow(clippy::too_many_lines)] // The closed semantic-to-symbol placement ledger stays auditable together.
-fn linked_placements(kernel: &[u8]) -> Result<Vec<SystemsArtifactPlacement>, CompileError> {
+pub(crate) fn linked_placements(
+    kernel: &[u8],
+) -> Result<Vec<SystemsArtifactPlacement>, CompileError> {
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
     let mut placements = Vec::new();

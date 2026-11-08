@@ -20,6 +20,7 @@ pub(crate) fn publish(
     source: &str,
     options: &CompileOptions,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    let root_source = source;
     validate_options(options)?;
     let program = analyze_systems_for_compiler(
         source,
@@ -120,23 +121,27 @@ pub(crate) fn publish(
             .as_ref()
             .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
             .transpose()?;
+        let libraries = crate::SystemsKernelLibraries {
+            file_position: file_position.as_ref(),
+            ram_page_pool: ram_page_pool.as_ref(),
+            inode_mode: inode_mode.as_ref(),
+            namespace: namespace.as_ref(),
+            region: region.as_ref(),
+            policy: source.as_ref(),
+            time: time.as_ref(),
+            image: image.as_ref(),
+            dispatch: dispatch.as_ref(),
+            process_identity: process_identity.as_ref(),
+        };
+        if program.region_library.as_ref().is_some_and(|r|r.interface==topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
+            return crate::publish_x86_64_systems_tail_artifact(root_source,&tools,initial_user_image.as_deref(),static_user_image.as_deref(),libraries,&options.output);
+        }
         return crate::publish_x86_64_systems_artifact_with_kernel_libraries(
             &program,
             &tools,
             initial_user_image.as_deref(),
             static_user_image.as_deref(),
-            crate::SystemsKernelLibraries {
-                file_position: file_position.as_ref(),
-                ram_page_pool: ram_page_pool.as_ref(),
-                inode_mode: inode_mode.as_ref(),
-                namespace: namespace.as_ref(),
-                region: region.as_ref(),
-                policy: source.as_ref(),
-                time: time.as_ref(),
-                image: image.as_ref(),
-                dispatch: dispatch.as_ref(),
-                process_identity: process_identity.as_ref(),
-            },
+            libraries,
             &options.output,
         );
     }

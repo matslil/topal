@@ -1021,6 +1021,7 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
             library.interface,
             crate::SystemsSourceLibraryInterface::BorrowedByteRegionV1
                 | crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                | crate::SystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1
         ) {
             return Err(SystemsModelError::new(
                 "E-SYSTEMS-REGION-ROOT",

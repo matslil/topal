@@ -1,0 +1,5 @@
+{
+  "scope": "first reader assertion was too strict about GDB stop count, not a kernel/test failure",
+  "finding": "full-unit normal return walk records115 stops vs targeted114 because PC0x9ac0b0 is reported twice; all205 distinct consecutive PCs, kernel-owner bytes and runtime assertions match exactly",
+  "correction": "retain all original observations; compare actual consecutive-PC-normalized walk plus object identity and keep exact entry/fatal counts"
+}

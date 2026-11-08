@@ -478,3 +478,17 @@ Validate V6's existing named-file open-plan dependency separately from a
 namespace-controller component declaration; missing and boot-only open policies
 must not select the new mutable entry-table profile.
 See [TK-DEC-281](../../linux-kernel/design/shared-namespace-transactions.md).
+
+## TOPAL-SEM-SYSTEMS-TAIL-SESSION-001 — Owned traversal sessions
+
+Model `TOPAL-SYSTEMS-TAIL-SESSION-001` over actual existing storage. Admit complete
+initial facts and remaining allocation-owned identity budgets before generation
+or history mutation. Preserve scoped helper loans, complete scalar transfers,
+exact natural descent, source-return/checkpoint phases, retirement and explicit
+completion reclamation. Retain counters across sessions. Invalid admitted
+operations, cancellation and abandonment shall preserve performed owner stores
+and history, revoke temporary authority and poison the owner until terminal
+reclamation. Keep legacy region-library behavior unchanged in the absence of a
+tail disposition. Neither reference buffers nor supplied cleanup obligations
+shall imply complete native layout, source execution or physical erasure. See
+[the session contract](../../linux-kernel/design/tail-session-model.md).

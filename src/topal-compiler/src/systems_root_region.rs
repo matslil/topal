@@ -401,6 +401,28 @@ pub(super) fn append_code(
     name: &str,
     code: Code,
 ) -> Result<(), CompileError> {
+    append_code_kind(object, text, debug_frame, name, code, false)
+}
+
+/// Target debugger extension for an explicit discontinuous-stack boundary.
+pub(super) fn append_discontinuous_code(
+    object: &mut Object<'_>,
+    text: SectionId,
+    debug_frame: SectionId,
+    name: &str,
+    code: Code,
+) -> Result<(), CompileError> {
+    append_code_kind(object, text, debug_frame, name, code, true)
+}
+
+fn append_code_kind(
+    object: &mut Object<'_>,
+    text: SectionId,
+    debug_frame: SectionId,
+    name: &str,
+    code: Code,
+    discontinuous: bool,
+) -> Result<(), CompileError> {
     let Code {
         encoder,
         references,
@@ -418,7 +440,14 @@ pub(super) fn append_code(
         section: SymbolSection::Section(text),
         flags: SymbolFlags::None,
     });
-    unwind::append(object, debug_frame, function, bytes.len() as u64, &rows)?;
+    unwind::append(
+        object,
+        debug_frame,
+        function,
+        bytes.len() as u64,
+        &rows,
+        discontinuous,
+    )?;
     for (offset, target, relative) in references {
         let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
             object.add_symbol(Symbol {

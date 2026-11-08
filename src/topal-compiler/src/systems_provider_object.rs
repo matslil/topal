@@ -16,6 +16,8 @@ mod process_runtime;
 pub(crate) mod ram_page_region;
 #[path = "systems_root_region.rs"]
 pub(crate) mod root_region;
+#[path = "systems_tail_boundary.rs"]
+pub(crate) mod tail_boundary;
 #[path = "systems_x86_function.rs"]
 mod x86_function;
 use process_runtime::file_descriptions as process_files;

@@ -16,6 +16,8 @@ impl<'a> Generator<'a> {
             kernel_library_mode: false,
             kernel_parameter_debug_storage: false,
             kernel_function_prefix: "",
+            kernel_tail_component: false,
+            tail_readonly_integers: BTreeMap::new(),
             program,
             source_name,
             globals: Vec::new(),
@@ -267,7 +269,7 @@ impl<'a> Generator<'a> {
             &function.result_type,
             &parameter_types,
         );
-        let parameters = function
+        let mut parameters = function
             .parameters
             .iter()
             .enumerate()
@@ -276,7 +278,17 @@ impl<'a> Generator<'a> {
             })
             .collect::<Vec<_>>()
             .join(", ");
+        if self.kernel_tail_component {
+            if !parameters.is_empty() { parameters.push_str(", "); }
+            parameters.push_str("ptr %tail.context");
+        }
         let mut body = FunctionBody::new(subprogram);
+        if self.kernel_tail_component {
+            let identity = self.program.functions.iter().position(|f| f.symbol == function.symbol).unwrap() + 1;
+            let view = function.parameters.iter().position(|p| p.value_type == CompilerType::KernelByteRegion)
+                .map_or_else(|| "null".into(), |index| format!("%arg{index}"));
+            body.named_instruction("%tail.helper.view", &format!("call ptr @topal_tail_helper_enter_v1(ptr %tail.context, i64 {identity}, ptr {view})"), function.span, &mut self.debug);
+        }
         let mut environment = BTreeMap::new();
         self.bind_function_parameters(function, &mut body, &mut environment);
         if !function.pattern_identities.is_empty() {
@@ -288,6 +300,10 @@ impl<'a> Generator<'a> {
         let result = self.emit_block(&function.body, &mut body, &mut environment);
         self.current_result_captures.clear();
         self.current_function_return_type = None;
+        if self.kernel_tail_component {
+            let identity = self.program.functions.iter().position(|f| f.symbol == function.symbol).unwrap() + 1;
+            body.effect(&format!("call void @topal_tail_helper_leave_v1(ptr %tail.context, i64 {identity})"), function.body.result.span, &mut self.debug);
+        }
         let location = self.debug.location(function.body.result.span, subprogram);
         if !function.result_captures.is_empty() {
             let source_result = self.emit_machine_operand(
@@ -525,11 +541,14 @@ impl<'a> Generator<'a> {
             .iter()
             .any(|parameter| compiler_type_contains_function(&parameter.value_type));
         for (index, parameter) in function.parameters.iter().enumerate() {
-            let argument = format!("%arg{index}");
+            let argument = if self.kernel_tail_component && parameter.value_type == CompilerType::KernelByteRegion {
+                "%tail.helper.view".into()
+            } else { format!("%arg{index}") };
             if parameter.discarded {
                 continue;
             }
             let value = match &parameter.value_type {
+                CompilerType::KernelByteRegion if self.kernel_tail_component => LlValue::KernelRegion(argument.clone()),
                 CompilerType::Tuple(fields) => {
                     self.emit_tuple_extract(&argument, fields, body, parameter.span)
                 }
@@ -1008,7 +1027,13 @@ impl<'a> Generator<'a> {
         body: &mut FunctionBody,
         environment: &mut BTreeMap<String, LlValue>,
     ) -> LlValue {
-        for statement in &block.statements {
+        self.emit_statements(&block.statements, body, environment);
+        self.emit_expression(&block.result, body, environment)
+    }
+
+    fn emit_statements(&mut self, statements: &[CompilerStatement], body: &mut FunctionBody,
+        environment: &mut BTreeMap<String, LlValue>) {
+        for statement in statements {
             match statement {
                 CompilerStatement::Binding(binding) => {
                     let value = self.emit_expression(&binding.value, body, environment);
@@ -1169,6 +1194,5 @@ impl<'a> Generator<'a> {
                 }
             }
         }
-        self.emit_expression(&block.result, body, environment)
     }
 }

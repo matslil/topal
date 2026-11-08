@@ -1,0 +1,4 @@
+{
+  "scope": "Historical preliminary native checkpoint validation; complete run failed traceability coverage for missing new requirement row. Code review also identified late cleanup failure reloading an erased history pin, addressed in subsequent final code. This record does not qualify the later guard.",
+  "original_output_directory": "linux-kernel/tools/tail-traversal/results/stage-2-native-checkpoint"
+}

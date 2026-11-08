@@ -3,6 +3,8 @@
 use std::collections::BTreeMap;
 
 use crate::SystemsModelError;
+#[path = "systems_storage_tail.rs"]
+mod tail;
 
 pub const SYSTEMS_BOOTSTRAP_STORAGE_PROVISION: &str = "topal.systems.storage.bootstrap.provision/1";
 pub const SYSTEMS_BOOTSTRAP_STORAGE_ALLOCATE: &str = "topal.systems.storage.bootstrap.allocate/1";
@@ -177,6 +179,9 @@ pub struct BootstrapStorageState {
     next_offset: u64,
     next_allocation_id: u64,
     next_library_generation: u64,
+    // Allocation-owned traversal history: next frame, next loan, fatal state.
+    // This is separate from the unchanged ordinary region-library profile.
+    tail_histories: BTreeMap<u64, (u64, u64, bool)>,
     live_regions: BTreeMap<u64, (u64, u64)>,
     contents: BTreeMap<(u64, u64), u8>,
     // Reference-domain knowledge only: opaque compiled source has not been
@@ -214,6 +219,7 @@ impl BootstrapStorageState {
             next_offset: 0,
             next_allocation_id: 0,
             next_library_generation: 0,
+            tail_histories: BTreeMap::new(),
             live_regions: BTreeMap::new(),
             contents: BTreeMap::new(),
             opaque_regions: std::collections::BTreeSet::new(),
@@ -446,6 +452,16 @@ impl BootstrapStorageState {
                 ),
             ));
         }
+        if self
+            .tail_histories
+            .get(&region.allocation_id)
+            .is_some_and(|h| h.2)
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-TAIL-FATAL",
+                "a fatal traversal owner admits terminal reclamation only",
+            ));
+        }
         Ok(region.allocation_id)
     }
 
@@ -541,6 +557,7 @@ impl BootstrapStorageState {
         self.contents
             .retain(|(owner, _), _| *owner != allocation_id);
         self.opaque_regions.remove(&allocation_id);
+        self.tail_histories.remove(&allocation_id);
         self.transitions
             .push(BootstrapStorageTransition::Released { allocation_id });
         Ok(())

@@ -6,10 +6,26 @@ pub(crate) fn validate(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
 ) -> Result<(), CompileError> {
+    if artifact.tail_root.is_some() {
+        return crate::systems_tail_publication::validate_boot(kernel, artifact);
+    }
     use crate::systems_provider_object::root_region as native;
     use crate::systems_region_library as source;
     let invalid = |message: &str| CompileError::Tool(format!("E-SYSTEMS-REGION-ROOT: {message}"));
     let file = object::File::parse(kernel).map_err(|e| invalid(&e.to_string()))?;
+    if file.symbols().filter_map(|s| s.name().ok()).any(|name| {
+        name.starts_with("topal.tail-inputs.")
+            || name.starts_with("topal_tail_")
+            || name.starts_with("topal_x86_tail_")
+            || name.starts_with("topal.tail.component.")
+    }) || artifact
+        .inputs
+        .iter()
+        .chain(&artifact.outputs)
+        .any(|i| i.identity.starts_with("tail-"))
+    {
+        return Err(invalid("orphan tail source/native binding"));
+    }
     let choices = [
         (
             source::ALLOCATE,

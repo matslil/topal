@@ -660,6 +660,7 @@ fn parse_artifact_root(
                 requirement.interface,
                 CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1
                     | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                    | CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1
             ) || region_library.replace(requirement).is_some()
             {
                 return Err(source_diagnostic(

@@ -25,6 +25,8 @@ include!("codegen/generator_new.rs");
 include!("codegen/freestanding_library.rs");
 include!("codegen/freestanding_numeric_library.rs");
 include!("codegen/freestanding_region_library.rs");
+include!("codegen/freestanding_tail_step.rs");
+include!("codegen/generator_tail_step.rs");
 include!("codegen/freestanding_region_frame.rs");
 include!("codegen/freestanding_header_library.rs");
 include!("codegen/freestanding_dispatch_library.rs");

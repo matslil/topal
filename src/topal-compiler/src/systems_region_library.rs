@@ -193,7 +193,7 @@ pub(crate) struct CheckedRegionLibrary {
     pub(crate) symbols: RegionNativeSymbols,
 }
 
-fn check_region_isolation(
+pub(crate) fn check_region_isolation(
     input: &SystemsSourceLibraryInput,
     program: &CompilerProgram,
     modules: &[topal_language::modules::SourceModule],

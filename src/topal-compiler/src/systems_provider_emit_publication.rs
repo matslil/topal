@@ -710,7 +710,8 @@ pub fn generate_x86_64_systems_provider_object(
         section: SymbolSection::Section(storage),
         flags: SymbolFlags::None,
     });
-    if let Some(requirement) = &program.region_library {
+    if let Some(requirement) = &program.region_library
+        && requirement.interface != topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1 {
         let framed = requirement.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1;
         root_region::append(
             &mut object,

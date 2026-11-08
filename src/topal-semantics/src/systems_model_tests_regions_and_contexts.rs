@@ -107,15 +107,21 @@ fn root_region_call_records_dynamic_guard_and_cleanup_obligations() {
     });
     assert!(borrow < cleanup && cleanup < resume && resume < guard);
     let mut instance = value.clone();
-    instance.region_library.as_mut().unwrap().interface =
-        crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1;
-    let instance_trace = model_systems_transitions(&instance).unwrap();
-    assert_eq!(instance_trace.len(), trace.len());
-    assert!(matches!(
-        instance_trace[resume],
-        SystemsTransition::ResumeBootstrapRegionAfterLibrary { require_true: true }
-    ));
-    assert_eq!(instance_trace[guard], trace[guard]); // actual bytes remain unknown
+    // TOPAL-SYSTEMS-TAIL-KERNEL-001: both action interfaces require actual true;
+    // the model cannot predict effects of an opaque ordinary source library.
+    for interface in [
+        crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1,
+        crate::SystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1,
+    ] {
+        instance.region_library.as_mut().unwrap().interface = interface;
+        let instance_trace = model_systems_transitions(&instance).unwrap();
+        assert_eq!(instance_trace.len(), trace.len());
+        assert!(matches!(
+            instance_trace[resume],
+            SystemsTransition::ResumeBootstrapRegionAfterLibrary { require_true: true }
+        ));
+        assert_eq!(instance_trace[guard], trace[guard]); // actual bytes remain unknown
+    }
     assert!(!trace.iter().any(|step| matches!(
         step,
         SystemsTransition::LoadBootstrapByte {

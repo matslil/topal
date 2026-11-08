@@ -1,5 +1,7 @@
 #[allow(clippy::too_many_lines)] // Exhaustive transition detail remains beside its canonical trace spelling.
-fn semantic_trace(program: &CompilerSystemsProgram) -> Result<Vec<String>, CompileError> {
+pub(crate) fn semantic_trace(
+    program: &CompilerSystemsProgram,
+) -> Result<Vec<String>, CompileError> {
     let transitions = model_systems_transitions(program)
         .map_err(|error| CompileError::Tool(format!("invalid systems transition model: {error}")))?
         .into_iter()

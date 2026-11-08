@@ -547,6 +547,8 @@ struct Generator<'a> {
     kernel_library_mode: bool,
     kernel_parameter_debug_storage: bool,
     kernel_function_prefix: &'a str,
+    kernel_tail_component: bool,
+    tail_readonly_integers: BTreeMap<String, u64>,
     program: &'a CompilerProgram,
     source_name: &'a str,
     globals: Vec<String>,

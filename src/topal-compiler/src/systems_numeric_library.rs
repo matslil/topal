@@ -34,6 +34,8 @@ pub use native_object::SystemsNumericLibraryArtifact;
 mod region_bounds;
 #[path = "systems_retained_state_bound.rs"]
 mod retained_state;
+#[path = "systems_tail_bounds.rs"]
+mod tail_bounds;
 pub(crate) use native_object::object_calls_with_imports as library_object_calls;
 pub(crate) use native_object::{
     build_numeric_library, inspect_linked_numeric_library, inspect_numeric_provider,
@@ -46,6 +48,9 @@ pub use retained_state::SystemsRetainedStateBound;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, BTreeSet};
+pub use tail_bounds::{
+    SystemsTailStorageBound, SystemsTailValueBound, analyze_systems_tail_storage,
+};
 use topal_language::compiler::{
     CompilerBinary as Op, CompilerBlock, CompilerExpression, CompilerExpressionKind as K,
     CompilerFunction, CompilerProgram, CompilerStatement, CompilerSystemsSourceLibraryInterface,
@@ -225,6 +230,9 @@ struct Bounds<'a> {
     active: BTreeSet<String>,
     maximum_bits: u64,
     regions: bool,
+    // Separate tail-step analysis only. Legacy source qualifiers keep false.
+    tail: bool,
+    tail_visits: usize,
 }
 fn cost_add(a: u64, b: u64) -> Result<u64, CompileError> {
     let sum = a
@@ -327,7 +335,12 @@ impl Bounds<'_> {
                 CompilerStatement::Binding(binding) => {
                     let value = self.expression(&binding.value, env)?;
                     bytes = cost_add(bytes, value.bytes)?;
-                    env.insert(binding.name.clone(), value.value);
+                    let name = if self.tail {
+                        &binding.storage_name
+                    } else {
+                        &binding.name
+                    };
+                    env.insert(name.clone(), value.value);
                 }
                 CompilerStatement::Discard(expression) => {
                     bytes = cost_add(bytes, self.expression(expression, env)?.bytes)?;
@@ -343,6 +356,12 @@ impl Bounds<'_> {
         expr: &CompilerExpression,
         env: &BTreeMap<String, Value>,
     ) -> Result<Evaluation, CompileError> {
+        if self.tail {
+            self.tail_visits += 1;
+            if self.tail_visits > 65536 {
+                return Err(invalid("tail allocation proof budget exceeded"));
+            }
+        }
         if !self.admitted_type(&expr.value_type) {
             return Err(invalid("non-numeric source value"));
         }
@@ -455,6 +474,25 @@ impl Bounds<'_> {
                     cost_add(subject.bytes, a.bytes.max(b.bytes))?,
                 )
             }
+            K::OrderedComparisonDecision {
+                subject,
+                rules,
+                otherwise,
+            } if self.tail => {
+                let subject = self.expression(subject, env)?;
+                subject.value.number()?;
+                let mut tested_bytes = subject.bytes;
+                let mut result = self.expression(otherwise, env)?;
+                for rule in rules {
+                    let operand = self.expression(&rule.operand, env)?;
+                    operand.value.number()?;
+                    tested_bytes = cost_add(tested_bytes, operand.bytes)?;
+                    let action = self.expression(&rule.action, env)?;
+                    result.value = result.value.union(&action.value)?;
+                    result.bytes = result.bytes.max(action.bytes);
+                }
+                (result.value, cost_add(tested_bytes, result.bytes)?)
+            }
             K::TupleField { tuple, index } => {
                 let result = self.expression(tuple, env)?;
                 let Value::Pair(a, b) = result.value else {
@@ -505,9 +543,17 @@ impl Bounds<'_> {
                 let bits = left.bits().max(right.bits());
                 let mut bytes = cost_add(a.bytes, b.bytes)?;
                 match operation {
-                    Op::Add | Op::Multiply => {
+                    Op::Add | Op::Multiply | Op::Subtract
+                        if *operation != Op::Subtract || self.tail =>
+                    {
                         let range = if *operation == Op::Add {
                             Range(&left.0 + &right.0, &left.1 + &right.1)
+                        } else if *operation == Op::Subtract {
+                            // Reviewed finite runtime: negate/copy the right
+                            // operand, then finite add; at most two allocations.
+                            // The existing eight-buffer charge includes extra
+                            // limbs, zero/sign paths and allocator alignment.
+                            Range(&left.0 - &right.1, &left.1 - &right.0)
                         } else {
                             let endpoints = [
                                 &left.0 * &right.0,
@@ -685,6 +731,8 @@ pub(crate) fn check_numeric_library(
         active: BTreeSet::new(),
         maximum_bits: 0,
         regions: false,
+        tail: false,
+        tail_visits: 0,
     };
     let result = bounds.function(&entry_symbol, policy.arguments())?;
     let bridge_bytes = policy.bridge_bytes();

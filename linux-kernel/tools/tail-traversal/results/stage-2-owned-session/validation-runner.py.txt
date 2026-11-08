@@ -1,0 +1,137 @@
+from pathlib import Path
+import gzip
+import hashlib
+import json
+import os
+import subprocess
+import time
+import uuid
+
+root = Path('/home/mats/git/topal')
+run_id = 'tk282-session-' + uuid.uuid4().hex[:8]
+scratch = root / 'linux-kernel/.cache' / run_id
+scratch.mkdir()
+alias = Path('/tmp/' + run_id)
+alias.symlink_to(scratch, target_is_directory=True)
+out = root / 'linux-kernel/tools/tail-traversal/results/stage-2-owned-session'
+out.mkdir(parents=True, exist_ok=True)
+target = out / 'qualification.json'
+if target.exists():
+    raise SystemExit('refusing to overwrite earlier qualification')
+sha = lambda data: hashlib.sha256(data).hexdigest()
+prior = json.loads((root / 'linux-kernel/tools/tail-traversal/results/stage-2-bounds/qualification.json').read_text())
+paths = list(prior['sources']) + [
+    'src/topal-compiler/src/codegen.rs',
+    'src/topal-compiler/src/codegen/generator_support.rs',
+    'src/topal-compiler/src/codegen/generator_new.rs',
+    'src/topal-compiler/src/codegen/generator_emit_expression.rs',
+    'src/topal-compiler/src/codegen/generator_emit_expression_remaining.rs',
+    'src/topal-compiler/src/codegen/generator_emit_string_range_characters_collect.rs',
+    'src/topal-compiler/src/codegen/generator_tail_step.rs',
+    'src/topal-compiler/src/codegen/freestanding_tail_step.rs',
+    'src/topal-compiler/src/systems_tail_component.rs',
+    'src/topal-compiler/src/systems_tail_component_tests.rs',
+    'src/topal-compiler/src/systems_numeric_interface.rs',
+    'linux-kernel/design/tail-step-component.md',
+    'linux-kernel/labs/qemu/x86_64/tail_step_component_client.c',
+    'linux-kernel/labs/qemu/x86_64/tail_step_component_runtime.c',
+]
+paths += ["src/topal-compiler/src/systems_provider_object.rs", "src/topal-compiler/src/systems_tail_boundary.rs", "src/topal-compiler/src/systems_x86_function.rs", "src/topal-compiler/src/systems_root_region.rs", "src/topal-compiler/src/systems_root_region_unwind.rs", "src/topal-compiler/src/systems_provider_emit_translation.rs", "linux-kernel/design/tail-stack-boundary.md", "linux-kernel/labs/qemu/x86_64/tail_boundary_inspect.py"]
+paths += ['src/topal-semantics/se-requirements.md', 'src/topal-semantics/src/lib.rs', 'src/topal-semantics/Cargo.toml', 'src/topal-semantics/src/systems_storage.rs', 'src/topal-semantics/src/systems_storage_tail.rs', 'src/topal-semantics/src/systems_region_library.rs', 'src/topal-semantics/src/systems_region_owner.rs', 'src/topal-semantics/src/systems_tail_session.rs', 'src/topal-semantics/src/systems_tail_values.rs', 'src/topal-semantics/src/systems_tail_session_tests.rs', 'src/topal-compiler/src/systems_tail_model.rs', 'linux-kernel/design/tail-session-model.md']
+paths = list(dict.fromkeys(paths))
+record = {
+    'schema': 'topal.tail-step-component-validation/1', 'complete': False, 'passed': False,
+    'base_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip(),
+    'scope': 'Stage 2 actual byte-owner reference session, persistent identity history, complete value transfer/retirement and source-to-model constraints; native components independently tested, complete kernel hook/layout/context binding, physical model/native refinement and real kernel owner invocation remain unqualified',
+    'sources': {path: sha((root / path).read_bytes()) for path in paths},
+    'environment': {'RUST_MIN_STACK': '16777216', 'TMPDIR': str(alias), 'scratch_backing': str(scratch)},
+    'commands': [], 'native_components': [],
+}
+runner = Path(__file__).read_bytes()
+(out / 'validation-runner.py.txt').write_bytes(runner)
+record['runner_sha256'] = sha(runner)
+snapshot_dir = out / 'source-snapshots'
+snapshot_dir.mkdir()
+def save_bytes(directory, name, raw):
+    compressed = gzip.compress(raw, mtime=0)
+    destination = directory / (name + '.gz')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(compressed)
+    assert gzip.decompress(compressed) == raw
+    return {'file': str(destination.relative_to(out)), 'sha256': sha(compressed), 'uncompressed_sha256': sha(raw)}
+def snapshot(path):
+    raw = (root / path).read_bytes()
+    return save_bytes(snapshot_dir, sha(raw) + '.txt', raw)
+record['source_snapshots'] = {path: snapshot(path) for path in paths}
+record['verification_inputs'] = {path: snapshot(path) for path in ['se/traceability.md', 'se/tool-conformance.md', 'se/test-strategy.md']}
+for tool in ['rustc', 'cargo', 'cc']:
+    record[tool] = subprocess.check_output([tool, '--version'], cwd=root, text=True).splitlines()[0]
+group = next(line.split(':', 2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines() if line.startswith('0::'))
+cgroup = Path('/sys/fs/cgroup') / group.lstrip('/')
+record['cgroup'] = {'path': group, 'memory.max': (cgroup / 'memory.max').read_text().strip(),
+                   'memory.swap.max': (cgroup / 'memory.swap.max').read_text().strip()}
+assert record['cgroup']['memory.swap.max'] == '0'
+env = dict(os.environ, RUST_MIN_STACK='16777216', TMPDIR=str(alias))
+commands = [
+    ('semantics', ['cargo', 'test', '-p', 'topal-semantics', '--lib', '--locked', '-j1']),
+    ('tail-model', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1', 'systems_tail_model::tests']),
+    ('tail-components', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1', 'systems_tail_component::tests', '--', '--nocapture']),
+    ('tail-bounds', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1', 'systems_numeric_library::tail_bounds::tests']),
+    ('compiler', ['cargo', 'test', '-p', 'topal-compiler', '--lib', '--locked', '-j1']),
+    ('compiler-cli', ['cargo', 'test', '-p', 'topal-compiler', '--test', 'cli', '--locked', '-j1']),
+    ('check', ['cargo', 'check', '--workspace', '--all-targets', '--locked', '-j1']),
+    ('coverage', ['cargo', 'test', '-p', 'topal-language', '--test', 'core_language_coverage', '--locked', '-j1']),
+    ('format', ['cargo', 'fmt', '--all', '--', '--check']),
+    ('included-format', ['rustfmt', '--edition', '2024', '--check', 'src/topal-compiler/src/codegen/freestanding_tail_step.rs', 'src/topal-compiler/src/codegen/generator_tail_step.rs']),
+    ('source-size', ['python3', 'scripts/check_rust_file_sizes.py']),
+]
+seen = set()
+def collect_native(command_name):
+    for metadata_path in sorted(scratch.glob('tail-step-*/component.json')):
+        if str(metadata_path) in seen:
+            continue
+        seen.add(str(metadata_path))
+        directory = metadata_path.parent
+        metadata = json.loads(metadata_path.read_text())
+        assert metadata['llvm_sha256'] == sha((directory / 'step.ll').read_bytes())
+        item = {'command': command_name, 'cache_directory': str(directory), 'metadata': metadata,
+                'snapshots': {}, 'binary_identities': {}}
+        for filename in ['step.ll', 'tail_step_bindings.h', 'component.json'] + [label + suffix for label in ['llc', 'cc', 'native', 'gdb'] for suffix in ['.stdout.log', '.stderr.log', '.command.json']]:
+            path = directory / filename
+            if path.exists():
+                item['snapshots'][filename] = save_bytes(out / 'native-components' / directory.name, filename, path.read_bytes())
+        for filename in ['step.o', 'client', 'boundary.o']:
+            path = directory / filename
+            if path.exists():
+                raw = path.read_bytes()
+                item['binary_identities'][filename] = {'sha256': sha(raw), 'bytes': len(raw), 'retention': 'external disk cache; exact LLVM/C/header/command inputs archived'}
+        record['native_components'].append(item)
+def save():
+    record['cgroup']['memory.peak'] = (cgroup / 'memory.peak').read_text().strip()
+    record['cgroup']['memory.events'] = (cgroup / 'memory.events').read_text()
+    target.write_text(json.dumps(record, indent=2) + '\n')
+save()
+print('TAIL_COMPONENTS_STARTED ' + run_id, flush=True)
+for name, argv in commands:
+    print('RUNNING ' + name, flush=True)
+    started = time.monotonic()
+    plain = scratch / (name + '.log')
+    with plain.open('wb') as log:
+        result = subprocess.run(argv, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT)
+    log_record = save_bytes(out, name + '.log', plain.read_bytes())
+    record['commands'].append({'name': name, 'argv': argv, 'exit_code': result.returncode,
+        'elapsed_seconds': time.monotonic() - started, 'log': log_record['file'],
+        'encoding': 'gzip', 'sha256': log_record['sha256'], 'uncompressed_sha256': log_record['uncompressed_sha256']})
+    collect_native(name)
+    save()
+    print(name + ' EXIT ' + str(result.returncode), flush=True)
+    if result.returncode:
+        record['complete'] = True
+        save()
+        raise SystemExit(result.returncode)
+assert record['sources'] == {path: sha((root / path).read_bytes()) for path in paths}, 'frozen source changed'
+for path, item in record['verification_inputs'].items():
+    assert sha((root / path).read_bytes()) == item['uncompressed_sha256'], 'verification input changed'
+record.update(complete=True, passed=True)
+save()
+print('TAIL_COMPONENTS_VALIDATION_PASS', flush=True)

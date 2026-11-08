@@ -2058,3 +2058,28 @@ Each systems element requires:
 The first executable qualification is x86-64 only. Architecture-neutral
 semantics continue to be reviewed against AArch64 and RISC-V so x86 mechanisms
 do not become universal source meaning.
+
+### Root tail traversal qualification
+
+The systems-only `borrowed-byte-region-tail-action-v1` interface selects ordinary
+checked tail traversal for the existing exclusive plain bootstrap-region call.
+The initial caller owns 64 bytes and supplies whole Nat facts `(64, 0, 1)` to
+a `(KernelByteRegion, Nat, Nat, Nat) -> Boolean` entry. A true result is required
+before owner resumption. Source retains ordinary values/effects/termination and
+receives no address or machine instruction vocabulary. Existing acyclic source
+interfaces keep their qualification and refusal behavior.
+
+The kernel adapter must bind the actual typed owner, privileged interrupt/stack
+context, source/native closure, complete caller and private storage bounds,
+independent failure recovery and physical caller/private retirement. Initial
+unpublished VM component experiments grant no canonical publication; publication
+remains refused until the complete source/native/caller/boot binding is verified.
+See the kernel [root-tail design](../linux-kernel/design/tail-kernel-root.md).
+
+Tail artifact qualification retains the root source and complete ordinary source
+dependencies. Packaging reconstructs the checked caller and native components
+with the qualified toolchain, then verifies their complete relocated code/data
+against the kernel. Supplied metadata does not establish that connection. The
+new profile requires the compiler toolchain during packaging; it adds no guest
+runtime dependency. The [publication binding](../linux-kernel/design/tail-publication-binding.md)
+describes this systems-only qualification.

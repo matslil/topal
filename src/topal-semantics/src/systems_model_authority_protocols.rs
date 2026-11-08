@@ -1760,8 +1760,11 @@ pub fn model_systems_transitions(
             operation,
             &program.debug_break.handler,
             program.region_library.as_ref().is_some_and(|library| {
-                library.interface
-                    == crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                matches!(
+                    library.interface,
+                    crate::SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
+                        | crate::SystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1
+                )
             }),
             &mut storage,
             &mut region,

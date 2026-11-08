@@ -12,6 +12,12 @@ pub use unsigned::{RegionLibraryByteOrder, RegionLibraryUnsignedFormat};
 #[path = "systems_inode_region_actions.rs"]
 mod inode_actions;
 pub(crate) use inode_actions::InodeController;
+#[path = "systems_tail_session.rs"]
+mod tail_session;
+pub use tail_session::{
+    TailScalar, TailScalarBound, TailScalarKind, TailScalarRef, TailSession, TailSessionBinding,
+    TailSessionLimits, TailSessionPhase,
+};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RegionLibraryError {

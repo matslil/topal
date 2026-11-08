@@ -57,6 +57,12 @@ const DEADLINE_VECTOR: usize = 0xf2;
 const PAGE_FAULT_VECTOR: usize = 14;
 const MAX_PROTECTED_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
+#[cfg(test)]
+#[path = "systems_boot_image_fixture.rs"]
+mod fixture;
+#[cfg(test)]
+pub(crate) use fixture::unpublished_component_fixture;
+
 static NEXT_BOOT_STAGE: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]

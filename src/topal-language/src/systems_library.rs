@@ -104,6 +104,12 @@ pub(super) fn parse_requirement(
             "interface" if identifier_is(source, &field.value, "borrowed-byte-region-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionV1);
             }
+            "interface"
+                if identifier_is(source, &field.value, "borrowed-byte-region-tail-action-v1") =>
+            {
+                interface =
+                    Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1);
+            }
             "interface" if identifier_is(source, &field.value, "boot-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1);
             }

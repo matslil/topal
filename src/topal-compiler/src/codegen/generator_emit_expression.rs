@@ -20,6 +20,9 @@ impl Generator<'_> {
                     native[*role] = self.emit_expression(argument, body, environment).argument();
                 }
                 let mut arguments = native;
+                if self.kernel_tail_component {
+                    body.effect(&format!("call void @topal_tail_validate_view_v1(ptr %tail.context, ptr {})", region.kernel_region_pointer()), expression.span, &mut self.debug);
+                }
                 arguments.insert(0, format!("ptr {}", region.kernel_region_pointer()));
                 let (name, result) = match operation {
                     O::Count => ("count", "ptr"),

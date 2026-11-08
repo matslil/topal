@@ -399,7 +399,11 @@ fn provider_note(plan: &X86SystemsProviderPlan) -> String {
             namespace_region::LIVE_FRAME_BYTES, namespace_region::CALL_ALIGNMENT_BYTES, namespace_oracle::HELPER_STACK_BYTES));
     }
     if let Some(interface) = plan.region_library_interface {
-        note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
+        if interface == "borrowed-byte-region-tail-action-v1" {
+            note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=40\nregion-output-bytes=56\nregion-recovery-bytes=32\nregion-input-bytes=24\nregion-retired-stack-bytes=4096\nregion-kernel-qualification=requires-reconstructed-source-native-caller-binding\n"));
+        } else {
+            note.push_str(&format!("region-library-interface={interface}\nregion-runtime-bytes=65536\nregion-control-bytes=64\nregion-history-bytes=8\nregion-retired-stack-bytes=4096\nregion-private-prefix-bytes=4096\n"));
+        }
     }
     note
 }

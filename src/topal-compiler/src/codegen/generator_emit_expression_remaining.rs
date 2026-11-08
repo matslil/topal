@@ -1320,15 +1320,7 @@ impl Generator<'_> {
                 self.emit_binary(*operation, &left, &right, body, expression.span)
             }
             CompilerExpressionKind::Call { symbol, arguments } => {
-                let mut argument_environment = environment.clone();
-                let values = arguments
-                    .iter()
-                    .map(|argument| {
-                        let value = self.emit_expression(argument, body, &argument_environment);
-                        extend_function_capture_environment(&mut argument_environment, &value);
-                        value
-                    })
-                    .collect::<Vec<_>>();
+                let values = self.emit_call_argument_values(arguments, body, environment);
                 let target = self
                     .program
                     .functions
@@ -1351,6 +1343,9 @@ impl Generator<'_> {
                         body,
                         expression.span,
                     ));
+                }
+                if self.kernel_tail_component {
+                    machine_arguments.push("ptr %tail.context".into());
                 }
                 let arguments = machine_arguments.join(", ");
                 let linkage_symbol = format!("{}{}", self.kernel_function_prefix, symbol);

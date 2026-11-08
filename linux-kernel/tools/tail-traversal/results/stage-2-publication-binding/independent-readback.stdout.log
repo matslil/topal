@@ -1,0 +1,27 @@
+SOURCE_BYTES_EXACT 139 ONE_BOUNDED_FACTUAL_DESIGN_LABEL_CORRECTION
+front-end 0 ['test result: ok. 636 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 28.00s']
+tail-publication 0 ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 345 filtered out; finished in 149.67s']
+tail-kernel 0 ['test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 347 filtered out; finished in 12.36s']
+semantics 0 ['test result: ok. 253 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.14s']
+tail-model 0 ['test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 347 filtered out; finished in 0.01s']
+tail-owner 0 ['test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 347 filtered out; finished in 2.24s']
+tail-components 0 ['test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 327 filtered out; finished in 20.89s']
+tail-bounds 0 ['test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 327 filtered out; finished in 0.04s']
+compiler 0 ['test result: ok. 349 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 391.61s']
+compiler-cli 0 ['test result: ok. 261 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 61.43s']
+check 0 []
+coverage 0 ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.29s']
+format 0 []
+included-format 0 []
+source-size 0 []
+NATIVE_TOTALS {'tail-components': {'components': 62, 'cases': 751, 'calls': 444653, 'checkpoints': 444582, 'fatal': 87, 'work': 3936, 'private': 67328, 'denials': 13402, 'reentry': 4, 'temp': 3080192, 'stack': 192512, 'returns': 194, 'output': 2072, 'gdb': 31, 'admitted': 31, 'invalid': 16}, 'compiler': {'components': 62, 'cases': 751, 'calls': 444653, 'checkpoints': 444582, 'fatal': 87, 'work': 3936, 'private': 67328, 'denials': 13402, 'reentry': 4, 'temp': 3080192, 'stack': 192512, 'returns': 194, 'output': 2072, 'gdb': 31, 'admitted': 31, 'invalid': 16}}
+PROVIDER_FACTS {'tail-components': {'clients': 37, 'stack': {488, 520, 584, 424, 456, 440}, 'checkpoint_stack': {312}, 'completion_stack': {184, 248}, 'context': {1248, 640, 704, 1280, 736, 1040, 400, 3056}, 'faults': {0: 29, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}, 'boundary_faults': {1: 1, 0: 35, 2: 1}, 'completion_faults': {0: 23, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 1}, 'gdb': 28}, 'compiler': {'clients': 37, 'stack': {488, 520, 584, 424, 456, 440}, 'checkpoint_stack': {312}, 'completion_stack': {184, 248}, 'context': {1248, 640, 704, 1280, 736, 1040, 400, 3056}, 'faults': {0: 29, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}, 'boundary_faults': {1: 1, 2: 1, 0: 35}, 'completion_faults': {0: 23, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 1}, 'gdb': 28}}
+SOURCES 140 VERIFICATION 3 LOGS 15
+CGROUP {'path': '/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-1694353-280d5f72.scope', 'memory.max': '3000221696', 'memory.swap.max': '0', 'memory.peak': '2189172736', 'memory.events': 'low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n'}
+TOOL_WARNINGS 62 known GDB .debug_names compatibility warnings only
+OWNER_TOTALS {'tail-owner': {'clients': 3, 'admitted': 501, 'refused': 2252, 'fatal': 2, 'stack': {240}, 'combined': {688}, 'fixtures': {0, 1, 2}}, 'compiler': {'clients': 3, 'admitted': 501, 'refused': 2252, 'fatal': 2, 'stack': {240}, 'combined': {688}, 'fixtures': {0, 1, 2}}}
+OWNER_RECORDS 6 OWNER_TOOL_WARNINGS []
+KERNEL_VM_TOTALS {'tail-kernel': 10, 'compiler': 10} CFI_ENTRY_RETURN_FATAL [90, '114 instructions; 114/115 debugger stops', 133]
+KERNEL_READBACK_PASS
+PUBLICATION_TOTALS {'tail-publication': {'artifacts': 2, 'vms': 11, 'sections': [89, 105]}, 'compiler': {'artifacts': 2, 'vms': 11, 'sections': [89, 105]}} KNOWN_GDB_WARNINGS 0
+TAIL_PUBLICATION_INDEPENDENT_READBACK_PASS

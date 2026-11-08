@@ -427,6 +427,12 @@ pub struct SystemsArtifactProvenance {
     pub region_library: Option<crate::SystemsRegionLibraryArtifact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub region_runtime: Option<crate::SystemsRootRegionBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub tail_root: Option<crate::SystemsTailRootBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_position_library: Option<crate::SystemsRegionLibraryArtifact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -677,6 +683,57 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
     libraries: SystemsKernelLibraries<'_>,
     destination: &Path,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    publish_with_root_source(
+        program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        None,
+    )
+}
+
+/// Publish the tail profile with its complete immutable checked root source.
+///
+/// # Errors
+/// Refuses incomplete source/native/caller reconstruction before publication.
+pub fn publish_x86_64_systems_tail_artifact(
+    root_source: &str,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let program = topal_language::compiler::analyze_systems_for_compiler(
+        root_source,
+        &topal_language::compiler::CompilerSystemsTargetSelection::initial_x86_64_qemu(),
+    )
+    .map_err(CompileError::Diagnostic)?;
+    if !program.region_library.as_ref().is_some_and(|r|r.interface==topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
+        return Err(CompileError::Tool("E-SYSTEMS-TAIL-BINDING: explicit tail source root required".into()));
+    }
+    publish_with_root_source(
+        &program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        Some(root_source),
+    )
+}
+
+fn publish_with_root_source(
+    program: &CompilerSystemsProgram,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+    tail_source: Option<&str>,
+) -> Result<PublishedSystemsArtifact, CompileError> {
     let SystemsKernelLibraries {
         region: region_library,
         file_position: file_position_library,
@@ -689,6 +746,9 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         dispatch: dispatch_library,
         process_identity: process_identity_library,
     } = libraries;
+    if tail_source.is_none() && program.region_library.as_ref().is_some_and(|r| r.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
+        return Err(CompileError::Tool("E-SYSTEMS-TAIL-KERNEL: canonical publication requires the complete kernel tail owner source/native/caller binding".into()));
+    }
     if program.namespace_library.is_some() != namespace_library.is_some() {
         return Err(CompileError::Tool(
             "E-SYSTEMS-NAMESPACE: declaration requires its matching explicit source snapshot"
@@ -770,6 +830,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         inode_mode_library,
         namespace_library,
         &stage,
+        tail_source,
     );
     let record = match result {
         Ok(record) => record,
@@ -817,6 +878,7 @@ fn publish_in_stage(
     inode_mode_library: Option<&crate::SystemsSourceLibraryInput>,
     namespace_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
+    tail_source: Option<&str>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
     fs::create_dir(&work).map_err(io_error("create artifact work directory", &work))?;
@@ -825,6 +887,34 @@ fn publish_in_stage(
     fs::write(&provider_path, provider_object)
         .map_err(io_error("write provider object", &provider_path))?;
     fs::write(&root_path, root_object).map_err(io_error("write root object", &root_path))?;
+    let mut tail = tail_source
+        .map(|root| {
+            let source = region_library.ok_or_else(|| {
+                CompileError::Tool("E-SYSTEMS-TAIL-BINDING: missing source snapshot".into())
+            })?;
+            let fresh = crate::systems_tail_publication::rebuild(
+                root,
+                &source.into(),
+                tools,
+                &work.join("tail"),
+            )?;
+            if fresh.program != *program {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-TAIL-BINDING: root source/program disagree".into(),
+                ));
+            }
+            Ok(fresh)
+        })
+        .transpose()?;
+    let provider_object = tail
+        .as_ref()
+        .map_or(provider_object, |t| t.objects[1].as_slice());
+    let root_object = tail
+        .as_ref()
+        .map_or(root_object, |t| t.objects[0].as_slice());
+    fs::write(&root_path, root_object).map_err(io_error("write bound root object", &root_path))?;
+    fs::write(&provider_path, provider_object)
+        .map_err(io_error("write bound provider object", &provider_path))?;
 
     let mut library = program
         .kernel_library
@@ -837,6 +927,7 @@ fn publish_in_stage(
     let region = program
         .region_library
         .as_ref()
+        .filter(|r|r.interface!=topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1)
         .zip(region_library)
         .map(|(requirement, input)| {
             if requirement.source != input.source {
@@ -1098,21 +1189,40 @@ fn publish_in_stage(
         &linked.debug,
         &linked.map,
         plan.bootstrap_placement.capacity_bytes,
-        program
-            .bootstrap
-            .handler
-            .operations
-            .iter()
-            .any(|operation| {
+        {
+            let operations = &program.bootstrap.handler.operations;
+            let memory = operations.iter().any(|op| {
                 matches!(
-                    operation,
+                    op,
                     CompilerSystemsOperation::BootstrapStoreByte { .. }
                         | CompilerSystemsOperation::BootstrapLoadByteEquals { .. }
                         | CompilerSystemsOperation::AtomicWordCreate { .. }
                         | CompilerSystemsOperation::AtomicCompareExchangeEquals { .. }
                         | CompilerSystemsOperation::AtomicLoadEquals { .. }
                 )
-            }),
+            });
+            if memory {
+                let store = operations.iter().find_map(|op| {
+                    if let CompilerSystemsOperation::BootstrapStoreByte { value, .. } = op {
+                        Some(*value)
+                    } else {
+                        None
+                    }
+                });
+                let load = operations.iter().find_map(|op| {
+                    if let CompilerSystemsOperation::BootstrapLoadByteEquals { expected, .. } = op {
+                        Some(*expected)
+                    } else {
+                        None
+                    }
+                });
+                Some(store.zip(load).ok_or_else(|| {
+                    CompileError::Tool("checked bootstrap memory probe is incomplete".into())
+                })?)
+            } else {
+                None
+            }
+        },
     )?;
     let placements = linked_placements(&linked.kernel)?;
     let initial_user_image_path = stage.join(SYSTEMS_INITIAL_USER_IMAGE_FILE);
@@ -1138,6 +1248,9 @@ fn publish_in_stage(
         static_user_image,
         placements,
     )?;
+    if let Some(tail) = tail.as_mut() {
+        tail.bind(&linked.kernel)?;
+    }
     if let Some(page) = ram_page_pool {
         for (name, bytes) in [
             ("ram-page-pool-library.t", page.source.as_bytes()),
@@ -1402,6 +1515,14 @@ fn publish_in_stage(
                 record.dispatch_library = Some(numeric.record);
             }
         }
+    }
+    if let Some(tail) = tail {
+        crate::systems_tail_publication::publish_outputs(
+            tail,
+            &work.join("tail"),
+            stage,
+            &mut record,
+        )?;
     }
     let mut encoded = serde_json::to_vec_pretty(&record).map_err(|error| {
         CompileError::Tool(format!(

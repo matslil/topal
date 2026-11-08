@@ -1,0 +1,553 @@
+{
+  "schema": "topal.tail-owner-admission-validation/1",
+  "complete": true,
+  "passed": false,
+  "base_commit": "7d07ba8761861a2329f0f4325c6e65dd439fefb0",
+  "scope": "Stage 2 native word/domain/generation/identity admission, actual context construction and three-role invocation controller; caller-proven mapped ownership/permissions, actual privileged kernel context, complete owning-caller retirement/fatal bounds and publication remain unqualified",
+  "sources": {
+    "src/topal-compiler/src/systems_tail_bounds.rs": "674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc",
+    "src/topal-compiler/src/systems_tail_linear.rs": "8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52",
+    "src/topal-compiler/src/systems_tail_step_bounds.rs": "5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab",
+    "src/topal-compiler/src/systems_tail_call_bounds.rs": "942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf",
+    "src/topal-compiler/src/systems_tail_bounds_tests.rs": "5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed",
+    "src/topal-compiler/src/systems_tail_plan.rs": "f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de",
+    "src/topal-compiler/src/systems_numeric_library.rs": "2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff",
+    "src/topal-compiler/src/systems_region_bounds.rs": "d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490",
+    "src/topal-compiler/src/systems_numeric_array_tests.rs": "c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31",
+    "src/topal-compiler/src/systems_numeric_record_tests.rs": "3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b",
+    "src/topal-compiler/src/lib.rs": "22e43a07c681795b0bda776bc51eb2c77d3936c9552797fd492baf2c9785ca4a",
+    "linux-kernel/kernel/algorithms/clear-prefix.t": "3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58",
+    "linux-kernel/design/tail-state-bounds.md": "0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7",
+    "docs/systems-profile.md": "bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d",
+    "spec/systems-profile.md": "fa9da32729e195e51eb0fe6df06160a867670ebf140dcf8e9bb7d41261cdbbbb",
+    "se/requirements.md": "8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198",
+    "src/topal-compiler/se-requirements.md": "f76f510807f8cc32d5950fad38c7072d74ea1c180b310e9a768d3a0a6cdb80ab",
+    "se/core-language-coverage.md": "f1fccd5b05bb0478ea2092b177490c95a4bedb2051342016a034d9bb14105ced",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560",
+    "src/topal-compiler/src/runtime/value_core.ll": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6",
+    "src/topal-compiler/src/runtime/kernel_regions.ll": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424",
+    "src/topal-compiler/src/runtime/kernel_region_unsigned.ll": "d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4",
+    "Cargo.lock": "d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee",
+    "src/topal-compiler/src/codegen.rs": "7800c39b6f6d7d27cc65c6082c02426bd66cdae423adcab8de481aa5628ed1d0",
+    "src/topal-compiler/src/codegen/generator_support.rs": "fc993b9540f026e613cfcf3a9e58df4b35ed599bb4e253bb787c4bfc35370f0a",
+    "src/topal-compiler/src/codegen/generator_new.rs": "759afc537b2426bf6fc3055be7edc79f4a54502b3a3e0918151f904a7fcec916",
+    "src/topal-compiler/src/codegen/generator_emit_expression.rs": "bc21bae7adebc4106be1b5dd935b6d463e2b984b033e0837a7856f58ae7f96b1",
+    "src/topal-compiler/src/codegen/generator_emit_expression_remaining.rs": "d10e0af1d87cbbc2695000058e0fe5356c425c9fc2e1c518c872fac1c563a3c9",
+    "src/topal-compiler/src/codegen/generator_emit_string_range_characters_collect.rs": "67d77ef62d65e63451cd6f1a6ef81b56efd3dbcf1b1de6c448c8c37077eba9ac",
+    "src/topal-compiler/src/codegen/generator_tail_step.rs": "3265c5c9da7b98760ce30c0201a6703eb40f2c316f40078c66de468e260118c2",
+    "src/topal-compiler/src/codegen/freestanding_tail_step.rs": "234eb3042de537cc2d5252167ebf346172294e74ea74fc07bc5c69393977a09e",
+    "src/topal-compiler/src/systems_tail_component.rs": "048ff309c8fbf209f30bc0ecf692aeabd5bba742fa2c6e5df157067095928afb",
+    "src/topal-compiler/src/systems_tail_component_tests.rs": "d1427599d04ec2b834a0c698111093eded8a998606381226cab9ac63bca964d8",
+    "src/topal-compiler/src/systems_numeric_interface.rs": "480eb7b17ccb6155e7db108576ef8bfcc78b9f0368a591399578f861aec6758c",
+    "linux-kernel/design/tail-step-component.md": "68d8c5db8aa9cc06935abe9ea9b772cefaaa1ae92d24acc68a940e88e6c8cf6c",
+    "linux-kernel/labs/qemu/x86_64/tail_step_component_client.c": "ae7c45cf3d0a504d3c68c1d4a815eefc8965c3c4df6e67999a6df5ac38fc152a",
+    "linux-kernel/labs/qemu/x86_64/tail_step_component_runtime.c": "1fdec9ab672a6e842e897be1c6006c7bd70fcc1f6113f1b7369664cef987775e",
+    "src/topal-compiler/src/systems_provider_object.rs": "9036b914fbe61e900e93b83cc9aaa166db87378a4f09bd32f860c1db28ccdf2d",
+    "src/topal-compiler/src/systems_tail_boundary.rs": "b3674bd2b4bd50e589dbd3e4ce0bf980dfb5469b57a1fb2bac4f69c20e316096",
+    "src/topal-compiler/src/systems_x86_function.rs": "9cd4e8e7434ceabe962c0c2429565ea546e1c953f0ea78e5af3dc4a500dec55a",
+    "src/topal-compiler/src/systems_root_region.rs": "5d7883cd565ece7f68e966fbba6b2406060e893c1bbef3e69f5db5babc3cc1e3",
+    "src/topal-compiler/src/systems_root_region_unwind.rs": "554d5e0278ab20300e6221cd72cc0467dcdf02032d45b3da2c12b6931d5f1b6e",
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": "676662b4b3a9c63dc75e807fc7b072156f63568375486fc8a14d7dd299614100",
+    "linux-kernel/design/tail-stack-boundary.md": "a6ce3fb24fa8a47f1c83133f34df28af4c7531dca84e3513f471fd707eb07a93",
+    "linux-kernel/labs/qemu/x86_64/tail_boundary_inspect.py": "310ac0a301be63dcf0fae9e2f77a24072d154cd154e53de61f79a821932d92b9",
+    "src/topal-semantics/se-requirements.md": "fd583ccdfabcb9b9b4a84b251153bce7153b89f9d05d75d6ff67f6d2830dfb7f",
+    "src/topal-semantics/src/lib.rs": "cc1a73e943107632987b9e9b164345914ee9d5ac522b02552b0d5708e6f45d7f",
+    "src/topal-semantics/Cargo.toml": "c473014e6349fc6c8aa6154c88fc528e2b0472aa207f9719837f4da05429a4d6",
+    "src/topal-semantics/src/systems_storage.rs": "56d3d2e6b3aa7ec6f194d09301cb7b24d6ea0665e9b9671e7d71f58bb1e4d41b",
+    "src/topal-semantics/src/systems_storage_tail.rs": "02772825968ed23eba5e65642862dad24f7b86687e5f1d2d3aad4948cff60e08",
+    "src/topal-semantics/src/systems_region_library.rs": "dc6f2296f2665573844d3cc50495558938c2fcd868b408a2c609d9caeb0aaa9b",
+    "src/topal-semantics/src/systems_region_owner.rs": "d1560df19fdcb92f3b0744661cdbc22aaf1e95e5ce8fc57b351aabb39f6a2be3",
+    "src/topal-semantics/src/systems_tail_session.rs": "9b689625bb16f85b81f43ee292e62081aa2f023f1791b615d49129476b38cb4d",
+    "src/topal-semantics/src/systems_tail_values.rs": "b7bdc43e91f6688e14512d6268dabbbc611098c62dd58d390a4a729a38705d30",
+    "src/topal-semantics/src/systems_tail_session_tests.rs": "2510f57ddae8b850fbf356e917c4609b1a0b3e9b981abd87d0e87550b0f34fc7",
+    "src/topal-compiler/src/systems_tail_model.rs": "968dcacac22ad96fbbaad0f7c8dfa01d019d8b532c79dcdb64da98383d5b74fc",
+    "linux-kernel/design/tail-session-model.md": "f14a8c4715c9fd32e80b5aa2c427ae79b1cbdc3cb02a0e4fd1a6463429c304d6",
+    "src/topal-compiler/src/systems_tail_runtime.rs": "0a8826ffdce5c68f7affdf088291120a815176758918e9ce8a8fb16755192a8a",
+    "src/topal-compiler/src/systems_tail_runtime_inspection.rs": "c25226ace0370c80fc5a5eb224e47cd50c3a787adc59381467249dae6613ceb1",
+    "src/topal-compiler/src/runtime/kernel_tail_hooks.ll": "ea41cc7925573b3d9ea99a0656be368068448251d0c4a9c6a75cb2005e3d7179",
+    "src/topal-compiler/src/runtime/kernel_tail_numbers.ll": "ac0a414bf5f39dc8a57bf5c5006933611679450f11ca388c8643d2c70fc9a4bf",
+    "src/topal-compiler/src/runtime/kernel_tail_scopes.ll": "d4fc1c127beb936d915f45db92a9f22abacf05d39c375fe095bb3d01a6f3aa2c",
+    "src/topal-compiler/src/runtime/kernel_tail_roots.ll": "0387dbcf9106678d7cb1b2f6eb13a58c2734bff9ef41e4ef33fd74804b13cd9c",
+    "linux-kernel/design/tail-provider-hooks.md": "f70290ae352636df5f7218ba4212fa713ee626cb3ebe0437e06dad1cdaad2c0b",
+    "src/topal-compiler/src/systems_library_object.rs": "caaada94c2128c5132410c55408d029f25d263cd94ac700be7c8bab03abca332",
+    "src/topal-compiler/src/systems_numeric_object.rs": "8f68bddd6e6d91f973534655de89f9e3dc288440fa4e2d1cd4cb74cd745a144c",
+    "src/topal-compiler/src/systems_tail_checkpoint_boundary.rs": "0a3ea8dafd15c106f5cdc1033209bd626576149626a8af1191574f934800ffee",
+    "src/topal-compiler/src/runtime/kernel_tail_checkpoint.ll": "d76c45191d8f481b5b863ca44f6e05861016fff8e7dbaef110ebc9de8ca53d5c",
+    "linux-kernel/design/tail-native-checkpoint.md": "1795f5ef1062f9bdbb70d15f9a9fd970d3fc25bcff1c6e6643a8eeebad2fceab",
+    "src/topal-compiler/src/systems_tail_completion_boundary.rs": "9aee57bfcd3b919baf16b9520115b97d3f857490b217a112280e53b8351144bd",
+    "src/topal-compiler/src/runtime/kernel_tail_completion.ll": "a8c172b680a6aa6084d6cfa392e8f220fd015ca9aa761988db6ffd7669d485f3",
+    "linux-kernel/design/tail-native-completion.md": "054f790c09e7ffa2e548a8b0e3e493fee434995abb1ee6b9223021bfc551eb8b",
+    "src/topal-compiler/src/systems_tail_owner.rs": "891da50864ce53a3f9b2a73c157e87d3c25f6a65909504083ebab6056c6bbb93",
+    "src/topal-compiler/src/runtime/kernel_tail_owner.ll": "ce98d9e518c1f65312c9c5051ac1a0270744b364b9549fd092f5e843f1b0be68",
+    "src/topal-compiler/src/systems_tail_owner_tests.rs": "3951d08588fc5ec287f5f7bf4408774a220e534da0a4307eb1cb5e90ff4ee25d",
+    "src/topal-compiler/src/systems_tail_owner_inspection.rs": "be2c2e996f7c9ffe159250dead09883ca7bfaeee00af42437835e8c055fd593e",
+    "linux-kernel/labs/qemu/x86_64/tail_owner_client.c": "b7b89bd2d7fb03ff247df3046071d5c1d76d6e35c621600b024dcf6a824e7014",
+    "linux-kernel/design/tail-owner-admission.md": "58838c15bff833d8caaf9a57d3fb50af56fce9d84394ec48179e944c68f999df"
+  },
+  "environment": {
+    "RUST_MIN_STACK": "16777216",
+    "TMPDIR": "/tmp/tk282-owner-53e15c59",
+    "scratch_backing": "/home/mats/git/topal/linux-kernel/.cache/tk282-owner-53e15c59"
+  },
+  "commands": [
+    {
+      "name": "semantics",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-semantics",
+        "--lib",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 5.085825406946242,
+      "log": "semantics.log.gz",
+      "encoding": "gzip",
+      "sha256": "7f49f32c92c1ce02640bec43557e240558c9428a65906ece35ffce700a227c9c",
+      "uncompressed_sha256": "c5d9da85006a42016eb4ce77f007bc1124fcf60f8f287154e78180f68ffd4cc4"
+    },
+    {
+      "name": "tail-model",
+      "argv": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_tail_model::tests"
+      ],
+      "exit_code": 101,
+      "elapsed_seconds": 2.339649183675647,
+      "log": "tail-model.log.gz",
+      "encoding": "gzip",
+      "sha256": "18df8f5c818f42a23dfc975a461718e492278f4657168a13d683d232d5fd4bdb",
+      "uncompressed_sha256": "8bdb6569f801d051429da328470a77aab0851acbd82f06ac73e3032dd8456689"
+    }
+  ],
+  "native_components": [],
+  "owner_components": [],
+  "runner_sha256": "8cb457f63699f2040dc85927217c478850a10960f5296d1d50680d72dc54fbab",
+  "source_snapshots": {
+    "src/topal-compiler/src/systems_tail_bounds.rs": {
+      "file": "source-snapshots/674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc.txt.gz",
+      "sha256": "a1488712feb1fbb0e7eefc715933bfe775e24803380eb6777a11897a8299eed0",
+      "uncompressed_sha256": "674322f2b701e5f8022e1097ac5c904fc590e08c00756f9204f6c2b9f1f247bc"
+    },
+    "src/topal-compiler/src/systems_tail_linear.rs": {
+      "file": "source-snapshots/8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52.txt.gz",
+      "sha256": "d096d9201e7e26f530bcade3bd77d532ef8ba5a2bdc7c46b949f16c8c93dc51f",
+      "uncompressed_sha256": "8cd4981d2a8419dea7893569ae9f931dfb4816c17c7ef16c25d03ac018186f52"
+    },
+    "src/topal-compiler/src/systems_tail_step_bounds.rs": {
+      "file": "source-snapshots/5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab.txt.gz",
+      "sha256": "c3b5c8b01158a0d9e554585df701b8a76f537a7ac08317ad5dedd55c955a6998",
+      "uncompressed_sha256": "5cd7dc3c2d888d33a32e661f859652cf0c0ff90e2a418a5bb344c507ecd152ab"
+    },
+    "src/topal-compiler/src/systems_tail_call_bounds.rs": {
+      "file": "source-snapshots/942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf.txt.gz",
+      "sha256": "d62077bcb146da24c3b1ceaccc4755a17ee28a287010790f616eefa0ab187f57",
+      "uncompressed_sha256": "942c9be4f20f253839aef2171f815577cd0da17c305a2c051a5e358c272cdecf"
+    },
+    "src/topal-compiler/src/systems_tail_bounds_tests.rs": {
+      "file": "source-snapshots/5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed.txt.gz",
+      "sha256": "f7b562c76d6665016cd3f06d4ce0ddfca4941d3df7dcb6ec44ceda0cf7529c54",
+      "uncompressed_sha256": "5afa3b4253b5a7c7db91a1031e0d106ff4bb0a421558d832c8df2592722f57ed"
+    },
+    "src/topal-compiler/src/systems_tail_plan.rs": {
+      "file": "source-snapshots/f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de.txt.gz",
+      "sha256": "bf205b7bfe53452a03be30d48ef3407648fcb41432fc2500b15f1c4d0fd50ad9",
+      "uncompressed_sha256": "f15bc9de3993a05ab8256bfc297049fb9b1810285235beb2bd8ab074f291f6de"
+    },
+    "src/topal-compiler/src/systems_numeric_library.rs": {
+      "file": "source-snapshots/2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff.txt.gz",
+      "sha256": "ffd89749dafd847bad0ab6799a24f0ba9139b16ef044ac97d9173767f4fd1452",
+      "uncompressed_sha256": "2f6ecc6ee5e3db73e7aa724be478ea21849849fe11f91f2429e7a6fb78cd33ff"
+    },
+    "src/topal-compiler/src/systems_region_bounds.rs": {
+      "file": "source-snapshots/d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490.txt.gz",
+      "sha256": "2a2d671fa9d7100bd637adffa83228a79277ea2611d514c6ff9704d477e30186",
+      "uncompressed_sha256": "d270c4c952eaa97546ca3b1c10621737a4bd9ac7549154167e291483727a5490"
+    },
+    "src/topal-compiler/src/systems_numeric_array_tests.rs": {
+      "file": "source-snapshots/c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31.txt.gz",
+      "sha256": "d4a8a674821b2b15501baf568eef26abae55a91c9ed1c873a11fa0da3a0973d7",
+      "uncompressed_sha256": "c5b0edc4f7e8d7838d04e8f7a21e5eefd38951ec2f4e3b96b7314aa34ce88b31"
+    },
+    "src/topal-compiler/src/systems_numeric_record_tests.rs": {
+      "file": "source-snapshots/3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b.txt.gz",
+      "sha256": "25907a53b2a4bcfdc637b7d814b361ee7a7e5ae3c85970b51c3d76874d428d82",
+      "uncompressed_sha256": "3926ebdc01cbd36fefb62e6311af56e47aa1c704a3014ce098205c763c0a6d8b"
+    },
+    "src/topal-compiler/src/lib.rs": {
+      "file": "source-snapshots/22e43a07c681795b0bda776bc51eb2c77d3936c9552797fd492baf2c9785ca4a.txt.gz",
+      "sha256": "a21b3cbb68bda6d5ce1a1dd6e5eebbedd7358aa546aff435709c0ae135dbbef1",
+      "uncompressed_sha256": "22e43a07c681795b0bda776bc51eb2c77d3936c9552797fd492baf2c9785ca4a"
+    },
+    "linux-kernel/kernel/algorithms/clear-prefix.t": {
+      "file": "source-snapshots/3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58.txt.gz",
+      "sha256": "0dc5f6b46064720d9411657ec6a0f6f9aad0d458a3510ab0913121b7b38d41b2",
+      "uncompressed_sha256": "3aff9cbf8dca4bf49eb805583ebc36c1b6b5eb7ac927b63efe2fc06bc76b5f58"
+    },
+    "linux-kernel/design/tail-state-bounds.md": {
+      "file": "source-snapshots/0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7.txt.gz",
+      "sha256": "c03b5a26f3a61e099b15367609be3e787d65358446959fb40857f8771e903422",
+      "uncompressed_sha256": "0ef9433685d8326b323c8478efdf6d23fbf6dad92b25499689a29de22a4474a7"
+    },
+    "docs/systems-profile.md": {
+      "file": "source-snapshots/bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d.txt.gz",
+      "sha256": "530d674a9107c3b91f73e4018abbb96b7d6ee23dd7e1b6cbc04b8623abc50095",
+      "uncompressed_sha256": "bec221c9a636cdf8d3fc967ec8b8b69b1e49348e821d803dbc2d4ea36efa8d2d"
+    },
+    "spec/systems-profile.md": {
+      "file": "source-snapshots/fa9da32729e195e51eb0fe6df06160a867670ebf140dcf8e9bb7d41261cdbbbb.txt.gz",
+      "sha256": "17a71d10b863793cf85a1ac12352edb466034176430e3309b0b1b87f70b74735",
+      "uncompressed_sha256": "fa9da32729e195e51eb0fe6df06160a867670ebf140dcf8e9bb7d41261cdbbbb"
+    },
+    "se/requirements.md": {
+      "file": "source-snapshots/8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198.txt.gz",
+      "sha256": "4ba6933df890b78522263a62680c8acc03669cb68653bf1f47ab7ee01147ed3b",
+      "uncompressed_sha256": "8829890e836bc89408800413c9c41132990b3b6eac5b7c6903f50ba8ad70a198"
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "file": "source-snapshots/f76f510807f8cc32d5950fad38c7072d74ea1c180b310e9a768d3a0a6cdb80ab.txt.gz",
+      "sha256": "0b766bfcbf89d3d51f48ec2458affd65ed9b249a5f67051fc0a4bea61780ac19",
+      "uncompressed_sha256": "f76f510807f8cc32d5950fad38c7072d74ea1c180b310e9a768d3a0a6cdb80ab"
+    },
+    "se/core-language-coverage.md": {
+      "file": "source-snapshots/f1fccd5b05bb0478ea2092b177490c95a4bedb2051342016a034d9bb14105ced.txt.gz",
+      "sha256": "881193acbfca7a6566806c28c0878bc679bc88dfe4e6362fe4c2aaf40102bfa5",
+      "uncompressed_sha256": "f1fccd5b05bb0478ea2092b177490c95a4bedb2051342016a034d9bb14105ced"
+    },
+    "scripts/run_bounded.py": {
+      "file": "source-snapshots/0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560.txt.gz",
+      "sha256": "37339cd7861089685d1f03b831cbe591315e9ff06ef6daf5a1d155b50d4c99b9",
+      "uncompressed_sha256": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560"
+    },
+    "src/topal-compiler/src/runtime/value_core.ll": {
+      "file": "source-snapshots/a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6.txt.gz",
+      "sha256": "3ee79d406921958ecd6cc5c0eec001ad67569b47841246a698aea00ebf37619f",
+      "uncompressed_sha256": "a1c809e3b73bcd168457ca394a0dd4f1613abb68086dc0b97f1e7c168d415de6"
+    },
+    "src/topal-compiler/src/runtime/kernel_regions.ll": {
+      "file": "source-snapshots/da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424.txt.gz",
+      "sha256": "2020ece3f48186d35523a0a573923ff4d300c10f9198d3458626590806b08768",
+      "uncompressed_sha256": "da1f90f9d2366262f666d5be06a835a162a224154c318dc82fac68116e8c5424"
+    },
+    "src/topal-compiler/src/runtime/kernel_region_unsigned.ll": {
+      "file": "source-snapshots/d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4.txt.gz",
+      "sha256": "83e3fa64091142534ecefa5b5095bbdd07611bb2b5c746f3c2f8ee7837c926da",
+      "uncompressed_sha256": "d4671003ce1b40ec4b6e732815267d193ab1851980c8405ffdc852d69784a5c4"
+    },
+    "Cargo.lock": {
+      "file": "source-snapshots/d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee.txt.gz",
+      "sha256": "32e39d602c17564fd7e340133cc58feb2d77ebdd8e2d7e1a157a2dadc0c61e3b",
+      "uncompressed_sha256": "d750aa418f985e8aaa54b540b46a302957a20e45920bf4eda10f22bda7f6f5ee"
+    },
+    "src/topal-compiler/src/codegen.rs": {
+      "file": "source-snapshots/7800c39b6f6d7d27cc65c6082c02426bd66cdae423adcab8de481aa5628ed1d0.txt.gz",
+      "sha256": "93d175df4e8dd00a3f3644d205fd7d451d4d60376b49bc63316093296c2ea8cd",
+      "uncompressed_sha256": "7800c39b6f6d7d27cc65c6082c02426bd66cdae423adcab8de481aa5628ed1d0"
+    },
+    "src/topal-compiler/src/codegen/generator_support.rs": {
+      "file": "source-snapshots/fc993b9540f026e613cfcf3a9e58df4b35ed599bb4e253bb787c4bfc35370f0a.txt.gz",
+      "sha256": "87609560d31e342e4482f9c06d32594f67a049063edce49e29757eba8fef2c35",
+      "uncompressed_sha256": "fc993b9540f026e613cfcf3a9e58df4b35ed599bb4e253bb787c4bfc35370f0a"
+    },
+    "src/topal-compiler/src/codegen/generator_new.rs": {
+      "file": "source-snapshots/759afc537b2426bf6fc3055be7edc79f4a54502b3a3e0918151f904a7fcec916.txt.gz",
+      "sha256": "21f90877f1cb5ba41d9ed1e92a10194af2f43996ab95a6c1f83d55e659243d01",
+      "uncompressed_sha256": "759afc537b2426bf6fc3055be7edc79f4a54502b3a3e0918151f904a7fcec916"
+    },
+    "src/topal-compiler/src/codegen/generator_emit_expression.rs": {
+      "file": "source-snapshots/bc21bae7adebc4106be1b5dd935b6d463e2b984b033e0837a7856f58ae7f96b1.txt.gz",
+      "sha256": "239c4fc58519eec8d2c43546ca0d1776f620bff1f98a41aca0f6923ea42f92e5",
+      "uncompressed_sha256": "bc21bae7adebc4106be1b5dd935b6d463e2b984b033e0837a7856f58ae7f96b1"
+    },
+    "src/topal-compiler/src/codegen/generator_emit_expression_remaining.rs": {
+      "file": "source-snapshots/d10e0af1d87cbbc2695000058e0fe5356c425c9fc2e1c518c872fac1c563a3c9.txt.gz",
+      "sha256": "9e24fd82916c9acb1e1c7386f8ab466a840e341d0e9d8fd5e4b6cdc07785aec9",
+      "uncompressed_sha256": "d10e0af1d87cbbc2695000058e0fe5356c425c9fc2e1c518c872fac1c563a3c9"
+    },
+    "src/topal-compiler/src/codegen/generator_emit_string_range_characters_collect.rs": {
+      "file": "source-snapshots/67d77ef62d65e63451cd6f1a6ef81b56efd3dbcf1b1de6c448c8c37077eba9ac.txt.gz",
+      "sha256": "ae2c8e12c7f7f229236439ef725c70603c867bc3e9f29dac5c35b636c183fafb",
+      "uncompressed_sha256": "67d77ef62d65e63451cd6f1a6ef81b56efd3dbcf1b1de6c448c8c37077eba9ac"
+    },
+    "src/topal-compiler/src/codegen/generator_tail_step.rs": {
+      "file": "source-snapshots/3265c5c9da7b98760ce30c0201a6703eb40f2c316f40078c66de468e260118c2.txt.gz",
+      "sha256": "758221e7b06945ee2616cfa4d2b65fa7a50e01f59586f7d2c6d7d2bb443d0dd0",
+      "uncompressed_sha256": "3265c5c9da7b98760ce30c0201a6703eb40f2c316f40078c66de468e260118c2"
+    },
+    "src/topal-compiler/src/codegen/freestanding_tail_step.rs": {
+      "file": "source-snapshots/234eb3042de537cc2d5252167ebf346172294e74ea74fc07bc5c69393977a09e.txt.gz",
+      "sha256": "690ea632ffc045beddfd80612db8f57d31c9544b1b5fed430e2b4f56b86317e4",
+      "uncompressed_sha256": "234eb3042de537cc2d5252167ebf346172294e74ea74fc07bc5c69393977a09e"
+    },
+    "src/topal-compiler/src/systems_tail_component.rs": {
+      "file": "source-snapshots/048ff309c8fbf209f30bc0ecf692aeabd5bba742fa2c6e5df157067095928afb.txt.gz",
+      "sha256": "243f0aa0c65a7e4027430c08637e86d2ed2c44a8ffd29145fa997a266cc1480e",
+      "uncompressed_sha256": "048ff309c8fbf209f30bc0ecf692aeabd5bba742fa2c6e5df157067095928afb"
+    },
+    "src/topal-compiler/src/systems_tail_component_tests.rs": {
+      "file": "source-snapshots/d1427599d04ec2b834a0c698111093eded8a998606381226cab9ac63bca964d8.txt.gz",
+      "sha256": "7daf1f96ad9b3f3cfbb5f2973af84823ab1486f9d8eb626777c44749389c4b7d",
+      "uncompressed_sha256": "d1427599d04ec2b834a0c698111093eded8a998606381226cab9ac63bca964d8"
+    },
+    "src/topal-compiler/src/systems_numeric_interface.rs": {
+      "file": "source-snapshots/480eb7b17ccb6155e7db108576ef8bfcc78b9f0368a591399578f861aec6758c.txt.gz",
+      "sha256": "d2973743dd24f41a15b9e0f89fd94b9578f48a17390446aabd34c8d29c4df0ae",
+      "uncompressed_sha256": "480eb7b17ccb6155e7db108576ef8bfcc78b9f0368a591399578f861aec6758c"
+    },
+    "linux-kernel/design/tail-step-component.md": {
+      "file": "source-snapshots/68d8c5db8aa9cc06935abe9ea9b772cefaaa1ae92d24acc68a940e88e6c8cf6c.txt.gz",
+      "sha256": "e4b80c3ffcf67c908529ec4247fbb1b0b9729e372e25a7a8749beaabb956e4f6",
+      "uncompressed_sha256": "68d8c5db8aa9cc06935abe9ea9b772cefaaa1ae92d24acc68a940e88e6c8cf6c"
+    },
+    "linux-kernel/labs/qemu/x86_64/tail_step_component_client.c": {
+      "file": "source-snapshots/ae7c45cf3d0a504d3c68c1d4a815eefc8965c3c4df6e67999a6df5ac38fc152a.txt.gz",
+      "sha256": "ae6d688f0c11a5f27ebceb1e736c5743fa759a357bab2e2618e1e5979f4f473a",
+      "uncompressed_sha256": "ae7c45cf3d0a504d3c68c1d4a815eefc8965c3c4df6e67999a6df5ac38fc152a"
+    },
+    "linux-kernel/labs/qemu/x86_64/tail_step_component_runtime.c": {
+      "file": "source-snapshots/1fdec9ab672a6e842e897be1c6006c7bd70fcc1f6113f1b7369664cef987775e.txt.gz",
+      "sha256": "23879406f0f286fd7d09eac1356a903095cb0af6b5d27cf83937caa5961b3c29",
+      "uncompressed_sha256": "1fdec9ab672a6e842e897be1c6006c7bd70fcc1f6113f1b7369664cef987775e"
+    },
+    "src/topal-compiler/src/systems_provider_object.rs": {
+      "file": "source-snapshots/9036b914fbe61e900e93b83cc9aaa166db87378a4f09bd32f860c1db28ccdf2d.txt.gz",
+      "sha256": "fee4cb400bf2258ac805e9d5399a4ef3efe925338dc737cb2c2455b6782cb9bf",
+      "uncompressed_sha256": "9036b914fbe61e900e93b83cc9aaa166db87378a4f09bd32f860c1db28ccdf2d"
+    },
+    "src/topal-compiler/src/systems_tail_boundary.rs": {
+      "file": "source-snapshots/b3674bd2b4bd50e589dbd3e4ce0bf980dfb5469b57a1fb2bac4f69c20e316096.txt.gz",
+      "sha256": "2c3972c47095cc7b9fd85b3d573e1fcaaa55547f2a6baf73236cb15ea9c1cafc",
+      "uncompressed_sha256": "b3674bd2b4bd50e589dbd3e4ce0bf980dfb5469b57a1fb2bac4f69c20e316096"
+    },
+    "src/topal-compiler/src/systems_x86_function.rs": {
+      "file": "source-snapshots/9cd4e8e7434ceabe962c0c2429565ea546e1c953f0ea78e5af3dc4a500dec55a.txt.gz",
+      "sha256": "1f232142ce091159132acb49362cb7a646c074affb9e8d595011723327fbf06e",
+      "uncompressed_sha256": "9cd4e8e7434ceabe962c0c2429565ea546e1c953f0ea78e5af3dc4a500dec55a"
+    },
+    "src/topal-compiler/src/systems_root_region.rs": {
+      "file": "source-snapshots/5d7883cd565ece7f68e966fbba6b2406060e893c1bbef3e69f5db5babc3cc1e3.txt.gz",
+      "sha256": "5368a6b8fe0cd33ee0584bd5f2bb288fc94f872838528156a590673c45b20471",
+      "uncompressed_sha256": "5d7883cd565ece7f68e966fbba6b2406060e893c1bbef3e69f5db5babc3cc1e3"
+    },
+    "src/topal-compiler/src/systems_root_region_unwind.rs": {
+      "file": "source-snapshots/554d5e0278ab20300e6221cd72cc0467dcdf02032d45b3da2c12b6931d5f1b6e.txt.gz",
+      "sha256": "9422ae7b4b008db5ec1a312d1dea8334ae0b9ab29ef8fb1f024b510e33ccb172",
+      "uncompressed_sha256": "554d5e0278ab20300e6221cd72cc0467dcdf02032d45b3da2c12b6931d5f1b6e"
+    },
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": {
+      "file": "source-snapshots/676662b4b3a9c63dc75e807fc7b072156f63568375486fc8a14d7dd299614100.txt.gz",
+      "sha256": "75000e4c0fc3c9795ed4fbc8d85b54eaf8f1505c39617c197bcaa95dff65b744",
+      "uncompressed_sha256": "676662b4b3a9c63dc75e807fc7b072156f63568375486fc8a14d7dd299614100"
+    },
+    "linux-kernel/design/tail-stack-boundary.md": {
+      "file": "source-snapshots/a6ce3fb24fa8a47f1c83133f34df28af4c7531dca84e3513f471fd707eb07a93.txt.gz",
+      "sha256": "037c5ff0616634b8f56dd93af2aacc9fc8916373da3d9f515bbe8501cb314130",
+      "uncompressed_sha256": "a6ce3fb24fa8a47f1c83133f34df28af4c7531dca84e3513f471fd707eb07a93"
+    },
+    "linux-kernel/labs/qemu/x86_64/tail_boundary_inspect.py": {
+      "file": "source-snapshots/310ac0a301be63dcf0fae9e2f77a24072d154cd154e53de61f79a821932d92b9.txt.gz",
+      "sha256": "308a486c012b6f0b14599e271df2f207426ae27575bf9567d6b99afc44fe2433",
+      "uncompressed_sha256": "310ac0a301be63dcf0fae9e2f77a24072d154cd154e53de61f79a821932d92b9"
+    },
+    "src/topal-semantics/se-requirements.md": {
+      "file": "source-snapshots/fd583ccdfabcb9b9b4a84b251153bce7153b89f9d05d75d6ff67f6d2830dfb7f.txt.gz",
+      "sha256": "3e610caa9c636c5a9c78f6d3b6c0243fa8e24663ce63bdb1c4e5ed4d291a46c8",
+      "uncompressed_sha256": "fd583ccdfabcb9b9b4a84b251153bce7153b89f9d05d75d6ff67f6d2830dfb7f"
+    },
+    "src/topal-semantics/src/lib.rs": {
+      "file": "source-snapshots/cc1a73e943107632987b9e9b164345914ee9d5ac522b02552b0d5708e6f45d7f.txt.gz",
+      "sha256": "2a5c99a1cd6306c9866cab215727abb0555ba273b435572265eca7440665c993",
+      "uncompressed_sha256": "cc1a73e943107632987b9e9b164345914ee9d5ac522b02552b0d5708e6f45d7f"
+    },
+    "src/topal-semantics/Cargo.toml": {
+      "file": "source-snapshots/c473014e6349fc6c8aa6154c88fc528e2b0472aa207f9719837f4da05429a4d6.txt.gz",
+      "sha256": "3047c154c96236ef7f9066a5776b7bea77b15cf12515b42587ba87a835ece06d",
+      "uncompressed_sha256": "c473014e6349fc6c8aa6154c88fc528e2b0472aa207f9719837f4da05429a4d6"
+    },
+    "src/topal-semantics/src/systems_storage.rs": {
+      "file": "source-snapshots/56d3d2e6b3aa7ec6f194d09301cb7b24d6ea0665e9b9671e7d71f58bb1e4d41b.txt.gz",
+      "sha256": "637b9f7e1e02eac33a8634cd99d74849881afe687f777e56154110da9a0744cc",
+      "uncompressed_sha256": "56d3d2e6b3aa7ec6f194d09301cb7b24d6ea0665e9b9671e7d71f58bb1e4d41b"
+    },
+    "src/topal-semantics/src/systems_storage_tail.rs": {
+      "file": "source-snapshots/02772825968ed23eba5e65642862dad24f7b86687e5f1d2d3aad4948cff60e08.txt.gz",
+      "sha256": "fa46bed5bb0f49b4ad372a9dab56f0dc3179f11cb0502d110d3a4a80053ca7f1",
+      "uncompressed_sha256": "02772825968ed23eba5e65642862dad24f7b86687e5f1d2d3aad4948cff60e08"
+    },
+    "src/topal-semantics/src/systems_region_library.rs": {
+      "file": "source-snapshots/dc6f2296f2665573844d3cc50495558938c2fcd868b408a2c609d9caeb0aaa9b.txt.gz",
+      "sha256": "86cc71a1a470a1430257cc38fee81a193d7178d5c5d71508c3b42902b618a8ee",
+      "uncompressed_sha256": "dc6f2296f2665573844d3cc50495558938c2fcd868b408a2c609d9caeb0aaa9b"
+    },
+    "src/topal-semantics/src/systems_region_owner.rs": {
+      "file": "source-snapshots/d1560df19fdcb92f3b0744661cdbc22aaf1e95e5ce8fc57b351aabb39f6a2be3.txt.gz",
+      "sha256": "9974e21a15ece213639d7f51a3acef67c0d26bb9973da962e5e05c6d046c83c0",
+      "uncompressed_sha256": "d1560df19fdcb92f3b0744661cdbc22aaf1e95e5ce8fc57b351aabb39f6a2be3"
+    },
+    "src/topal-semantics/src/systems_tail_session.rs": {
+      "file": "source-snapshots/9b689625bb16f85b81f43ee292e62081aa2f023f1791b615d49129476b38cb4d.txt.gz",
+      "sha256": "414efcbc039407300e936626ae3f1022aa329611f6006b80b0d34f310c485d95",
+      "uncompressed_sha256": "9b689625bb16f85b81f43ee292e62081aa2f023f1791b615d49129476b38cb4d"
+    },
+    "src/topal-semantics/src/systems_tail_values.rs": {
+      "file": "source-snapshots/b7bdc43e91f6688e14512d6268dabbbc611098c62dd58d390a4a729a38705d30.txt.gz",
+      "sha256": "8db7bc38d7fe18cb90278c105f95d647f1ce9ee40b647aef6b9f3d42259f7d24",
+      "uncompressed_sha256": "b7bdc43e91f6688e14512d6268dabbbc611098c62dd58d390a4a729a38705d30"
+    },
+    "src/topal-semantics/src/systems_tail_session_tests.rs": {
+      "file": "source-snapshots/2510f57ddae8b850fbf356e917c4609b1a0b3e9b981abd87d0e87550b0f34fc7.txt.gz",
+      "sha256": "07751564034c3c7b5950c569b158e070cb12417fc58ed17279292c90ce5e1e85",
+      "uncompressed_sha256": "2510f57ddae8b850fbf356e917c4609b1a0b3e9b981abd87d0e87550b0f34fc7"
+    },
+    "src/topal-compiler/src/systems_tail_model.rs": {
+      "file": "source-snapshots/968dcacac22ad96fbbaad0f7c8dfa01d019d8b532c79dcdb64da98383d5b74fc.txt.gz",
+      "sha256": "c852dfb927c56ef9cbef713f606ac2e8fa55fc3d7878e2d89e785f8049a62339",
+      "uncompressed_sha256": "968dcacac22ad96fbbaad0f7c8dfa01d019d8b532c79dcdb64da98383d5b74fc"
+    },
+    "linux-kernel/design/tail-session-model.md": {
+      "file": "source-snapshots/f14a8c4715c9fd32e80b5aa2c427ae79b1cbdc3cb02a0e4fd1a6463429c304d6.txt.gz",
+      "sha256": "b1036c5ade8226d9d3d64317d9f7364128145d99768d7cf93e6149f620aaf5ed",
+      "uncompressed_sha256": "f14a8c4715c9fd32e80b5aa2c427ae79b1cbdc3cb02a0e4fd1a6463429c304d6"
+    },
+    "src/topal-compiler/src/systems_tail_runtime.rs": {
+      "file": "source-snapshots/0a8826ffdce5c68f7affdf088291120a815176758918e9ce8a8fb16755192a8a.txt.gz",
+      "sha256": "380557cdcce87e923b164a4d52f5fc7680dad74aab1b229c6ac313eef6141fee",
+      "uncompressed_sha256": "0a8826ffdce5c68f7affdf088291120a815176758918e9ce8a8fb16755192a8a"
+    },
+    "src/topal-compiler/src/systems_tail_runtime_inspection.rs": {
+      "file": "source-snapshots/c25226ace0370c80fc5a5eb224e47cd50c3a787adc59381467249dae6613ceb1.txt.gz",
+      "sha256": "ebf7257d670474cd5352e3ffa89242c70d4f409e2d6f2071adcbc5f055bef36f",
+      "uncompressed_sha256": "c25226ace0370c80fc5a5eb224e47cd50c3a787adc59381467249dae6613ceb1"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_hooks.ll": {
+      "file": "source-snapshots/ea41cc7925573b3d9ea99a0656be368068448251d0c4a9c6a75cb2005e3d7179.txt.gz",
+      "sha256": "ad411e5cc8bad20ceac55171105ab7852867b7419384174923225171f5bef4f3",
+      "uncompressed_sha256": "ea41cc7925573b3d9ea99a0656be368068448251d0c4a9c6a75cb2005e3d7179"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_numbers.ll": {
+      "file": "source-snapshots/ac0a414bf5f39dc8a57bf5c5006933611679450f11ca388c8643d2c70fc9a4bf.txt.gz",
+      "sha256": "881700849098b6657e0b0e699b9781688878d475909ce3d8c7acc6d3c515cd47",
+      "uncompressed_sha256": "ac0a414bf5f39dc8a57bf5c5006933611679450f11ca388c8643d2c70fc9a4bf"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_scopes.ll": {
+      "file": "source-snapshots/d4fc1c127beb936d915f45db92a9f22abacf05d39c375fe095bb3d01a6f3aa2c.txt.gz",
+      "sha256": "6c48af3074930153ad8077f1e0c5780349879f23449d4823506c8d69581f37d1",
+      "uncompressed_sha256": "d4fc1c127beb936d915f45db92a9f22abacf05d39c375fe095bb3d01a6f3aa2c"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_roots.ll": {
+      "file": "source-snapshots/0387dbcf9106678d7cb1b2f6eb13a58c2734bff9ef41e4ef33fd74804b13cd9c.txt.gz",
+      "sha256": "e93ab3746e906278232d690bbc1229c141de58e5329f56bccee392f7d5fab232",
+      "uncompressed_sha256": "0387dbcf9106678d7cb1b2f6eb13a58c2734bff9ef41e4ef33fd74804b13cd9c"
+    },
+    "linux-kernel/design/tail-provider-hooks.md": {
+      "file": "source-snapshots/f70290ae352636df5f7218ba4212fa713ee626cb3ebe0437e06dad1cdaad2c0b.txt.gz",
+      "sha256": "cc69e9beee9463d6e70725d97fae69eedd53055033a14c3a0464f0e732b86b71",
+      "uncompressed_sha256": "f70290ae352636df5f7218ba4212fa713ee626cb3ebe0437e06dad1cdaad2c0b"
+    },
+    "src/topal-compiler/src/systems_library_object.rs": {
+      "file": "source-snapshots/caaada94c2128c5132410c55408d029f25d263cd94ac700be7c8bab03abca332.txt.gz",
+      "sha256": "4ab7eb21ab72ad81507b62a3820830ad167440d619642116434c460894e7f44a",
+      "uncompressed_sha256": "caaada94c2128c5132410c55408d029f25d263cd94ac700be7c8bab03abca332"
+    },
+    "src/topal-compiler/src/systems_numeric_object.rs": {
+      "file": "source-snapshots/8f68bddd6e6d91f973534655de89f9e3dc288440fa4e2d1cd4cb74cd745a144c.txt.gz",
+      "sha256": "63304b64313fda9f730a42db6516ea50df59f7b4f35b8d955727e9af1ff8732d",
+      "uncompressed_sha256": "8f68bddd6e6d91f973534655de89f9e3dc288440fa4e2d1cd4cb74cd745a144c"
+    },
+    "src/topal-compiler/src/systems_tail_checkpoint_boundary.rs": {
+      "file": "source-snapshots/0a3ea8dafd15c106f5cdc1033209bd626576149626a8af1191574f934800ffee.txt.gz",
+      "sha256": "c3a1669c03992d68a51d2b97520692250b2638bfe518f344b6d103c2c6b3ff4d",
+      "uncompressed_sha256": "0a3ea8dafd15c106f5cdc1033209bd626576149626a8af1191574f934800ffee"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_checkpoint.ll": {
+      "file": "source-snapshots/d76c45191d8f481b5b863ca44f6e05861016fff8e7dbaef110ebc9de8ca53d5c.txt.gz",
+      "sha256": "98bde70e5b78d5823b6182553fdb29df5a132dd4e2742e5a704fade8f5d79cae",
+      "uncompressed_sha256": "d76c45191d8f481b5b863ca44f6e05861016fff8e7dbaef110ebc9de8ca53d5c"
+    },
+    "linux-kernel/design/tail-native-checkpoint.md": {
+      "file": "source-snapshots/1795f5ef1062f9bdbb70d15f9a9fd970d3fc25bcff1c6e6643a8eeebad2fceab.txt.gz",
+      "sha256": "6ef50816d3a52fd205aa2a09eeafb91bcad28cbdf253c36fbcefe3fdd1b51a56",
+      "uncompressed_sha256": "1795f5ef1062f9bdbb70d15f9a9fd970d3fc25bcff1c6e6643a8eeebad2fceab"
+    },
+    "src/topal-compiler/src/systems_tail_completion_boundary.rs": {
+      "file": "source-snapshots/9aee57bfcd3b919baf16b9520115b97d3f857490b217a112280e53b8351144bd.txt.gz",
+      "sha256": "ed0782430f0784bd08abbc3d629fed87f8a301fcb68a8a9af7e50fe1d07294d2",
+      "uncompressed_sha256": "9aee57bfcd3b919baf16b9520115b97d3f857490b217a112280e53b8351144bd"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_completion.ll": {
+      "file": "source-snapshots/a8c172b680a6aa6084d6cfa392e8f220fd015ca9aa761988db6ffd7669d485f3.txt.gz",
+      "sha256": "6fac5e854b717abe9a07c10066881eceab45df1ab5d7f6e14c9cf34c455bf639",
+      "uncompressed_sha256": "a8c172b680a6aa6084d6cfa392e8f220fd015ca9aa761988db6ffd7669d485f3"
+    },
+    "linux-kernel/design/tail-native-completion.md": {
+      "file": "source-snapshots/054f790c09e7ffa2e548a8b0e3e493fee434995abb1ee6b9223021bfc551eb8b.txt.gz",
+      "sha256": "5ae4743a87c8ae4ea90a01fe0a13e4c8d7a1ce56e7db3030e537d4cde5b8fa68",
+      "uncompressed_sha256": "054f790c09e7ffa2e548a8b0e3e493fee434995abb1ee6b9223021bfc551eb8b"
+    },
+    "src/topal-compiler/src/systems_tail_owner.rs": {
+      "file": "source-snapshots/891da50864ce53a3f9b2a73c157e87d3c25f6a65909504083ebab6056c6bbb93.txt.gz",
+      "sha256": "5aa094319b526b8857a458b9629b2dc1fed476915459c65f2797a37784d99a65",
+      "uncompressed_sha256": "891da50864ce53a3f9b2a73c157e87d3c25f6a65909504083ebab6056c6bbb93"
+    },
+    "src/topal-compiler/src/runtime/kernel_tail_owner.ll": {
+      "file": "source-snapshots/ce98d9e518c1f65312c9c5051ac1a0270744b364b9549fd092f5e843f1b0be68.txt.gz",
+      "sha256": "2e22dd7dbab29dab6f4b81ef52c80dda2370b80e032540ad6cc030ee694f980a",
+      "uncompressed_sha256": "ce98d9e518c1f65312c9c5051ac1a0270744b364b9549fd092f5e843f1b0be68"
+    },
+    "src/topal-compiler/src/systems_tail_owner_tests.rs": {
+      "file": "source-snapshots/3951d08588fc5ec287f5f7bf4408774a220e534da0a4307eb1cb5e90ff4ee25d.txt.gz",
+      "sha256": "c2c383034688e329c69b622d7c8ba2458974f287db081803fa345eaf1e0864eb",
+      "uncompressed_sha256": "3951d08588fc5ec287f5f7bf4408774a220e534da0a4307eb1cb5e90ff4ee25d"
+    },
+    "src/topal-compiler/src/systems_tail_owner_inspection.rs": {
+      "file": "source-snapshots/be2c2e996f7c9ffe159250dead09883ca7bfaeee00af42437835e8c055fd593e.txt.gz",
+      "sha256": "b3a6687816ec483f6198fc086d1c5707d464c9470a52dcc982df721930a8c7a1",
+      "uncompressed_sha256": "be2c2e996f7c9ffe159250dead09883ca7bfaeee00af42437835e8c055fd593e"
+    },
+    "linux-kernel/labs/qemu/x86_64/tail_owner_client.c": {
+      "file": "source-snapshots/b7b89bd2d7fb03ff247df3046071d5c1d76d6e35c621600b024dcf6a824e7014.txt.gz",
+      "sha256": "bd0d745d86c4496f36686f149ddc9f475b61a448e14b930c6d7786d58624d7a8",
+      "uncompressed_sha256": "b7b89bd2d7fb03ff247df3046071d5c1d76d6e35c621600b024dcf6a824e7014"
+    },
+    "linux-kernel/design/tail-owner-admission.md": {
+      "file": "source-snapshots/58838c15bff833d8caaf9a57d3fb50af56fce9d84394ec48179e944c68f999df.txt.gz",
+      "sha256": "e06117e921ee7fe9f3299d99a20dbd0ce4e741ba3fac7c9dcbbc476f6667c419",
+      "uncompressed_sha256": "58838c15bff833d8caaf9a57d3fb50af56fce9d84394ec48179e944c68f999df"
+    }
+  },
+  "verification_inputs": {
+    "se/traceability.md": {
+      "file": "source-snapshots/70aae56c73b8f336c7bf708caf542b957208b6990df2276056046fe25a303996.txt.gz",
+      "sha256": "54927728d970194560d6ae031e47917bbc5ace39fcb39a272bd818d986fbef92",
+      "uncompressed_sha256": "70aae56c73b8f336c7bf708caf542b957208b6990df2276056046fe25a303996"
+    },
+    "se/tool-conformance.md": {
+      "file": "source-snapshots/b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820.txt.gz",
+      "sha256": "7d1ad6805bc0581603d082f776ebe05bdddc01d268b86facfcf409d22e60bae6",
+      "uncompressed_sha256": "b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820"
+    },
+    "se/test-strategy.md": {
+      "file": "source-snapshots/9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425.txt.gz",
+      "sha256": "b7dabfebf14b47de9054a187ee1e9b9f3ea45456f1abe3883aafa0b6c2f75964",
+      "uncompressed_sha256": "9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425"
+    }
+  },
+  "rustc": "rustc 1.97.0 (2d8144b78 2026-07-07)",
+  "cargo": "cargo 1.97.0 (c980f4866 2026-06-30)",
+  "cc": "cc (GCC) 16.2.1 20260819 (Red Hat 16.2.1-2)",
+  "cgroup": {
+    "path": "/user.slice/user-1000.slice/user@1000.service/app.slice/topal-bounded-1607452-7281d40e.scope",
+    "memory.max": "3227623424",
+    "memory.swap.max": "0",
+    "memory.peak": "762564608",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\n"
+  }
+}
