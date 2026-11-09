@@ -290,7 +290,11 @@ impl Analyzer {
             &arguments,
             metadata,
             reserved_symbol.as_deref(),
-            recursion_proof.is_some() || self.generalized_exports.iter().any(|name| canonically_equal(name, function_name)),
+            recursion_proof.is_some()
+                || self
+                    .generalized_exports
+                    .iter()
+                    .any(|name| canonically_equal(name, function_name)),
         );
         let popped = self.active_calls.pop();
         debug_assert_eq!(popped.as_deref(), Some(identity.as_str()));
@@ -1404,6 +1408,7 @@ impl Analyzer {
     ) -> Option<CompilerRecursionProof> {
         self.euclidean_recursion_proof(function_name, declaration)
             .or_else(|| self.explicit_measure_recursion_proof(function_name, declaration))
+            .or_else(|| self.kernel_tail_terminal_recursion_proof(function_name, declaration))
             .or_else(|| self.direct_bounded_recursion_proof(function_name, declaration))
             .or_else(|| self.mutual_bounded_recursion_proof(function_name, declaration))
     }

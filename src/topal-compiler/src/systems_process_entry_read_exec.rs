@@ -1,6 +1,7 @@
 fn emit_static_process_read_exec(
     code: &mut X86FunctionEncoder,
     source_image: bool,
+    frame_memory: bool,
 ) -> Result<(), CompileError> {
     code.bind("static-process-shell-getppid")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 18]);
@@ -1518,36 +1519,43 @@ fn emit_static_process_read_exec(
     code.jump_if(0x85, "fatal");
 
     // Erase and revoke every anonymous heap mapping from the old image.
-    code.bytes(&[0x48, 0xbf]);
-    code.bytes(&0x005f_7000_u64.to_le_bytes());
-    code.bytes(&[0x31, 0xc0, 0xb9]);
-    code.bytes(&(34_u32 * 4096 / 8).to_le_bytes());
-    code.bytes(&[0xfc, 0xf3, 0x48, 0xab]);
-    code.bytes(&[0x48, 0xbf]);
-    code.bytes(&0x005f_7000_u64.to_le_bytes());
-    code.bytes(&[0x31, 0xc0, 0xb9]);
-    code.bytes(&(34_u32 * 4096 / 8).to_le_bytes());
-    code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25]);
-    code.bytes(&112_u32.to_le_bytes());
-    for offset in (0x0fb8_u32..=0x0ff8).step_by(8) {
-        code.bytes(&[0x48, 0xc7, 0x82]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0, 0, 0, 0]);
+    if frame_memory {
+        code.bytes(&[0x31, 0xf6]);
+        frame_memory::call(code, 7, "frame-mm-exec-return")?;
+        code.bytes(&[0x48, 0x83, 0xf8, 1]);
+        code.jump_if(0x85, "fatal");
+    } else {
+        code.bytes(&[0x48, 0xbf]);
+        code.bytes(&0x005f_7000_u64.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&(34_u32 * 4096 / 8).to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xab]);
+        code.bytes(&[0x48, 0xbf]);
+        code.bytes(&0x005f_7000_u64.to_le_bytes());
+        code.bytes(&[0x31, 0xc0, 0xb9]);
+        code.bytes(&(34_u32 * 4096 / 8).to_le_bytes());
+        code.bytes(&[0xfc, 0xf3, 0x48, 0xaf]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25]);
+        code.bytes(&112_u32.to_le_bytes());
+        for offset in (0x0fb8_u32..=0x0ff8).step_by(8) {
+            code.bytes(&[0x48, 0xc7, 0x82]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0, 0, 0, 0]);
+        }
+        code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
+        for offset in (0x4000_u32..0x40c8).step_by(8) {
+            code.bytes(&[0x48, 0xc7, 0x82]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0, 0, 0, 0]);
+        }
+        code.bytes(&[0x0f, 0xae, 0xf0, 0x48, 0xb8]);
+        code.bytes(&0x005f_7000_u64.to_le_bytes());
+        code.bytes(&[0xb9, 34, 0, 0, 0]);
+        code.bind("static-process-execve-invalidate-heap")?;
+        code.bytes(&[0x0f, 0x01, 0x38, 0x48, 0x05, 0, 0x10, 0, 0, 0xff, 0xc9]);
+        code.jump_if(0x85, "static-process-execve-invalidate-heap");
     }
-    code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x18, 0, 0, 0]);
-    for offset in (0x4000_u32..0x40c8).step_by(8) {
-        code.bytes(&[0x48, 0xc7, 0x82]);
-        code.bytes(&offset.to_le_bytes());
-        code.bytes(&[0, 0, 0, 0]);
-    }
-    code.bytes(&[0x0f, 0xae, 0xf0, 0x48, 0xb8]);
-    code.bytes(&0x005f_7000_u64.to_le_bytes());
-    code.bytes(&[0xb9, 34, 0, 0, 0]);
-    code.bind("static-process-execve-invalidate-heap")?;
-    code.bytes(&[0x0f, 0x01, 0x38, 0x48, 0x05, 0, 0x10, 0, 0, 0xff, 0xc9]);
-    code.jump_if(0x85, "static-process-execve-invalidate-heap");
 
     // Build a fresh Linux x86-64 initial stack for the replacement image.
     code.bytes(&[0x48, 0xbf]);

@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/tk282-frame-root-readback.py", line 60, in <module>
+    assert name.endswith('/gdb.stderr.log') and data==b'warning: .debug_names not created by gdb; ignoring\n',(name,data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ('guest/gdb.stderr.log', b'warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/tk282-frame-root-2f73e37e/frame-root-2006943-1794169021114457080/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.\n')

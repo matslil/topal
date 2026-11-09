@@ -1,0 +1,11 @@
+{
+  "schema": "topal.frame-gateway-component-readback/1",
+  "exit_code": 0,
+  "scope": "Exact source/native/object/log identities and call/stack recurrences, active bootstrap gateway lease, normal/source-abort/post-publication/late-failure caller retirement and ABI/CFI observations; separate per-frame boot-map oracle. Production Root, general MM and canonical publication remain unqualified.",
+  "files": {
+    "qualification.json": "45155d3d3ff51f62c75012412da8c94d994ad7970ba28dc7bdb095c790faa1a0",
+    "independent-readback.py.txt": "23f62445e8465ebdc71d9f2386b4862eb66a0cf81c2ff0910e7763b968712be7",
+    "independent-readback.stdout.log": "8d18582dbc1c413a94671410f2ef34448eb3a200c5aa9d939aebd93103966825",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

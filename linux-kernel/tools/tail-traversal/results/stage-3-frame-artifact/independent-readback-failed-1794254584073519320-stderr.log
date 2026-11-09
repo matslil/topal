@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/.cache/tk282-frame-artifact-readback.py", line 570, in <module>
+    if c['op']==1:assert allocate(c['a'],c['b'])==c['next_id']
+                                  ~^^^^^
+KeyError: 'a'

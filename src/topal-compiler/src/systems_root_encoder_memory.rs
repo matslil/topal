@@ -10,6 +10,10 @@ impl RootEncoder {
                 "x86 root lowering encountered duplicate frame-allocator creation".into(),
             ));
         }
+        if self.frame_policy.is_some() {
+            self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // actual retained handoff
+            self.frame_call(0, None, 0, None, false)?;
+        }
         self.frame_allocator_created = true;
         Ok(())
     }
@@ -122,7 +126,11 @@ impl RootEncoder {
             .map_err(|_| CompileError::Tool("physical frame count exceeds u32".into()))?;
         self.bytes.push(0xba); // edx = frame count
         self.bytes.extend_from_slice(&frame_count.to_le_bytes());
-        self.call(ProviderSymbol::AllocatePhysicalFrames);
+        if self.frame_policy.is_some() {
+            self.frame_allocate_source(u64::from(frame_count), alignment_frames)?;
+        } else {
+            self.call(ProviderSymbol::AllocatePhysicalFrames);
+        }
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]); // test rax, rax
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x48, 0x89, 0xc3]); // retain physical base in rbx
@@ -219,6 +227,9 @@ impl RootEncoder {
                 "x86 root lowering encountered release without a live physical-frame extent".into(),
             ));
         };
+        if self.frame_policy.is_some() {
+            self.frame_release_source()?;
+        }
         if matches!(
             self.static_image,
             RootStaticImageState::Sealed | RootStaticImageState::HierarchyReturned

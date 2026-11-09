@@ -1,0 +1,25 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "elapsed_seconds": 5.547412008047104,
+  "files": {
+    "reader.py.txt": {
+      "file": "independent-readback-reader.py.txt.gz",
+      "encoding": "gzip",
+      "sha256": "f4dd2f2c653526ad9ac1c56d5d7ae27939d4680289a1b37b1b37d3411473ceac",
+      "bytes": 10451,
+      "uncompressed_sha256": "e3206d421f4e8a1c252d227ecc96ac54e629fa70e2e1ffb0d90ad72a1329d4e9",
+      "uncompressed_bytes": 39321
+    },
+    "stdout.log": {
+      "file": "independent-readback-stdout.log",
+      "sha256": "47ca2bc66089594ffa4c813812b1e26fdd69ac1238889ae15b669e26ffc52c49",
+      "bytes": 1347
+    },
+    "stderr.log": {
+      "file": "independent-readback-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  }
+}

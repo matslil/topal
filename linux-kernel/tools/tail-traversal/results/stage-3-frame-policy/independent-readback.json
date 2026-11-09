@@ -1,0 +1,11 @@
+{
+  "schema": "topal.tail-frame-policy-readback/1",
+  "exit_code": 0,
+  "scope": "Exact current/frozen source and log/native identity readback, ordinary frame policy complete-state oracle and helper/resource binding, retained Count/Nat and raw/canonical kernel regressions. Actual kernel allocator authority, physical zeroing and workload integration remain unqualified.",
+  "files": {
+    "qualification.json": "31af79e8311838d039c4cf25056b1df0a1233c6b5d92b7a6dd76dc2c875e9f9c",
+    "independent-readback.py.txt": "4a21ffa1a166cae10f89eadba8ae34f436aa6e72b44ff08b589f1c460105b82b",
+    "independent-readback.stdout.log": "195e24843f9d4b1402260c81f66951ebd218e9b2785f253eb49deb1e4ee1d781",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

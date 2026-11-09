@@ -202,7 +202,15 @@ fn every_guard_branch_and_helper_identity_is_checked() {
     };
     let rule: CompilerComparisonRule = rules[0].clone();
     rules.push(rule);
-    refusal(&program, &entry, "one rule");
+    assert!(analyze_systems_tail_traversal(&program, &entry).is_ok());
+    let edge = edge_mut(&mut program, &entry).clone();
+    let K::OrderedComparisonDecision { rules, .. } =
+        &mut entry_mut(&mut program, &entry).body.result.kind
+    else {
+        panic!()
+    };
+    rules[1].action = edge;
+    refusal(&program, &entry, "tail position");
     let mut program = original.clone();
     let K::Call { symbol, .. } = &mut edge_mut(&mut program, &entry).kind else {
         panic!()

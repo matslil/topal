@@ -172,6 +172,7 @@ fn emit_static_process_shell_output_heap_validation(
     Ok(())
 }
 
+#[cfg(test)]
 fn static_image_process_enter(
     source_bound: bool,
     file_open_plan: bool,
@@ -187,6 +188,40 @@ fn static_image_process_enter(
     source_inode: bool,
     source_namespace: bool,
 ) -> Result<LinkableX86Function, CompileError> {
+    static_image_process_enter_selected(
+        source_bound,
+        file_open_plan,
+        source_numeric,
+        source_image,
+        source_dispatch,
+        dispatch_policy,
+        source_identity,
+        retained_identity,
+        structured_identity,
+        source_position,
+        source_page,
+        source_inode,
+        source_namespace,
+        false,
+    )
+}
+
+fn static_image_process_enter_selected(
+    source_bound: bool,
+    file_open_plan: bool,
+    source_numeric: bool,
+    source_image: bool,
+    source_dispatch: bool,
+    dispatch_policy: crate::systems_numeric_library::NumericPolicy,
+    source_identity: bool,
+    retained_identity: bool,
+    structured_identity: bool,
+    source_position: bool,
+    source_page: bool,
+    source_inode: bool,
+    source_namespace: bool,
+    frame_memory: bool,
+) -> Result<LinkableX86Function, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_process_start(
         &mut code,
@@ -199,8 +234,9 @@ fn static_image_process_enter(
         source_identity,
         retained_identity,
         source_inode,
+        frame_memory,
     )?;
-    emit_static_process_read_exec(&mut code, source_image)?;
+    emit_static_process_read_exec(&mut code, source_image, frame_memory)?;
     emit_static_process_files(&mut code)?;
     emit_static_process_output(&mut code)?;
     emit_static_process_completion(
@@ -218,8 +254,29 @@ fn static_image_process_enter(
         source_inode,
         source_namespace,
         dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
+        frame_memory,
     )?;
-    code.finish_linkable()
+    let markers = if frame_memory {
+        vec![
+            (
+                "topal_x86_frame_mm_brk_return_v1",
+                code.labels["frame-mm-brk-return"] as u64,
+            ),
+            (
+                "topal_x86_frame_mm_exec_return_v1",
+                code.labels["frame-mm-exec-return"] as u64,
+            ),
+            (
+                "topal_x86_frame_mm_cleanup_return_v1",
+                code.labels["frame-mm-cleanup-return"] as u64,
+            ),
+        ]
+    } else {
+        vec![]
+    };
+    let mut result = code.finish_linkable()?;
+    result.markers = markers;
+    Ok(result)
 }
 
 include!("systems_process_entry_start.rs");

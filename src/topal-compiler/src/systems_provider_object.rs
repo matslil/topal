@@ -4,6 +4,8 @@ use std::collections::BTreeMap;
 
 #[path = "systems_file_region.rs"]
 pub(crate) mod file_region;
+#[path = "systems_process_frame_memory.rs"]
+mod frame_memory;
 #[path = "systems_inode_region.rs"]
 pub(crate) mod inode_region;
 #[path = "systems_namespace_region_oracle.rs"]

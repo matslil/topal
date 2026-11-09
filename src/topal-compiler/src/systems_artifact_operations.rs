@@ -475,6 +475,9 @@ fn encode_operations(
                 ));
             }
         }
+        if encoder.frame_policy.is_some() {
+            encoder.frame_after_operation(operation)?;
+        }
     }
     encoder.complete()
 }
@@ -510,6 +513,49 @@ fn append_root(
         section: SymbolSection::Section(section),
         flags: SymbolFlags::None,
     });
+    for (offset, name, addend, call) in &encoded.frame_relocations {
+        let symbol = object.symbol_id(name.as_bytes()).unwrap_or_else(|| {
+            object.add_symbol(Symbol {
+                name: name.as_bytes().to_vec(),
+                value: 0,
+                size: 0,
+                kind: if *call {
+                    SymbolKind::Text
+                } else {
+                    SymbolKind::Data
+                },
+                scope: SymbolScope::Linkage,
+                weak: false,
+                section: SymbolSection::Undefined,
+                flags: SymbolFlags::None,
+            })
+        });
+        object
+            .add_relocation(
+                section,
+                Relocation {
+                    offset: start + offset,
+                    symbol,
+                    addend: if *call {
+                        -4
+                    } else {
+                        i64::try_from(*addend).map_err(|_| {
+                            CompileError::Tool("root token relocation overflow".into())
+                        })? - 4
+                    },
+                    flags: RelocationFlags::Generic {
+                        kind: RelocationKind::Relative,
+                        encoding: if *call {
+                            RelocationEncoding::X86Branch
+                        } else {
+                            RelocationEncoding::X86RipRelative
+                        },
+                        size: 32,
+                    },
+                },
+            )
+            .map_err(|e| CompileError::Tool(e.to_string()))?;
+    }
     if !encoded.source_library_relocations.is_empty() {
         let dependency = object.add_symbol(Symbol {
             name: encoded.source_library_export.as_bytes().to_vec(),

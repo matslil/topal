@@ -295,6 +295,7 @@ fn program(debug_disposition: SystemsDisposition) -> SystemsProgram {
     ];
     terminal_thread_effects.sort();
     SystemsProgram {
+        frame_allocator_library: None,
         target,
         kernel_library: None,
         region_library: None,

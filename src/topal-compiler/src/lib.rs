@@ -15,6 +15,14 @@ mod systems_artifact;
 mod systems_boot_image;
 mod systems_boot_resource;
 mod systems_file_region_boot;
+mod systems_frame_controller;
+mod systems_frame_policy_binding;
+mod systems_frame_publication;
+pub use systems_frame_publication::{
+    Binding as SystemsFrameRootBinding, Bounds as SystemsFrameRootBounds,
+    LinkerExtent as SystemsFrameLinkerExtent,
+};
+mod systems_frame_target;
 mod systems_inode_region_boot;
 mod systems_library;
 mod systems_namespace_region_boot;
@@ -39,7 +47,10 @@ pub use systems_tail_publication::{
 };
 mod systems_tail_runtime;
 pub use systems_tail_model::inspect_systems_tail_session_binding;
-pub use systems_tail_owner::{SystemsTailOwnerComponent, emit_systems_tail_owner_component};
+pub use systems_tail_owner::{
+    SystemsTailOwnerComponent, emit_systems_tail_nat_owner_component,
+    emit_systems_tail_owner_component,
+};
 pub use systems_tail_runtime::{
     SystemsTailRuntimeComponent, SystemsTailRuntimeLayout, emit_systems_tail_runtime_component,
 };
@@ -116,8 +127,8 @@ pub use systems_artifact::{
     publish_x86_64_systems_artifact_with_libraries,
     publish_x86_64_systems_artifact_with_source_library,
     publish_x86_64_systems_artifact_with_static_user_image,
-    publish_x86_64_systems_artifact_with_user_images, publish_x86_64_systems_tail_artifact,
-    qualified_x86_64_static_user_image_fixture,
+    publish_x86_64_systems_artifact_with_user_images, publish_x86_64_systems_frame_artifact,
+    publish_x86_64_systems_tail_artifact, qualified_x86_64_static_user_image_fixture,
 };
 pub use systems_boot_image::{
     GeneratedX86LinuxBootImage, PublishedX86LinuxBootImage, X86_BOOT_IMAGE_FILE,

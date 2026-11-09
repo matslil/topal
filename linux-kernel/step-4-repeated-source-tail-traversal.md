@@ -5,11 +5,11 @@
 `TOPAL-REQ-SYSTEMS-TAIL-TRAVERSAL-001`, `TOPAL-COMP-SYSTEMS-TAIL-PLAN-001`,
 `TOPAL-SYSTEMS-TAIL-PLAN-001` and `TOPAL-SYSTEMS-TAIL-REUSE-001`.
 
-Stages 1 and 2 are complete for the qualified traversal mechanism. Actual owned
-allocator/metadata integration remains Stage 3; committed production-kernel and
-application qualification remains Stage 4. The progress sections retain the scope
-of their historical checkpoints. The current publication result is recorded in
-[the final Stage 2 section](#stage-2-complete-reconstructed-kernel-publication).
+Stages 1, 2 and 3 are complete for the qualified traversal and owned frame
+allocator binding. Committed production-kernel and application qualification
+remains Stage 4. The progress sections retain the scope of their historical
+checkpoints. The current publication result is recorded in
+[the final Stage 3 section](#stage-3-complete-source-bearing-frame-publication).
 
 ## Stage 1: source structure and progress
 
@@ -800,6 +800,624 @@ clients, privileged GDB observations and the separate ELF readback. Independent
 human review remains required through the existing initial Step 4 PR. This is
 the Stage 2 commit; the complete Linux/distribution acceptance remains unfinished.
 
+## Stage 3 progress: actual source extent facts
+
+Preparation for larger allocator metadata found a conformance defect: tail
+source and its isolated module checks inherited the legacy 65536-byte Count
+annotation, although the separately qualified native tail family accepts a
+word-sized extent. This unsupported bound could justify a Nat result for
+`65536 - Count` on an actual larger owner. The tail selector now retains ordinary
+Nat count meaning without that finite source bound. Its isolated module entry
+uses the same meaning; native resource analysis independently retains its actual
+x86-64 word-domain proof. Legacy selectors retain their existing bound and
+qualification. No core type, arithmetic or termination rule changes.
+
+Three [frontend regressions](../src/topal-language/src/compiler_model/kernel_region_count_tests.rs)
+cover primary/imported/isolated Count facts, legacy controls, unproved Nat
+narrowing, valid Int subtraction and private/initialized module refusal. The
+[native count fixture](labs/qemu/x86_64/tail_count_client.c) executes direct and
+imported ordinary helpers against guarded actual process-owned extents of 1,
+65535, 65536, 65537, 70032, 131073 and 262144 bytes. Each variant executes 56
+cases with correct and incorrect expected counts, persistent history, immutable
+inputs, unchanged owner bytes, complete private/stack erasure and canaries.
+This establishes native Count observation, not physical-frame or privileged
+kernel allocator ownership. The kernel caller remains qualified for 64 bytes.
+
+The [final prerequisite record](tools/tail-traversal/results/stage-3-count-inputs/qualification.json)
+passes **639 frontend**, **253 semantics**, **350 compiler unit**, **261 CLI**
+and four coverage tests, checking, formatting and size. Ten command logs and
+145 exact source snapshots are retained. Targeted/full-compiler cohorts
+each execute both Count variants, with 112 cases per cohort. Existing regressions
+retain 62 step, three controller, one raw-kernel and eight reconstruction fixture
+sets, including the four Count clients and two canonical artifacts. Eleven
+canonical and ten raw VM component observations use the static-ELF ABI fixture;
+they make no new application acceptance claim. Independent source/log/native
+readback and separate canonical ELF relocation/load replay pass.
+
+The unchanged wrapper used a **3064 MiB** limit, **1569 MiB** host reserve and
+zero validation swap. Peak usage was **733036544 bytes**, with no limit/OOM
+events. A [preliminary failed run](tools/tail-traversal/results/stage-3-count-before-unique-scratch/scope.json)
+retains a concurrent test-directory collision: its compiler command passed 349
+tests and failed one directory creation. The shared fixture now adds an atomic
+per-process sequence to its clock-derived name; the final full suite passes.
+The failed run and its refusal by the readback remain unchanged.
+
+Risk is high because unsupported range evidence can affect source typing and
+native resource analysis. Self-review checks the tail-only selection, module
+isolation, unchanged legacy path, negative narrowing and actual native extent
+observations. This is a Stage 3 prerequisite; the actual allocator policy,
+metadata ownership and kernel integration still require implementation before
+the planned Stage 3 commit. No separate increment PR is created for this part.
+
+An earlier command/readback pass was not accepted as complete frozen-source
+qualification: the audit found two changed included analyzer files missing from its
+[source inventory](tools/tail-traversal/results/stage-3-count-before-complete-input-inventory/scope.json).
+A fresh qualification passes with all 145 source inputs retained before
+execution. Its producer
+derives changed source/specification/design paths before freezing, including
+new files. The original passing commands and their incomplete inventory remain
+unchanged. The final reader verifies every retained source byte and the complete
+modified/new source/specification/design inventory against this checkpoint.
+
+## Stage 3 progress: natural metadata-query results
+
+The separate [natural-result component](design/tail-metadata-query.md) supplies
+ordinary `(KernelByteRegion, Nat, Nat, Nat) -> Nat` source selection and an owned
+native constructor. Its first Nat remains the checked countdown. The Boolean
+constructor/root interface retains its exact profile and true-result gate.
+Neither a natural result nor the component creates an allocator, address or
+physical-frame grant. Kernel owning-caller/context/cost and publication binding
+remain separate work.
+
+The initial [byte query](kernel/algorithms/find-zero.t) preserves the countdown
+at the first zero. A caller with a validated request derives its position by
+subtracting that fact from the original requested end. Zero denotes no match;
+the all-ones word marks an invalid interval. Typed natural constants preserve
+the ordinary branch classifier. A closed helper DAG and sticky word-bounded
+result fit the existing reset invariant, while the cursor has its own affine
+potential. This is a byte-traversal mechanism, not aligned contiguous allocation
+or provenance policy.
+
+The [guarded native clients](labs/qemu/x86_64/tail_nat_owner_client.c) check eight
+search/invalid-interval cases over 70032 actual process-owned bytes, twenty
+arithmetic cases including results wider than 64 bits, and five 256-bit readonly
+constant transfers through actual checkpoints. All 48 result bytes, canonical
+sign/length/limbs, unused zero padding, immutable inputs, unchanged owner data,
+nonwrapping history and complete private/stack retirement are checked. The
+result uses the existing numeric output kind and complete 56-byte frame, with
+no word truncation. Constructor tests reject Boolean/Nat confusion and a measure
+in the wrong input slot. A frontend regression checks the exact symbolic Nat
+signature, publication/feature shape and recursive evidence.
+
+The [exact query record](tools/tail-traversal/results/stage-3-natural-query/qualification.json)
+passes **640 frontend**, **253 semantics**, **352 compiler unit**, **261 CLI**
+and four coverage tests, workspace checking, workspace/included formatting and
+the unchanged source-size ceiling. It retains 149 frozen source snapshots,
+three original verification snapshots and eleven complete command logs. The
+changed/new code and normative inventory was audited before final acceptance.
+Targeted/full-compiler cohorts each execute all three native programs, with
+33 cases per cohort and six exact natural-component artifact sets. Their source
+paths use **600/456/456 stack bytes**; controller/weighted paths use **240/800**
+for the byte query and **240/656** for arithmetic/constants. These do not include
+a future kernel adapter's owning frame and retirement cost.
+
+Independent readback verifies every source/native/runtime/command/binary identity,
+all complete-value observations and constructor/profile metadata. Existing
+regressions retain four Count clients, 62 step, three controller, one raw-kernel
+and eight reconstruction fixture sets, including the two canonical artifacts.
+Their eleven canonical and ten raw VM observations retain static-ELF ABI scope;
+the separate ELF relocation/load comparison passes. Only the existing native/raw
+GDB `.debug_names` warnings remain; natural-component tool/runtime stderr is empty.
+
+The unchanged wrapper used **3107 MiB**, a **1569 MiB** host reserve and zero
+validation swap. Peak usage was **3077210112 bytes**, below the actual limit,
+with zero limit/OOM events. The systems ledger contains **323 stable rules**.
+Factual report/trace updates follow the run; frozen inputs remain unchanged.
+
+Risk is high for source result identity, arbitrary-precision representation,
+borrowed metadata and physical retirement. Self-review compares exact source
+classifiers, separate result constructors, the unchanged Boolean path, guarded
+native value/owner oracles and independent artifact readback. No independent
+human review or new kernel allocator authority is claimed. Actual allocation
+policy, metadata ownership/kernel callers and complete committed application
+qualification remain required before the planned Stage 3/4 commits.
+
+## Stage 3 ordinary frame-policy component
+
+The [frame metadata design](design/frame-metadata-policy.md) now has actual
+[ordinary Topal source](kernel/memory/frame-metadata.t). Its owned table records
+allocation identity, provenance and physical frame number for each cell. Source
+chooses an aligned contiguous free span, marks the selected extent, validates a
+whole release before clearing cells, and preserves partial writes on protocol
+failure. The separate query prefix carries progress and request facts; it is
+not source temporary-arena storage or an authority constructor.
+
+The first expanded source exceeded the existing function budget. Checked helper
+sharing now retains equivalent same-declaration bodies, their complete ordered
+calls/arguments, source/module identity and the recursive entry/self edge. It
+removes only analysis-only range annotations, checks original and retained
+helper effects/closure, and keeps the existing 64-function limit. Three new
+sharing regressions cover small-closure identity, foreign/capture/unresolved/
+empty-effect/helper-cycle refusal, declaration separation and budget refusal.
+The allocator qualifies with **32 checked functions**, without changing core
+language meaning or legacy acyclic profiles.
+
+The [final component record](tools/tail-traversal/results/stage-3-frame-policy/qualification.json)
+passes all twelve commands: **643 frontend**, **253 semantics**, **353 compiler
+unit**, **261 CLI** and **four coverage tests**, targeted Count/Nat/policy tests,
+locked workspace all-target checking, workspace/included formatting and the
+unchanged source-size ceiling. It retains **158 exact source snapshots**, three
+original verification snapshots, complete command logs and two new native
+policy artifact sets. The original verification snapshot retains the trace row
+as pending; this factual report and the trace update follow the completed run.
+
+The [independent C oracle](labs/qemu/x86_64/frame_policy_client.c) checks every
+possible starting position and the complete candidate interval, separately from
+the source's incremental state machine. Each targeted/full-unit cohort executes
+**137 cases**: 54 successful allocations, 49 releases, 23 exhausted requests and
+11 protocol failures. It compares the complete owner outside the explicit query
+control fields, including immutable requests/topology, reservations and unused
+bytes. Cases cover alignment, physical gaps and provenance boundaries, multiple
+live extents, fragmentation, reuse, malformed/duplicate releases and retained
+partial allocation commits. A 3000-cell, **72128-byte** owner exercises selection,
+stores and release beyond the old 65536-byte extent. Guard pages, immutable
+input facts, complete natural output, monotone history and whole private/stack
+erasure remain checked.
+
+The policy's source resource proof bounds intermediates at **69 bits**, one
+recursive step at **18200 bytes** and private temporary use at **18592 bytes**.
+The runtime requires **20088 bytes** including recovery overhead. Independent
+native call-path replay checks a **1368-byte** source path and **1568-byte**
+weighted source/controller path within the unchanged 4096-byte private stack;
+the raw owner path is 240 bytes. These costs exclude a future actual kernel
+allocator caller and its retirement.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-policy/independent-readback.json)
+passes for all current/frozen source identities, native binaries/LLVM/commands,
+both policy cohorts and the weighted call-path calculation. It also retains the
+Count/Nat regressions, 62 step components, three owner components, one raw kernel
+and eight reconstruction sets. The eleven canonical and ten raw VM observations
+retain **static-ELF ABI fixture** scope; they add no real BusyBox/application
+acceptance. Separate ELF relocation/load replay still checks 89/105 allocated
+input contributions for the canonical regression artifacts.
+
+The unchanged wrapper used **3120 MiB**, a **1569 MiB** host reserve and zero
+validation swap. Peak usage was **2881191936 bytes**, with zero limit/OOM events.
+The systems ledger now has **324 stable rules**. The
+[preceding failed run](tools/tail-traversal/results/stage-3-frame-policy-before-format/qualification.json)
+remains retained as failed: functional suites passed, but included formatting
+found one Rust line wrap. The final run uses fresh source snapshots after that
+formatting repair and a clarification of completed-phase prefix reads; it does
+not relabel the earlier run.
+
+Risk is high around checked-body sharing, arbitrary-precision bounds, metadata
+mutation, extent identity and failure preservation. Self-review follows the
+authority hierarchy, checks that only the diagnostic entry-self graph edge is
+ignored, preserves every source argument/effect, and compares independent whole
+metadata and native call-path oracles. No independent human review is claimed.
+The actual privileged allocator, normalized map/reservations, physical zeroing,
+opaque extent publication, dynamic workload requests and complete caller/context
+retirement remain required. This is concrete policy implementation, not Stage 3
+kernel integration or the planned Stage 4 application qualification.
+
+## Stage 3 kernel allocator source binding
+
+The [kernel binding design](design/frame-policy-kernel-binding.md) now has an
+explicit `frame-allocator-library` root slot with
+`physical-frame-policy-tail-v1`. The source checker and reference model retain
+its exact interface/reserve obligation and require one described-memory
+allocator creation. Removing the optional declaration leaves the legacy checked
+operations unchanged. Wrong interfaces/slots, duplicates and a persistent-state
+reserve masquerading as the temporary reserve are refused.
+
+The [source binding checker](../src/topal-compiler/src/systems_frame_policy_binding.rs)
+reconstructs the actual root, validates contained primary/module inputs, checks
+the ordinary Nat interface/progress and isolates imported declarations before
+building the existing standalone component. Its source obligation retains the
+complete root/library snapshots and component identity. Independently changed
+valid roots change the root identity while preserving the policy component;
+changed valid policy bodies change the component identity while retaining the
+root identity. Neither form receives native allocator authority.
+
+Provider planning, program-only publication and the ordinary compiler pipeline
+explicitly refuse the new profile until actual native ownership/zeroing/caller
+reconstruction exists. The pipeline checks its selected source instead of
+falling through to the old frame selector. Tests verify refusal before output
+creation, including a deliberately unavailable tool directory, and reject
+missing/extra/mismatched inputs, private exports and wrong result/measure/
+progress/parameter profiles. These checks do not qualify a new kernel caller.
+
+The [source-binding record](tools/tail-traversal/results/stage-3-frame-source-binding/qualification.json)
+passes all **thirteen commands**, including **647 frontend**, **253 semantics**,
+**356 compiler unit**, **261 CLI** and **four coverage tests**, targeted
+Count/Nat/frame/source-binding tests, locked workspace all-target checking,
+workspace/all-changed-Rust formatting and source-size checks. It freezes **163
+source inputs**, three original verification inputs and complete command logs.
+Four new frontend/model tests and three compiler tests cover the declaration,
+context, replay and refusal paths. Six source-obligation artifact sets retain
+original/root-changed/policy-changed cases across targeted/full-unit cohorts.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-source-binding/independent-readback.json)
+checks exact current/frozen inputs and the full root/library/component links,
+all source/runtime/controller/boundary identities, separate root/body changes
+and explicit unqualified-caller diagnostics. Retained native cohorts still
+pass 137 frame-policy cases and 33 Nat cases each, with the same 32-function,
+1368/1568-byte source/weighted frame-policy stack paths. The retained Count and
+raw/canonical kernel regressions still pass; their 21 VM observations remain
+**static-ELF ABI fixture** scope, with no new BusyBox or allocator-guest claim.
+
+The unchanged wrapper used **3084 MiB**, a **1569 MiB** host reserve and zero
+validation swap. Peak usage was **2670063616 bytes**, with zero limit/OOM events.
+The systems ledger now contains **325 stable rules**. Original verification
+snapshots retain the pending trace row; factual report/trace changes follow the
+completed run without changing any frozen source input.
+
+Risk is high around binding an authority-owning subsystem to ordinary source.
+Self-review checks authority order, exact context/reserve/interface admission,
+all original inputs, independent replay, and refusal before legacy native
+planning or output creation. No independent human review is claimed. The actual
+native allocator is still required: the current old root's release lowering
+clears private registers without updating an allocator table. The next binding
+must connect real allocation/release/mapping lifetimes, normalized reservations,
+opaque live identities, physical zeroing and actual kernel stack/context/
+retirement. Source-only coupling does not complete that implementation or the
+planned Stage 3 commit.
+
+## Stage 3 native allocator and bootstrap physical target
+
+The [native ownership controller](../src/topal-compiler/src/runtime/kernel_frame_controller.ll)
+now wraps the ordinary frame policy with a live extent registry and private
+issuer/identity/slot tokens. It checks full canonical Nat results, exact whole
+metadata deltas, physical continuity and provenance. A backwards Boolean scan
+independently rejects false exhaustion without choosing another allocation.
+Whole release requires a live matching identity and no mapping pins; successful
+release consumes its token and registry record. Physical zeroing finishes
+before token/registry/issuance publication. Source and partial physical writes
+survive terminal failures; they are not rolled back.
+
+The [bootstrap target](../src/topal-compiler/src/runtime/kernel_frame_target.ll)
+constructs its actual table from E820 boundaries and complete linked-image and
+boot-resource reservations. It classifies intervals before page alignment,
+preserving unaligned boundaries even between identical RAM claims. Capacity
+derives from the normalized allocatable frame count. The backing covers the
+existing 1 GiB bootstrap identity-map geometry; unsupported RAM claims are
+refused, not truncated. Native identity budgets come from the reconstructed
+source's frame/loan costs and include its terminal step.
+
+The target checks actual bootstrap CPL/IF/stack geometry and exact private
+domains. Its zeroing callback validates pending issuance and all selected cells
+before writing the actual physical bytes. The terminal callback poisons the
+allocator, retains source writes and pending issuance, retires source domains
+and halts. Complete owning-caller stack/recovery retirement is still required.
+The [binding design](design/frame-policy-kernel-binding.md) records these limits.
+Source-obligation schema 3 binds the native controller and bootstrap template
+identities as well as the original root/library/component snapshots. It grants
+no native kernel publication authority; the compiler/provider gates stay closed.
+
+The [bootstrap qualification](tools/tail-traversal/results/stage-3-bootstrap-frame-target/qualification.json)
+passes all **fifteen commands**, including **647 frontend**, **253 semantics**,
+**358 compiler unit**, **261 CLI** and **four coverage tests**, targeted native
+controller/target and preceding source components, locked all-target workspace
+checking, workspace/all-changed-Rust formatting and the unchanged source-size
+ceiling. It freezes **174 source inputs**, three original verification inputs,
+all logs, six controller artifact sets and two privileged target artifact sets.
+The preceding 163-input source-binding record retains its historical scope.
+
+Eleven new VM cases pass in each targeted/full-unit cohort: real-map creation,
+controlled sparse/unaligned allocation, duplicate creation, interrupt/stack
+refusal, a reserved-zero terminal fault and four malformed/unsupported/no-RAM
+handoffs. The real E820 case creates **152525 allocatable frames** and compares
+every table cell against reference normalization. Allocation workloads use the
+controlled maps, with runtime request facts, simultaneous extents, mapping-pin
+refusal and whole release/reuse. Physical observations check complete zeroing
+before publication and actual dirty-page reuse; the forced reservation failure
+publishes no handle and preserves source effects. These fixtures run no user
+application and do not replace production root/workload integration.
+
+[Independent readback](tools/tail-traversal/results/stage-3-bootstrap-frame-target/independent-readback.json)
+passes on its first attempt. It replays all frozen/current inputs, source/native
+identities, separate root/body changes and public refusal, and independently
+reconstructs emitted controller/target templates. A per-frame oracle separately
+replays the actual boot maps and complete linked-image reservation. Native
+stack recurrences include the architecture observation's otherwise hidden
+eight-byte push: allocation/release paths are **1840/1824 bytes**, creation is
+208 bytes and pin/resolve paths are 200/216 bytes. These component bounds
+exclude the owning gateway, entry fixture and complete fatal caller recovery.
+The retained legacy ELF relocation/load comparisons and Count/Nat/policy native
+cohorts also pass. Their 21 VM observations retain **static-ELF ABI fixture**
+scope; the 22 new observations are allocator components, with no new BusyBox
+or distribution claim.
+
+The unchanged wrapper used **3115 MiB**, a **1569 MiB** host reserve and zero
+validation swap. Peak usage was **1865277440 bytes**, with zero limit/OOM events.
+Self-review follows authority order, compares the independent reference and
+per-frame oracles, validates native calls/stack and reviews the complete diff.
+Risk remains high around live identity, physical writes, ownership and failure
+cleanup; no independent human review is claimed. The real owning gateway,
+production allocation/release/mapping lifetimes, dynamic MM requests and full
+source/native/load publication remain required before the planned Stage 3
+commit and Stage 4 qualification.
+
+## Stage 3 owning bootstrap gateway
+
+The [owning gateway](../src/topal-compiler/src/systems_frame_gateway.rs)
+now captures one actual boot invocation and requires CPL0, IF0, DF0, the
+admitted stack alignment/window and a fresh private lease. The target variant
+requires that lease and checks its current stack against the owning invocation.
+Normal and fatal paths preserve all six callee-saved registers and physically
+retire 4032 scratch bytes, 48 saved-register bytes and the separate 48-byte
+recovery record. The caller-owned 32-byte provider result survives a normal
+resolve; terminal paths retire it too. Syscall stack binding remains separate.
+
+The [targeted gateway record](tools/tail-traversal/results/stage-3-frame-gateway/qualification.json)
+passes **eight commands** with **178 frozen source inputs**: two gateway tests,
+the original bootstrap test, three source-binding/refusal tests, locked
+workspace all-target checking, four coverage tests, workspace/all-changed-Rust
+formatting and source-size checks. This is targeted regression evidence; the
+preceding 358-test full compiler run retains its historical 174-input scope.
+The unchanged wrapper used 3118 MiB with a 1569 MiB host reserve and zero swap;
+peak usage was 1102659584 bytes, with zero limit/OOM events.
+
+Sixteen gateway VM scenarios pass, plus eleven original bootstrap scenarios.
+In addition to constructor/allocation/refusal/zeroing cases, these cover source
+abort after the first persistent allocation-cell write, invalid completion
+after an identity was issued, busy/DF entry refusal, and a late fault after
+caller and saved-register retirement. Terminal paths retain performed metadata
+and issuance, poison the allocator and retire their actual caller storage.
+The late test corrupts old saved-register copies after erasure and verifies
+they are cleared again without being reloaded. Debugger observations unwind
+through the gateway and recover the caller's registers while ordinary source,
+checkpoint and completion bodies execute on their separate private stack.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-gateway/independent-readback.json)
+passes on its first attempt, replaying exact sources, native/object/log
+identities, call/stack recurrences, per-frame map oracles and all caller/fatal/
+late/ABI observations. The conservative terminal-callback contribution is 96
+bytes; the dispatch/body bound is **1952 bytes**, or **2024 bytes** including
+the gateway, alignment, saved registers and return word, within 4096 bytes.
+The original target keeps its distinct raw-component behavior and bounds.
+An [earlier validator-scope failure](tools/tail-traversal/results/stage-3-frame-gateway-before-changed-rust-scope/historical-scope.json)
+is preserved: its formatter unintentionally checked unchanged historical
+include files. The fresh record checks every current changed/new Rust file;
+no compiler source was changed to repair that scope error.
+
+This remains an unpublished bootstrap component. The generator/target variant
+is compiled under tests until actual root lifetime and publication binding
+exist. The public frame-policy gates remain closed. Production allocation,
+release and mapping must retain opaque identities and call this boundary;
+current old release lowering still only clears registers. Dynamic workload/MM
+requests and complete source/native/load reconstruction remain required before
+the planned Stage 3 commit. No new userspace/container/VM-host acceptance or
+independent human review is claimed.
+
+## Full boot Root and early completion
+
+The next unpublished binding executes the complete existing boot Root through
+the source allocator. It retains opaque handles across actual construction,
+prepared-process and mapping lifetimes, pins every live loan, and calls whole
+release before clearing physical facts. The five-page active bootstrap hierarchy
+and two-page map-edit hierarchy also use real allocations. Map-edit storage is
+released after unmap commit and TLB invalidation; the active CR3 hierarchy remains
+live and pinned at completion. Private provider facts are erased after use.
+
+The policy now uses an additional ordinary ordered terminal rule. Its carried
+stop threshold ends completed or failed traversals without burning the remaining
+countdown. The complete worst-case countdown and identity admission remain
+unchanged. Systems-only checking retains every original branch and derives
+natural descent from the initial literal guard; the core parser and ordinary
+language design are unchanged. Complete bounds include every extra tested
+operand and terminal action. The source closure has 33 functions, with bounds
+of 53 frame identities and 38 region loans per step; private temporary storage
+uses 18632 bytes within the existing 65536-byte reserve.
+
+The [full-root record](tools/tail-traversal/results/stage-3-frame-root/qualification.json)
+passes eight commands for **188 frozen source inputs**: all **362 compiler**,
+**648 language** and **253 semantics** unit tests, four coverage tests, locked
+workspace all-target checking, workspace/all-changed-Rust formatting and size
+checks. This supersedes the earlier checkpoints as current-source evidence.
+The unchanged wrapper used 3116 MiB, zero swap and a 1569 MiB host reserve.
+Final peak usage was **2452267008 bytes** (2.28 GiB), with zero limit/OOM events.
+
+The full-root guest uses all **151977** normalized allocatable frames from its
+unmodified firmware map, after reserving the actual larger linked image and
+boot resource. Independent complete-map oracles reject omitted RAM. Its **67
+gateway calls** issue 14 distinct extents, resolve each, change mapping pins and
+consume 13 extents. The sole remaining extent is the five-page active CR3
+hierarchy with one pin. Physical zeroing, actual caller/private retirement,
+immutable topology, consumed tokens and registry state are observed. The
+identified static-ELF ABI fixture completes through the final user-backing
+marker. This is fixture execution, not real distribution-application acceptance.
+The full compiler cohort also reruns sixteen gateway and eleven raw-target VM
+scenarios and the native metadata/controller/refusal oracles.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-root/independent-readback.json)
+checks exact source/log/object identities, source bindings, native stack
+recurrences, a separate complete-map oracle, every issued/pinned/released handle
+and the actual linked ELF reservation. Its first attempt rejected the full
+root's retained optional `.debug_names` warning; that failure is preserved. The
+reader now recognizes only that specific ignored-index warning in the root
+fixture. Canonical publication already strips that index; this unpublished
+fixture does not qualify its debug-name index. Gateway CFI observations retain
+their separate scope.
+
+An earlier development guest reached actual allocation/pinning/release but
+timed out at 300 seconds while the old policy exhausted its countdown. The
+early-completion source completes the full build/boot test in about 34 seconds.
+No host security setting, memory limit or source reserve was relaxed.
+
+The experimental root/gateway route remains test-built and public frame-slot
+publication remains refused. Dynamic workload/MM requests, actual syscall-stack
+leases and complete canonical source/native/load reconstruction remain required
+before the planned Stage 3 commit. The original distribution, container and
+VM-host acceptance remains open.
+
+## Stage 3 progress: captured syscall requests and heap retirement
+
+The test-built complete Root now selects a memory provider that obtains backing
+from actual `brk` requests instead of its predecessor's fixed 34-page heap.
+The [runtime design](design/dynamic-frame-memory.md) binds captured process
+context, CR3, GS, entry identity, ABI request, exact continuation stack and
+compiled return site. Source allocation and memory handling share one owning
+gateway. An eight-byte zero alignment slot preserves the existing entry ABI;
+the native body is 2080 bytes and the combined syscall bound is **2160 bytes**.
+The original 4096-byte caller and 65536-byte source reserves are unchanged.
+
+Replacement copies the retained prefix into zeroed new backing, pins it before
+publication, invalidates affected translations, then unpins, erases and consumes
+the old whole extent. Query/within-page changes allocate nothing. Exec and exit
+revoke and release the complete live heap. The predecessor's startup witness
+does not determine request legality or allocation counts. Its remaining legacy
+user-copy validators and the current 519-leaf geometry still limit this target;
+general virtual memory is unfinished.
+
+The [runtime-memory record](tools/tail-traversal/results/stage-3-frame-memory/qualification.json)
+passes eight commands: **363 compiler**, **648 language**, **253 semantics** unit
+tests, four coverage tests, locked workspace all-target checking and formatting/
+size checks. Its **201 frozen inputs** are supplemented by a
+[772-input producer closure](tools/tail-traversal/results/stage-3-frame-memory/producer-inputs.json).
+Changed/new sources were frozen before validation; additional unchanged
+producers are checked against the immutable base commit already identified in
+that record. Prior lab result archives are outputs and are excluded from that
+producer inventory. No new CLI-suite qualification is claimed.
+
+The normal userspace fixture executes **80 memory operations**: 76 `brk` calls,
+three exec resets and one exit cleanup. Different actual counts include 3, 67
+and 519 pages, plus shrinking to zero, reuse, preserved prefix bytes, zero newly
+mapped pages, within-page updates, invalid/overflow-sized requests and user DF
+preservation. CFI across the private source stack recovers the actual syscall
+caller and all six preserved registers. Nine context/critical/busy refusal
+cases claim no foreign retirement authority. Partial source writes and failure
+after replacement publication retain actual effects and held identities,
+poison the owner, retire the caller and never resume the process.
+
+A separate **50 MiB VM** uses its complete unmodified firmware map. It has 970
+allocatable frames after actual reservations; its largest free extent is 384
+pages when a real 519-page user request arrives. Ordinary exhaustion preserves
+the current heap's bytes, mappings, handle and issuance counter. The test edits
+no memory map, register or return result to manufacture that outcome.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-memory/independent-readback.json)
+checks all inputs/logs/objects, source bindings and stack recurrences. A separate
+extent model replays the boot prefix and successful heap replacements against
+the small VM's topology, reproduces its complete metadata and registry hashes,
+and derives the same 384-page maximum free extent. The original full Root,
+sixteen gateway and eleven raw-target scenarios also pass in this cohort.
+Final peak memory is **1795899392 bytes** (1.67 GiB), with zero limit/OOM events,
+zero swap and the unchanged host reserve and wrapper.
+
+This supersedes earlier current-source checkpoints without granting canonical
+frame-slot publication. The route remains test-built; complete canonical
+source/native/load reconstruction, general MM/user-copy integration and original
+distribution/container/VM-host acceptance remain required. Stage 3 is unfinished.
+
+## Stage 3 progress: complete fresh native reconstruction
+
+The source reconstruction path now rebuilds the actual frame Root/provider,
+ordinary source/runtime/owner/boundary, controller, target, dispatch and gateway.
+It also rebuilds all ten other declared libraries from their explicit immutable
+snapshots. The frame declaration is retained in the checked program; a typed
+private source check selects this provider. Program-only APIs still refuse it.
+
+All twenty native objects receive exact contribution endpoints. Fresh replay
+compares relocated payloads, symbols, permissions, alignment, zero storage and
+load owners. Complete coverage rejects additional unowned code/data or storage.
+Only minimal alignment and narrowly derived linker header/empty-GOT page-tail
+extents are accepted. The actual kernel reservation equals the full allocated
+image end. Static source closure avoids indirect global references; the exact
+strong own-function GOTPCRELX address relaxation is reconstructed byte for byte.
+An indexed symbol lookup preserves ambiguity checks while avoiding repeated
+whole-table scans.
+
+The [reconstruction record](tools/tail-traversal/results/stage-3-frame-reconstruction/qualification.json)
+passes eight commands for **777 frozen complete source/producer inputs**:
+**365 compiler**, **648 language**, **253 semantics** unit tests, four coverage
+tests, workspace all-target checking and formatting/size checks. A failed initial
+program-header type check is retained in its separate failed record. No source
+reserve, host memory/security setting or wrapper limit was relaxed. The final
+peak is **2468528128 bytes** (2.30 GiB), with zero limit/OOM events and zero swap.
+Workspace checking passes with unused-code warnings for the production-private
+helpers whose artifact integration remains pending.
+
+The actual rebuilt image has **804 relocated contributions**. Its normal guest
+executes 80 memory operations and all twelve context/refusal/fatal/exhaustion
+scenarios pass. Complete small-VM topology now has 972 allocatable frames and a
+386-page maximum free extent when a real 519-page request is refused; independent
+replay reproduces metadata/registry hashes. Compilation derives **2032 bytes**
+for the dispatch body and **2112 bytes** with its syscall caller. Source CFI and
+whole normal/fatal retirement remain observed. Code mutation per native role,
+RWX permissions, entry/padding changes, missing library/object and changed source/
+toolchain/bounds/original-object data are refused.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-reconstruction/independent-readback.json)
+passes on its first attempt. It checks all frozen inputs/logs/binaries, fresh
+source determinism, native stack recurrences, the complete ELF allocation/load
+coverage, linker geometry, actual reservation and independent extent replay for
+both raw and freshly rebuilt guests. The preceding Root, raw-target, owning
+gateway and syscall-memory cohorts also pass with this source version.
+
+This is fresh source/native/load qualification, not yet canonical publication.
+The artifact schema can retain observational frame binding data, but public
+frame publication and boot remain refused, including orphan/native metadata.
+Complete artifact/source/provenance/boot association is the next integration.
+Stage 3, general MM and original distribution/container/VM-host acceptance remain
+unfinished.
+
+## Stage 3 complete: source-bearing frame publication
+
+The normal compiler pipeline now accepts an explicit frame source declaration
+only through the complete source-bearing artifact route. It retains that
+declaration while rebuilding the actual Root/provider, frame policy and all ten
+other selected libraries. Publication compares the metadata producers' original
+object identities, links the twenty reconstructed inputs and verifies stable
+geometry after binding the complete allocated image reservation.
+
+Published provenance retains the immutable root/frame/other-library/module
+snapshots, generated objects and LLVM, fresh bounds and load ownership. Boot
+reconstructs them with the qualified toolchain, compares the entire binding,
+target/entry/placement and unique artifact associations, then retains every
+other selected owner validator. Each legacy library's source name/hash and
+module metadata must also match its actual reconstructed snapshots. Program-only
+frame selection and unsupported mixed tail owners remain refused.
+
+The [artifact record](tools/tail-traversal/results/stage-3-frame-artifact/qualification.json)
+passes nine commands for **780 frozen inputs**: **367 compiler**, **648 language**
+and **253 semantics** unit tests, **261 CLI** tests, four coverage tests, workspace
+all-target checking, formatting and the unchanged source-size ceiling. The public
+image binds **804 contributions** from twenty objects and executes **80 memory
+operations** plus twelve context/refusal/fatal/exhaustion scenarios. The actual
+combined syscall bound remains **2112 bytes** within the unchanged 4096-byte
+reserve. The complete 50 MiB guest still has 972 allocatable frames and a
+386-page largest free span at a real 519-page exhaustion request.
+
+Fifteen atomic source/publication/boot refusal cases include missing bindings,
+undercharged bounds, changed snapshots, absent libraries, duplicate/extra
+identities, orphan tail metadata, detached other-source metadata and modified
+native code with a recomputed outer kernel hash. Null decoding and thirty
+identity mutations across the ten legacy library records are also refused.
+
+[Independent readback](tools/tail-traversal/results/stage-3-frame-artifact/independent-readback.json)
+checks all source/log/object identities, native stack paths, ELF allocation/load
+coverage, every published output, boot payload/resource association and actual
+VM observations. A separate extent model reproduces the public image's small-map
+metadata and registry hashes. Its original field-name failure is retained; the
+corrected reader checks the public operation/request prefix against the fully
+captured Root prefix before replaying its handle/alignment facts. No kernel or
+test obligation was weakened. An earlier intentionally interrupted cohort
+retains the review-discovered missing metadata association and its partial log;
+that interruption was not a memory failure.
+
+Final peak memory is **2511380480 bytes** (2.34 GiB), with zero limit/OOM events
+and zero validation swap. The wrapper, requested limit, host reserve, source
+reserves and host security settings are unchanged. Five checking warnings concern
+test/component-only helpers; the public source/native/boot path is connected.
+
+This completes Stage 3's owned allocator/source/native/publication integration.
+The production root still needs to select it and qualify exact committed kernel
+and real application inputs in Stage 4. These new guests execute the identified
+static-ELF ABI fixture. They grant no new unchanged BusyBox, distribution,
+container or VM-host acceptance. General virtual memory and replacement of the
+legacy user-copy validators remain required.
+
 ## Subsequent stages and original acceptance
 
 Stage 2 now binds the native roles to the initial actual kernel caller, complete
@@ -809,9 +1427,9 @@ The [transfer inventory](knowledge/common/tail-transfer-readiness.md)
 records actual current representations and refusal boundaries, with the existing
 65536-byte temporary and 4096-byte stack reserves intact.
 
-Stage 3 must use the new execution path on a real owned allocator/metadata
-resource, preserving source effects, provenance, reservations, lifetime and
-fatal cleanup. Stage 4 must qualify exact committed native/kernel/VM/application
+Stage 3 uses the new execution path on a real owned allocator/metadata resource,
+preserving source effects, provenance, reservations, lifetime and fatal cleanup.
+Stage 4 must qualify exact committed native/kernel/VM/application
 inputs and publish complete evidence in the existing initial Step 4 PR.
 
 General allocation, persistent VFS/process/virtual-memory state, full pinned UAPI

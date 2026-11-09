@@ -1,0 +1,11 @@
+{
+  "schema": "topal.bootstrap-frame-target-readback/1",
+  "exit_code": 0,
+  "scope": "Exact 174 frozen/current source inputs and logs, independent metadata/LLVM/binary replay, legacy ELF relocation/load replay, opaque native controller modes, source-derived bootstrap template budgets and native stack recurrences. Separately derives the privileged constructor table with a per-frame oracle and verifies physical zero/reuse/refusal/poison observations against actual linked image reservations. No owning gateway/caller retirement, production root, distribution or container acceptance.",
+  "files": {
+    "qualification.json": "f4e6a7bade19570677c84a7428d65a447312d729ac859f0551f8c4c644bff87a",
+    "independent-readback.py.txt": "e82624e94acc6946f41bc6cdcefdc3ebdb089d6c9ad437aa35a87b6df2c8e387",
+    "independent-readback.stdout.log": "63279f2c65f0725fbe4ba84bfae2035309209414e56a5e0acbdd25f63b0b048d",
+    "independent-readback.stderr.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

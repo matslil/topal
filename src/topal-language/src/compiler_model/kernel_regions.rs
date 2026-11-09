@@ -21,8 +21,15 @@ pub const MAX_KERNEL_REGION_FRAME_SCALARS: u8 = 16;
 
 enum KernelRegionSelection<'a> {
     Entry(&'a str, CompilerKernelRegionProfile),
-    TailSource(&'a str, u8),
+    TailSource(&'a str, u8, KernelRegionTailResult),
     Modules(&'a [CompilerKernelRegionModuleExport]),
+    TailModules(&'a [CompilerKernelRegionModuleExport]),
+}
+
+#[derive(Clone, Copy)]
+enum KernelRegionTailResult {
+    Boolean,
+    Nat,
 }
 
 #[derive(Clone, Debug)]
@@ -40,6 +47,10 @@ mod kernel_region_tests;
 #[cfg(test)]
 #[path = "kernel_region_unsigned_tests.rs"]
 mod kernel_region_unsigned_tests;
+
+#[cfg(test)]
+#[path = "kernel_region_count_tests.rs"]
+mod kernel_region_count_tests;
 
 /// Typed source entry selection. This supplies no live/native region authority.
 /// The systems publisher must additionally qualify the complete object/runtime.
@@ -119,6 +130,39 @@ pub fn analyze_kernel_region_tail_source(
     entry: &str,
     scalar_count: u8,
 ) -> Result<CompilerProgram, Diagnostic> {
+    analyze_kernel_region_tail_result(
+        text,
+        modules,
+        entry,
+        scalar_count,
+        KernelRegionTailResult::Boolean,
+    )
+}
+
+/// Select ordinary natural query results without a native word conversion or
+/// allocator/region authority. This does not select a kernel publication slot.
+pub fn analyze_kernel_region_tail_nat_source(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+    scalar_count: u8,
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_kernel_region_tail_result(
+        text,
+        modules,
+        entry,
+        scalar_count,
+        KernelRegionTailResult::Nat,
+    )
+}
+
+fn analyze_kernel_region_tail_result(
+    text: &str,
+    modules: &[CompilerSourceModule],
+    entry: &str,
+    scalar_count: u8,
+    result: KernelRegionTailResult,
+) -> Result<CompilerProgram, Diagnostic> {
     if scalar_count > MAX_KERNEL_REGION_FRAME_SCALARS {
         return Err(Diagnostic::error(
             "E-SYSTEMS-TAIL-SOURCE",
@@ -127,8 +171,9 @@ pub fn analyze_kernel_region_tail_source(
             "tail source admits at most sixteen Nat inputs",
         ));
     }
-    let selection = KernelRegionSelection::TailSource(entry, scalar_count);
-    let program = analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
+    let selection = KernelRegionSelection::TailSource(entry, scalar_count, result);
+    let mut program =
+        analyze_for_compiler_options(text, modules, &[entry.into()], Some(&selection))?;
     if !crate::published_function_names(text)
         .iter()
         .any(|name| canonically_equal(name, entry))
@@ -140,6 +185,7 @@ pub fn analyze_kernel_region_tail_source(
             "tail source needs a published entry",
         ));
     }
+    coalesce_kernel_region_tail_helpers(&mut program, entry)?;
     Ok(program)
 }
 
@@ -148,6 +194,23 @@ pub fn analyze_kernel_region_tail_source(
 pub fn analyze_kernel_region_module_exports(
     modules: &[CompilerSourceModule],
     exports: &[CompilerKernelRegionModuleExport],
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_kernel_region_exports(modules, exports, false)
+}
+
+/// Isolated tail-source modules retain Nat counts without a legacy owner cap.
+/// This supplies no native word bound, view authority or executable profile.
+pub fn analyze_kernel_region_tail_module_exports(
+    modules: &[CompilerSourceModule],
+    exports: &[CompilerKernelRegionModuleExport],
+) -> Result<CompilerProgram, Diagnostic> {
+    analyze_kernel_region_exports(modules, exports, true)
+}
+
+fn analyze_kernel_region_exports(
+    modules: &[CompilerSourceModule],
+    exports: &[CompilerKernelRegionModuleExport],
+    tail: bool,
 ) -> Result<CompilerProgram, Diagnostic> {
     let mut source = "use language (version is v0.1, features is (systems))\n".to_owned();
     let libraries = modules
@@ -181,7 +244,11 @@ pub fn analyze_kernel_region_module_exports(
             ));
         }
     }
-    let selection = KernelRegionSelection::Modules(exports);
+    let selection = if tail {
+        KernelRegionSelection::TailModules(exports)
+    } else {
+        KernelRegionSelection::Modules(exports)
+    };
     let names = exports
         .iter()
         .map(|export| format!("{}.{}", export.module.join("."), export.name))
@@ -331,7 +398,7 @@ impl Analyzer {
         &mut self,
         entry: &str,
         profile: CompilerKernelRegionProfile,
-        normalize_tail_source: bool,
+        tail_result: Option<KernelRegionTailResult>,
     ) -> Result<(), Diagnostic> {
         let matches = self
             .functions
@@ -383,7 +450,7 @@ impl Analyzer {
             }
             declaration.parameters = parameters;
         }
-        let (types, result, signature) = match profile {
+        let (types, mut result, mut signature) = match profile {
             CompilerKernelRegionProfile::Unit => (
                 vec![CompilerType::KernelByteRegion],
                 CompilerType::Unit,
@@ -413,6 +480,11 @@ impl Analyzer {
                 )
             }
         };
+        if let Some(KernelRegionTailResult::Nat) = tail_result {
+            result = CompilerType::Nat;
+            signature =
+                format!("tail source requires its exact declared region/Nat inputs -> {result:?}");
+        }
         let actual = declaration
             .parameters
             .iter()
@@ -424,7 +496,7 @@ impl Analyzer {
         {
             return Err(unsupported(&self.source, declaration.span, &signature));
         }
-        if normalize_tail_source {
+        if tail_result.is_some() {
             // The ordinary packaged operands already lower to these ordered
             // fields. Recursive lookup must see that same declaration shape
             // as initial symbolic entry, so the existing overload identity and
@@ -628,10 +700,14 @@ impl Analyzer {
                 argument_roles,
             },
             value_type: result,
-            int_range: (selected == CompilerKernelRegionOperation::Count).then(|| IntRange {
-                lower: BigInt::from(0),
-                upper: BigInt::from(65536),
-            }),
+            int_range: if selected == CompilerKernelRegionOperation::Count {
+                self.kernel_region_count_upper.map(|upper| IntRange {
+                    lower: BigInt::from(0),
+                    upper: BigInt::from(upper),
+                })
+            } else {
+                None
+            },
             rational_value: None,
             span,
         }))
@@ -639,3 +715,50 @@ impl Analyzer {
 }
 
 include!("kernel_region_unsigned.rs");
+
+impl Analyzer {
+    fn kernel_tail_terminal_recursion_proof(
+        &self,
+        function_name: &str,
+        declaration: &FunctionSource,
+    ) -> Option<CompilerRecursionProof> {
+        // TOPAL-SYSTEMS-TAIL-PLAN-001: keep the ordinary source and all its
+        // branches for checking/emission. Only the descent lemma uses the
+        // first guard and final recursive action; intervening rules can exit.
+        if !self.kernel_tail_terminal_rules {
+            return None;
+        }
+        let [
+            Statement::Expression(Expression::DecisionTable {
+                subject,
+                rules,
+                span,
+            }),
+        ] = declaration.body.as_slice()
+        else {
+            return None;
+        };
+        if rules.len() < 3 {
+            return None;
+        }
+        for rule in &rules[1..rules.len() - 1] {
+            let DecisionMatcher::Comparison { operand, .. } = &rule.matcher else {
+                return None;
+            };
+            if expression_mentions_name(&self.source, operand, function_name)
+                || expression_mentions_name(&self.source, &rule.action, function_name)
+            {
+                return None;
+            }
+        }
+        let mut proof_input = declaration.clone();
+        proof_input.body = vec![Statement::Expression(Expression::DecisionTable {
+            subject: subject.clone(),
+            rules: vec![rules[0].clone(), rules.last()?.clone()],
+            span: *span,
+        })];
+        let proof = self.explicit_measure_recursion_proof(function_name, &proof_input)?;
+        // The additional rules may only follow a positive natural guard.
+        (!proof.nat_step_parameters.is_empty()).then_some(proof)
+    }
+}

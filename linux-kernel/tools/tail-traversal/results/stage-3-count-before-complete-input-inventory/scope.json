@@ -1,0 +1,8 @@
+{
+  "schema": "topal.tail-count-inventory-correction/1",
+  "scope": "Historical complete command/readback pass with incomplete source-input inventory. All 10 commands passed (639 frontend,253 semantics,350 compiler,261CLI); 143 retained source inputs match. Final audit found two changed analyzer files omitted from source snapshots. This record does not provide complete frozen-source qualification. Fresh validation must retain them before execution. Original record/logs/readback remain unchanged.",
+  "missing_inputs": [
+    "src/topal-language/src/compiler_model/analysis_setup.rs",
+    "src/topal-language/src/compiler_model/kernel_regions.rs"
+  ]
+}

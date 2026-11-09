@@ -1,0 +1,5 @@
+{
+  "schema": "topal.tail-count-preliminary/1",
+  "scope": "Historical failed validation. Frontend639, target nativeCount and semantics253 passed; compiler349 passed and one test failed creating a colliding clock-only temporary path (AlreadyExists), not a compiler/source or memory error. No overall pass or final qualification. Readback correctly refused this failed record. Original frozen inputs/logs remain unchanged. Final validation must cover the unique-scratch repair.",
+  "failed_test": "systems_region_library::tests::inode_modes::inode_source_large_nat_facts_refuse_before_observing_inaccessible_owner_payload"
+}

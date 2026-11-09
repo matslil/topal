@@ -6,6 +6,33 @@ pub(crate) fn validate(
     kernel: &[u8],
     artifact: &SystemsArtifactProvenance,
 ) -> Result<(), CompileError> {
+    if artifact.frame_root.is_some() {
+        return crate::systems_frame_publication::validate_boot(kernel, artifact);
+    }
+    let frame_file = object::File::parse(kernel).map_err(|e| CompileError::Tool(e.to_string()))?;
+    if frame_file
+        .symbols()
+        .filter_map(|s| s.name().ok())
+        .any(|name| name.starts_with("topal_frame_") || name.starts_with("topal_x86_frame_"))
+        || artifact
+            .inputs
+            .iter()
+            .chain(&artifact.outputs)
+            .any(|d| d.identity.starts_with("frame-"))
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-FRAME-RECONSTRUCTION: orphan frame source/native binding".into(),
+        ));
+    }
+    validate_other_root(kernel, artifact)
+}
+
+// Frame callers reach this only after complete fresh frame/library/native/load
+// reconstruction. Their Nat engine has its own proven tail namespace owner.
+pub(crate) fn validate_other_root(
+    kernel: &[u8],
+    artifact: &SystemsArtifactProvenance,
+) -> Result<(), CompileError> {
     if artifact.tail_root.is_some() {
         return crate::systems_tail_publication::validate_boot(kernel, artifact);
     }
@@ -13,16 +40,17 @@ pub(crate) fn validate(
     use crate::systems_region_library as source;
     let invalid = |message: &str| CompileError::Tool(format!("E-SYSTEMS-REGION-ROOT: {message}"));
     let file = object::File::parse(kernel).map_err(|e| invalid(&e.to_string()))?;
-    if file.symbols().filter_map(|s| s.name().ok()).any(|name| {
-        name.starts_with("topal.tail-inputs.")
-            || name.starts_with("topal_tail_")
-            || name.starts_with("topal_x86_tail_")
-            || name.starts_with("topal.tail.component.")
-    }) || artifact
-        .inputs
-        .iter()
-        .chain(&artifact.outputs)
-        .any(|i| i.identity.starts_with("tail-"))
+    if artifact.frame_root.is_none()
+        && (file.symbols().filter_map(|s| s.name().ok()).any(|name| {
+            name.starts_with("topal.tail-inputs.")
+                || name.starts_with("topal_tail_")
+                || name.starts_with("topal_x86_tail_")
+                || name.starts_with("topal.tail.component.")
+        }) || artifact
+            .inputs
+            .iter()
+            .chain(&artifact.outputs)
+            .any(|i| i.identity.starts_with("tail-")))
     {
         return Err(invalid("orphan tail source/native binding"));
     }

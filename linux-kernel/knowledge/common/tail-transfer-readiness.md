@@ -292,6 +292,102 @@ These VM observations use the clean-room static-ELF ABI fixture. The
 repairs an earlier BusyBox label without changing machine evidence. Real
 application acceptance is still Stage 4. Actual allocator/metadata ownership
 integration is Stage 3; the production root does not yet select this traversal.
-Before qualifying larger owner extents, remove the legacy 65536 Count inference
-cap for the new source selection and its isolated modules, and derive sound
-caller-specific bounds. The existing initial 64-byte owner is within that cap.
+The [Count prerequisite](../../tools/tail-traversal/results/stage-3-count-inputs/qualification.json)
+now removes the unsupported 65536 Count inference cap from tail primary and
+isolated module analysis. Legacy selectors retain their qualified bound; native
+tail resource analysis independently establishes its word domain. Three frontend
+regressions and two guarded native helper variants cover actual extents through
+262144 bytes, false Nat narrowing and complete retirement. The final run passes
+639 frontend, 253 semantics, 350 compiler unit and 261 CLI tests plus all checks.
+Actual larger kernel owners still need caller-specific authority and resource
+proofs. The current privileged owner remains 64 bytes; Stage 3 allocator policy
+and metadata/kernel integration are unfinished.
+
+The [natural-query component](../../design/tail-metadata-query.md) now returns
+complete ordinary Nat data through a distinct source selection/owned constructor.
+The Boolean root retains its original result profile. A byte-search query carries
+a word-bounded countdown fact; separate native cases exercise 65-bit arithmetic
+and 256-bit readonly constants without discarding limbs. Result facts confer no
+frame or allocation authority. The actual kernel caller/metadata integration and
+dynamic aligned contiguous allocator policy remain required.
+
+[Exact query evidence](../../tools/tail-traversal/results/stage-3-natural-query/qualification.json)
+passes 640 frontend, 253 semantics, 352 compiler unit and 261 CLI tests plus all
+checks. Three native programs execute 33 cases per targeted/full-unit cohort,
+with complete numeric output, owner preservation, history and private retirement.
+The source paths use 600/456/456 stack bytes and weighted controller paths
+800/656/656, excluding a future kernel adapter. Records retain 149 sources and
+six natural-component sets; existing native/kernel/publication regressions and
+independent readback pass. The unchanged 65536/4096 reserves still apply.
+
+The [bootstrap frame component](../../tools/tail-traversal/results/stage-3-bootstrap-frame-target/qualification.json)
+subsequently supplies a real E820-derived metadata owner and native extent
+controller. Eleven privileged cases in each of two cohorts cover constructor
+normalization/reservations, controlled sparse/unaligned allocation, physical
+zeroing/reuse and admission/failure preservation. A separate per-frame replay
+matches the real constructor's 152525 cells. Allocation/release component paths
+use 1840/1824 bytes, including the ordinary source-owner contribution and before
+the actual owning gateway. This is a larger privileged component, not production
+root/workload qualification. Whole caller/fatal retirement, allocation/release/
+mapping integration and canonical source/native/load reconstruction remain
+required; public frame-policy publication remains refused.
+
+The [full boot Root qualification](../../tools/tail-traversal/results/stage-3-frame-root/qualification.json)
+now connects the complete existing boot IR to that source allocator through the
+owning gateway. Actual construction/prepared-process/mapping owners retain
+opaque tokens, pin live loans and invoke real whole release. Translation backing
+also uses tracked allocations. Source early completion uses an additional
+ordinary terminal rule, retaining the full admitted countdown and unchanged
+65536/4096 reserves. The current policy's 33-function closure uses 18632 private
+temporary bytes, with 53 frame and 38 loan identities per source step.
+
+All 362 compiler, 648 language and 253 semantics unit tests plus checking,
+formatting, size and coverage pass for 188 frozen inputs. The full-map guest
+retains 151977 allocatable frames after actual image/resource reservations,
+executes 67 real gateway calls and completes the static-ELF ABI fixture. All
+temporary extents are consumed; the active five-page CR3 hierarchy remains
+pinned. Independent source/native/map/handle/ELF replay passes. This supersedes
+the earlier component snapshots, while dynamic workload allocation, syscall
+leases, canonical publication and real application/container/VM-host acceptance
+remain unfinished.
+
+The [subsequent syscall-memory record](../../tools/tail-traversal/results/stage-3-frame-memory/qualification.json)
+adds actual captured requests, distinct process/context/address-space/entry
+leases and whole heap replacement/exec/exit release. Its combined native body
+and caller adapter use 2160 bytes within the unchanged 4096-byte reserve; source
+reserves and 53/38 per-step identity costs are unchanged. All 1264 compiler,
+language and semantics unit tests, four coverage tests and required checks pass
+for 201 frozen sources and 772 complete producer inputs. Thirteen new guest
+scenarios cover 80 normal memory operations, nine context refusals, two fatal
+paths and genuine exhaustion on a complete small-VM map. Independent metadata,
+registry, topology and source/native/stack replay passes. General MM, canonical
+publication and original application acceptance remain unfinished.
+
+The [fresh frame reconstruction](../../tools/tail-traversal/results/stage-3-frame-reconstruction/qualification.json)
+now retains all source snapshots and rebuilds twenty actual native objects,
+including the ten other selected libraries. Complete relocated/load coverage
+accounts for 804 source/native contributions and narrowly derived linker header/
+zero-padding extents. Actual compilation derives a 2112-byte combined syscall
+bound; all reserves remain unchanged. The 777-input record and independent
+readback pass all 1266 unit tests, four coverage tests and checks, the actual
+80-operation guest and twelve syscall cases, plus the preceding cohorts. Public
+artifact/boot coupling remains refused until its full source/provenance association
+is integrated; general MM and original application acceptance remain unfinished.
+
+The [source-bearing artifact/boot record](../../tools/tail-traversal/results/stage-3-frame-artifact/qualification.json)
+now completes that association and Stage 3's allocator binding. Publication and
+boot reconstruct all twenty objects and every selected source/module input,
+compare the actual caller/load/reservation and retain the other owner checks.
+Original object digests also have explicit primary/module metadata associations.
+All 1268 unit tests, 261 CLI tests, four coverage tests and required checks pass
+for 780 frozen inputs. The public image's 80 memory calls and twelve syscall
+scenarios, fifteen atomic refusals, null rejection and thirty source-identity
+mutations pass. The combined bound remains 2112 bytes within the unchanged
+4096-byte reserve. Independent readback binds the actual published outputs and
+boot bytes/resources and separately reproduces small-map metadata/registry
+state. Peak memory is 2511380480 bytes, with zero limit/OOM events and zero validation swap.
+
+Program-only frame APIs remain refused. The production root and exact committed
+real application inputs still require Stage 4 qualification. General MM and
+original distribution/container/VM-host acceptance remain unfinished; the new
+VM evidence uses a static-ELF ABI fixture.

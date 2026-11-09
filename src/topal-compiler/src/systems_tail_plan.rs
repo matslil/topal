@@ -381,8 +381,8 @@ pub fn analyze_systems_tail_traversal(
     else {
         return Err(invalid("entry lacks the natural countdown decision"));
     };
-    let [rule] = rules.as_slice() else {
-        return Err(invalid("countdown guard must have one rule"));
+    let Some((rule, terminal_rules)) = rules.split_first() else {
+        return Err(invalid("countdown guard must have a first rule"));
     };
     let measure = entry
         .parameters
@@ -419,6 +419,10 @@ pub fn analyze_systems_tail_traversal(
     inspection.expression(entry_symbol, subject, false, 2)?;
     inspection.expression(entry_symbol, &rule.operand, false, 2)?;
     inspection.expression(entry_symbol, &rule.action, false, 2)?;
+    for terminal in terminal_rules {
+        inspection.expression(entry_symbol, &terminal.operand, false, 2)?;
+        inspection.expression(entry_symbol, &terminal.action, false, 2)?;
+    }
     inspection.expression(entry_symbol, otherwise, true, 2)?;
     for function in functions.values().filter(|f| f.symbol != entry_symbol) {
         inspection.block(&function.symbol, &function.body, false, 0)?;

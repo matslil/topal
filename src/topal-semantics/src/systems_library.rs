@@ -21,6 +21,7 @@ pub enum SystemsSourceLibraryInterface {
     BorrowedByteRegionFramedActionV1,
     BorrowedByteRegionInstanceActionV1,
     BorrowedByteRegionTailActionV1,
+    PhysicalFramePolicyTailV1,
 }
 impl SystemsSourceLibraryInterface {
     #[must_use]
@@ -44,6 +45,7 @@ impl SystemsSourceLibraryInterface {
             Self::BorrowedByteRegionFramedActionV1 => "borrowed-byte-region-framed-action-v1",
             Self::BorrowedByteRegionInstanceActionV1 => "borrowed-byte-region-instance-action-v1",
             Self::BorrowedByteRegionTailActionV1 => "borrowed-byte-region-tail-action-v1",
+            Self::PhysicalFramePolicyTailV1 => "physical-frame-policy-tail-v1",
         }
     }
 }
@@ -94,7 +96,8 @@ impl SystemsSourceLibraryRequirement {
                 | SystemsSourceLibraryInterface::BorrowedByteRegionActionV1
                 | SystemsSourceLibraryInterface::BorrowedByteRegionFramedActionV1
                 | SystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
-                | SystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1 => {
+                | SystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1
+                | SystemsSourceLibraryInterface::PhysicalFramePolicyTailV1 => {
                     self.stack_limit_bytes == 4096
                         && self.runtime_limit_bytes == Some(65536)
                         && self.state_limit_bytes.is_none()

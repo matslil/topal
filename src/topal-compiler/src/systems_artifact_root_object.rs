@@ -27,7 +27,40 @@ const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8
 pub(crate) fn generate_root_object(
     program: &CompilerSystemsProgram,
 ) -> Result<Vec<u8>, CompileError> {
-    generate_x86_64_systems_provider_object(program)?;
+    generate_root_object_selected(program, None)
+}
+
+#[cfg(test)]
+pub(crate) fn generate_frame_policy_root_object(
+    root: &str,
+    input: &crate::SystemsSourceLibraryInput,
+) -> Result<Vec<u8>, CompileError> {
+    let checked = crate::systems_frame_policy_binding::check(root, input)?;
+    generate_frame_root_checked(&checked)
+}
+
+pub(crate) fn generate_frame_root_checked(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<Vec<u8>, CompileError> {
+    generate_root_object_selected(&checked.program, Some(checked))
+}
+
+fn generate_root_object_selected(
+    program: &CompilerSystemsProgram,
+    frame: Option<&crate::systems_frame_policy_binding::Checked>,
+) -> Result<Vec<u8>, CompileError> {
+    let frames = frame.is_some();
+    if let Some(checked) = frame {
+        if program.frame_allocator_library.is_none() {
+            return Err(CompileError::Tool(
+                "frame root requires its checked source obligation".into(),
+            ));
+        }
+        model_systems_transitions(program).map_err(|e| CompileError::Tool(e.to_string()))?;
+        crate::systems_provider_object::generate_frame_memory_provider(checked)?;
+    } else {
+        generate_x86_64_systems_provider_object(program)?;
+    }
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
     object.add_file_symbol(b"topal-generated-x86-systems-root".to_vec());
     let text = object.add_section(
@@ -829,6 +862,7 @@ pub(crate) fn generate_root_object(
     }
 
     let mut bootstrap = RootEncoder {
+        frame_policy: frames.then(RootFramePolicy::default),
         bootstrap_capacity: program.bootstrap_storage.capacity_bytes,
         region_library: program.region_library.is_some(),
         role: RootRole::BootstrapWithLocalNotification,
@@ -856,6 +890,28 @@ pub(crate) fn generate_root_object(
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
+    if let Some(frame) = &bootstrap.frame_policy {
+        let section = object.add_section(
+            Vec::new(),
+            b".bss.topal.frame.root.tokens".to_vec(),
+            SectionKind::UninitializedData,
+        );
+        let bytes = frame
+            .next_slot
+            .checked_mul(24)
+            .ok_or_else(|| CompileError::Tool("root token storage overflow".into()))?;
+        let value = object.append_section_bss(section, bytes, 8);
+        object.add_symbol(Symbol {
+            name: FRAME_ROOT_TOKENS.as_bytes().to_vec(),
+            value,
+            size: bytes,
+            kind: SymbolKind::Data,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Section(section),
+            flags: SymbolFlags::None,
+        });
+    }
     if bootstrap.region_library {
         bootstrap.call_region_dependency(RootLibraryDependency::RegionFinalize);
     }

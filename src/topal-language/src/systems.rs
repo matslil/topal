@@ -273,6 +273,27 @@ pub fn analyze_systems_for_compiler(
         CompilerSystemsContextKind::Bootstrap,
         Some(&root_entries.bootstrap_storage),
     )?;
+    if root_entries.frame_allocator_library.is_some()
+        && (bootstrap
+            .operations
+            .iter()
+            .filter(|op| matches!(op, CompilerSystemsOperation::CreateFrameAllocator { .. }))
+            .count()
+            != 1
+            || bootstrap
+                .operations
+                .iter()
+                .filter(|op| matches!(op, CompilerSystemsOperation::DescribeBootMemory { .. }))
+                .count()
+                != 1)
+    {
+        return Err(source_diagnostic(
+            &source,
+            "E-SYSTEMS-FRAME-POLICY",
+            statement_span(root),
+            "frame-allocator-library requires one described-memory allocator creation",
+        ));
+    }
     // Root selection and invocation are one structural source contract. Keep
     // this check here as well as in semantic validation: callers of the shared
     // frontend must not receive an unbound operation for later linking.
@@ -360,6 +381,7 @@ pub fn analyze_systems_for_compiler(
 
     Ok(CompilerSystemsProgram {
         target: target.clone(),
+        frame_allocator_library: root_entries.frame_allocator_library,
         kernel_library: root_entries.kernel_library,
         region_library: root_entries.region_library,
         file_position_library: root_entries.file_position_library,
@@ -528,6 +550,7 @@ fn validate_language_selection(
 }
 
 struct ArtifactEntries {
+    frame_allocator_library: Option<CompilerSystemsSourceLibraryRequirement>,
     kernel_library: Option<CompilerSystemsSourceLibraryRequirement>,
     region_library: Option<CompilerSystemsSourceLibraryRequirement>,
     file_position_library: Option<CompilerSystemsSourceLibraryRequirement>,
@@ -581,6 +604,7 @@ fn parse_artifact_root(
         ));
     }
     let mut bootstrap_storage = None;
+    let mut frame_allocator_library = None;
     let mut kernel_library = None;
     let mut region_library = None;
     let mut file_position_library = None;
@@ -595,7 +619,21 @@ fn parse_artifact_root(
     for field in fields {
         let label = artifact_field_label(source, field)?;
         let label_text = source.slice(label);
-        if label_text == "namespace-library" {
+        if label_text == "frame-allocator-library" {
+            let requirement = source_library::parse_requirement(source, field)?;
+            if requirement.interface
+                != CompilerSystemsSourceLibraryInterface::PhysicalFramePolicyTailV1
+                || frame_allocator_library.replace(requirement).is_some()
+            {
+                return Err(source_diagnostic(
+                    source,
+                    "E-SYSTEMS-FRAME-POLICY",
+                    label,
+                    "frame-allocator-library requires one physical-frame-policy-tail-v1 entry",
+                ));
+            }
+            continue;
+        } else if label_text == "namespace-library" {
             let requirement = source_library::parse_requirement(source, field)?;
             if requirement.interface
                 != CompilerSystemsSourceLibraryInterface::BorrowedByteRegionInstanceActionV1
@@ -846,6 +884,7 @@ fn parse_artifact_root(
         ));
     }
     Ok(ArtifactEntries {
+        frame_allocator_library,
         kernel_library,
         region_library,
         file_position_library,
@@ -1895,6 +1934,7 @@ include!("systems_source_device_values.rs");
 mod tests {
     include!("systems_source_tests_root_and_devices.rs");
     include!("systems_source_tests_ram_pages.rs");
+    include!("systems_source_tests_frame_policy.rs");
     include!("systems_source_tests_device_lifecycles.rs");
     include!("systems_source_tests_memory_and_image.rs");
     include!("systems_source_tests_image_completion.rs");

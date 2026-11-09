@@ -1,0 +1,194 @@
+from pathlib import Path
+import collections,gzip,hashlib,json,re,struct
+
+root=Path('/home/mats/git/topal');out=root/'linux-kernel/tools/tail-traversal/results/stage-3-frame-root'
+r=json.loads((out/'qualification.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest()
+assert r['complete'] and r['passed']
+def read(info):
+    data=(out/info['file']).read_bytes();assert sha(data)==info['sha256']
+    raw=gzip.decompress(data);assert sha(raw)==info['uncompressed_sha256'];return raw
+for name,info in r['source_snapshots'].items():
+    assert sha(read(info))==r['sources'][name]==sha((root/name).read_bytes()),name
+for info in r['verification_inputs'].values():read(info)
+assert sha((out/'validation-runner.py.txt').read_bytes())==r['runner_sha256']
+assert len(r['commands'])==8 and r['resources']['memory.swap.max']=='0'
+assert all(int(line.split()[1])==0 for line in r['resources']['memory.events'].splitlines())
+for command in r['commands']:
+    assert command['exit_code']==0
+    log=read(command['log']).decode()
+    print(command['name'],[line for line in log.splitlines() if line.startswith('test result:')])
+
+def topology(o,key):
+    # Different oracle from the in-guest interval sweep: admit complete frames
+    # from RAM, then reject every boundary crossing or reservation overlap.
+    candidates=set();boundaries=set()
+    for start,length,kind in o['e820']:
+        boundaries.update([start,start+length])
+        if kind==1:candidates.update(range((start+4095)//4096,(start+length)//4096))
+    expected=[]
+    for f in sorted(candidates):
+        a,b=f*4096,(f+1)*4096
+        if any(a<x<b for x in boundaries):continue
+        if any(kind!=1 and a<start+length and start<b for start,length,kind in o['e820']):continue
+        if any(a<end and start<b for start,end in o['reservations']):continue
+        expected.append(f)
+    assert expected==o[key] and len(expected)==o['n']
+
+def native_paths(files,outer=None):
+    native=json.loads(files['frame-inspection.json'])
+    if outer is None:outer=json.loads(files['owner-inspection.json'])
+    assert outer['combined_normal_stack_bytes']==native['normal_owner_contribution']
+    paths=native['paths'];frames=native['frames_with_inline_push']
+    assert frames['t.bootstrap']==native['raw_frames']['t.bootstrap']+8
+    for name,n in paths.items():
+        if name=='topal_tail_owner_invoke_v1':
+            assert n==native['normal_owner_contribution']+native.get('fatal_callback_contribution',0)
+        elif name=='topal_x86_frame_gateway_abort_v1':assert n==0
+        else:assert n==frames[name]+8+max((paths[c] for c in native['calls'][name]),default=0),(name,n)
+    return native
+
+components=[];owners={};bindings=0;modes=collections.Counter();roots=[];processes=collections.Counter()
+for item in r['components']:
+    files={name:read(info) for name,info in item['snapshots'].items()}
+    for name,info in item['binaries'].items():
+        data=(Path(item['directory'])/name).read_bytes()
+        assert sha(data)==info['sha256'] and len(data)==info['bytes']
+    for name,data in files.items():
+        if name.endswith('.command.json') and not name.endswith('qemu.command.json'):
+            assert json.loads(data)['exit_code']==0,name
+        if name.endswith('.stderr.log') and data:
+            known=data==b'warning: .debug_names not created by gdb; ignoring\n'
+            if Path(item['directory']).name.startswith('frame-root-') and name=='guest/gdb.stderr.log':
+                # This unpublished link retains concatenated optional name
+                # indexes. GDB ignores that index and uses the actual symbol
+                # table. This fixture does not qualify the root's debug-name
+                # index; canonical publication already strips .debug_names.
+                prefix=b'warning: Section .debug_names in '+str(Path(item['directory'])/'kernel.elf').encode()
+                known=known or bool(re.fullmatch(re.escape(prefix)+rb' length [0-9]+ does not match section length [0-9]+, ignoring \.debug_names\.\n',data))
+            assert name.endswith('/gdb.stderr.log') and known,(name,data)
+    if Path(item['directory']).name.startswith('frame-root-'):
+        roots.append((item,files));continue
+    if Path(item['directory']).name.startswith('frame-controller-'):
+        assert files['native.stdout.log'].startswith(b'FRAME_CONTROLLER_PASS')
+        processes['controller']+=1
+    if Path(item['directory']).name.startswith('frame-policy-'):
+        assert files['native.stdout.log'].startswith(b'FRAME_POLICY_PASS')
+        processes['policy']+=1
+    component=json.loads(files['component.json']);runtime=component['runtime'];step=runtime['source_step']
+    assert sha(json.dumps(component,ensure_ascii=False,separators=(',',':')).encode())
+    if 'source.ll' in files:
+        assert sha(files['source.ll'])==step['llvm_sha256']
+        assert sha(files['runtime.ll'])==runtime['llvm_sha256']
+        assert sha(files['owner.ll'])==component['llvm_sha256']
+        assert sha(files['boundary.o'])==runtime['boundary_sha256']
+    if 'owner-inspection.json' in files:
+        owners[component['llvm_sha256']]=json.loads(files['owner-inspection.json'])
+    if 'source-obligation.json' in files:
+        obligation=json.loads(files['source-obligation.json']);bindings+=1
+        assert obligation['schema']=='topal.frame-policy-source-obligation/3'
+        assert obligation['component_sha256']==sha(json.dumps(component,ensure_ascii=False,separators=(',',':')).encode())
+        assert obligation['controller_sha256']==sha(files['controller.ll'])
+        assert obligation['bootstrap_target_sha256']==sha(files['bootstrap-target.ll'])
+        assert b'ownership/zeroing/caller' in files['native-refusal.txt']
+    components.append(component)
+    if 'frame-inspection.json' not in files:continue
+    native=native_paths(files);gateway='gateway-binding.json' in files
+    if gateway:
+        binding=json.loads(files['gateway-binding.json']);bound=native['paths']['topal_frame_kernel_dispatch_v1']
+        assert binding['object_sha256']==sha(files['gateway.o'])
+        assert binding['complete_body_stack_bound']==bound and binding['combined_stack_bound']==bound+72<=4096
+        assert bound+16<=4032 and binding['retired_scratch_bytes']==4032
+        assert binding['saved_register_bytes']==binding['recovery_bytes']==48
+        assert 'topal_x86_frame_gateway_abort_v1' not in binding['imports']
+    seen=[]
+    for name,data in files.items():
+        if not name.endswith('/observations.json'):continue
+        o=json.loads(data);assert o['passed'];mode=o['mode'];seen.append(mode)
+        if o['created']:topology(o,'frames')
+        if not gateway:continue
+        for c in o['gateway_calls']:
+            assert c['physical_caller_bytes_retired']==4080 and c['callee_registers_preserved']
+            assert 'probe.gateway_' in c['trace']
+        if mode in ['interrupts','bad-stack','direction-flag','busy-gateway']:
+            assert o['gateway_refused'] and not o['gateway_calls']
+        elif mode=='late-cleanup':
+            assert o['gateway_late_retired'] and o['late_fault_after_retirement'] and o['caller_retirement_qualified']
+        elif mode in ['source-abort','zero-reservation','bad-result']:
+            assert o['gateway_fatal_retired'] and o['caller_retirement_qualified'] and o['source_writes_retained']
+            if mode=='source-abort':
+                assert 0<len(o['source_fault_cells'])<o['runtime_request'][0] and not o['zeros']
+                table=bytes.fromhex(o['source_fault_table'])
+                assert [i for i in range(o['n']) if int.from_bytes(table[i*24:i*24+8],'little')==1]==o['source_fault_cells']
+            elif mode=='bad-result':assert o['issued_identity_retained'] and len(o['zeros'])==1
+            else:assert o['zeros'][0]['reserved_bytes_unchanged']
+        if mode in ['sparse-map','unaligned-map']:
+            assert len(o['gateway_calls'])==12
+            assert set(o['source_traces'])=={'source','checkpoint','complete'}
+            assert all('topal_x86_frame_gateway_v1' in t for t in o['source_traces'].values())
+            assert [z['id'] for z in o['zeros']]==[1,2,3]
+            assert o['zeros'][0]['physical_frame']==o['zeros'][2]['physical_frame']
+            assert all(z['actual_physical_bytes_zero'] for z in o['zeros'])
+    assert len(seen)==(16 if gateway else 11)
+    modes['gateway' if gateway else 'bootstrap']+=len(seen)
+assert bindings==3 and modes=={'gateway':16,'bootstrap':11},(bindings,modes)
+assert processes=={'controller':3,'policy':1},processes
+assert len(roots)==1
+item,files=roots[0];o=json.loads(files['guest/observations.json'])
+assert o['passed'] and o['complete_topology_checked'] and not o['firmware_map_modified']
+topology(o,'physical_frames')
+source=json.loads(files['source-obligation.json'])
+component=next(c for c in components if sha(json.dumps(c,ensure_ascii=False,separators=(',',':')).encode())==source['component_sha256'])
+assert source['root_sha256']==sha(files['root.t']) and source['controller_sha256']==sha(files['controller.ll'])
+assert sha(files['source.ll'])==component['runtime']['source_step']['llvm_sha256']
+assert sha(files['runtime.ll'])==component['runtime']['llvm_sha256']
+assert sha(files['owner.ll'])==component['llvm_sha256']
+assert sha(files['boundary.o'])==component['runtime']['boundary_sha256']
+storage=component['runtime']['source_step']['storage']
+assert storage['source_frames_per_step']=='53' and storage['source_region_loans_per_step']=='38'
+assert storage['maximum_private_temporary_bytes']==18632<=65536
+assert len(storage['source_plan']['functions'])==33
+native=native_paths(files,owners[component['llvm_sha256']])
+assert native['paths']['topal_frame_kernel_dispatch_v1']+72<=4096
+live={};next_id=1;tokens=set();resolved=0
+for call in o['calls']:
+    assert call['sp']&15==8 and 0x109040<=call['sp']<=0x17fff8
+    op=call['op']
+    if op==0:assert next_id==1 and not live;continue
+    assert call['next_id']==next_id
+    if op==1:
+        a=call['issued_record'];issuer,identity,start,count,alignment,provenance,pins,active=a
+        assert issuer==1 and identity==next_id and provenance==1 and pins==0 and active==1
+        assert [count,alignment]==[call['a'],call['b']]
+        assert call['token'] not in tokens;tokens.add(call['token'])
+        f=o['physical_frames'][start:start+count]
+        assert f==list(range(f[0],f[0]+count)) and f[0]%alignment==0
+        for other in live.values():assert start+count<=other[2] or start>=other[2]+other[3]
+        live[identity]=a[:];next_id+=1
+    else:
+        a=call['record'];assert a==live[a[1]]
+        if op==2:assert a[6]==0;del live[a[1]]
+        elif op==3:
+            assert call['a'] in [0,1];live[a[1]][6]+=1 if call['a'] else -1
+            assert live[a[1]][6]>=0
+        elif op==4:resolved+=1
+        else:assert False,op
+assert next_id==15 and resolved==14 and len(live)==1 and len(tokens)==14
+identity,a=next(iter(live.items()));assert a[3]==5 and a[6]==1
+assert len(o['calls'])==json.loads(files['root-calls.json'])['topal_x86_frame_gateway_v1']==67
+assert o['calls'][-1]['registers']['r15']==o['physical_frames'][a[2]]*4096
+assert b'TOPAL_KERNEL_USER_BACKING_OK' in files['guest/serial.log']
+assert b'FRAME_ROOT_GDB_PASS' in files['guest/gdb.stdout.log']
+
+# Read the actual linked ELF independently of the compiler's object parser.
+elf=(Path(item['directory'])/'kernel.elf').read_bytes()
+assert elf[:6]==b'\x7fELF\x02\x01'
+phoff=struct.unpack_from('<Q',elf,32)[0];phsize,phnum=struct.unpack_from('<HH',elf,54)
+ends=[]
+for i in range(phnum):
+    p=struct.unpack_from('<IIQQQQQQ',elf,phoff+i*phsize)
+    if p[0]==1:
+        assert p[6]>=p[5] and p[3]==p[4] and p[1]&7!=7
+        ends.append(p[3]+p[6])
+assert max(ends)==o['reservations'][0][1]
+assert all(sha(read(info))==digest for name,digest in r['sources'].items() for info in [r['source_snapshots'][name]])
+print('FRAME_ROOT_READBACK_PASS',len(r['sources']),'SOURCES;',o['n'],'FRAMES; 67 REAL ROOT CALLS; 27 COMPONENT VM CASES; PUBLICATION/MM STILL UNQUALIFIED')

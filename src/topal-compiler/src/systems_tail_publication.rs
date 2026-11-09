@@ -31,7 +31,7 @@ impl From<&SystemsSourceLibraryInput> for Source {
     }
 }
 impl Source {
-    fn input(&self) -> SystemsSourceLibraryInput {
+    pub(crate) fn input(&self) -> SystemsSourceLibraryInput {
         SystemsSourceLibraryInput {
             source: self.source.clone(),
             source_name: self.source_name.clone(),
@@ -78,7 +78,7 @@ pub(crate) struct Rebuilt {
 fn invalid(message: impl std::fmt::Display) -> CompileError {
     CompileError::Tool(format!("E-SYSTEMS-TAIL-BINDING: {message}"))
 }
-fn closed_llvm(llvm: &str) -> String {
+pub(crate) fn closed_llvm(llvm: &str) -> String {
     // Kernel inputs use a sealed static link, with no dynamic interposition.
     // LLVM must encode that fact for references to externally defined roles;
     // otherwise it may emit a GOT indirection even with static relocation.
@@ -103,11 +103,26 @@ fn closed_llvm(llvm: &str) -> String {
                     line.replacen(" = external ", " = external dso_local ", 1)
                 );
             }
+            if line.starts_with('@') {
+                if let Some((name, definition)) = line.split_once(" = ") {
+                    if [
+                        "global ",
+                        "constant ",
+                        "unnamed_addr global ",
+                        "unnamed_addr constant ",
+                    ]
+                    .iter()
+                    .any(|prefix| definition.starts_with(prefix))
+                    {
+                        return format!("{name} = dso_local {definition}\n");
+                    }
+                }
+            }
             format!("{line}\n")
         })
         .collect()
 }
-fn run(work: &Path, label: &str, command: &mut Command) -> Result<(), CompileError> {
+pub(crate) fn run(work: &Path, label: &str, command: &mut Command) -> Result<(), CompileError> {
     let result = command.output().map_err(invalid)?;
     let argv = std::iter::once(command.get_program())
         .chain(command.get_args())
@@ -183,7 +198,7 @@ pub(crate) fn rebuild(
         3,
     )
     .map_err(|e| CompileError::Tool(e.render(&input.source_name)))?;
-    crate::systems_region_library::check_region_isolation(&input, &body, &modules)?;
+    crate::systems_region_library::check_tail_region_isolation(&input, &body, &modules)?;
     let entries = body
         .functions
         .iter()
@@ -383,4 +398,4 @@ mod tests;
 
 #[path = "systems_tail_publication_io.rs"]
 mod publication_io;
-pub(crate) use publication_io::{publish_outputs, validate_boot};
+pub(crate) use publication_io::{Scratch, check_other_slots, publish_outputs, validate_boot};

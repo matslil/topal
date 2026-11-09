@@ -786,8 +786,24 @@ pub struct X86SystemsProviderPlan {
 pub fn plan_x86_64_systems_provider(
     program: &CompilerSystemsProgram,
 ) -> Result<X86SystemsProviderPlan, CompileError> {
+    plan_provider_selected(program, false)
+}
+
+pub(crate) fn plan_frame_systems_provider(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<X86SystemsProviderPlan, CompileError> {
+    plan_provider_selected(&checked.program, true)
+}
+
+fn plan_provider_selected(
+    program: &CompilerSystemsProgram,
+    frame_source_checked: bool,
+) -> Result<X86SystemsProviderPlan, CompileError> {
     validate_systems_program(program)
         .map_err(|error| CompileError::Tool(format!("invalid systems program: {error}")))?;
+    if program.frame_allocator_library.is_some() != frame_source_checked {
+        return Err(CompileError::Tool("E-SYSTEMS-FRAME-POLICY-BINDING: native provider planning requires complete source/allocator/caller binding".into()));
+    }
 
     let mut semantic_identities = program
         .bootstrap

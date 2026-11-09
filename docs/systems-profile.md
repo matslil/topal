@@ -2083,3 +2083,88 @@ against the kernel. Supplied metadata does not establish that connection. The
 new profile requires the compiler toolchain during packaging; it adds no guest
 runtime dependency. The [publication binding](../linux-kernel/design/tail-publication-binding.md)
 describes this systems-only qualification.
+
+Tail-source byte counts describe the borrowed owner's extent, independently of
+the temporary arena used to evaluate the source. Source selection and isolated
+module checking cannot infer the older profile's 65536-byte owner cap for this
+family. They retain ordinary Nat meaning without an invented finite upper bound;
+the target's resource proof separately establishes its actual native count domain.
+
+### Tail metadata query components
+
+A separate source-only selection and owned native component may return Nat facts
+from a `(KernelByteRegion, Nat, Nat, Nat) -> Nat` traversal, with the first Nat as
+the checked countdown. This reuses ordinary natural values, source effects and
+the existing complete transfer/retirement protocol. The complete result retains
+its arbitrary-precision representation; a caller must prove any later native-word
+conversion. A returned index is data, not a frame extent, address or allocation
+grant. The Boolean root interface and its true-result gate remain separate.
+
+After its initial literal natural-countdown guard, a traversal may include
+additional ordered rules which finish the current invocation. These use the
+existing decision-table syntax. They cannot recurse; only the final otherwise
+action carries the guarded tail edge. Resource qualification accounts for every
+tested operand and terminal action, even when a policy commonly finishes early.
+
+Such a component supplies no kernel callsite, physical-frame authority or canonical
+artifact permission. Actual allocator integration must additionally bind its
+owned metadata, request/result protocol, reservation/provenance checks, complete
+caller costs and retirement, and closed linked code. See the
+[metadata query design](../linux-kernel/design/tail-metadata-query.md).
+
+Large tail-source closures may share equivalent checked helper instances before
+native qualification, as the existing acyclic region family already does. The
+sharing pass retains declaration/module identity, types, captures, effects,
+operations, literals and all ordered calls and arguments; only analysis-only
+integer-range annotations may be removed. The recursive entry and its exact
+self edge remain distinct. Checking helper closure/effects while ignoring that
+single self edge supplies no termination or executable proof. Ordinary source
+analysis and the complete tail-plan/resource/native checks remain necessary,
+including the existing 64-function limit after sharing. Small closures and the
+acyclic interfaces retain their existing representation and refusals.
+
+The ordinary [frame metadata policy](../linux-kernel/design/frame-metadata-policy.md)
+uses this mechanism to search, mark and release actual owned metadata cells.
+Its numeric results still require an actual allocator caller and physical
+ownership/zeroing before any frame grant.
+
+### Frame allocator policy binding
+
+An optional `frame-allocator-library` declaration selects the systems-only
+`physical-frame-policy-tail-v1` interface for the root's single frame allocator.
+Its ordinary region/three-Nat entry returns Nat facts, with the first Nat as
+countdown, under the existing 65536/4096 temporary/stack reserves. Persistent
+metadata capacity comes from the owned normalized memory description. This adds
+no core syntax, address or extent-authority constructor.
+
+The declaration is a checked source obligation. Actual execution/publication
+requires complete root/source/native binding, normalized topology/reservations,
+runtime requests, live affine extent identity, physical zeroing, whole release,
+privileged caller/context and complete retirement. Source facts do not supply
+those guarantees. Program-only publication remains refused until this binding
+exists. Existing roots retain their qualified profiles. See the
+[kernel binding design](../linux-kernel/design/frame-policy-kernel-binding.md).
+
+The source-bearing artifact route retains the frame declaration and rebuilds
+the complete root, frame policy, other selected libraries and native callers.
+Boot packaging repeats that reconstruction from immutable snapshots and checks
+the exact native contributions, load permissions, resource bounds, complete
+image reservation and artifact identities. A supplied manifest, a reservation
+symbol or a program-only entry point cannot replace these proofs. Missing,
+mixed, extra, duplicate or orphan frame bindings are refused.
+
+Workload allocation uses the request captured by the actual process entry.
+Its privileged invocation binds the process context, address space, fresh entry
+identity, critical state, owned continuation stack and compiled caller. A
+bootstrap stack address by itself does not authorize a syscall invocation.
+Memory handling and its nested allocator calls share an owning boundary with
+a complete combined resource and retirement proof.
+
+Resizing a heap retains its old ownership until replacement backing is ready,
+copies the retained prefix, and publishes pinned replacement translations.
+Translation invalidation precedes unpinning, erasing and consuming the old
+extent. Ordinary unavailability preserves the old heap. Exec and exit revoke
+and release the entire live heap; failure after writes retains performed
+effects and enters fatal cleanup. The initial target's finite translation
+geometry does not complete general virtual memory support. See
+[runtime memory design](../linux-kernel/design/dynamic-frame-memory.md).

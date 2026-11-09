@@ -212,6 +212,7 @@ impl Walker<'_> {
         minimum: BigInt,
         maximum: BigInt,
         action: &CompilerExpression,
+        terminal_rules: bool,
     ) -> Result<Paths, CompileError> {
         if minimum > maximum {
             return Ok(Paths::default());
@@ -243,8 +244,17 @@ impl Walker<'_> {
         subject.value.number()?;
         let operand = self.bounds.expression(&rules[0].operand, &env)?;
         operand.value.number()?;
-        self.tail(action, &env)?
-            .charge(cost_add(prefix, cost_add(subject.bytes, operand.bytes)?)?)
+        let mut paths = self.tail(action, &env)?;
+        let mut tested = cost_add(subject.bytes, operand.bytes)?;
+        if terminal_rules {
+            for rule in &rules[1..] {
+                let operand = self.bounds.expression(&rule.operand, &env)?;
+                operand.value.number()?;
+                tested = cost_add(tested, operand.bytes)?;
+                paths = paths.union(self.tail(&rule.action, &env)?);
+            }
+        }
+        paths.charge(cost_add(prefix, tested)?)
     }
 }
 
@@ -288,8 +298,9 @@ pub(super) fn evaluate<'a>(
         0.into(),
         bound.clone().min(word_maximum()),
         &rules[0].action,
+        false,
     )?;
-    let recursive = walker.branch(bound + 1, word_maximum(), otherwise)?;
+    let recursive = walker.branch(bound + 1, word_maximum(), otherwise, true)?;
     let paths = terminal.union(recursive);
     let terminal = paths.terminal.unwrap_or(0);
     let recursive = paths.recursive.unwrap_or(0);

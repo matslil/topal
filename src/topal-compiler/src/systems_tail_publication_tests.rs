@@ -475,3 +475,84 @@ fn tail_publication_keeps_all_selected_kernel_source_libraries() {
     .unwrap();
     println!("TAIL_ALL_LIBRARIES_PASS work={}", work.display());
 }
+
+#[test]
+fn reconstructed_count_source_observes_full_owned_extent_and_isolated_modules() {
+    // TOPAL-SYSTEMS-TAIL-BOUNDS-001: native process owner, not a larger kernel grant.
+    let root = ROOT
+        .replace("algorithms/clear-prefix.t", "algorithms/count-probe.t")
+        .replace("export is clear-prefix", "export is inspect");
+    let helper =
+        "extent is fn (region : KernelByteRegion) -> Nat : Effects ()\n  region byte count\n";
+    let body = "pub inspect is fn ((region : KernelByteRegion, remaining : Nat, expected : Nat, state : Nat)) -> Boolean : Decreases remaining\n  remaining\n    <= 0 then (extent region) = expected\n    otherwise inspect(region, remaining - 1, expected, state)\n";
+    let tools = LlvmTools::discover(None).unwrap();
+    for imported in [false, true] {
+        let work = work();
+        eprintln!(
+            "native count fixture: {} imported={imported}",
+            work.display()
+        );
+        let mut text = "use language (version is v0.1, features is (systems))\n".to_owned();
+        let mut modules = Vec::new();
+        if imported {
+            text.push_str("use library support (version is v0.1)\n");
+            text.push_str(&body.replace("extent region", "support extent count region"));
+            modules.push(SystemsSourceModuleInput {source:"support/extent.t".into(),
+                identity:vec!["support".into(),"extent".into()],
+                text:"use language (version is v0.1, features is (systems))\npub count is fn (region : KernelByteRegion) -> Nat : Effects ()\n  region byte count\n".into()});
+        } else {
+            text.push_str(helper);
+            text.push_str(body);
+        }
+        let input = Source {
+            source: "algorithms/count-probe.t".into(),
+            source_name: "algorithms/count-probe.t".into(),
+            text,
+            modules,
+        };
+        let rebuilt = rebuild(&root, &input, &tools, &work).unwrap();
+        fs::write(
+            work.join("count-inputs.json"),
+            serde_json::to_vec_pretty(&rebuilt.record).unwrap(),
+        )
+        .unwrap();
+        let client = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../linux-kernel/labs/qemu/x86_64/tail_count_client.c");
+        let mut cc = Command::new("cc");
+        cc.args([
+            "-std=gnu11",
+            "-O2",
+            "-g",
+            "-fno-omit-frame-pointer",
+            "-fno-strict-aliasing",
+            "-fno-pie",
+            "-no-pie",
+            "-Wall",
+            "-Wextra",
+            "-mgeneral-regs-only",
+            "-mno-red-zone",
+            "-fno-builtin",
+        ]);
+        cc.arg(client);
+        for role in ["source", "runtime", "owner", "boundary"] {
+            cc.arg(work.join(format!("{role}.o")));
+        }
+        cc.arg("-o").arg(work.join("count-client"));
+        run(&work, "count-cc", &mut cc).unwrap();
+        run(
+            &work,
+            "count-native",
+            &mut Command::new(work.join("count-client")),
+        )
+        .unwrap();
+        let output = fs::read_to_string(work.join("count-native.stdout.log")).unwrap();
+        assert_eq!(
+            output,
+            "TAIL_COUNT_PASS cases=56 sizes=7 max_extent=262144\n"
+        );
+        println!(
+            "TAIL_COUNT_RECONSTRUCTION_PASS imported={imported} work={} {output}",
+            work.display()
+        );
+    }
+}

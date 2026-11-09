@@ -10,6 +10,17 @@ pub(crate) mod inspection;
 #[path = "systems_tail_owner_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "systems_tail_nat_owner_tests.rs"]
+mod nat_tests;
+
+#[cfg(test)]
+pub(crate) use nat_tests::run as run_tail_native_fixture;
+
+#[cfg(test)]
+#[path = "systems_frame_policy_tests.rs"]
+mod frame_policy_tests;
+
 #[derive(Clone, Debug, Serialize)]
 pub struct SystemsTailOwnerComponent {
     pub schema: String,
@@ -27,6 +38,26 @@ pub fn emit_systems_tail_owner_component(
     source_name: &str,
     entry: &str,
 ) -> Result<SystemsTailOwnerComponent, CompileError> {
+    emit_owner(program, source_name, entry, false)
+}
+
+/// Build a separately identified natural-query component. The entire natural
+/// result is data; kernel caller, allocator authority and publication remain
+/// unqualified. The Boolean constructor retains its original exact profile.
+pub fn emit_systems_tail_nat_owner_component(
+    program: &CompilerProgram,
+    source_name: &str,
+    entry: &str,
+) -> Result<SystemsTailOwnerComponent, CompileError> {
+    emit_owner(program, source_name, entry, true)
+}
+
+fn emit_owner(
+    program: &CompilerProgram,
+    source_name: &str,
+    entry: &str,
+    natural: bool,
+) -> Result<SystemsTailOwnerComponent, CompileError> {
     let runtime = crate::emit_systems_tail_runtime_component(program, source_name, entry)?;
     let storage = &runtime.source_step.storage;
     let plan = &storage.source_plan;
@@ -36,10 +67,13 @@ pub fn emit_systems_tail_owner_component(
         .find(|f| f.symbol == plan.entry_symbol)
         .unwrap();
     if root.parameter_classifiers != ["KernelByteRegion", "Nat", "Nat", "Nat"]
-        || root.result_classifier != "Boolean"
+        || root.result_classifier != (if natural { "Nat" } else { "Boolean" })
         || plan.measure_parameter != 1
     {
-        return Err(CompileError::Tool("E-SYSTEMS-TAIL-OWNER: initial owner interface requires region/three Nat facts -> Boolean with first Nat measure".into()));
+        return Err(CompileError::Tool(format!(
+            "E-SYSTEMS-TAIL-OWNER: initial owner interface requires region/three Nat facts -> {} with first Nat measure",
+            if natural { "Nat" } else { "Boolean" }
+        )));
     }
     let frames: u64 = storage
         .source_frames_per_step
@@ -108,7 +142,7 @@ pub fn emit_systems_tail_owner_component(
         .collect::<Vec<_>>()
         .join("\n")
         + "\n";
-    Ok(SystemsTailOwnerComponent {schema:"topal.tail-owner-controller.x86_64/1".into(),
+    Ok(SystemsTailOwnerComponent {schema:if natural {"topal.tail-nat-owner-controller.x86_64/1"} else {"topal.tail-owner-controller.x86_64/1"}.into(),
         qualification:"native admission/controller mechanisms only; actual mapped ownership, kernel context/caller retirement and publication unqualified".into(),
         runtime, caller_input_frame_bytes:24,llvm_sha256:format!("{:x}",Sha256::digest(llvm.as_bytes())),llvm})
 }

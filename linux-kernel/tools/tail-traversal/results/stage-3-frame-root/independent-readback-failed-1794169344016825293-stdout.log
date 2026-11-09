@@ -1,0 +1,8 @@
+format []
+included-format []
+source-size []
+compiler ['test result: ok. 362 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 412.53s']
+language ['test result: ok. 648 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 37.70s']
+semantics ['test result: ok. 253 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.17s']
+check []
+coverage ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.27s']

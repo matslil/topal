@@ -1,0 +1,67 @@
+from pathlib import Path
+import gzip,hashlib,json,os,subprocess,time,uuid
+
+root=Path('/home/mats/git/topal')
+out=root/'linux-kernel/tools/tail-traversal/results/stage-3-frame-memory'
+out.mkdir(parents=True,exist_ok=True)
+if (out/'qualification.json').exists():raise SystemExit('refusing to overwrite prior qualification')
+run_id='tk282-frame-memory-'+uuid.uuid4().hex[:8]
+scratch=root/'linux-kernel/.cache'/run_id;scratch.mkdir()
+alias=Path('/tmp')/run_id;alias.symlink_to(scratch,target_is_directory=True)
+prior=json.loads((root/'linux-kernel/tools/tail-traversal/results/stage-3-frame-root/qualification.json').read_text())
+paths=list(prior['sources'])
+paths+=subprocess.check_output(['git','diff','--name-only','--','src','spec','docs'],cwd=root,text=True).splitlines()
+paths+=subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','src','spec','docs'],cwd=root,text=True).splitlines()
+paths += ['linux-kernel/labs/qemu/x86_64/frame_root_inspect.py', 'linux-kernel/kernel/arch/x86_64/toolchain-gate.t', 'linux-kernel/design/dynamic-frame-memory.md', 'linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py', 'linux-kernel/labs/qemu/x86_64/frame_memory_fault_inspect.py']
+paths=list(dict.fromkeys(paths))
+sha=lambda raw:hashlib.sha256(raw).hexdigest()
+def save(name,raw):
+    compressed=gzip.compress(raw,mtime=0);p=out/(name+'.gz');p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(compressed)
+    return dict(file=str(p.relative_to(out)),sha256=sha(compressed),uncompressed_sha256=sha(raw))
+record=dict(schema='topal.frame-memory-component-validation/1',complete=False,passed=False,
+    scope='Actual captured brk requests and whole exec/exit heap release through the source allocator, combined syscall owning gateway, varied user sizes/data/DF, context refusals, partial-source and post-publication fatal retention, and genuine exhaustion on a complete 50MiB firmware map. Full compiler/language/semantics unit regressions and workspace checks; canonical publication, general virtual memory and distribution/container/VM-host acceptance remain unqualified.',
+    risk='High: actual memory ownership, address-space publication, privileged syscall context and caller retirement. Single-agent review with complete-state source/native oracles, emitted call/stack inspection, real VM observations and an independent firmware-map exhaustion oracle. Public publication gates remain closed.',
+    base_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip(),
+    sources={name:sha((root/name).read_bytes()) for name in paths},source_snapshots={},verification_inputs={},commands=[],components=[],scratch=str(scratch),alias=str(alias))
+for name in paths:record['source_snapshots'][name]=save('source-snapshots/'+sha((root/name).read_bytes())+'.txt',(root/name).read_bytes())
+for name in ['se/traceability.md','se/test-strategy.md','se/tool-conformance.md']:record['verification_inputs'][name]=save('verification/'+name,(root/name).read_bytes())
+runner=Path(__file__).read_bytes();(out/'validation-runner.py.txt').write_bytes(runner);record['runner_sha256']=sha(runner)
+relative=next(line.split(':',2)[2] for line in Path('/proc/self/cgroup').read_text().splitlines() if line.startswith('0::'))
+cgroup=Path('/sys/fs/cgroup')/relative.lstrip('/')
+env=dict(os.environ,TMPDIR=str(alias),RUST_MIN_STACK='16777216')
+changed=set(subprocess.check_output(['git','diff','--name-only','--','src'],cwd=root,text=True).splitlines()+subprocess.check_output(['git','ls-files','--others','--exclude-standard','--','src'],cwd=root,text=True).splitlines())
+rust=[name for name in paths if name.endswith('.rs') and name.startswith('src/') and name in changed]
+commands=[('format',['cargo','fmt','--all','--','--check']),
+ ('included-format',['rustfmt','--edition','2024','--check',*rust]),
+ ('source-size',['python3','scripts/check_rust_file_sizes.py']),
+ ('compiler',['cargo','test','-p','topal-compiler','--lib','--locked','-j1','--','--nocapture','--test-threads=4']),
+ ('language',['cargo','test','-p','topal-language','--lib','--locked','-j1','--','--test-threads=4']),
+ ('semantics',['cargo','test','-p','topal-semantics','--lib','--locked','-j1','--','--test-threads=4']),
+ ('check',['cargo','check','--workspace','--all-targets','--locked','-j1']),
+ ('coverage',['cargo','test','-p','topal-language','--test','core_language_coverage','--locked','-j1'])]
+def write():
+    record['resources']={name:(cgroup/name).read_text().strip() for name in ['memory.max','memory.swap.max','memory.peak','memory.events']}
+    (out/'qualification.json').write_text(json.dumps(record,indent=2)+'\n')
+seen=set()
+write();print('FRAME_MEMORY_VALIDATION_STARTED',run_id,flush=True)
+for name,argv in commands:
+    print('RUNNING',name,flush=True);start=time.monotonic()
+    with (scratch/(name+'.log')).open('wb') as log:result=subprocess.run(argv,cwd=root,env=env,stdout=log,stderr=subprocess.STDOUT,check=False)
+    record['commands'].append(dict(name=name,argv=argv,exit_code=result.returncode,elapsed_seconds=time.monotonic()-start,log=save(name+'.log',(scratch/(name+'.log')).read_bytes())))
+    for prefix in ['frame-memory-','frame-root-','frame-policy-','frame-controller-','frame-gateway-','frame-target-','frame-source-']:
+        for directory in sorted(scratch.glob(prefix+'*')):
+            if str(directory) in seen:continue
+            seen.add(str(directory));item=dict(command=name,directory=str(directory),snapshots={},binaries={})
+            for p in sorted(directory.rglob('*')):
+                if not p.is_file():continue
+                key=str(p.relative_to(directory));raw=p.read_bytes()
+                if p.suffix in ['.o','.elf','.cpio'] or p.name in ['bzImage','kernel.debug']:
+                    item['binaries'][key]=dict(sha256=sha(raw),bytes=len(raw),retention='external disk cache; exact source/LLVM/native writer/tool/commands/observations archived')
+                    if p.suffix!='.o':continue
+                item['snapshots'][key]=save('components/'+directory.name+'/'+key,raw)
+            record['components'].append(item)
+    write();print(name,'EXIT',result.returncode,flush=True)
+    if result.returncode:record['complete']=True;write();raise SystemExit(result.returncode)
+assert all(sha((root/name).read_bytes())==digest for name,digest in record['sources'].items())
+assert all(sha((root/name).read_bytes())==info['uncompressed_sha256'] for name,info in record['verification_inputs'].items())
+record.update(complete=True,passed=True);write();print('FRAME_MEMORY_VALIDATION_PASS',flush=True)

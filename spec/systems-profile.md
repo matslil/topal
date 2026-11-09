@@ -10349,15 +10349,21 @@ parameter classifiers, the exact guard, every back edge and positive decrement,
 complete direct helper graph and inferred owner reads/writes. It SHALL NOT
 attest source origin for externally constructed IR or grant native emission.
 
-The entry SHALL have an ordinary ordered decision on one Nat parameter with
-exactly one `<= b` rule and an otherwise action, where `b` is a nonnegative
-integer literal. Base actions and earlier bindings SHALL contain no recursive
+The entry SHALL have an ordinary ordered decision on one Nat parameter whose
+first rule is `<= b`, where `b` is a nonnegative integer literal. It MAY have
+additional ordered terminal rules before its otherwise action. Every rule's
+operand, every rule's action and earlier bindings SHALL contain no recursive
 edge. Each recursive edge SHALL be a direct self call in tail position within
 the otherwise action, preserve argument arity/classifiers, and pass that measure
 as the ordinary checked Int-to-Nat adaptation of `measure - d`, for a literal
 `0 < d <= b + 1`. Every optional region parameter SHALL be passed unchanged.
 Existing Nat-to-Int widening SHALL remain legal in checked call transport;
 inspection SHALL NOT invent an unchecked Int-to-Nat narrowing.
+Additional terminal rules SHALL NOT weaken the first guard's positive-measure
+proof. Resource qualification SHALL include their tested operands and complete
+terminal actions over the admitted positive-measure domain, in addition to the
+base and recursive paths. Early completion SHALL NOT shorten the admitted
+worst-case work or nonwrapping identity bounds.
 Bindings and decision payloads SHALL NOT shadow the measure or invariant region
 parameter's storage identity. Display names alone SHALL NOT establish identity.
 Selected source SHALL have at most one region parameter per function and
@@ -10418,6 +10424,12 @@ SHALL NOT introduce wrapping arithmetic or authority from numeric values. A
 native interface SHALL independently establish the corresponding input domain.
 The analysis SHALL rebuild the exact source plan and preserve storage identity,
 ordinary argument order and every evaluated helper/branch/terminal action.
+Tail-source selection and isolated module checking SHALL NOT infer a region-count
+upper bound from an older profile's 65536-byte extent or temporary-arena limit.
+They SHALL preserve ordinary Nat count meaning without an unsupported finite
+upper bound. Native resource analysis SHALL separately establish the actual
+target/caller count domain; removing the unsupported source bound SHALL NOT
+enlarge a qualified caller's owned extent or relax its admission requirements.
 
 An affine update x'=x+c with measure decrease d MAY use upper/lower natural
 weights wp,wn satisfying c-wp*d<=0 and -c-wn*d<=0. Baseline bounds SHALL contain
@@ -10677,3 +10689,104 @@ complete caller/private resource and retirement obligations. Missing, null,
 duplicate, mixed, orphan, changed or unreconstructable bindings SHALL be refused
 before canonical publication or boot packaging. Toolchain reconstruction SHALL
 be a packaging requirement and SHALL NOT become a guest runtime dependency.
+
+### TOPAL-SYSTEMS-TAIL-NAT-OWNER-001 — Natural metadata-query components
+
+A distinct source-only selection and owned native component MAY qualify
+`(KernelByteRegion, Nat, Nat, Nat) -> Nat` with the first Nat as the checked
+measure. It SHALL preserve the existing tail plan, ordinary natural meaning,
+word-domain input admission, nonwrapping histories, transfer, completion and
+whole private retirement obligations. Its result SHALL use the complete existing
+numeric output representation without truncation or a Boolean reinterpretation.
+Any later word conversion SHALL independently prove the whole value fits.
+
+The natural-result selection/component SHALL have a distinct qualification
+identity. The Boolean owner constructor and root interface SHALL retain their
+exact result requirement. Result facts SHALL NOT create frame, mapping, address
+or allocation authority. Unsupported result/parameter/measure profiles SHALL be
+refused. Kernel caller/context/cost/retirement, source/native binding and actual
+allocator ownership/refinement SHALL remain separate qualification obligations;
+the component SHALL NOT authorize canonical kernel publication by itself.
+
+### TOPAL-SYSTEMS-TAIL-HELPER-REUSE-001 — Checked helper code sharing
+
+Tail source selection MAY coalesce equivalent checked helper instances when
+the expanded closure exceeds the existing 64-function qualification budget.
+Before sharing it SHALL check every original definition, capture, supported
+operation, declared effect and resolved helper edge. The entry's own edge MAY
+be excluded only from this diagnostic helper-closure/effect calculation;
+other cycles SHALL be refused. This exclusion SHALL NOT establish source
+termination, tail position, resource bounds or executable authority.
+
+Sharing SHALL preserve source/module/declaration identity, classifiers,
+captures, declared effects, operations, constants and every ordered call and
+argument. Only analysis-only integer-range annotations MAY be omitted from
+body comparison/retention. It SHALL preserve the entry symbol and self edge.
+It SHALL recheck the retained helper closure and existing 64-function budget.
+Closures already within that budget SHALL remain unchanged. Ordinary source
+proof and all complete tail-plan, bounds, lifetime, native and caller binding
+requirements SHALL still apply. Acyclic source interfaces SHALL retain their
+existing refusal behavior; sharing SHALL NOT grant publication authority.
+
+### TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001 — Kernel allocator policy binding
+
+The optional unique `frame-allocator-library` slot SHALL select only
+`physical-frame-policy-tail-v1`, with exact ordinary region/three-Nat inputs,
+Nat result and first-Nat progress. It SHALL belong to the root's one live frame
+allocator creation from its normalized memory description. Stack/runtime
+reserves SHALL be 4096/65536 with no fixed persistent-state reserve; metadata
+and live-extent capacity SHALL derive from owned memory. Wrong slots,
+interfaces, resources, missing/extra/mismatched inputs and unsupported closures
+SHALL be refused. The checker/model SHALL retain the source obligation without
+assigning code or frame authority to its metadata.
+
+Kernel execution/publication SHALL require complete immutable root/source/module
+inputs and fresh checked source/native/caller reconstruction. It SHALL bind the
+actual normalized topology and all reservations, runtime count/alignment,
+nonwrapping allocator-instance/whole-extent identity, physical zeroing before
+grant, and release exclusion for foreign/stale/duplicate/partial/mapped extents.
+Normal exhaustion SHALL preserve allocation cells and the issuance counter.
+Failure after writes SHALL preserve performed writes and issuance, poison the
+allocator and reach nonreturning trusted fatal cleanup without rollback.
+
+Actual privileged critical/context/stack ownership, disjoint mapped domains,
+complete costs and inner/owning-caller physical retirement SHALL be proved for
+each actual caller. Allocation/release and workload memory lifetimes SHALL use
+the real allocator; constant probes SHALL NOT establish this integration.
+Publication/boot SHALL bind all allocated native/source/provider/caller/data
+contributions and actual load permissions. Source-only declarations, numeric
+results, program-only APIs, serialized metadata and standalone components SHALL
+NOT grant this qualification. Existing roots SHALL retain their profiles.
+
+The source-bearing artifact route SHALL retain the selected frame declaration
+in its checked program. Publication and boot SHALL reconstruct every selected
+library from its complete primary and module snapshots with the qualified
+toolchain. They SHALL compare every allocated native contribution and load
+permission, derived source/caller resource bound, actual entry and target,
+original producer identity and artifact input/output association. The image
+reservation SHALL equal the complete allocated image extent; a supplied symbol
+SHALL NOT authorize a larger reservation. Linking SHALL verify stable geometry
+after setting this reservation. Missing, mixed, extra, duplicate, null-erased,
+stale or orphan source/native bindings SHALL be refused. Failure SHALL NOT
+publish an artifact or boot-image destination. Program-only entry points SHALL
+remain insufficient for this selection.
+
+Each workload-memory invocation SHALL bind the actual captured process context,
+current address space, fresh nonwrapping entry identity, ABI operation/request,
+critical state, owned continuation stack and compiled caller site. Bootstrap
+stack geometry alone SHALL NOT authorize a syscall invocation. Rejected or busy
+entry SHALL NOT claim another invocation's retirement authority. The combined
+memory/allocator call graph SHALL fit its owning caller reserve; nested calls
+SHALL NOT erase live enclosing frames.
+
+Heap resize SHALL derive the extent count from the actual requested break and
+checked target geometry. It SHALL validate the current whole handle and affected
+translations before mutation. Replacement backing SHALL be zero before grant,
+retain the surviving prefix, and be pinned before translation publication.
+Affected translation invalidation SHALL precede unpinning, erasing and consuming
+the old whole extent. Ordinary unavailability SHALL preserve the old break,
+bytes, mappings and handle. Exec and exit SHALL revoke and release the entire
+live heap. Fatal cleanup SHALL retain performed writes and held extent identities
+while poisoning the owner and retiring invocation temporaries; it SHALL NOT
+resume the process or restore a comparison snapshot. A target geometry limit
+SHALL NOT establish general virtual-memory or application qualification.

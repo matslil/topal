@@ -86,9 +86,9 @@ pub(crate) fn publish_outputs(
 }
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
-struct Scratch(std::path::PathBuf);
+pub(crate) struct Scratch(pub(crate) std::path::PathBuf);
 impl Scratch {
-    fn new() -> Result<Self, CompileError> {
+    pub(crate) fn new() -> Result<Self, CompileError> {
         for _ in 0..128 {
             let path = std::env::temp_dir().join(format!(
                 "topal-tail-boot-{}-{}",
@@ -311,7 +311,7 @@ pub(crate) fn validate_boot(
     Ok(())
 }
 
-fn check_other_slots(
+pub(crate) fn check_other_slots(
     program: &CompilerSystemsProgram,
     artifact: &SystemsArtifactProvenance,
 ) -> Result<(), CompileError> {

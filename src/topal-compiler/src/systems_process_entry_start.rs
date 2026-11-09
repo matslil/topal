@@ -9,6 +9,7 @@ fn emit_static_process_start(
     source_identity: bool,
     retained_identity: bool,
     source_inode: bool,
+    frame_memory: bool,
 ) -> Result<(), CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -117,20 +118,26 @@ fn emit_static_process_start(
     // The exact bounded heap reserve is 34 provider-owned zero data pages;
     // the fifth hierarchy frame is the independent high leaf table.
     code.bytes(&[0x4c, 0x8b, 0x54, 0x24, 0x30]);
-    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
-    code.bytes(&[0x48, 0x85, 0xc0]);
-    code.jump_if(0x84, "fail");
-    code.bytes(&[0xa9, 0xff, 0x0f, 0, 0]);
-    code.jump_if(0x85, "fail");
-    code.bytes(&[
-        0x48, 0x89, 0xc7, 0x31, 0xc0, 0xb9, 0x00, 0x44, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
-    ]);
-    code.jump_if(0x85, "fail");
+    if !frame_memory {
+        code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
+        code.bytes(&[0x48, 0x85, 0xc0]);
+        code.jump_if(0x84, "fail");
+        code.bytes(&[0xa9, 0xff, 0x0f, 0, 0]);
+        code.jump_if(0x85, "fail");
+        code.bytes(&[
+            0x48, 0x89, 0xc7, 0x31, 0xc0, 0xb9, 0x00, 0x44, 0, 0, 0xfc, 0xf3, 0x48, 0xaf,
+        ]);
+        code.jump_if(0x85, "fail");
+    }
     code.bytes(&[0x48, 0x8b, 0x74, 0x24, 0x08]);
     code.bytes(&[0x48, 0x83, 0xbe, 0xb8, 0x0f, 0, 0, 0]);
     code.jump_if(0x85, "fail");
     code.bytes(&[0x49, 0x89, 0x72, 0x70]);
-    code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
+    if frame_memory {
+        code.bytes(&[0x31, 0xc0]);
+    } else {
+        code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x38]);
+    }
     code.bytes(&[0x49, 0x89, 0x42, 0x78]);
     code.bytes(&[0x48, 0x8b, 0x44, 0x24, 0x40]);
     code.bytes(&[0x48, 0x85, 0xc0]);
@@ -230,7 +237,7 @@ fn emit_static_process_start(
     emit_wrmsr_immediate(code, 0xc000_0081, 0x001b_0010_0000_0000);
     code.rip_lea(&[0x48, 0x8d, 0x05], "static-process-syscall");
     emit_wrmsr_register(code, 0xc000_0082, &[]);
-    emit_wrmsr_immediate(code, 0xc000_0084, 0x200);
+    emit_wrmsr_immediate(code, 0xc000_0084, if frame_memory { 0x600 } else { 0x200 });
     emit_wrmsr_register(code, 0xc000_0102, &[0x4c, 0x89, 0xd0]);
     emit_wrmsr_immediate(code, 0xc000_0100, 0);
 
@@ -298,6 +305,9 @@ fn emit_static_process_start(
     code.jump_if(0x85, "fatal");
     // Linux x86-64 selects a syscall with the low native 32-bit number.
     code.bytes(&[0x89, 0xc0]);
+    if frame_memory {
+        frame_memory::capture(code);
+    }
     if source_dispatch {
         process_runtime::dispatch::emit_invoke(code, dispatch_policy)?;
     }
@@ -859,6 +869,9 @@ fn emit_static_process_start(
     code.jump("returned");
 
     code.bind("static-process-brk")?;
+    if frame_memory {
+        frame_memory::brk(code)?;
+    }
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "static-process-brk-query");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 1]);

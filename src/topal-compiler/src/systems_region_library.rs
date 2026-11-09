@@ -198,6 +198,23 @@ pub(crate) fn check_region_isolation(
     program: &CompilerProgram,
     modules: &[topal_language::modules::SourceModule],
 ) -> Result<(), CompileError> {
+    check_region_isolation_kind(input, program, modules, false)
+}
+
+pub(crate) fn check_tail_region_isolation(
+    input: &SystemsSourceLibraryInput,
+    program: &CompilerProgram,
+    modules: &[topal_language::modules::SourceModule],
+) -> Result<(), CompileError> {
+    check_region_isolation_kind(input, program, modules, true)
+}
+
+fn check_region_isolation_kind(
+    input: &SystemsSourceLibraryInput,
+    program: &CompilerProgram,
+    modules: &[topal_language::modules::SourceModule],
+    tail: bool,
+) -> Result<(), CompileError> {
     let mut exports = Vec::new();
     for function in &program.functions {
         let Some(identity) = &function.module_identity else {
@@ -231,14 +248,17 @@ pub(crate) fn check_region_isolation(
         });
     }
     if !exports.is_empty() {
-        topal_language::compiler::analyze_kernel_region_module_exports(modules, &exports).map_err(
-            |error| {
-                invalid(format!(
-                    "module closure depends on an unqualified or private caller scope: {}",
-                    error.render("module-isolation.t")
-                ))
-            },
-        )?;
+        let analyze = if tail {
+            topal_language::compiler::analyze_kernel_region_tail_module_exports
+        } else {
+            topal_language::compiler::analyze_kernel_region_module_exports
+        };
+        analyze(modules, &exports).map_err(|error| {
+            invalid(format!(
+                "module closure depends on an unqualified or private caller scope: {}",
+                error.render("module-isolation.t")
+            ))
+        })?;
     }
     Ok(())
 }

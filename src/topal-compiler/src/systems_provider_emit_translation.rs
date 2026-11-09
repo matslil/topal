@@ -273,6 +273,8 @@ fn translation_edit_commit() -> Result<Vec<u8>, CompileError> {
 struct LinkableX86Function {
     bytes: Vec<u8>,
     calls: Vec<(u64, &'static str)>,
+    markers: Vec<(&'static str, u64)>,
+    data: Vec<(u64, &'static str)>,
 }
 
 #[derive(Default)]
@@ -281,6 +283,7 @@ struct X86FunctionEncoder {
     labels: BTreeMap<String, usize>,
     fixups: Vec<(usize, String)>,
     external_calls: Vec<(u64, &'static str)>,
+    external_data: Vec<(u64, &'static str)>,
 }
 
 impl X86FunctionEncoder {
@@ -333,16 +336,25 @@ impl X86FunctionEncoder {
         self.bytes.extend_from_slice(&[0; 4]);
     }
 
+    fn external_address(&mut self, opcode: &[u8], symbol: &'static str) {
+        self.bytes.extend_from_slice(opcode);
+        self.external_data.push((self.bytes.len() as u64, symbol));
+        self.bytes.extend_from_slice(&[0; 4]);
+    }
+
     fn finish_linkable(mut self) -> Result<LinkableX86Function, CompileError> {
         let calls = std::mem::take(&mut self.external_calls);
+        let data = std::mem::take(&mut self.external_data);
         Ok(LinkableX86Function {
             bytes: self.finish()?,
             calls,
+            markers: vec![],
+            data,
         })
     }
 
     fn finish(mut self) -> Result<Vec<u8>, CompileError> {
-        if !self.external_calls.is_empty() {
+        if !self.external_calls.is_empty() || !self.external_data.is_empty() {
             return Err(CompileError::Tool(
                 "external native calls require relocation-aware publication".into(),
             ));

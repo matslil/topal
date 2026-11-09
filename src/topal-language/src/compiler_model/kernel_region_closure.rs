@@ -50,6 +50,16 @@ fn kernel_region_analysis_with_budget(
     program: &CompilerProgram,
     maximum_functions: Option<usize>,
 ) -> Result<(Vec<CompilerKernelRegionEffects>, bool), Diagnostic> {
+    kernel_region_analysis_with_self_entry(program, maximum_functions, None)
+}
+
+// Shape/effect checking for code sharing only. Ignoring the entry's own graph
+// edge establishes no termination/tail proof or executable qualification.
+fn kernel_region_analysis_with_self_entry(
+    program: &CompilerProgram,
+    maximum_functions: Option<usize>,
+    self_entry: Option<&str>,
+) -> Result<(Vec<CompilerKernelRegionEffects>, bool), Diagnostic> {
     let invalid = |span, message| unsupported(&program.source, span, message);
     let functions = program
         .functions
@@ -59,6 +69,7 @@ fn kernel_region_analysis_with_budget(
     if functions.len() != program.functions.len()
         || functions.is_empty()
         || maximum_functions.is_some_and(|limit| functions.len() > limit)
+        || self_entry.is_some_and(|entry| !functions.contains_key(entry))
     {
         return Err(invalid(
             program.main.result.span,
@@ -69,6 +80,7 @@ fn kernel_region_analysis_with_budget(
         block: &CompilerBlock,
         calls: &mut BTreeSet<String>,
         effects: &mut (bool, bool, bool),
+        tail: bool,
     ) -> Result<(), Span> {
         for statement in &block.statements {
             visit(
@@ -78,14 +90,16 @@ fn kernel_region_analysis_with_budget(
                 },
                 calls,
                 effects,
+                tail,
             )?;
         }
-        visit(&block.result, calls, effects)
+        visit(&block.result, calls, effects, tail)
     }
     fn visit(
         value: &CompilerExpression,
         calls: &mut BTreeSet<String>,
         effects: &mut (bool, bool, bool),
+        tail: bool,
     ) -> Result<(), Span> {
         use CompilerExpressionKind as K;
         let local_view = matches!(&value.value_type, CompilerType::Optional(payload) if payload.as_ref() == &CompilerType::KernelByteRegion);
@@ -101,7 +115,7 @@ fn kernel_region_analysis_with_budget(
             | K::Not(input)
             | K::OptionalSome(input)
             | K::ContainerEntryCount(input)
-            | K::ContainerEmpty(input) => visit(input, calls, effects),
+            | K::ContainerEmpty(input) => visit(input, calls, effects, tail),
             K::KernelRegion {
                 operation,
                 region,
@@ -123,17 +137,17 @@ fn kernel_region_analysis_with_budget(
                     CompilerKernelRegionOperation::UnsignedLoad(_)
                         | CompilerKernelRegionOperation::UnsignedStore(_)
                 );
-                visit(region, calls, effects)?;
+                visit(region, calls, effects, tail)?;
                 for argument in arguments {
-                    visit(argument, calls, effects)?;
+                    visit(argument, calls, effects, tail)?;
                 }
                 Ok(())
             }
-            K::Block(block) => visit_block(block, calls, effects),
+            K::Block(block) => visit_block(block, calls, effects, tail),
             K::Call { symbol, arguments } => {
                 calls.insert(symbol.clone());
                 for argument in arguments {
-                    visit(argument, calls, effects)?;
+                    visit(argument, calls, effects, tail)?;
                 }
                 Ok(())
             }
@@ -142,9 +156,21 @@ fn kernel_region_analysis_with_budget(
                 when_true,
                 when_false,
             } => {
-                visit(subject, calls, effects)?;
-                visit(when_true, calls, effects)?;
-                visit(when_false, calls, effects)
+                visit(subject, calls, effects, tail)?;
+                visit(when_true, calls, effects, tail)?;
+                visit(when_false, calls, effects, tail)
+            }
+            K::OrderedComparisonDecision {
+                subject,
+                rules,
+                otherwise,
+            } if tail => {
+                visit(subject, calls, effects, tail)?;
+                for rule in rules {
+                    visit(&rule.operand, calls, effects, tail)?;
+                    visit(&rule.action, calls, effects, tail)?;
+                }
+                visit(otherwise, calls, effects, tail)
             }
             K::OptionalDecision {
                 subject,
@@ -152,37 +178,37 @@ fn kernel_region_analysis_with_budget(
                 none_action,
                 ..
             } => {
-                visit(subject, calls, effects)?;
-                visit(some_action, calls, effects)?;
-                visit(none_action, calls, effects)
+                visit(subject, calls, effects, tail)?;
+                visit(some_action, calls, effects, tail)?;
+                visit(none_action, calls, effects, tail)
             }
             K::Binary { left, right, .. }
             | K::ListEntry {
                 value: left,
                 remaining: right,
             } => {
-                visit(left, calls, effects)?;
-                visit(right, calls, effects)
+                visit(left, calls, effects, tail)?;
+                visit(right, calls, effects, tail)
             }
             K::Record(fields) => {
                 for (_, field) in fields {
-                    visit(field, calls, effects)?;
+                    visit(field, calls, effects, tail)?;
                 }
                 Ok(())
             }
             K::RecordField { record, .. } | K::TupleField { tuple: record, .. } => {
-                visit(record, calls, effects)
+                visit(record, calls, effects, tail)
             }
             K::RecordReconstruct { base, replacements } => {
-                visit(base, calls, effects)?;
+                visit(base, calls, effects, tail)?;
                 for (_, value) in replacements {
-                    visit(value, calls, effects)?;
+                    visit(value, calls, effects, tail)?;
                 }
                 Ok(())
             }
             K::Tuple(fields) => {
                 for field in fields {
-                    visit(field, calls, effects)?;
+                    visit(field, calls, effects, tail)?;
                 }
                 Ok(())
             }
@@ -190,8 +216,8 @@ fn kernel_region_analysis_with_budget(
                 source,
                 kind: CompilerContainerKind::Array,
                 ..
-            } => visit(source, calls, effects),
-            K::ArrayAt { array, .. } => visit(array, calls, effects),
+            } => visit(source, calls, effects, tail),
+            K::ArrayAt { array, .. } => visit(array, calls, effects, tail),
             _ => Err(value.span),
         }
     }
@@ -213,8 +239,16 @@ fn kernel_region_analysis_with_budget(
         }
         let mut calls = BTreeSet::new();
         let mut effects = (false, false, false);
-        visit_block(&function.body, &mut calls, &mut effects)
-            .map_err(|span| invalid(span, "unqualified region-library source value/operation"))?;
+        visit_block(
+            &function.body,
+            &mut calls,
+            &mut effects,
+            self_entry.is_some(),
+        )
+        .map_err(|span| invalid(span, "unqualified region-library source value/operation"))?;
+        if self_entry == Some(symbol.as_str()) {
+            calls.remove(symbol);
+        }
         graph.insert(symbol.clone(), (calls, effects));
     }
     fn closure(

@@ -503,6 +503,34 @@ fn ordered_tail_operands_and_early_terminal_actions_are_charged() {
 }
 
 #[test]
+fn additional_outer_terminal_operands_and_actions_are_charged() {
+    // TOPAL-SYSTEMS-TAIL-BOUNDS-001: the positive-measure terminal path and
+    // its tested operand must not disappear behind the first guard's cost.
+    let (mut program, entry) = checked("total");
+    let original = bound(&program, &entry);
+    let total = argument_mut(&mut program, &entry).clone();
+    let mut operand = total.clone();
+    operand.kind = K::Absolute(Box::new(total));
+    let mut action = operand.clone();
+    action.kind = K::Absolute(Box::new(operand.clone()));
+    let function = program
+        .functions
+        .iter_mut()
+        .find(|f| f.symbol == entry)
+        .unwrap();
+    let K::OrderedComparisonDecision { rules, .. } = &mut function.body.result.kind else {
+        panic!()
+    };
+    let mut extra = rules[0].clone();
+    extra.operand = operand;
+    extra.action = action;
+    rules.push(extra);
+    let extended = bound(&program, &entry);
+    assert!(extended.terminal_step_bytes > original.terminal_step_bytes);
+    assert!(extended.recursive_step_bytes > original.recursive_step_bytes);
+}
+
+#[test]
 fn tail_proof_work_has_an_explicit_budget() {
     let (mut program, entry) = checked("total");
     let expression = argument_mut(&mut program, &entry).clone();

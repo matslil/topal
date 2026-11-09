@@ -22,6 +22,10 @@ fn expanded(text: &str) -> CompilerProgram {
 }
 
 fn calls(program: &CompilerProgram) -> Vec<(String, Vec<CompilerExpression>)> {
+    named_calls(program, "apply")
+}
+
+fn named_calls(program: &CompilerProgram, name: &str) -> Vec<(String, Vec<CompilerExpression>)> {
     fn normalize(value: &mut CompilerExpression) {
         value.int_range = None;
         if let CompilerExpressionKind::IntToNat(input) = &mut value.kind {
@@ -31,7 +35,7 @@ fn calls(program: &CompilerProgram) -> Vec<(String, Vec<CompilerExpression>)> {
     program
         .functions
         .iter()
-        .find(|f| f.source_name == "apply")
+        .find(|f| f.source_name == name)
         .unwrap()
         .body
         .statements
@@ -150,6 +154,134 @@ fn original_foreign_capture_and_unresolved_graph_refusals_precede_reuse() {
             "fault {fault}"
         );
     }
+}
+
+fn tail_source(repetitions: usize) -> String {
+    let mut text = source(repetitions).replace(
+        "pub apply is fn ((region : KernelByteRegion, first : Nat, second : Nat)) -> Boolean",
+        "work is fn ((region : KernelByteRegion, first : Nat, second : Nat)) -> Nat",
+    );
+    text.truncate(text.len() - "  true\n".len());
+    text.push_str("  first\npub traverse is fn ((region : KernelByteRegion, remaining : Nat, unused : Nat, status : Nat)) -> Nat : Decreases remaining\n  remaining\n    <= 0 then status\n    otherwise traverse(region, remaining - 1, unused, work(region, unused, status))\n");
+    text
+}
+
+fn expanded_tail(text: &str) -> CompilerProgram {
+    let selection = KernelRegionSelection::TailSource("traverse", 3, KernelRegionTailResult::Nat);
+    analyze_for_compiler_options(text, &[], &["traverse".into()], Some(&selection)).unwrap()
+}
+
+#[test]
+fn tail_sharing_retains_small_closures_and_the_exact_recursive_entry() {
+    // TOPAL-SYSTEMS-TAIL-HELPER-REUSE-001.
+    let mut small = expanded_tail(&tail_source(2));
+    let before = small.clone();
+    coalesce_kernel_region_tail_helpers(&mut small, "traverse").unwrap();
+    assert_eq!(small, before);
+    let mut large = expanded_tail(&tail_source(80));
+    assert!(large.functions.len() > 64);
+    let before = named_calls(&large, "work");
+    let root = large
+        .functions
+        .iter()
+        .find(|f| f.source_name == "traverse")
+        .unwrap()
+        .symbol
+        .clone();
+    coalesce_kernel_region_tail_helpers(&mut large, "traverse").unwrap();
+    assert_eq!(large.functions.len(), 3);
+    let after = named_calls(&large, "work");
+    assert_eq!(before.len(), 80);
+    assert_eq!(
+        after.iter().map(|(s, _)| s).collect::<BTreeSet<_>>().len(),
+        1
+    );
+    for ((_, before), (_, after)) in before.into_iter().zip(after) {
+        assert_eq!(before, after);
+    }
+    let entry = large
+        .functions
+        .iter()
+        .find(|f| f.source_name == "traverse")
+        .unwrap();
+    assert_eq!(entry.symbol, root);
+    let CompilerExpressionKind::OrderedComparisonDecision { otherwise, .. } =
+        &entry.body.result.kind
+    else {
+        panic!("countdown")
+    };
+    let CompilerExpressionKind::Call { symbol, arguments } = &otherwise.kind else {
+        panic!("self edge")
+    };
+    assert_eq!(symbol, &root);
+    assert_eq!(arguments.len(), 4);
+    // Code sharing never qualifies the graph under the old acyclic profile.
+    assert!(kernel_region_function_effects(&large).is_err());
+}
+
+#[test]
+fn tail_original_foreign_capture_unresolved_effect_and_helper_cycles_precede_sharing() {
+    // The sole ignored graph edge belongs to the entry; all helper edges count.
+    for fault in 0..5 {
+        let mut program = expanded_tail(&tail_source(80));
+        let root = program
+            .functions
+            .iter()
+            .find(|f| f.source_name == "traverse")
+            .unwrap()
+            .symbol
+            .clone();
+        match fault {
+            0 => {
+                program.functions[0].foreign = Some(CompilerCFunction {
+                    library_identity: "foreign".into(),
+                    external_symbol: "external".into(),
+                    parameters: vec![],
+                    result: CompilerCValue::Void,
+                })
+            }
+            1 => program.functions[0].parameters[0].source_visible = false,
+            2 => {
+                program.functions[0].body.result.kind = CompilerExpressionKind::Call {
+                    symbol: "unresolved".into(),
+                    arguments: vec![],
+                }
+            }
+            3 => {
+                // An explicit empty row cannot hide transitive byte writes.
+                program
+                    .functions
+                    .iter_mut()
+                    .find(|f| f.symbol == root)
+                    .unwrap()
+                    .declared_effects = Some(CompilerEffectRow { identities: vec![] });
+            }
+            _ => {
+                program.functions[0].body.result.kind = CompilerExpressionKind::Call {
+                    symbol: root,
+                    arguments: vec![],
+                }
+            }
+        }
+        let before = program.clone();
+        assert!(
+            coalesce_kernel_region_tail_helpers(&mut program, "traverse").is_err(),
+            "fault {fault}"
+        );
+        assert_eq!(program, before, "original validation must precede edits");
+    }
+}
+
+#[test]
+fn tail_sharing_retains_declaration_identity_and_the_existing_function_budget() {
+    let mut program = expanded_tail(&tail_source(80));
+    for (index, function) in program.functions.iter_mut().enumerate() {
+        if function.source_name == "write-one" {
+            function.module_identity = Some(vec![format!("distinct-{index}")]);
+        }
+    }
+    assert!(coalesce_kernel_region_tail_helpers(&mut program, "traverse").is_err());
+    assert!(program.functions.len() > 64);
 }
 
 #[test]

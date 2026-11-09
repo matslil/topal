@@ -20,6 +20,8 @@ pub(crate) const STACK_BYTES: u64 = 4096;
 mod checkpoint;
 #[path = "systems_tail_completion_boundary.rs"]
 mod completion;
+#[path = "systems_frame_gateway.rs"]
+pub(crate) mod frame_gateway;
 #[path = "systems_tail_kernel.rs"]
 pub(crate) mod kernel;
 

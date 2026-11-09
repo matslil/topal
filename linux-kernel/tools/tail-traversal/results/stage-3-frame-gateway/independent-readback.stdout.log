@@ -1,0 +1,11 @@
+format []
+included-format []
+source-size []
+gateway ['test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 358 filtered out; finished in 20.46s']
+bootstrap ['test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 359 filtered out; finished in 10.35s']
+source-binding ['test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 357 filtered out; finished in 2.49s']
+check []
+coverage ['test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s']
+gateway VM_CASES ['bad-result', 'bad-stack', 'busy-gateway', 'direction-flag', 'duplicate-create', 'empty-map', 'interrupts', 'late-cleanup', 'overflow-map', 'real-map', 'reserved-map', 'source-abort', 'sparse-map', 'unaligned-map', 'unsupported-map', 'zero-reservation'] NATIVE_PATHS {'topal_frame_allocator_allocate_v1': 1936, 'topal_frame_allocator_pin_v1': 264, 'topal_frame_allocator_release_v1': 1920, 'topal_frame_allocator_resolve_v1': 280, 'topal_frame_kernel_dispatch_v1': 1952, 'topal_x86_frame_allocator_create_v1': 208}
+bootstrap VM_CASES ['bad-stack', 'duplicate-create', 'empty-map', 'interrupts', 'overflow-map', 'real-map', 'reserved-map', 'sparse-map', 'unaligned-map', 'unsupported-map', 'zero-reservation'] NATIVE_PATHS {'topal_frame_allocator_allocate_v1': 1840, 'topal_frame_allocator_pin_v1': 200, 'topal_frame_allocator_release_v1': 1824, 'topal_frame_allocator_resolve_v1': 216, 'topal_x86_frame_allocator_create_v1': 208}
+FRAME_GATEWAY_READBACK_PASS 178 SOURCES; BOOTSTRAP COMPONENT ONLY, PRODUCTION ROOT UNQUALIFIED

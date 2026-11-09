@@ -8,90 +8,137 @@ fn build_linked_outputs(
     let debug_path = stage.join(SYSTEMS_DEBUG_FILE);
     let map_path = stage.join(SYSTEMS_MAP_FILE);
 
-    run_tool(
-        Command::new(tools.tool_path("rust-lld"))
-            .current_dir(work)
-            .arg("-flavor")
-            .arg("gnu")
-            .arg("-m")
-            .arg("elf_x86_64")
-            .arg("-static")
-            .arg("--no-dynamic-linker")
-            .arg("--build-id=none")
-            // The namespace component no longer fits below the reserved
-            // [4MiB,8MiB) user window. Keep every supervisor BSS allocation
-            // above that window; older selections retain their exact layout.
-            .args(
-                (work.join("namespace/kernel-region.o").is_file()
-                    || work.join("tail/source.o").is_file())
-                .then_some("--section-start=.bss=0x800000"),
-            )
-            .arg("--entry")
-            .arg(X86_SYSTEMS_KERNEL_ENTRY)
-            .arg("-z")
-            .arg("max-page-size=0x1000")
-            .arg(format!("-Map=../{SYSTEMS_MAP_FILE}"))
-            .arg("root.o")
-            .arg("provider.o")
-            .args(
-                ["source", "runtime", "owner", "boundary", "kernel-owner"]
+    let frame = work.join("frame/frame-target.o").is_file();
+    let mut reserved = 0x1000000_u64;
+    for pass in 0..if frame { 2 } else { 1 } {
+        run_tool(
+            Command::new(tools.tool_path("rust-lld"))
+                .current_dir(work)
+                .arg("-flavor")
+                .arg("gnu")
+                .arg("-m")
+                .arg("elf_x86_64")
+                .arg("-static")
+                .arg("--no-dynamic-linker")
+                .arg("--build-id=none")
+                .args(
+                    frame.then(|| {
+                        format!("--defsym=topal_x86_kernel_reservation_end_v1={reserved}")
+                    }),
+                )
+                // The namespace component no longer fits below the reserved
+                // [4MiB,8MiB) user window. Keep every supervisor BSS allocation
+                // above that window; older selections retain their exact layout.
+                .args(
+                    (work.join("namespace/kernel-region.o").is_file()
+                        || work.join("tail/source.o").is_file()
+                        || frame)
+                        .then_some("--section-start=.bss=0x800000"),
+                )
+                .arg("--entry")
+                .arg(X86_SYSTEMS_KERNEL_ENTRY)
+                .arg("-z")
+                .arg("max-page-size=0x1000")
+                .arg(format!("-Map=../{SYSTEMS_MAP_FILE}"))
+                .arg("root.o")
+                .arg("provider.o")
+                .args(
+                    ["source", "runtime", "owner", "boundary", "kernel-owner"]
+                        .into_iter()
+                        .filter(|_| work.join("tail/source.o").is_file())
+                        .map(|name| format!("tail/{name}.o")),
+                )
+                .args(
+                    [
+                        "source",
+                        "runtime",
+                        "owner",
+                        "boundary",
+                        "frame-controller",
+                        "frame-target",
+                        "frame-dispatch",
+                        "frame-gateway",
+                    ]
                     .into_iter()
-                    .filter(|_| work.join("tail/source.o").is_file())
-                    .map(|name| format!("tail/{name}.o")),
-            )
-            .args(
-                work.join("namespace/kernel-region.o")
-                    .is_file()
-                    .then_some("namespace/kernel-region.o"),
-            )
-            .args(
-                work.join("inode-mode/kernel-region.o")
-                    .is_file()
-                    .then_some("inode-mode/kernel-region.o"),
-            )
-            .args(
-                work.join("ram-page-pool/kernel-region.o")
-                    .is_file()
-                    .then_some("ram-page-pool/kernel-region.o"),
-            )
-            .args(
-                work.join("file-position/kernel-region.o")
-                    .is_file()
-                    .then_some("file-position/kernel-region.o"),
-            )
-            .args(
-                work.join("kernel-region.o")
-                    .is_file()
-                    .then_some("kernel-region.o"),
-            )
-            .args(
-                work.join("time-library.o")
-                    .is_file()
-                    .then_some("time-library.o"),
-            )
-            .args(
-                work.join("image-library.o")
-                    .is_file()
-                    .then_some("image-library.o"),
-            )
-            .args(
-                work.join("process-identity-library.o")
-                    .is_file()
-                    .then_some("process-identity-library.o"),
-            )
-            .args(
-                work.join("dispatch-library.o")
-                    .is_file()
-                    .then_some("dispatch-library.o"),
-            )
-            .args(
-                work.join("kernel-library.o")
-                    .is_file()
-                    .then_some("kernel-library.o"),
-            )
-            .arg("-o")
-            .arg("kernel.unstripped"),
-    )?;
+                    .filter(|_| frame)
+                    .map(|name| format!("frame/{name}.o")),
+                )
+                .args(
+                    work.join("namespace/kernel-region.o")
+                        .is_file()
+                        .then_some("namespace/kernel-region.o"),
+                )
+                .args(
+                    work.join("inode-mode/kernel-region.o")
+                        .is_file()
+                        .then_some("inode-mode/kernel-region.o"),
+                )
+                .args(
+                    work.join("ram-page-pool/kernel-region.o")
+                        .is_file()
+                        .then_some("ram-page-pool/kernel-region.o"),
+                )
+                .args(
+                    work.join("file-position/kernel-region.o")
+                        .is_file()
+                        .then_some("file-position/kernel-region.o"),
+                )
+                .args(
+                    work.join("kernel-region.o")
+                        .is_file()
+                        .then_some("kernel-region.o"),
+                )
+                .args(
+                    work.join("time-library.o")
+                        .is_file()
+                        .then_some("time-library.o"),
+                )
+                .args(
+                    work.join("image-library.o")
+                        .is_file()
+                        .then_some("image-library.o"),
+                )
+                .args(
+                    work.join("process-identity-library.o")
+                        .is_file()
+                        .then_some("process-identity-library.o"),
+                )
+                .args(
+                    work.join("dispatch-library.o")
+                        .is_file()
+                        .then_some("dispatch-library.o"),
+                )
+                .args(
+                    work.join("kernel-library.o")
+                        .is_file()
+                        .then_some("kernel-library.o"),
+                )
+                .arg("-o")
+                .arg("kernel.unstripped"),
+        )?;
+        if frame {
+            let raw = fs::read(&unstripped_path)
+                .map_err(io_error("read frame link geometry", &unstripped_path))?;
+            let file = object::File::parse(raw.as_slice())
+                .map_err(|e| CompileError::Tool(e.to_string()))?;
+            let end = file
+                .segments()
+                .map(|s| s.address().checked_add(s.size()))
+                .collect::<Option<Vec<_>>>()
+                .ok_or_else(|| CompileError::Tool("frame link extent overflow".into()))?
+                .into_iter()
+                .max()
+                .unwrap()
+                .max(0x1000000);
+            if pass == 0 {
+                reserved = end;
+            } else if reserved != end {
+                return Err(CompileError::Tool(
+                    "frame reservation changes final link geometry".into(),
+                ));
+            }
+        }
+    }
 
     let objcopy = tools.tool_path("llvm-objcopy");
     if !objcopy.is_file() {
@@ -211,6 +258,7 @@ fn artifact_provenance(
         namespace_runtime: None,
         region_runtime: None,
         tail_root: None,
+        frame_root: None,
         time_library: None,
         image_library: None,
         dispatch_library: None,
@@ -233,18 +281,20 @@ fn inspect_linked_kernel(
     debug: &[u8],
     map: &[u8],
     storage_capacity: u64,
+    frame_end: Option<u64>,
     bootstrap_bytes: Option<(u8, u8)>,
 ) -> Result<(), CompileError> {
     let file = object::File::parse(kernel)
         .map_err(|error| CompileError::Tool(format!("cannot parse linked systems ELF: {error}")))?;
-    inspect_kernel_elf(&file, storage_capacity, bootstrap_bytes)?;
+    inspect_kernel_elf_with_reservation(&file, storage_capacity, bootstrap_bytes, frame_end)?;
     inspect_debug_and_map(debug, map)
 }
 
-fn inspect_kernel_elf(
+fn inspect_kernel_elf_with_reservation(
     file: &object::File<'_>,
     storage_capacity: u64,
     bootstrap_bytes: Option<(u8, u8)>,
+    frame_end: Option<u64>,
 ) -> Result<(), CompileError> {
     if file.format() != BinaryFormat::Elf
         || file.architecture() != Architecture::X86_64
@@ -267,7 +317,7 @@ fn inspect_kernel_elf(
             "linked systems ELF entry does not select its generated bootstrap root".into(),
         ));
     }
-    inspect_bootstrap_reservation_floor(file)?;
+    inspect_bootstrap_reservation_floor(file, frame_end)?;
     if let Some((store, load)) = bootstrap_bytes {
         inspect_bootstrap_memory_instructions(file, store, load)?;
     }
@@ -341,13 +391,16 @@ fn inspect_kernel_elf(
     Ok(())
 }
 
-fn inspect_bootstrap_reservation_floor(file: &object::File<'_>) -> Result<(), CompileError> {
+fn inspect_bootstrap_reservation_floor(
+    file: &object::File<'_>,
+    frame_end: Option<u64>,
+) -> Result<(), CompileError> {
     for segment in file.segments() {
         let end = segment
             .address()
             .checked_add(segment.size())
             .ok_or_else(|| CompileError::Tool("linked systems segment range overflows".into()))?;
-        if end > X86_SYSTEMS_ALLOCATABLE_FLOOR {
+        if end > frame_end.unwrap_or(X86_SYSTEMS_ALLOCATABLE_FLOOR) {
             return Err(CompileError::Tool(format!(
                 "linked systems segment extends beyond reserved bootstrap floor {X86_SYSTEMS_ALLOCATABLE_FLOOR:#x}"
             )));

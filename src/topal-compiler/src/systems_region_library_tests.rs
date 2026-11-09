@@ -239,12 +239,14 @@ fn instance_objects_bind_distinct_namespaces_hooks_counts_and_canonical_identity
 }
 
 fn temporary_work() -> std::path::PathBuf {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let sequence = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let nonce = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
     let path = std::env::temp_dir().join(format!(
-        "topal-region-source-{}-{nonce}",
+        "topal-region-source-{}-{nonce}-{sequence}",
         std::process::id()
     ));
     std::fs::create_dir(&path).unwrap();

@@ -27,6 +27,11 @@ pub(crate) fn publish(
         &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
     )
     .map_err(CompileError::Diagnostic)?;
+    let frame_library = program
+        .frame_allocator_library
+        .as_ref()
+        .map(|r| crate::systems_library::load_source_library(r, &options.library_root))
+        .transpose()?;
     let tools = LlvmTools::discover(options.llvm_tools.as_deref())?;
     let initial_user_image = options
         .initial_user_image
@@ -52,7 +57,8 @@ pub(crate) fn publish(
             })
         })
         .transpose()?;
-    if program.namespace_library.is_some()
+    if frame_library.is_some()
+        || program.namespace_library.is_some()
         || program.inode_mode_library.is_some()
         || program.ram_page_pool_library.is_some()
         || program.file_position_library.is_some()
@@ -133,6 +139,17 @@ pub(crate) fn publish(
             dispatch: dispatch.as_ref(),
             process_identity: process_identity.as_ref(),
         };
+        if let Some(frame) = &frame_library {
+            return crate::publish_x86_64_systems_frame_artifact(
+                root_source,
+                frame,
+                &tools,
+                initial_user_image.as_deref(),
+                static_user_image.as_deref(),
+                libraries,
+                &options.output,
+            );
+        }
         if program.region_library.as_ref().is_some_and(|r|r.interface==topal_language::compiler::CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1) {
             return crate::publish_x86_64_systems_tail_artifact(root_source,&tools,initial_user_image.as_deref(),static_user_image.as_deref(),libraries,&options.output);
         }

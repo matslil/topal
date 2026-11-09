@@ -97,6 +97,8 @@ struct Analyzer {
     language_version: LanguageVersion,
     language_features: Vec<String>,
     kernel_region_sources: Vec<Span>,
+    kernel_region_count_upper: Option<u64>,
+    kernel_tail_terminal_rules: bool,
     enums: EnumTypes,
     enum_alternatives: EnumAlternativeBindings,
     sums: SumTypes,
@@ -163,6 +165,8 @@ impl Analyzer {
             language_version,
             language_features,
             kernel_region_sources: Vec::new(),
+            kernel_region_count_upper: Some(65536),
+            kernel_tail_terminal_rules: false,
             enums,
             enum_alternatives,
             sums,
@@ -523,14 +527,15 @@ fn analyze_for_compiler_options(
         .filter(|statement| statement_span(statement).start < primary_source_end)
         .cloned()
         .collect::<Vec<_>>();
-    if matches!(region_entry, Some(KernelRegionSelection::Modules(_)))
-        && root_statements.iter().any(|statement| {
-            !matches!(
-                statement,
-                Statement::LanguageSelection { .. } | Statement::LibrarySelection { .. }
-            )
-        })
-    {
+    if matches!(
+        region_entry,
+        Some(KernelRegionSelection::Modules(_) | KernelRegionSelection::TailModules(_))
+    ) && root_statements.iter().any(|statement| {
+        !matches!(
+            statement,
+            Statement::LanguageSelection { .. } | Statement::LibrarySelection { .. }
+        )
+    }) {
         return Err(unsupported(
             &source,
             Span::new(0, primary_source_end),
@@ -592,6 +597,15 @@ fn analyze_for_compiler_options(
         sum_alternatives,
     );
     analyzer.generalized_exports = generalized_exports.iter().cloned().collect();
+    if matches!(
+        region_entry,
+        Some(KernelRegionSelection::TailSource(..) | KernelRegionSelection::TailModules(_))
+    ) {
+        // The source-only family grants no finite owner-extent bound. Native
+        // word/geometry/resource bounds must be established by its publisher.
+        analyzer.kernel_region_count_upper = None;
+        analyzer.kernel_tail_terminal_rules = true;
+    }
     if region_entry.is_some() {
         analyzer
             .kernel_region_sources
@@ -731,17 +745,18 @@ fn analyze_for_compiler_options(
         }
         match entry {
             KernelRegionSelection::Entry(entry, profile) => {
-                analyzer.instantiate_kernel_region_entry(entry, *profile, false)?
+                analyzer.instantiate_kernel_region_entry(entry, *profile, None)?
             }
-            KernelRegionSelection::TailSource(entry, scalar_count) => analyzer
+            KernelRegionSelection::TailSource(entry, scalar_count, result) => analyzer
                 .instantiate_kernel_region_entry(
                     entry,
                     CompilerKernelRegionProfile::FramedAction {
                         scalar_count: *scalar_count,
                     },
-                    true,
+                    Some(*result),
                 )?,
-            KernelRegionSelection::Modules(exports) => {
+            KernelRegionSelection::Modules(exports)
+            | KernelRegionSelection::TailModules(exports) => {
                 for export in *exports {
                     analyzer.instantiate_kernel_region_module(export)?;
                 }

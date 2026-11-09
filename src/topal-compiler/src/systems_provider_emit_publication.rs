@@ -14,6 +14,21 @@ pub fn generate_x86_64_systems_provider_object(
     program: &CompilerSystemsProgram,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = plan_x86_64_systems_provider(program)?;
+    generate_provider_selected(program, plan, false)
+}
+
+pub(crate) fn generate_frame_memory_provider(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<GeneratedSystemsProviderObject, CompileError> {
+    let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
+    generate_provider_selected(&checked.program, plan, true)
+}
+
+fn generate_provider_selected(
+    program: &CompilerSystemsProgram,
+    plan: crate::X86SystemsProviderPlan,
+    frame_memory: bool,
+) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
     object.add_file_symbol(b"topal-generated-x86-systems-provider".to_vec());
 
@@ -428,7 +443,7 @@ pub fn generate_x86_64_systems_provider_object(
         &mut object,
         text,
         X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
-        &static_image_process_enter(
+        &static_image_process_enter_selected(
             program.kernel_library.is_some(),
             program.kernel_library.as_ref().is_some_and(|r| r.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1),
             program.time_library.is_some(),
@@ -442,6 +457,7 @@ pub fn generate_x86_64_systems_provider_object(
             program.ram_page_pool_library.is_some(),
             program.inode_mode_library.is_some(),
             program.namespace_library.is_some(),
+            frame_memory,
         )?,
     )?;
     append_encoded_function(
@@ -818,7 +834,7 @@ pub fn generate_x86_64_systems_provider_object(
             .to_vec(),
         SectionKind::UninitializedData,
     );
-    let brk_reserve_size = 34 * 4096;
+    let brk_reserve_size = if frame_memory { 0 } else { 34 * 4096 };
     let brk_reserve_offset = object.append_section_bss(process_storage, brk_reserve_size, 4096);
     object.add_symbol(Symbol {
         name: X86_SYSTEMS_STATIC_PROCESS_BRK_RESERVE_SYMBOL

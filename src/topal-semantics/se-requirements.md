@@ -492,3 +492,12 @@ reclamation. Keep legacy region-library behavior unchanged in the absence of a
 tail disposition. Neither reference buffers nor supplied cleanup obligations
 shall imply complete native layout, source execution or physical erasure. See
 [the session contract](../../linux-kernel/design/tail-session-model.md).
+
+## TOPAL-SEM-SYSTEMS-FRAME-POLICY-BINDING-001 — Allocator source obligation
+
+Retain `TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001` as a distinct optional source
+requirement attached to exactly one described-memory allocator creation. Check
+its exact interface and temporary/stack reserves without inventing a persistent
+metadata capacity or interpreting copied source metadata as executable code or
+frame authority. Reject a wrong-slot or missing/duplicate context obligation;
+preserve existing roots and actual affine extent semantics.

@@ -12395,6 +12395,16 @@ shall separately satisfy `TOPAL-SYSTEMS-TAIL-REUSE-001`; existing freestanding
 profile refusal and source limits remain unchanged. See
 [TK-DEC-282](../../linux-kernel/design/repeated-source-tail-traversal.md).
 
+For the tail family, preserve the actual borrowed-owner count in primary and
+isolated-module analysis without inferring the older 65536-byte owner cap.
+Target-specific native count/resource bounds and actual owner admission remain
+separate obligations under `TOPAL-SYSTEMS-TAIL-BOUNDS-001`.
+
+Permit additional terminal rules after the initial literal countdown guard.
+Inspect their operands and actions without granting recursive position, retain
+the first guard's descent proof, and bound all tested operands and terminal
+paths. This does not change ordinary syntax or termination semantics.
+
 ## TOPAL-COMP-SYSTEMS-TAIL-BOUNDS-001 — All-step carried storage bounds
 
 Implement `TOPAL-SYSTEMS-TAIL-BOUNDS-001` by rebuilding the source plan and
@@ -12515,3 +12525,57 @@ program-only refusal until the complete source-bearing route is qualified.
 
 Trace: [binding design](../../linux-kernel/design/tail-publication-binding.md),
 [formal rule](../../spec/systems-profile.md#topal-systems-tail-binding-001--reconstructed-tail-root-publication).
+
+## TOPAL-COMP-SYSTEMS-TAIL-NAT-OWNER-001 — Natural query component
+
+Implement `TOPAL-SYSTEMS-TAIL-NAT-OWNER-001` with a separate source selection and
+owner constructor. Reuse the checked ordinary Nat result and existing native
+admission/controller/complete retirement without narrowing the result. Preserve
+the Boolean owner's exact profile and publication refusals. Bind source/runtime
+and native stack/representation evidence; test zero, values wider than a native
+word, readonly constants and actual region-derived search facts. No component
+result may grant allocator authority or substitute for kernel caller refinement.
+
+## TOPAL-COMP-SYSTEMS-TAIL-HELPER-REUSE-001 — Shared checked helpers
+
+Implement `TOPAL-SYSTEMS-TAIL-HELPER-REUSE-001` through source selection before
+native plan construction. Keep the original checked call order and values,
+entry/self identity, complete source provenance and every source/native bound.
+Qualify the actual ordinary frame metadata policy with an independent complete
+state oracle, including fragmented/aligned spans, provenance/physical gaps,
+multiple live extents, exhaustion, release/reuse and retained partial writes.
+This evidence does not replace actual kernel allocator/context qualification.
+
+## TOPAL-COMP-SYSTEMS-FRAME-POLICY-BINDING-001 — Kernel frame allocator binding
+
+Implement `TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001` with an explicit unique source
+slot and complete immutable root/library snapshots. Preserve actual typed owner
+creation and whole allocation/release/mapping lifetimes. Require normalized-map,
+reservation, identity, physical-zeroing and caller/context/retirement refinement
+before publication. Check complete source/native/linked/boot closure and runtime
+workload requests. Reject incomplete or program-only publication without changing
+legacy profiles. See [kernel binding](../../linux-kernel/design/frame-policy-kernel-binding.md).
+
+Forward actual captured memory requests through a process/context/address-space
+and entry-identity checked owning invocation. Check its compiled continuation,
+critical state, stack and combined memory/allocator resource bound. Refuse
+invalid/busy callers before claiming cleanup ownership. Replacement must pin and
+publish new translations, invalidate affected translations, then unpin, erase
+and consume the old extent. Keep query/within-page requests allocation-free;
+preserve the old heap on ordinary exhaustion and retire the complete heap on
+exec/exit. Qualify performed-effect retention and caller retirement on failures,
+including partial source writes and failure after replacement publication.
+Keep target geometry limits explicit and preserve canonical publication refusal
+until the complete native/source/load binding is reconstructed. See
+[runtime memory](../../linux-kernel/design/dynamic-frame-memory.md).
+
+The source-bearing publisher and boot adapter must freshly reconstruct the
+retained frame root, policy and every other selected source/module input.
+Compare the complete native/load binding, derived bounds, original producer
+identities, target/entries and unique input/output associations. Measure and
+relink the complete image reservation, then verify unchanged geometry. Refuse
+missing, mixed, extra, duplicate, null-erased, stale and orphan bindings without
+publishing the destination. Retain the other selected owner validators and
+program-only refusal. Exercise this public path and rehashed native mutations
+in `systems_frame_artifact_tests.rs` as well as the component reconstruction
+tests.

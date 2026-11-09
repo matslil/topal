@@ -1,0 +1,623 @@
+from pathlib import Path
+import gzip
+import hashlib
+import json
+import re
+
+root = Path('/home/mats/git/topal')
+out = root / 'linux-kernel/tools/tail-traversal/results/stage-3-frame-source-binding'
+record = json.loads((out / 'qualification.json').read_text())
+sha = lambda data: hashlib.sha256(data).hexdigest()
+assert record['complete'] and record['passed']
+assert record['cgroup']['memory.swap.max'] == '0'
+def read(item):
+    compressed = (out / item['file']).read_bytes()
+    assert sha(compressed) == item['sha256']
+    raw = gzip.decompress(compressed)
+    assert sha(raw) == item['uncompressed_sha256']
+    return raw
+for path, item in record['source_snapshots'].items():
+    raw = read(item)
+    assert sha(raw) == record['sources'][path] == sha((root / path).read_bytes())
+for item in record['verification_inputs'].values():
+    read(item)
+assert sha((out / 'validation-runner.py.txt').read_bytes()) == record['runner_sha256']
+for command in record['commands']:
+    assert command['exit_code'] == 0
+    raw = read(dict(file=command['log'], sha256=command['sha256'], uncompressed_sha256=command['uncompressed_sha256']))
+    summaries = [line for line in raw.decode().splitlines() if line.startswith('test result:')]
+    print(command['name'], command['exit_code'], summaries)
+totals = {}
+warnings = []
+runtime_facts = {}
+for component in record['native_components']:
+    snapshots = {name: read(item) for name, item in component['snapshots'].items()}
+    assert sha(snapshots['step.ll']) == component['metadata']['llvm_sha256']
+    assert json.loads(snapshots['component.json']) == component['metadata']
+    for name in [label for label in ['llc', 'runtime-llc', 'source-disassembly', 'runtime-disassembly', 'cc', 'native', 'gdb'] if label + '.command.json' in snapshots]:
+        assert json.loads(snapshots[name + '.command.json'])['exit_code'] == 0
+        if snapshots[name + '.stderr.log']:
+            warnings.append((component['cache_directory'], name, snapshots[name + '.stderr.log'].decode()))
+    for name, identity in component['binary_identities'].items():
+        raw = (Path(component['cache_directory']) / name).read_bytes()
+        assert sha(raw) == identity['sha256'] and len(raw) == identity['bytes']
+    line = snapshots['native.stdout.log'].decode().strip()
+    assert line.startswith('TAIL_STEP_NATIVE_PASS ')
+    facts = {key: int(value) for key, value in re.findall(r'(\w+)=(\d+)', line)}
+    total = totals.setdefault(component['command'], {'components': 0, 'cases': 0, 'calls': 0, 'checkpoints': 0, 'fatal': 0})
+    total['components'] += 1
+    for key, value in facts.items():
+        total[key] = total.get(key, 0) + value
+    if 'gdb.stdout.log' in snapshots:
+        assert b'TAIL_BOUNDARY_GDB_PASS' in snapshots['gdb.stdout.log']
+        total['gdb'] = total.get('gdb', 0) + 1
+    if component['metadata'].get('native_provider_hooks'):
+        runtime = json.loads(snapshots['runtime.json'])
+        assert sha(snapshots['runtime.ll']) == runtime['llvm_sha256']
+        assert runtime['boundary_sha256'] == component['binary_identities']['boundary.o']['sha256']
+        assert runtime['source_step']['llvm_sha256'] == component['metadata']['llvm_sha256']
+        layout = runtime['layout']
+        assert layout['minimum_temporary_bytes'] == layout['context_bytes'] + 72 <= 65536
+        assert layout['history_bytes'] == 40 and layout['frame_bytes'] == 88
+        assert layout['caller_output_frame_bytes'] == 56
+        native = json.loads(snapshots['native-inspection.json'])
+        assert native['maximum_source_stack_bytes'] <= 4096
+        assert native['maximum_checkpoint_stack_bytes'] <= 4096
+        assert native['maximum_completion_stack_bytes'] <= 4096
+        assert set(native['runtime_imports']) == {'topal_tail_step_component_v1', 'topal_tail_readonly_bytes_v1',
+            'topal_x86_tail_boundary_active_v1', 'topal_x86_tail_boundary_abort_v1'}
+        paths = native['reached_call_paths']
+        assert paths['topal_x86_tail_boundary_abort_v1'] == 8
+        for function, bound in paths.items():
+            if function == 'topal_x86_tail_boundary_abort_v1': continue
+            expected = native['frames'][function] + 8 + max((paths[callee] for callee in native['calls'][function]), default=0)
+            assert bound == expected
+        assert paths['topal_tail_step_component_v1'] == native['maximum_source_stack_bytes']
+        assert paths['topal_tail_checkpoint_body_v1'] == native['maximum_checkpoint_stack_bytes']
+        assert paths['topal_tail_complete_body_v1'] == native['maximum_completion_stack_bytes']
+        group = runtime_facts.setdefault(component['command'], {'clients':0,'stack':set(),'checkpoint_stack':set(),'completion_stack':set(),'context':set(),'faults':{},'boundary_faults':{},'completion_faults':{},'gdb':0})
+        group['clients'] += 1
+        group['stack'].add(native['maximum_source_stack_bytes'])
+        group['checkpoint_stack'].add(native['maximum_checkpoint_stack_bytes'])
+        group['completion_stack'].add(native['maximum_completion_stack_bytes'])
+        group['context'].add(layout['context_bytes'])
+        fault = component['metadata'].get('native_source_fault_fixture', 0)
+        group['faults'][fault] = group['faults'].get(fault,0) + 1
+        boundary_fault = component['metadata'].get('native_boundary_fault_fixture', 0)
+        group['boundary_faults'][boundary_fault] = group['boundary_faults'].get(boundary_fault,0) + 1
+        completion_fault = component['metadata'].get('native_completion_fault_fixture', 0)
+        group['completion_faults'][completion_fault] = group['completion_faults'].get(completion_fault,0) + 1
+        group['gdb'] += int('gdb.stdout.log' in snapshots)
+print('NATIVE_TOTALS', totals)
+print('PROVIDER_FACTS', runtime_facts)
+print('SOURCES', len(record['sources']), 'VERIFICATION', len(record['verification_inputs']), 'LOGS', len(record['commands']))
+print('CGROUP', record['cgroup'])
+assert all(name == 'gdb' and message == '\nwarning: .debug_names not created by gdb; ignoring\n' for _, name, message in warnings)
+print('TOOL_WARNINGS', len(warnings), 'known GDB .debug_names compatibility warnings only')
+
+owner_totals = {}
+owner_warnings = []
+for item in record['owner_components']:
+    snapshots = {name: read(entry) for name, entry in item['snapshots'].items()}
+    metadata = item['metadata']
+    assert json.loads(snapshots['owner.json']) == metadata
+    assert sha(snapshots['owner.ll']) == metadata['llvm_sha256']
+    runtime = metadata['runtime']
+    assert sha(snapshots['runtime.ll']) == runtime['llvm_sha256']
+    assert sha(snapshots['source.ll']) == runtime['source_step']['llvm_sha256']
+    assert runtime['boundary_sha256'] == item['binary_identities']['boundary.o']['sha256']
+    assert metadata['caller_input_frame_bytes'] == 24
+    assert runtime['layout']['caller_output_frame_bytes'] == 56
+    for name, raw in snapshots.items():
+        if name.endswith('.command.json'): assert json.loads(raw)['exit_code'] == 0
+        if name.endswith('.stderr.log') and raw: owner_warnings.append((name, raw.decode()))
+    for name, identity in item['binary_identities'].items():
+        raw = (Path(item['cache_directory']) / name).read_bytes()
+        assert sha(raw) == identity['sha256'] and len(raw) == identity['bytes']
+    inner = json.loads(snapshots['native-inspection.json'])
+    native = json.loads(snapshots['owner-inspection.json'])
+    assert set(native['imports']) == {'topal_tail_step_component_v1', 'topal_x86_tail_boundary_active_v1',
+        'topal_x86_tail_boundary_call_v1', 'topal_x86_tail_checkpoint_call_v1',
+        'topal_x86_tail_complete_call_v1', 'topal_x86_tail_boundary_fail_v1'}
+    for field in ['owner_stack_paths', 'combined_paths']:
+        paths = native[field]
+        for name, cost in paths.items():
+            if name.startswith('topal_x86_tail_'): continue
+            assert cost == native['frames'][name] + 8 + max((paths[x] for x in native['calls'][name]), default=0)
+    assert native['owner_stack_bytes'] == native['owner_stack_paths']['topal_tail_owner_invoke_v1']
+    assert native['combined_normal_stack_bytes'] == native['combined_paths']['topal_tail_owner_invoke_v1'] <= 4096
+    for name, key in [('topal_x86_tail_boundary_call_v1', 'maximum_source_stack_bytes'),
+                      ('topal_x86_tail_checkpoint_call_v1', 'maximum_checkpoint_stack_bytes'),
+                      ('topal_x86_tail_complete_call_v1', 'maximum_completion_stack_bytes')]:
+        assert native['owner_stack_paths'][name] == 56
+        assert native['combined_paths'][name] == 56 + inner[key]
+    assert native['owner_stack_paths']['topal_x86_tail_boundary_fail_v1'] == 56
+    assert native['combined_paths']['topal_x86_tail_boundary_fail_v1'] == 56
+    line = snapshots['native.stdout.log'].decode()
+    facts = {k:int(v) for k,v in re.findall(r'(\w+)=(\d+)',line)}
+    assert facts == ({'admitted':501,'refused':2252,'fatal':0} if metadata['fixture']==0 else {'admitted':0,'refused':0,'fatal':1})
+    group = owner_totals.setdefault(item['command'], {'clients':0,'admitted':0,'refused':0,'fatal':0,'stack':set(),'combined':set(),'fixtures':set()})
+    group['clients'] += 1
+    for key, value in facts.items(): group[key] += value
+    group['stack'].add(native['owner_stack_bytes'])
+    group['combined'].add(native['combined_normal_stack_bytes'])
+    group['fixtures'].add(metadata['fixture'])
+assert not owner_warnings, owner_warnings
+for group in owner_totals.values():
+    assert group['clients']==3 and group['fixtures']=={0,1,2}
+print('OWNER_TOTALS', owner_totals)
+print('OWNER_RECORDS', len(record['owner_components']), 'OWNER_TOOL_WARNINGS', owner_warnings)
+
+kernel_totals = {}
+normal_sequences = []
+kernel_owner_objects = set()
+for item in record['kernel_components']:
+    snapshots = {name: read(entry) for name, entry in item['snapshots'].items()}
+    owner = json.loads(snapshots['owner-component.json'])
+    assert sha(snapshots['owner.ll']) == owner['llvm_sha256']
+    assert sha(snapshots['runtime.ll']) == owner['runtime']['llvm_sha256']
+    assert sha(snapshots['source.ll']) == owner['runtime']['source_step']['llvm_sha256']
+    assert sha(snapshots['boundary.o']) == owner['runtime']['boundary_sha256']
+    assert b'\x04S\x00\x08\x00\x01\x78\x10' in snapshots['boundary.o']
+    assert b'\x04S\x00\x08\x00\x01\x78\x10' not in snapshots['kernel-owner.o']
+    kernel_owner_objects.add(sha(snapshots['kernel-owner.o']))
+    assert b'ResumeBootstrapRegionAfterLibrary {\n        require_true: true' in snapshots['root-model.txt']
+    assert sha(snapshots['root.t']) == record['sources']['linux-kernel/labs/qemu/x86_64/tail-kernel-root.t']
+    assert sha(snapshots['source.t']) == record['sources']['linux-kernel/kernel/algorithms/clear-prefix.t']
+    for name, identity in item['binary_identities'].items():
+        raw = (Path(item['cache_directory']) / name).read_bytes()
+        assert sha(raw) == identity['sha256'] and len(raw) == identity['bytes']
+    for name, raw in snapshots.items():
+        if name.endswith('.command.json') and not name.endswith('qemu.command.json'):
+            assert json.loads(raw)['exit_code'] == 0
+        if name.endswith('.stderr.log') and raw:
+            assert name.endswith('/gdb.stderr.log') and raw == b'warning: .debug_names not created by gdb; ignoring\n', (name, raw)
+    inner = json.loads(snapshots['inner-inspection.json'])
+    native = json.loads(snapshots['owner-inspection.json'])
+    assert native['owner_stack_bytes'] == 240
+    assert native['combined_normal_stack_bytes'] == 688
+    assert native['combined_normal_stack_bytes'] + 8 + 48 + 80 == 824 <= 4096
+    assert inner['maximum_source_stack_bytes'] == 488
+    assert inner['maximum_checkpoint_stack_bytes'] == 312
+    assert inner['maximum_completion_stack_bytes'] == 184
+    modes = ['normal','source_abort','false_result','bad_key','busy','interrupts','bad_stack',
+        'generation_exhaustion','frame_exhaustion','dirty_private']
+    assert {name.split('/')[0] for name in snapshots if name.endswith('/guest-observations.json')} == set(modes)
+    for mode in modes:
+        observation = json.loads(snapshots[mode+'/guest-observations.json'])
+        assert observation['mode'] == mode
+        assert observation['retired_controller_bytes'] == 320
+        assert b'TAIL_KERNEL_GDB_PASS' in snapshots[mode+'/gdb.stdout.log']
+        assert b'TOPAL_KERNEL_BOOT' in snapshots[mode+'/serial.log']
+        facts = observation['counts']
+        assert facts['entry'] == 1
+        assert facts['final'] + facts['fatal'] + facts['refused'] == 1
+        assert facts['owner_resume'] == int(mode=='normal')
+        assert facts['return'] == int(mode=='normal')
+        assert facts['finalize'] == int(mode=='normal')
+        assert facts['source'] == (65 if mode in ['normal','false_result'] else 1 if mode=='source_abort' else 0)
+        assert facts['checkpoint'] == (65 if mode in ['normal','false_result'] else 0)
+        assert facts['complete'] == int(mode in ['normal','false_result'])
+        caller = observation['caller']
+        assert caller['key'] == 4097
+        for index, (start, size) in enumerate(caller['domains']):
+            for other, length in caller['domains'][index+1:]:
+                assert start+size <= other or other+length <= start
+        walks = observation['walked_instructions']
+        if mode == 'normal':
+            assert walks['apply'] == 90 and walks['fatal'] == 0
+            assert walks['return'] in [114,115]
+            sequence = []
+            for line in snapshots[mode+'/gdb.stdout.log'].decode().splitlines():
+                match = re.search(r'(0x[0-9a-f]+) in', line)
+                if 'region_library_apply_v1' not in line or not match: continue
+                pc = int(match.group(1),16)
+                if not sequence or pc != sequence[-1]: sequence.append(pc)
+            assert len(sequence) == 205
+            normal_sequences.append(sequence)
+        else:
+            assert walks == ({'apply':0,'return':0,'fatal':133} if mode=='source_abort' else {'apply':0,'return':0,'fatal':0})
+        if mode in ['normal','false_result','source_abort']:
+            assert 'topal_tail_owner_invoke_v1' in observation['traces'][0]['trace']
+            assert 'topal_x86_systems_region_library_apply_v1' in observation['traces'][0]['trace']
+        if mode in ['source_abort','false_result','generation_exhaustion','frame_exhaustion','dirty_private']:
+            assert '_topal_kernel_entry' in observation['traces'][-1]['trace']
+    kernel_totals[item['command']] = len(modes)
+assert kernel_totals == {'compiler':10}, kernel_totals
+assert len(record['owner_components']) == 3
+assert len(record['native_components']) == 62
+assert len(kernel_owner_objects) == 1
+assert len(normal_sequences) == 1
+print('KERNEL_VM_TOTALS', kernel_totals, 'CFI_ENTRY_RETURN_FATAL', [90,'114 instructions; 114/115 debugger stops',133])
+print('KERNEL_READBACK_PASS')
+
+# Independent ELF readback: no compiler object/relocation inspection functions.
+import struct
+
+class Elf:
+    def __init__(self, raw):
+        self.raw = raw
+        assert raw[:6] == b'\x7fELF\x02\x01'
+        assert struct.unpack_from('<H',raw,18)[0] == 62
+        shoff = struct.unpack_from('<Q',raw,40)[0]
+        shstride, shnum, names = struct.unpack_from('<HHH',raw,58)
+        assert shstride == 64
+        self.sections = [dict(zip(['nameoff','type','flags','address','offset','size','link','info','align','stride'],
+            struct.unpack_from('<IIQQQQIIQQ',raw,shoff+i*shstride))) for i in range(shnum)]
+        text = self.data(names)
+        for s in self.sections:
+            s['name'] = self.string(text,s['nameoff'])
+        self.tables = {}
+        self.names = {}
+        for index,s in enumerate(self.sections):
+            if s['type'] != 2: continue
+            assert s['stride'] == 24
+            strings = self.data(s['link'])
+            symbols = []
+            for p in range(s['offset'],s['offset']+s['size'],24):
+                n,info,other,section,value,size = struct.unpack_from('<IBBHQQ',raw,p)
+                symbol = dict(name=self.string(strings,n),binding=info>>4,kind=info&15,
+                    section=section,value=value,size=size,other=other)
+                symbols.append(symbol)
+                if section and section < len(self.sections):
+                    self.names.setdefault(symbol['name'],[]).append(symbol)
+            self.tables[index] = symbols
+        phoff = struct.unpack_from('<Q',raw,32)[0]
+        phstride, phnum = struct.unpack_from('<HH',raw,54)
+        self.loads = []
+        if phnum:
+            assert phstride == 56
+            for i in range(phnum):
+                p = dict(zip(['type','flags','offset','address','physical','filesz','memsz','align'],
+                    struct.unpack_from('<IIQQQQQQ',raw,phoff+i*phstride)))
+                if p['type'] == 1: self.loads.append(p)
+    @staticmethod
+    def string(raw, offset):
+        return raw[offset:raw.index(0,offset)].decode()
+    def data(self, index):
+        s = self.sections[index]
+        return b'' if s['type']==8 else self.raw[s['offset']:s['offset']+s['size']]
+    def one(self, name):
+        values = self.names.get(name,[])
+        assert len(values)==1,(name,len(values))
+        return values[0]
+
+def rebind(kernel_raw, binding, get_object):
+    kernel = Elf(kernel_raw)
+    occupied = []
+    observed_markers = set()
+    processing_flags = 0x200000 | 16 | 32
+    assert struct.unpack_from('<Q',kernel_raw,24)[0] == kernel.one('_topal_kernel_entry')['value']
+    placed = {p['marker']:p for p in binding['linked']}
+    assert len(placed)==len(binding['linked'])
+    assert [o['role'] for o in binding['objects']] == ['root','provider','source','runtime','owner','boundary','kernel-owner']
+    for record in binding['objects']:
+        raw = get_object(record['role'])
+        assert sha(raw)==record['sha256']
+        obj = Elf(raw)
+        bases = {}
+        sections = {}
+        actual = {i for i,s in enumerate(obj.sections) if s['flags']&2 and s['size']}
+        for r in record['sections']:
+            marker = r['marker']
+            a,b = kernel.one(marker+'.begin'),kernel.one(marker+'.end')
+            oa,ob = obj.one(marker+'.begin'),obj.one(marker+'.end')
+            assert oa['value']==0 and ob['value']==r['bytes'] and oa['section']==ob['section']
+            assert a['binding']==b['binding']==0 and a['kind']==b['kind']==0
+            start,end = a['value'],b['value']
+            assert end-start == r['bytes'] and start%r['alignment']==0
+            assert a['section']==b['section'] and a['size']==b['size']==0
+            assert 0x200000<=start<end<=0x40000000 and (end<=0x400000 or start>=0x800000)
+            assert all(end<=lo or start>=hi for lo,hi in occupied)
+            occupied.append((start,end))
+            original = obj.sections[oa['section']]
+            linked = kernel.sections[a['section']]
+            assert original['size']==r['bytes'] and original['flags']==r['flags']
+            assert original['align']==r['alignment']
+            assert (original['type']==8)==r['zero']==(linked['type']==8)
+            assert linked['flags']&~processing_flags == r['flags']&~processing_flags
+            assert linked['align']>=r['alignment']
+            assert linked['address']<=start<end<=linked['address']+linked['size']
+            assert oa['section'] not in bases
+            bases[oa['section']]=start
+            sections[oa['section']]=(r,a)
+            observed_markers.update([marker+'.begin',marker+'.end'])
+        assert set(bases)==actual
+        for table in obj.tables.values():
+            for sym in table:
+                if sym['binding'] not in [1,2] or sym['section'] not in bases: continue
+                actual_sym = kernel.one(sym['name'])
+                assert actual_sym['value']==bases[sym['section']]+sym['value']
+                assert actual_sym['size']==sym['size'] and actual_sym['kind']==sym['kind']
+        for index,(r,a) in sections.items():
+            data = bytearray(obj.data(index))
+            for reloc in obj.sections:
+                if reloc['type'] != 4 or reloc['info'] != index: continue
+                assert reloc['stride']==24 and not r['zero']
+                for p in range(reloc['offset'],reloc['offset']+reloc['size'],24):
+                    offset,info,addend = struct.unpack_from('<QQq',obj.raw,p)
+                    symbol = obj.tables[reloc['link']][info>>32]
+                    if symbol['section'] in bases:
+                        target = bases[symbol['section']]+symbol['value']
+                    else:
+                        assert symbol['section']==0 and symbol['binding']==1
+                        target = kernel.one(symbol['name'])['value']
+                    kind = info&0xffffffff
+                    value = target+addend
+                    if kind in [2,4]: value -= bases[index]+offset
+                    assert kind in [1,2,4,10,11],kind
+                    size = 8 if kind==1 else 4
+                    encoded = value.to_bytes(size,'little',signed=kind in [2,4,11])
+                    assert 0<=offset<=len(data)-size
+                    data[offset:offset+size]=encoded
+            start,end = a['value'],a['value']+r['bytes']
+            linked = kernel.sections[a['section']]
+            if r['zero']:
+                assert not data
+            else:
+                offset = start-linked['address']
+                assert kernel.data(a['section'])[offset:offset+len(data)]==data
+            loads = [p for p in kernel.loads if p['address']<=start<end<=p['address']+p['memsz']]
+            assert len(loads)==1
+            load = loads[0]
+            assert load['flags']==4 | (2 if r['flags']&1 else 0) | (1 if r['flags']&4 else 0)
+            loaded = kernel.raw[load['offset']:load['offset']+load['filesz']]
+            offset = start-load['address']
+            if r['zero']: assert not any(loaded[offset:offset+r['bytes']])
+            else: assert loaded[offset:offset+len(data)]==data
+            assert placed[r['marker']]==dict(marker=r['marker'],address=start,bytes=r['bytes'],
+                alignment=r['alignment'],flags=r['flags'],sha256=sha(bytes(data)))
+    assert len(placed)==len(occupied)
+    assert {n for n in kernel.names if n.startswith('topal.tail-inputs.')}==observed_markers
+    return len(occupied)
+
+count_cohorts = {}
+publication_counts = {}
+publication_warnings = []
+publication_modes = ['normal','source_abort','false_result','bad_key','busy','interrupts','bad_stack',
+    'generation_exhaustion','frame_exhaustion','dirty_private']
+for item in record['publication_components']:
+    snapshots = {name:read(entry) for name,entry in item['snapshots'].items()}
+    directory = Path(item['cache_directory'])
+    for name,identity in item['binary_identities'].items():
+        raw=(directory/name).read_bytes()
+        assert sha(raw)==identity['sha256'] and len(raw)==identity['bytes']
+    for name,raw in snapshots.items():
+        if name.endswith('.command.json') and not name.endswith('qemu.command.json'):
+            assert json.loads(raw)['exit_code']==0
+        if name.endswith('.stderr.log') and raw:
+            assert name.endswith('/gdb.stderr.log') and raw==b'warning: .debug_names not created by gdb; ignoring\n',(name,raw)
+            publication_warnings.append(name)
+    if 'count-inputs.json' in snapshots:
+        binding=json.loads(snapshots['count-inputs.json'])
+        assert binding['schema']=='topal.tail-root-reconstruction.x86_64/1'
+        assert not binding['linked']
+        assert binding['library']['source']=='algorithms/count-probe.t'
+        imported=bool(binding['library']['modules'])
+        assert len(binding['library']['modules'])==int(imported)
+        if imported:
+            assert binding['library']['modules'][0]['source']=='support/extent.t'
+        assert [o['role'] for o in binding['objects']]==['root','provider','source','runtime','owner','boundary','kernel-owner']
+        for obj in binding['objects']:
+            assert sha(snapshots[obj['role']+'.o'])==obj['sha256']
+            if obj['role'] in ['source','runtime','owner']:
+                assert all(not section['flags']&1 for section in obj['sections'])
+        bounds=binding['bounds']
+        assert bounds['combined_with_caller']==bounds['combined']+136<=4096
+        assert bounds['retired_controller']==(bounds['owner']+80+7)//8*8
+        assert snapshots['count-native.stdout.log']==b'TAIL_COUNT_PASS cases=56 sizes=7 max_extent=262144\n'
+        assert snapshots['count-native.stderr.log']==snapshots['count-cc.stderr.log']==b''
+        cohort=count_cohorts.setdefault(item['command'],[])
+        cohort.append(imported)
+        continue
+    if 'reconstructed-binding.json' in snapshots:
+        binding=json.loads(snapshots['reconstructed-binding.json'])
+        assert rebind((directory/'kernel.elf').read_bytes(),binding,lambda role:snapshots[role+'.o'])==89
+        continue
+    if 'artifact/tail-root.binding.json' not in snapshots:
+        assert not snapshots and not item['binary_identities']
+        continue
+    binding=json.loads(snapshots['artifact/tail-root.binding.json'])
+    artifact=json.loads(snapshots['artifact/provenance.json'])
+    assert artifact['tail_root']==binding
+    assert binding['schema']=='topal.tail-root-reconstruction.x86_64/1'
+    assert binding['bounds']==dict(source=488,checkpoint=312,completion=184,owner=248,combined=688,
+        combined_with_caller=824,retired_controller=328)
+    libraries=['kernel_library','time_library','image_library','dispatch_library','process_identity_library',
+        'namespace_library','inode_mode_library','ram_page_pool_library','file_position_library']
+    full=all(artifact.get(name) is not None for name in libraries)
+    assert full or all(artifact.get(name) is None for name in libraries)
+    sections=rebind((directory/'kernel.elf').read_bytes(),binding,lambda role:snapshots['artifact/tail-'+role+'.o'])
+    assert sections==(105 if full else 89)
+    for output in artifact['outputs']:
+        key='artifact/'+output['identity']
+        assert key in snapshots or key in item['binary_identities'],key
+        assert output['sha256']==(sha(snapshots[key]) if key in snapshots else item['binary_identities'][key]['sha256'])
+    assert snapshots['artifact/tail-root.t'].decode()==binding['root_source']
+    assert snapshots['artifact/tail-source.t'].decode()==binding['library']['text']
+    assert b'private global i64 1' not in snapshots['artifact/tail-source.retained.ll']
+    modes=['normal'] if full else publication_modes
+    assert {name.split('/')[0] for name in snapshots if name.endswith('/guest-observations.json')}==set(modes)
+    for mode in modes:
+        observation=json.loads(snapshots[mode+'/guest-observations.json'])
+        counts=observation['counts']
+        assert observation['mode']==mode and observation['retired_controller_bytes']==328
+        assert counts['entry']==1 and counts['owner_resume']==counts['return']==counts['finalize']==int(mode=='normal')
+        assert counts['final']+counts['fatal']+counts['refused']==1
+        assert counts['source']==(65 if mode in ['normal','false_result'] else 1 if mode=='source_abort' else 0)
+        assert counts['checkpoint']==(65 if mode in ['normal','false_result'] else 0)
+        assert counts['complete']==int(mode in ['normal','false_result'])
+        domains=observation['caller']['domains']
+        assert domains[0][1]==64 and observation['caller']['key']==4097
+        for i,(start,size) in enumerate(domains):
+            assert all(start+size<=other or other+length<=start for other,length in domains[i+1:])
+        assert b'TAIL_KERNEL_GDB_PASS' in snapshots[mode+'/gdb.stdout.log']
+        assert b'TOPAL_KERNEL_BOOT' in snapshots[mode+'/serial.log']
+        if mode=='normal':
+            assert observation['walked_instructions']['apply']==90
+            assert observation['walked_instructions']['return'] in [114,115]
+        if mode=='source_abort': assert observation['walked_instructions']['fatal']==133
+    if not full:
+        for i in range(14): assert snapshots[f'tamper-{i}.error.txt']
+        assert snapshots['forged-source.error.txt'].startswith(b'E-SYSTEMS-TAIL-LINK:')
+        for mode in ['source-code','anonymous-constant','entry','load-projection','bss-shadow']:
+            assert snapshots[f'kernel-tamper-{mode}.error.txt'].startswith(b'E-SYSTEMS-TAIL-')
+        assert b'load bytes disagree' in snapshots['kernel-tamper-load-projection.error.txt']
+        assert b'shadows zero storage' in snapshots['kernel-tamper-bss-shadow.error.txt']
+    group=publication_counts.setdefault(item['command'],dict(artifacts=0,vms=0,sections=[]))
+    group['artifacts']+=1
+    group['vms']+=len(modes)
+    group['sections'].append(sections)
+assert len(record['publication_components'])==8
+assert set(publication_counts)=={'compiler'}
+assert all(g['artifacts']==2 and g['vms']==11 and sorted(g['sections'])==[89,105] for g in publication_counts.values())
+assert set(count_cohorts)=={'tail-count','compiler'}
+assert all(sorted(modes)==[False,True] for modes in count_cohorts.values())
+print('COUNT_NATIVE_COHORTS',count_cohorts,'CASES_PER_COHORT',112)
+print('PUBLICATION_TOTALS',publication_counts,'KNOWN_GDB_WARNINGS',len(publication_warnings))
+print('TAIL_PUBLICATION_INDEPENDENT_READBACK_PASS')
+
+natural_cohorts = {}
+for item in record['natural_components']:
+    snapshots={name:read(entry) for name,entry in item['snapshots'].items()}
+    metadata=json.loads(snapshots['component.json'])
+    assert metadata['schema']=='topal.tail-nat-owner-controller.x86_64/1'
+    assert metadata['caller_input_frame_bytes']==24
+    runtime=metadata['runtime']
+    step=runtime['source_step']
+    assert sha(snapshots['owner.ll'])==metadata['llvm_sha256']
+    assert sha(snapshots['runtime.ll'])==runtime['llvm_sha256']
+    assert sha(snapshots['source.ll'])==step['llvm_sha256']
+    assert runtime['boundary_sha256']==item['binary_identities']['boundary.o']['sha256']
+    layout=runtime['layout']
+    assert layout['history_bytes']==40 and layout['caller_output_frame_bytes']==56
+    assert layout['minimum_temporary_bytes']==layout['context_bytes']+72<=65536
+    plan=step['storage']['source_plan']
+    entry=next(f for f in plan['functions'] if f['symbol']==plan['entry_symbol'])
+    assert entry['parameter_classifiers']==['KernelByteRegion','Nat','Nat','Nat']
+    assert entry['result_classifier']=='Nat' and plan['measure_parameter']==1
+    mode=int(Path(item['cache_directory']).name.rsplit('-',1)[1])
+    assert mode in [0,1,2]
+    assert snapshots['native.stdout.log'].decode()==f'TAIL_NAT_OWNER_PASS mode={mode} cases={8 if mode==0 else 20 if mode==1 else 5}\n'
+    for name,identity in item['binary_identities'].items():
+        raw=(Path(item['cache_directory'])/name).read_bytes()
+        assert sha(raw)==identity['sha256'] and len(raw)==identity['bytes']
+    for name,raw in snapshots.items():
+        if name.endswith('.command.json'):assert json.loads(raw)['exit_code']==0
+        if name.endswith('.stderr.log'):assert raw==b'',(name,raw)
+    inner=json.loads(snapshots['inner-inspection.json'])
+    outer=json.loads(snapshots['owner-inspection.json'])
+    assert max(inner[k] for k in ['maximum_source_stack_bytes','maximum_checkpoint_stack_bytes','maximum_completion_stack_bytes'])<=4096
+    assert outer['combined_normal_stack_bytes']<=4096
+    if mode==2:
+        assert step['storage']['maximum_operand_bits']==256
+        assert any(r['bytes']==48 for r in step['readonly_roots'])
+        assert any(v['maximum_bits']==256 and v['bank_slot_bytes']==48 for v in step['storage']['values'])
+    cohort=natural_cohorts.setdefault(item['command'],[])
+    cohort.append(mode)
+    print('NATURAL_COMPONENT',item['command'],mode,'SOURCE_STACK',inner['maximum_source_stack_bytes'],'OWNER_COMBINED',outer['owner_stack_bytes'],outer['combined_normal_stack_bytes'])
+assert set(natural_cohorts)=={'tail-natural','compiler'}
+assert all(sorted(modes)==[0,1,2] for modes in natural_cohorts.values())
+assert len(record['natural_components'])==6
+print('NATURAL_OWNER_COHORTS',natural_cohorts,'CASES_PER_COHORT',33)
+print('NATURAL_QUERY_READBACK_PASS')
+
+policy_cohorts = {}
+for item in record['frame_policy_components']:
+    snapshots = {name: read(entry) for name, entry in item['snapshots'].items()}
+    metadata = json.loads(snapshots['component.json'])
+    assert metadata['schema'] == 'topal.tail-nat-owner-controller.x86_64/1'
+    runtime = metadata['runtime']
+    step = runtime['source_step']
+    storage = step['storage']
+    plan = storage['source_plan']
+    source = read(record['source_snapshots']['linux-kernel/kernel/memory/frame-metadata.t'])
+    assert snapshots['source.t'] == source
+    assert plan['source_sha256'] == sha(source)
+    assert len(plan['functions']) == 32
+    entry = next(f for f in plan['functions'] if f['symbol'] == plan['entry_symbol'])
+    assert entry['parameter_classifiers'] == ['KernelByteRegion','Nat','Nat','Nat']
+    assert entry['result_classifier'] == 'Nat' and plan['measure_parameter'] == 1
+    assert plan['minimum_decrement'] == '1' and plan['base_bound'] == '0'
+    assert sha(snapshots['source.ll']) == step['llvm_sha256']
+    assert sha(snapshots['runtime.ll']) == runtime['llvm_sha256']
+    assert sha(snapshots['owner.ll']) == metadata['llvm_sha256']
+    assert runtime['boundary_sha256'] == item['binary_identities']['boundary.o']['sha256']
+    assert metadata['caller_input_frame_bytes'] == 24
+    assert runtime['layout']['minimum_temporary_bytes'] == runtime['layout']['context_bytes'] + 72 <= 65536
+    assert storage['maximum_private_temporary_bytes'] <= 65536
+    assert storage['maximum_operand_bits'] == 69
+    assert snapshots['native.stdout.log'] == b'FRAME_POLICY_PASS cases=137 allocated=54 released=49 exhausted=23 protocol=11\n'
+    for name, raw in snapshots.items():
+        if name.endswith('.command.json'): assert json.loads(raw)['exit_code'] == 0
+        if name.endswith('.stderr.log'): assert raw == b'', (name,raw)
+    for name, identity in item['binary_identities'].items():
+        raw = (Path(item['cache_directory']) / name).read_bytes()
+        assert sha(raw) == identity['sha256'] and len(raw) == identity['bytes']
+    inner = json.loads(snapshots['inner-inspection.json'])
+    outer = json.loads(snapshots['owner-inspection.json'])
+    paths = inner['reached_call_paths']
+    for function, bound in paths.items():
+        if function == 'topal_x86_tail_boundary_abort_v1': continue
+        assert bound == inner['frames'][function] + 8 + max((paths[c] for c in inner['calls'][function]), default=0)
+    assert paths['topal_tail_step_component_v1'] == inner['maximum_source_stack_bytes'] <= 4096
+    assert outer['combined_normal_stack_bytes'] <= 4096
+    assert outer['owner_stack_bytes'] == 240
+    assert outer['combined_paths']['topal_x86_tail_boundary_call_v1'] == 56 + inner['maximum_source_stack_bytes']
+    assert outer['combined_normal_stack_bytes'] == outer['frames']['topal_tail_owner_invoke_v1'] + 8 + max(outer['combined_paths'][c] for c in outer['calls']['topal_tail_owner_invoke_v1'])
+    policy_cohorts[item['command']] = policy_cohorts.get(item['command'],0) + 1
+    print('FRAME_POLICY_COMPONENT', item['command'], 'FUNCTIONS', len(plan['functions']),
+          'SOURCE_STACK', inner['maximum_source_stack_bytes'],
+          'OWNER_COMBINED', outer['combined_normal_stack_bytes'],
+          'TEMPORARY_BOUND', storage['maximum_private_temporary_bytes'])
+assert policy_cohorts == {'frame-policy':1, 'compiler':1}
+print('FRAME_POLICY_READBACK_PASS', policy_cohorts, 'CASES_PER_COHORT',137)
+
+declaration = '  frame-allocator-library is lang systems source-library (\n    source is "memory/frame-metadata.t",\n    export is frame-policy,\n    interface is physical-frame-policy-tail-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n'
+root_text = read(record['source_snapshots']['linux-kernel/kernel/arch/x86_64/toolchain-gate.t']).decode()
+root_text = root_text.replace('lang systems artifact (\n','lang systems artifact (\n'+declaration,1)
+policy_text = read(record['source_snapshots']['linux-kernel/kernel/memory/frame-metadata.t']).decode()
+source_cohorts = {}
+for item in record['frame_source_components']:
+    snapshots = {name: read(entry) for name, entry in item['snapshots'].items()}
+    assert not item['binary_identities']
+    assert set(snapshots) == {'source-obligation.json','component.json','native-refusal.txt'}
+    source = json.loads(snapshots['source-obligation.json'])
+    component = json.loads(snapshots['component.json'])
+    label = Path(item['cache_directory']).name.split('-',3)[3]
+    assert label in ['original','root-change','policy-change']
+    expected_root = root_text.replace('TOPAL_KERNEL_FRAME_ALLOCATED','TOPAL_KERNEL_FRAME_ALLOCATED_VARIANT',1) if label == 'root-change' else root_text
+    expected_policy = policy_text.replace('count > 0','count > 1') if label == 'policy-change' else policy_text
+    assert source['schema'] == 'topal.frame-policy-source-obligation/1'
+    assert 'unqualified' in source['qualification']
+    assert source['root_source'] == expected_root
+    assert source['root_sha256'] == sha(expected_root.encode())
+    assert source['library'] == dict(source='memory/frame-metadata.t',source_name='memory/frame-metadata.t',text=expected_policy,modules=[])
+    encoded = json.dumps(component,ensure_ascii=False,separators=(',',':')).encode()
+    assert source['component_sha256'] == sha(encoded)
+    assert component['schema'] == 'topal.tail-nat-owner-controller.x86_64/1'
+    runtime = component['runtime']
+    assert sha(runtime['llvm'].encode()) == runtime['llvm_sha256']
+    assert sha(component['llvm'].encode()) == component['llvm_sha256']
+    assert sha(bytes(runtime['boundary'])) == runtime['boundary_sha256']
+    step = runtime['source_step']
+    assert sha(step['llvm'].encode()) == step['llvm_sha256']
+    plan = step['storage']['source_plan']
+    assert plan['source_sha256'] == sha(expected_policy.encode())
+    assert len(plan['functions']) == 32 and plan['measure_parameter'] == 1
+    entry = next(f for f in plan['functions'] if f['symbol'] == plan['entry_symbol'])
+    assert entry['parameter_classifiers'] == ['KernelByteRegion','Nat','Nat','Nat']
+    assert entry['result_classifier'] == 'Nat'
+    refusal = snapshots['native-refusal.txt'].decode()
+    assert refusal.startswith('E-SYSTEMS-FRAME-POLICY-BINDING:')
+    assert 'ownership/zeroing/caller' in refusal and source['root_sha256'] in refusal
+    cohort = source_cohorts.setdefault(item['command'],{})
+    assert label not in cohort
+    cohort[label] = source
+assert set(source_cohorts) == {'frame-source','compiler'}
+for cohort in source_cohorts.values():
+    assert set(cohort) == {'original','root-change','policy-change'}
+    original, changed_root, changed_policy = [cohort[k] for k in ['original','root-change','policy-change']]
+    assert original['root_sha256'] == changed_policy['root_sha256'] != changed_root['root_sha256']
+    assert original['component_sha256'] == changed_root['component_sha256'] != changed_policy['component_sha256']
+print('FRAME_SOURCE_OBLIGATION_READBACK_PASS', {name:sorted(cohort) for name,cohort in source_cohorts.items()})

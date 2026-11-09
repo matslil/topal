@@ -144,7 +144,11 @@ impl RootEncoder {
                 "x86 root lowering requires the live allocator, no borrowed frames, and the sealed translation request".into(),
             ));
         }
-        self.call(ProviderSymbol::BeginTranslation);
+        if self.frame_policy.is_some() {
+            self.frame_internal_allocate(5, "bootstrap-translation")?;
+        } else {
+            self.call(ProviderSymbol::BeginTranslation);
+        }
         self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
         self.jump_to_fatal_if(0x84)?;
         self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // retain root in r12
@@ -192,7 +196,11 @@ impl RootEncoder {
                 self.bytes.extend_from_slice(&[0x48, 0x89, 0xdf]); // payload in rdi
                 self.bytes.extend_from_slice(&[0x4c, 0x89, 0xee]); // boot params in rsi
                 self.bytes.extend_from_slice(&[0x31, 0xd2]); // map kind
-                self.call(ProviderSymbol::BeginTranslationEdit);
+                if self.frame_policy.is_some() {
+                    self.frame_internal_allocate(2, "translation-edit")?;
+                } else {
+                    self.call(ProviderSymbol::BeginTranslationEdit);
+                }
                 self.bytes.extend_from_slice(&[0x48, 0x85, 0xc0]);
                 self.jump_to_fatal_if(0x84)?;
                 self.bytes.extend_from_slice(&[0x49, 0x89, 0xc4]); // metadata in r12
@@ -333,6 +341,20 @@ impl RootEncoder {
     }
 
     fn complete(&self) -> Result<(), CompileError> {
+        if let Some(frames) = &self.frame_policy {
+            if frames.current.is_some()
+                || frames.payload.is_some()
+                || frames
+                    .owners
+                    .keys()
+                    .any(|key| *key != "bootstrap-translation")
+            {
+                return Err(CompileError::Tool(format!(
+                    "root lowering ended with unretired affine frame handles: {:?}",
+                    frames.owners
+                )));
+            }
+        }
         if self.atomic_word_offset.is_some() {
             return Err(CompileError::Tool(
                 "x86 root lowering ended with a live atomic word".into(),

@@ -112,6 +112,7 @@ pub struct SystemsEntry {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SystemsProgram {
     pub target: SystemsTargetSelection,
+    pub frame_allocator_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub kernel_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub region_library: Option<crate::SystemsSourceLibraryRequirement>,
     pub file_position_library: Option<crate::SystemsSourceLibraryRequirement>,
@@ -1002,6 +1003,27 @@ pub fn validate_systems_program(program: &SystemsProgram) -> Result<(), SystemsM
         ));
     }
     program.bootstrap_storage.validate()?;
+    if let Some(library) = &program.frame_allocator_library {
+        library.validate()?;
+        let operations = &program.bootstrap.handler.operations;
+        if library.interface != crate::SystemsSourceLibraryInterface::PhysicalFramePolicyTailV1
+            || operations
+                .iter()
+                .filter(|op| matches!(op, SystemsOperation::CreateFrameAllocator { .. }))
+                .count()
+                != 1
+            || operations
+                .iter()
+                .filter(|op| matches!(op, SystemsOperation::DescribeBootMemory { .. }))
+                .count()
+                != 1
+        {
+            return Err(SystemsModelError::new(
+                "E-SYSTEMS-FRAME-POLICY",
+                "frame-allocator-library requires its exact interface and one described-memory allocator creation",
+            ));
+        }
+    }
     let invocation_count = program
         .bootstrap
         .handler

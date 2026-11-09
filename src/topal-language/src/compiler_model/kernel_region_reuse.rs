@@ -7,6 +7,41 @@ fn coalesce_kernel_region_helpers(program: &mut CompilerProgram) -> Result<(), D
     }
     // Check every original body, capture, effect and call before any merging.
     kernel_region_analysis_with_budget(program, None)?;
+    coalesce_kernel_region_definitions(program, None);
+    kernel_region_analysis(program)?;
+    Ok(())
+}
+
+fn coalesce_kernel_region_tail_helpers(
+    program: &mut CompilerProgram,
+    entry: &str,
+) -> Result<(), Diagnostic> {
+    if program.functions.len() <= 64 {
+        return Ok(());
+    }
+    let entries = program
+        .functions
+        .iter()
+        .filter(|function| canonically_equal(&function.source_name, entry))
+        .map(|function| function.symbol.clone())
+        .collect::<Vec<_>>();
+    let [entry] = entries.as_slice() else {
+        return Err(unsupported(
+            &program.source,
+            program.main.result.span,
+            "tail code sharing needs one exact source entry",
+        ));
+    };
+    kernel_region_analysis_with_self_entry(program, None, Some(entry))?;
+    coalesce_kernel_region_definitions(program, Some(entry));
+    kernel_region_analysis_with_self_entry(program, Some(64), Some(entry))?;
+    Ok(())
+}
+
+// Equality retains source/module/declaration identity, types, operations,
+// literals, captures, effects and each ordered call. Only range annotations are
+// analysis-only. A protected recursive entry keeps its exact symbol/self edge.
+fn coalesce_kernel_region_definitions(program: &mut CompilerProgram, protected: Option<&str>) {
     fn block(block: &mut CompilerBlock, aliases: &BTreeMap<String, String>) {
         for statement in &mut block.statements {
             expression(
@@ -55,6 +90,18 @@ fn coalesce_kernel_region_helpers(program: &mut CompilerProgram) -> Result<(), D
                 expression(subject, aliases);
                 expression(when_true, aliases);
                 expression(when_false, aliases);
+            }
+            K::OrderedComparisonDecision {
+                subject,
+                rules,
+                otherwise,
+            } => {
+                expression(subject, aliases);
+                for rule in rules {
+                    expression(&mut rule.operand, aliases);
+                    expression(&mut rule.action, aliases);
+                }
+                expression(otherwise, aliases);
             }
             K::OptionalDecision {
                 subject,
@@ -113,6 +160,11 @@ fn coalesce_kernel_region_helpers(program: &mut CompilerProgram) -> Result<(), D
         }
         let original_symbol = std::mem::take(&mut function.symbol);
         let equivalent = retained.iter().find(|candidate| {
+            if protected == Some(original_symbol.as_str())
+                || protected == Some(candidate.symbol.as_str())
+            {
+                return false;
+            }
             let mut identity = (*candidate).clone();
             identity.symbol.clear();
             identity == function
@@ -127,8 +179,6 @@ fn coalesce_kernel_region_helpers(program: &mut CompilerProgram) -> Result<(), D
     }
     block(&mut program.main, &aliases);
     program.functions = retained;
-    kernel_region_analysis(program)?;
-    Ok(())
 }
 
 #[cfg(test)]

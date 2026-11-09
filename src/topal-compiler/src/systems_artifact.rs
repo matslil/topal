@@ -433,6 +433,12 @@ pub struct SystemsArtifactProvenance {
         deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
     )]
     pub tail_root: Option<crate::SystemsTailRootBinding>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::systems_region_library::deserialize_present_region_field"
+    )]
+    pub frame_root: Option<crate::SystemsFrameRootBinding>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_position_library: Option<crate::SystemsRegionLibraryArtifact>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -691,6 +697,7 @@ pub fn publish_x86_64_systems_artifact_with_kernel_libraries(
         libraries,
         destination,
         None,
+        None,
     )
 }
 
@@ -722,6 +729,33 @@ pub fn publish_x86_64_systems_tail_artifact(
         libraries,
         destination,
         Some(root_source),
+        None,
+    )
+}
+
+/// Publish a frame-policy kernel from complete immutable root/library inputs.
+///
+/// # Errors
+/// Refuses incomplete source/native/caller/load reconstruction before publication.
+pub fn publish_x86_64_systems_frame_artifact(
+    root_source: &str,
+    frame_library: &crate::SystemsSourceLibraryInput,
+    tools: &LlvmTools,
+    initial_user_image: Option<&[u8]>,
+    static_user_image: Option<&[u8]>,
+    libraries: SystemsKernelLibraries<'_>,
+    destination: &Path,
+) -> Result<PublishedSystemsArtifact, CompileError> {
+    let checked = crate::systems_frame_policy_binding::check(root_source, frame_library)?;
+    publish_with_root_source(
+        &checked.program,
+        tools,
+        initial_user_image,
+        static_user_image,
+        libraries,
+        destination,
+        None,
+        Some((root_source, frame_library)),
     )
 }
 
@@ -733,7 +767,24 @@ fn publish_with_root_source(
     libraries: SystemsKernelLibraries<'_>,
     destination: &Path,
     tail_source: Option<&str>,
+    frame_source: Option<(&str, &crate::SystemsSourceLibraryInput)>,
 ) -> Result<PublishedSystemsArtifact, CompileError> {
+    if program.frame_allocator_library.is_some() != frame_source.is_some()
+        || tail_source.is_some() && frame_source.is_some()
+    {
+        return Err(CompileError::Tool("E-SYSTEMS-FRAME-POLICY-BINDING: kernel publication requires complete source/native/allocator/caller reconstruction".into()));
+    }
+    let checked_frame = frame_source
+        .map(|(root, input)| crate::systems_frame_policy_binding::check(root, input))
+        .transpose()?;
+    if checked_frame
+        .as_ref()
+        .is_some_and(|c| c.program != *program)
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-FRAME-RECONSTRUCTION: root source/program differ".into(),
+        ));
+    }
     let SystemsKernelLibraries {
         region: region_library,
         file_position: file_position_library,
@@ -800,8 +851,14 @@ fn publish_with_root_source(
     if let Some(image) = static_user_image {
         validate_x86_64_static_user_image(image)?;
     }
-    let generated_provider = generate_x86_64_systems_provider_object(program)?;
-    let root_object = generate_root_object(program)?;
+    let generated_provider = match &checked_frame {
+        Some(checked) => crate::systems_provider_object::generate_frame_memory_provider(checked)?,
+        None => generate_x86_64_systems_provider_object(program)?,
+    };
+    let root_object = match &checked_frame {
+        Some(checked) => generate_frame_root_checked(checked)?,
+        None => generate_root_object(program)?,
+    };
     let parent = destination.parent().unwrap_or_else(|| Path::new("."));
     fs::create_dir_all(parent).map_err(io_error("create artifact parent", parent))?;
     if destination.exists() {
@@ -831,6 +888,7 @@ fn publish_with_root_source(
         namespace_library,
         &stage,
         tail_source,
+        frame_source,
     );
     let record = match result {
         Ok(record) => record,
@@ -879,6 +937,7 @@ fn publish_in_stage(
     namespace_library: Option<&crate::SystemsSourceLibraryInput>,
     stage: &Path,
     tail_source: Option<&str>,
+    frame_source: Option<(&str, &crate::SystemsSourceLibraryInput)>,
 ) -> Result<SystemsArtifactProvenance, CompileError> {
     let work = stage.join("work");
     fs::create_dir(&work).map_err(io_error("create artifact work directory", &work))?;
@@ -906,12 +965,36 @@ fn publish_in_stage(
             Ok(fresh)
         })
         .transpose()?;
-    let provider_object = tail
+    let mut frame = frame_source
+        .map(|(root, input)| {
+            let fresh = crate::systems_frame_publication::rebuild(
+                root,
+                &input.into(),
+                tools,
+                &work.join("frame"),
+            )?;
+            if fresh.program != *program {
+                return Err(CompileError::Tool(
+                    "E-SYSTEMS-FRAME-RECONSTRUCTION: source/program differ".into(),
+                ));
+            }
+            Ok(fresh)
+        })
+        .transpose()?;
+    let bound_provider = frame
         .as_ref()
-        .map_or(provider_object, |t| t.objects[1].as_slice());
-    let root_object = tail
+        .map(|f| f.objects[1].as_slice())
+        .or_else(|| tail.as_ref().map(|t| t.objects[1].as_slice()))
+        .unwrap_or(provider_object)
+        .to_vec();
+    let provider_object = bound_provider.as_slice();
+    let bound_root = frame
         .as_ref()
-        .map_or(root_object, |t| t.objects[0].as_slice());
+        .map(|f| f.objects[0].as_slice())
+        .or_else(|| tail.as_ref().map(|t| t.objects[0].as_slice()))
+        .unwrap_or(root_object)
+        .to_vec();
+    let root_object = bound_root.as_slice();
     fs::write(&root_path, root_object).map_err(io_error("write bound root object", &root_path))?;
     fs::write(&provider_path, provider_object)
         .map_err(io_error("write bound provider object", &provider_path))?;
@@ -1080,7 +1163,98 @@ fn publish_in_stage(
             crate::systems_numeric_library::build_numeric_library(requirement, input, tools, &work)
         })
         .transpose()?;
+    if let Some(frame) = frame.as_mut() {
+        let sources = crate::systems_frame_publication::library_sources(SystemsKernelLibraries {
+            policy: source_library,
+            time: time_library,
+            image: image_library,
+            dispatch: dispatch_library,
+            process_identity: process_identity_library,
+            region: region_library,
+            file_position: file_position_library,
+            ram_page_pool: ram_page_pool_library,
+            inode_mode: inode_mode_library,
+            namespace: namespace_library,
+        });
+        frame.complete_libraries(&sources, tools, &work.join("frame"))?;
+        for (role, object, path) in [
+            (
+                "library-kernel",
+                library.as_ref().map(|l| l.object.as_slice()),
+                "kernel-library.o",
+            ),
+            (
+                "library-time",
+                numeric.as_ref().map(|l| l.object.as_slice()),
+                "time-library.o",
+            ),
+            (
+                "library-image",
+                image_numeric.as_ref().map(|l| l.object.as_slice()),
+                "image-library.o",
+            ),
+            (
+                "library-dispatch",
+                dispatch_numeric.as_ref().map(|l| l.object.as_slice()),
+                "dispatch-library.o",
+            ),
+            (
+                "library-process-identity",
+                identity_numeric.as_ref().map(|l| l.object.as_slice()),
+                "process-identity-library.o",
+            ),
+            (
+                "library-region",
+                region.as_ref().map(|l| l.object.as_slice()),
+                "kernel-region.o",
+            ),
+            (
+                "library-file-position",
+                file_position.as_ref().map(|l| l.object.as_slice()),
+                "file-position/kernel-region.o",
+            ),
+            (
+                "library-ram-page-pool",
+                ram_page_pool.as_ref().map(|l| l.object.as_slice()),
+                "ram-page-pool/kernel-region.o",
+            ),
+            (
+                "library-inode-mode",
+                inode_mode.as_ref().map(|l| l.object.as_slice()),
+                "inode-mode/kernel-region.o",
+            ),
+            (
+                "library-namespace",
+                namespace.as_ref().map(|l| l.object.as_slice()),
+                "namespace/kernel-region.o",
+            ),
+        ] {
+            if let Some(object) = object {
+                if frame.record.other_original_objects.get(role) != Some(&sha256(object)) {
+                    return Err(CompileError::Tool(format!(
+                        "E-SYSTEMS-FRAME-RECONSTRUCTION: metadata/native source producer differs for {role}"
+                    )));
+                }
+                fs::copy(work.join(format!("frame/{role}.o")), work.join(path))
+                    .map_err(io_error("install reconstructed library object", &work))?;
+            }
+        }
+    }
     let linked = build_linked_outputs(tools, &work, stage)?;
+    let frame_end = if let Some(frame) = frame.as_mut() {
+        frame.bind(&linked.kernel)?;
+        let file = object::File::parse(linked.kernel.as_slice())
+            .map_err(|e| CompileError::Tool(e.to_string()))?;
+        Some(
+            file.segments()
+                .map(|s| s.address() + s.size())
+                .max()
+                .unwrap()
+                .max(0x1000000),
+        )
+    } else {
+        None
+    };
     if let Some(library) = library.as_mut() {
         library.record.linked_inputs = Some(crate::systems_policy_inputs::inspect(
             &linked.kernel,
@@ -1189,6 +1363,7 @@ fn publish_in_stage(
         &linked.debug,
         &linked.map,
         plan.bootstrap_placement.capacity_bytes,
+        frame_end,
         {
             let operations = &program.bootstrap.handler.operations;
             let memory = operations.iter().any(|op| {
@@ -1520,6 +1695,14 @@ fn publish_in_stage(
         crate::systems_tail_publication::publish_outputs(
             tail,
             &work.join("tail"),
+            stage,
+            &mut record,
+        )?;
+    }
+    if let Some(frame) = frame {
+        crate::systems_frame_publication::publish_outputs(
+            frame,
+            &work.join("frame"),
             stage,
             &mut record,
         )?;

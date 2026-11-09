@@ -1,0 +1,114 @@
+from pathlib import Path
+import gzip,hashlib,json,re
+
+root=Path('/home/mats/git/topal');out=root/'linux-kernel/tools/tail-traversal/results/stage-3-frame-gateway'
+r=json.loads((out/'qualification.json').read_text());sha=lambda b:hashlib.sha256(b).hexdigest()
+assert r['complete'] and r['passed']
+def read(info):
+    b=(out/info['file']).read_bytes();assert sha(b)==info['sha256'];raw=gzip.decompress(b);assert sha(raw)==info['uncompressed_sha256'];return raw
+for name,info in r['source_snapshots'].items():assert sha(read(info))==r['sources'][name]==sha((root/name).read_bytes())
+for info in r['verification_inputs'].values():read(info)
+assert sha((out/'validation-runner.py.txt').read_bytes())==r['runner_sha256']
+for cmd in r['commands']:
+    assert cmd['exit_code']==0
+    text=read(cmd['log']).decode()
+    print(cmd['name'],[s for s in text.splitlines() if s.startswith('test result:')])
+assert len(r['commands'])==8 and r['resources']['memory.swap.max']=='0'
+assert all(int(s.split()[1])==0 for s in r['resources']['memory.events'].splitlines())
+provider=read(r['source_snapshots']['src/topal-compiler/src/systems_provider.rs']).decode()
+layout=re.search(r'pub const X86_SYSTEMS_DATA_LAYOUT: &str =\s*"([^"]+)"',provider).group(1)
+header=f'target datalayout = "{layout}"\ntarget triple = "x86_64-unknown-none"\n'
+policy=read(r['source_snapshots']['linux-kernel/kernel/memory/frame-metadata.t'])
+cohorts={}
+for item in r['components']:
+    files={name:read(info) for name,info in item['snapshots'].items()}
+    for name,info in item['binaries'].items():
+        b=(Path(item['directory'])/name).read_bytes();assert sha(b)==info['sha256'] and len(b)==info['bytes']
+    for name,b in files.items():
+        if name.endswith('.command.json') and not name.endswith('qemu.command.json'):assert json.loads(b)['exit_code']==0
+        if name.endswith('.stderr.log') and b:assert name.endswith('/gdb.stderr.log') and b==b'warning: .debug_names not created by gdb; ignoring\n',(name,b)
+    if item['command']=='source-binding':
+        source=json.loads(files['source-obligation.json']);component=json.loads(files['component.json'])
+        assert source['schema']=='topal.frame-policy-source-obligation/3'
+        assert source['controller_sha256']==sha(files['controller.ll']) and source['bootstrap_target_sha256']==sha(files['bootstrap-target.ll'])
+        assert source['component_sha256']==sha(json.dumps(component,ensure_ascii=False,separators=(',',':')).encode())
+        assert b'ownership/zeroing/caller' in files['native-refusal.txt']
+        cohorts['source-binding']=cohorts.get('source-binding',0)+1
+        continue
+    component=json.loads(files['component.json']);runtime=component['runtime'];step=runtime['source_step']
+    assert files['source.t']==policy
+    assert sha(files['source.ll'])==step['llvm_sha256'] and sha(files['runtime.ll'])==runtime['llvm_sha256']
+    assert sha(files['owner.ll'])==component['llvm_sha256']
+    assert sha(files['boundary.o'])==runtime['boundary_sha256']
+    native=json.loads(files['frame-inspection.json']);outer=json.loads(files['owner-inspection.json'])
+    gateway=item['command']=='gateway'
+    callback=native.get('fatal_callback_contribution',0)
+    assert outer['combined_normal_stack_bytes']==native['normal_owner_contribution']==1568
+    paths=native['paths'];frames=native['frames_with_inline_push']
+    assert frames['t.bootstrap']==native['raw_frames']['t.bootstrap']+8
+    for name,value in paths.items():
+        if name=='topal_tail_owner_invoke_v1':assert value==1568+callback;continue
+        if name=='topal_x86_frame_gateway_abort_v1':assert gateway and value==0;continue
+        assert value==frames[name]+8+max((paths[c] for c in native['calls'][name]),default=0)
+    if gateway:
+        binding=json.loads(files['gateway-binding.json'])
+        assert binding['object_sha256']==sha(files['gateway.o'])
+        assert binding['complete_body_stack_bound']==paths['topal_frame_kernel_dispatch_v1']
+        assert binding['combined_stack_bound']==binding['complete_body_stack_bound']+72<=4096
+        assert binding['retired_scratch_bytes']==4032 and binding['saved_register_bytes']==binding['recovery_bytes']==48
+        assert binding['caller_result_frame_bytes']==32
+        assert callback==paths['topal_tail_boundary_fatal_v1']>0
+        assert binding['complete_body_stack_bound']+16<=4032
+        assert files['dispatch.ll']==(header+read(r['source_snapshots']['src/topal-compiler/src/runtime/kernel_frame_dispatch.ll']).decode()).encode()
+        assert 'topal_x86_frame_gateway_abort_v1' not in binding['imports']
+        assert b'call void @topal_x86_frame_gateway_abort_v1()' in files['target.ll']
+        assert b'%bottom = sub i64 %saved,4032' in files['target.ll']
+    modes=[]
+    for name,b in files.items():
+        if not name.endswith('/observations.json'):continue
+        o=json.loads(b);mode=o['mode'];modes.append(mode);assert o['passed']
+        if o['created']:
+            candidates=set();boundaries=set()
+            for start,length,kind in o['e820']:
+                boundaries.update([start,start+length])
+                if kind==1:candidates.update(range((start+4095)//4096,(start+length)//4096))
+            expected=[]
+            for f in sorted(candidates):
+                lo,hi=f*4096,(f+1)*4096
+                if any(lo<x<hi for x in boundaries):continue
+                if any(kind!=1 and lo<start+length and start<hi for start,length,kind in o['e820']):continue
+                if any(lo<end and start<hi for start,end in o['reservations']):continue
+                expected.append(f)
+            assert expected==o['frames'] and len(expected)==o['n']
+        if not gateway:continue
+        for call in o['gateway_calls']:
+            assert call['physical_caller_bytes_retired']==4080 and call['callee_registers_preserved']
+            assert 'probe.gateway_' in call['trace']
+        if mode in ['interrupts','bad-stack','direction-flag','busy-gateway']:
+            assert o['gateway_refused'] and not o['gateway_calls']
+        elif mode=='late-cleanup':
+            assert o['gateway_late_retired'] and o['late_fault_after_retirement'] and o['caller_retirement_qualified']
+            assert len(o['gateway_calls'])==1
+        elif mode in ['source-abort','zero-reservation','bad-result']:
+            assert o['gateway_fatal_retired'] and o['caller_retirement_qualified'] and o['source_writes_retained']
+            if mode=='source-abort':
+                assert 0<len(o['source_fault_cells'])<o['runtime_request'][0] and not o['zeros']
+                data=bytes.fromhex(o['source_fault_table'])
+                assert [i for i in range(o['n']) if int.from_bytes(data[i*24:i*24+8],'little')==1]==o['source_fault_cells']
+            elif mode=='bad-result':
+                assert o['issued_identity_retained'] and len(o['zeros'])==1
+                first=bytes.fromhex(o['issued_tokens'])[:24]
+                assert int.from_bytes(first[8:16],'little')==1
+            else:assert o['zeros'][0]['reserved_bytes_unchanged']
+        if mode in ['sparse-map','unaligned-map']:
+            assert len(o['gateway_calls'])==12
+            assert set(o['source_traces'])=={'source','checkpoint','complete'}
+            assert all('topal_x86_frame_gateway_v1' in t and 'probe.gateway_' in t for t in o['source_traces'].values())
+            assert [z['id'] for z in o['zeros']]==[1,2,3]
+            assert o['zeros'][0]['physical_frame']==o['zeros'][2]['physical_frame']
+            assert all(z['actual_physical_bytes_zero'] for z in o['zeros'])
+    assert len(modes)==(16 if gateway else 11)
+    cohorts[item['command']]=len(modes)
+    print(item['command'],'VM_CASES',sorted(modes),'NATIVE_PATHS',native['roots'])
+assert cohorts=={'gateway':16,'bootstrap':11,'source-binding':3},cohorts
+print('FRAME_GATEWAY_READBACK_PASS',len(r['sources']),'SOURCES; BOOTSTRAP COMPONENT ONLY, PRODUCTION ROOT UNQUALIFIED')

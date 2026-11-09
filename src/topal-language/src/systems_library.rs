@@ -110,6 +110,9 @@ pub(super) fn parse_requirement(
                 interface =
                     Some(CompilerSystemsSourceLibraryInterface::BorrowedByteRegionTailActionV1);
             }
+            "interface" if identifier_is(source, &field.value, "physical-frame-policy-tail-v1") => {
+                interface = Some(CompilerSystemsSourceLibraryInterface::PhysicalFramePolicyTailV1);
+            }
             "interface" if identifier_is(source, &field.value, "boot-open-decision-v1") => {
                 interface = Some(CompilerSystemsSourceLibraryInterface::BootOpenDecisionV1);
             }

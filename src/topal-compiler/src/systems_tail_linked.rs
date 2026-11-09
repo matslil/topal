@@ -72,6 +72,7 @@ fn transformed_name(section: &Section) -> String {
     // Endpoint markers identify their contributions without renaming them.
     if section.marker.starts_with("topal.tail-inputs.root.")
         || section.marker.starts_with("topal.tail-inputs.provider.")
+        || section.marker.starts_with("topal.tail-inputs.library-")
     {
         return section.name.clone();
     }
@@ -104,6 +105,20 @@ pub(crate) fn prepare(
         "owner",
         "boundary",
         "kernel-owner",
+        "frame-controller",
+        "frame-target",
+        "frame-dispatch",
+        "frame-gateway",
+        "library-kernel",
+        "library-time",
+        "library-image",
+        "library-dispatch",
+        "library-process-identity",
+        "library-region",
+        "library-file-position",
+        "library-ram-page-pool",
+        "library-inode-mode",
+        "library-namespace",
     ]
     .contains(&role)
     {
@@ -168,10 +183,10 @@ pub(crate) fn prepare(
                 "--set-section-flags={name}=alloc,load,readonly,data,contents"
             ));
         }
-        copy.arg(format!(
-            "--rename-section={name}={}",
-            transformed_name(&record)
-        ));
+        let transformed = transformed_name(&record);
+        if transformed != name {
+            copy.arg(format!("--rename-section={name}={transformed}"));
+        }
         for (suffix, offset) in [("begin", 0), ("end", record.bytes)] {
             copy.arg(format!(
                 "--add-symbol={}.{suffix}={name}:{offset},global,hidden",
@@ -278,14 +293,22 @@ pub(crate) fn prepare(
 
 fn unique<'a>(
     file: &'a object::File<'a>,
+    index: &BTreeMap<String, Vec<object::SymbolIndex>>,
     name: &str,
     global: Option<bool>,
 ) -> Result<object::Symbol<'a, 'a>, CompileError> {
-    let symbols = file
-        .symbols()
+    let symbols = index
+        .get(name)
+        .into_iter()
+        .flatten()
+        .map(|i| file.symbol_by_index(*i).map_err(invalid))
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
         .filter(|s| {
             s.name().ok() == Some(name)
-                && s.is_definition()
+                && (s.is_definition()
+                    || (name == "topal_x86_kernel_reservation_end_v1"
+                        && s.section() == object::SymbolSection::Absolute))
                 && global.is_none_or(|global| s.is_global() == global)
         })
         .collect::<Vec<_>>();
@@ -361,6 +384,15 @@ pub(crate) fn inspect(
     objects: &[(&[u8], &[Section])],
 ) -> Result<Vec<Placement>, CompileError> {
     let linked = parse(kernel, object::ObjectKind::Executable)?;
+    let mut symbol_index = BTreeMap::<String, Vec<object::SymbolIndex>>::new();
+    for symbol in linked.symbols() {
+        if let Ok(name) = symbol.name() {
+            symbol_index
+                .entry(name.into())
+                .or_default()
+                .push(symbol.index());
+        }
+    }
     let mut placements = Vec::new();
     let mut markers = BTreeSet::new();
     let mut occupied = Vec::new();
@@ -373,8 +405,18 @@ pub(crate) fn inspect(
             {
                 return Err(invalid("duplicate section contribution"));
             }
-            let begin = unique(&linked, &format!("{}.begin", record.marker), Some(false))?;
-            let end = unique(&linked, &format!("{}.end", record.marker), Some(false))?;
+            let begin = unique(
+                &linked,
+                &symbol_index,
+                &format!("{}.begin", record.marker),
+                Some(false),
+            )?;
+            let end = unique(
+                &linked,
+                &symbol_index,
+                &format!("{}.end", record.marker),
+                Some(false),
+            )?;
             let start = begin.address();
             let limit = range(start, record.bytes)?;
             if end.address() != limit
@@ -432,7 +474,12 @@ pub(crate) fn inspect(
             let expected = base
                 .checked_add(symbol.address())
                 .ok_or_else(|| invalid("symbol address overflow"))?;
-            let actual = unique(&linked, symbol.name().map_err(invalid)?, None)?;
+            let actual = unique(
+                &linked,
+                &symbol_index,
+                symbol.name().map_err(invalid)?,
+                None,
+            )?;
             if actual.address() != expected
                 || actual.size() != symbol.size()
                 || actual.kind() != symbol.kind()
@@ -464,7 +511,13 @@ pub(crate) fn inspect(
                             base.checked_add(symbol.address())
                                 .ok_or_else(|| invalid("local relocation overflow"))?
                         } else if symbol.is_undefined() && symbol.is_global() && !symbol.is_weak() {
-                            unique(&linked, symbol.name().map_err(invalid)?, None)?.address()
+                            unique(
+                                &linked,
+                                &symbol_index,
+                                symbol.name().map_err(invalid)?,
+                                None,
+                            )?
+                            .address()
                         } else {
                             return Err(invalid(format!(
                                 "unqualified relocation symbol {} {:?}",
@@ -477,6 +530,39 @@ pub(crate) fn inspect(
                 };
                 let value = i128::from(target) + i128::from(relocation.addend());
                 let bytes = match (relocation.kind(), relocation.encoding(), relocation.size()) {
+                    (
+                        object::RelocationKind::GotRelative,
+                        object::RelocationEncoding::Unknown,
+                        32,
+                    ) if matches!(relocation.flags(),object::RelocationFlags::Elf{r_type}
+                            if r_type==object::elf::R_X86_64_REX_GOTPCRELX) =>
+                    {
+                        // The sealed static link relaxes a 64-bit RIP-relative
+                        // function-address MOV to LEA. Reconstruct that exact
+                        // encoding; no GOT contents or arbitrary instruction
+                        // rewrite can stand in for the fresh input.
+                        let at = usize::try_from(offset).map_err(invalid)?;
+                        if at < 3
+                            || at.checked_add(4).is_none_or(|n| n > expected.len())
+                            || relocation.addend() != -4
+                            || ![0x48, 0x4c].contains(&expected[at - 3])
+                            || expected[at - 2] != 0x8b
+                            || expected[at - 1] & 0xc7 != 0x05
+                            || !matches!(relocation.target(),RelocationTarget::Symbol(i)
+                                if file.symbol_by_index(i).is_ok_and(|s|s.is_definition()
+                                    && s.kind()==SymbolKind::Text && !s.is_weak()))
+                        {
+                            return Err(invalid("unqualified static GOTPCRELX relaxation"));
+                        }
+                        expected[at - 2] = 0x8d;
+                        let place = start
+                            .checked_add(offset)
+                            .ok_or_else(|| invalid("relocation place overflow"))?;
+                        i32::try_from(value - i128::from(place))
+                            .map_err(invalid)?
+                            .to_le_bytes()
+                            .to_vec()
+                    }
                     (object::RelocationKind::Absolute, object::RelocationEncoding::Generic, 64) => {
                         u64::try_from(value)
                             .map_err(invalid)?
@@ -531,7 +617,12 @@ pub(crate) fn inspect(
                     .ok_or_else(|| invalid("relocation outside input"))?
                     .copy_from_slice(&bytes);
             }
-            let marker = unique(&linked, &format!("{}.begin", record.marker), Some(false))?;
+            let marker = unique(
+                &linked,
+                &symbol_index,
+                &format!("{}.begin", record.marker),
+                Some(false),
+            )?;
             let actual = linked
                 .section_by_index(
                     marker

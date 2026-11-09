@@ -89,6 +89,47 @@ fn append_linkable_function(
     let start = object
         .symbol(object.symbol_id(name.as_bytes()).unwrap())
         .value;
+    for (name, offset) in &encoded.markers {
+        object.add_symbol(Symbol {
+            name: name.as_bytes().to_vec(),
+            value: start + offset,
+            size: 0,
+            kind: SymbolKind::Text,
+            scope: SymbolScope::Linkage,
+            weak: false,
+            section: SymbolSection::Section(section),
+            flags: SymbolFlags::None,
+        });
+    }
+    for (offset, target) in &encoded.data {
+        let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
+            object.add_symbol(Symbol {
+                name: target.as_bytes().to_vec(),
+                value: 0,
+                size: 0,
+                kind: SymbolKind::Data,
+                scope: SymbolScope::Unknown,
+                weak: false,
+                section: SymbolSection::Undefined,
+                flags: SymbolFlags::None,
+            })
+        });
+        object
+            .add_relocation(
+                section,
+                object::write::Relocation {
+                    offset: start + offset,
+                    symbol,
+                    addend: -4,
+                    flags: object::RelocationFlags::Generic {
+                        kind: object::RelocationKind::Relative,
+                        encoding: object::RelocationEncoding::X86RipRelative,
+                        size: 32,
+                    },
+                },
+            )
+            .map_err(|e| CompileError::Tool(e.to_string()))?;
+    }
     for (offset, target) in &encoded.calls {
         let symbol = object.symbol_id(target.as_bytes()).unwrap_or_else(|| {
             object.add_symbol(Symbol {
