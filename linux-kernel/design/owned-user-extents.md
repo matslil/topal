@@ -1,0 +1,154 @@
+# Owned user-memory extents
+
+`TK-DEC-283`, under the standing approval for systems-only changes. This refines
+`TK-ELEMENT-USER-ACCESS-001` and follows [runtime frame memory](dynamic-frame-memory.md).
+It changes no core syntax, value meaning, source pointer construction or
+exception mechanism. Native realization is initially x86-64; AArch64 and RISC-V
+remain abstraction inputs.
+
+## Purpose and boundary
+
+The production frame profile can grow its heap beyond the predecessor's 34
+pages. Its shared extent helper and several independent syscall adapters still
+limit buffers to the predecessor geometry. Some helpers inspect only leaf
+permissions. Removing one bound would leave both incomplete permission checks
+and other callers with the old restriction.
+
+The replacement admits a candidate against the current owned address space and
+the requested transfer direction. Its extent follows mappings, rather than a
+startup heap count, an executable identity, a particular virtual placement or a
+fixed number of buffers. Syscall-specific length, record, pathname and staging
+limits remain independent contracts. Existing predecessor roots keep their
+qualified behavior. A larger constant is not the implementation of this design.
+
+## Portable contract
+
+Candidate start and length are complete target words; their sum must not wrap.
+For a nonempty range, every byte must lie in the target's admitted user domain.
+The backend must validate the exact current address-space owner and live syscall
+entry, and hold a stable observation through the last access. The observation
+includes pinned, accessible translation storage and live backing belonging to
+the selected mappings. A numeric root address, page-table word or Boolean
+supplied by source or serialized metadata cannot construct this authority.
+
+Every translation affecting any covered page must be present and permit user
+access. An output transfer additionally needs write permission throughout the
+translation path and in the live mapping owner. Readable code pages need not
+be writable; execute-disable is not a data-read restriction. A hole, protection
+failure, stale mapping or absent backing cannot be treated as a contiguous valid
+extent. Table pointers must be checked against the owned accessible translation
+storage before dereference. Backing cannot alias translation storage.
+
+An empty extent performs no memory access or page-table read and grants no
+usable address. It preserves the existing helper's no-touch behavior, including
+for a noncanonical candidate. The syscall still validates its entry, operation
+and any independent argument rules. This does not prescribe every Linux
+syscall's zero-length result or error order.
+
+Extent admission does not copy data, change mappings or publish partial output.
+It is only valid within its original entry/observation lifetime. A caller must
+stage and validate input before committing effects, or use its existing
+fault/partial-progress contract. Failure before the first copy leaves staging,
+user bytes and operation state unchanged. Generated fault recovery remains
+required wherever the stable-resident observation does not exclude faults.
+Unscoped faults and broken trusted ownership/context invariants remain fatal;
+they cannot silently become a successful extent or an ordinary allocation miss.
+
+The first runtime has one serialized process address space, synchronous entry
+and no competing mapping editor. Its proof must establish those facts over the
+whole check-and-copy interval, including asynchronous entry behavior. Disabled
+maskable interrupts alone are not a general concurrency proof. Before adding
+preemption, shared address spaces, SMP, demand paging or userfault handling, the
+same contract needs actual locks/pins or closed recoverable accesses. Cached
+validation across syscalls is forbidden.
+
+## Initial x86-64 realization
+
+The first realization uses ordinary four-level paging, LA48 lower-half user
+addresses, 4096-byte leaves and the existing accessible physical window. It
+walks PML4, PDPT, directory and leaf entries using each covered virtual page's
+indices. It checks present and user permission at every level and write
+permission at every level for output. It must validate entry formats and owned
+next-table storage before following pointers. Accessed/dirty changes allowed by
+the target are not permission changes. The target validates its actual paging
+mode and optional permission-control state; it cannot assume that ignored
+features are disabled merely because the chosen emulator normally disables them.
+
+Translation storage comes from the actual pinned root/table ownership. The
+current bootstrap owns five pages in one extent; that is its present owner
+representation, not a portable table-count limit. User backing comes from the
+actual image, stack and current frame-backed heap mapping owners. Candidate
+bounds do not establish backing ownership. The adapter must bind these owners
+to the actual CR3, process context and current entry. A forged present/user PTE
+pointing at kernel or table storage cannot manufacture a user mapping.
+
+The target's one-GiB physical-access boundary remains explicit and checked before
+table access. It is not a user virtual-address limit. The first component
+refuses huge leaves, five-level paging, address masking and additional permission
+mechanisms until their own exact mode/ownership/access contracts are implemented.
+The full Linux objective still requires their baseline-defined discovery and
+behavior; this refusal is not evidence of full UAPI conformance.
+
+The independent model uses owned table pages with level roles and separate
+virtual-to-physical backing facts. These stand for already established owners,
+not a production API for creating authority. Component tests must bind actual
+native observations to this model rather than pass the model's input dictionaries
+to the kernel as proof.
+
+## Caller migration
+
+| Area | Existing issue | Required frame-profile migration |
+| --- | --- | --- |
+| `systems_process_runtime.rs` | Shared readable/writable helpers use `0x619000` and direct leaf selection | Complete owned walk, with no predecessor heap bound |
+| `systems_process_entry_start.rs` | Startup paths retain fixed heap comparisons and witnesses | Separate historical startup witnesses from actual subsequent buffer checks |
+| `systems_process_entry_read_exec.rs` | Read candidates retain a fixed heap comparison | Validate the complete output extent; preserve descriptor/error order and exec staging |
+| `systems_process_entry_files.rs` | Open/read/metadata paths repeat fixed candidate geometry | Validate every input and output before access; preserve private staging and file/inode ownership |
+| `systems_process_entry_output.rs` | Write and vector/output paths repeat fixed candidate geometry | Validate every actual input extent, including split pages, before publication |
+| `systems_process_entry_completion.rs` | Shell/path/stat adapters and helper emission retain old geometry | Migrate frame-profile candidates and exact write extents; retain predecessor profiles explicitly |
+| Shared time, signal, observation, namespace, pipe and child helpers | They call shared extent labels | Preserve caller registers, direction, staged values and failure dispositions when replacing those labels |
+| Provider entry helpers | Heap/command validators scan fixed counts or selected leaves | Replace frame-profile range authority with live mapping ownership; fixed witnesses cannot qualify arbitrary buffers |
+
+The implementation review must also inventory direct user loads/stores and
+stack-only candidate validators. Searching only for `0x619000` is insufficient.
+Fixed ELF-entry and deliberately sealed startup assertions remain legitimate
+only for their stated qualification; they cannot constrain general syscall
+buffers. Frame-profile selection must reach every relevant emitter, including
+files and output, rather than silently using a predecessor helper.
+
+## Architecture comparison
+
+The portable operation retains entry, owner, direction, complete extent,
+interruption and progress obligations. Table levels, descriptors, privilege
+controls and physical-access mechanics remain backend-private. AArch64 must
+account for its selected granule, table/block permissions and PAN/UAO policy;
+RISC-V must account for the selected translation mode, leaf validity and its
+user-access controls. Neither backend should inherit x86 indices, a five-page
+root representation, GS, CR3 or a fixed virtual heap address. Neither is granted
+an executable qualification by this x86 design.
+
+## Four implementation stages
+
+1. Record the contract, primary-source facts, complete migration boundary and
+   independently exercised ownership/translation model. This stage grants no
+   new native execution or publication.
+2. Implement the actual owned x86 walk and its target binding. Compare native
+   component observations with independent range/permission/ownership cases,
+   including no speculative dereference of a foreign next table. Account for
+   the complete caller/register/stack and retirement costs.
+3. Route all actual frame-profile user-buffer callers through that binding.
+   Exercise real syscall buffers beyond page 34, split-page and cross-table
+   buffers, holes, read-only/supervisor ancestors, overflow, stale ownership and
+   check-to-copy stability. Preserve historical profiles and error/side-effect
+   order. Qualify the source/native/boot binding before production activation.
+4. Qualify the exact committed production sources and rebuilt image, independent
+   observations, prior ABI and application regressions and cold reconstruction.
+   Update the existing initial-Step-4 PR. General mmap/protect/unmap, hierarchy
+   growth, independent process MM and full distribution/container/VM-host
+   acceptance remain required after this prerequisite.
+
+Each stage is a commit in the existing PR. Systems-only authority is already
+approved; a necessary core-language change would require a separate decision.
+
+Primary facts and their exact source identities are recorded in the
+[research record](../knowledge/x86_64/user-memory.md). The formal obligation is
+`TOPAL-SYSTEMS-USER-EXTENT-001`.

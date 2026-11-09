@@ -12579,3 +12579,16 @@ publishing the destination. Retain the other selected owner validators and
 program-only refusal. Exercise this public path and rehashed native mutations
 in `systems_frame_artifact_tests.rs` as well as the component reconstruction
 tests.
+
+## TOPAL-COMP-SYSTEMS-USER-EXTENT-001 — Owned user-memory validation
+
+Implement `TOPAL-SYSTEMS-USER-EXTENT-001` for the frame-profile process boundary.
+Bind the exact active root, entry and stable observation to actual pinned table
+and backing owners before dereferencing translations. Check complete runtime
+ranges, every level's user/write permissions, entry formats and actual paging
+mode. Preserve no-touch empty extents, caller registers/resource retirement,
+syscall staging/error order and predecessor roots. Migrate every direct and
+shared frame-profile user-buffer caller; replacing one helper or increasing a
+constant is insufficient. Keep component/native and canonical publication gates
+separate until the complete caller/source/native/load/boot reconstruction is
+qualified. See [owned extents](../../linux-kernel/design/owned-user-extents.md).

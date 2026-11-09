@@ -10790,3 +10790,43 @@ live heap. Fatal cleanup SHALL retain performed writes and held extent identitie
 while poisoning the owner and retiring invocation temporaries; it SHALL NOT
 resume the process or restore a comparison snapshot. A target geometry limit
 SHALL NOT establish general virtual-memory or application qualification.
+
+### TOPAL-SYSTEMS-USER-EXTENT-001 — Owned user-memory extents
+
+The frame-profile transfer boundary SHALL admit a nonempty candidate only when
+its complete target-word start/length and sum are nonwrapping and its complete
+range belongs to the target's admitted user domain. It SHALL bind the actual
+live syscall entry and current address-space owner. Every covered translation
+SHALL be present and user-accessible; output SHALL additionally require write
+permission at every relevant translation level and in the mapping owner.
+Actual owned, pinned, accessible table storage SHALL precede every table
+dereference. Every leaf SHALL agree with live user backing ownership and SHALL
+NOT manufacture ownership by pointing at kernel or translation storage.
+
+Admission and subsequent access SHALL share one stable entry-bound observation.
+No candidate, serialized field or source-supplied numeric/Boolean fact SHALL
+construct that authority. Changed or stale entry/address-space identity SHALL
+invalidate the observation. The implementation SHALL establish exclusion of
+competing mapping changes or use its separately qualified fault/progress
+mechanism. Disabling maskable interrupts alone SHALL NOT establish general
+mapping stability. Admission SHALL NOT be cached across syscall entries.
+
+An empty extent SHALL perform no table or buffer access and SHALL grant no
+usable address, preserving the existing helper's no-touch behavior. Independent
+syscall argument/error-order requirements SHALL still apply. Admission SHALL NOT
+copy data, mutate mappings or publish effects. Invalid candidate/permission
+admission SHALL precede buffer access; broken trusted context or ownership
+invariants SHALL fail closed without ordinary successful resumption. Existing
+staging, interruption, partial-progress and generated recovery obligations SHALL
+remain in force.
+
+The initial x86-64 realization SHALL qualify ordinary four-level LA48 paging and
+4096-byte leaves with explicit actual paging/permission-control state and
+physical-access limits. It SHALL check every level, entry format and owned
+next-table range before following it. Unsupported modes/leaves SHALL NOT be
+interpreted as small-page tables or qualify full Linux compatibility. The
+predecessor's virtual heap placement and page count SHALL NOT limit general
+frame-profile buffer admission. Existing roots SHALL retain their qualified
+profiles. Model/component evidence SHALL NOT grant all-caller integration,
+canonical publication or full kernel acceptance without their own complete
+source/native/context/resource/load/runtime proofs.

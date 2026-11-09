@@ -2168,3 +2168,21 @@ and release the entire live heap; failure after writes retains performed
 effects and enters fatal cleanup. The initial target's finite translation
 geometry does not complete general virtual memory support. See
 [runtime memory design](../linux-kernel/design/dynamic-frame-memory.md).
+
+### Owned user-memory extents
+
+The frame-backed process profile validates transfer candidates against its
+actual live address space. Complete nonwrapping bounds, every relevant
+translation permission and the owned pinned translation/backing storage must
+agree with the requested direction. An address or present leaf is not ownership.
+Admission and the following access share one stable entry-bound observation;
+validation cannot be cached across entries. Empty transfers touch no memory and
+grant no address authority. Existing syscall staging, fault/progress policies
+and error ordering remain required.
+
+This systems-only refinement removes the predecessor's fixed heap geometry
+from general buffer admission. The initial x86 backend uses four-level paging
+and small leaves, retaining explicit physical-access and mode limits. Other
+architectures implement the same owner/entry/direction/lifetime contract with
+their own translation and user-access mechanisms. Existing predecessor roots
+retain their profiles. See the [owned extent design](../linux-kernel/design/owned-user-extents.md).

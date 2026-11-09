@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "source_inputs": 49,
+  "commands": 5,
+  "archived_model_replay_tests": 17,
+  "production_source_bytes_equal_base": true,
+  "replay": {
+    "file": "readback-model.log.gz",
+    "sha256": "58d9f0f45ddac86e3257b64ace49e6a22704f8ad1cf080b079965e4c0b6efbaa",
+    "uncompressed_sha256": "41b912d1f6cb378d3ee485ba11f7613b6b95e84248d5d1b6554b279d924141d2"
+  },
+  "scope": "Independent snapshot/log/production-source identity readback and isolated archived-model replay; not independent human or native security review.",
+  "local_markdown_targets": 681,
+  "reader": {
+    "file": "independent-readback.py.gz",
+    "sha256": "b7fcba275d74031c1f3d7988355b9dd016524ef2b2737e7832ab7023d2d6d21f",
+    "uncompressed_sha256": "5d2dd5d473f2fa66fdbee371647c01e7fda9233bd1dd233fb28404d0ba8d35e9"
+  }
+}

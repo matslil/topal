@@ -1952,3 +1952,13 @@ owner resumption. A source-only plan shall grant no executable qualification.
 Initial x86-64 implementation shall retain existing memory reserves and legacy
 profile behavior; architecture-neutral obligations shall consider AArch64 and
 RISC-V. See `TK-DEC-282`.
+
+## TOPAL-REQ-SYSTEMS-USER-EXTENT-001 — Owned user-memory admission
+
+Frame-profile user transfers shall validate complete runtime extents against
+actual current mapping and backing ownership, every relevant permission and a
+stable syscall/address-space lifetime. They shall not inherit predecessor heap
+counts or treat numeric table geometry as authority. Preserve syscall-specific
+staging, fault/progress/error order, physical resource bounds and predecessor
+profiles. Separate portable model, native component, all-caller integration and
+production qualification. See [TK-DEC-283](../linux-kernel/design/owned-user-extents.md).

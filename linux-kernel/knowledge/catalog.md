@@ -38,6 +38,7 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-DT-003` | binding, population, lifecycle | cross-architecture | reviewed | [Device Tree](common/device-tree.md) |
 | `LK-DT-004` | architecture relationship | cross-architecture | reviewed | [Device Tree](common/device-tree.md) |
 | `LK-X64-ABI-001` | native processor ABI | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
+| `LK-X64-USER-MEMORY-001` | user-range, transfer and translation-permission boundary | Linux 7.2.9/x86-64 | source-indexed | [facts](x86_64/user-memory.md), [exact source identities](x86_64/user-memory-research.json), [owned-extent design](../design/owned-user-extents.md); native and complete syscall qualification remain |
 | `LK-X64-SYSCALL-001` | syscall register/error contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-PROCESS-001` | ELF/process/TLS contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-SIGNAL-001` | native signal/restart contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |

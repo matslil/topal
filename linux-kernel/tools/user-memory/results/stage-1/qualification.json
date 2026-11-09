@@ -1,0 +1,470 @@
+{
+  "schema": "topal-owned-user-extent-model/1",
+  "decision": "TK-DEC-283",
+  "stage": 1,
+  "complete": true,
+  "passed": true,
+  "base_commit": "b1a2273d0fa987e8e08b91c06c9de340373ce9b4",
+  "scope": "Contract, independent model and pinned source facts only; no production/native/VM behavior changed or qualified.",
+  "risk": "High at eventual ownership/permission/lifetime boundary; single-agent authority/diff review and independent flat permission lattice/read-trace cases; no independent reviewer claimed.",
+  "sources": {
+    "AGENTS.md": "fe85a94b3cbd644b0fd004d760386de3736344c3159a08f06ed2606778f0cb38",
+    "docs/systems-profile.md": "a7db4adfd8ae786f56070969df46d829b5c2612526163d22b53a8845b0ffa1a2",
+    "linux-kernel/baseline.md": "0e6c052bc3d6eb20be0e208206f6fc7e6a20daa1955c5c29ae4a09c8af9a17d5",
+    "linux-kernel/design/dynamic-frame-memory.md": "9f10849d236ffc7181b99395153df8962604891ef2b0848a2cf98fb37d8e8a2a",
+    "linux-kernel/design/frame-policy-kernel-binding.md": "13b758799abd44aa80ff66d043679e9ce9ceb1e01800ad1b1c978c639329af83",
+    "linux-kernel/design/kernel-elements.md": "9d3228dc1a8b3323713a4246d8e0f71e8ee5da79c08165ed608b92559f2ec9ef",
+    "linux-kernel/design/owned-user-extents.md": "2f9e997e0f389c803d7655cc70650aa62527e61fea991140f8f29cfd5bcd7532",
+    "linux-kernel/knowledge/catalog.md": "05f59e6683cfc7c0e35045df34a50e62d135a058159cdafd68035bbe15d7968d",
+    "linux-kernel/knowledge/x86_64/user-memory-research.json": "fa9e943c69e092161a2d03f6094b86bbc6408eeffaa28fc6d68b60b5892986c2",
+    "linux-kernel/knowledge/x86_64/user-memory.md": "2634d9c660e3f23acb27fbca7994338aa808bccf68fe32e8bb5e4729bb691dac",
+    "linux-kernel/labs/qemu/x86_64/manifest.json": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+    "linux-kernel/tools/user-memory/README.md": "00feae50d07e73f180d37adf42390e5b960021b92abaa06ac022bc4c8a8c3324",
+    "linux-kernel/tools/user-memory/model.py": "7f4a7d6a2f9de48b736c5a7df04f7bd0a48bb4765d6533bd616788abda08b291",
+    "linux-kernel/tools/user-memory/test_model.py": "172e562d53005ae3939e3f5b8e6f17e0f15e5625e6f7bf59214dfa864f6e7767",
+    "scripts/check_rust_file_sizes.py": "38a623b7cc0babb87227765ccaa97bd6963d9d32919876f9a9a58b7dd61203a8",
+    "scripts/run_bounded.py": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560",
+    "se/core-language-coverage.md": "a4919924591342bb61ee11d5a34d7fbc3e18172080a311355c3beaa85f1c2b10",
+    "se/requirements.md": "75a8272c6a2d6e9e00b118cda77f72576011bfc8b59929d4c96d852c68bb8c74",
+    "se/test-strategy.md": "9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425",
+    "se/tool-conformance.md": "b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820",
+    "spec/systems-profile.md": "f2d2a7ab691162863ab087d1d5adfe6ce4fadf5b2f80acba34183cff22f0b153",
+    "src/topal-compiler/se-requirements.md": "640ccf17580653f7c0340983bc3a71d429861f2172c4a90dbe930969f5f5db47",
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be",
+    "src/topal-compiler/src/systems_process_checks.rs": "b020bdb76706f1979e0a2f386f79139525199cf8171482163801407fe41ec45f",
+    "src/topal-compiler/src/systems_process_children.rs": "38456a1068f0548e99805f3b6dc414bc61f2c5c8e52abb63a2bda597ab688e9f",
+    "src/topal-compiler/src/systems_process_credentials.rs": "6f597242be71db608a1dc6645d031e914b998e8d73ddddd88d34e25dd655fdaa",
+    "src/topal-compiler/src/systems_process_dispatch.rs": "52ef0f97dc0c202d195d15ae3563ecd2d5692b50c92eb77c128283b0756108bb",
+    "src/topal-compiler/src/systems_process_entry_completion.rs": "8b9c8e79bd2fcf460b71090db601f18d867619f6643911dc9aeee4021d72f2cd",
+    "src/topal-compiler/src/systems_process_entry_files.rs": "9f38afe239f13da016ed26075b40072d9527b170bcb748921955e11b7bc66c18",
+    "src/topal-compiler/src/systems_process_entry_output.rs": "a3fc9dd8cc967d2b528bcf368fbdf38319a9e4a06cfca47605beeccb88de34a7",
+    "src/topal-compiler/src/systems_process_entry_read_exec.rs": "99706a4f4d9136226f5f018ea80e896730ede087814c7200626523ce61c8f64f",
+    "src/topal-compiler/src/systems_process_entry_start.rs": "ee46abacb42acea55cc3926bc5811ffc7e0b9ffeeb27fe190add7021d91911fa",
+    "src/topal-compiler/src/systems_process_fixture.rs": "fb491aca0dc047c29dc0d4eb42a89c3c1030cefadca2f2ddb2f1a1c664676847",
+    "src/topal-compiler/src/systems_process_frame_memory.rs": "fc0e96b35e6e456c2893eec6a4fa878c5f2dd3d71808c8f02d80f2d1e28ccaa0",
+    "src/topal-compiler/src/systems_process_header.rs": "336049ff6a55dc331a2e4176c0701a7e89257a09e960656a082af3c92d3d2012",
+    "src/topal-compiler/src/systems_process_identity.rs": "7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1",
+    "src/topal-compiler/src/systems_process_namespace.rs": "0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a",
+    "src/topal-compiler/src/systems_process_numeric.rs": "5366f9833ce46ac1c8a4eae67b0afdafedb073bddf9f280cc7e473f93a3533c4",
+    "src/topal-compiler/src/systems_process_observations.rs": "9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99",
+    "src/topal-compiler/src/systems_process_pair.rs": "42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847",
+    "src/topal-compiler/src/systems_process_pipes.rs": "4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85",
+    "src/topal-compiler/src/systems_process_policy.rs": "b27826283b82ede0f99a02862e253685a612e41ccd627037a1213bb3fdddeb7d",
+    "src/topal-compiler/src/systems_process_realtime.rs": "786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa",
+    "src/topal-compiler/src/systems_process_retained.rs": "f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50",
+    "src/topal-compiler/src/systems_process_runtime.rs": "581ff0edd5d0b9b6530474ffefec720e6c1060cfc22dcf3c0f3bc4d20c285f58",
+    "src/topal-compiler/src/systems_process_signals.rs": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+    "src/topal-compiler/src/systems_process_time.rs": "0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611",
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": "cb4f16b337a000aa7f6765c77394af0c69574de1ee6711909a7087f63cc5cd38",
+    "src/topal-language/tests/core_language_coverage.rs": "8d077a293c1f6fc8642106c6cad00e21afb741b76bd45c091c9f447e4d2e4282"
+  },
+  "snapshots": {
+    "AGENTS.md": {
+      "file": "inputs/fe85a94b3cbd644b0fd004d760386de3736344c3159a08f06ed2606778f0cb38.gz",
+      "sha256": "8c8a5c470f7a7e0e7e363e91bb12a2d43fbe692dbf4771c10b92fe2c5a35add8",
+      "uncompressed_sha256": "fe85a94b3cbd644b0fd004d760386de3736344c3159a08f06ed2606778f0cb38",
+      "bytes": 5452
+    },
+    "docs/systems-profile.md": {
+      "file": "inputs/a7db4adfd8ae786f56070969df46d829b5c2612526163d22b53a8845b0ffa1a2.gz",
+      "sha256": "47aa74492b1b92b5787a0971cfb8aba279dbb793b97f0fb349940f16a0d1bee1",
+      "uncompressed_sha256": "a7db4adfd8ae786f56070969df46d829b5c2612526163d22b53a8845b0ffa1a2",
+      "bytes": 128489
+    },
+    "linux-kernel/baseline.md": {
+      "file": "inputs/0e6c052bc3d6eb20be0e208206f6fc7e6a20daa1955c5c29ae4a09c8af9a17d5.gz",
+      "sha256": "e8eca939c96336a5a99fe60265d7a4e994c791316715e6352901dc7fe09639f8",
+      "uncompressed_sha256": "0e6c052bc3d6eb20be0e208206f6fc7e6a20daa1955c5c29ae4a09c8af9a17d5",
+      "bytes": 6585
+    },
+    "linux-kernel/design/dynamic-frame-memory.md": {
+      "file": "inputs/9f10849d236ffc7181b99395153df8962604891ef2b0848a2cf98fb37d8e8a2a.gz",
+      "sha256": "e23ecaf790c80fd27f535ba2d1c5415fdcd708c6bed141456e3043672794d458",
+      "uncompressed_sha256": "9f10849d236ffc7181b99395153df8962604891ef2b0848a2cf98fb37d8e8a2a",
+      "bytes": 4653
+    },
+    "linux-kernel/design/frame-policy-kernel-binding.md": {
+      "file": "inputs/13b758799abd44aa80ff66d043679e9ce9ceb1e01800ad1b1c978c639329af83.gz",
+      "sha256": "e22aee4a065984a8a612720824bb175ad7e3986a51849a5010027ef1b1e7f41f",
+      "uncompressed_sha256": "13b758799abd44aa80ff66d043679e9ce9ceb1e01800ad1b1c978c639329af83",
+      "bytes": 14922
+    },
+    "linux-kernel/design/kernel-elements.md": {
+      "file": "inputs/9d3228dc1a8b3323713a4246d8e0f71e8ee5da79c08165ed608b92559f2ec9ef.gz",
+      "sha256": "5fba20a560efac4b5ce05741bdef06069432041db02530c05c71a055efb444f4",
+      "uncompressed_sha256": "9d3228dc1a8b3323713a4246d8e0f71e8ee5da79c08165ed608b92559f2ec9ef",
+      "bytes": 23354
+    },
+    "linux-kernel/design/owned-user-extents.md": {
+      "file": "inputs/2f9e997e0f389c803d7655cc70650aa62527e61fea991140f8f29cfd5bcd7532.gz",
+      "sha256": "64cfdeecab05557d6305ae81373bdaed14ee042d689bdc7950252aca93d17d25",
+      "uncompressed_sha256": "2f9e997e0f389c803d7655cc70650aa62527e61fea991140f8f29cfd5bcd7532",
+      "bytes": 10196
+    },
+    "linux-kernel/knowledge/catalog.md": {
+      "file": "inputs/05f59e6683cfc7c0e35045df34a50e62d135a058159cdafd68035bbe15d7968d.gz",
+      "sha256": "1cb94fb1150c9eaa71d4853bea4b370b8082fddbd2e4be6a6eb50a2fece7f4bd",
+      "uncompressed_sha256": "05f59e6683cfc7c0e35045df34a50e62d135a058159cdafd68035bbe15d7968d",
+      "bytes": 6586
+    },
+    "linux-kernel/knowledge/x86_64/user-memory-research.json": {
+      "file": "inputs/fa9e943c69e092161a2d03f6094b86bbc6408eeffaa28fc6d68b60b5892986c2.gz",
+      "sha256": "b0fe8cc9b9c762769cd3ae1e06be685a5ea5e1161a044cd85c5e9f57eb930ded",
+      "uncompressed_sha256": "fa9e943c69e092161a2d03f6094b86bbc6408eeffaa28fc6d68b60b5892986c2",
+      "bytes": 2319
+    },
+    "linux-kernel/knowledge/x86_64/user-memory.md": {
+      "file": "inputs/2634d9c660e3f23acb27fbca7994338aa808bccf68fe32e8bb5e4729bb691dac.gz",
+      "sha256": "b39333954387fafe9cb59e2e1202e9841b14f66c3ea08fd9cbb1085789efed98",
+      "uncompressed_sha256": "2634d9c660e3f23acb27fbca7994338aa808bccf68fe32e8bb5e4729bb691dac",
+      "bytes": 2018
+    },
+    "linux-kernel/labs/qemu/x86_64/manifest.json": {
+      "file": "inputs/c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694.gz",
+      "sha256": "78b853e56ac95ba5b9ee5c0535d2e85c6d7bbaea1fd9553b169dfe3ade05a860",
+      "uncompressed_sha256": "c0e62b9838ea5a1780232d37741e2902eb4f9625fcec16d6a2247dc4fde63694",
+      "bytes": 5458
+    },
+    "linux-kernel/tools/user-memory/README.md": {
+      "file": "inputs/00feae50d07e73f180d37adf42390e5b960021b92abaa06ac022bc4c8a8c3324.gz",
+      "sha256": "9f8e40d03f3f909d3e81c3d06467485fa40855435e47fbdcc5e2be0c9396a0ff",
+      "uncompressed_sha256": "00feae50d07e73f180d37adf42390e5b960021b92abaa06ac022bc4c8a8c3324",
+      "bytes": 1272
+    },
+    "linux-kernel/tools/user-memory/model.py": {
+      "file": "inputs/7f4a7d6a2f9de48b736c5a7df04f7bd0a48bb4765d6533bd616788abda08b291.gz",
+      "sha256": "ddb0c8e78b59c2f6c3fc9a53e0afa6be82ac52f1618a8ee06e854b950653a9ac",
+      "uncompressed_sha256": "7f4a7d6a2f9de48b736c5a7df04f7bd0a48bb4765d6533bd616788abda08b291",
+      "bytes": 5880
+    },
+    "linux-kernel/tools/user-memory/test_model.py": {
+      "file": "inputs/172e562d53005ae3939e3f5b8e6f17e0f15e5625e6f7bf59214dfa864f6e7767.gz",
+      "sha256": "34f09dda3bc3efbbac1b52bb25dfec553651085c5db79fd2e9401847dbaf2436",
+      "uncompressed_sha256": "172e562d53005ae3939e3f5b8e6f17e0f15e5625e6f7bf59214dfa864f6e7767",
+      "bytes": 12396
+    },
+    "scripts/check_rust_file_sizes.py": {
+      "file": "inputs/38a623b7cc0babb87227765ccaa97bd6963d9d32919876f9a9a58b7dd61203a8.gz",
+      "sha256": "106518966f555a2dc9a8024a1593baa523f542c8dcf9c9e2b2acdc615f518cad",
+      "uncompressed_sha256": "38a623b7cc0babb87227765ccaa97bd6963d9d32919876f9a9a58b7dd61203a8",
+      "bytes": 1393
+    },
+    "scripts/run_bounded.py": {
+      "file": "inputs/0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560.gz",
+      "sha256": "37339cd7861089685d1f03b831cbe591315e9ff06ef6daf5a1d155b50d4c99b9",
+      "uncompressed_sha256": "0ef2091beca134a0380061fae669c20643cb7ec32509e927fb489e3a8c3e8560",
+      "bytes": 3695
+    },
+    "se/core-language-coverage.md": {
+      "file": "inputs/a4919924591342bb61ee11d5a34d7fbc3e18172080a311355c3beaa85f1c2b10.gz",
+      "sha256": "36984b47c7018df521db50c889048aa6b91ffbcd30700161013e22c551eb25df",
+      "uncompressed_sha256": "a4919924591342bb61ee11d5a34d7fbc3e18172080a311355c3beaa85f1c2b10",
+      "bytes": 5780
+    },
+    "se/requirements.md": {
+      "file": "inputs/75a8272c6a2d6e9e00b118cda77f72576011bfc8b59929d4c96d852c68bb8c74.gz",
+      "sha256": "8e71770772b7e518c68676fdd69fa7a225fda99fea70173f096e48281dd25a6f",
+      "uncompressed_sha256": "75a8272c6a2d6e9e00b118cda77f72576011bfc8b59929d4c96d852c68bb8c74",
+      "bytes": 122673
+    },
+    "se/test-strategy.md": {
+      "file": "inputs/9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425.gz",
+      "sha256": "b7dabfebf14b47de9054a187ee1e9b9f3ea45456f1abe3883aafa0b6c2f75964",
+      "uncompressed_sha256": "9baa57dab2db95b3756a43e6383cfbf4332d536fe3b30ddac7096e2909d94425",
+      "bytes": 11326
+    },
+    "se/tool-conformance.md": {
+      "file": "inputs/b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820.gz",
+      "sha256": "7d1ad6805bc0581603d082f776ebe05bdddc01d268b86facfcf409d22e60bae6",
+      "uncompressed_sha256": "b294cbb3ae256fe32e173e2ec15e63e7b9feaf9c7a573e6262bea1539a42d820",
+      "bytes": 7363
+    },
+    "spec/systems-profile.md": {
+      "file": "inputs/f2d2a7ab691162863ab087d1d5adfe6ce4fadf5b2f80acba34183cff22f0b153.gz",
+      "sha256": "5b81722b3dc2e38b0bab92c1b1b432b31606d05652f6ff7365ca0beb4d4a5a94",
+      "uncompressed_sha256": "f2d2a7ab691162863ab087d1d5adfe6ce4fadf5b2f80acba34183cff22f0b153",
+      "bytes": 675901
+    },
+    "src/topal-compiler/se-requirements.md": {
+      "file": "inputs/640ccf17580653f7c0340983bc3a71d429861f2172c4a90dbe930969f5f5db47.gz",
+      "sha256": "e0e9f0002e7fd5a0ebb2aed4518739b0df63ba1194615dccc2a41d858c23a459",
+      "uncompressed_sha256": "640ccf17580653f7c0340983bc3a71d429861f2172c4a90dbe930969f5f5db47",
+      "bytes": 807987
+    },
+    "src/topal-compiler/src/runtime/kernel_frame_memory.ll": {
+      "file": "inputs/cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be.gz",
+      "sha256": "40b16d2600a09ddb95fcbf5ba7233cda4a07cde41e6be5d87e0c6fec10f85a7e",
+      "uncompressed_sha256": "cd788d52b2a66f15f80b1a8b6d668d0501f50daed73f5e0151e21d953f5713be",
+      "bytes": 14321
+    },
+    "src/topal-compiler/src/systems_process_checks.rs": {
+      "file": "inputs/b020bdb76706f1979e0a2f386f79139525199cf8171482163801407fe41ec45f.gz",
+      "sha256": "693ac9bbf3eb15f6b99ae60ff8add71ce1d3191f3304223c06181f80ed171523",
+      "uncompressed_sha256": "b020bdb76706f1979e0a2f386f79139525199cf8171482163801407fe41ec45f",
+      "bytes": 8764
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "file": "inputs/38456a1068f0548e99805f3b6dc414bc61f2c5c8e52abb63a2bda597ab688e9f.gz",
+      "sha256": "76df70c391c2e74b9d5f13e2a8b05e7d5fc8614401d83951ddd80b14bff0649c",
+      "uncompressed_sha256": "38456a1068f0548e99805f3b6dc414bc61f2c5c8e52abb63a2bda597ab688e9f",
+      "bytes": 15070
+    },
+    "src/topal-compiler/src/systems_process_credentials.rs": {
+      "file": "inputs/6f597242be71db608a1dc6645d031e914b998e8d73ddddd88d34e25dd655fdaa.gz",
+      "sha256": "581278cce6b021dc98b49ce0deea68f1eb77b1450d5d665718220d4210caa677",
+      "uncompressed_sha256": "6f597242be71db608a1dc6645d031e914b998e8d73ddddd88d34e25dd655fdaa",
+      "bytes": 2235
+    },
+    "src/topal-compiler/src/systems_process_dispatch.rs": {
+      "file": "inputs/52ef0f97dc0c202d195d15ae3563ecd2d5692b50c92eb77c128283b0756108bb.gz",
+      "sha256": "9e0b9961decf7af680f4f92c9cfd23dc0f4423fc5a0cd8b24f9a63b7ac8b3ef2",
+      "uncompressed_sha256": "52ef0f97dc0c202d195d15ae3563ecd2d5692b50c92eb77c128283b0756108bb",
+      "bytes": 3225
+    },
+    "src/topal-compiler/src/systems_process_entry_completion.rs": {
+      "file": "inputs/8b9c8e79bd2fcf460b71090db601f18d867619f6643911dc9aeee4021d72f2cd.gz",
+      "sha256": "8a3e5fadf8b23960575ce79754b42b4bca456313e5a9e6422b5ebee862358216",
+      "uncompressed_sha256": "8b9c8e79bd2fcf460b71090db601f18d867619f6643911dc9aeee4021d72f2cd",
+      "bytes": 67160
+    },
+    "src/topal-compiler/src/systems_process_entry_files.rs": {
+      "file": "inputs/9f38afe239f13da016ed26075b40072d9527b170bcb748921955e11b7bc66c18.gz",
+      "sha256": "fcdee9402062234d30c9dde9cc5bf9c93b3cc12d28a4cb0122b00a3dbbee139b",
+      "uncompressed_sha256": "9f38afe239f13da016ed26075b40072d9527b170bcb748921955e11b7bc66c18",
+      "bytes": 48848
+    },
+    "src/topal-compiler/src/systems_process_entry_output.rs": {
+      "file": "inputs/a3fc9dd8cc967d2b528bcf368fbdf38319a9e4a06cfca47605beeccb88de34a7.gz",
+      "sha256": "2604219dbb47c770d92194ca33f0dfdac7a7908b1ee14ee665ab8ff549469791",
+      "uncompressed_sha256": "a3fc9dd8cc967d2b528bcf368fbdf38319a9e4a06cfca47605beeccb88de34a7",
+      "bytes": 67574
+    },
+    "src/topal-compiler/src/systems_process_entry_read_exec.rs": {
+      "file": "inputs/99706a4f4d9136226f5f018ea80e896730ede087814c7200626523ce61c8f64f.gz",
+      "sha256": "1926dbcc819c6a3b79325d89a1e21eb646ce67e0572cee0e298067ae85781923",
+      "uncompressed_sha256": "99706a4f4d9136226f5f018ea80e896730ede087814c7200626523ce61c8f64f",
+      "bytes": 63924
+    },
+    "src/topal-compiler/src/systems_process_entry_start.rs": {
+      "file": "inputs/ee46abacb42acea55cc3926bc5811ffc7e0b9ffeeb27fe190add7021d91911fa.gz",
+      "sha256": "e1ba71ce079b779ef95795c88efdf63770764e6d45467c9a75898d4fda86537f",
+      "uncompressed_sha256": "ee46abacb42acea55cc3926bc5811ffc7e0b9ffeeb27fe190add7021d91911fa",
+      "bytes": 54630
+    },
+    "src/topal-compiler/src/systems_process_fixture.rs": {
+      "file": "inputs/fb491aca0dc047c29dc0d4eb42a89c3c1030cefadca2f2ddb2f1a1c664676847.gz",
+      "sha256": "11292466acc3c103d0c58aa44e1a77e9eb45cce1f7b6f56ec2ccd4eae2cf80e6",
+      "uncompressed_sha256": "fb491aca0dc047c29dc0d4eb42a89c3c1030cefadca2f2ddb2f1a1c664676847",
+      "bytes": 3743
+    },
+    "src/topal-compiler/src/systems_process_frame_memory.rs": {
+      "file": "inputs/fc0e96b35e6e456c2893eec6a4fa878c5f2dd3d71808c8f02d80f2d1e28ccaa0.gz",
+      "sha256": "c046fc430d568579279be69093ce7f0958a04c2470565cfb789cf04ff6b5c301",
+      "uncompressed_sha256": "fc0e96b35e6e456c2893eec6a4fa878c5f2dd3d71808c8f02d80f2d1e28ccaa0",
+      "bytes": 2470
+    },
+    "src/topal-compiler/src/systems_process_header.rs": {
+      "file": "inputs/336049ff6a55dc331a2e4176c0701a7e89257a09e960656a082af3c92d3d2012.gz",
+      "sha256": "f1a634e5168d44aede4408992f09161e6543d20bcac4a56cca350aefa1aca3bb",
+      "uncompressed_sha256": "336049ff6a55dc331a2e4176c0701a7e89257a09e960656a082af3c92d3d2012",
+      "bytes": 3311
+    },
+    "src/topal-compiler/src/systems_process_identity.rs": {
+      "file": "inputs/7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1.gz",
+      "sha256": "22198698854e6f3aac7e93e37e8e0bf5b33763c49760ddf804bd92bc8828b2db",
+      "uncompressed_sha256": "7a8f3d84e133be38cb2f90d5726a057098cb67672a2fefdfcf48a514639106d1",
+      "bytes": 2807
+    },
+    "src/topal-compiler/src/systems_process_namespace.rs": {
+      "file": "inputs/0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a.gz",
+      "sha256": "e33e0b53cc0fd168751b769a0c569d2256c39c122e698f006b894d804b4be04c",
+      "uncompressed_sha256": "0be5352d68b97c56714466d3b2f4235b08b3ebc15ef456cba1ebb2d188f6967a",
+      "bytes": 19139
+    },
+    "src/topal-compiler/src/systems_process_numeric.rs": {
+      "file": "inputs/5366f9833ce46ac1c8a4eae67b0afdafedb073bddf9f280cc7e473f93a3533c4.gz",
+      "sha256": "826b9cca0ca3ad3a52f2fa0b677c5114565a74eaa5328c69948094e5dd2adc18",
+      "uncompressed_sha256": "5366f9833ce46ac1c8a4eae67b0afdafedb073bddf9f280cc7e473f93a3533c4",
+      "bytes": 7751
+    },
+    "src/topal-compiler/src/systems_process_observations.rs": {
+      "file": "inputs/9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99.gz",
+      "sha256": "b8246b11ce133a931dcd6ea290fb82ba7ef41fc2dd04f10497f5667bcb0ff70e",
+      "uncompressed_sha256": "9fa8dee42aaeeede3f808447b7f292782a391902a518e0bbac0f90e052900a99",
+      "bytes": 2472
+    },
+    "src/topal-compiler/src/systems_process_pair.rs": {
+      "file": "inputs/42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847.gz",
+      "sha256": "4524491eb7c4a00770ea9fc069686da963434edb50384d155d2d6df5f250b0fe",
+      "uncompressed_sha256": "42600a5cbee9afb9050733d3f499fa4bc64c81f2c08fae50b5b90992e6bd3847",
+      "bytes": 8141
+    },
+    "src/topal-compiler/src/systems_process_pipes.rs": {
+      "file": "inputs/4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85.gz",
+      "sha256": "7e353debe282a104e0130a898f46c5df5adee125452a0b473aab0ca8af57499b",
+      "uncompressed_sha256": "4cb13ca86d086a7b80003a8b20e075e9ba81274f4910fb3428822adb7201ee85",
+      "bytes": 6731
+    },
+    "src/topal-compiler/src/systems_process_policy.rs": {
+      "file": "inputs/b27826283b82ede0f99a02862e253685a612e41ccd627037a1213bb3fdddeb7d.gz",
+      "sha256": "e8b3b9537aa3f8077bfbadf3dcc8bed2393d1c5e5f33b57bd67114acc49fd0e5",
+      "uncompressed_sha256": "b27826283b82ede0f99a02862e253685a612e41ccd627037a1213bb3fdddeb7d",
+      "bytes": 3182
+    },
+    "src/topal-compiler/src/systems_process_realtime.rs": {
+      "file": "inputs/786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa.gz",
+      "sha256": "6e5a12dc634ad4ec0f2e00289c13a467ffaddea1fd164e7756c845a06e5c79f7",
+      "uncompressed_sha256": "786fd35064224a2bcf18e58570492a82341cf85897bdca93dc4f4d11a20262fa",
+      "bytes": 6789
+    },
+    "src/topal-compiler/src/systems_process_retained.rs": {
+      "file": "inputs/f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50.gz",
+      "sha256": "d7057a02d59642ca7deaae757ca442ccb71b2b5416579d726a9bb3d977850b30",
+      "uncompressed_sha256": "f16f19523869c31548115e1f2909e231e6d6576011b0830773fb1321ca7b3a50",
+      "bytes": 6006
+    },
+    "src/topal-compiler/src/systems_process_runtime.rs": {
+      "file": "inputs/581ff0edd5d0b9b6530474ffefec720e6c1060cfc22dcf3c0f3bc4d20c285f58.gz",
+      "sha256": "06856051845ebc60794fdb9b39ff9877026620304e0f3e3a5be1d4631afb3e1b",
+      "uncompressed_sha256": "581ff0edd5d0b9b6530474ffefec720e6c1060cfc22dcf3c0f3bc4d20c285f58",
+      "bytes": 14226
+    },
+    "src/topal-compiler/src/systems_process_signals.rs": {
+      "file": "inputs/c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1.gz",
+      "sha256": "415a523d7c9ff818b881390a5690869ad81445147705eb5bf971695f829a94af",
+      "uncompressed_sha256": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+      "bytes": 6741
+    },
+    "src/topal-compiler/src/systems_process_time.rs": {
+      "file": "inputs/0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611.gz",
+      "sha256": "6071142640ce2c195bf4b169b5efa67ddcbd664ef35ad0fca8875c9060873caf",
+      "uncompressed_sha256": "0906bfefd0dae9fd9431aeb1b856181318a1b8c3ee493bbde61cd0d4dba6e611",
+      "bytes": 7086
+    },
+    "src/topal-compiler/src/systems_provider_emit_process_entry.rs": {
+      "file": "inputs/cb4f16b337a000aa7f6765c77394af0c69574de1ee6711909a7087f63cc5cd38.gz",
+      "sha256": "4a62cf7b53f5e29131255c23a9edb3a1128cc58ee77c42dd8728160b01426507",
+      "uncompressed_sha256": "cb4f16b337a000aa7f6765c77394af0c69574de1ee6711909a7087f63cc5cd38",
+      "bytes": 13045
+    },
+    "src/topal-language/tests/core_language_coverage.rs": {
+      "file": "inputs/8d077a293c1f6fc8642106c6cad00e21afb741b76bd45c091c9f447e4d2e4282.gz",
+      "sha256": "ee6fd9966935f17a91ddadc2f051cb94fe8463f34690b27806e9317e08a0fab5",
+      "uncompressed_sha256": "8d077a293c1f6fc8642106c6cad00e21afb741b76bd45c091c9f447e4d2e4282",
+      "bytes": 9533
+    }
+  },
+  "commands": [
+    {
+      "label": "model",
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-v"
+      ],
+      "exit_code": 0,
+      "seconds": 0.8674586797133088,
+      "log": {
+        "file": "logs/model.gz",
+        "sha256": "18748043f0d30e27532855e0462bf212603f07eddc495fa47b4dfff89e930497",
+        "uncompressed_sha256": "9cb410c635756005a66b9c8ac05460959c8ba43b31753b37f48029391a8920eb",
+        "bytes": 2680
+      }
+    },
+    {
+      "label": "coverage",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-j1",
+        "-p",
+        "topal-language",
+        "--test",
+        "core_language_coverage",
+        "--",
+        "--test-threads=4"
+      ],
+      "exit_code": 0,
+      "seconds": 1.3897905638441443,
+      "log": {
+        "file": "logs/coverage.gz",
+        "sha256": "08a1646a13dd56e6cce574f2b77ecc0b546be08efefddbf8ac82390e04bef1d0",
+        "uncompressed_sha256": "09ff5bee4ca5f168a4d8799a89bb1460ae1566fd8ca7fc6469e71302212dbcbd",
+        "bytes": 580
+      }
+    },
+    {
+      "label": "format",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.1602008221670985,
+      "log": {
+        "file": "logs/format.gz",
+        "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    },
+    {
+      "label": "rust-file-size",
+      "command": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "seconds": 0.2989670252427459,
+      "log": {
+        "file": "logs/rust-file-size.gz",
+        "sha256": "ec2081fbbd4cb149c4e4e646f81381a93e7dde0d218193d6f9f9c9fc1f8e52cc",
+        "uncompressed_sha256": "8db4cdb6759817728df4a07d9be35f2f839b2e2af6c976fc8913b0a10073e66f",
+        "bytes": 45
+      }
+    },
+    {
+      "label": "whitespace",
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.07282842881977558,
+      "log": {
+        "file": "logs/whitespace.gz",
+        "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+        "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  ],
+  "scratch": "/home/mats/git/topal/linux-kernel/.cache/tk283-stage1-b4619d2d",
+  "runner": {
+    "file": "qualification-runner.py.gz",
+    "sha256": "63a6501039485077c78c4bedb8ead30a286c4816ef0c915b70239e4505ef3c95",
+    "uncompressed_sha256": "11d16c6952cba89e608277caec8925532e3b03c13d4bc22c041e837a394ba07b",
+    "bytes": 5239
+  },
+  "resources": {
+    "memory.max": "3240574976",
+    "memory.swap.max": "0",
+    "memory.peak": "107311104",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "production_code_unchanged": true,
+  "model_tests": 17,
+  "permission_cases": 8192,
+  "coverage_tests": 4
+}
