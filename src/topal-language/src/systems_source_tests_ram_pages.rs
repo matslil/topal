@@ -1,7 +1,7 @@
 fn legacy_filesystem_test_root() -> String {
     // Absence and component controls retain V5. V6 dependencies are tested
     // separately, including the real current root, below.
-    let mut source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+    let mut source = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t")
         .replace("static-linux-dispatch-v6", "static-linux-dispatch-v5");
     if let Some(start) = source.find("  namespace-library is") {
         let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
@@ -185,7 +185,7 @@ fn v6_dispatch_requires_namespace_and_named_open_policy_without_changing_older_r
     let selected = frozen.replace("static-linux-dispatch-v5", "static-linux-dispatch-v6");
     let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
     let current = analyze_systems_for_compiler(
-        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t"),
+        include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t"),
         &target,
     )
     .unwrap();

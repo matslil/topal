@@ -1205,7 +1205,8 @@ mod tests {
     include!("systems_inode_binding_tests.rs");
     include!("systems_namespace_binding_tests.rs");
 
-    const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    const SOURCE: &str =
+        include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 
     fn linked_kernel(parent: &Path) -> (Vec<u8>, Vec<u8>, Vec<u8>, SystemsArtifactProvenance) {
         linked_kernel_source(parent, SOURCE)

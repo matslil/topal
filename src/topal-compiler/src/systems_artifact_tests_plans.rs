@@ -9,7 +9,7 @@ use topal_language::compiler::{
 
 use super::*;
 
-const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+const SOURCE: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 
 fn program() -> CompilerSystemsProgram {
     let mut program = analyze_systems_for_compiler(

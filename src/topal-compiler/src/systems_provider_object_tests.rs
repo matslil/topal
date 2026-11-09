@@ -6,7 +6,7 @@ use topal_language::compiler::{CompilerSystemsTargetSelection, analyze_systems_f
 
 use super::*;
 
-const SOURCE: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+const SOURCE: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 
 fn generated() -> GeneratedSystemsProviderObject {
     generated_with_page_source(true)

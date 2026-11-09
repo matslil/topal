@@ -5,7 +5,7 @@ use topal_language::compiler::{
     CompilerSystemsProgram, CompilerSystemsTargetSelection, analyze_systems_for_compiler,
 };
 
-const ROOT: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+const ROOT: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 
 fn program() -> CompilerSystemsProgram {
     analyze_systems_for_compiler(ROOT, &CompilerSystemsTargetSelection::initial_x86_64_qemu())

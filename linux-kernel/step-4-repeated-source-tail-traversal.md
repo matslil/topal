@@ -5,11 +5,10 @@
 `TOPAL-REQ-SYSTEMS-TAIL-TRAVERSAL-001`, `TOPAL-COMP-SYSTEMS-TAIL-PLAN-001`,
 `TOPAL-SYSTEMS-TAIL-PLAN-001` and `TOPAL-SYSTEMS-TAIL-REUSE-001`.
 
-Stages 1, 2 and 3 are complete for the qualified traversal and owned frame
-allocator binding. Committed production-kernel and application qualification
-remains Stage 4. The progress sections retain the scope of their historical
-checkpoints. The current publication result is recorded in
-[the final Stage 3 section](#stage-3-complete-source-bearing-frame-publication).
+All four stages are complete for this traversal and owned-frame increment.
+The initial Linux-compatible kernel objective remains unfinished. The progress
+sections retain the scope of their historical checkpoints. The current result
+is recorded in [Stage 4](#stage-4-complete-production-frame-profile-qualification).
 
 ## Stage 1: source structure and progress
 
@@ -1418,7 +1417,65 @@ static-ELF ABI fixture. They grant no new unchanged BusyBox, distribution,
 container or VM-host acceptance. General virtual memory and replacement of the
 legacy user-copy validators remain required.
 
-## Subsequent stages and original acceptance
+## Stage 4 complete: production frame-profile qualification
+
+The actual production root now selects the ordinary frame policy. Predecessor
+provider and raw component tests select an explicit byte-identical pre-frame
+fixture. Frame tests verify that their selected root equals the production root;
+the production CLI requires its complete twenty-object, ten-library binding.
+
+The [production record](tools/tail-traversal/results/stage-4-frame-production/qualification.json)
+passes **2472 Rust tests across 41 targets**, doc-test checking, locked workspace
+all-target checking, formatting and the unchanged source-size ceiling. It retains
+**2140 frozen producer inputs**, **60 commands**, the fifteen preceding frame
+component sets and two freshly built production artifact sets.
+
+The full clean ABI fixture and **all 51 unchanged pinned BusyBox workloads**
+pass. These cover exact output, exit status and exec counts, including namespace,
+mode, file/descriptor, environment, timing, child-process and pipe behavior.
+Every BusyBox case also executes a privileged observer: **918 actual memory
+operations** in total, with actual process/context/ABI/epoch and stack admission,
+source CFI, prefix preservation/new-page zeroing, mapping/extent identity,
+whole release and private/caller retirement. A separate per-frame model checks
+the complete **152012-frame** production topology, including actual image and
+resource reservations. Terminal cleanup leaves only the pinned five-page boot
+CR3 hierarchy and no live heap.
+
+[Independent readback](tools/tail-traversal/results/stage-4-frame-production/independent-readback.json)
+passes on its first attempt. It checks frozen sources, native bounds, twenty
+objects/804 contributions, independent ELF/load coverage, every published output,
+boot payload/resource hashes, all serial contracts and exact generated debugger
+programs reconstructed from frozen observer sources. The preceding source/native/
+failure/exhaustion cohorts also pass; their ABI fixtures retain their separate
+scope. No original result is relabeled as a real application.
+
+[Reconstruction instructions](tools/tail-traversal/results/stage-4-frame-production/README.md)
+and lossless first-party image snapshots permit restoring the production images
+without the original private VM cache. The normal boot adapter freshly validates
+the embedded source/native snapshots and must reproduce the original boot image,
+resource and provenance exactly. External BusyBox and containing initramfs files
+remain outside Git under the existing binary policy.
+
+Qualification ran from a frozen worktree. The archived committed-source auditor
+compares all 2140 qualified source blobs with the commit containing this report;
+the evidence does not claim the original run began from a clean checkout.
+Factual progress updates are separate from those executable producer inputs.
+
+Peak usage was **3252420608 bytes** (3.03 GiB), with **13117 `max` cache-pressure
+events**, zero OOM/kill events and zero validation swap. The effective limit was
+3252285440 bytes; transient accounting slightly exceeded it while file cache was
+reclaimed. The wrapper, requested limit and 1569 MiB host reserve were unchanged.
+The combined native/caller bound remains 2112 bytes within the original
+4096-byte reserve; source reserves remain unchanged. Five checking warnings
+concern component/test-only helpers.
+
+This completes this increment's four stages. It does not complete initial Step 4
+or general Linux compatibility. The current 519-leaf/1 GiB physical-access and
+legacy user-copy/serialized-process constraints remain. General allocation/MM,
+persistent VFS/process state, full pinned UAPI/distribution replacement, Device
+Tree/drivers, networking/isolation, Docker/Podman and VM hosting remain required.
+
+## Subsequent work and original acceptance
 
 Stage 2 now binds the native roles to the initial actual kernel caller, complete
 live-storage/caller-stack costs, retirement and owner/context refinement. Its
@@ -1429,8 +1486,9 @@ records actual current representations and refusal boundaries, with the existing
 
 Stage 3 uses the new execution path on a real owned allocator/metadata resource,
 preserving source effects, provenance, reservations, lifetime and fatal cleanup.
-Stage 4 must qualify exact committed native/kernel/VM/application
-inputs and publish complete evidence in the existing initial Step 4 PR.
+Stage 4 qualifies the exact native/kernel/VM/application input bytes and publishes
+complete evidence in the existing initial Step 4 PR, with committed-source
+identity checked separately after the commit is created.
 
 General allocation, persistent VFS/process/virtual-memory state, full pinned UAPI
 and distribution replacement, Device Tree/drivers, networking and isolation,

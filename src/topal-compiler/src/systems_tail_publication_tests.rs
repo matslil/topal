@@ -400,7 +400,7 @@ fn reject_changed_kernel(
 #[test]
 fn tail_publication_keeps_all_selected_kernel_source_libraries() {
     // TOPAL-SYSTEMS-TAIL-BINDING-001: the tail root coexists with every real source slot.
-    let original = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+    let original = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
     let old = "source is \"policy/bootstrap-byte-copy-frame.t\",\n    export is apply,\n    interface is borrowed-byte-region-instance-action-v1";
     assert_eq!(original.matches(old).count(), 1);
     let root=original.replace(old,"source is \"algorithms/clear-prefix.t\",\n    export is clear-prefix,\n    interface is borrowed-byte-region-tail-action-v1").replace("observed = 90","observed = 0");

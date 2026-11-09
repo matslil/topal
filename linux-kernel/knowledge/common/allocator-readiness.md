@@ -239,3 +239,29 @@ committed kernel and real application inputs in Stage 4. General MM, legacy
 user-copy replacement, persistent VFS/process state and original distribution,
 container and VM-host acceptance remain unfinished. These new guests execute
 the identified static-ELF ABI fixture, not an unchanged BusyBox executable.
+
+The [production qualification](../../tools/tail-traversal/results/stage-4-frame-production/qualification.json)
+now selects this frame policy in the actual kernel root. The preceding root is
+retained byte-for-byte as an explicit regression fixture. All **2472 Rust tests
+across 41 targets**, doc-test checking, formatting, source-size and workspace
+checks pass for **2140 frozen inputs**. The full clean ABI fixture and **51
+unchanged pinned BusyBox workloads** pass on fresh production images. Privileged
+observations cover **918 actual memory operations**, source CFI, complete
+152012-frame topology, mappings, extent identity, private/caller retirement and
+whole heap cleanup. Each terminal state retains only the pinned five-page boot
+CR3 hierarchy.
+
+[Independent readback](../../tools/tail-traversal/results/stage-4-frame-production/independent-readback.json)
+passes with exact debugger/source/native/load/boot/output associations. Retained
+first-party images and a [reconstruction helper](../../tools/tail-traversal/results/stage-4-frame-production/README.md)
+permit boot-adapter reconstruction without the original private VM cache; the
+external BusyBox dependency and containing initramfs remain outside Git. The
+experiment used frozen worktree inputs; an archived auditor verifies those exact
+bytes against the commit containing the result.
+
+Peak cgroup usage was 3252420608 bytes (3.03 GiB), with 13117 `max` cache-pressure
+events, zero OOM/kill events and zero validation swap. The wrapper, requested
+limit and host reserve were unchanged. This completes this traversal increment's
+Stage 4, not the initial kernel goal. General MM, legacy user-copy replacement,
+persistent VFS/process state, full UAPI/distribution, containers and VM hosting
+remain required.

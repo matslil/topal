@@ -1,7 +1,7 @@
 const FRAME_POLICY_DECLARATION: &str = "  frame-allocator-library is lang systems source-library (\n    source is \"memory/frame-metadata.t\",\n    export is frame-policy,\n    interface is physical-frame-policy-tail-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
 
 fn frame_policy_root() -> String {
-    include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t").replacen(
+    include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t").replacen(
         "lang systems artifact (\n",
         &format!("lang systems artifact (\n{FRAME_POLICY_DECLARATION}"),
         1,
@@ -11,9 +11,13 @@ fn frame_policy_root() -> String {
 #[test]
 fn frame_policy_slot_retains_its_obligation_without_changing_legacy_operations() {
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001.
+    assert_eq!(
+        frame_policy_root(),
+        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+    );
     let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
     let plain = analyze_systems_for_compiler(
-        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t"),
+        include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t"),
         &target,
     )
     .unwrap();

@@ -1,0 +1,70 @@
+{
+  "schema": "topal.first-party-production-binaries/1",
+  "scope": "Additional lossless storage of closed first-party kernel/boot/initial-user outputs. Original experiment record remains unchanged. External BusyBox and all initramfs files remain outside Git.",
+  "entries": {
+    "production-abi": {
+      "artifact/linked/kernel.elf": {
+        "file": "production-binaries/production-abi/artifact/linked/kernel.elf.gz",
+        "sha256": "58e2483bab3c6873fb429e45e74bb33c8d73701d5025a721e44c671ce7bb16f2",
+        "uncompressed_sha256": "46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f",
+        "bytes": 1590184
+      },
+      "artifact/linked/kernel.debug": {
+        "file": "production-binaries/production-abi/artifact/linked/kernel.debug.gz",
+        "sha256": "23c02aa4c5ad2c22e9d7ce76d78b369195337d75ef0926d1ed9b10dab6ef3970",
+        "uncompressed_sha256": "69ffa594d1c3bc69e275197ebc99028b6b5c1d6d56b5dccac71317c976e72d83",
+        "bytes": 445648
+      },
+      "artifact/boot/bzImage": {
+        "file": "production-binaries/production-abi/artifact/boot/bzImage.gz",
+        "sha256": "e41613cfb6e0a05c039e94fd0aa64412cae99b21cacf390ce692fc9047c65894",
+        "uncompressed_sha256": "daeb21caefe44013d42c73fb046f5a991546266160bcf90f177641dee70b3e0d",
+        "bytes": 45230592
+      },
+      "artifact/generated/initial-user.elf": {
+        "file": "production-binaries/production-abi/artifact/generated/initial-user.elf.gz",
+        "sha256": "42a9a55fa853b42f7b248abb0dcaf52069a0758d4c6f7ce09384e51dccf323a4",
+        "uncompressed_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+        "bytes": 12288
+      },
+      "artifact/linked/initial-user.elf": {
+        "file": "production-binaries/production-abi/artifact/linked/initial-user.elf.gz",
+        "sha256": "900247e98f1eb7f2363488c6fc3669698325eb3da37920707e3f14f487ae39bf",
+        "uncompressed_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+        "bytes": 12288
+      }
+    },
+    "production-busybox": {
+      "artifact/linked/kernel.elf": {
+        "file": "production-binaries/production-busybox/artifact/linked/kernel.elf.gz",
+        "sha256": "58e2483bab3c6873fb429e45e74bb33c8d73701d5025a721e44c671ce7bb16f2",
+        "uncompressed_sha256": "46a17d1d89d27fb037f8c245fa3d0ea1c843ced5176e562bbceb3f8c9a57ef4f",
+        "bytes": 1590184
+      },
+      "artifact/linked/kernel.debug": {
+        "file": "production-binaries/production-busybox/artifact/linked/kernel.debug.gz",
+        "sha256": "23c02aa4c5ad2c22e9d7ce76d78b369195337d75ef0926d1ed9b10dab6ef3970",
+        "uncompressed_sha256": "69ffa594d1c3bc69e275197ebc99028b6b5c1d6d56b5dccac71317c976e72d83",
+        "bytes": 445648
+      },
+      "artifact/boot/bzImage": {
+        "file": "production-binaries/production-busybox/artifact/boot/bzImage.gz",
+        "sha256": "e41613cfb6e0a05c039e94fd0aa64412cae99b21cacf390ce692fc9047c65894",
+        "uncompressed_sha256": "daeb21caefe44013d42c73fb046f5a991546266160bcf90f177641dee70b3e0d",
+        "bytes": 45230592
+      },
+      "artifact/generated/initial-user.elf": {
+        "file": "production-binaries/production-busybox/artifact/generated/initial-user.elf.gz",
+        "sha256": "42a9a55fa853b42f7b248abb0dcaf52069a0758d4c6f7ce09384e51dccf323a4",
+        "uncompressed_sha256": "994132429fc84cf9cdbe48042a666418ca4e562f9529b9b62ba6b9f807b627a7",
+        "bytes": 12288
+      },
+      "artifact/linked/initial-user.elf": {
+        "file": "production-binaries/production-busybox/artifact/linked/initial-user.elf.gz",
+        "sha256": "900247e98f1eb7f2363488c6fc3669698325eb3da37920707e3f14f487ae39bf",
+        "uncompressed_sha256": "adf24b0776be2281f2b634fa3f1493087e06b489925ce3e8fbd890ddae91b022",
+        "bytes": 12288
+      }
+    }
+  }
+}

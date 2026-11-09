@@ -306,7 +306,7 @@ fn region_action_native_service_calls_are_explicit_and_missing_snapshots_refuse(
     // TOPAL-SYSTEMS-REGION-ACTION-OWNER-001, -RETURN-001, -POSITION-001.
     // Structural provider evidence only; a declaration supplies no source snapshot.
     // Actual source/link/controller/boot binding is checked by a separate test.
-    let mut source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t")
+    let mut source = include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t")
         .replace("static-linux-dispatch-v6", "static-linux-dispatch-v4");
     if let Some(start) = source.find("  namespace-library is") {
         let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
@@ -462,7 +462,7 @@ fn framed_region_kernel_publication_binds_actual_caller_storage_code_and_constan
         .join("../../kernel")
         .canonicalize()
         .unwrap();
-    let root = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let root = include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t");
     let user = directory.join("user.elf");
     std::fs::write(&user, qualified_x86_64_static_user_image_fixture()).unwrap();
     let options = CompileOptions {

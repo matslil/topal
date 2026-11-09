@@ -235,7 +235,8 @@ fn systems_target_publishes_the_canonical_artifact_set() {
             "--board",
             "topal-qemu-pc-q35-10.2",
         ])
-        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
+        .arg("--library-root")
+        .arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&output)
         .arg(&source));
@@ -254,6 +255,23 @@ fn systems_target_publishes_the_canonical_artifact_set() {
         assert!(output.join(name).is_file(), "missing {name}");
     }
     assert!(!metadata_path(&output).exists());
+    let record: serde_json::Value =
+        serde_json::from_slice(&fs::read(output.join("provenance.json")).unwrap()).unwrap();
+    assert_eq!(
+        record["frame_root"]["objects"].as_array().unwrap().len(),
+        20
+    );
+    assert_eq!(
+        record["frame_root"]["other_sources"]
+            .as_object()
+            .unwrap()
+            .len(),
+        10
+    );
+    assert_eq!(
+        record["frame_root"]["root_source"].as_str().unwrap(),
+        fs::read_to_string(&source).unwrap()
+    );
 }
 
 #[test]
@@ -270,7 +288,8 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
             "--board",
             "topal-qemu-pc-q35-10.2",
         ])
-        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
+        .arg("--library-root")
+        .arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&generated)
         .arg(&source));
@@ -290,7 +309,8 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
             "--initial-user-image",
         ])
         .arg(&supplied_path)
-        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
+        .arg("--library-root")
+        .arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&published)
         .arg(&source));
@@ -299,16 +319,23 @@ fn systems_target_publishes_an_exact_supplied_initial_user_image() {
         "{}",
         String::from_utf8_lossy(&result.stderr)
     );
-    assert_eq!(fs::read(published.join("initial-user.elf")).unwrap(), supplied);
+    assert_eq!(
+        fs::read(published.join("initial-user.elf")).unwrap(),
+        supplied
+    );
 
     let native_output = directory.join("native");
     let result = run(topalc()
         .arg("--initial-user-image")
         .arg(&supplied_path)
-        .arg("--library-root").arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
+        .arg("--library-root")
+        .arg(source.parent().unwrap().parent().unwrap().parent().unwrap())
         .arg("-o")
         .arg(&native_output)
-        .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/language/ordinary-functions.t")));
+        .arg(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../../examples/language/ordinary-functions.t"),
+        ));
     assert!(!result.status.success());
     assert!(
         String::from_utf8_lossy(&result.stderr)

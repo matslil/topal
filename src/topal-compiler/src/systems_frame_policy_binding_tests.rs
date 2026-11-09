@@ -1,15 +1,20 @@
 use super::*;
 use std::{fs, path::Path};
 
-const ROOT: &str = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+const ROOT: &str = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
 const DECLARATION: &str = "  frame-allocator-library is lang systems source-library (\n    source is \"memory/frame-metadata.t\",\n    export is frame-policy,\n    interface is physical-frame-policy-tail-v1,\n    stack-limit-bytes is 4096,\n    runtime-limit-bytes is 65536\n  ),\n";
 
 fn root() -> String {
-    ROOT.replacen(
+    let selected = ROOT.replacen(
         "lang systems artifact (\n",
         &format!("lang systems artifact (\n{DECLARATION}"),
         1,
-    )
+    );
+    assert_eq!(
+        selected,
+        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+    );
+    selected
 }
 fn input() -> SystemsSourceLibraryInput {
     SystemsSourceLibraryInput {

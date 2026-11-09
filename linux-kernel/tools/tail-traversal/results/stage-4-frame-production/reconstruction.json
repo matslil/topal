@@ -1,0 +1,41 @@
+{
+  "passed": true,
+  "helper": {
+    "file": "reconstruct_production.py",
+    "sha256": "9fad1531d91b351ce0aabbb00b72fc5cc403521307ef4fa97b545d41e671cd88"
+  },
+  "checks": [
+    {
+      "kind": "busybox",
+      "passed": true,
+      "outputs": {
+        "bzImage": {
+          "sha256": "daeb21caefe44013d42c73fb046f5a991546266160bcf90f177641dee70b3e0d",
+          "bytes": 45230592
+        },
+        "initramfs.cpio": {
+          "sha256": "10845339b3c6028920c2d2849bacf2015f10b74b0d7b2e5826d5f08e98c8a2a8",
+          "bytes": 2037200
+        }
+      },
+      "boot_provenance_sha256": "95fbedcb338a9cac49143d388c24c8803476601ef8794c60d3a55177abf78a4f",
+      "method": "Normal public boot builder on retained first-party inputs and digest-pinned external payload or exact frozen clean fixture; complete fresh source/native validation; all output bytes match original experiment"
+    },
+    {
+      "kind": "abi",
+      "passed": true,
+      "outputs": {
+        "bzImage": {
+          "sha256": "daeb21caefe44013d42c73fb046f5a991546266160bcf90f177641dee70b3e0d",
+          "bytes": 45230592
+        },
+        "initramfs.cpio": {
+          "sha256": "1dd3a10409b7d0d53f09a3b3992abdff8be046cea394e17f8f444170b1510d15",
+          "bytes": 2037200
+        }
+      },
+      "boot_provenance_sha256": "55d85853ee4906b262dff3e2a5629fa3a557a54e573beec39504c6952e663993",
+      "method": "Normal public boot builder on retained first-party inputs and digest-pinned external payload or exact frozen clean fixture; complete fresh source/native validation; all output bytes match original experiment"
+    }
+  ]
+}

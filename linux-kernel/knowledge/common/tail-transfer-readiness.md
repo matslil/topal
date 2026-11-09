@@ -391,3 +391,22 @@ Program-only frame APIs remain refused. The production root and exact committed
 real application inputs still require Stage 4 qualification. General MM and
 original distribution/container/VM-host acceptance remain unfinished; the new
 VM evidence uses a static-ELF ABI fixture.
+
+The [production frame cohort](../../tools/tail-traversal/results/stage-4-frame-production/qualification.json)
+subsequently activates the frame declaration in the actual root and preserves
+the previous bytes as an explicit regression fixture. All 2472 Rust tests across
+41 targets and required checks pass for 2140 frozen inputs. Fresh images pass
+the full clean ABI fixture and 51 unchanged pinned BusyBox workloads. Their
+918 actual memory operations receive live context, mapping, whole-release,
+source-CFI and private/caller-retirement checks; complete topology is compared
+with a separate model. Only the pinned five-page boot hierarchy remains at
+terminal cleanup. Independent source/ELF/boot/output/debugger readback passes.
+
+First-party production images are retained losslessly; the normal boot adapter
+can reconstruct the images/resources from these and the pinned external payload,
+without the original private cache. A committed-source auditor binds all frozen
+producer bytes to the containing commit. Peak usage is 3252420608 bytes, with
+13117 cache-pressure `max` events, zero OOM/kill events and zero validation swap
+under the unchanged wrapper and reserve. This finishes the four-stage traversal
+increment. General MM, legacy user-copy replacement and the original full
+distribution/container/VM-host objective remain unfinished.

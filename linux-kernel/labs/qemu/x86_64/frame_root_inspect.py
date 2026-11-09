@@ -223,7 +223,8 @@ except Exception:fail()
 '''
 
 
-def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None):
+def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None,
+         process_command=None, input_scope='ABI fixture'):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('work', type=Path)
     args = parser.parse_args()
@@ -279,7 +280,7 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
                         os.write(master, topal_gate.SERIAL_INPUT)
                         sent_read = True
                     if not sent_command and b'TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK' in received:
-                        os.write(master, topal_gate.PROCESS_COMMAND)
+                        os.write(master, topal_gate.PROCESS_COMMAND if process_command is None else process_command)
                         sent_command = True
                     (work / 'serial.log').write_bytes(received)
                     if debugger.poll() is not None:
@@ -302,7 +303,7 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
             process.wait(timeout=5)
             os.close(master)
             os.close(slave)
-    print('FRAME_ROOT_PASS: real firmware map, source allocations, mapping pins, release and ABI fixture')
+    print(f'FRAME_ROOT_PASS: real firmware map, source allocations, mapping pins, release and {input_scope}')
 
 
 if __name__ == '__main__':

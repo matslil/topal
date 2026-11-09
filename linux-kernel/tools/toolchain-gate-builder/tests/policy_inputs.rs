@@ -108,7 +108,7 @@ fn policy_linked_sections_refuse_actual_code_literals_tables_and_incomplete_bind
         static_user_image: Some(user_path),
     };
     let artifact = publish_systems_source(
-        include_str!("../../../kernel/arch/x86_64/toolchain-gate.t"),
+        include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t"),
         &options,
     )
     .unwrap();

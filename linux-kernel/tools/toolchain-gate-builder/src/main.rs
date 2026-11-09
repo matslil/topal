@@ -91,7 +91,7 @@ mod tests {
         ));
         fs::create_dir(&parent).unwrap();
         let program = analyze_systems_for_compiler(
-            include_str!("../../../kernel/arch/x86_64/toolchain-gate.t"),
+            include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t"),
             &CompilerSystemsTargetSelection::initial_x86_64_qemu(),
         )
         .unwrap();

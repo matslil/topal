@@ -200,7 +200,7 @@ pub(super) fn parse_requirement(
 mod tests {
     use super::super::*;
     fn scalar_identity_root() -> String {
-        include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+        include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t")
             .replace(
                 "structured-process-identity-v1",
                 "process-identity-transition-v1",
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn structured_identity_keeps_the_explicit_reserve_and_existing_semantic_slot() {
         // TOPAL-SYSTEMS-STRUCTURED-PROCESS-IDENTITY-001
-        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t")
+        let source = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t")
             .replace(
                 "retained-process-identity-v1",
                 "structured-process-identity-v1",
@@ -324,7 +324,7 @@ mod tests {
     #[test]
     fn dispatch_declarations_preserve_independent_policy_selection_and_closed_shape() {
         // TOPAL-SYSTEMS-LINUX-DISPATCH-LIBRARY-001
-        let full = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let full = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
         let remove = |source: &str, slot: &str| {
             let start = source.find(&format!("  {slot} is")).unwrap();
             let end = start + source[start..].find("\n  ),\n").unwrap() + 6;
@@ -395,7 +395,8 @@ mod tests {
     #[test]
     fn extended_dispatch_occupies_the_same_unique_slot_and_rejects_wrong_reserves() {
         // TOPAL-SYSTEMS-LINUX-DISPATCH-V2-001
-        let original = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let original =
+            include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
         for interface in [
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV2,
             CompilerSystemsSourceLibraryInterface::StaticLinuxDispatchV3,
@@ -431,7 +432,7 @@ mod tests {
     #[test]
     fn image_policy_declarations_are_independent_and_structurally_checked() {
         // TOPAL-SYSTEMS-ELF64-HEADER-LIBRARY-001
-        let full = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let full = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
         let image_start = full.find("  image-library is").unwrap();
         let image_end = full[image_start..].find("  region-library is").unwrap() + image_start;
         let original = format!("{}{}", &full[..image_start], &full[image_end..]);
@@ -484,7 +485,7 @@ mod tests {
     #[test]
     fn numeric_time_library_retains_exact_declared_resource_obligations() {
         // TOPAL-SYSTEMS-NUMERIC-RUNTIME-001
-        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let source = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
         let source = source.to_owned();
         let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
         let program = analyze_systems_for_compiler(&source, &target).unwrap();
@@ -505,7 +506,7 @@ mod tests {
     #[test]
     fn source_library_import_is_optional_and_structurally_checked() {
         // TOPAL-SYSTEMS-SOURCE-LIBRARY-001
-        let source = include_str!("../../../linux-kernel/kernel/arch/x86_64/toolchain-gate.t");
+        let source = include_str!("../../../linux-kernel/labs/qemu/x86_64/pre-frame-kernel-root.t");
         let target = CompilerSystemsTargetSelection::initial_x86_64_qemu();
         let program = analyze_systems_for_compiler(source, &target).unwrap();
         assert_eq!(

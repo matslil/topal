@@ -122,7 +122,7 @@ fn region_root_changed_literal_rejects_with_unchanged_code_and_corrected_outer_d
     };
     // Keep this an explicit frozen Unit compatibility control while the
     // primary kernel selects the independently bound framed root instance.
-    let source = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t");
+    let source = include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t");
     let start = source.find("  region-library is").unwrap();
     let end = start + source[start..].find("  ),\n").unwrap() + 5;
     let legacy = source[start..end]

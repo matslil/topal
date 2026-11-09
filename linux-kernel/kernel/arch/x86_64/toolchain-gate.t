@@ -1924,6 +1924,13 @@ illegal-seek-error is 29
 )
 
 lang systems artifact (
+  frame-allocator-library is lang systems source-library (
+    source is "memory/frame-metadata.t",
+    export is frame-policy,
+    interface is physical-frame-policy-tail-v1,
+    stack-limit-bytes is 4096,
+    runtime-limit-bytes is 65536
+  ),
   kernel-library is lang systems source-library (
     source is "policy/file-open-access.t",
     export is file-open-decision,

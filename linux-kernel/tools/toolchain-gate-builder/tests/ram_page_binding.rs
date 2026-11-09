@@ -9,7 +9,7 @@ fn real_ram_page_owner_binds_four_disjoint_instances_and_rejects_tampering() {
     // TOPAL-SYSTEMS-REGION-PAGE-{OWNER,ALLOCATE,RELEASE}-001.
     // Retain this exact four-instance/native-absence compatibility control.
     // The primary V6 five-instance binding is independently tested.
-    let mut text = include_str!("../../../kernel/arch/x86_64/toolchain-gate.t")
+    let mut text = include_str!("../../../labs/qemu/x86_64/pre-frame-kernel-root.t")
         .replace("static-linux-dispatch-v6", "static-linux-dispatch-v5");
     if let Some(start) = text.find("  namespace-library is") {
         let end = start + text[start..].find("\n  ),\n").unwrap() + 6;
