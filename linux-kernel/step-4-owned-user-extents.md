@@ -47,8 +47,42 @@ Peak use was 107311104 bytes, with zero limit/OOM/kill events and zero validatio
 swap under the unchanged wrapper and host reserve. An initial harness input
 enumeration named a nonexistent frontend requirement file and stopped before
 tests. Its [failure scope](tools/user-memory/results/stage-1-harness-path-failure/failure.json)
-remain retained. Removing that path required no model or runtime correction.
+remains retained. Removing that path required no model or runtime correction.
 
-Stage 1 is complete. The actual native walk, all-caller migration and committed
-production qualification remain stages 2–4. The full original kernel objective
-is still unfinished. See the [replay notes](tools/user-memory/results/stage-1/README.md).
+Stage 1 is complete. At that checkpoint, native implementation, all-caller
+migration and committed production qualification remained stages 2–4. The full
+original kernel objective is still unfinished. See the
+[replay notes](tools/user-memory/results/stage-1/README.md).
+
+
+## Stage 2 native implementation and functional checkpoint
+
+The native four-level walk now binds actual compiler-derived root/table/image/
+stack owners and the current runtime heap through the owning gateway. The low
+leaf has its own allocation; it is not a page within the five-page hierarchy.
+Runtime heap identities are additionally checked against all static root
+allocation slots. Empty ranges remain no-touch operations, and entry/mapping
+owners remain held beyond validation through the caller's access lifetime.
+
+The [2157-input checkpoint](tools/user-memory/results/stage-2/qualification.json)
+passes eight commands, including three selected compiler tests, seventeen model
+tests, locked workspace/all-target checking and doc tests. The ordinary full-root
+VM passes 324 native extent checks and 80 real memory operations. The actual guest
+initializes CR0.WP before user entry, preserving every other CR0 bit. The full
+experimental call path uses 2272 of its 4096-byte reserve.
+
+[Readback](tools/user-memory/results/stage-2/independent-readback.json) independently
+checks snapshots/logs, root instruction/owner derivation, ELF/boot/resource bytes
+and every native result. [Replay](tools/user-memory/results/stage-2/replay.json)
+repeats the ordinary VM using archived first-party bytes and frozen observers.
+Peak was 2203799552 bytes, with zero limit/OOM/kill events and swap.
+
+The current instruction limits execution to ordinary development and functional
+tests. Deliberate guest-state controls were not rerun after the three-source
+ownership refinement. A failed earlier full-suite debugger assertion and a later
+review-stopped run are retained with their original incomplete status. This is
+not full workspace qualification or completed Stage 2; the existing production
+profile is unchanged. The [checkpoint notes](tools/user-memory/results/stage-2/README.md)
+explain exact scope, earlier evidence and remaining gates. All-caller migration
+and production activation/qualification remain pending; initial Step 4 and the
+original kernel objective remain unfinished.

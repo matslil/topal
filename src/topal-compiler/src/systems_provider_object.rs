@@ -20,6 +20,9 @@ pub(crate) mod ram_page_region;
 pub(crate) mod root_region;
 #[path = "systems_tail_boundary.rs"]
 pub(crate) mod tail_boundary;
+#[cfg(test)]
+#[path = "systems_user_extent_bridge.rs"]
+pub(crate) mod user_extent_bridge;
 #[path = "systems_x86_function.rs"]
 mod x86_function;
 use process_runtime::file_descriptions as process_files;

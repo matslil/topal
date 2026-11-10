@@ -1,0 +1,54 @@
+{
+  "passed": true,
+  "scope": "Ordinary VM replay from archived first-party bytes and frozen observers, not rebuilding or full Stage2 acceptance",
+  "restore": {
+    "qualification_sha256": "4e21f07730937a4fbb65e84677d43652cb17505500705ae71012c70a0ab36d05",
+    "component": "current-user-extent-root-2197103-1794331589757121141-0",
+    "native_calls_expected": 324,
+    "scope": "Restored native component and frozen observer sources; no rebuilding or external BusyBox needed"
+  },
+  "files": {
+    "replay.log": {
+      "file": "replay-bytes/e4fbdb16bf131ae0806e6d2398830944c0fd2e73246736d1eb7dd440c7da1640.gz",
+      "sha256": "cb1bcd8deb86e643d3a76994efbfe7a336869b4abe49f8afddcaabc079aac71e",
+      "uncompressed_sha256": "e4fbdb16bf131ae0806e6d2398830944c0fd2e73246736d1eb7dd440c7da1640",
+      "bytes": 136
+    },
+    "component/user-extents/observations.json": {
+      "file": "replay-bytes/e5ba41837dc4037bdd0cd2a95f4a70a7d075515d55ec0f486cdce163cbd94cc2.gz",
+      "sha256": "3027f7984bf684f1cf501eaee19becf5aec3e925f09250ef7e63245c9b980f1f",
+      "uncompressed_sha256": "e5ba41837dc4037bdd0cd2a95f4a70a7d075515d55ec0f486cdce163cbd94cc2",
+      "bytes": 67203972
+    },
+    "component/user-extents/inspect.gdb": {
+      "file": "replay-bytes/940aee53ca2ae34980485ac8f14a4ed5edbf7a18ce72e64089eeae1149da6367.gz",
+      "sha256": "bc8695dc1d8949246d0d45db269587f5bd685cd75e75435c2f6b7260176a5c20",
+      "uncompressed_sha256": "940aee53ca2ae34980485ac8f14a4ed5edbf7a18ce72e64089eeae1149da6367",
+      "bytes": 19770
+    },
+    "component/user-extents/qemu.command.json": {
+      "file": "replay-bytes/a3ab726b29429d39491e0039033c9336168ce0da9c31d30fbec02c2cba640339.gz",
+      "sha256": "e1514715624cc2cb7e11791157c6985bb58efb25138e852e014bbad42f12a5f6",
+      "uncompressed_sha256": "a3ab726b29429d39491e0039033c9336168ce0da9c31d30fbec02c2cba640339",
+      "bytes": 1160
+    },
+    "component/user-extents/gdb.stdout.log": {
+      "file": "replay-bytes/ba881f6d311fcdebd10e34d7c109c13ffae3918589c5d5c5d66a2d8c8f0d728c.gz",
+      "sha256": "7d20b0a427ef3973ee7027a4a569c8a626828bd1cb732546961d7cff0ce85489",
+      "uncompressed_sha256": "ba881f6d311fcdebd10e34d7c109c13ffae3918589c5d5c5d66a2d8c8f0d728c",
+      "bytes": 4816
+    },
+    "component/user-extents/gdb.stderr.log": {
+      "file": "replay-bytes/52d2c925a892046746d824df69fe4578ca6074fd739ad89c7484f32299a88e61.gz",
+      "sha256": "ea8879b30e3fdd29c54b4ef661533187a13512394948d1fce7faf5b7d05369be",
+      "uncompressed_sha256": "52d2c925a892046746d824df69fe4578ca6074fd739ad89c7484f32299a88e61",
+      "bytes": 193
+    },
+    "component/user-extents/serial.log": {
+      "file": "replay-bytes/5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435.gz",
+      "sha256": "6e124432abf990a1c8fcca955ef14875f427bd04592b09a7bc1744900466f66c",
+      "uncompressed_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+      "bytes": 7606
+    }
+  }
+}

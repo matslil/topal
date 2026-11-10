@@ -14,20 +14,29 @@ pub fn generate_x86_64_systems_provider_object(
     program: &CompilerSystemsProgram,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = plan_x86_64_systems_provider(program)?;
-    generate_provider_selected(program, plan, false)
+    generate_provider_selected(program, plan, false, false)
 }
 
 pub(crate) fn generate_frame_memory_provider(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
-    generate_provider_selected(&checked.program, plan, true)
+    generate_provider_selected(&checked.program, plan, true, false)
+}
+
+#[cfg(test)]
+pub(crate) fn generate_user_extent_probe_provider(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<GeneratedSystemsProviderObject, CompileError> {
+    let plan = crate::systems_provider::plan_frame_systems_provider(checked)?;
+    generate_provider_selected(&checked.program, plan, true, true)
 }
 
 fn generate_provider_selected(
     program: &CompilerSystemsProgram,
     plan: crate::X86SystemsProviderPlan,
     frame_memory: bool,
+    user_extent_probe: bool,
 ) -> Result<GeneratedSystemsProviderObject, CompileError> {
     let mut object = Object::new(BinaryFormat::Elf, Architecture::X86_64, Endianness::Little);
     object.add_file_symbol(b"topal-generated-x86-systems-provider".to_vec());
@@ -458,6 +467,7 @@ fn generate_provider_selected(
             program.inode_mode_library.is_some(),
             program.namespace_library.is_some(),
             frame_memory,
+            user_extent_probe,
         )?,
     )?;
     append_encoded_function(

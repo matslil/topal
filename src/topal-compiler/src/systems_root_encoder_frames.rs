@@ -7,6 +7,8 @@ struct RootFramePolicy {
     current: Option<u64>,
     payload: Option<u64>,
     owners: std::collections::BTreeMap<&'static str, u64>,
+    allocations: std::collections::BTreeMap<u64, (u64, u64)>,
+    user_owners: Vec<Option<[crate::systems_user_extent::Owner; 4]>>,
 }
 impl RootEncoder {
     fn frame_address(&mut self, opcode: &[u8], symbol: &'static str, offset: u64) {
@@ -64,6 +66,7 @@ impl RootEncoder {
         policy.next_slot = slot
             .checked_add(1)
             .ok_or_else(|| CompileError::Tool("frame token count overflow".into()))?;
+        policy.allocations.insert(slot, (count, alignment));
         self.frame_call(1, Some(count), alignment, Some(slot), false)?;
         self.frame_call(4, Some(0), 0, Some(slot), true)?;
         self.frame_address(&[0x4c, 0x8d, 0x1d], "topal_x86_frame_details_v1", 0);
@@ -226,6 +229,35 @@ impl RootEncoder {
             }
             O::RetainStaticImagePreparedProcess => self.frame_move("prepared-stack")?,
             O::RestoreStaticImagePreparedProcess => self.frame_return("prepared-stack")?,
+            O::EnterStaticImageProcess => {
+                // Capture compile-time affine owners at the actual process
+                // call, before their later restoration/release. This records
+                // no runtime address and changes no emitted root instruction.
+                let frame = self.frame_policy.as_mut().unwrap();
+                let roles = [
+                    "construction-hierarchy",
+                    "construction-metadata",
+                    "construction-payload",
+                    "prepared-stack",
+                ]
+                .into_iter()
+                .map(|name| {
+                    let slot = *frame.owners.get(name)?;
+                    let (count, alignment) = *frame.allocations.get(&slot)?;
+                    (alignment == 1).then(|| crate::systems_user_extent::Owner {
+                        slot,
+                        count,
+                        pins: frame
+                            .owners
+                            .values()
+                            .filter(|&&owner| owner == slot)
+                            .count() as u64,
+                    })
+                })
+                .collect::<Option<Vec<_>>>()
+                .and_then(|roles| roles.try_into().ok());
+                frame.user_owners.push(roles);
+            }
             O::PrepareUserAddressSpace => self.frame_move("user-address-space")?,
             O::ReclaimUserAddressSpace => self.frame_return("user-address-space")?,
             O::MapUserAddressSpace => {

@@ -31,12 +31,29 @@ fn frame_root_replaces_real_allocation_release_and_mapping_lifetimes() {
 }
 
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
+    execute_selected(memory, false)
+}
+
+pub(crate) fn execute_user_extents() -> std::path::PathBuf {
+    execute_selected(true, true)
+}
+
+fn execute_selected(memory: bool, user_extents: bool) -> std::path::PathBuf {
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001: complete existing boot IR, not
     // a smaller constant probe. Canonical publication remains unqualified.
     let root = root();
     let input = input();
     let checked = crate::systems_frame_policy_binding::check(&root, &input).unwrap();
-    let bytes = crate::systems_artifact::generate_frame_policy_root_object(&root, &input).unwrap();
+    let (bytes, owners) = if user_extents {
+        let (bytes, owners) =
+            crate::systems_artifact::generate_frame_user_extent_root(&checked).unwrap();
+        (bytes, Some(owners))
+    } else {
+        (
+            crate::systems_artifact::generate_frame_policy_root_object(&root, &input).unwrap(),
+            None,
+        )
+    };
     assert!(crate::systems_artifact::generate_root_object(&checked.program).is_err());
     let file = object::File::parse(bytes.as_slice()).unwrap();
     let tokens = file
@@ -65,12 +82,28 @@ pub(super) fn execute(memory: bool) -> std::path::PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if memory { "frame-memory" } else { "frame-root" };
+    let prefix = if user_extents {
+        "user-extent-root"
+    } else if memory {
+        "frame-memory"
+    } else {
+        "frame-root"
+    };
     let work = std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()));
     fs::create_dir(&work).unwrap();
     eprintln!("actual frame source root: {}", work.display());
     fs::write(work.join("root.t"), root).unwrap();
     fs::write(work.join("root.o"), &bytes).unwrap();
+    if let Some(owners) = &owners {
+        fs::write(
+            work.join("user-owners.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+            "token_bytes":owners.token_bytes,"roles":owners.roles.map(|o| serde_json::json!({
+                "slot":o.slot,"count":o.count,"pins":o.pins}))}))
+            .unwrap(),
+        )
+        .unwrap();
+    }
     fs::write(
         work.join("root-tokens.json"),
         serde_json::to_vec_pretty(&serde_json::json!({"bytes":tokens.size()})).unwrap(),
@@ -94,7 +127,9 @@ pub(super) fn execute(memory: bool) -> std::path::PathBuf {
             .args(["-d", "--no-show-raw-insn"])
             .arg(work.join("root.o")),
     );
-    let target = if memory {
+    let target = if let Some(owners) = &owners {
+        crate::systems_user_extent::target_llvm(&checked.component, owners)
+    } else if memory {
         super::memory_llvm(&checked.component, tokens.size())
     } else {
         super::root_llvm(&checked.component, tokens.size())
@@ -108,7 +143,7 @@ pub(super) fn execute(memory: bool) -> std::path::PathBuf {
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
-    build_guest(&work, &checked, &tools, memory);
+    build_guest(&work, &checked, &tools, memory, user_extents);
     work
 }
 
@@ -117,6 +152,7 @@ fn build_guest(
     checked: &crate::systems_frame_policy_binding::Checked,
     tools: &crate::LlvmTools,
     memory: bool,
+    user_extents: bool,
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
@@ -161,7 +197,9 @@ fn build_guest(
     }
     fs::write(
         work.join("dispatch.ll"),
-        if memory {
+        if user_extents {
+            crate::systems_user_extent::dispatch_llvm().unwrap()
+        } else if memory {
             super::memory_dispatch()
         } else {
             format!(
@@ -173,14 +211,33 @@ fn build_guest(
     )
     .unwrap();
     fs::write(work.join("boundary.o"), &owner.runtime.boundary).unwrap();
-    for role in [
+    let mut roles = vec![
         "source",
         "runtime",
         "owner",
         "controller",
         "target",
         "dispatch",
-    ] {
+    ];
+    if user_extents {
+        fs::write(work.join("extent.ll"), crate::systems_user_extent::llvm()).unwrap();
+        fs::write(
+            work.join("extent-probe.ll"),
+            format!(
+                "target datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n{}",
+                crate::X86_SYSTEMS_DATA_LAYOUT,
+                include_str!("../../../linux-kernel/labs/qemu/x86_64/user_extent_probe.ll")
+            ),
+        )
+        .unwrap();
+        fs::write(
+            work.join("extent-bridge.o"),
+            crate::systems_provider_object::user_extent_bridge::object().unwrap(),
+        )
+        .unwrap();
+        roles.extend(["extent", "extent-probe"]);
+    }
+    for role in roles {
         run(
             work,
             &format!("{role}-llc"),
@@ -210,12 +267,20 @@ fn build_guest(
         &inner,
     )
     .unwrap();
-    let mut frame = super::inspection::inspect_gateway(
-        &fs::read(work.join("controller.o")).unwrap(),
-        &fs::read(work.join("target.o")).unwrap(),
-        &fs::read(work.join("dispatch.o")).unwrap(),
-        &outer,
-    )
+    let controller = fs::read(work.join("controller.o")).unwrap();
+    let target = fs::read(work.join("target.o")).unwrap();
+    let dispatch = fs::read(work.join("dispatch.o")).unwrap();
+    let mut frame = if user_extents {
+        super::inspection::inspect_user_extents(
+            &controller,
+            &target,
+            &dispatch,
+            &fs::read(work.join("extent.o")).unwrap(),
+            &outer,
+        )
+    } else {
+        super::inspection::inspect_gateway(&controller, &target, &dispatch, &outer)
+    }
     .unwrap();
     if memory {
         let body = frame["roots"]["topal_frame_kernel_dispatch_v1"]
@@ -230,6 +295,18 @@ fn build_guest(
             "return_and_adapter_bytes": 16,
             "caller_reserve_bytes": 4096,
         });
+        if user_extents {
+            let bytes = fs::read(work.join("extent-probe.o")).unwrap();
+            let file = object::File::parse(bytes.as_slice()).unwrap();
+            let frames = crate::systems_library::stack_sizes(&file).unwrap();
+            let probe = frames["topal_x86_user_extent_probe_v1"] + 8 + frames["probe.check"] + 8;
+            let full = total + probe + 16;
+            assert!(full <= 4096);
+            frame["user_extent_probe"] = serde_json::json!({"frames":frames,
+                "probe_call_path_bytes":probe,"hook_saved_result_and_bridge_return_bytes":16,
+                "complete_stack_bytes":full,"reserve_bytes":4096,
+                "probe_completed_caller_retirement_bytes":4096});
+        }
     }
     fs::write(
         work.join("frame-inspection.json"),
@@ -238,7 +315,9 @@ fn build_guest(
     .unwrap();
     fs::write(
         work.join("gateway.o"),
-        (if memory {
+        (if user_extents {
+            crate::systems_provider_object::tail_boundary::frame_gateway::user_extent_component_object
+        } else if memory {
             crate::systems_provider_object::tail_boundary::frame_gateway::memory_component_object
         } else {
             crate::systems_provider_object::tail_boundary::frame_gateway::component_object
@@ -254,7 +333,9 @@ fn build_guest(
     dependencies.frame_allocator_library = None;
     fs::write(
         work.join("provider.o"),
-        (if memory {
+        (if user_extents {
+            crate::systems_provider_object::generate_user_extent_probe_provider(checked)
+        } else if memory {
             crate::systems_provider_object::generate_frame_memory_provider(checked)
         } else {
             crate::generate_x86_64_systems_provider_object(&dependencies)
@@ -310,6 +391,11 @@ fn build_guest(
         ] {
             link.arg(work.join(format!("{name}.o")));
         }
+        if user_extents {
+            for name in ["extent", "extent-probe", "extent-bridge"] {
+                link.arg(work.join(format!("{name}.o")));
+            }
+        }
         for name in objects {
             let path = legacy.join(name);
             assert!(path.is_file(), "missing {}", path.display());
@@ -348,7 +434,9 @@ fn build_guest(
         "guest",
         Command::new("python3")
             .arg(
-                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(if memory {
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(if user_extents {
+                    "../../linux-kernel/labs/qemu/x86_64/user_extent_inspect.py"
+                } else if memory {
                     "../../linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py"
                 } else {
                     "../../linux-kernel/labs/qemu/x86_64/frame_root_inspect.py"

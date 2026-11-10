@@ -27,7 +27,7 @@ const fn register_encoding(register: SavedRegister, base: u8) -> (Option<u8>, u8
 pub(crate) fn generate_root_object(
     program: &CompilerSystemsProgram,
 ) -> Result<Vec<u8>, CompileError> {
-    generate_root_object_selected(program, None)
+    generate_root_object_selected(program, None, None)
 }
 
 #[cfg(test)]
@@ -42,12 +42,25 @@ pub(crate) fn generate_frame_policy_root_object(
 pub(crate) fn generate_frame_root_checked(
     checked: &crate::systems_frame_policy_binding::Checked,
 ) -> Result<Vec<u8>, CompileError> {
-    generate_root_object_selected(&checked.program, Some(checked))
+    generate_root_object_selected(&checked.program, Some(checked), None)
+}
+
+pub(crate) fn generate_frame_user_extent_root(
+    checked: &crate::systems_frame_policy_binding::Checked,
+) -> Result<(Vec<u8>, crate::systems_user_extent::Owners), CompileError> {
+    let mut owners = None;
+    let bytes = generate_root_object_selected(&checked.program, Some(checked), Some(&mut owners))?;
+    let owners = owners.ok_or_else(|| {
+        CompileError::Tool("E-SYSTEMS-USER-EXTENT: missing root owner binding".into())
+    })?;
+    owners.validate()?;
+    Ok((bytes, owners))
 }
 
 fn generate_root_object_selected(
     program: &CompilerSystemsProgram,
     frame: Option<&crate::systems_frame_policy_binding::Checked>,
+    user_owners: Option<&mut Option<crate::systems_user_extent::Owners>>,
 ) -> Result<Vec<u8>, CompileError> {
     let frames = frame.is_some();
     if let Some(checked) = frame {
@@ -890,6 +903,27 @@ fn generate_root_object_selected(
         ..RootEncoder::default()
     };
     encode_operations(&mut bootstrap, &program.bootstrap.handler.operations)?;
+    if let Some(output) = user_owners {
+        let frame = bootstrap.frame_policy.as_ref().ok_or_else(|| {
+            CompileError::Tool("E-SYSTEMS-USER-EXTENT: source-owned frames required".into())
+        })?;
+        if frame.user_owners.len() != 1 {
+            return Err(CompileError::Tool(
+                "E-SYSTEMS-USER-EXTENT: one actual process owner group required by this target"
+                    .into(),
+            ));
+        }
+        let roles = frame.user_owners[0].ok_or_else(|| {
+            CompileError::Tool("E-SYSTEMS-USER-EXTENT: incomplete live process owners".into())
+        })?;
+        *output = Some(crate::systems_user_extent::Owners {
+            token_bytes: frame
+                .next_slot
+                .checked_mul(24)
+                .ok_or_else(|| CompileError::Tool("frame owner size overflow".into()))?,
+            roles,
+        });
+    }
     if let Some(frame) = &bootstrap.frame_policy {
         let section = object.add_section(
             Vec::new(),

@@ -32,9 +32,27 @@ pub(super) fn call(
     e.0.bytes(&[0x48, 0xc7, 0x04, 0x24, 0, 0, 0, 0, 0x48, 0x83, 0xc4, 8]);
     Ok(())
 }
-pub(super) fn brk(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+pub(super) fn brk(
+    code: &mut X86FunctionEncoder,
+    user_extent_probe: bool,
+) -> Result<(), CompileError> {
     E(code).mov(Si, Di);
     call(code, 5, "frame-mm-brk-return")?;
+    if user_extent_probe {
+        // Unpublished experiment only. Preserve the actual ABI result, run the
+        // native observation after the MM owner has returned, then physically
+        // retire the completed probe's caller storage before resumption.
+        code.bytes(&[0x50]);
+        code.external_call("topal_x86_user_extent_probe_v1");
+        let mut e = E(code);
+        e.mov(Di, _Sp);
+        e.add(Di, -4096);
+        e.imm(A, 0);
+        e.imm(C, 512);
+        e.0.bytes(&[0xfc, 0xf3, 0x48, 0xab, 0x58]);
+        e.imm(C, 0);
+        e.store(_Sp, -8, C);
+    }
     let mut e = E(code);
     // Preserve the predecessor startup witness without using it to choose a
     // count, an allocation policy, a range, or whether the request is legal.

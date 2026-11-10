@@ -10822,7 +10822,12 @@ remain in force.
 
 The initial x86-64 realization SHALL qualify ordinary four-level LA48 paging and
 4096-byte leaves with explicit actual paging/permission-control state and
-physical-access limits. It SHALL check every level, entry format and owned
+physical-access limits. Its kernel initialization SHALL enable CR0.WP before
+the first userspace entry, preserve every other CR0 bit during that transition,
+and keep WP enabled through transfers and subsequent kernel execution. Actual
+generated transition-site observations SHALL qualify this initialization;
+debugger register changes SHALL NOT supply it. It SHALL check every level,
+entry format and owned
 next-table range before following it. Unsupported modes/leaves SHALL NOT be
 interpreted as small-page tables or qualify full Linux compatibility. The
 predecessor's virtual heap placement and page count SHALL NOT limit general

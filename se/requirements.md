@@ -1961,4 +1961,7 @@ stable syscall/address-space lifetime. They shall not inherit predecessor heap
 counts or treat numeric table geometry as authority. Preserve syscall-specific
 staging, fault/progress/error order, physical resource bounds and predecessor
 profiles. Separate portable model, native component, all-caller integration and
-production qualification. See [TK-DEC-283](../linux-kernel/design/owned-user-extents.md).
+production qualification. The new kernel profile shall initialize supervisor
+write protection before userspace entry, preserve other CR0 bits in that
+transition and keep protection enabled through transfers and subsequent kernel
+execution. See [TK-DEC-283](../linux-kernel/design/owned-user-extents.md).

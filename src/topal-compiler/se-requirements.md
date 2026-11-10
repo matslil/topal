@@ -12591,4 +12591,7 @@ syscall staging/error order and predecessor roots. Migrate every direct and
 shared frame-profile user-buffer caller; replacing one helper or increasing a
 constant is insufficient. Keep component/native and canonical publication gates
 separate until the complete caller/source/native/load/boot reconstruction is
-qualified. See [owned extents](../../linux-kernel/design/owned-user-extents.md).
+qualified. Initialize and verify CR0.WP before the new profile's first userspace
+entry; preserve all other CR0 bits and keep WP enabled, including during copies.
+Retain exact generated transition sites for actual before/after observation.
+See [owned extents](../../linux-kernel/design/owned-user-extents.md).

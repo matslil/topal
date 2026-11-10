@@ -38,6 +38,7 @@ mod systems_tail_linked;
 mod systems_tail_model;
 mod systems_tail_owner;
 mod systems_tail_publication;
+mod systems_user_extent;
 pub use systems_tail_linked::{
     Placement as SystemsTailInputPlacement, Section as SystemsTailInputSection,
 };

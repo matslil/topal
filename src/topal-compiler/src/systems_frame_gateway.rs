@@ -117,7 +117,7 @@ fn late(code: &mut Code, syscalls: bool) -> Result<(), CompileError> {
     }
     halt(code, "late_halt")
 }
-fn call(syscalls: bool) -> Result<(Code, u64, u64), CompileError> {
+fn call(syscalls: bool, user_extents: bool) -> Result<(Code, u64, u64), CompileError> {
     let mut code = Code::default();
     {
         let mut e = E(&mut code.encoder);
@@ -146,7 +146,7 @@ fn call(syscalls: bool) -> Result<(Code, u64, u64), CompileError> {
         e.0.jump_if(0x85, "unsafe"); // IF=DF=0
     }
     if syscalls {
-        memory::entry(&mut code)?;
+        memory::entry(&mut code, user_extents)?;
     }
     {
         let mut e = E(&mut code.encoder);
@@ -201,7 +201,7 @@ fn call(syscalls: bool) -> Result<(Code, u64, u64), CompileError> {
         e.0.jump_if(0x84, "constructor_result");
     }
     if syscalls {
-        memory::result(&mut code)?;
+        memory::result(&mut code, user_extents)?;
     }
     {
         let mut e = E(&mut code.encoder);
@@ -289,12 +289,21 @@ fn abort(syscalls: bool) -> Result<(Code, u64), CompileError> {
     Ok((code, reclaimed))
 }
 pub(crate) fn component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, false)
+    component_selected(complete_body_bound, false, false)
 }
 pub(crate) fn memory_component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, true)
+    component_selected(complete_body_bound, true, false)
 }
-fn component_selected(complete_body_bound: u64, syscalls: bool) -> Result<Vec<u8>, CompileError> {
+pub(crate) fn user_extent_component_object(
+    complete_body_bound: u64,
+) -> Result<Vec<u8>, CompileError> {
+    component_selected(complete_body_bound, true, true)
+}
+fn component_selected(
+    complete_body_bound: u64,
+    syscalls: bool,
+    user_extents: bool,
+) -> Result<Vec<u8>, CompileError> {
     if complete_body_bound == 0
         || complete_body_bound % 8 != 0
         || complete_body_bound
@@ -344,7 +353,7 @@ fn component_selected(complete_body_bound: u64, syscalls: bool) -> Result<Vec<u8
         "topal_x86_frame_gateway_fatal_reclaimed_v1",
         start + point,
     );
-    let (code, normal, refused) = call(syscalls)?;
+    let (code, normal, refused) = call(syscalls, user_extents)?;
     let checking = code.encoder.labels["recovery_cleared"] as u64;
     let late = code.encoder.labels["late_halt"] as u64;
     let dispatched = code.encoder.labels["dispatched"] as u64;

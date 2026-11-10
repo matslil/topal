@@ -74,6 +74,14 @@ the target are not permission changes. The target validates its actual paging
 mode and optional permission-control state; it cannot assume that ignored
 features are disabled merely because the chosen emulator normally disables them.
 
+The owned-extent profile initializes supervisor write protection before its
+first userspace entry and keeps it enabled for the remaining kernel execution.
+The transition changes only CR0.WP, preserving every other CR0 bit. Transfers
+cannot temporarily disable protection. Earlier profiles retain their qualified
+initial mode. Qualification observes the actual before/after registers at the
+generated initialization sites; a debugger register edit cannot replace that
+guest-side implementation.
+
 Translation storage comes from the actual pinned root/table ownership. The
 current bootstrap owns five pages in one extent; that is its present owner
 representation, not a portable table-count limit. User backing comes from the

@@ -8,7 +8,7 @@ pub(super) fn inspect(
     target: &[u8],
     owner: &serde_json::Value,
 ) -> Result<serde_json::Value, CompileError> {
-    inspect_objects(controller, target, None, owner)
+    inspect_objects(controller, target, None, None, owner)
 }
 pub(crate) fn inspect_gateway(
     controller: &[u8],
@@ -16,12 +16,22 @@ pub(crate) fn inspect_gateway(
     dispatch: &[u8],
     owner: &serde_json::Value,
 ) -> Result<serde_json::Value, CompileError> {
-    inspect_objects(controller, target, Some(dispatch), owner)
+    inspect_objects(controller, target, Some(dispatch), None, owner)
+}
+pub(crate) fn inspect_user_extents(
+    controller: &[u8],
+    target: &[u8],
+    dispatch: &[u8],
+    extent: &[u8],
+    owner: &serde_json::Value,
+) -> Result<serde_json::Value, CompileError> {
+    inspect_objects(controller, target, Some(dispatch), Some(extent), owner)
 }
 fn inspect_objects(
     controller: &[u8],
     target: &[u8],
     dispatch: Option<&[u8]>,
+    extent: Option<&[u8]>,
     owner: &serde_json::Value,
 ) -> Result<serde_json::Value, CompileError> {
     let invalid = |s: &str| CompileError::Tool(format!("E-SYSTEMS-FRAME-POLICY-BINDING: {s}"));
@@ -31,8 +41,15 @@ fn inspect_objects(
         .map(object::File::parse)
         .transpose()
         .map_err(|e| invalid(&e.to_string()))?;
+    let extent = extent
+        .map(object::File::parse)
+        .transpose()
+        .map_err(|e| invalid(&e.to_string()))?;
     let mut objects = vec![&controller, &target];
     if let Some(file) = dispatch.as_ref() {
+        objects.push(file);
+    }
+    if let Some(file) = extent.as_ref() {
         objects.push(file);
     }
     let mut frames = BTreeMap::new();
@@ -168,6 +185,10 @@ fn inspect_objects(
             "native dispatch/controller/target paths including a conservative owner fatal-callback contribution; machine gateway retirement, entry fixture and publication require separate proof"
         );
         result["fatal_callback_contribution"] = serde_json::json!(callback);
+    }
+    if extent.is_some() {
+        result["user_extent_component"] = serde_json::json!({"included_in_complete_dispatch_path":true,
+            "scope":"native walk/target/caller path costs; actual owning entry, physical retirement and runtime qualification remain separate"});
     }
     Ok(result)
 }

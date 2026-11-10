@@ -10,6 +10,7 @@ fn emit_static_process_start(
     retained_identity: bool,
     source_inode: bool,
     frame_memory: bool,
+    user_extent_probe: bool,
 ) -> Result<(), CompileError> {
     const OBJECT: u32 = 0x0e70;
     const TAG: u32 = 0x0fc8;
@@ -271,6 +272,13 @@ fn emit_static_process_start(
     // initialize x87, MXCSR, and every XMM register before entry.
     code.bytes(&[0x0f, 0x20, 0xc0, 0xa9, 0x0c, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fatal"); // CR0.EM and CR0.TS must both be clear
+    if user_extent_probe {
+        // Initialize the new guest profile before user entry, preserving every
+        // other CR0 bit. A user transfer never disables write protection.
+        code.bind("user-extent-wp-before")?;
+        code.bytes(&[0x48, 0x0d, 0, 0, 1, 0, 0x0f, 0x22, 0xc0]);
+        code.bind("user-extent-wp-ready")?;
+    }
     code.bytes(&[0x0f, 0x20, 0xe0, 0x49, 0x89, 0x82, 0x18, 0x01, 0, 0]);
     code.bytes(&[0x48, 0x0d, 0x00, 0x06, 0, 0, 0x0f, 0x22, 0xe0]);
     code.bytes(&[0x41, 0xc7, 0x82, 0x20, 0x01, 0, 0, 0x80, 0x1f, 0, 0]);
@@ -870,7 +878,7 @@ fn emit_static_process_start(
 
     code.bind("static-process-brk")?;
     if frame_memory {
-        frame_memory::brk(code)?;
+        frame_memory::brk(code, user_extent_probe)?;
     }
     code.bytes(&[0x48, 0x85, 0xff]);
     code.jump_if(0x84, "static-process-brk-query");

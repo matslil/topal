@@ -2185,4 +2185,7 @@ from general buffer admission. The initial x86 backend uses four-level paging
 and small leaves, retaining explicit physical-access and mode limits. Other
 architectures implement the same owner/entry/direction/lifetime contract with
 their own translation and user-access mechanisms. Existing predecessor roots
-retain their profiles. See the [owned extent design](../linux-kernel/design/owned-user-extents.md).
+retain their profiles. The owned-extent kernel profile enables supervisor write
+protection before its first userspace entry and keeps it enabled. That transition
+preserves every other CR0 bit; copying does not disable protection. See the
+[owned extent design](../linux-kernel/design/owned-user-extents.md).

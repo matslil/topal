@@ -203,6 +203,7 @@ fn static_image_process_enter(
         source_inode,
         source_namespace,
         false,
+        false,
     )
 }
 
@@ -221,6 +222,7 @@ fn static_image_process_enter_selected(
     source_inode: bool,
     source_namespace: bool,
     frame_memory: bool,
+    user_extent_probe: bool,
 ) -> Result<LinkableX86Function, CompileError> {
     let mut code = X86FunctionEncoder::default();
     emit_static_process_start(
@@ -235,6 +237,7 @@ fn static_image_process_enter_selected(
         retained_identity,
         source_inode,
         frame_memory,
+        user_extent_probe,
     )?;
     emit_static_process_read_exec(&mut code, source_image, frame_memory)?;
     emit_static_process_files(&mut code)?;
@@ -256,7 +259,7 @@ fn static_image_process_enter_selected(
         dispatch_policy == crate::systems_numeric_library::NumericPolicy::LinuxDispatchV6,
         frame_memory,
     )?;
-    let markers = if frame_memory {
+    let mut markers = if frame_memory {
         vec![
             (
                 "topal_x86_frame_mm_brk_return_v1",
@@ -274,6 +277,17 @@ fn static_image_process_enter_selected(
     } else {
         vec![]
     };
+    if user_extent_probe {
+        for (symbol, label) in [
+            (
+                "topal_x86_user_extent_wp_before_v1",
+                "user-extent-wp-before",
+            ),
+            ("topal_x86_user_extent_wp_ready_v1", "user-extent-wp-ready"),
+        ] {
+            markers.push((symbol, code.labels[label] as u64));
+        }
+    }
     let mut result = code.finish_linkable()?;
     result.markers = markers;
     Ok(result)
