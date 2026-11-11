@@ -111,24 +111,32 @@ def scalar(raw):
         word, at = True, at + 1
     if 0x40 <= raw[at] <= 0x4f:
         rex, at = raw[at], at + 1
+    assert not (word and rex & 8), 'combined operand-size/REX.W needs separate immediate rules'
     op, at = raw[at], at + 1
     width = 8 if rex & 8 else (2 if word else 4)
     immediate, destination = 0, None
     if op == 0x0f:
-        assert raw[at] == 0xb7
+        assert raw[at] in [0xb6, 0xb7]
+        width = 1 if raw[at] == 0xb6 else 2
         at += 1
-        width, action = 2, 'read'
-    elif op in [0x8b, 0x39]:
         action = 'read'
-    elif op == 0x89:
+    elif op in [0x8a, 0x8b, 0x38, 0x39]:
+        action = 'read'
+        if op in [0x8a, 0x38]:
+            width = 1
+    elif op in [0x88, 0x89]:
         action = 'write'
+        if op == 0x88:
+            width = 1
     elif op in [0x80, 0x81, 0x83]:
         action = 'read'
         immediate = 1 if op in [0x80, 0x83] else (2 if word else 4)
         if op == 0x80:
             width = 1
-    elif op == 0xc7:
-        action, immediate = 'write', 2 if word else 4
+    elif op in [0xc6, 0xc7]:
+        action, immediate = 'write', 1 if op == 0xc6 else (2 if word else 4)
+        if op == 0xc6:
+            width = 1
     else:
         raise AssertionError(('unsupported local scalar opcode', raw.hex()))
     modrm, at = raw[at], at + 1
@@ -142,9 +150,10 @@ def scalar(raw):
         at += size
     if op in [0x80, 0x81, 0x83]:
         assert reg == 7, 'only CMP is admitted from this opcode group'
-    if op == 0xc7:
+    if op in [0xc6, 0xc7]:
         assert reg == 0
-    if op in [0x8b, 0x0f]:
+    if op in [0x8a, 0x8b, 0x0f]:
+        assert op != 0x8a or rex or reg < 4, 'legacy high-byte destinations need separate effects'
         destination = reg + (8 if rex & 4 else 0)
     assert len(raw) == at + immediate
     return action, displacement, width, base, destination

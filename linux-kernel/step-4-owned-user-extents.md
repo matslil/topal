@@ -137,6 +137,22 @@ pinned-image configuration failure remain explicitly failed. The specific
 ordinary-buffer refusal gap is covered; complete owners/lifetime, other access
 regions, all fallback and canonical production obligations remain open.
 
+The [additional scalar checkpoint](tools/user-memory/results/stage-3-additional-scalars/README.md)
+checks 33 more local regions and 51 user-access instructions, including shifted
+poll output, header-byte preparation/readback and per-invocation byte/vector
+probes. Separate GNU decoding agrees on 279 instructions and all 51 backward
+success-edge cuts; eight offline first-party artifact controls are rejected.
+The joined index now has 73 selected helper sites and 300 user instructions,
+with eighteen sites lacking intervals. It does not qualify whole callers or
+hide the wait-status preparation's separate ownership/access obligation.
+Fresh pinned BusyBox preserves its entire preceding native observation object,
+all seventeen compared kernel artifacts and application/boot/console bytes.
+The three preceding access reports remain byte-identical. Forty-five tests,
+both fixture builds, all seven post-checks and exact selected-source replay
+pass. New native scalar-transfer observation is not claimed; helper/entry/
+callee/exception, complete owner/lifetime, remaining access, fallback and
+production obligations remain required. Canonical production is unchanged.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

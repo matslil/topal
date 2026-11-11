@@ -1,0 +1,9 @@
+{
+  "name": "signal-final-word",
+  "rejected": true,
+  "offset": 36062,
+  "expected_byte": 24,
+  "changed_byte": 32,
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+}

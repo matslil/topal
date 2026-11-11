@@ -44,15 +44,19 @@ def gs_effect(raw):
     field = int.from_bytes(raw[at+3:at+7], 'little')
     width = 8 if rex & 8 else 1
     register, immediate, action = None, 0, 'read'
-    if op == 0x8b:
+    if op == 0x8a:
+        assert not rex
+        register = (modrm>>3)&7
+        assert register < 4
+    elif op == 0x8b:
         assert rex & 8
         register = ((modrm>>3)&7)+(8 if rex & 4 else 0)
     elif op == 0x89:
         assert rex & 8 and (modrm>>3)&7 == 0 and not (rex & 4)
         action = 'write'
-    elif op == 0xc7:
-        assert rex & 8 and (modrm>>3)&7 == 0
-        action, immediate = 'write', 4
+    elif op in [0xc6, 0xc7]:
+        assert (modrm>>3)&7 == 0 and bool(rex & 8) == (op == 0xc7)
+        action, immediate = 'write', 1 if op == 0xc6 else 4
     elif op in [0x80, 0x83]:
         assert (modrm>>3)&7 == 7 and (op == 0x83) == bool(rex & 8)
         immediate = 1
@@ -90,6 +94,9 @@ def preparation(nodes, successors, predecessors, roots, body, gate, start, user_
         elif raw[:2] == b'\x48\xb8':
             assert len(raw) == 10
             effect = dict(register_write=0)
+        elif raw[:1] == b'\x3c':
+            assert len(raw) == 2
+            effect = dict(kind='byte-register-compare')
         elif raw[:1] == b'\xe9' or (raw[:1] == b'\x0f' and 0x80 <= raw[1] <= 0x8f):
             effect = dict(kind='branch')
         else:

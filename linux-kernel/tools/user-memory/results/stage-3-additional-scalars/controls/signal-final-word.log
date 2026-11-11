@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_additional_scalars.py", line 227, in <module>
+    audit(Path(sys.argv[1]).resolve())
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_additional_scalars.py", line 195, in audit
+    offset = relative_offset(aliases[base],displacement,width,length)
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/audit_additional_scalars.py", line 88, in relative_offset
+    assert 0 <= offset and offset+width <= length, 'scalar extent bounds'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: scalar extent bounds

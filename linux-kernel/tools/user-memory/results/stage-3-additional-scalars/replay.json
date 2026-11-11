@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "selected_inputs": 125,
+  "exact_source_join_equal": true,
+  "exact_additional_scalar_report_equal": true,
+  "scalar_regions": 33,
+  "user_access_instructions": 51,
+  "scope": "Frozen selected first-party source/artifact replay only; no compiler rebuild, LLVM/GNU/GDB/VM execution, complete owner/lifetime or production qualification"
+}

@@ -175,3 +175,16 @@ observations or change their historical scope. Default observers in the fresh
 pinned BusyBox cohort preserve exactly the preceding native observation object.
 Kernel/application/boot/output bytes remain unchanged, as do the forty local
 intervals/249-instruction index and the 51 sites without selected intervals.
+
+The [additional scalar record](results/stage-3-additional-scalars/README.md)
+adds 33 selected intervals and 51 user-access instructions. It proves exact
+per-interval candidate/count setup, preserved aliases (including shifted poll
+output), checked header preparation, raw byte/word bounds and direct-graph
+success-edge dominance. The joined index now has 73 helper sites/300 selected
+user instructions and eighteen sites without intervals. Repeated scalar probes
+qualify only their own invocation; the later full poll readback, private loop
+staging and whole-caller effects remain separate. The wait-status preparation's
+additional read is explicitly unqualified. Fresh pinned exit preserves all
+preceding native observations and reaches fourteen selected calls, without
+claiming new native scalar-transfer coverage. Complete owners/lifetime,
+helper/root/callee/exception, all fallback and production obligations remain.

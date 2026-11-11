@@ -1,0 +1,9 @@
+{
+  "name": "shifted-final-byte",
+  "rejected": true,
+  "offset": 33606,
+  "expected_byte": 6,
+  "changed_byte": 7,
+  "exit_code": 1,
+  "scope": "Offline first-party provider/kernel byte corruption with rebound outer census/graph/join identities; never compiled, booted, loaded into a VM or used to alter guest state; not source-provenance authentication"
+}
