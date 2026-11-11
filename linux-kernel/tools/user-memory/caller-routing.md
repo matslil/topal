@@ -80,3 +80,16 @@ of 91. No historical check is removed. The audit's direct-entry checks concern
 decoded branches into these local slices only; embedded data, unknown decoding,
 indirect/exception entry, complete access inventory and stable observation
 still need their own evidence.
+
+The [linked process graph](results/stage-3-process-accesses/README.md) now lists
+31016 instructions and their potential addressed/implicit-stack operations.
+Exact LLVM byte checks and GNU re-decoding agree on every instruction boundary
+and all 36938 direct-control edges. Two real branch destinations require targeted
+decoding after the linear listing loses alignment. All 88 preceding native
+first-reach sites occur in this graph. Exec signal reset and missing-path calls
+are in its 90-call set; the named-condition call is outside it. The 91-call
+emission census and all three fallback obligations remain intact. The graph's
+listed roots, call-return assumptions and 18 external/six indirect boundaries
+still require complete entry/callee contracts. Its 14584 potential-access
+instructions are a review inventory, not user-pointer classification or proof
+of admission dominance, transfer direction or stable mapping lifetime.

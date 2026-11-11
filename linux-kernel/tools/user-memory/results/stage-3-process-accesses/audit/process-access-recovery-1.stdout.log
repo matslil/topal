@@ -1,0 +1,26 @@
+
+/home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-application-2279338-1794402953201096759/kernel.elf:	file format elf64-x86-64
+
+Disassembly of section .text:
+
+0000000002ba8da4 <topal_x86_frame_mm_cleanup_return_v1>:
+ 2bb5c64: 48 bd 00 00 00 00 00 00 00 00	movabs	rbp, 0x0
+ 2bb5c6e: 49 89 f8                     	mov	r8, rdi
+ 2bb5c71: 48 bb 9c ff ff ff 00 00 00 00	movabs	rbx, 0xffffff9c
+ 2bb5c7b: 49 89 f1                     	mov	r9, rsi
+ 2bb5c7e: 49 ba 9c ff ff ff 00 00 00 00	movabs	r10, 0xffffff9c
+ 2bb5c88: 49 bf 00 00 00 00 00 00 00 00	movabs	r15, 0x0
+ 2bb5c92: e9 94 00 00 00               	jmp	0x2bb5d2b <topal_x86_frame_mm_cleanup_return_v1+0xcf87>
+ 2bb5c97: 48 bd 00 00 00 00 00 00 00 00	movabs	rbp, 0x0
+ 2bb5ca1: 49 89 f8                     	mov	r8, rdi
+ 2bb5ca4: 48 bb 9c ff ff ff 00 00 00 00	movabs	rbx, 0xffffff9c
+ 2bb5cae: 49 89 f1                     	mov	r9, rsi
+ 2bb5cb1: 49 ba 9c ff ff ff 00 00 00 00	movabs	r10, 0xffffff9c
+ 2bb5cbb: 49 bf 01 00 00 00 00 00 00 00	movabs	r15, 0x1
+ 2bb5cc5: e9 61 00 00 00               	jmp	0x2bb5d2b <topal_x86_frame_mm_cleanup_return_v1+0xcf87>
+ 2bb5cca: 48 bd 00 00 00 00 00 00 00 00	movabs	rbp, 0x0
+ 2bb5cd4: 49 89 f0                     	mov	r8, rsi
+ 2bb5cd7: 48 89 fb                     	mov	rbx, rdi
+ 2bb5cda: 4d 89 d1                     	mov	r9, r10
+ 2bb5cdd: 49 89 d2                     	mov	r10, rdx
+ 2bb5ce0: 49 bf 00 00 00 00 00 00 00 00	movabs	r15, 0x0

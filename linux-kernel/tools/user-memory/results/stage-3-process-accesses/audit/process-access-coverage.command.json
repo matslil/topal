@@ -1,0 +1,9 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/inventory_process_accesses.py",
+    "--verify-coverage",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2279338-1794402953201096759"
+  ],
+  "exit_code": 0
+}

@@ -577,7 +577,7 @@ fn build_guest(
     })
     .unwrap();
     fs::write(work.join("provider.o"), &provider.bytes).unwrap();
-    if matches!(
+    let access_audit_selected = matches!(
         focus,
         Some(
             CallerFocus::Application
@@ -586,7 +586,8 @@ fn build_guest(
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceSerial
         )
-    ) {
+    );
+    if access_audit_selected {
         fs::write(
             work.join("extent-call-inventory.json"),
             serde_json::to_vec_pretty(provider.extent_inventory.as_ref().unwrap()).unwrap(),
@@ -717,6 +718,19 @@ fn build_guest(
         }
     }
     let kernel = fs::read(work.join("kernel.elf")).unwrap();
+    if access_audit_selected {
+        run(
+            work,
+            "process-access-inventory",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/inventory_process_accesses.py"),
+                )
+                .arg(work)
+                .arg(tools.tool_path("llvm-objdump")),
+        );
+    }
     fs::write(
         work.join("bzImage"),
         crate::systems_boot_image::unpublished_component_fixture(&kernel).unwrap(),
@@ -760,4 +774,17 @@ fn build_guest(
             ))
             .arg(work),
     );
+    if access_audit_selected {
+        run(
+            work,
+            "process-access-coverage",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/inventory_process_accesses.py"),
+                )
+                .arg("--verify-coverage")
+                .arg(work),
+        );
+    }
 }

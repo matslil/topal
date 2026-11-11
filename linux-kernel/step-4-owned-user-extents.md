@@ -36,6 +36,19 @@ argument. Native fallback reach, the complete direct/shared-access inventory,
 global dominance and lifetime/mode/ownership qualification remain required;
 no production activation or full Stage-3 completion is claimed.
 
+The [linked process access inventory](tools/user-memory/results/stage-3-process-accesses/README.md)
+adds a 31016-instruction direct-control graph with exact linked bytes and
+independent GNU instruction-length/edge/closure checks. It recovers two real
+branch destinations omitted by the linear listing and records 14584 potential
+addressed/implicit-stack operations for semantic review. All 88 preceding native
+first-reach sites belong to its 90-call set; one of 91 emitted calls is outside
+this graph. That distinction does not close any fallback obligation. A fresh
+unchanged BusyBox exit, native graph binding, six post-checks and exact archived
+LLVM/GNU replay pass; all 17 compared kernel objects/images, the pinned application,
+boot resource and console transcript are unchanged. The 70-input selected record
+does not establish a complete producer, all-kernel graph, pointer provenance,
+admission dominance, stable access lifetime or production qualification.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,
