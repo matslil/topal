@@ -1,0 +1,25 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 8.07s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2270049-1794398645244650647
+
+thread 'systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries' (2270050) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+pipe-cases-compile: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2270049-1794398645244650647
+/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-pipes-2270049-1794398645244650647/pipe-cases.c:6:42: error: initializer-string for array of ‘unsigned char’ truncates NUL terminator but destination lacks ‘nonstring’ attribute (17 chars into 16 available) [-Werror=unterminated-string-initialization]
+    6 | static const unsigned char payload[16] = "owned-pipe-data!";
+      |                                          ^~~~~~~~~~~~~~~~~~
+cc1: all warnings being treated as errors
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 385 filtered out; finished in 1.18s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

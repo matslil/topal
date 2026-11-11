@@ -14,6 +14,7 @@ from user_extent_exec_observer import PROGRAM as EXEC_PROGRAM
 from user_extent_signal_observer import PROGRAM as SIGNAL_PROGRAM
 from user_extent_poll_observer import PROGRAM as POLL_PROGRAM
 from user_extent_call_coverage import PROGRAM as COVERAGE_PROGRAM, linked_inventory
+from user_extent_pipe_observer import PROGRAM as PIPE_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -74,6 +75,8 @@ class SourceReturned(Checked):
             return exec_returned(current,after)
         if component.get('mode') == 'signals':
             return signal_returned(current,after)
+        if component.get('mode') == 'pipes':
+            return pipe_returned(current,after)
         calls = current['calls']
         assert [row['number'] for row in calls] == [12,12,63,63,63,63,63,63,63,1,1,1,1,12], calls
         original = current['before'][1]
@@ -111,6 +114,9 @@ class SourceEntered(Checked):
                        command_before=hashlib.sha256(memory(snapshot+0x9e00,512)).hexdigest())
         if component.get('mode') == 'signals':
             current['table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
+        if component.get('mode') == 'pipes':
+            current['pipe_table_before_sha256'] = hashlib.sha256(memory(word(context+928),8192)).hexdigest()
+            current['_pipe_initial'] = memory(word(context+928)+PIPE_BASE,PIPE_BYTES).hex()
         if return_site not in component_returns:
             component_returns[return_site] = SourceReturned('*'+hex(return_site), internal=True)
         component_returns[return_site].enabled = True
@@ -127,6 +133,8 @@ class SyscallReturned(Checked):
             observe_exec_result(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
             observe_signal_result(pending)
+        if current and component.get('mode') == 'pipes' and pending['number'] != 12:
+            pipe_result(pending)
         if startup_current and startup_current.get('kind') == 'poll':
             observe_poll_result(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
@@ -160,6 +168,8 @@ class SyscallEntered(Checked):
             observe_exec_request(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
             observe_signal_request(pending)
+        if current and component.get('mode') == 'pipes' and pending['number'] != 12:
+            pipe_request(pending)
         if startup_current and startup_current.get('kind') == 'poll':
             observe_poll_request(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
@@ -395,22 +405,24 @@ def file_returned(row):
 
 # EXTENT_COVERAGE
 
+# PIPE_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
-        if component.get('mode') in ['exec','signals','poll']:
+        if component.get('mode') in ['exec','signals','poll','pipes']:
             assert len(observed['executions']) == 4
             assert all(not observed[key] for key in [
                 'startup_executions','file_executions','shell_executions','command_executions'])
         else:
             assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll'] else [
+        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll','pipes'] else [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
         )
-        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll'] else 5)
-        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll'] else 38)
+        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes'] else 5)
+        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll','pipes'] else 38)
         assert len(observed['poll_executions']) == (4 if component.get('mode') == 'poll' else 0)
         assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])+len(observed['poll_executions'])
         assert state() == [0,0,0,0]
@@ -462,6 +474,8 @@ assert PROGRAM.count('# POLL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# POLL_OBSERVER', POLL_PROGRAM)
 assert PROGRAM.count('# EXTENT_COVERAGE') == 1
 PROGRAM = PROGRAM.replace('# EXTENT_COVERAGE', COVERAGE_PROGRAM)
+assert PROGRAM.count('# PIPE_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# PIPE_OBSERVER', PIPE_PROGRAM)
 
 
 if __name__ == '__main__':
@@ -471,7 +485,7 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert archive['static-user.elf'] == image
-    extent_inventory = linked_inventory(build) if component.get('mode') == 'poll' else None
+    extent_inventory = linked_inventory(build) if component.get('mode') in ['poll','pipes'] else None
     harness.GDB_PROGRAM = PROGRAM
     harness.main(
         work_name='source-user-extents',

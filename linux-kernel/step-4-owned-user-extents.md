@@ -8,10 +8,13 @@ general virtual memory. The production kernel still has the preceding finite
 MM geometry and legacy user-buffer validators. This increment does not yet
 change that executable behavior or complete initial Step 4.
 
-The latest [selected helper-call census](tools/user-memory/results/stage-3-call-census/README.md)
+The [selected helper-call census](tools/user-memory/results/stage-3-call-census/README.md)
 checks 91 emitted calls against actual ELF/disassembly and observes first reach
 of 77 in ordinary process execution. Fourteen sites remain unobserved in that
-cohort. All 17 selected kernel objects/images match the prior checkpoint; the
+cohort. The [subsequent source FIFO cases](tools/user-memory/results/stage-3-source-pipes/README.md)
+add four newly reached sites, for an 81-of-91 union, and verify 132 selected FIFO
+state transitions in 144 source-issued syscalls. All 17 selected kernel objects/images
+match the prior checkpoint; the
 census changes test metadata and observation only. Complete direct user-access
 inventory, admission/error/lifetime qualification and production reconstruction
 remain acceptance blockers. First reach alone discharges none of those gates.

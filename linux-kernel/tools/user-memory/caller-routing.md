@@ -36,3 +36,10 @@ emitter locations and preceding native labels are retained. These are first-hit
 observations before invocation, not admission/return qualification or a complete
 direct-access inventory. They identify the next active-descriptor source cases
 and fallback classification needed without weakening any acceptance gate.
+
+The subsequent [ordinary FIFO cohort](results/stage-3-source-pipes/README.md)
+reaches all four previously unobserved process-owned pipe sites. Its 144 source
+calls verify complete selected table/FIFO transitions, buffer refusals, actual
+byte transport and exact endpoint/ring retirement. The two matching-kernel
+cohorts reach 81 of 91 sites in union; ten remain unobserved in that union.
+This does not replace the complete direct-access and caller qualification gates.

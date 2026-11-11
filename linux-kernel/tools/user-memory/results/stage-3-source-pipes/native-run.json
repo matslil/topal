@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_pipe_transfer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 144.65554873086512,
+  "resources": {
+    "memory.max": "3386400768",
+    "memory.swap.max": "0",
+    "memory.peak": "370196480",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "f326692be7a7bf6eff99d8168bc8b131ff0ea532182833074a75f5704bd10721",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "74f61fd994ad383b32d5c92b44ea0d42df4b596bdadc412d25fc41c6b9c5b372",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "0e30fdac5caadd011cc1bc9af7ed03d744dad54f2f644b3866082f7ac83e850e",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c": "9c60c23c96c582163f8688c7e5fcb2253808cc9da8fa535218a8d98a92beec67",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py": "fac5f77075f391e2dce2b1fdc1ed83d211cd5a0d7fd20f75f09919e6260e911b"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "f326692be7a7bf6eff99d8168bc8b131ff0ea532182833074a75f5704bd10721",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "74f61fd994ad383b32d5c92b44ea0d42df4b596bdadc412d25fc41c6b9c5b372",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "0e30fdac5caadd011cc1bc9af7ed03d744dad54f2f644b3866082f7ac83e850e",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_cases.c": "9c60c23c96c582163f8688c7e5fcb2253808cc9da8fa535218a8d98a92beec67",
+    "linux-kernel/labs/qemu/x86_64/user_extent_pipe_observer.py": "fac5f77075f391e2dce2b1fdc1ed83d211cd5a0d7fd20f75f09919e6260e911b"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused source-built ordinary user-buffer cases; no production or complete all-caller qualification"
+}
