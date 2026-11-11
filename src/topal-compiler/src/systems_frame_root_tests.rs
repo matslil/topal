@@ -72,6 +72,13 @@ fn owned_source_fixture_checks_pipe_transfer_boundaries() {
     execute_selected(true, true, true, Some(CallerFocus::SourcePipes));
 }
 
+#[test]
+#[ignore = "requires a C compiler, QEMU and GDB"]
+fn owned_source_fixture_checks_storage_transfer_boundaries() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001; VOLATILE/POSITIONAL-FILE-TRANSFER-001.
+    execute_selected(true, true, true, Some(CallerFocus::SourceStorage));
+}
+
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
     execute_selected(memory, false, false, None)
 }
@@ -112,6 +119,7 @@ enum CallerFocus {
     SourceSignals,
     SourcePoll,
     SourcePipes,
+    SourceStorage,
     Startup,
     Shell,
     Stat,
@@ -168,7 +176,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourcePipes) {
+    let prefix = if focus == Some(CallerFocus::SourceStorage) {
+        "user-extent-source-storage"
+    } else if focus == Some(CallerFocus::SourcePipes) {
         "user-extent-source-pipes"
     } else if focus == Some(CallerFocus::SourcePoll) {
         "user-extent-source-poll"
@@ -208,6 +218,7 @@ fn execute_selected(
                 | CallerFocus::SourceSignals
                 | CallerFocus::SourcePoll
                 | CallerFocus::SourcePipes
+                | CallerFocus::SourceStorage
         )
     ) {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -298,7 +309,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourcePipes) {
+    let fixture_bytes = if focus == Some(CallerFocus::SourceStorage) {
+        crate::systems_user_extent::source_fixture::build_storage(work, tools)
+    } else if focus == Some(CallerFocus::SourcePipes) {
         crate::systems_user_extent::source_fixture::build_pipes(work, tools)
     } else if focus == Some(CallerFocus::SourcePoll) {
         crate::systems_user_extent::source_fixture::build_poll(work, tools)
@@ -553,7 +566,7 @@ fn build_guest(
     fs::write(work.join("provider.o"), &provider.bytes).unwrap();
     if matches!(
         focus,
-        Some(CallerFocus::SourcePoll | CallerFocus::SourcePipes)
+        Some(CallerFocus::SourcePoll | CallerFocus::SourcePipes | CallerFocus::SourceStorage)
     ) {
         fs::write(
             work.join("extent-call-inventory.json"),
@@ -699,6 +712,7 @@ fn build_guest(
                             | CallerFocus::SourceSignals
                             | CallerFocus::SourcePoll
                             | CallerFocus::SourcePipes
+                            | CallerFocus::SourceStorage
                     )
                 ) {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py"

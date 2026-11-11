@@ -131,8 +131,16 @@ pub(crate) fn build_pipes(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     build_selected(work, tools, "pipes")
 }
 
+pub(crate) fn build_storage(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "storage")
+}
+
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
     let (entry_name, extra) = match mode {
+        "storage" => (
+            "topal_user_extent_storage_cases",
+            Some(("storage", "storage-cases")),
+        ),
         "pipes" => ("topal_user_extent_pipe_cases", Some(("pipe", "pipe-cases"))),
         "transfers" => ("topal_user_extent_source_cases", None),
         "exec" => ("topal_user_extent_exec_cases", Some(("exec", "exec-cases"))),
@@ -316,6 +324,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "signal_source_sha256": if mode == "signals" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_signal_cases.c")).unwrap()))) } else { None },
         "poll_source_sha256": if mode == "poll" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_poll_cases.c")).unwrap()))) } else { None },
         "pipe_source_sha256": if mode == "pipes" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_pipe_cases.c")).unwrap()))) } else { None },
+        "storage_source_sha256": if mode == "storage" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_storage_cases.c")).unwrap()))) } else { None },
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
         "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),

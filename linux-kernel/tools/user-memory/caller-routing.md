@@ -43,3 +43,12 @@ calls verify complete selected table/FIFO transitions, buffer refusals, actual
 byte transport and exact endpoint/ring retirement. The two matching-kernel
 cohorts reach 81 of 91 sites in union; ten remain unobserved in that union.
 This does not replace the complete direct-access and caller qualification gates.
+
+The [ordinary storage cohort](results/stage-3-source-storage/README.md) adds the
+four volatile-file helpers, immutable-file pread and named-directory publication.
+Its 208 source-issued calls compare selected table/filesystem transitions,
+failure atomicity, output, independent positions and complete anonymous-file
+reclamation. Exact matching-kernel/census checks establish an 87-of-91 union
+with the preceding poll and pipe cohorts. Serial descriptor read and three
+bounded fallback inputs remain unobserved in that union. The complete direct-
+access, length/error/lifetime and production gates remain separate and required.
