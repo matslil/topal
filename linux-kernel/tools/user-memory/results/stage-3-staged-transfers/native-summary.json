@@ -1,0 +1,250 @@
+{
+  "passed": true,
+  "cohorts": [
+    {
+      "label": "application",
+      "counts": {
+        "uname-loop": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 390
+        },
+        "close-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 14
+        },
+        "root-condition": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "empty-bin-message": {
+          "attempts": 2,
+          "admitted": 2,
+          "refused": 0,
+          "completed": 2,
+          "bytes": 26
+        },
+        "executable-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 19
+        },
+        "nonempty-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 17
+        },
+        "open-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 13
+        },
+        "header-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 13
+        },
+        "banner": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "console-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "root-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "empty-bin-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "profile-stat": {
+          "attempts": 0,
+          "admitted": 0,
+          "refused": 0,
+          "completed": 0,
+          "bytes": 0
+        },
+        "named-stat": {
+          "attempts": 4,
+          "admitted": 4,
+          "refused": 0,
+          "completed": 4,
+          "bytes": 576
+        },
+        "root-directory": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 72
+        },
+        "empty-bin-directory": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 80
+        }
+      },
+      "unreached": [
+        "banner",
+        "profile-stat"
+      ],
+      "helper_first_reach": 38,
+      "callback_returns": 77,
+      "preceding_rep_copies": 5
+    },
+    {
+      "label": "storage",
+      "counts": {
+        "uname-loop": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 390
+        },
+        "close-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 14
+        },
+        "root-condition": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 5
+        },
+        "empty-bin-message": {
+          "attempts": 2,
+          "admitted": 2,
+          "refused": 0,
+          "completed": 2,
+          "bytes": 26
+        },
+        "executable-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 19
+        },
+        "nonempty-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 17
+        },
+        "open-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 13
+        },
+        "header-message": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 13
+        },
+        "banner": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 109
+        },
+        "console-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "root-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "empty-bin-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "profile-stat": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 144
+        },
+        "named-stat": {
+          "attempts": 4,
+          "admitted": 4,
+          "refused": 0,
+          "completed": 4,
+          "bytes": 576
+        },
+        "root-directory": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 72
+        },
+        "empty-bin-directory": {
+          "attempts": 1,
+          "admitted": 1,
+          "refused": 0,
+          "completed": 1,
+          "bytes": 80
+        }
+      },
+      "unreached": [],
+      "helper_first_reach": 81,
+      "callback_returns": 1168,
+      "preceding_rep_copies": 166
+    }
+  ]
+}

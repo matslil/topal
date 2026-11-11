@@ -147,3 +147,17 @@ expressions without granting ownership; neither boundary equality nor distinct
 expressions proves continuous lifetime or nonaliasing in general. Other access
 regions, complete owner/helper/entry/callee/exception contracts, all fallback
 and production obligations remain required. Canonical selection is unchanged.
+
+The [finite-loop/unrolled checkpoint](results/stage-3-staged-transfers/README.md)
+adds sixteen staged regions and 208 user-access instructions. Actual preparation
+paths preserve or correctly reload the candidate; finite indices and every
+qword offset remain within the exact admission. Storage completes all sixteen
+regions and pinned exit fourteen, with exact payload and boundary mapping/
+control checks. These regions observe no refused admission in those runs, so
+their native invalid-buffer/refusal coverage is still open. The
+[joined caller/access index](results/stage-3-staged-transfers/caller-access-index.json)
+lists forty helper sites with selected local intervals and 249 distinct
+user-access instructions, plus 51 sites without such intervals. It does not
+qualify whole callers or every remaining access. GS/captured-entry/counterpart
+owners, complete helper/root/callee/exception contracts, continuous lifetime,
+all fallback obligations and canonical production acceptance remain required.

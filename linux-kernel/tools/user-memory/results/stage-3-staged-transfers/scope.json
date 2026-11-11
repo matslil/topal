@@ -1,0 +1,12 @@
+{
+  "stage_complete": false,
+  "production_activation": false,
+  "remaining": [
+    "native invalid-buffer/refusal cases for these staged regions",
+    "all other access classes and complete syscall effect/error ordering",
+    "complete GS/captured entry/counterpart/table/backing owners and continuous access lifetime",
+    "remaining helper/root/callee/exception and native mode/stale-state obligations",
+    "three fallback obligations, canonical binding and exact committed cold reconstruction",
+    "the original full kernel/distribution/device/driver/container/VM-host requirements"
+  ]
+}

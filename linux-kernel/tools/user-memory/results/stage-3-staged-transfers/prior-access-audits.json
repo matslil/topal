@@ -1,0 +1,14 @@
+{
+  "fixed-transfer-audit.json": {
+    "snapshot": "../stage-3-fixed-transfers/fixed-transfer-audit.json",
+    "bytes": 34255,
+    "sha256": "18b3abe7f81ae6fe2c55ea1ed66f531114f3859348ab2df4e886ec4d00b294ef",
+    "native_generated_equal": true
+  },
+  "copy-transfer-audit.json": {
+    "snapshot": "../stage-3-copy-transfers/copy-transfer-audit.json",
+    "bytes": 68698,
+    "sha256": "8ac0215bb096f6b5d0bad11c0f63490c6c6b49d66f041c02be95c32064f3bcc5",
+    "native_generated_equal": true
+  }
+}

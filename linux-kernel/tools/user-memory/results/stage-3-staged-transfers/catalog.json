@@ -1,0 +1,8 @@
+{
+  "cohorts": [
+    {"label":"application","build":"linux-kernel/.cache/x86_64/user-extent-application-2296397-1794411827879912888","run":"linux-kernel/.cache/x86_64/tk283-application-run-1794411826896116699","readback":"linux-kernel/.cache/x86_64/staged-transfer-application-readback"},
+    {"label":"storage","build":"linux-kernel/.cache/x86_64/user-extent-source-storage-2296061-1794411555659865899","run":"linux-kernel/.cache/x86_64/tk283-source-storage-run-1794411549570939640","readback":"linux-kernel/.cache/x86_64/staged-transfer-storage-readback"}
+  ],
+  "post":"linux-kernel/.cache/x86_64/tk283-staged-transfers-post-1794412034238803578",
+  "controls":"linux-kernel/.cache/x86_64/staged-transfer-controls"
+}

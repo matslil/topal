@@ -9,6 +9,7 @@ from pathlib import Path
 
 from user_extent_callback_observer import PROGRAM as CALLBACK_PROGRAM
 from user_extent_copy_observer import PROGRAM as COPY_PROGRAM
+from user_extent_staged_observer import PROGRAM as STAGED_PROGRAM
 
 
 def linked_inventory(build):
@@ -36,9 +37,14 @@ def linked_inventory(build):
     copies = json.loads(copy_bytes)
     assert copies['passed'] and copies['kernel_sha256'] == reader.digest(elf.data)
     assert copies['graph_sha256'] == bindings['process_graph_sha256']
+    staged_bytes = (build / 'staged-transfer-audit.json').read_bytes()
+    staged = json.loads(staged_bytes)
+    assert staged['passed'] and staged['kernel_sha256'] == reader.digest(elf.data)
+    assert staged['graph_sha256'] == bindings['process_graph_sha256']
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
                 callback_bindings=native_bindings,
                 copy_transfer_audit=copies, copy_transfer_audit_sha256=reader.digest(copy_bytes),
+                staged_transfer_audit=staged, staged_transfer_audit_sha256=reader.digest(staged_bytes),
                 callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 
@@ -65,6 +71,7 @@ def extent_coverage_complete():
         return
     callback_coverage_complete()
     copy_observation_complete()
+    staged_observation_complete()
     calls = extent_inventory['calls']
     assert extent_first_reach and set(extent_first_reach) <= {row['offset'] for row in calls}
     observed['extent_call_coverage'] = dict(
@@ -79,6 +86,7 @@ def install_extent_coverage():
     if extent_inventory is not None:
         install_callback_observation()
         install_copy_observation()
+        install_staged_observation()
         assert address(extent_inventory['function']) == extent_inventory['address']
         for row in extent_inventory['calls']:
             ExtentFirstReach(row)
@@ -86,3 +94,4 @@ def install_extent_coverage():
 
 PROGRAM += CALLBACK_PROGRAM
 PROGRAM += COPY_PROGRAM
+PROGRAM += STAGED_PROGRAM

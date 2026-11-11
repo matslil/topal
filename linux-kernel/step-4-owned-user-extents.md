@@ -105,6 +105,22 @@ counterpart/table/backing ownership, every other access class or production
 reconstruction. Canonical activation and complete Stage-3/Step-4 acceptance
 remain blocked on those existing obligations.
 
+The [finite-loop/unrolled staged checkpoint](tools/user-memory/results/stage-3-staged-transfers/README.md)
+adds exact candidate/preparation/bounds checks for sixteen regions and 208
+user-access instructions, with separate GNU decoding and backward dominance.
+Fresh storage completes all sixteen (twenty copies); unchanged pinned exit
+completes fourteen (eighteen copies). Both preserve exact payloads, captured
+arguments, GS binding and boundary translation/control observations. No refused
+admission occurs at these new regions in those cohorts; native invalid-buffer
+coverage remains required. Six malformed first-party artifact controls, all
+34 model/reader tests and six other post-checks pass. All seventeen compared
+native artifacts, application/boot/console bytes and preceding metadata remain
+unchanged. The 122 selected inputs replay exactly. The joined index identifies
+forty helper sites with local intervals and 249 distinct user accesses, plus
+51 unreviewed sites; these are not whole-caller safety proofs. Complete owner/
+lifetime/helper/entry/callee/exception, fallback and production obligations
+remain open, and canonical production selection is unchanged.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,
