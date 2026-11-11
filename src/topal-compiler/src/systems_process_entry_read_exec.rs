@@ -469,10 +469,37 @@ fn emit_static_process_read_exec(
         (890, 3),
         (891, 0),
     ] {
+        if code.owned_user_extents && matches!(offset, 416 | 890 | 891) {
+            continue;
+        }
         code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
         code.bytes(&[expected]);
         code.jump_if(0x85, "fatal");
+    }
+    if code.owned_user_extents {
+        use x86_function::{E, R};
+        E(code).gs(0x8b, R::A, 416);
+        E(code).arith(4, R::A, 255);
+        E(code).cmp(R::A, 1);
+        code.jump_if(0x84, "owned-header-poll-clean");
+        E(code).cmp(R::A, 2);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&890_u32.to_le_bytes());
+        code.bytes(&[3]);
+        code.jump_if(0x85, "fatal");
+        code.jump("owned-header-poll-profile-ready");
+        code.bind("owned-header-poll-clean")?;
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&890_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+        code.bind("owned-header-poll-profile-ready")?;
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&891_u32.to_le_bytes());
+        code.bytes(&[1]);
+        code.jump_if(0x87, "fatal");
     }
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
@@ -514,20 +541,31 @@ fn emit_static_process_read_exec(
         code.bytes(&[0x65, 0x48, 0x8b, 0x3c, 0x25]);
         code.bytes(&312_u32.to_le_bytes());
     }
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
-    code.bytes(&889_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x84, "static-process-shell-bin-busybox-header-poll-first");
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0001_0001_0000_0003_u64.to_le_bytes());
-    code.bytes(&[0x48, 0x39, 0x07]);
-    code.jump_if(0x85, "fatal");
-    code.jump("static-process-shell-bin-busybox-header-poll-ready");
-    code.bind("static-process-shell-bin-busybox-header-poll-first")?;
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0x0000_0001_0000_0003_u64.to_le_bytes());
-    code.bytes(&[0x48, 0x39, 0x07]);
-    code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        use x86_function::{E, R};
+        E(code).load(R::A, R::Di, 0);
+        E(code).imm(R::R11, 0x0000_ffff_ffff_ffff);
+        E(code).rr(0x21, R::A, R::R11);
+        E(code).imm(R::R11, 0x0000_0001_0000_0003);
+        E(code).rr(0x39, R::A, R::R11);
+        code.jump_if(0x85, "fatal");
+        code.jump("static-process-shell-bin-busybox-header-poll-ready");
+    } else {
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&889_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x84, "static-process-shell-bin-busybox-header-poll-first");
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&0x0001_0001_0000_0003_u64.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x07]);
+        code.jump_if(0x85, "fatal");
+        code.jump("static-process-shell-bin-busybox-header-poll-ready");
+        code.bind("static-process-shell-bin-busybox-header-poll-first")?;
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&0x0000_0001_0000_0003_u64.to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x07]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bind("static-process-shell-bin-busybox-header-poll-ready")?;
     if code.owned_user_extents {
         use x86_function::{E, R};
@@ -1313,8 +1351,8 @@ fn emit_static_process_read_exec(
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&891_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x85, "fatal");
+    code.bytes(&[u8::from(code.owned_user_extents)]);
+    code.jump_if(if code.owned_user_extents { 0x87 } else { 0x85 }, "fatal");
     if !code.owned_user_extents {
         code.bytes(&[0x48, 0x81, 0xfe]);
         code.bytes(&0x007f_e000_u32.to_le_bytes());

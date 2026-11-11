@@ -12633,6 +12633,16 @@ changes. A terminal request that returns `ENOTTY` without a transfer shall
 perform no argument admission. Qualify through native entries and preserve
 the predecessor emitter bytes.
 
+The owned bounded header-poll path shall admit both validated header forms,
+allow repeated polls, ignore input `revents`, and retain descriptor position.
+Require full readable input and writable result admission before publishing
+readiness. The clean form may retain direct reads; a successful read shall
+consume pending readiness, while a refused read preserves it. Keep external
+terminal probes and all independent operation/lifecycle checks. Qualify
+readable read-only input with refused result output, partial inputs, repeated
+polls, and successful directory/page-boundary records through native syscalls.
+The predecessor encoder shall remain byte-identical.
+
 For the bounded owned command reads, preserve each selected literal and the
 serial limit. Derive each copy length from the captured count and the unread
 extent. Validate that extent before publishing, retain received serial bytes

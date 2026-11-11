@@ -1,0 +1,39 @@
+{
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 24,
+      "sha256": "45fb6649fd891d590100736ba94acef426f23223920447c41da4a7d7f276217b"
+    },
+    {
+      "path": "README.md",
+      "bytes": 720,
+      "sha256": "07ba6a4e4a4ab5b6f62a8b9ca9f122744fee093712dc4deed2b1931beb27960d"
+    },
+    {
+      "path": "before-format.rs",
+      "bytes": 77473,
+      "sha256": "5b882491213c5c4377d20db82642df7774c9a522d16fd865fe9ae14197a03bbd"
+    },
+    {
+      "path": "post/0.log",
+      "bytes": 620,
+      "sha256": "5156b44cd0a017774f2da0282a486241012641c6be05bbc934af1958edc52732"
+    },
+    {
+      "path": "post/1.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "post/2.log",
+      "bytes": 649,
+      "sha256": "2ca21d0e9b295e79da08e82e5ef02b6d3c60271c456eca7210ab52bf35c2f4a8"
+    },
+    {
+      "path": "post-validation.json",
+      "bytes": 1100,
+      "sha256": "546cb3bfa0d50171cddf821d37c00f3984e94f90071fdbd8b70b1f6716e9ba2e"
+    }
+  ]
+}

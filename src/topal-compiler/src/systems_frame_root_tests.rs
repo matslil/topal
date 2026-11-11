@@ -58,6 +58,13 @@ fn owned_source_fixture_checks_signal_transfer_boundaries() {
     execute_selected(true, true, true, Some(CallerFocus::SourceSignals));
 }
 
+#[test]
+#[ignore = "requires a C compiler, QEMU and GDB"]
+fn owned_source_fixture_checks_poll_transfer_boundaries() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: source-issued descriptor readiness.
+    execute_selected(true, true, true, Some(CallerFocus::SourcePoll));
+}
+
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
     execute_selected(memory, false, false, None)
 }
@@ -96,6 +103,7 @@ enum CallerFocus {
     SourceBoundary,
     SourceExec,
     SourceSignals,
+    SourcePoll,
     Startup,
     Shell,
     Stat,
@@ -152,7 +160,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::SourceSignals) {
+    let prefix = if focus == Some(CallerFocus::SourcePoll) {
+        "user-extent-source-poll"
+    } else if focus == Some(CallerFocus::SourceSignals) {
         "user-extent-source-signals"
     } else if focus == Some(CallerFocus::SourceExec) {
         "user-extent-source-exec"
@@ -186,6 +196,7 @@ fn execute_selected(
                 | CallerFocus::SourceBoundary
                 | CallerFocus::SourceExec
                 | CallerFocus::SourceSignals
+                | CallerFocus::SourcePoll
         )
     ) {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -276,7 +287,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::SourceSignals) {
+    let fixture_bytes = if focus == Some(CallerFocus::SourcePoll) {
+        crate::systems_user_extent::source_fixture::build_poll(work, tools)
+    } else if focus == Some(CallerFocus::SourceSignals) {
         crate::systems_user_extent::source_fixture::build_signals(work, tools)
     } else if focus == Some(CallerFocus::SourceExec) {
         crate::systems_user_extent::source_fixture::build_exec(work, tools)
@@ -648,6 +661,7 @@ fn build_guest(
                         CallerFocus::SourceBoundary
                             | CallerFocus::SourceExec
                             | CallerFocus::SourceSignals
+                            | CallerFocus::SourcePoll
                     )
                 ) {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py"

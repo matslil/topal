@@ -1,0 +1,11 @@
+Diff in /home/mats/git/topal/src/topal-compiler/src/systems_artifact_static_image.rs:135:
+     static_user_image_fixture_with_source(Some((entry, startup, header, text)))
+ }
+ 
+[31m-fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, Option<u32>, &[u8])>) -> Vec<u8> {
+(B[m[32m+fn static_user_image_fixture_with_source(
+(B[m[32m+    component: Option<(u32, Option<u32>, Option<u32>, &[u8])>,
+(B[m[32m+) -> Vec<u8> {
+(B[m     fn source_call(code: &mut Vec<u8>, entry: Option<u32>, base: u32) {
+         if let Some(entry) = entry {
+             // Emit an ordinary call while constructing the fixture. The linked

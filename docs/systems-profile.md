@@ -2208,6 +2208,16 @@ The file-header read admits its one-byte output before staging or advancing
 the file position. The bounded header poll checks its complete input record
 and admits the writable result field before publishing readiness.
 
+In the owned selection, either admitted ELF-header form may poll the same live
+bounded file description. The clean form may still read directly. Polling may
+repeat before a read, does not advance file position, and ignores incoming
+`revents` because that field is output. Each successful poll sets `POLLIN` and
+returns one; the next successful header-byte read clears pending readiness.
+A refused poll or read preserves those facts. The external form retains its
+terminal-probe sequence. This remains the one-record, descriptor-three,
+`POLLIN`, infinite-timeout operation; other polling behavior needs its own
+qualification. Predecessor profiles retain their existing behavior.
+
 Bounded shell command reads copy only the requested prefix of the available
 input. A short read leaves the remaining input available, and a zero count
 leaves the input and phase untouched. The serial adapter retains received bytes

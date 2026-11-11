@@ -12,6 +12,7 @@ import frame_root_inspect as harness
 from user_extent_shell_observer import PROGRAM as SHELL_PROGRAM
 from user_extent_exec_observer import PROGRAM as EXEC_PROGRAM
 from user_extent_signal_observer import PROGRAM as SIGNAL_PROGRAM
+from user_extent_poll_observer import PROGRAM as POLL_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -39,7 +40,7 @@ context = address('topal_bootstrap_storage') + 512
 current = pending = startup_current = bridge_current = None
 component_returns = {}
 syscall_returns = {}
-observed = dict(passed=False, executions=[], startup_executions=[], file_executions=[], shell_executions=[], command_executions=[], bridge_returns=[])
+observed = dict(passed=False, executions=[], startup_executions=[], file_executions=[], shell_executions=[], command_executions=[], poll_executions=[], bridge_returns=[])
 callee = ['rbx', 'rbp', 'r12', 'r13', 'r14', 'r15']
 
 class Checked(gdb.Breakpoint):
@@ -125,6 +126,8 @@ class SyscallReturned(Checked):
             observe_exec_result(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
             observe_signal_result(pending)
+        if startup_current and startup_current.get('kind') == 'poll':
+            observe_poll_result(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
             observe_shell_result(pending)
         if startup_current and startup_current.get('kind') == 'file':
@@ -156,6 +159,8 @@ class SyscallEntered(Checked):
             observe_exec_request(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
             observe_signal_request(pending)
+        if startup_current and startup_current.get('kind') == 'poll':
+            observe_poll_request(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
             observe_shell_request(pending)
         if startup_current and startup_current.get('kind') == 'file':
@@ -175,6 +180,8 @@ class StartupReturned(Checked):
         global startup_current
         self.enabled = False
         row = startup_current
+        if row and row.get('kind') == 'poll':
+            return poll_returned(row)
         if row and row.get('kind') in ['shell','command']:
             return shell_returned(row)
         if row and row.get('kind') == 'file':
@@ -244,6 +251,8 @@ class StartupEntered(Checked):
         assert component['base'] <= return_site < component['base']+component['text_bytes']
         args = [reg(name) for name in ['rsi','rdx','rcx','r8']]
         n = reg('rdi')
+        if component.get('mode') == 'poll':
+            return poll_entered(n,args,stack,return_site)
         if (n == 0 and (args[0] == 0 or args[2] == 1)) or n in [1,13,16,63,79,80]:
             return shell_entered(n,args,stack,return_site)
         if n in [5,257,217,0] or (n == 262 and args[1] != 0x4a6900):
@@ -381,23 +390,26 @@ def file_returned(row):
 
 # SIGNAL_OBSERVER
 
+# POLL_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
-        if component.get('mode') in ['exec','signals']:
+        if component.get('mode') in ['exec','signals','poll']:
             assert len(observed['executions']) == 4
             assert all(not observed[key] for key in [
-                'startup_executions','file_executions','shell_executions','command_executions','bridge_returns'])
+                'startup_executions','file_executions','shell_executions','command_executions'])
         else:
             assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals'] else [
+        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') in ['exec','signals','poll'] else [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
         )
-        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals'] else 5)
-        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals'] else 38)
-        assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])
+        assert len(observed['command_executions']) == (0 if component.get('mode') in ['exec','signals','poll'] else 5)
+        assert len(observed['shell_executions']) == (0 if component.get('mode') in ['exec','signals','poll'] else 38)
+        assert len(observed['poll_executions']) == (4 if component.get('mode') == 'poll' else 0)
+        assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])+len(observed['poll_executions'])
         assert state() == [0,0,0,0]
         assert memory(address('topal_x86_frame_mm_tokens_v1'), 48) == bytes(48)
         assert word(context+904) == 0 and memory(context+152,16) == bytes(16)
@@ -441,6 +453,8 @@ assert PROGRAM.count('# EXEC_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# EXEC_OBSERVER', EXEC_PROGRAM)
 assert PROGRAM.count('# SIGNAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# SIGNAL_OBSERVER', SIGNAL_PROGRAM)
+assert PROGRAM.count('# POLL_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# POLL_OBSERVER', POLL_PROGRAM)
 
 
 if __name__ == '__main__':

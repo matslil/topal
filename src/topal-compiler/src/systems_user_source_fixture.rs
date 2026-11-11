@@ -10,7 +10,7 @@ use std::{fs, path::Path, process::Command};
 const BASE: u64 = 0x570000;
 const PREDECESSOR_SHA256: &str = "41a3dcd7b7e42a2f77ad995e6259e43ef84f7abf95e2dfd36cff7bea187c9fda";
 
-fn syscall_adapter() -> Vec<u8> {
+fn syscall_adapter(target_name: &[u8]) -> Vec<u8> {
     use object::write::{Object, Symbol, SymbolSection};
     use object::{
         Architecture, BinaryFormat, Endianness, SectionKind, SymbolFlags, SymbolKind, SymbolScope,
@@ -84,7 +84,7 @@ fn syscall_adapter() -> Vec<u8> {
         flags: SymbolFlags::None,
     });
     let target = object.add_symbol(Symbol {
-        name: b"topal_user_extent_startup_cases".to_vec(),
+        name: target_name.to_vec(),
         value: 0,
         size: 0,
         kind: SymbolKind::Text,
@@ -123,6 +123,10 @@ pub(crate) fn build_signals(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     build_selected(work, tools, "signals")
 }
 
+pub(crate) fn build_poll(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "poll")
+}
+
 fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
     let (entry_name, extra) = match mode {
         "transfers" => ("topal_user_extent_source_cases", None),
@@ -130,6 +134,10 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "signals" => (
             "topal_user_extent_signal_cases",
             Some(("signal", "signal-cases")),
+        ),
+        "poll" => (
+            "topal_user_extent_source_cases",
+            Some(("poll", "poll-cases")),
         ),
         _ => panic!("unknown source fixture cohort"),
     };
@@ -180,7 +188,16 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
                 .arg(work.join(format!("{stem}.o"))),
         );
     }
-    fs::write(work.join("source-syscall.o"), syscall_adapter()).unwrap();
+    let startup_name = if mode == "poll" {
+        "topal_user_extent_poll_cases"
+    } else {
+        "topal_user_extent_startup_cases"
+    };
+    fs::write(
+        work.join("source-syscall.o"),
+        syscall_adapter(startup_name.as_bytes()),
+    )
+    .unwrap();
     let script = "SECTIONS { . = 0x570000; .text : { *(.text .text.*) *(.rodata .rodata.*) } \
                   /DISCARD/ : { *(.eh_frame) *(.comment) *(.note*) } }\n";
     fs::write(work.join("source-user.ld"), script).unwrap();
@@ -253,7 +270,9 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
     let delegated = frames["file-cases"]
         .max(frames["shell-cases"])
         .max(frames["command-cases"]);
-    let source_stack = if let Some((_, stem)) = extra {
+    let source_stack = if mode == "poll" {
+        frames["source-cases"].max(frames["poll-cases"])
+    } else if let Some((_, stem)) = extra {
         frames[stem]
     } else {
         frames["source-cases"].max(frames["startup-cases"] + delegated)
@@ -264,9 +283,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "source call must fit below the witness's live user stack"
     );
     let startup = elf.symbol_by_name("topal_test_startup_call").unwrap();
-    let source_startup = elf
-        .symbol_by_name("topal_user_extent_startup_cases")
-        .unwrap();
+    let source_startup = elf.symbol_by_name(startup_name).unwrap();
     let syscall4 = elf.symbol_by_name("topal_test_syscall4").unwrap();
     let image = crate::systems_artifact::source_built_static_user_image_fixture(
         u32::try_from(elf.entry()).unwrap(),
@@ -274,6 +291,11 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
             None
         } else {
             Some(u32::try_from(startup.address()).unwrap())
+        },
+        if mode == "poll" {
+            Some(u32::try_from(startup.address()).unwrap())
+        } else {
+            None
         },
         bytes,
     );
@@ -287,6 +309,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> 
         "mode": mode,
         "exec_source_sha256": if mode == "exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
         "signal_source_sha256": if mode == "signals" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_signal_cases.c")).unwrap()))) } else { None },
+        "poll_source_sha256": if mode == "poll" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_poll_cases.c")).unwrap()))) } else { None },
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
         "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),

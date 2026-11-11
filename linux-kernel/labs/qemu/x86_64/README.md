@@ -745,3 +745,31 @@ The [routing review](../../../tools/user-memory/caller-routing.md) distinguishes
 the active service from old fallback labels and predecessor-only stack checks.
 It is not a complete caller/reachability proof. The header-poll, remaining native
 ownership/mode/stability and production obligations remain required.
+
+## Source-built header-poll cases
+
+The owned readiness refinement admits ordinary bounded polling from either
+validated header form. The [`user_extent_poll_cases.c`](user_extent_poll_cases.c)
+component is linked before construction of a fresh first-party ABI witness.
+Four generated calls exercise the actual poll/read path without altering a
+finished application or assigning private guest state.
+
+```console
+rtk proxy env RUST_MIN_STACK=16777216 scripts/run_bounded.py -- \
+  cargo test -p topal-compiler --lib --locked -j1 \
+  systems_frame_target::root_tests::owned_source_fixture_checks_poll_transfer_boundaries \
+  -- --ignored --exact --test-threads=1 --nocapture
+```
+
+The [checkpoint](../../../tools/user-memory/results/stage-3-owned-poll/README.md)
+records 120 source calls: complete/refused poll input and result fields,
+repeated polling, ignored incoming `revents`, readiness retained over refused
+reads, and consumption by actual header-byte delivery. Source stack accounting
+remains within 2048 bytes. The existing 796-call source regression and unchanged
+pinned BusyBox also pass on exactly matching kernel/boot bytes. The earlier
+included-file formatting failure and subsequent rebuild proof are retained.
+
+This remains descriptor-three, one-record, `POLLIN`, infinite-timeout polling
+within the existing lifecycle. Predecessor profiles retain their exact bytes.
+Complete caller/security/production qualification and general poll behavior
+remain required by the full kernel goal.

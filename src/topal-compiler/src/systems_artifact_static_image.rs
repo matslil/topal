@@ -121,6 +121,7 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
 pub(crate) fn source_built_static_user_image_fixture(
     entry: u32,
     startup: Option<u32>,
+    header: Option<u32>,
     text: &[u8],
 ) -> Vec<u8> {
     assert!(!text.is_empty() && text.len() <= 0x10000);
@@ -128,10 +129,15 @@ pub(crate) fn source_built_static_user_image_fixture(
     if let Some(startup) = startup {
         assert!((0x570000..0x570000 + text.len() as u32).contains(&startup));
     }
-    static_user_image_fixture_with_source(Some((entry, startup, text)))
+    if let Some(header) = header {
+        assert!((0x570000..0x570000 + text.len() as u32).contains(&header));
+    }
+    static_user_image_fixture_with_source(Some((entry, startup, header, text)))
 }
 
-fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[u8])>) -> Vec<u8> {
+fn static_user_image_fixture_with_source(
+    component: Option<(u32, Option<u32>, Option<u32>, &[u8])>,
+) -> Vec<u8> {
     fn source_call(code: &mut Vec<u8>, entry: Option<u32>, base: u32) {
         if let Some(entry) = entry {
             // Emit an ordinary call while constructing the fixture. The linked
@@ -150,7 +156,8 @@ fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[
             code.extend_from_slice(&[0x0f, 0x05]);
         }
     }
-    let startup = component.and_then(|(_, entry, _)| entry);
+    let startup = component.and_then(|(_, entry, _, _)| entry);
+    let header = component.and_then(|(_, _, entry, _)| entry).or(startup);
     fn emit_store_qword(code: &mut Vec<u8>, address: u32, value: [u8; 8]) {
         code.extend_from_slice(&[0x48, 0xb8]);
         code.extend_from_slice(&value);
@@ -1087,25 +1094,25 @@ fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[
         0x75, 0xfe, 0x48, 0x83, 0x7c, 0x24, 8, 0, 0x75, 0xfe, // erase open output scratch
         0xbf, 3, 0, 0, 0, 0x48, 0x8d, 0x74, 0x24, 0, 0xba, 1, 0, 0, 0, 0x31, 0xc0,
     ]);
-    source_call(&mut continuation_code, startup, 0x4a7000);
+    source_call(&mut continuation_code, header, 0x4a7000);
     continuation_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 1, 0x75, 0xfe, 0x80, 0x7c, 0x24, 0, 0x7f, 0x75,
         0xfe, // first exact descriptor-three header byte
         0xbf, 3, 0, 0, 0, 0x48, 0x8d, 0x74, 0x24, 1, 0xba, 1, 0, 0, 0, 0x31, 0xc0,
     ]);
-    source_call(&mut continuation_code, startup, 0x4a7000);
+    source_call(&mut continuation_code, header, 0x4a7000);
     continuation_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 1, 0x75, 0xfe, 0x80, 0x7c, 0x24, 1, b'E', 0x75,
         0xfe, // second exact descriptor-three header byte
         0xbf, 3, 0, 0, 0, 0x48, 0x8d, 0x74, 0x24, 2, 0xba, 1, 0, 0, 0, 0x31, 0xc0,
     ]);
-    source_call(&mut continuation_code, startup, 0x4a7000);
+    source_call(&mut continuation_code, header, 0x4a7000);
     continuation_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 1, 0x75, 0xfe, 0x80, 0x7c, 0x24, 2, b'L', 0x75,
         0xfe, // third exact descriptor-three header byte
         0xbf, 3, 0, 0, 0, 0x48, 0x8d, 0x74, 0x24, 3, 0xba, 1, 0, 0, 0, 0x31, 0xc0,
     ]);
-    source_call(&mut continuation_code, startup, 0x4a7000);
+    source_call(&mut continuation_code, header, 0x4a7000);
     continuation_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 1, 0x75, 0xfe, 0x80, 0x7c, 0x24, 3, b'F', 0x75,
         0xfe, // fourth exact descriptor-three header byte
@@ -1340,7 +1347,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[
         ),
         (
             process_fixture::time_checks::ENTRY,
-            process_fixture::time_checks::code_with_source(component.map(|(entry, _, _)| entry)),
+            process_fixture::time_checks::code_with_source(component.map(|(entry, _, _, _)| entry)),
         ),
         (
             process_fixture::child_checks::ENTRY,
@@ -1366,7 +1373,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[
     image[0x0a_6912..0x0a_691b].copy_from_slice(b"/dev/tty\0");
     image[0x0a_6920..0x0a_6935].copy_from_slice(b"/var/spool/mail/root\0");
     image[0x0a_6938..0x0a_6945].copy_from_slice(b"/etc/profile\0");
-    if let Some((_, _, text)) = component {
+    if let Some((_, _, _, text)) = component {
         let offset = 0x170000;
         assert!(
             image[offset..offset + text.len()]

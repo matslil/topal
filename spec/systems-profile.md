@@ -10865,6 +10865,18 @@ complete eight-byte record for reading before its first load and admit the
 two-byte `revents` field for writing before publication or phase change. These
 rules SHALL replace the predecessor placement witnesses in the owned selection.
 
+The owned bounded header poll SHALL admit either validated ELF-header form on
+the same live description. For the clean form, terminal-probe count SHALL remain
+zero and direct header reads SHALL remain valid. The external form SHALL retain
+its existing terminal-probe/readiness requirements. Pending readiness SHALL be
+zero or one; repeated polls SHALL be valid without advancing file position.
+Input `revents` SHALL be ignored. After complete input/result admission,
+success SHALL publish `POLLIN`, return one and set pending readiness to one.
+A successful header-byte read SHALL clear pending readiness; refused poll or
+read admission SHALL preserve readiness and position. The one-record,
+descriptor-three, `POLLIN`, infinite-timeout and existing lifecycle bounds
+SHALL remain. Predecessor selections SHALL retain their exact behavior.
+
 An owned bounded shell command read SHALL copy the lesser of the requested
 count and the available command bytes. A zero count SHALL return zero without
 admitting a destination, consuming input or advancing the command. Each

@@ -1998,6 +1998,14 @@ the output or advancing operation state. Header poll shall admit its complete
 input record before reading it. Terminal request misses shall leave their
 unused argument untouched and require no mapping admission.
 
+Owned bounded header polling shall be available for either admitted ELF-header
+form on the same live description. The clean form may read without polling.
+Repeated polls shall not advance position; incoming `revents` shall not select
+behavior. Success publishes `POLLIN` and one ready record. The next successful
+header read clears readiness; refused transfers preserve it. Retain the
+external terminal-probe sequence and all descriptor, count, event, timeout,
+ownership and memory-admission bounds. Preserve predecessor selections.
+
 Bounded shell input shall admit the actual output before copying it, preserve
 unread bytes across a short or refused transfer, and advance command state
 only after complete delivery. A zero count shall leave input and phase intact.

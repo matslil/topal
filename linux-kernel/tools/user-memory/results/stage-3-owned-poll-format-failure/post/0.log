@@ -1,0 +1,10 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 2 tests
+test systems_user_extent::source_fixture::default_abi_fixture_preserves_committed_generator_bytes ... ok
+test systems_user_extent::source_fixture::source_user_component_links_before_abi_image_construction ... source-built component: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/source-component-1794396401992758373
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 383 filtered out; finished in 0.54s
+

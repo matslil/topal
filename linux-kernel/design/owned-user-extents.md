@@ -80,6 +80,21 @@ two-byte `revents` field before writing. The independent shell phase, file
 description and signal-selector checks still apply. See the
 [pinned shell I/O source record](../knowledge/x86_64/shell-io-research.json).
 
+Owned header polling is a descriptor-readiness operation for either admitted
+header form. The clean form may keep its direct reads or poll first. Repeated
+polls leave position unchanged; incoming `revents` is ignored, and successful
+poll writes `POLLIN` and returns one. A successful header read clears any
+pending readiness. Refused admission changes neither position nor readiness.
+The external form keeps its existing terminal probes and requires readiness
+before reading. The eight-byte input/two-byte output checks remain complete.
+Only the current descriptor-three, one-record, `POLLIN`, infinite-timeout shape
+is extended. General descriptor/event/timeout polling is still required by the
+full kernel goal. Predecessor selections and external digest qualification
+remain unchanged. This systems-only refinement uses the standing approval and
+changes no core language rule. The [Linux poll documentation](https://man7.org/linux/man-pages/man2/poll.2.html)
+defines regular-file readiness and `revents` as output; the existing pinned
+source record remains the baseline copy-order evidence.
+
 Bounded shell command reads use the current captured destination and count.
 Sealed inputs keep a private cursor until their last byte is delivered. Serial
 input may be received before the exact output extent is known. The adapter keeps

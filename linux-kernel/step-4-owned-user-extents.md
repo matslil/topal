@@ -334,3 +334,43 @@ observations, artifact parsing and a set-based oracle, not independent human
 review. Header-poll coverage, complete caller and native ownership/mode/stability
 qualification, canonical production binding and cold reconstruction remain
 required. Stage 3, initial Step 4 and the full original kernel goal are unfinished.
+
+## Stage 3 owned header readiness
+
+The [owned poll checkpoint](tools/user-memory/results/stage-3-owned-poll/README.md)
+extends the experimental owned selection to bounded polling from either
+validated header form. It ignores incoming `revents`, allows repeated polling
+without advancing position, and consumes readiness on successful byte delivery.
+Clean direct reads remain valid. External terminal probes, descriptor rights,
+complete eight-byte input/two-byte result admission and all independent bounds
+remain. This systems-only refinement uses the standing approval and changes
+no core language rule or predecessor selection.
+
+The final focused VM passes 32 polls, twenty header reads and twelve heap calls
+in four source callbacks, alongside 56 shared-runtime calls. It covers read-only
+result refusal, partial inputs, directory/page crossings beyond page 34,
+result fields crossing pages, repeated polls and refused reads with readiness
+preserved. Independent readback reconstructs record and private-state changes,
+verifies all 8520 linked text bytes and four generated calls, and checks a
+1648-of-2048-byte source stack bound. Fourteen component/predecessor objects
+remain identical to the preceding checkpoint. Only the provider's process-entry
+function changes among 163 native function bodies.
+
+The existing 796-call source regression passes with complete stat/directory/
+command/queue readback. Unchanged pinned BusyBox separately passes the external
+profile, exact output and first-image retirement. A retained included-file
+formatting failure required wrapping one function signature. The fresh final
+poll VM uses the formatted producer; its seventeen kernel objects/images match
+all three pre-format native builds exactly. Those earlier regressions certify
+the matching executable bytes, not execution from the formatted source input.
+Both build-only tests and all six final post-checks pass. A fresh build preserves
+the preceding transfer-fixture image exactly, and serial output is unchanged.
+
+Review remains single-agent authority/full-diff self-review with separate native
+observations and byte/state reconstruction, not independent human review or
+complete production qualification. Host/VM protections and unchanged deadlines
+remain; all recorded memory-limit/OOM/kill counts and validation swap are zero.
+The targeted poll-buffer gap is covered. Complete caller/user-access inventory,
+native ownership/mode/stability evidence, canonical production binding and cold
+reconstruction remain required. General polling and the full original kernel
+objective remain unfinished; Stage 3 and initial Step 4 are still incomplete.
