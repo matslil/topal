@@ -589,6 +589,11 @@ fn build_guest(
     );
     if access_audit_selected {
         fs::write(
+            work.join("process-byte-origins.json"),
+            serde_json::to_vec_pretty(provider.byte_origins.as_ref().unwrap()).unwrap(),
+        )
+        .unwrap();
+        fs::write(
             work.join("extent-call-inventory.json"),
             serde_json::to_vec_pretty(provider.extent_inventory.as_ref().unwrap()).unwrap(),
         )
@@ -740,6 +745,17 @@ fn build_guest(
                 )
                 .arg(work)
                 .arg(tools.tool_path("llvm-objdump")),
+        );
+        run(
+            work,
+            "process-access-origins",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/trace_process_origins.py"),
+                )
+                .arg(work)
+                .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")),
         );
     }
     fs::write(

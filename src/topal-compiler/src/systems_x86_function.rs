@@ -24,6 +24,7 @@ pub(super) enum R {
 
 pub(super) struct E<'a>(pub(super) &'a mut X86FunctionEncoder);
 impl E<'_> {
+    #[cfg_attr(test, track_caller)]
     pub(super) fn rr(&mut self, op: u8, dst: R, src: R) {
         self.0.bytes(&[
             0x48 | (((src as u8) >> 3) << 2) | ((dst as u8) >> 3),
@@ -31,14 +32,17 @@ impl E<'_> {
             0xc0 | (((src as u8) & 7) << 3) | ((dst as u8) & 7),
         ]);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn mov(&mut self, dst: R, src: R) {
         self.rr(0x89, dst, src);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn imm(&mut self, dst: R, value: u64) {
         self.0
             .bytes(&[0x48 | ((dst as u8) >> 3), 0xb8 | ((dst as u8) & 7)]);
         self.0.bytes(&value.to_le_bytes());
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn arith(&mut self, op: u8, dst: R, value: i32) {
         self.0.bytes(&[
             0x48 | ((dst as u8) >> 3),
@@ -47,12 +51,15 @@ impl E<'_> {
         ]);
         self.0.bytes(&value.to_le_bytes());
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn add(&mut self, dst: R, n: i32) {
         self.arith(0, dst, n);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn cmp(&mut self, dst: R, n: i32) {
         self.arith(7, dst, n);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn mem(&mut self, op: u8, reg: R, base: R, offset: i32) {
         self.0.bytes(&[
             0x48 | (((reg as u8) >> 3) << 2) | ((base as u8) >> 3),
@@ -64,12 +71,15 @@ impl E<'_> {
         }
         self.0.bytes(&offset.to_le_bytes());
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn load(&mut self, dst: R, base: R, offset: i32) {
         self.mem(0x8b, dst, base, offset);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn store(&mut self, base: R, offset: i32, src: R) {
         self.mem(0x89, src, base, offset);
     }
+    #[cfg_attr(test, track_caller)]
     pub(super) fn gs(&mut self, op: u8, reg: R, offset: u32) {
         self.0.bytes(&[
             0x65,

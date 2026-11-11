@@ -1,0 +1,43 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 94.73033179342747,
+  "resources": {
+    "memory.max": "3346173952",
+    "memory.swap.max": "0",
+    "memory.peak": "1435697152",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "c2cc35df66b0452ae460b71e6433b97ae1a613f506cb920db32c76878e06b537",
+    "src/topal-compiler/src/systems_provider_emit_publication.rs": "960d66dc47ac2bc87938e39c0f0bec6328c257dde55a9fc803c86c433bc55465",
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": "43fd3b5065372f3b71dfbe34a2d7db36a3ea17197d3ac4d58c64f65330ee4d64",
+    "src/topal-compiler/src/systems_user_extent_inventory.rs": "5fd57d748555febca17ed766c1d8bbcd24440e0211d50e78b5c68104bb8faca5",
+    "src/topal-compiler/src/systems_x86_function.rs": "81a1d13ff6fe779f52001f312553d10c96986b845015bf70841a97c9baee243f",
+    "linux-kernel/tools/user-memory/trace_process_origins.py": "405fc43a889b4232b4dfcdf60f6924a86cc934fe0a384b6e99f74ad2c82f9bb2"
+  },
+  "modified_source_hashes_after": {
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "c2cc35df66b0452ae460b71e6433b97ae1a613f506cb920db32c76878e06b537",
+    "src/topal-compiler/src/systems_provider_emit_publication.rs": "960d66dc47ac2bc87938e39c0f0bec6328c257dde55a9fc803c86c433bc55465",
+    "src/topal-compiler/src/systems_provider_emit_translation.rs": "43fd3b5065372f3b71dfbe34a2d7db36a3ea17197d3ac4d58c64f65330ee4d64",
+    "src/topal-compiler/src/systems_user_extent_inventory.rs": "5fd57d748555febca17ed766c1d8bbcd24440e0211d50e78b5c68104bb8faca5",
+    "src/topal-compiler/src/systems_x86_function.rs": "81a1d13ff6fe779f52001f312553d10c96986b845015bf70841a97c9baee243f",
+    "linux-kernel/tools/user-memory/trace_process_origins.py": "405fc43a889b4232b4dfcdf60f6924a86cc934fe0a384b6e99f74ad2c82f9bb2"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused unchanged BusyBox first-image exit; no production or full-caller qualification"
+}

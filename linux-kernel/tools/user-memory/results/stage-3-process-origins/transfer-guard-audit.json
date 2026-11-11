@@ -1,0 +1,994 @@
+{
+  "passed": true,
+  "function": "topal_x86_systems_static_image_process_enter",
+  "function_sha256": "fb2305a327584ebec333359445c6c7429c2930c4022ba66f38ee2980b1c60b9e",
+  "provider_sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+  "inventory_sha256": "1408d6f9916bd5a0c37000b98ce1e8c38e6bad793e780366177b9af4e9136711",
+  "call_count": 91,
+  "carry_gates": [
+    {
+      "call_offset": 27139,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 27153,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 27861,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 27875,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 28626,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 28640,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 29345,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 29359,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 29969,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 29983,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 33496,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 33510,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 33583,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 33597,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 36023,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 36037,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 36684,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 36698,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 38450,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 38464,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 39534,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 39548,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 40444,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 40458,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 41322,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 41336,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 42436,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 42450,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 43425,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 43439,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 44431,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 44445,
+      "refusal_offset": 45011,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 44792,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 44806,
+      "refusal_offset": 45011,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 44888,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 44902,
+      "refusal_offset": 45011,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 52962,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 52976,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 55270,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 55284,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 56053,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 56067,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 56936,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 56950,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 57843,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 57857,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 58659,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 58673,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 59435,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 59449,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 60174,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 60188,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 62337,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 62351,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 64531,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 64545,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 68177,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 68191,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 70022,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 70036,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 75142,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 75156,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 76007,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 76021,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 76915,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 76929,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 80006,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 80020,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 81477,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 81491,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 82375,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 82389,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 83237,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 83251,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 84283,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 84297,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 85284,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 85298,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 86299,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 86313,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 87305,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 87319,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 88236,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 88250,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 89191,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 89205,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 90027,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 90041,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 91024,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 91038,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 92125,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 92139,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 93521,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 93535,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 94708,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 94722,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 95395,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 95409,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 95961,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 95975,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 98915,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 98929,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 99039,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 99053,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 99332,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 99346,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 101802,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 101816,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 102873,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 102887,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 103476,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 103490,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 107362,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 107376,
+      "refusal_offset": 133237,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 108204,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 108218,
+      "refusal_offset": 108678,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 131616,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 131630,
+      "refusal_offset": 132858,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 140542,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 140556,
+      "refusal_offset": 138080,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 141402,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 141416,
+      "refusal_offset": 138080,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 142334,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 142348,
+      "refusal_offset": 138080,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 143474,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 143488,
+      "refusal_offset": 138080,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 144285,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 144299,
+      "refusal_offset": 138080,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 145214,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 145228,
+      "refusal_offset": 146837,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 145584,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 145598,
+      "refusal_offset": 146837,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 145783,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 145797,
+      "refusal_offset": 146837,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 145968,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 145982,
+      "refusal_offset": 146837,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 151753,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 151767,
+      "refusal_offset": 166112,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 155270,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 155284,
+      "refusal_offset": 166112,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 156830,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 156844,
+      "refusal_offset": 166112,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 158576,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 158590,
+      "refusal_offset": 166112,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 161434,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 161448,
+      "refusal_offset": 166112,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 177579,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 177593,
+      "refusal_offset": 178417,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 185975,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 185989,
+      "refusal_offset": 186361,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 186810,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 186824,
+      "refusal_offset": 188420,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 186999,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 187013,
+      "refusal_offset": 188420,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 187213,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 187227,
+      "refusal_offset": 188420,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 190244,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 190258,
+      "refusal_offset": 198372,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 194631,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 194645,
+      "refusal_offset": 194654,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 196557,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 196571,
+      "refusal_offset": 198372,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 203337,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 203351,
+      "refusal_offset": 209534,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 204492,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 204506,
+      "refusal_offset": 209534,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 205322,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 205336,
+      "refusal_offset": 209534,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 207832,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 207846,
+      "refusal_offset": 209534,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 221407,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 221421,
+      "refusal_offset": 230555,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 222189,
+      "target": "runtime-writable-extent",
+      "carry_gate_offset": 222203,
+      "refusal_offset": 230555,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 222985,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 222999,
+      "refusal_offset": 230555,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 224056,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 224070,
+      "refusal_offset": 230555,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 231462,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 231476,
+      "refusal_offset": 45011,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    },
+    {
+      "call_offset": 231558,
+      "target": "runtime-readable-extent",
+      "carry_gate_offset": 231572,
+      "refusal_offset": 45011,
+      "scope": "No instruction between helper return and carry decision except verified CF-preserving return-word erase"
+    }
+  ],
+  "fallback_local_reads": [
+    {
+      "name": "named-condition",
+      "call_offset": 88236,
+      "candidate_setup_offset": 88214,
+      "admitted_bytes": 14,
+      "success_offset": 88256,
+      "refusal_offset": 133237,
+      "access_instructions": [
+        {
+          "offset": 88259,
+          "width": 1,
+          "indices": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ],
+          "candidate_register": "rsi",
+          "index_register": "r10"
+        }
+      ],
+      "local_end": 88284,
+      "accepted_decoded_incoming_edges": [
+        [
+          88278,
+          88259
+        ]
+      ],
+      "disassembly": [
+        {
+          "offset": 88214,
+          "instruction": "movq\t%gs:0x140, %rsi"
+        },
+        {
+          "offset": 88223,
+          "instruction": "movq\t%rsi, %r8"
+        },
+        {
+          "offset": 88226,
+          "instruction": "movabsq\t$0xe, %r9"
+        },
+        {
+          "offset": 88236,
+          "instruction": "callq\t0x9aadb <topal_x86_frame_mm_cleanup_return_v1+0x5e47>"
+        },
+        {
+          "offset": 88241,
+          "instruction": "movq\t$0x0, -0x8(%rsp)"
+        },
+        {
+          "offset": 88250,
+          "instruction": "jb\t0x9aae5 <topal_x86_frame_mm_cleanup_return_v1+0x5e51>"
+        },
+        {
+          "offset": 88256,
+          "instruction": "xorl\t%r10d, %r10d"
+        },
+        {
+          "offset": 88259,
+          "instruction": "movb\t(%rsi,%r10), %al"
+        },
+        {
+          "offset": 88263,
+          "instruction": "movb\t%al, %gs:0x2e8(%r10)"
+        },
+        {
+          "offset": 88271,
+          "instruction": "incq\t%r10"
+        },
+        {
+          "offset": 88274,
+          "instruction": "cmpq\t$0xe, %r10"
+        },
+        {
+          "offset": 88278,
+          "instruction": "jne\t0x8fb33 <topal_x86_frame_mm_exec_return_v1+0x98fd>"
+        }
+      ],
+      "scope": "Exact local materialization/CF gate/read bounds and decoded direct-entry checks; native reachability, helper/lifetime soundness and complete indirect/exception entry proof remain separate"
+    },
+    {
+      "name": "exec-signal-reset",
+      "call_offset": 94708,
+      "candidate_setup_offset": 94686,
+      "admitted_bytes": 32,
+      "success_offset": 94728,
+      "refusal_offset": 133237,
+      "access_instructions": [
+        {
+          "offset": 94728,
+          "width": 8,
+          "candidate_offset": 0
+        },
+        {
+          "offset": 94738,
+          "width": 8,
+          "candidate_offset": 8
+        },
+        {
+          "offset": 94752,
+          "width": 8,
+          "candidate_offset": 16
+        },
+        {
+          "offset": 94776,
+          "width": 8,
+          "candidate_offset": 24
+        }
+      ],
+      "local_end": 94786,
+      "accepted_decoded_incoming_edges": [],
+      "disassembly": [
+        {
+          "offset": 94686,
+          "instruction": "movq\t%gs:0x140, %rsi"
+        },
+        {
+          "offset": 94695,
+          "instruction": "movq\t%rsi, %r8"
+        },
+        {
+          "offset": 94698,
+          "instruction": "movabsq\t$0x20, %r9"
+        },
+        {
+          "offset": 94708,
+          "instruction": "callq\t0x9aadb <topal_x86_frame_mm_cleanup_return_v1+0x5e47>"
+        },
+        {
+          "offset": 94713,
+          "instruction": "movq\t$0x0, -0x8(%rsp)"
+        },
+        {
+          "offset": 94722,
+          "instruction": "jb\t0x9aae5 <topal_x86_frame_mm_cleanup_return_v1+0x5e51>"
+        },
+        {
+          "offset": 94728,
+          "instruction": "cmpq\t$0x0, (%rsi)"
+        },
+        {
+          "offset": 94732,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94738,
+          "instruction": "cmpq\t$0x4000000, 0x8(%rsi)   # imm = 0x4000000"
+        },
+        {
+          "offset": 94746,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94752,
+          "instruction": "cmpq\t$0x4a9740, 0x10(%rsi)   # imm = 0x4A9740"
+        },
+        {
+          "offset": 94760,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 94766,
+          "instruction": "movabsq\t$-0x180000001, %rax     # imm = 0xFFFFFFFE7FFFFFFF"
+        },
+        {
+          "offset": 94776,
+          "instruction": "cmpq\t%rax, 0x18(%rsi)"
+        },
+        {
+          "offset": 94780,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        }
+      ],
+      "scope": "Exact local materialization/CF gate/read bounds and decoded direct-entry checks; native reachability, helper/lifetime soundness and complete indirect/exception entry proof remain separate"
+    },
+    {
+      "name": "missing-path",
+      "call_offset": 101802,
+      "candidate_setup_offset": 101780,
+      "admitted_bytes": 9,
+      "success_offset": 101822,
+      "refusal_offset": 133237,
+      "access_instructions": [
+        {
+          "offset": 101841,
+          "width": 8,
+          "candidate_offset": 0
+        },
+        {
+          "offset": 101850,
+          "width": 1,
+          "candidate_offset": 8
+        }
+      ],
+      "local_end": 101860,
+      "accepted_decoded_incoming_edges": [],
+      "disassembly": [
+        {
+          "offset": 101780,
+          "instruction": "movq\t%gs:0x140, %rsi"
+        },
+        {
+          "offset": 101789,
+          "instruction": "movq\t%rsi, %r8"
+        },
+        {
+          "offset": 101792,
+          "instruction": "movabsq\t$0x9, %r9"
+        },
+        {
+          "offset": 101802,
+          "instruction": "callq\t0x9aadb <topal_x86_frame_mm_cleanup_return_v1+0x5e47>"
+        },
+        {
+          "offset": 101807,
+          "instruction": "movq\t$0x0, -0x8(%rsp)"
+        },
+        {
+          "offset": 101816,
+          "instruction": "jb\t0x9aae5 <topal_x86_frame_mm_cleanup_return_v1+0x5e51>"
+        },
+        {
+          "offset": 101822,
+          "instruction": "movq\t%gs:0x128, %rcx"
+        },
+        {
+          "offset": 101831,
+          "instruction": "movabsq\t$0x676e697373696d2f, %rax # imm = 0x676E697373696D2F"
+        },
+        {
+          "offset": 101841,
+          "instruction": "cmpq\t%rax, (%rsi)"
+        },
+        {
+          "offset": 101844,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        },
+        {
+          "offset": 101850,
+          "instruction": "cmpb\t$0x0, 0x8(%rsi)"
+        },
+        {
+          "offset": 101854,
+          "instruction": "jne\t0x98686 <topal_x86_frame_mm_cleanup_return_v1+0x39f2>"
+        }
+      ],
+      "scope": "Exact local materialization/CF gate/read bounds and decoded direct-entry checks; native reachability, helper/lifetime soundness and complete indirect/exception entry proof remain separate"
+    }
+  ],
+  "decoded_instruction_rows": 32778,
+  "linear_decode_unknown_offsets": [
+    124281,
+    124320,
+    124344,
+    124360,
+    124387,
+    124403,
+    124413,
+    124414,
+    124436,
+    124452,
+    124474,
+    124496,
+    124543,
+    124548,
+    124573,
+    124591,
+    124742,
+    124813,
+    180281,
+    180441,
+    180442,
+    180633,
+    180649,
+    180810,
+    180889,
+    181001,
+    181593,
+    181641,
+    181849,
+    181913,
+    181914,
+    181945,
+    182473,
+    182586,
+    182793,
+    182841,
+    182889,
+    182890,
+    182953,
+    183145,
+    183241,
+    183306,
+    183322,
+    183401,
+    183674,
+    183770,
+    184089,
+    184137,
+    184153,
+    184154,
+    184601,
+    184713,
+    184865,
+    184897,
+    184913,
+    184929,
+    185041
+  ],
+  "decoded_indirect_transfers": [
+    {
+      "offset": 15011,
+      "instruction": "callq\t*%rax"
+    },
+    {
+      "offset": 47427,
+      "instruction": "callq\t*%rax"
+    },
+    {
+      "offset": 153895,
+      "instruction": "callq\t*%rax"
+    },
+    {
+      "offset": 187631,
+      "instruction": "callq\t*%rax"
+    },
+    {
+      "offset": 191561,
+      "instruction": "callq\t*%rax"
+    },
+    {
+      "offset": 226667,
+      "instruction": "callq\t*%rax"
+    }
+  ],
+  "scope": "Selected artifact result-gate and local fallback-read audit. Linear disassembly contains embedded data and unknown rows; this is not a complete direct-user-access inventory or global dominance/native/production qualification"
+}

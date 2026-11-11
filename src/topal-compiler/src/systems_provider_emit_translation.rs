@@ -277,6 +277,8 @@ struct LinkableX86Function {
     data: Vec<(u64, &'static str)>,
     #[cfg(test)]
     extent_inventory: Option<serde_json::Value>,
+    #[cfg(test)]
+    byte_origins: Option<serde_json::Value>,
 }
 
 #[derive(Default)]
@@ -291,11 +293,34 @@ struct X86FunctionEncoder {
     external_data: Vec<(u64, &'static str)>,
     #[cfg(test)]
     extent_call_sites: Vec<serde_json::Value>,
+    #[cfg(test)]
+    byte_origins: Vec<(usize, usize, &'static std::panic::Location<'static>)>,
 }
 
 impl X86FunctionEncoder {
+    #[cfg(test)]
+    #[track_caller]
+    fn record_byte_origin(&mut self, start: usize) {
+        if self.owned_user_extents && start < self.bytes.len() {
+            let origin = std::panic::Location::caller();
+            if let Some(last) = self.byte_origins.last_mut()
+                && last.1 == start
+                && last.2 == origin
+            {
+                last.1 = self.bytes.len();
+            } else {
+                self.byte_origins.push((start, self.bytes.len(), origin));
+            }
+        }
+    }
+
+    #[cfg_attr(test, track_caller)]
     fn bytes(&mut self, bytes: &[u8]) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.extend_from_slice(bytes);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
     fn bind(&mut self, label: &str) -> Result<(), CompileError> {
@@ -311,18 +336,30 @@ impl X86FunctionEncoder {
         Ok(())
     }
 
+    #[cfg_attr(test, track_caller)]
     fn jump_if(&mut self, condition: u8, label: &str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.extend_from_slice(&[0x0f, condition]);
         self.fixup(label);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn jump(&mut self, label: &str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.push(0xe9);
         self.fixup(label);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
     #[cfg_attr(test, track_caller)]
     fn call(&mut self, label: &str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         #[cfg(test)]
         if self.owned_user_extents
             && matches!(label, "runtime-readable-extent" | "runtime-writable-extent")
@@ -344,11 +381,18 @@ impl X86FunctionEncoder {
             self.bytes
                 .extend_from_slice(&[0x48, 0xc7, 0x44, 0x24, 0xf8, 0, 0, 0, 0]);
         }
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn rip_lea(&mut self, opcode: &[u8], label: &str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.extend_from_slice(opcode);
         self.fixup(label);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
     fn fixup(&mut self, label: &str) {
@@ -357,22 +401,37 @@ impl X86FunctionEncoder {
         self.bytes.extend_from_slice(&[0; 4]);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn external_call(&mut self, symbol: &'static str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.push(0xe8);
         self.external_calls.push((self.bytes.len() as u64, symbol));
         self.bytes.extend_from_slice(&[0; 4]);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn external_jump(&mut self, symbol: &'static str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.push(0xe9);
         self.external_calls.push((self.bytes.len() as u64, symbol));
         self.bytes.extend_from_slice(&[0; 4]);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn external_address(&mut self, opcode: &[u8], symbol: &'static str) {
+        #[cfg(test)]
+        let start = self.bytes.len();
         self.bytes.extend_from_slice(opcode);
         self.external_data.push((self.bytes.len() as u64, symbol));
         self.bytes.extend_from_slice(&[0; 4]);
+        #[cfg(test)]
+        self.record_byte_origin(start);
     }
 
     fn finish_linkable(mut self) -> Result<LinkableX86Function, CompileError> {
@@ -380,9 +439,14 @@ impl X86FunctionEncoder {
         let data = std::mem::take(&mut self.external_data);
         #[cfg(test)]
         let mut extent_inventory = user_extent_inventory::snapshot(&self);
+        #[cfg(test)]
+        let mut byte_origins = user_extent_inventory::byte_snapshot(&self);
         let bytes = self.finish()?;
         #[cfg(test)]
-        if let Some(report) = &mut extent_inventory {
+        for report in [&mut extent_inventory, &mut byte_origins]
+            .into_iter()
+            .flatten()
+        {
             use sha2::Digest as _;
             report["function_sha256"] =
                 serde_json::json!(format!("{:x}", sha2::Sha256::digest(&bytes)));
@@ -395,6 +459,8 @@ impl X86FunctionEncoder {
             data,
             #[cfg(test)]
             extent_inventory,
+            #[cfg(test)]
+            byte_origins,
         })
     }
 

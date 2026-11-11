@@ -1,0 +1,9 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/trace_process_origins.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2285737-1794406308805005166",
+    "/home/mats/git/topal/src/topal-compiler/../.."
+  ],
+  "exit_code": 0
+}

@@ -62,6 +62,17 @@ All 17 compared kernel artifacts and the application/boot/console baselines are
 unchanged. The 93-input selected record does not replace complete callee-effect,
 entry/ownership/lifetime, direct/shared-access or production qualification.
 
+The [process emission/source index](tools/user-memory/results/stage-3-process-origins/README.md)
+adds test-only caller-location instrumentation and joins all 14584 listed
+potential-access instructions to 50 emitter files. Its 45005 spans cover all
+231663 function bytes; complete provider-to-linked reconstruction checks all
+19 relocations. Independent span expansion, five malformed-metadata controls,
+fresh unchanged BusyBox execution, six post-checks and exact archived replay
+pass. All 17 compared kernel artifacts, the pinned application, boot resource,
+console transcript and original 91-call census are unchanged. The 114-input
+selected record supports source review, not a new claim of pointer authority,
+admission dominance, stable lifetime or complete production qualification.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

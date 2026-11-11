@@ -108,3 +108,15 @@ source/runtime call certificates, complete callee effects, alternate entries,
 pointer authority, admission dominance and stable lifetime retain their own
 obligations. No metadata association grants new kernel authority or closes a
 fallback gate.
+
+The [emission/source join](results/stage-3-process-origins/README.md) now covers
+all 231663 selected function bytes and all 14584 potential-access instructions
+in the listed graph. Its 45005 spans/9380 locations identify 50 actual writer
+files after exact whole-function relocation reconstruction. The
+[writer index](results/stage-3-process-origins/writer-index.md) makes source review
+tractable: for example, 1006 completion instructions normalize private leaf-table
+status rather than copy application data. Append sites and nearby labels remain
+diagnostic context; ownership/lifetime, true pointer origins and admission
+dominance still need evidence for each semantic class. Neither a register name
+nor source placement is a safety classification. Existing root/callee/fallback
+and canonical-production obligations are unchanged.

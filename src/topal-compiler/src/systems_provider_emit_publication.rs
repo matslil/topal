@@ -4,6 +4,8 @@ pub struct GeneratedSystemsProviderObject {
     pub bytes: Vec<u8>,
     #[cfg(test)]
     pub(crate) extent_inventory: Option<serde_json::Value>,
+    #[cfg(test)]
+    pub(crate) byte_origins: Option<serde_json::Value>,
 }
 
 /// Generate one relocatable ELF64 provider object from a checked systems root.
@@ -479,6 +481,8 @@ fn generate_provider_selected(
         )?;
     #[cfg(test)]
     let extent_inventory = process_enter.extent_inventory.clone();
+    #[cfg(test)]
+    let byte_origins = process_enter.byte_origins.clone();
     append_linkable_function(
         &mut object,
         text,
@@ -921,6 +925,8 @@ fn generate_provider_selected(
         bytes,
         #[cfg(test)]
         extent_inventory,
+        #[cfg(test)]
+        byte_origins,
     })
 }
 
