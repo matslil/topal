@@ -122,6 +122,7 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     for (input, stem) in [
         ("user_extent_source_cases.c", "source-cases"),
         ("user_extent_startup_cases.c", "startup-cases"),
+        ("user_extent_file_cases.c", "file-cases"),
     ] {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
         run(
@@ -176,6 +177,7 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
             .arg(work.join("source-user.ld"))
             .arg(work.join("source-cases.o"))
             .arg(work.join("startup-cases.o"))
+            .arg(work.join("file-cases.o"))
             .arg(work.join("source-syscall.o"))
             .arg("-o")
             .arg(work.join("source-user.elf")),
@@ -203,16 +205,22 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     let syscall = elf.symbol_by_name("topal_test_syscall3").unwrap();
     assert_eq!(syscall.size(), 15);
     // Disjoint startup scratch plus both generated adapters/alignment/returns.
-    let mut user_stack = 1024 + 128_u64;
-    for stem in ["source-cases", "startup-cases"] {
+    let mut frames = std::collections::BTreeMap::new();
+    for stem in ["source-cases", "startup-cases", "file-cases"] {
+        let mut cost = 0_u64;
         let stack = fs::read_to_string(work.join(format!("{stem}.su"))).unwrap();
         for line in stack.lines() {
             let columns = line.split('\t').collect::<Vec<_>>();
             assert_eq!(columns.len(), 3, "unexpected stack-usage row: {line}");
             assert_eq!(columns[2], "static");
-            user_stack += columns[1].parse::<u64>().unwrap() + 8;
+            cost += columns[1].parse::<u64>().unwrap() + 8;
         }
+        frames.insert(stem, cost);
     }
+    // The runtime entry cannot call the startup entry; only the latter can
+    // delegate to file cases. Sum every frame on either possible call path.
+    let user_stack =
+        1024 + 128 + frames["source-cases"].max(frames["startup-cases"] + frames["file-cases"]);
     assert!(
         user_stack <= 2048,
         "source call must fit below the witness's live user stack"
@@ -235,6 +243,8 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         "startup": source_startup.address(), "startup_call": startup.address(),
         "syscall4": syscall4.address(),
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
+        "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
+        "stack_frame_costs": frames,
         "text_bytes": bytes.len(), "conservative_user_stack_bytes": user_stack,
         "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
     });

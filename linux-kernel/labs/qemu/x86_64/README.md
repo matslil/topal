@@ -616,9 +616,10 @@ Unverified native obligations remain acceptance blockers under
 ## Source-built user-buffer cases
 
 The source-built interoperability fixture compiles
-[`user_extent_source_cases.c`](user_extent_source_cases.c) and
-[`user_extent_startup_cases.c`](user_extent_startup_cases.c), links them with
-backend System V/Linux syscall and startup-call adapters, and constructs a fresh
+[`user_extent_source_cases.c`](user_extent_source_cases.c),
+[`user_extent_startup_cases.c`](user_extent_startup_cases.c) and
+[`user_extent_file_cases.c`](user_extent_file_cases.c), links them with backend
+System V/Linux syscall and startup-call adapters, and constructs a fresh
 first-party ABI witness containing normal calls to those functions. The default ABI constructor
 retains its committed bytes. The source variant checks delivered command bytes
 without assuming padding beyond a read's result. No completed application
@@ -650,11 +651,24 @@ cross-directory output beyond the preceding heap limit, refused complete copies,
 random zero-count/error order, split-page pathname input and absence without
 access to the unused output pointer. A disjoint 1024-byte startup scratch area
 protects the still-live initial vectors. The conservative complete source-call
-stack cost is 1832 bytes within the existing 2048-byte fixture bound; this is
+stack cost is 1720 bytes within the existing 2048-byte fixture bound; this is
 separate from the kernel caller reserve.
+
+File cases cover four complete `fstat` records, five pathname-stat queries,
+six opens, root/bin directory records and EOF, and profile-file EOF. They
+exercise split-page pathnames, output beyond page 34, refused full copies,
+unchanged staging/lifecycle flags on `EFAULT`, and EOF without destination
+mapping admission. Each nonempty directory result uses an 80-byte mapped area
+ending at an unmapped page while requesting 512 bytes. The kernel must admit
+the actual 72/80-byte records. Independent readback reconstructs every stat and
+directory byte, including padding.
 
 The [startup checkpoint](../../../tools/user-memory/results/stage-3-source-startup/README.md)
 records four image startups, twenty source callbacks, 200 startup syscalls and
 56 shared-runtime syscalls, with exact kernel/boot-image and serial comparisons.
-Other direct stat/open/directory/signal/command boundary cases and complete
+The [file checkpoint](../../../tools/user-memory/results/stage-3-source-files/README.md)
+adds twenty bounded file callbacks and 176 syscalls, preserving the preceding
+kernel and serial bytes. It accounts for the mutually exclusive runtime and
+startup/file C call paths within the same stack bound. Remaining direct
+signal/path/output/header/command boundary cases and complete
 production qualification remain obligations under `TOPAL-SYSTEMS-USER-EXTENT-001`.

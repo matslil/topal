@@ -1,0 +1,7 @@
+{
+  "argv": [
+    "cc",
+    "--version"
+  ],
+  "exit_code": 0
+}

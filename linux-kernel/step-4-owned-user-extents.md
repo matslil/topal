@@ -184,3 +184,40 @@ and production selection remain unchanged. Other direct caller boundary cases,
 complete ownership/mode/stability qualification, canonical publication and cold
 reconstruction remain required. Stage 3, initial Step 4 and the full original
 kernel objective remain unfinished.
+
+## Stage 3 source-built file transfers
+
+The [file checkpoint](tools/user-memory/results/stage-3-source-files/README.md)
+adds twenty source callbacks at actual bounded file operations. It exercises
+four `fstat` records, five pathname-stat queries, six opens, four directory
+reads and one profile-file EOF. Their 176 observed syscalls pass in addition
+to the preceding 200 startup and 56 shared-runtime syscalls across four images.
+All requests use the ordinary application ABI; generated calls are emitted
+during construction of the fresh first-party witness.
+
+The source program checks refused copies without partial output, page-split
+pathnames, complete stat output across page/directory boundaries beyond the
+predecessor heap, and EOF without a mapped destination. Directory results use
+only 80 mapped bytes before an unmapped page despite a count of 512, checking
+actual-record admission. Observations verify refusal preserves private staging
+and lifecycle controls. Heap contents, credential vectors, original registers
+and terminal retirement remain checked.
+
+Separate readback reconstructs all native stat and directory bytes, including
+padding, parses all 4685 linked code bytes and both adapters, and checks 25
+generated calls with disjoint scratch. The runtime entry cannot call the
+startup entry; the latter may delegate to file cases. Independent stack
+accounting sums all frames in each possible path and takes their maximum,
+including existing scratch/adapters/returns: 1720 of 2048 bytes. It does not
+raise the fixture bound or alter the kernel caller reserve.
+
+Seventeen exact comparisons preserve the preceding kernel and boot image;
+all 7606 serial bytes remain unchanged. Two build-only tests and six post-check
+commands pass. The earlier observer zero-length-read failure and C compile
+failure are retained separately. Review is single-agent self-review with
+independent parsing and native observations, not independent human review.
+
+Remaining direct signal/path/output/header/command cases, complete native
+ownership/mode/stability qualification, canonical production binding and cold
+reconstruction remain required. The default fixture, production selection,
+Stage 3's incomplete status and full original kernel objective remain unchanged.

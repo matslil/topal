@@ -21,7 +21,7 @@ import traceback
 
 def reg(name): return int(gdb.parse_and_eval('$'+name)) & ((1<<64)-1)
 def address(name): return int(gdb.parse_and_eval('(unsigned long long)&'+name))
-def memory(pointer, size): return bytes(gdb.selected_inferior().read_memory(pointer, size))
+def memory(pointer, size): return bytes(gdb.selected_inferior().read_memory(pointer, size)) if size else b''
 def words(pointer, count): return list(struct.unpack('<'+'Q'*count, memory(pointer, count*8)))
 def word(pointer): return words(pointer, 1)[0]
 def signed(value): return value if value < (1<<63) else value-(1<<64)
@@ -29,12 +29,14 @@ def state(): return words(address('topal_x86_frame_mm_state_v1'), 4)
 def prefix(pages): return hashlib.sha256(memory(0x5f7000, pages*4096)).hexdigest()
 def credentials_pointer():
     return word(context+920)+96 if memory(context+896,1)[0] == 1 else 0x7fff18
+def file_controls():
+    return (memory(context+472,152)+memory(context+736,160)).hex()
 
 context = address('topal_bootstrap_storage') + 512
 current = pending = startup_current = bridge_current = None
 component_returns = {}
 syscall_returns = {}
-observed = dict(passed=False, executions=[], startup_executions=[], bridge_returns=[])
+observed = dict(passed=False, executions=[], startup_executions=[], file_executions=[], bridge_returns=[])
 callee = ['rbx', 'rbp', 'r12', 'r13', 'r14', 'r15']
 
 class Checked(gdb.Breakpoint):
@@ -110,8 +112,16 @@ class SyscallReturned(Checked):
         assert (current or startup_current) and pending and reg('cs') & 3 == 3
         pending['result'] = signed(reg('rax'))
         pending['phase_after'] = memory(context+104,1)[0]
+        if startup_current and startup_current.get('kind') == 'file':
+            n = pending['number']
+            result = pending['result']
+            if (n in [5,262] and result == 0) or (n == 217 and result > 0):
+                pointer = pending['args'][2 if n == 262 else 1]
+                pending['output_hex'] = memory(pointer,result if n == 217 else 144).hex()
         if pending['result'] in [-14,-22] or pending['number'] == 12:
             assert pending['phase_after'] == pending['phase_before'], pending
+        if startup_current and startup_current.get('kind') == 'file' and pending['result'] == -14:
+            assert file_controls() == pending['controls_before'], pending
         (current or startup_current)['calls'].append(pending)
         pending = None
         return False
@@ -127,6 +137,11 @@ class SyscallEntered(Checked):
         pending = dict(number=reg('rdi'),
                        args=[reg(name) for name in ['rsi','rdx','rcx','r8'][:self.count]],
                        phase_before=memory(context+104,1)[0])
+        if startup_current and startup_current.get('kind') == 'file':
+            pending['controls_before'] = file_controls()
+            if pending['number'] in [257,262] and pending['args'][1] == 0x637ff8:
+                data = memory(0x637ff8,64)
+                pending['pathname_hex'] = data[:data.index(0)+1].hex()
         return_site = word(reg('rsp'))
         assert component['base'] <= return_site < component['base']+component['text_bytes']
         if return_site not in syscall_returns:
@@ -139,6 +154,8 @@ class StartupReturned(Checked):
         global startup_current
         self.enabled = False
         row = startup_current
+        if row and row.get('kind') == 'file':
+            return file_returned(row)
         assert row and current is None and pending is None
         assert reg('cs') & 3 == 3 and reg('rsp') == row['stack']+8
         assert {name:reg(name) for name in callee} == row['callee']
@@ -204,6 +221,8 @@ class StartupEntered(Checked):
         assert component['base'] <= return_site < component['base']+component['text_bytes']
         args = [reg(name) for name in ['rsi','rdx','rcx','r8']]
         n = reg('rdi')
+        if n in [5,257,217,0] or (n == 262 and args[1] != 0x4a6900):
+            return file_entered(n,args,stack,return_site)
         assert n in [302,318,157,262]
         destination = args[{302:3,318:0,157:1,262:2}[n]]
         before = state()
@@ -241,7 +260,7 @@ class BridgeEntered(Checked):
         assert current is startup_current is pending is bridge_current is None
         stack = reg('rsp')
         site = word(stack)
-        assert 0x4a6100 <= site < 0x4a6580
+        assert 0x4a6100 <= site < 0x4b0000
         bridge_current = dict(stack=stack,return_site=site,credentials_pointer=credentials_pointer(),
             registers={name:reg(name) for name in callee+['rdi','rsi','rdx','r10','r8','r9']})
         if site not in component_returns:
@@ -249,13 +268,97 @@ class BridgeEntered(Checked):
         component_returns[site].enabled = True
         return False
 
+def file_entered(n,args,stack,return_site):
+    global startup_current
+    assert word(word(context+928)) == 0, 'bounded file fixture must precede table activation'
+    before = state()
+    assert before[1:3] == [0x619000,34]
+    destination = args[2] if n == 262 else args[1]
+    size = 0 if n == 257 else (512 if n == 217 else (128 if n == 0 else 144))
+    path = None
+    if n in [257,262]:
+        data = memory(args[1],64)
+        path = data[:data.index(0)+1].hex()
+    startup_current = dict(kind='file',number=n,args=args,stack=stack,before=before,
+        prefix_before=prefix(before[2]),callee={name:reg(name) for name in callee},calls=[],
+        destination=destination,output_before=memory(destination,size).hex(),
+        output_size=size,path=path,credentials_pointer=credentials_pointer(),
+        credentials=words(credentials_pointer(),8),phase_before=memory(context+104,1)[0],
+        controls_before=file_controls())
+    assert startup_current['credentials'] == [11,0,12,0,13,0,14,0]
+    if return_site not in component_returns:
+        component_returns[return_site] = StartupReturned('*'+hex(return_site), internal=True)
+    component_returns[return_site].enabled = True
+    return False
+
+def file_returned(row):
+    global startup_current
+    assert current is None and pending is None and reg('cs') & 3 == 3
+    assert reg('rsp') == row['stack']+8
+    assert {name:reg(name) for name in callee} == row['callee']
+    assert credentials_pointer() == row['credentials_pointer']
+    assert words(row['credentials_pointer'],8) == row['credentials']
+    after = state()
+    assert after[1:3] == row['before'][1:3]
+    assert prefix(after[2]) == row['prefix_before']
+    n = row['number']
+    calls = row['calls']
+    assert calls[0]['number'] == calls[1]['number'] == calls[-1]['number'] == 12
+    assert [calls[i]['args'][0] for i in [0,1,-1]] == [0,0x63a000,0x619000]
+    assert [calls[i]['result'] for i in [0,1,-1]] == [0x619000,0x63a000,0x619000]
+    actions = calls[2:-1]
+    assert all(c['number'] == n for c in actions)
+    path = bytes.fromhex(row['path']) if row['path'] else None
+    if n in [257,262]:
+        assert [c['args'][1] for c in actions[:4]] == [0x63a000,(1<<64)-1,0x800000,0x639fff]
+        assert [c['result'] for c in actions[:4]] == [-14]*4
+        actions = actions[4:]
+        assert all(c['args'][1] == 0x637ff8 and c['pathname_hex'] == row['path'] for c in actions)
+    if n == 257:
+        expected = -2 if path == b'/dev/tty\0' else 3
+        assert len(actions) == 1 and actions[0]['result'] == expected
+    elif n == 0:
+        expected = 0
+        assert [c['args'][1] for c in actions] == [(1<<64)-1,(1<<47)-4096-127,0x63a000]
+        assert [c['result'] for c in actions] == [-14,-14,0]
+    elif n == 262 and path == b'/var/spool/mail/root\0':
+        expected = -2
+        assert len(actions) == 1 and actions[0]['result'] == -2 and actions[0]['args'][2] == 0x63a000
+    elif n == 217 and len(actions) == 1:
+        expected = 0
+        assert actions[0]['args'][1] == 0x63a000 and actions[0]['result'] == 0
+    else:
+        expected = actions[-1]['result']
+        assert expected in ([72,80] if n == 217 else [0])
+        index = 2 if n == 262 else 1
+        assert [c['args'][index] for c in actions[:-1]] == [0x63a000,(1<<64)-1,0x400000,0x800000,0x639fff]
+        assert [c['result'] for c in actions[:-1]] == [-14]*5
+        actual = 0x639fb0 if n == 217 else (0x5ffff8 if n == 5 and row['args'][0] == 1 else 0x638ff8)
+        assert actions[-1]['args'][index] == actual
+        size = expected if n == 217 else 144
+        assert memory(row['destination'],size).hex() == actions[-1]['output_hex']
+        before = bytes.fromhex(row['output_before'])
+        assert memory(row['destination']+size,len(before)-size) == before[size:]
+        row['output_after'] = memory(row['destination'],size).hex()
+    assert signed(reg('rax')) == expected, ('file source failed',signed(reg('rax')),row)
+    if 'output_after' not in row:
+        assert memory(row['destination'],row['output_size']).hex() == row['output_before']
+    row['after'] = after
+    row['phase_after'] = memory(context+104,1)[0]
+    observed['file_executions'].append(row)
+    print('SOURCE_FILE_CASES_PASS',len(observed['file_executions']),n,len(calls),flush=True)
+    startup_current = None
+    return False
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
         assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert len(observed['bridge_returns']) == len(numbers)
+        assert [row['number'] for row in observed['file_executions']] == [
+            5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
+        assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])
         assert state() == [0,0,0,0]
         assert memory(address('topal_x86_frame_mm_tokens_v1'), 48) == bytes(48)
         assert word(context+904) == 0 and memory(context+152,16) == bytes(16)

@@ -1,0 +1,41 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 101,
+  "elapsed_seconds": 1.1340656066313386,
+  "resources": {
+    "memory.max": "3335958528",
+    "memory.swap.max": "0",
+    "memory.peak": "54046720",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "bf18275478e41f0c823d4ef1479de425785541dc0dbb2e0a891b9ce4f468949f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": "296091d809c9886569c13ad8ec3505f7bc3b9800f9b086f4237c3b7cac6e05cc",
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "f23da8d04abdd2e9983446b2929163a39be581f5f8606c51bdf2b2a5572d2985",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "c70d339e3a81faed59de1d7b419f8843dd8fb681bc9729efa2c6e657af4b1442",
+    "linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c": "0e724868ca5fbb9969157da56abd78b0a4c663de93b23a64fd01b2e2cd1d713e"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "bf18275478e41f0c823d4ef1479de425785541dc0dbb2e0a891b9ce4f468949f",
+    "linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": "296091d809c9886569c13ad8ec3505f7bc3b9800f9b086f4237c3b7cac6e05cc",
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "f23da8d04abdd2e9983446b2929163a39be581f5f8606c51bdf2b2a5572d2985",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "c70d339e3a81faed59de1d7b419f8843dd8fb681bc9729efa2c6e657af4b1442",
+    "linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c": "0e724868ca5fbb9969157da56abd78b0a4c663de93b23a64fd01b2e2cd1d713e"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused source-built ordinary user-buffer cases; no production or complete all-caller qualification"
+}

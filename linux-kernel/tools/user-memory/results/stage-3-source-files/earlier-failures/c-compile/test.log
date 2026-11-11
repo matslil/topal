@@ -1,0 +1,28 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254194-1794391728859111067
+
+thread 'systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries' (2254195) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+file-cases-compile: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254194-1794391728859111067
+/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254194-1794391728859111067/file-cases.c: In function ‘output_cases’:
+/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254194-1794391728859111067/file-cases.c:31:8: error: array subscript -1 is outside array bounds of ‘volatile unsigned char[]’ [-Werror=array-bounds=]
+   31 |     out[-1] = 0xa7;
+      |     ~~~^~~~
+/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254194-1794391728859111067/file-cases.c:36:12: error: array subscript -1 is outside array bounds of ‘volatile unsigned char[]’ [-Werror=array-bounds=]
+   36 |     if (out[-1] != 0xa7) return -204;
+      |         ~~~^~~~
+cc1: all warnings being treated as errors
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 381 filtered out; finished in 1.04s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

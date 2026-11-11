@@ -1,0 +1,25 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld",
+    "-flavor",
+    "gnu",
+    "-m",
+    "elf_x86_64",
+    "-static",
+    "--no-dynamic-linker",
+    "--build-id=none",
+    "--entry",
+    "topal_user_extent_source_cases",
+    "-z",
+    "noexecstack",
+    "-T",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-user.ld",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/startup-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/file-cases.o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-syscall.o",
+    "-o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2254302-1794391781905781325/source-user.elf"
+  ],
+  "exit_code": 0
+}
