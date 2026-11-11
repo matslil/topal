@@ -1,0 +1,9 @@
+{
+  "original_exit_code": 1,
+  "original_step": "overlap case enumeration",
+  "reason": "The first verifier treated equal invalid input/output pointer values as successful overlap cases.",
+  "correction": "Count admitted successful input/output alias cases separately from rejected equal-pointer candidates.",
+  "final_exit_code": 0,
+  "native_rerun": false,
+  "scope": "Post-run verifier correction; the native observer already classified these requests using the signal contract. No kernel or source-test change."
+}

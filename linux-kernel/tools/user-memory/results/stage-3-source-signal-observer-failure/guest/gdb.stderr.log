@@ -1,0 +1,9 @@
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-signals-2261645-1794395023139247277/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Traceback (most recent call last):
+  File "<string>", line 35, in stop
+  File "<string>", line 145, in observe
+  File "<string>", line 592, in observe_signal_request
+AssertionError
+Traceback (most recent call last):
+  File "<string>", line 714, in <module>
+AssertionError

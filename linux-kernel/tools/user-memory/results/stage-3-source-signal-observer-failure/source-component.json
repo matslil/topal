@@ -1,0 +1,29 @@
+{
+  "base": 5701632,
+  "command_source_sha256": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+  "conservative_user_stack_bytes": 1496,
+  "entry": 5708672,
+  "exec_source_sha256": null,
+  "file_source_sha256": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+  "image_sha256": "09b725dc3ab2d71b070806e98d4f77dfbf2d873edf2f9e044e52c6324995c057",
+  "linked_sha256": "401103e3863e411280bf84a2b95281c4d270dcecc69a2ae12d5c742d3dd2d64b",
+  "mode": "signals",
+  "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+  "shell_source_sha256": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+  "signal_source_sha256": "72d650525751faebd14e997ab1e681d3e44fe5fa340f36cc3932ff37bfb95efd",
+  "source_sha256": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+  "stack_frame_costs": {
+    "command-cases": 104,
+    "file-cases": 400,
+    "shell-cases": 168,
+    "signal-cases": 344,
+    "source-cases": 496,
+    "startup-cases": 168
+  },
+  "startup": 5702592,
+  "startup_call": 5711552,
+  "startup_source_sha256": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+  "syscall": 5711504,
+  "syscall4": 5711520,
+  "text_bytes": 10144
+}

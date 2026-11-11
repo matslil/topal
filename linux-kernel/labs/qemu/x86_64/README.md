@@ -715,3 +715,33 @@ Selected input-prefix observations and separate ELF parsing are not a full
 nested-load transcript or complete production qualification. Header-poll,
 specialized signal/reset, vector-output and other remaining native obligations
 are still required.
+
+## Source-built signal transfer cases
+
+The separate [`user_extent_signal_cases.c`](user_extent_signal_cases.c) cohort
+uses ordinary action/mask syscalls on the active process-owned table. It covers
+page/directory crossings beyond page 34, read-only input, partial/unmapped
+buffers, validation order, normalization, reset/restore and block/unblock/set.
+Input and old-value output may alias. Valid updates remain committed if copying
+the old value fails, as required by the signal contracts.
+
+```console
+rtk proxy env RUST_MIN_STACK=16777216 scripts/run_bounded.py -- \
+  cargo test -p topal-compiler --lib --locked -j1 \
+  systems_frame_target::root_tests::owned_source_fixture_checks_signal_transfer_boundaries \
+  -- --ignored --exact --test-threads=1 --nocapture
+```
+
+The [checkpoint](../../../tools/user-memory/results/stage-3-source-signals/README.md)
+records 196 observed source calls across four invocations, complete expected
+process-table changes, 256-byte staging erasure, original-state restoration and
+terminal retirement. A separate set-based readback checks signal operations,
+old-value output, all 36 code-resident inputs, eight successful overlap copies
+and eight output-fault commits. The conservative source-call bound is 1496 of
+2048 bytes; kernel/boot bytes and the preceding transfer fixture are unchanged.
+The failed initial staging observer remains separately retained.
+
+The [routing review](../../../tools/user-memory/caller-routing.md) distinguishes
+the active service from old fallback labels and predecessor-only stack checks.
+It is not a complete caller/reachability proof. The header-poll, remaining native
+ownership/mode/stability and production obligations remain required.

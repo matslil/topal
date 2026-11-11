@@ -1,0 +1,27 @@
+# Owned caller routing notes
+
+This is a source-review record for `TOPAL-SYSTEMS-USER-EXTENT-001`, not a
+complete caller inventory or proof that every direct user access is qualified.
+The [signal checkpoint](results/stage-3-source-signals/README.md) records native
+observations separately from the following control-flow reasoning.
+
+| Previously named area | Current owned selection | Evidence boundary |
+| --- | --- | --- |
+| Initial process-name and stack-limit output | Both adapters choose complete owned output admission. Their calls to the old `emit_stack_output_extent` helper occur only in the predecessor `else` branches. | [Adapter source](../../../src/topal-compiler/src/systems_process_entry_completion.rs) and [startup native checkpoint](results/stage-3-source-startup/README.md). This does not qualify every initial-vector construction or publication obligation. |
+| Signal reset after the final shell command | The final read initializes the process table before publishing command phase six. Initialization imports/consumes prelude signal state and publishes the active table. On subsequent syscall entry, active-table action/mask dispatch precedes the old prelude signal selector. | [Final-read source](../../../src/topal-compiler/src/systems_process_entry_read_exec.rs), [initialization](../../../src/topal-compiler/src/systems_file_descriptions.rs), [entry order](../../../src/topal-compiler/src/systems_process_entry_start.rs) and [signal dispatch](../../../src/topal-compiler/src/systems_process_signals.rs). The new cohort requires that actual table to be active and tests its service; it does not force the old fallback route. A complete reachability/producer inventory remains required. |
+| Header readiness polling | The header poll adapter still requires header kind two, its terminal-probe sequence, an open immutable description and ordered readiness/read consumption. | [Header-read adapter](../../../src/topal-compiler/src/systems_process_entry_read_exec.rs). The clean-header source cohorts do not reach it. A sectioned-profile source lifecycle and its native buffer cases remain required; the pinned external binary has a separate digest gate. |
+
+The process transfer staging extent is 256 bytes beginning at table offset
+1408. The process umask begins at offset 1664, before the signal action array
+at 1792. Signal preparation and return use the shared staging wipe; testing
+that wipe must preserve the adjacent umask and all other process state. The
+signal observer compares all 8192 table bytes against the operation's permitted
+action/mask update, and independently requires the entire 256-byte staging
+extent to be zero. It does not erase or ignore adjacent ownership.
+
+The old fallback labels remain emitted. Source reasoning about the normal
+dispatch order is not native execution of those labels, a claim that arbitrary
+corrupt private state is unreachable, or permission to delete their checks.
+Every remaining ownership, paging-mode, stable-observation, direct/shared-caller
+and production reconstruction obligation remains in force. The source identities
+used for these notes are retained with the selected signal evidence.

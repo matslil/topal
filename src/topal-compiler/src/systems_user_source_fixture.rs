@@ -112,14 +112,27 @@ fn syscall_adapter() -> Vec<u8> {
 }
 
 pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
-    build_selected(work, tools, false)
+    build_selected(work, tools, "transfers")
 }
 
 pub(crate) fn build_exec(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
-    build_selected(work, tools, true)
+    build_selected(work, tools, "exec")
 }
 
-fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> {
+pub(crate) fn build_signals(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, "signals")
+}
+
+fn build_selected(work: &Path, tools: &crate::LlvmTools, mode: &str) -> Vec<u8> {
+    let (entry_name, extra) = match mode {
+        "transfers" => ("topal_user_extent_source_cases", None),
+        "exec" => ("topal_user_extent_exec_cases", Some(("exec", "exec-cases"))),
+        "signals" => (
+            "topal_user_extent_signal_cases",
+            Some(("signal", "signal-cases")),
+        ),
+        _ => panic!("unknown source fixture cohort"),
+    };
     let lab = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/labs/qemu/x86_64");
     let source = lab.join("user_extent_source_cases.c");
     run(
@@ -134,8 +147,9 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
         ("user_extent_shell_cases.c", "shell-cases"),
         ("user_extent_command_cases.c", "command-cases"),
     ];
-    if exec {
-        inputs.push(("user_extent_exec_cases.c", "exec-cases"));
+    let extra_name = extra.map(|(name, _)| format!("user_extent_{name}_cases.c"));
+    if let Some((_, stem)) = extra {
+        inputs.push((extra_name.as_deref().unwrap(), stem));
     }
     for (input, stem) in &inputs {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
@@ -183,11 +197,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
                 "--no-dynamic-linker",
                 "--build-id=none",
                 "--entry",
-                if exec {
-                    "topal_user_extent_exec_cases"
-                } else {
-                    "topal_user_extent_source_cases"
-                },
+                entry_name,
                 "-z",
                 "noexecstack",
                 "-T",
@@ -198,11 +208,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
             .arg(work.join("file-cases.o"))
             .arg(work.join("shell-cases.o"))
             .arg(work.join("command-cases.o"))
-            .args(if exec {
-                vec![work.join("exec-cases.o")]
-            } else {
-                vec![]
-            })
+            .args(extra.map(|(_, stem)| work.join(format!("{stem}.o"))))
             .arg(work.join("source-syscall.o"))
             .arg("-o")
             .arg(work.join("source-user.elf")),
@@ -247,8 +253,8 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
     let delegated = frames["file-cases"]
         .max(frames["shell-cases"])
         .max(frames["command-cases"]);
-    let source_stack = if exec {
-        frames["exec-cases"]
+    let source_stack = if let Some((_, stem)) = extra {
+        frames[stem]
     } else {
         frames["source-cases"].max(frames["startup-cases"] + delegated)
     };
@@ -264,7 +270,7 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
     let syscall4 = elf.symbol_by_name("topal_test_syscall4").unwrap();
     let image = crate::systems_artifact::source_built_static_user_image_fixture(
         u32::try_from(elf.entry()).unwrap(),
-        if exec {
+        if extra.is_some() {
             None
         } else {
             Some(u32::try_from(startup.address()).unwrap())
@@ -278,8 +284,9 @@ fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> 
         "base": BASE, "entry": elf.entry(), "syscall": syscall.address(),
         "startup": source_startup.address(), "startup_call": startup.address(),
         "syscall4": syscall4.address(),
-        "mode": if exec { "exec" } else { "transfers" },
-        "exec_source_sha256": if exec { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
+        "mode": mode,
+        "exec_source_sha256": if mode == "exec" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
+        "signal_source_sha256": if mode == "signals" { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_signal_cases.c")).unwrap()))) } else { None },
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
         "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),

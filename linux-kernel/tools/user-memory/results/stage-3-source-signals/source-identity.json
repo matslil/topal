@@ -1,0 +1,30 @@
+{
+  "base_commit": "5664b68d64df0c44fffd2f56aeb30c58fea55f53",
+  "selected_executable_inputs": {
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "22ab82df25e6c31c24bf0eea2a5037f47fc731f8bec402a1e7eccb098f956172",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "4adeeb4249bebf531b4da37847613dd57df6f9ec0963376ca6bf3f30b7c8e05e",
+    "src/topal-compiler/src/systems_time_checks.rs": "02a366b2826cbc49c7f65adacc64765a4de161fe962b16f9c97cfac9104bfa6c",
+    "src/topal-compiler/src/systems_user_extent.rs": "4e489d9cf30c8b9f0b6c41d24fcc886120f5ba7c7caa2109f0e708d3b85a0c56",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "a69887c2c1b347f69de935412027ed1ca4295450840671a3f476fbc9d5716328",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": "2c5171f997c27d084883f6dce969747c191ab41649864e5c1d73f2367bb574aa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_file_cases.c": "757a45600b38e0746659781ba6e14aa5a90ec9d378cf364fd555299890ef92fa",
+    "linux-kernel/labs/qemu/x86_64/user_extent_shell_cases.c": "574462c620fb4e2db01bc4140e98377f52d4add8eddc3e4a9fa0428d2a3d8db4",
+    "linux-kernel/labs/qemu/x86_64/user_extent_command_cases.c": "cac5afad81808c0123175a2de8b1e799c70579f9a5ef81445bb3a66433f9e3ef",
+    "linux-kernel/labs/qemu/x86_64/user_extent_signal_cases.c": "72d650525751faebd14e997ab1e681d3e44fe5fa340f36cc3932ff37bfb95efd",
+    "linux-kernel/labs/qemu/x86_64/user_extent_shell_observer.py": "6ba36c58ec144d748b840b957932c49d8535643ad82ab0b58b764779d0329200",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "ab8bfa42562c8c8bf094c0d5a1a1453c330af0f875fe19d48ead882954c9c6db",
+    "linux-kernel/labs/qemu/x86_64/user_extent_exec_observer.py": "515a9b2bf726f36416ea2d86291595950cfaeaf5bf307985450fbb38aeccb5f6",
+    "linux-kernel/labs/qemu/x86_64/user_extent_signal_observer.py": "fc6fdc9f205d1a26d88518e8e7d644e533b6a94076e1b46c1cc37749760ffe42"
+  },
+  "routing_sources": {
+    "src/topal-compiler/src/systems_process_entry_completion.rs": "4a808fb844bd3df16e5e5d3185276e90151f8ce80efe2e0f2fbeea2e9f603c9b",
+    "src/topal-compiler/src/systems_process_entry_read_exec.rs": "84d224bf88f1c894f67fb7d9a45e56770bc9daf7952d7c2c047b66333b6e9e01",
+    "src/topal-compiler/src/systems_process_entry_start.rs": "f807dd8b9f44bd9b0f947e81098c5921a933f7d6c7519d6ec43249d55b87a500",
+    "src/topal-compiler/src/systems_file_descriptions.rs": "22ffae54b1b75c77dc0e9476dad0d66db7faa98df8564a99d7500b60ed626119",
+    "src/topal-compiler/src/systems_process_signals.rs": "c60d759f85f69ccf465c311b7873dded9843b001bf7531e767bb05e41e5fafd1",
+    "src/topal-compiler/src/systems_volatile_files.rs": "91f359f6115772c7eca83c6d1a0168f14508296adc8459bba7888870baad4fd4",
+    "src/topal-compiler/src/systems_process_runtime.rs": "64cbb2575a19232899b9512d5524e53835751343534270546b134ccdae9cbd5d"
+  },
+  "scope": "Fifteen selected executable/test inputs and seven unchanged routing sources; not a complete producer census, clean-checkout execution or cold reconstruction; documentation/evidence recorded after execution"
+}

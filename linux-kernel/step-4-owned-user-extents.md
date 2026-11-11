@@ -297,3 +297,40 @@ Specialized signal/reset and vector-output cases, complete caller and native
 ownership/mode/stability qualification, canonical production binding and cold
 reconstruction remain required. Stage 3, initial Step 4 and the full original
 kernel objective remain unfinished.
+
+## Stage 3 source-built signal transfers
+
+The [signal checkpoint](tools/user-memory/results/stage-3-source-signals/README.md)
+adds four source invocations with 92 action calls, 92 mask calls and twelve
+heap calls. Ordinary application arguments exercise complete page/directory
+crossings beyond page 34, code-resident input, refused complete copies, error
+order, normalization, reset/restore, block/unblock/set and overlapping buffers.
+Eight valid updates remain committed after old-value output faults, preserving
+the explicit signal contract rather than imposing blanket error rollback.
+
+The native observer compares the entire 8192-byte process table with exactly
+the allowed update and requires all 256 transfer-staging bytes to be zero.
+It preserves the adjacent umask and other state. The source restores its original
+action/mask and heap contents; callee registers and terminal retirement pass.
+Separate set-based readback checks every recorded action/mask transition and
+old-value result, all 36 read-only inputs, eight successful overlaps and eight
+output-fault commits. It verifies all 10144 linked text bytes and a conservative
+1496-of-2048-byte source-call stack bound. Complete-table comparisons are native
+observer evidence, not reconstruction from an archived full-table transcript.
+
+Seventeen comparisons preserve the preceding kernel and boot-image bytes;
+all 7606 serial bytes match, and a fresh build preserves the preceding transfer
+fixture image exactly. Two build-only tests and all six post-check commands
+pass. Native peak use is 359383040 bytes with zero limit/OOM/kill events and
+validation swap. The initial observer staging-bound failure remains failed
+and separately retained; a post-run overlap-classification correction also
+remains recorded. Neither is an AI safeguard denial or kernel change.
+
+[Routing notes](tools/user-memory/caller-routing.md) distinguish the active
+process-owned signal path from old prelude fallbacks and identify predecessor-
+only stack-output checks. They do not claim a complete reachability or user-
+access inventory. Review remains single-agent self-review with separate native
+observations, artifact parsing and a set-based oracle, not independent human
+review. Header-poll coverage, complete caller and native ownership/mode/stability
+qualification, canonical production binding and cold reconstruction remain
+required. Stage 3, initial Step 4 and the full original kernel goal are unfinished.
