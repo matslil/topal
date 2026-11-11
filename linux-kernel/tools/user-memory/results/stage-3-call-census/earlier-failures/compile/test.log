@@ -1,0 +1,10 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+error: no rules expected `.`
+  --> src/topal-compiler/src/systems_user_extent_inventory.rs:30:74
+   |
+30 |         "helpers": ["runtime-readable-extent", "runtime-writable-extent"].into_iter()
+   |                                                                          ^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
+
+error: could not compile `topal-compiler` (lib test) due to 1 previous error

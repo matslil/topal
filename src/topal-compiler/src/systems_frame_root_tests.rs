@@ -527,21 +527,41 @@ fn build_guest(
     .unwrap();
     let mut dependencies = checked.program.clone();
     dependencies.frame_allocator_library = None;
-    fs::write(
-        work.join("provider.o"),
-        (if owned_callers {
-            crate::systems_provider_object::generate_owned_user_extent_provider(checked)
-        } else if user_extents {
-            crate::systems_provider_object::generate_user_extent_probe_provider(checked)
-        } else if memory {
-            crate::systems_provider_object::generate_frame_memory_provider(checked)
-        } else {
-            crate::generate_x86_64_systems_provider_object(&dependencies)
-        })
-        .unwrap()
-        .bytes,
-    )
+    let provider = (if owned_callers {
+        crate::systems_provider_object::generate_owned_user_extent_provider(checked)
+    } else if user_extents {
+        crate::systems_provider_object::generate_user_extent_probe_provider(checked)
+    } else if memory {
+        crate::systems_provider_object::generate_frame_memory_provider(checked)
+    } else {
+        crate::generate_x86_64_systems_provider_object(&dependencies)
+    })
     .unwrap();
+    fs::write(work.join("provider.o"), &provider.bytes).unwrap();
+    if focus == Some(CallerFocus::SourcePoll) {
+        fs::write(
+            work.join("extent-call-inventory.json"),
+            serde_json::to_vec_pretty(provider.extent_inventory.as_ref().unwrap()).unwrap(),
+        )
+        .unwrap();
+        run(
+            work,
+            "extent-call-disassembly",
+            Command::new(tools.tool_path("llvm-objdump"))
+                .args(["-d", "--no-show-raw-insn"])
+                .arg(work.join("provider.o")),
+        );
+        run(
+            work,
+            "extent-call-inspection",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/inspect_call_inventory.py"),
+                )
+                .arg(work),
+        );
+    }
     if owned_callers {
         // Retain actual predecessor factories for separate byte comparison;
         // the new component selection cannot qualify the old layout by itself.

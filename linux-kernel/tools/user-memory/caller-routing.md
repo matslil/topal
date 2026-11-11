@@ -25,3 +25,14 @@ corrupt private state is unreachable, or permission to delete their checks.
 Every remaining ownership, paging-mode, stable-observation, direct/shared-caller
 and production reconstruction obligation remains in force. The source identities
 used for these notes are retained with the selected signal and readiness evidence.
+
+The [selected emitted-call census](results/stage-3-call-census/README.md) now
+checks all 91 calls to the two owned helpers in the selected provider against
+ELF bytes and LLVM disassembly. The enclosing ordinary process/poll cohort
+reaches 77 sites and leaves 14 unobserved: three bounded fallback inputs,
+positional and serial descriptor reads, named-directory publication, four
+process-pipe calls and four volatile-file calls. Exact offsets, immediate
+emitter locations and preceding native labels are retained. These are first-hit
+observations before invocation, not admission/return qualification or a complete
+direct-access inventory. They identify the next active-descriptor source cases
+and fallback classification needed without weakening any acceptance gate.

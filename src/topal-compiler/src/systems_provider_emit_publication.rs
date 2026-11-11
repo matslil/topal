@@ -2,6 +2,8 @@
 pub struct GeneratedSystemsProviderObject {
     pub plan: X86SystemsProviderPlan,
     pub bytes: Vec<u8>,
+    #[cfg(test)]
+    pub(crate) extent_inventory: Option<serde_json::Value>,
 }
 
 /// Generate one relocatable ELF64 provider object from a checked systems root.
@@ -457,11 +459,7 @@ fn generate_provider_selected(
         let profile = file_region::FileRegionProfile::from_interface(requirement.interface)?;
         file_region::append(&mut object, text, profile)?;
     }
-    append_linkable_function(
-        &mut object,
-        text,
-        X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
-        &static_image_process_enter_selected(
+    let process_enter = static_image_process_enter_selected(
             program.kernel_library.is_some(),
             program.kernel_library.as_ref().is_some_and(|r| r.interface == topal_language::compiler::CompilerSystemsSourceLibraryInterface::FileOpenDecisionV1),
             program.time_library.is_some(),
@@ -478,7 +476,14 @@ fn generate_provider_selected(
             frame_memory,
             user_extent_probe,
             owned_user_extents,
-        )?,
+        )?;
+    #[cfg(test)]
+    let extent_inventory = process_enter.extent_inventory.clone();
+    append_linkable_function(
+        &mut object,
+        text,
+        X86_SYSTEMS_STATIC_IMAGE_PROCESS_ENTER_SYMBOL,
+        &process_enter,
     )?;
     append_encoded_function(
         &mut object,
@@ -911,7 +916,12 @@ fn generate_provider_selected(
     let bytes = object.write().map_err(|error| {
         CompileError::Tool(format!("cannot encode systems provider ELF: {error}"))
     })?;
-    Ok(GeneratedSystemsProviderObject { plan, bytes })
+    Ok(GeneratedSystemsProviderObject {
+        plan,
+        bytes,
+        #[cfg(test)]
+        extent_inventory,
+    })
 }
 
 fn append_deadline_functions(

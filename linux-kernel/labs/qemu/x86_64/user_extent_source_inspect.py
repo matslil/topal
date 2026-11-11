@@ -13,6 +13,7 @@ from user_extent_shell_observer import PROGRAM as SHELL_PROGRAM
 from user_extent_exec_observer import PROGRAM as EXEC_PROGRAM
 from user_extent_signal_observer import PROGRAM as SIGNAL_PROGRAM
 from user_extent_poll_observer import PROGRAM as POLL_PROGRAM
+from user_extent_call_coverage import PROGRAM as COVERAGE_PROGRAM, linked_inventory
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -392,6 +393,8 @@ def file_returned(row):
 
 # POLL_OBSERVER
 
+# EXTENT_COVERAGE
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
@@ -416,6 +419,7 @@ class Complete(Checked):
         assert memory(context+416,8) == bytes(8)
         for snapshot in {row['snapshot'] for row in observed['executions']}:
             assert memory(snapshot+0x9e00,512) == bytes(512)
+        extent_coverage_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -431,6 +435,7 @@ class InvariantHalt(Checked):
         return True
 
 try:
+    install_extent_coverage()
     SourceEntered('*'+hex(component['entry']), internal=True)
     StartupEntered('*'+hex(component['startup']), internal=True)
     BridgeEntered('*'+hex(component['startup_call']), internal=True)
@@ -455,6 +460,8 @@ assert PROGRAM.count('# SIGNAL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# SIGNAL_OBSERVER', SIGNAL_PROGRAM)
 assert PROGRAM.count('# POLL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# POLL_OBSERVER', POLL_PROGRAM)
+assert PROGRAM.count('# EXTENT_COVERAGE') == 1
+PROGRAM = PROGRAM.replace('# EXTENT_COVERAGE', COVERAGE_PROGRAM)
 
 
 if __name__ == '__main__':
@@ -464,10 +471,12 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert archive['static-user.elf'] == image
+    extent_inventory = linked_inventory(build) if component.get('mode') == 'poll' else None
     harness.GDB_PROGRAM = PROGRAM
     harness.main(
         work_name='source-user-extents',
         program_prefix=(f'component={component!r}\n'
+                        f'extent_inventory={extent_inventory!r}\n'
                         f'native_sites={invariant_halt(build / "kernel.elf")!r}\n'),
         input_scope='source-built ordinary user-buffer boundary cases',
         guest_timeout_seconds=300,

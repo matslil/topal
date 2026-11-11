@@ -275,6 +275,8 @@ struct LinkableX86Function {
     calls: Vec<(u64, &'static str)>,
     markers: Vec<(&'static str, u64)>,
     data: Vec<(u64, &'static str)>,
+    #[cfg(test)]
+    extent_inventory: Option<serde_json::Value>,
 }
 
 #[derive(Default)]
@@ -287,6 +289,8 @@ struct X86FunctionEncoder {
     fixups: Vec<(usize, String)>,
     external_calls: Vec<(u64, &'static str)>,
     external_data: Vec<(u64, &'static str)>,
+    #[cfg(test)]
+    extent_call_sites: Vec<serde_json::Value>,
 }
 
 impl X86FunctionEncoder {
@@ -317,7 +321,19 @@ impl X86FunctionEncoder {
         self.fixup(label);
     }
 
+    #[cfg_attr(test, track_caller)]
     fn call(&mut self, label: &str) {
+        #[cfg(test)]
+        if self.owned_user_extents
+            && matches!(label, "runtime-readable-extent" | "runtime-writable-extent")
+        {
+            let origin = std::panic::Location::caller();
+            self.extent_call_sites.push(serde_json::json!({
+                "offset": self.bytes.len(), "target": label,
+                "source_file": origin.file(), "source_line": origin.line(),
+                "source_column": origin.column(),
+            }));
+        }
         self.bytes.push(0xe8);
         self.fixup(label);
         if self.owned_user_extents
@@ -362,11 +378,23 @@ impl X86FunctionEncoder {
     fn finish_linkable(mut self) -> Result<LinkableX86Function, CompileError> {
         let calls = std::mem::take(&mut self.external_calls);
         let data = std::mem::take(&mut self.external_data);
+        #[cfg(test)]
+        let mut extent_inventory = user_extent_inventory::snapshot(&self);
+        let bytes = self.finish()?;
+        #[cfg(test)]
+        if let Some(report) = &mut extent_inventory {
+            use sha2::Digest as _;
+            report["function_sha256"] =
+                serde_json::json!(format!("{:x}", sha2::Sha256::digest(&bytes)));
+            report["function_bytes"] = serde_json::json!(bytes.len());
+        }
         Ok(LinkableX86Function {
-            bytes: self.finish()?,
+            bytes,
             calls,
             markers: vec![],
             data,
+            #[cfg(test)]
+            extent_inventory,
         })
     }
 

@@ -8,6 +8,14 @@ general virtual memory. The production kernel still has the preceding finite
 MM geometry and legacy user-buffer validators. This increment does not yet
 change that executable behavior or complete initial Step 4.
 
+The latest [selected helper-call census](tools/user-memory/results/stage-3-call-census/README.md)
+checks 91 emitted calls against actual ELF/disassembly and observes first reach
+of 77 in ordinary process execution. Fourteen sites remain unobserved in that
+cohort. All 17 selected kernel objects/images match the prior checkpoint; the
+census changes test metadata and observation only. Complete direct user-access
+inventory, admission/error/lifetime qualification and production reconstruction
+remain acceptance blockers. First reach alone discharges none of those gates.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

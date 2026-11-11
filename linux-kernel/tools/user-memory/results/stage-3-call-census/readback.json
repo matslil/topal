@@ -1,0 +1,225 @@
+{
+  "passed": true,
+  "total_calls": 91,
+  "reached_calls": 77,
+  "unreached_calls": 14,
+  "calls_by_emitter": {
+    "src/topal-compiler/src/systems_process_runtime.rs": {
+      "total": 59,
+      "reached": 56
+    },
+    "src/topal-compiler/src/systems_positional_transfer.rs": {
+      "total": 1,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_file_descriptions.rs": {
+      "total": 4,
+      "reached": 3
+    },
+    "src/topal-compiler/src/systems_process_signals.rs": {
+      "total": 4,
+      "reached": 4
+    },
+    "src/topal-compiler/src/systems_namespace_walk.rs": {
+      "total": 1,
+      "reached": 1
+    },
+    "src/topal-compiler/src/systems_process_namespace.rs": {
+      "total": 3,
+      "reached": 3
+    },
+    "src/topal-compiler/src/systems_namespace_named.rs": {
+      "total": 1,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_process_realtime.rs": {
+      "total": 1,
+      "reached": 1
+    },
+    "src/topal-compiler/src/systems_process_observations.rs": {
+      "total": 1,
+      "reached": 1
+    },
+    "src/topal-compiler/src/systems_process_time.rs": {
+      "total": 3,
+      "reached": 3
+    },
+    "src/topal-compiler/src/systems_process_children.rs": {
+      "total": 3,
+      "reached": 3
+    },
+    "src/topal-compiler/src/systems_pipe_create.rs": {
+      "total": 1,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_pipe_transfer.rs": {
+      "total": 2,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_process_pipes.rs": {
+      "total": 1,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_volatile_transfer.rs": {
+      "total": 4,
+      "reached": 0
+    },
+    "src/topal-compiler/src/systems_exec_environment.rs": {
+      "total": 2,
+      "reached": 2
+    }
+  },
+  "reached_by_direction": {
+    "runtime-writable-extent": 37,
+    "runtime-readable-extent": 40
+  },
+  "source_syscalls": 120,
+  "executable_comparisons": [
+    {
+      "path": "root.o",
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8",
+      "unchanged": true
+    },
+    {
+      "path": "source.o",
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8",
+      "unchanged": true
+    },
+    {
+      "path": "runtime.o",
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f",
+      "unchanged": true
+    },
+    {
+      "path": "owner.o",
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5",
+      "unchanged": true
+    },
+    {
+      "path": "controller.o",
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84",
+      "unchanged": true
+    },
+    {
+      "path": "target.o",
+      "bytes": 27320,
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e",
+      "unchanged": true
+    },
+    {
+      "path": "dispatch.o",
+      "bytes": 12832,
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457",
+      "unchanged": true
+    },
+    {
+      "path": "gateway.o",
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37",
+      "unchanged": true
+    },
+    {
+      "path": "boundary.o",
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8",
+      "unchanged": true
+    },
+    {
+      "path": "extent.o",
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993",
+      "unchanged": true
+    },
+    {
+      "path": "extent-bridge.o",
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c",
+      "unchanged": true
+    },
+    {
+      "path": "extent-callers.o",
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda",
+      "unchanged": true
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359",
+      "unchanged": true
+    },
+    {
+      "path": "predecessor-provider.o",
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae",
+      "unchanged": true
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc",
+      "unchanged": true
+    },
+    {
+      "path": "kernel.elf",
+      "bytes": 1665328,
+      "sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+      "unchanged": true
+    },
+    {
+      "path": "bzImage",
+      "bytes": 45232800,
+      "sha256": "dde754f580fe7784a0238c90f34b07984e0883f8a4ad815e76c0176fd1c9eae5",
+      "unchanged": true
+    },
+    {
+      "path": "static-elf-abi-fixture.elf",
+      "bytes": 2024544,
+      "sha256": "381f3dfe7cac3719ae02ee40206a39edb1ec4961e91f9f03e5be33ce513324dd",
+      "unchanged": true
+    },
+    {
+      "path": "initramfs.cpio",
+      "bytes": 2037200,
+      "sha256": "e692bbea4bf9b1e68468d2cf2647f8d1f2ee9a4d17dd79ad5d55db2f3009d8b2",
+      "unchanged": true
+    }
+  ],
+  "source_component_metadata_differences": {
+    "linked_sha256": [
+      "5909ef25c3a842ca249c206835a018e4c6d0a951243541ce57555b66d0085404",
+      "24686e0aa2f23c5f632c8df66af96bf83c8a14078a7fb87e215f2efe65a33fe9"
+    ]
+  },
+  "source_linked_section_differences": [
+    ".debug_info",
+    ".debug_line",
+    ".debug_line_str"
+  ],
+  "source_linked_allocated_sections_unchanged": true,
+  "serial_bytes": 7606,
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "rejected_metadata": [
+    {
+      "case": "omitted-call",
+      "rejected": true,
+      "assertion": "('decoded helper calls disagree with producer census', 91, 90)"
+    },
+    {
+      "case": "wrong-direction",
+      "rejected": true,
+      "assertion": ""
+    },
+    {
+      "case": "wrong-function-hash",
+      "rejected": true,
+      "assertion": ""
+    }
+  ],
+  "scope": "Complete selected two-helper call census and first reach only; no complete direct-access inventory, dominance, admission result, all-error-path or production qualification"
+}

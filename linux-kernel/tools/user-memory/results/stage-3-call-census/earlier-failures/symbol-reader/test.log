@@ -1,0 +1,31 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 23.65s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_source_fixture_checks_poll_transfer_boundaries ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-poll-2267899-1794397859967408211
+
+thread 'systems_frame_target::root_tests::owned_source_fixture_checks_poll_transfer_boundaries' (2267900) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+extent-call-inspection: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-poll-2267899-1794397859967408211
+Traceback (most recent call last):
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/inspect_call_inventory.py", line 155, in <module>
+    inspect(Path(sys.argv[1]).resolve())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/inspect_call_inventory.py", line 117, in inspect
+    elf = Elf(build / 'provider.o')
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/inspect_call_inventory.py", line 52, in __init__
+    assert name not in self.symbols, name
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: topal_x86_systems_inode_mode_namespace_check_v1
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_source_fixture_checks_poll_transfer_boundaries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 384 filtered out; finished in 19.30s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

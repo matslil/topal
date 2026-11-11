@@ -23,6 +23,9 @@ pub(crate) mod tail_boundary;
 #[cfg(test)]
 #[path = "systems_user_extent_bridge.rs"]
 pub(crate) mod user_extent_bridge;
+#[cfg(test)]
+#[path = "systems_user_extent_inventory.rs"]
+mod user_extent_inventory;
 #[path = "systems_x86_function.rs"]
 mod x86_function;
 use process_runtime::file_descriptions as process_files;
