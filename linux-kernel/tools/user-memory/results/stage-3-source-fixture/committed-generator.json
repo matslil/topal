@@ -1,0 +1,44 @@
+{
+  "commit": "81ae694f9a1058be69c31821d398ac4f0de95676",
+  "inputs": [
+    {
+      "path": "src/topal-compiler/src/systems_artifact_static_image.rs",
+      "sha256": "344a5430657e2bbeea8601e67e44f5b90b9bcdbf3740f76b91b8ca6168a4504b"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_child_checks.rs",
+      "sha256": "e284d06a3bf9e876dd21f7409361f3eefb50ca24c9d0d2f2730f11becadf90a3"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_environment_checks.rs",
+      "sha256": "ce77a570ce2430861a573bcd7539de9aa7add4d0e90669721c10c6f093959647"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_namespace_checks.rs",
+      "sha256": "8b1d6b59710cc1ffde114b6d4146eab42e0f7b2ac49234dac1fb7a586b05c1e6"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_observation_checks.rs",
+      "sha256": "1d5cf871b2e89b0b2b972efe61ba3b591129e6f879d30998f1bb90646ed7dd40"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_process_checks.rs",
+      "sha256": "b020bdb76706f1979e0a2f386f79139525199cf8171482163801407fe41ec45f"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_process_fixture.rs",
+      "sha256": "fb491aca0dc047c29dc0d4eb42a89c3c1030cefadca2f2ddb2f1a1c664676847"
+    },
+    {
+      "path": "src/topal-compiler/src/systems_time_checks.rs",
+      "sha256": "e56dbd33db4b6dcb1365199c837c0bd488863e81aa630b91e26688711d5a71dd"
+    },
+    {
+      "path": "linux-kernel/labs/qemu/x86_64/namespace-cases.json",
+      "sha256": "5fd03957df7ef0975ed037724b4dcb4bb01ff3d7253158edd638dab5c480ec5e"
+    }
+  ],
+  "generated_bytes": 2024544,
+  "generated_sha256": "41a3dcd7b7e42a2f77ad995e6259e43ef84f7abf95e2dfd36cff7bea187c9fda",
+  "scope": "Independent rebuild of committed default ABI generator with existing pinned workspace dependency artifacts; not a clean-checkout or production reconstruction"
+}

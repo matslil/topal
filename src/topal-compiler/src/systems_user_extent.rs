@@ -203,3 +203,7 @@ pub(crate) fn inspect_target_instructions(text: &str) -> Result<(), CompileError
 #[cfg(test)]
 #[path = "systems_user_extent_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "systems_user_source_fixture.rs"]
+pub(crate) mod source_fixture;

@@ -1,0 +1,13 @@
+{
+  "base_commit": "81ae694f9a1058be69c31821d398ac4f0de95676",
+  "observed_modified_inputs": {
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "a1896ef430ec75833de13997655eaacde026cc0d0f622c2808de0d807aef61c0",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "eb1df53b8a18daa2df95857a95263a542946ec993deae23dd49463f2623c637d",
+    "src/topal-compiler/src/systems_time_checks.rs": "02a366b2826cbc49c7f65adacc64765a4de161fe962b16f9c97cfac9104bfa6c",
+    "src/topal-compiler/src/systems_user_extent.rs": "4e489d9cf30c8b9f0b6c41d24fcc886120f5ba7c7caa2109f0e708d3b85a0c56",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "2a6ba6326a4a99844281addd6f880849a0558c90d8c534359049637f58c9e90a",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "aeebc4a1f7e6d912c0da335c4b0fb087f512de9e044385de928f2b488bc7cdb5"
+  },
+  "scope": "Seven changed executable/test inputs selected from the run census; unchanged producer inputs are not a complete census; documentation/evidence recorded after execution"
+}

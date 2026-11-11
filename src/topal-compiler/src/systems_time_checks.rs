@@ -29,9 +29,17 @@ fn nanoseconds(w: &mut Witness, address: u64) {
     w.0.extend_from_slice(&[0x48, 0x03, 0x06]);
 }
 
-pub(in super::super) fn code() -> Vec<u8> {
+pub(in super::super) fn code_with_source(entry: Option<u32>) -> Vec<u8> {
     let mut w = Witness::default();
     w.0.extend_from_slice(&[0x53, 0x55, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57]);
+    if let Some(entry) = entry {
+        // A normal System V call to the linked source function. Preserve the
+        // witness's stack while satisfying the source compiler's alignment.
+        w.0.extend_from_slice(&[0x41, 0x54, 0x49, 0x89, 0xe4, 0x48, 0x83, 0xe4, 0xf0]);
+        w.imm(&[0x48, 0xb8], u64::from(entry));
+        w.0.extend_from_slice(&[0xff, 0xd0]);
+        w.0.extend_from_slice(&[0x4c, 0x89, 0xe4, 0x41, 0x5c, 0x48, 0x85, 0xc0, 0x75, 0xfe]);
+    }
     copy(&mut w, 0x7ffe00, 0x7feb00, 512);
     w.call(229, &[0x1_0000_0001, BUF], 0);
     w.memory(BUF, 0);

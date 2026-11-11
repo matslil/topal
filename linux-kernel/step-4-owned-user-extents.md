@@ -123,3 +123,30 @@ Stage 3 remains incomplete. Source-built native boundary/error fixtures,
 complete caller qualification, canonical production binding and committed cold
 reconstruction remain required. The default production profile and the full
 original kernel goal remain unchanged and unfinished.
+
+## Stage 3 source-built boundary cases
+
+The [source-built checkpoint](tools/user-memory/results/stage-3-source-fixture/README.md)
+adds a compiled C component and backend syscall adapter to the construction of
+a fresh first-party ABI witness. The new variant generates command assertions
+over returned bytes only. The default constructor retains the exact output of
+the committed generator; no completed application is patched.
+
+Four invocations pass 56 observed user syscalls covering runtime output across
+page/directory boundaries, refused transfers without partial writes, invalid
+output candidates, console zero-count/error order and heap restoration. Actual
+user stack/callee preservation and whole-process retirement pass. Independent
+readback verifies code inclusion in the executable read-only load, the ABI
+adapter and the conservative 528-byte source-call stack cost.
+
+Seventeen exact object/image comparisons preserve the previous kernel and boot
+image, and all 7606 serial bytes match the earlier clean ABI witness. Two
+build-only tests and five static post-check commands pass. The initial prelude
+padding timeout is retained as failed evidence. This remains single-agent
+self-review with separate native observations and artifact comparisons, not an
+independent human review or complete production reconstruction.
+
+This source fixture covers shared runtime `uname`/console and memory paths.
+Direct startup/stat/directory/command native boundary cases and the other
+Stage 3/4 obligations remain required. The full original kernel objective is
+still unfinished.

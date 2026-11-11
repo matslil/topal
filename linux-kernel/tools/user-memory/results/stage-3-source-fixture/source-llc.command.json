@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llc",
+    "-filetype=obj",
+    "-O2",
+    "-mcpu=x86-64",
+    "-mattr=-mmx,-sse,-sse2,-avx,-avx2",
+    "--frame-pointer=all",
+    "-stack-size-section",
+    "-function-sections",
+    "--disable-tail-calls",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2248491-1794389355188631849/source.ll",
+    "-o",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2248491-1794389355188631849/source.o"
+  ],
+  "exit_code": 0
+}

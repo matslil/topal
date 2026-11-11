@@ -1,0 +1,9 @@
+0x000000000000fff0 in ?? ()
+SOURCE_USER_CASES_PASS 1 14
+SOURCE_USER_CASES_PASS 2 14
+SOURCE_USER_CASES_PASS 3 14
+SOURCE_USER_CASES_PASS 4 14
+
+Thread 1 hit Breakpoint -4, 0x0000000002c0aea0 in topal_x86_systems_fatal ()
+FRAME_ROOT_GDB_PASS
+[Inferior 1 (process 1) detached]

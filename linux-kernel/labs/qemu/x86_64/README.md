@@ -612,3 +612,34 @@ This focused run does not qualify rejection of inconsistent private state,
 all-caller migration, production publication or full Linux compatibility.
 Unverified native obligations remain acceptance blockers under
 [the agent instructions](../../../../AGENTS.md#kernel-and-systems-validation).
+
+## Source-built user-buffer cases
+
+The source-built interoperability fixture compiles
+[`user_extent_source_cases.c`](user_extent_source_cases.c), links it with a
+backend System V/Linux syscall adapter, and constructs a fresh first-party ABI
+witness containing a normal call to that function. The default ABI constructor
+retains its committed bytes. The source variant checks delivered command bytes
+without assuming padding beyond a read's result. No completed application
+binary is patched and no source-assembly language element is added.
+
+```console
+rtk proxy env RUST_MIN_STACK=16777216 scripts/run_bounded.py -- \
+  cargo test -p topal-compiler --lib --locked -j1 \
+  systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries \
+  -- --ignored --exact --test-threads=1 --nocapture
+```
+
+This explicit native test needs a C compiler, QEMU and GDB. It writes its
+artifacts under ignored `linux-kernel/.cache/x86_64`, including source hashes,
+compiler identity, stack-usage output and the linked source component. The
+freestanding flags apply to the guest object. The observer independently checks
+fourteen calls per invocation, System V callee preservation, restored heap
+contents and terminal ownership retirement. A successful source-function return
+alone is insufficient for acceptance.
+
+Current source cases cover runtime `uname` output across page and directory
+boundaries, refused copies without a partial write, read-only/supervisor and
+unmapped candidates, console empty-transfer/error order, and heap restoration.
+Direct startup/stat/directory/command boundary cases and complete production
+qualification remain separate obligations under `TOPAL-SYSTEMS-USER-EXTENT-001`.

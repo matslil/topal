@@ -1,0 +1,2 @@
+# Preserve exact process output, including debugger spacing and final newlines.
+*.log -whitespace

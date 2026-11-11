@@ -37,6 +37,13 @@ fn owned_first_image_exit_retires_transferred_signal_state() {
     execute_selected(true, true, true, Some(CallerFocus::Application));
 }
 
+#[test]
+#[ignore = "requires a C compiler, QEMU and GDB"]
+fn owned_source_fixture_checks_native_user_buffer_boundaries() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary source-compiled user requests.
+    execute_selected(true, true, true, Some(CallerFocus::SourceBoundary));
+}
+
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
     execute_selected(memory, false, false, None)
 }
@@ -72,6 +79,7 @@ pub(crate) fn execute_user_extent_shell_io() -> std::path::PathBuf {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum CallerFocus {
     Application,
+    SourceBoundary,
     Startup,
     Shell,
     Stat,
@@ -128,7 +136,9 @@ fn execute_selected(
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if focus == Some(CallerFocus::Application) {
+    let prefix = if focus == Some(CallerFocus::SourceBoundary) {
+        "user-extent-source"
+    } else if focus == Some(CallerFocus::Application) {
         "user-extent-application"
     } else if focus == Some(CallerFocus::ShellIo) {
         "user-extent-shell-io"
@@ -149,7 +159,10 @@ fn execute_selected(
     } else {
         "frame-root"
     };
-    let parent = if focus == Some(CallerFocus::Application) {
+    let parent = if matches!(
+        focus,
+        Some(CallerFocus::Application | CallerFocus::SourceBoundary)
+    ) {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../linux-kernel/.cache/x86_64");
         fs::create_dir_all(&path).unwrap();
@@ -238,7 +251,9 @@ fn build_guest(
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    let fixture_bytes = if focus == Some(CallerFocus::Application) {
+    let fixture_bytes = if focus == Some(CallerFocus::SourceBoundary) {
+        crate::systems_user_extent::source_fixture::build(work, tools)
+    } else if focus == Some(CallerFocus::Application) {
         use sha2::{Digest, Sha256};
         let path = std::env::var_os("TOPAL_PINNED_STATIC_USER_IMAGE")
             .expect("provide the pinned BusyBox ELF through TOPAL_PINNED_STATIC_USER_IMAGE");
@@ -598,7 +613,9 @@ fn build_guest(
         "guest",
         Command::new("python3")
             .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-                if focus == Some(CallerFocus::Application) {
+                if focus == Some(CallerFocus::SourceBoundary) {
+                    "../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py"
+                } else if focus == Some(CallerFocus::Application) {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_application_inspect.py"
                 } else if owned_callers {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py"
