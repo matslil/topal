@@ -161,3 +161,17 @@ user-access instructions, plus 51 sites without such intervals. It does not
 qualify whole callers or every remaining access. GS/captured-entry/counterpart
 owners, complete helper/root/callee/exception contracts, continuous lifetime,
 all fallback obligations and canonical production acceptance remain required.
+
+The [ordinary staged-refusal cohort](results/stage-3-staged-refusals/README.md)
+adds 91 refused admissions and twenty completed transfers across those same
+sixteen regions. Actual source-adapter syscall boundaries arm the selected
+observers and associate every refusal with its pointer, `EFAULT` and unchanged
+phase. The selected counterpart bytes remain unchanged across refusal; complete
+source-fixture syscall/state assertions still run. This closes the ordinary
+invalid-buffer observation gap for those regions, not their complete owner,
+lifetime or whole-syscall obligations. The new cohort observes first reach at
+these sixteen sites only; it does not repeat the broad census/controller/REP
+observations or change their historical scope. Default observers in the fresh
+pinned BusyBox cohort preserve exactly the preceding native observation object.
+Kernel/application/boot/output bytes remain unchanged, as do the forty local
+intervals/249-instruction index and the 51 sites without selected intervals.

@@ -121,6 +121,22 @@ forty helper sites with local intervals and 249 distinct user accesses, plus
 lifetime/helper/entry/callee/exception, fallback and production obligations
 remain open, and canonical production selection is unchanged.
 
+The [ordinary staged-refusal checkpoint](tools/user-memory/results/stage-3-staged-refusals/README.md)
+now observes all sixteen selected regions with 91 refused admissions and twenty
+completed transfers in the existing 796-syscall source fixture. Each refusal
+is associated with the source syscall's actual pointer, `EFAULT` result and
+unchanged phase; selected counterpart bytes, helper registers and captured
+arguments remain unchanged across admission. Scoped breakpoints retain the
+complete selected check/copy interval while avoiding unrelated heap work.
+Unchanged pinned BusyBox separately preserves its complete preceding native
+observations. All seventeen kernel artifacts, application/boot/console bytes
+and original access metadata remain unchanged. Thirty-nine model/observer
+tests, two fixture build tests, interface readback, six offline diagnostic
+controls and all seven post-checks pass. Two deadline failures and a pre-boot
+pinned-image configuration failure remain explicitly failed. The specific
+ordinary-buffer refusal gap is covered; complete owners/lifetime, other access
+regions, all fallback and canonical production obligations remain open.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

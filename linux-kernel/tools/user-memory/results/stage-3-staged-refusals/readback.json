@@ -1,0 +1,297 @@
+{
+  "passed": true,
+  "syscall_calls": 796,
+  "syscall_results": {
+    "6393856": 150,
+    "6529024": 87,
+    "0": 56,
+    "-14": 393,
+    "-9": 4,
+    "-22": 20,
+    "6258048": 24,
+    "8": 8,
+    "-2": 6,
+    "3": 5,
+    "72": 1,
+    "80": 1,
+    "1": 11,
+    "2": 4,
+    "-25": 4,
+    "4": 7,
+    "40": 1,
+    "109": 1,
+    "6": 1,
+    "5": 1,
+    "13": 4,
+    "19": 1,
+    "17": 1,
+    "14": 1,
+    "10": 1,
+    "293": 1,
+    "23": 1,
+    "22": 1
+  },
+  "existing_observation_sections_compared": [
+    "passed",
+    "executions",
+    "startup_executions",
+    "file_executions",
+    "shell_executions",
+    "command_executions",
+    "poll_executions",
+    "bridge_returns"
+  ],
+  "entropy_word_pairs": [
+    {
+      "before": "e28f9c0f694f2802",
+      "after": "6a4676ba5cefb658"
+    },
+    {
+      "before": "7fafd3ce10fb67ac",
+      "after": "49c600932bc0fc6a"
+    },
+    {
+      "before": "01c392cc9bd81f26",
+      "after": "c82173376c3b8e16"
+    },
+    {
+      "before": "8d919b04e9b86602",
+      "after": "5a31a4148640e1e7"
+    },
+    {
+      "before": "b82406e2f3beb2f4",
+      "after": "2fe1241bffa1a5b2"
+    },
+    {
+      "before": "b83c534b35dc5c94",
+      "after": "72948d517c3600fc"
+    },
+    {
+      "before": "0806b2e8083eaf86",
+      "after": "8d2612728f21dcee"
+    },
+    {
+      "before": "c7cb3b5c68bea35e",
+      "after": "344f5260f2cce9f7"
+    }
+  ],
+  "entropy_differences": 436,
+  "staged_totals": {
+    "attempts": 111,
+    "admitted": 20,
+    "refused": 91,
+    "completed": 20,
+    "bytes": 1910
+  },
+  "diagnostic_metadata_differences": [
+    "source-component linked ELF debug identity and three unused null mode fields",
+    "callback baseline provenance identity; remaining callback report equal"
+  ],
+  "staged_counts": {
+    "uname-loop": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 390
+    },
+    "close-message": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 14
+    },
+    "root-condition": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 5
+    },
+    "empty-bin-message": {
+      "attempts": 10,
+      "admitted": 2,
+      "refused": 8,
+      "completed": 2,
+      "bytes": 26
+    },
+    "executable-message": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 19
+    },
+    "nonempty-message": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 17
+    },
+    "open-message": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 13
+    },
+    "header-message": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 13
+    },
+    "banner": {
+      "attempts": 5,
+      "admitted": 1,
+      "refused": 4,
+      "completed": 1,
+      "bytes": 109
+    },
+    "console-stat": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 144
+    },
+    "root-stat": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 144
+    },
+    "empty-bin-stat": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 144
+    },
+    "profile-stat": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 144
+    },
+    "named-stat": {
+      "attempts": 24,
+      "admitted": 4,
+      "refused": 20,
+      "completed": 4,
+      "bytes": 576
+    },
+    "root-directory": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 72
+    },
+    "empty-bin-directory": {
+      "attempts": 6,
+      "admitted": 1,
+      "refused": 5,
+      "completed": 1,
+      "bytes": 80
+    }
+  },
+  "kernel_comparisons": [
+    {
+      "path": "root.o",
+      "bytes": 359056,
+      "sha256": "642b4b71a51bbeefa92e77dae544a1355bf41b0520f9f18461ef5fbc3c962ea8"
+    },
+    {
+      "path": "source.o",
+      "bytes": 155832,
+      "sha256": "0f1fa40f0e84622dc1d975c75b8808b7bcb94cbaf2a4c8790975876dcfe276f8"
+    },
+    {
+      "path": "runtime.o",
+      "bytes": 35264,
+      "sha256": "59841771554e2f500d3840d6ea01c27eb4aca4606ea540d5cfd47193e5b2d05f"
+    },
+    {
+      "path": "owner.o",
+      "bytes": 6280,
+      "sha256": "d99c074608cf34d682c8a047a62d3f078c3d5363401c3c78a5bc92744a1c61e5"
+    },
+    {
+      "path": "controller.o",
+      "bytes": 16784,
+      "sha256": "82cfc3e887dc31ae5a4c07f4caaefd45a791d036a12cdad32f34103603b33c84"
+    },
+    {
+      "path": "target.o",
+      "bytes": 27320,
+      "sha256": "b7abc95d8f6d85a69adb77ff0759193b40642e74cb29350e0908e80ce47a0a2e"
+    },
+    {
+      "path": "dispatch.o",
+      "bytes": 12832,
+      "sha256": "42a86925c51f72ddd30b0b736230f1d670eee9649c15c986ddd2ca6b456cc457"
+    },
+    {
+      "path": "gateway.o",
+      "bytes": 8904,
+      "sha256": "70a0ad94d78dd2e54e91ba7b1b53911422359579656edb24750122877b7f5d37"
+    },
+    {
+      "path": "boundary.o",
+      "bytes": 9384,
+      "sha256": "c1c1c191c082904e23ea310e6448223ef530a93f169c34b7eb2086d5e02df0c8"
+    },
+    {
+      "path": "extent.o",
+      "bytes": 1808,
+      "sha256": "f76ec276d477393a4b7506d98464c8778f7c5f43624ca29d1d65a5c022bb4993"
+    },
+    {
+      "path": "extent-bridge.o",
+      "bytes": 1176,
+      "sha256": "cfd9f87a48d932f0e5269db20a9f41acfd9cc27a6199ae6acfae0a6b4930043c"
+    },
+    {
+      "path": "extent-callers.o",
+      "bytes": 2544,
+      "sha256": "88d9c21c96f18b4f12f62d33d300f5e186f28e9c03c6f27d478134a3f4310dda"
+    },
+    {
+      "path": "provider.o",
+      "bytes": 1061624,
+      "sha256": "a72496e4b7c22fba36a64239bda34e74fb43eee4821e59c19f83f6119e3ca359"
+    },
+    {
+      "path": "predecessor-provider.o",
+      "bytes": 1069736,
+      "sha256": "e9915cdfce7239b41f4dcea4cb01feead63b5924b3b7f3a907b337aca0aeebae"
+    },
+    {
+      "path": "predecessor-gateway.o",
+      "bytes": 8008,
+      "sha256": "09799937bf8aa51938fda4c8842737a4bd919ebd3c125bf7a80ff3ee4a54efdc"
+    },
+    {
+      "path": "kernel.elf",
+      "bytes": 1665328,
+      "sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6"
+    },
+    {
+      "path": "bzImage",
+      "bytes": 45232800,
+      "sha256": "dde754f580fe7784a0238c90f34b07984e0883f8a4ad815e76c0176fd1c9eae5"
+    }
+  ],
+  "serial_bytes": 7606,
+  "serial_sha256": "5daa5b998dba1c694da64d9aef89eb7fcea653367ed424d90829488ce067b435",
+  "callback_observation_in_this_run": false,
+  "helper_sites_reached": 16,
+  "rep_observation_in_this_run": false,
+  "scope": "Existing source-fixture observations agree outside the measured entropy words, their exact propagated values and private random-key field. Native per-refusal checks retain that entire field. Adds paired staged transfers and source-syscall/refusal association with unchanged executable artifacts; not complete ownership, continuous lifetime, every path or production qualification."
+}

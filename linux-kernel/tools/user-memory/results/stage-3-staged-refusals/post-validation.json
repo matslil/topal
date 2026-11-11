@@ -1,0 +1,95 @@
+{
+  "passed": true,
+  "results": [
+    {
+      "command": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "linux-kernel/tools/user-memory",
+        "-v"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9928062735125422
+    },
+    {
+      "command": [
+        "cargo",
+        "test",
+        "-p",
+        "topal-compiler",
+        "--lib",
+        "--locked",
+        "-j1",
+        "systems_user_extent::source_fixture::",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6068782908841968
+    },
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.11359294783324
+    },
+    {
+      "command": [
+        "rustfmt",
+        "--check",
+        "--edition",
+        "2024",
+        "src/topal-compiler/src/systems_frame_root_tests.rs",
+        "src/topal-compiler/src/systems_user_source_fixture.rs"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.03412574343383312
+    },
+    {
+      "command": [
+        "cargo",
+        "check",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "-j1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.15962289460003376
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/check_rust_file_sizes.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.25344403833150864
+    },
+    {
+      "command": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.0621704151853919
+    }
+  ],
+  "resources": {
+    "memory.max": "3140136960",
+    "memory.swap.max": "0",
+    "memory.peak": "55832576",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  }
+}

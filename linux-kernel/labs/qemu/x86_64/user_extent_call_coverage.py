@@ -69,9 +69,11 @@ class ExtentFirstReach(Checked):
 def extent_coverage_complete():
     if extent_inventory is None:
         return
-    callback_coverage_complete()
-    copy_observation_complete()
-    staged_observation_complete()
+    for name, complete in [('callbacks',callback_coverage_complete),
+                           ('copies',copy_observation_complete),
+                           ('staged',staged_observation_complete)]:
+        if name in selected_extent_observers():
+            complete()
     calls = extent_inventory['calls']
     assert extent_first_reach and set(extent_first_reach) <= {row['offset'] for row in calls}
     observed['extent_call_coverage'] = dict(
@@ -82,14 +84,23 @@ def extent_coverage_complete():
         inventory_sha256=extent_inventory['inventory_sha256'],
         scope='First reach before helper invocation in this selected execution only; no successful-admission, return, every-length/error-path, direct-access/dominance or production qualification claim')
 
+def selected_extent_observers():
+    groups = extent_inventory.get('native_observers',['callbacks','copies','staged'])
+    assert groups and len(groups) == len(set(groups))
+    assert set(groups) <= {'callbacks','copies','staged'}
+    return groups
+
 def install_extent_coverage():
     if extent_inventory is not None:
-        install_callback_observation()
-        install_copy_observation()
-        install_staged_observation()
+        for name, install in [('callbacks',install_callback_observation),
+                              ('copies',install_copy_observation),
+                              ('staged',install_staged_observation)]:
+            if name in selected_extent_observers():
+                install()
         assert address(extent_inventory['function']) == extent_inventory['address']
-        for row in extent_inventory['calls']:
-            ExtentFirstReach(row)
+        if not extent_inventory.get('source_scoped_staged'):
+            for row in extent_inventory['calls']:
+                ExtentFirstReach(row)
 '''
 
 PROGRAM += CALLBACK_PROGRAM

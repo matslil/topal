@@ -142,6 +142,7 @@ class SyscallReturned(Checked):
         assert (current or startup_current) and pending and reg('cs') & 3 == 3
         pending['result'] = signed(reg('rax'))
         pending['phase_after'] = memory(context+104,1)[0]
+        staged_source_syscall_returned(pending)
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_result(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
@@ -181,6 +182,7 @@ class SyscallEntered(Checked):
         pending = dict(number=reg('rdi'),
                        args=[reg(name) for name in ['rsi','rdx','rcx','r8'][:self.count]],
                        phase_before=memory(context+104,1)[0])
+        staged_source_syscall_entered(pending)
         if current and component.get('mode') == 'exec' and pending['number'] == 59:
             observe_exec_request(pending)
         if current and component.get('mode') == 'signals' and pending['number'] in [13,14]:
@@ -515,7 +517,10 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == component['image_sha256']
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert archive['static-user.elf'] == image
-    extent_inventory = linked_inventory(build) if component.get('mode') in ['poll','pipes','storage','serial'] else None
+    extent_inventory = linked_inventory(build) if component.get('mode') in ['transfers','poll','pipes','storage','serial'] else None
+    if component.get('mode') == 'transfers':
+        extent_inventory['native_observers'] = ['staged']
+        extent_inventory['source_scoped_staged'] = True
     serial_sites=serial_native_sites(build) if component.get('mode')=='serial' else None
     harness.GDB_PROGRAM = PROGRAM
     harness.main(

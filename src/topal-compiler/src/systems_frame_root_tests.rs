@@ -581,6 +581,7 @@ fn build_guest(
         focus,
         Some(
             CallerFocus::Application
+                | CallerFocus::SourceBoundary
                 | CallerFocus::SourcePoll
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
