@@ -16,7 +16,9 @@ add four newly reached sites, for an 81-of-91 union, and verify 132 selected FIF
 state transitions in 144 source-issued syscalls. All 17 selected kernel objects/images
 match the prior checkpoint. The [subsequent ordinary storage cohort](tools/user-memory/results/stage-3-source-storage/README.md)
 adds six sites and 208 source-issued syscall checks, bringing the matching-kernel
-union to 87 of 91. Four sites remain unobserved. The
+union to 87 of 91. The [ordinary serial cohort](tools/user-memory/results/stage-3-source-serial/README.md)
+adds real UART-consumption and copy observations in 64 source-issued syscalls,
+bringing the union to 88 of 91. Three bounded fallback sites remain unobserved. The
 census changes test metadata and observation only. Complete direct user-access
 inventory, admission/error/lifetime qualification and production reconstruction
 remain acceptance blockers. First reach alone discharges none of those gates.

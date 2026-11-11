@@ -52,3 +52,12 @@ reclamation. Exact matching-kernel/census checks establish an 87-of-91 union
 with the preceding poll and pipe cohorts. Serial descriptor read and three
 bounded fallback inputs remain unobserved in that union. The complete direct-
 access, length/error/lifetime and production gates remain separate and required.
+
+The [ordinary serial cohort](results/stage-3-source-serial/README.md) reaches the
+remaining serial descriptor site through real stdin reads. Its 64 source calls
+observe actual UART data consumption, refusal before consumption, copy windows,
+table preservation and bounded 512-to-256 admission. Eight host messages travel
+through the existing VM serial connection after ordinary application markers.
+The four matching-kernel cohorts now reach 88 of 91 sites in union. Three bounded
+fallback inputs remain unobserved; their dispatch/ownership classification and
+the complete direct-access/caller obligations still require explicit evidence.

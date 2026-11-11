@@ -1,0 +1,43 @@
+{
+  "command": [
+    "cargo",
+    "test",
+    "-p",
+    "topal-compiler",
+    "--lib",
+    "--locked",
+    "-j1",
+    "systems_frame_target::root_tests::owned_source_fixture_checks_serial_transfer_boundaries",
+    "--",
+    "--ignored",
+    "--exact",
+    "--test-threads=1",
+    "--nocapture"
+  ],
+  "exit_code": 0,
+  "elapsed_seconds": 152.56866529397666,
+  "resources": {
+    "memory.max": "3403034624",
+    "memory.swap.max": "0",
+    "memory.peak": "988024832",
+    "memory.events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0"
+  },
+  "modified_source_hashes_before": {
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "af28c3d4bac29144048778efacdc53fe05ae623bf4d9f49808319d4124060bc5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "5c18d02f0599d8baefe63dfcfadb07a2121c203f4d7ea3f2b5ee21f884efb5d6",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "f7f894df5bd878f86f011a54386b4120d131445c7b0122aee557148cd17d902f",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "66c1913bf45ba17d33290330b29598643919f640b31a879009f8bb3fd9269c32",
+    "linux-kernel/labs/qemu/x86_64/user_extent_serial_cases.c": "d3b041c02813fd46d47299120535f0d5279dae80fce4297952f75180b163e601",
+    "linux-kernel/labs/qemu/x86_64/user_extent_serial_observer.py": "776f173d60ce139eabe159b406bd492c65c792bf5ff21d08cabacbbac84ed655"
+  },
+  "modified_source_hashes_after": {
+    "linux-kernel/labs/qemu/x86_64/frame_root_inspect.py": "af28c3d4bac29144048778efacdc53fe05ae623bf4d9f49808319d4124060bc5",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "5c18d02f0599d8baefe63dfcfadb07a2121c203f4d7ea3f2b5ee21f884efb5d6",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "f7f894df5bd878f86f011a54386b4120d131445c7b0122aee557148cd17d902f",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "66c1913bf45ba17d33290330b29598643919f640b31a879009f8bb3fd9269c32",
+    "linux-kernel/labs/qemu/x86_64/user_extent_serial_cases.c": "d3b041c02813fd46d47299120535f0d5279dae80fce4297952f75180b163e601",
+    "linux-kernel/labs/qemu/x86_64/user_extent_serial_observer.py": "776f173d60ce139eabe159b406bd492c65c792bf5ff21d08cabacbbac84ed655"
+  },
+  "source_changes_during_run": false,
+  "scope": "Focused source-built ordinary user-buffer cases; no production or complete all-caller qualification"
+}

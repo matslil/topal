@@ -224,7 +224,8 @@ except Exception:fail()
 
 
 def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None,
-         process_command=None, input_scope='ABI fixture', guest_timeout_seconds=300):
+         process_command=None, input_scope='ABI fixture', guest_timeout_seconds=300,
+         serial_dialogue=()):
     assert isinstance(guest_timeout_seconds, int) and 0 < guest_timeout_seconds <= 3600
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('work', type=Path)
@@ -232,6 +233,8 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
     build = args.work.resolve()
     work = build / work_name
     work.mkdir()
+    assert all(isinstance(marker,bytes) and marker and isinstance(payload,bytes) and
+               0<len(payload)<=16 for marker,payload in serial_dialogue)
     tokens = json.loads((build / 'root-tokens.json').read_text())
     with socket.socket() as listener:
         listener.bind(('127.0.0.1', 0))
@@ -256,6 +259,8 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
         process = subprocess.Popen(command, stdout=out, stderr=err)
         debugger = None
         received = bytearray()
+        dialogue=[]
+        dialogue_cursor=0
         try:
             deadline = time.monotonic() + 10
             while True:
@@ -283,6 +288,15 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
                     if not sent_command and b'TOPAL_KERNEL_STATIC_ELF_INITIAL_RANDOM_DELIVERED_OK' in received:
                         os.write(master, topal_gate.PROCESS_COMMAND if process_command is None else process_command)
                         sent_command = True
+                    if len(dialogue)<len(serial_dialogue):
+                        marker,payload=serial_dialogue[len(dialogue)]
+                        at=received.find(marker,dialogue_cursor)
+                        if at>=0:
+                            assert os.write(master,payload)==len(payload)
+                            dialogue.append(dict(marker_hex=marker.hex(),payload_hex=payload.hex(),
+                                                 serial_offset=at))
+                            dialogue_cursor=at+len(marker)
+                            (work/'serial-dialogue.json').write_text(json.dumps(dialogue,indent=2)+'\n')
                     (work / 'serial.log').write_bytes(received)
                     if debugger.poll() is not None:
                         break
@@ -292,6 +306,7 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
             stderr = (work / 'gdb.stderr.log').read_bytes()
             assert debugger.returncode == 0, stdout.decode(errors='replace') + stderr.decode(errors='replace')
             assert b'FRAME_ROOT_GDB_PASS' in stdout
+            assert len(dialogue)==len(serial_dialogue), 'serial dialogue incomplete'
             if expect_backing:
                 assert b'TOPAL_KERNEL_USER_BACKING_OK' in received, received.decode(errors='replace')
                 assert sent_read and sent_command

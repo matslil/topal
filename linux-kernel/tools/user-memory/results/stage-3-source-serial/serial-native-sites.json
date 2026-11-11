@@ -1,0 +1,9 @@
+{
+  "admission": 45813630,
+  "byte_received": 45813751,
+  "admission_offset": 142334,
+  "byte_received_offset": 142455,
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "decoded_in": "inb\t%dx, %al",
+  "decoded_store": "movb\t%al, (%rsi)"
+}
