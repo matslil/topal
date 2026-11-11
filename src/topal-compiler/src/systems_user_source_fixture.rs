@@ -123,6 +123,8 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         ("user_extent_source_cases.c", "source-cases"),
         ("user_extent_startup_cases.c", "startup-cases"),
         ("user_extent_file_cases.c", "file-cases"),
+        ("user_extent_shell_cases.c", "shell-cases"),
+        ("user_extent_command_cases.c", "command-cases"),
     ] {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
         run(
@@ -178,6 +180,8 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
             .arg(work.join("source-cases.o"))
             .arg(work.join("startup-cases.o"))
             .arg(work.join("file-cases.o"))
+            .arg(work.join("shell-cases.o"))
+            .arg(work.join("command-cases.o"))
             .arg(work.join("source-syscall.o"))
             .arg("-o")
             .arg(work.join("source-user.elf")),
@@ -206,7 +210,13 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     assert_eq!(syscall.size(), 15);
     // Disjoint startup scratch plus both generated adapters/alignment/returns.
     let mut frames = std::collections::BTreeMap::new();
-    for stem in ["source-cases", "startup-cases", "file-cases"] {
+    for stem in [
+        "source-cases",
+        "startup-cases",
+        "file-cases",
+        "shell-cases",
+        "command-cases",
+    ] {
         let mut cost = 0_u64;
         let stack = fs::read_to_string(work.join(format!("{stem}.su"))).unwrap();
         for line in stack.lines() {
@@ -219,8 +229,10 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     }
     // The runtime entry cannot call the startup entry; only the latter can
     // delegate to file cases. Sum every frame on either possible call path.
-    let user_stack =
-        1024 + 128 + frames["source-cases"].max(frames["startup-cases"] + frames["file-cases"]);
+    let delegated = frames["file-cases"]
+        .max(frames["shell-cases"])
+        .max(frames["command-cases"]);
+    let user_stack = 1024 + 128 + frames["source-cases"].max(frames["startup-cases"] + delegated);
     assert!(
         user_stack <= 2048,
         "source call must fit below the witness's live user stack"
@@ -244,6 +256,8 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         "syscall4": syscall4.address(),
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
+        "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),
+        "command_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_command_cases.c")).unwrap())),
         "stack_frame_costs": frames,
         "text_bytes": bytes.len(), "conservative_user_stack_bytes": user_stack,
         "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",

@@ -221,3 +221,42 @@ Remaining direct signal/path/output/header/command cases, complete native
 ownership/mode/stability qualification, canonical production binding and cold
 reconstruction remain required. The default fixture, production selection,
 Stage 3's incomplete status and full original kernel objective remain unchanged.
+
+## Stage 3 source-built shell and command transfers
+
+The [shell checkpoint](tools/user-memory/results/stage-3-source-shell/README.md)
+adds 38 source callbacks for signal actions, scalar shell output, uname/cwd,
+root pathname input, terminal misses and header bytes. Their 299 syscalls pass.
+Five further source callbacks collect short command reads and issue 65 syscalls,
+including zero counts and refused retries. The combined VM observes 796 syscalls
+across four images, retaining all preceding startup, file and runtime cases.
+
+The first signal installs use actual read-only source data. Successful cwd and
+header output ends immediately before an unmapped page, and other buffers cross
+pages beyond the predecessor heap. Refused transfers preserve protected state;
+the source program preserves input, unchanged output tails, credentials and
+unrelated heap bytes. Callbacks return through the normal generated ABI adapter,
+whose original registers and stack remain observed.
+
+Independent readback reconstructs all five commands and the complete 512-byte
+private state after receive, refusal, short delivery and completion. It proves
+that received serial bytes survive failed output admission, unread suffixes
+remain available, and consumed bytes are physically zero. Collection in C is
+explicit: the final syscall returns the remaining suffix length; the source
+callback returns the aggregate length to the enclosing witness.
+
+All 7200 linked code bytes, actual read-only signal-action bytes, both syscall
+adapters and 68 generated call sites are separately parsed. The complete user
+stack cost remains 1720 of 2048 bytes by taking the largest mutually exclusive
+delegated C call path. Seventeen object/image comparisons preserve the preceding
+kernel and boot image; all 7606 serial bytes remain identical. Two build-only
+tests and six post-check commands pass. Native peak memory is 353239040 bytes
+with no limit/OOM/kill events or swap; host boundaries and resource policy remain.
+
+Review remains single-agent self-review with independent byte/state models and
+runtime observations, not independent human review. Header-poll negative cases
+are not reached by this clean-header witness; specialized signal/reset and
+vector-output cases and complete caller/native ownership/mode/stability
+qualification remain required. Canonical production binding, exact production
+qualification and cold reconstruction remain pending. Stage 3, initial Step 4
+and the full original kernel goal remain unfinished.

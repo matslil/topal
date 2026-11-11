@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 
 import frame_root_inspect as harness
+from user_extent_shell_observer import PROGRAM as SHELL_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -36,7 +37,7 @@ context = address('topal_bootstrap_storage') + 512
 current = pending = startup_current = bridge_current = None
 component_returns = {}
 syscall_returns = {}
-observed = dict(passed=False, executions=[], startup_executions=[], file_executions=[], bridge_returns=[])
+observed = dict(passed=False, executions=[], startup_executions=[], file_executions=[], shell_executions=[], command_executions=[], bridge_returns=[])
 callee = ['rbx', 'rbp', 'r12', 'r13', 'r14', 'r15']
 
 class Checked(gdb.Breakpoint):
@@ -112,6 +113,8 @@ class SyscallReturned(Checked):
         assert (current or startup_current) and pending and reg('cs') & 3 == 3
         pending['result'] = signed(reg('rax'))
         pending['phase_after'] = memory(context+104,1)[0]
+        if startup_current and startup_current.get('kind') in ['shell','command']:
+            observe_shell_result(pending)
         if startup_current and startup_current.get('kind') == 'file':
             n = pending['number']
             result = pending['result']
@@ -137,6 +140,8 @@ class SyscallEntered(Checked):
         pending = dict(number=reg('rdi'),
                        args=[reg(name) for name in ['rsi','rdx','rcx','r8'][:self.count]],
                        phase_before=memory(context+104,1)[0])
+        if startup_current and startup_current.get('kind') in ['shell','command']:
+            observe_shell_request(pending)
         if startup_current and startup_current.get('kind') == 'file':
             pending['controls_before'] = file_controls()
             if pending['number'] in [257,262] and pending['args'][1] == 0x637ff8:
@@ -154,6 +159,8 @@ class StartupReturned(Checked):
         global startup_current
         self.enabled = False
         row = startup_current
+        if row and row.get('kind') in ['shell','command']:
+            return shell_returned(row)
         if row and row.get('kind') == 'file':
             return file_returned(row)
         assert row and current is None and pending is None
@@ -221,6 +228,8 @@ class StartupEntered(Checked):
         assert component['base'] <= return_site < component['base']+component['text_bytes']
         args = [reg(name) for name in ['rsi','rdx','rcx','r8']]
         n = reg('rdi')
+        if (n == 0 and (args[0] == 0 or args[2] == 1)) or n in [1,13,16,63,79,80]:
+            return shell_entered(n,args,stack,return_site)
         if n in [5,257,217,0] or (n == 262 and args[1] != 0x4a6900):
             return file_entered(n,args,stack,return_site)
         assert n in [302,318,157,262]
@@ -350,6 +359,8 @@ def file_returned(row):
     startup_current = None
     return False
 
+# SHELL_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
@@ -358,7 +369,9 @@ class Complete(Checked):
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
         assert [row['number'] for row in observed['file_executions']] == [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
-        assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])
+        assert len(observed['command_executions']) == 5
+        assert len(observed['shell_executions']) == 38
+        assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])
         assert state() == [0,0,0,0]
         assert memory(address('topal_x86_frame_mm_tokens_v1'), 48) == bytes(48)
         assert word(context+904) == 0 and memory(context+152,16) == bytes(16)
@@ -395,6 +408,9 @@ except Exception:
     traceback.print_exc()
     gdb.execute('quit 1')
 '''
+
+assert PROGRAM.count('# SHELL_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# SHELL_OBSERVER', SHELL_PROGRAM)
 
 
 if __name__ == '__main__':

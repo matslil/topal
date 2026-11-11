@@ -617,8 +617,10 @@ Unverified native obligations remain acceptance blockers under
 
 The source-built interoperability fixture compiles
 [`user_extent_source_cases.c`](user_extent_source_cases.c),
-[`user_extent_startup_cases.c`](user_extent_startup_cases.c) and
-[`user_extent_file_cases.c`](user_extent_file_cases.c), links them with backend
+[`user_extent_startup_cases.c`](user_extent_startup_cases.c),
+[`user_extent_file_cases.c`](user_extent_file_cases.c),
+[`user_extent_shell_cases.c`](user_extent_shell_cases.c) and
+[`user_extent_command_cases.c`](user_extent_command_cases.c), links them with backend
 System V/Linux syscall and startup-call adapters, and constructs a fresh
 first-party ABI witness containing normal calls to those functions. The default ABI constructor
 retains its committed bytes. The source variant checks delivered command bytes
@@ -669,6 +671,17 @@ records four image startups, twenty source callbacks, 200 startup syscalls and
 The [file checkpoint](../../../tools/user-memory/results/stage-3-source-files/README.md)
 adds twenty bounded file callbacks and 176 syscalls, preserving the preceding
 kernel and serial bytes. It accounts for the mutually exclusive runtime and
-startup/file C call paths within the same stack bound. Remaining direct
-signal/path/output/header/command boundary cases and complete
-production qualification remain obligations under `TOPAL-SYSTEMS-USER-EXTENT-001`.
+startup/delegated C call paths within the same stack bound.
+
+The [shell checkpoint](../../../tools/user-memory/results/stage-3-source-shell/README.md)
+adds 38 shell callbacks and five command callbacks: 299 and 65 observed syscalls.
+Signal actions include valid read-only input, queried output and refused
+complete transfers. Scalar shell output, pathname/cwd and one-byte header reads
+use actual extents beyond page 34. Short command reads are collected in source
+code; zero/refused retries leave input available. Independent readback checks
+the exact sealed commands, received serial bytes, cursor/queue transitions and
+physical erasure of consumed serial bytes.
+
+Header-poll negative cases, specialized signal/reset and vector-output paths,
+complete caller coverage and complete production qualification remain obligations
+under `TOPAL-SYSTEMS-USER-EXTENT-001`.

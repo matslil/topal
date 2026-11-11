@@ -5,6 +5,8 @@
 typedef unsigned long word;
 extern long topal_test_syscall4(word, word, word, word, word);
 extern long topal_user_extent_file_cases(word, word, word, word, word);
+extern long topal_user_extent_shell_cases(word, word, word, word, word);
+extern long topal_user_extent_command_cases(word, word, word, word, word);
 
 static long output_call(word n, word a, word b, word c, word d, word out) {
     if (n == 302) return topal_test_syscall4(n, a, b, c, out);
@@ -13,6 +15,9 @@ static long output_call(word n, word a, word b, word c, word d, word out) {
 }
 
 long topal_user_extent_startup_cases(word n, word a, word b, word c, word d) {
+    if (n == 0 && a == 0) return topal_user_extent_command_cases(n,a,b,c,d);
+    if (n == 1 || n == 13 || n == 16 || n == 63 || n == 79 || n == 80 || (n == 0 && c == 1))
+        return topal_user_extent_shell_cases(n,a,b,c,d);
     if (n == 5 || n == 257 || n == 217 || n == 0 || (n == 262 && b != 0x4a6900))
         return topal_user_extent_file_cases(n, a, b, c, d);
     if (n != 302 && n != 318 && n != 157 && n != 262) return -101;
