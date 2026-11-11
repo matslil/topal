@@ -1015,7 +1015,9 @@ only an absent optional configuration object; the provider owns the native
 directory-relative selector, metadata layout, syscall number, registers, and
 address validation. This is one startup compatibility fact, not a filesystem,
 pathname resolver, descriptor namespace, metadata service, or general `stat`
-interface.
+interface. The later owned-user-memory profile applies stat lookup ordering:
+absence uses no metadata destination. The preceding sealed profile retains the
+writable-destination witness described here.
 
 The bounded startup-credential-tail refinement completes the credential
 normalization needed after that optional lookup. It observes the sealed real
@@ -2180,6 +2182,46 @@ validation cannot be cached across entries. Empty transfers touch no memory and
 grant no address authority. Existing syscall staging, fault/progress policies
 and error ordering remain required.
 
+For stat-family pathname queries, the owned profile checks the complete required
+pathname bytes before reading them. Lookup failure returns without admitting or
+touching an unused metadata destination. A query proceeding to metadata
+publication requires complete writable output admission before record staging.
+Independent record-error decisions retain their Linux order. This replaces
+only the predecessor's fixed pathname placement and unconditional output-buffer
+witnesses in that profile; operation, flag, lookup and lifecycle rules remain.
+Prescribed pathname contents remain the same; their storage may be any admitted
+readable extent held stable through the query.
+
+The bounded open paths check their complete pathname before the first load.
+Directory reads check the complete record output selected by the description
+and count before staging it. At EOF the directory call returns zero without
+using the output buffer. The profile-file read still checks the requested
+numeric address range before returning EOF. That check does not require a
+mapping. These rules apply to the owned selection with its existing operation,
+count and lifecycle checks.
+
+The bounded root `chdir` admits both pathname bytes before reading them.
+The bounded signal-action installs and queries admit their complete native
+input or output before updating the disposition or publishing the result.
+Terminal request misses return `ENOTTY` without accessing the unused argument.
+The file-header read admits its one-byte output before staging or advancing
+the file position. The bounded header poll checks its complete input record
+and admits the writable result field before publishing readiness.
+
+Bounded shell command reads copy only the requested prefix of the available
+input. A short read leaves the remaining input available, and a zero count
+leaves the input and phase untouched. The serial adapter retains received bytes
+privately until it can copy them successfully. The shell advances after the
+complete command has been delivered. Later steps use private completion facts
+and retire them on image replacement or exit.
+
+The bounded first-image exit verifies that the current process owns the live
+descriptor table and has no child. It releases the table and clears the
+thread registrations as opaque values while retiring the sole address space.
+Signal dispositions have also transferred into that process-owned table. Exit
+requires the consumed prelude slots to be empty and retires the current table
+state, including subsequent signal-action changes.
+
 This systems-only refinement removes the predecessor's fixed heap geometry
 from general buffer admission. The initial x86 backend uses four-level paging
 and small leaves, retaining explicit physical-access and mode limits. Other
@@ -2189,3 +2231,9 @@ retain their profiles. The owned-extent kernel profile enables supervisor write
 protection before its first userspace entry and keeps it enabled. That transition
 preserves every other CR0 bit; copying does not disable protection. See the
 [owned extent design](../linux-kernel/design/owned-user-extents.md).
+
+Generated caller adapters preserve the existing helper's live input registers
+and direction/result convention. Their return words, saved values, alignment
+and normal or terminal cleanup belong to the complete caller proof. The backend
+derives its inner retirement window after accounting for this outer storage
+within the existing caller reserve. Earlier profiles keep their exact layout.

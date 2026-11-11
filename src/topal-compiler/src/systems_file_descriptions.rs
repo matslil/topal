@@ -109,6 +109,13 @@ pub(in super::super) fn emit_dispatch(code: &mut X86FunctionEncoder) -> Result<(
 fn table(e: &mut E<'_>) {
     e.gs(0x8b, R12, TABLE_CONTEXT);
 }
+pub(in super::super) fn emit_require_active_table(code: &mut X86FunctionEncoder) {
+    let mut e = E(code);
+    table(&mut e);
+    e.load(A, R12, 0);
+    e.cmp(A, 1);
+    e.0.jump_if(0x85, "fatal");
+}
 fn slot(e: &mut E<'_>, index: super::R) {
     e.mov(R13, index);
     e.0.bytes(&[0x49, 0xc1, 0xe5, 4]);

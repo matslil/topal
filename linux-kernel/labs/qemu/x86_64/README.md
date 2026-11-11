@@ -587,3 +587,28 @@ rtk scripts/run_bounded.py -- python3 linux-kernel/labs/qemu/x86_64/ram_page_gat
 `--keep /tmp/NAME` retains artifacts, per-case observations, debugger output and
 serial logs for investigation. The staged report distinguishes development
 observations from completed qualification of the current primary revision.
+
+## Owned first-image exit regression
+
+The explicit interoperability regression below builds a fresh experimental
+owned-profile kernel and runs the unchanged pinned BusyBox ELF. Set the input
+path to the external dependency already used by the lab; its digest is checked
+before use. The test remains ignored by default because it needs that external
+ELF, QEMU and GDB.
+
+```console
+rtk proxy env TOPAL_PINNED_STATIC_USER_IMAGE=/path/to/pinned/busybox \
+  RUST_MIN_STACK=16777216 scripts/run_bounded.py -- \
+  cargo test -p topal-compiler --lib --locked -j1 \
+  systems_frame_target::root_tests::owned_first_image_exit_retires_transferred_signal_state \
+  -- --ignored --exact --test-threads=1 --nocapture
+```
+
+The observer checks signal ownership transfer, exact shell output, and
+terminal retirement of process-owned signal state, command state,
+thread registrations and heap ownership. It adds no guest register or data
+assignments. Failure evidence is retained in the printed experiment directory.
+This focused run does not qualify rejection of inconsistent private state,
+all-caller migration, production publication or full Linux compatibility.
+Unverified native obligations remain acceptance blockers under
+[the agent instructions](../../../../AGENTS.md#kernel-and-systems-validation).

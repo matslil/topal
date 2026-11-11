@@ -40,6 +40,9 @@ in the linked record has been examined. None means implemented or qualified.
 | `LK-X64-ABI-001` | native processor ABI | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-USER-MEMORY-001` | user-range, transfer and translation-permission boundary | Linux 7.2.9/x86-64 | source-indexed | [facts](x86_64/user-memory.md), [exact source identities](x86_64/user-memory-research.json), [owned-extent design](../design/owned-user-extents.md); native and complete syscall qualification remain |
 | `LK-X64-SYSCALL-001` | syscall register/error contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
+| `LK-X64-STAT-ORDER-001` | stat pathname lookup before metadata copy | Linux 7.2.9/x86-64 | source-reviewed | [exact source identities and ordering](x86_64/newfstatat-research.json); runtime qualification remains separate |
+| `LK-X64-DIRENT-EOF-001`, `LK-X64-READ-RANGE-001` | directory record copy, EOF and numeric read range | Linux 7.2.9/x86-64 | source-reviewed | [source identities and ordering](x86_64/file-transfer-research.json) |
+| `LK-X64-CHDIR-PATH-001`, `LK-X64-SIGACTION-COPY-001`, `LK-X64-POLL-COPY-001`, `LK-X64-IOCTL-UNUSED-001` | shell pathname, signal action, poll record and unused terminal argument | Linux 7.2.9/x86-64 | source-reviewed | [source identities and ordering](x86_64/shell-io-research.json) |
 | `LK-X64-PROCESS-001` | ELF/process/TLS contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-SIGNAL-001` | native signal/restart contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |
 | `LK-X64-DEBUG-001` | ptrace/regset/core contract | x86-64 | reviewed | [x86-64 ABI](x86_64/abi-and-entry.md) |

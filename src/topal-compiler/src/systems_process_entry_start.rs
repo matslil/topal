@@ -272,7 +272,7 @@ fn emit_static_process_start(
     // initialize x87, MXCSR, and every XMM register before entry.
     code.bytes(&[0x0f, 0x20, 0xc0, 0xa9, 0x0c, 0x00, 0x00, 0x00]);
     code.jump_if(0x85, "fatal"); // CR0.EM and CR0.TS must both be clear
-    if user_extent_probe {
+    if user_extent_probe || code.owned_user_extents {
         // Initialize the new guest profile before user entry, preserving every
         // other CR0 bit. A user transfer never disables write protection.
         code.bind("user-extent-wp-before")?;
@@ -437,6 +437,12 @@ fn emit_static_process_start(
     code.bytes(&896_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x84, "static-process-execve-true-exit");
+    if code.owned_user_extents {
+        code.bytes(&[0x48, 0x85, 0xff]);
+        code.jump_if(0x85, "fatal");
+        process_runtime::children::emit_require_initial_sole_process(code);
+        process_runtime::file_descriptions::emit_require_active_table(code);
+    }
     code.bytes(&[0x65, 0x8a, 0x04, 0x25]);
     code.bytes(&416_u32.to_le_bytes());
     code.bytes(&[0x3c, 1]);
@@ -453,7 +459,7 @@ fn emit_static_process_start(
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
-    code.bytes(&[1]);
+    code.bytes(&[u8::from(!code.owned_user_extents)]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&738_u32.to_le_bytes());
@@ -483,15 +489,19 @@ fn emit_static_process_start(
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[6]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
-    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
-    code.bytes(&0x005f_8f60_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
-    code.bytes(&0x005f_8f68_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        process_runtime::shell_input::emit_require_exit(code);
+    } else {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+        code.bytes(&0x005f_8f60_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&0x005f_8f68_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -504,7 +514,7 @@ fn emit_static_process_start(
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
-    code.bytes(&[1]);
+    code.bytes(&[u8::from(!code.owned_user_extents)]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
@@ -560,7 +570,7 @@ fn emit_static_process_start(
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&737_u32.to_le_bytes());
-    code.bytes(&[1]);
+    code.bytes(&[u8::from(!code.owned_user_extents)]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&738_u32.to_le_bytes());
@@ -590,15 +600,19 @@ fn emit_static_process_start(
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[6]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
-    code.bytes(&[0x48, 0x39, 0x04, 0x25]);
-    code.bytes(&0x005f_8f60_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
-    code.bytes(&0x005f_8f68_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        process_runtime::shell_input::emit_require_exit(code);
+    } else {
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&u64::from_le_bytes(*b"exit\n\0\0\0").to_le_bytes());
+        code.bytes(&[0x48, 0x39, 0x04, 0x25]);
+        code.bytes(&0x005f_8f60_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&0x005f_8f68_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -728,50 +742,71 @@ fn emit_static_process_start(
     code.bytes(&[0x65, 0x80, 0x3c, 0x25, 0x68, 0, 0, 0, 32]);
     code.jump_if(0x85, "fatal");
     emit_static_process_command_buffer_validation(code);
-    code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25]);
-    code.bytes(&168_u32.to_le_bytes());
-    code.bytes(&[0x49, 0x81, 0xf8]);
-    code.bytes(&0x0040_1000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x49, 0x81, 0xf8]);
-    code.bytes(&0x0058_c285_u32.to_le_bytes());
-    code.jump_if(0x83, "fatal");
-    code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
-    code.bytes(&176_u32.to_le_bytes());
-    code.bytes(&0x0400_0000_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x4c, 0x8b, 0x1c, 0x25]);
-    code.bytes(&224_u32.to_le_bytes());
-    code.bytes(&[0x49, 0x81, 0xfb]);
-    code.bytes(&0x0040_1000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x49, 0x81, 0xfb]);
-    code.bytes(&0x0058_c285_u32.to_le_bytes());
-    code.jump_if(0x83, "fatal");
-    code.bytes(&[0x48, 0xb8]);
-    code.bytes(&0xffff_fffe_7fff_ffff_u64.to_le_bytes());
-    code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
-    code.bytes(&232_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
-    code.bytes(&417_u32.to_le_bytes());
-    code.bytes(&[1]);
-    code.jump_if(0x85, "fatal");
-    // Erase the process-visible command before releasing its consumed owner.
-    code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
-    code.bytes(&0x005f_8f60_u32.to_le_bytes());
-    code.bytes(&0_u32.to_le_bytes());
-    code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
-    code.bytes(&0x005f_8f68_u32.to_le_bytes());
-    code.bytes(&0_u32.to_le_bytes());
-    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
-    code.bytes(&0x005f_8f60_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
-    code.bytes(&0x005f_8f68_u32.to_le_bytes());
-    code.bytes(&[0]);
-    code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        // Descriptor initialization transferred these dispositions into the
+        // process-owned table. Require consumed prelude slots; table teardown
+        // retires the current registrations, including subsequent changes.
+        for offset in [168_u32, 176, 224, 232] {
+            code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+            code.bytes(&offset.to_le_bytes());
+            code.bytes(&[0]);
+            code.jump_if(0x85, "fatal");
+        }
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&417_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    } else {
+        code.bytes(&[0x65, 0x4c, 0x8b, 0x04, 0x25]);
+        code.bytes(&168_u32.to_le_bytes());
+        code.bytes(&[0x49, 0x81, 0xf8]);
+        code.bytes(&0x0040_1000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x49, 0x81, 0xf8]);
+        code.bytes(&0x0058_c285_u32.to_le_bytes());
+        code.jump_if(0x83, "fatal");
+        code.bytes(&[0x65, 0x48, 0x81, 0x3c, 0x25]);
+        code.bytes(&176_u32.to_le_bytes());
+        code.bytes(&0x0400_0000_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x4c, 0x8b, 0x1c, 0x25]);
+        code.bytes(&224_u32.to_le_bytes());
+        code.bytes(&[0x49, 0x81, 0xfb]);
+        code.bytes(&0x0040_1000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x49, 0x81, 0xfb]);
+        code.bytes(&0x0058_c285_u32.to_le_bytes());
+        code.jump_if(0x83, "fatal");
+        code.bytes(&[0x48, 0xb8]);
+        code.bytes(&0xffff_fffe_7fff_ffff_u64.to_le_bytes());
+        code.bytes(&[0x65, 0x48, 0x39, 0x04, 0x25]);
+        code.bytes(&232_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
+        code.bytes(&417_u32.to_le_bytes());
+        code.bytes(&[1]);
+        code.jump_if(0x85, "fatal");
+    }
+    if code.owned_user_extents {
+        code.call("fd-terminal-release");
+        process_runtime::shell_input::emit_retire(code);
+    } else {
+        // Erase the process-visible command before releasing its consumed owner.
+        code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&0x005f_8f60_u32.to_le_bytes());
+        code.bytes(&0_u32.to_le_bytes());
+        code.bytes(&[0x48, 0xc7, 0x04, 0x25]);
+        code.bytes(&0x005f_8f68_u32.to_le_bytes());
+        code.bytes(&0_u32.to_le_bytes());
+        code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&0x005f_8f60_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&0x005f_8f68_u32.to_le_bytes());
+        code.bytes(&[0]);
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&418_u32.to_le_bytes());
     code.bytes(&[0]);
@@ -827,12 +862,14 @@ fn emit_static_process_start(
         code.bytes(&[0, 0, 0, 0]);
     }
     code.bind("static-process-terminal-thread-state")?;
-    // Runtime thread registrations are opaque user values. A private sole-mm
-    // exit drops them without dereferencing an unchecked robust/TID address.
-    code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
-    code.bytes(&896_u32.to_le_bytes());
-    code.bytes(&[1]);
-    code.jump_if(0x85, "static-process-legacy-thread-release");
+    // The owned first image and runtime sole-mm exits retire these opaque
+    // registrations with the address space.
+    if !code.owned_user_extents {
+        code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
+        code.bytes(&896_u32.to_le_bytes());
+        code.bytes(&[1]);
+        code.jump_if(0x85, "static-process-legacy-thread-release");
+    }
     for offset in [152_u32, 160] {
         code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -842,27 +879,29 @@ fn emit_static_process_start(
         code.bytes(&[0]);
         code.jump_if(0x85, "fatal");
     }
-    code.jump("static-process-terminal-thread-state-ready");
-    code.bind("static-process-legacy-thread-release")?;
-    code.bytes(&[0x48, 0x85, 0xff]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0xa0, 0, 0, 0]);
-    code.bytes(&[0x48, 0x3d, 0xe0, 0x76, 0x5f, 0x00]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0x38, 0xe0, 0x76, 0x5f, 0x00]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0x78, 0x08, 0xe0]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x83, 0x78, 0x10, 0]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xa0, 0, 0, 0, 0, 0, 0, 0]);
-    code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0x98, 0, 0, 0]);
-    code.bytes(&[0x48, 0x3d, 0xd0, 0x76, 0x5f, 0x00]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0xc7, 0x00, 0, 0, 0, 0, 0x83, 0x38, 0]);
-    code.jump_if(0x85, "fatal");
-    code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0x98, 0, 0, 0, 0, 0, 0, 0]);
-    code.bind("static-process-terminal-thread-state-ready")?;
+    if !code.owned_user_extents {
+        code.jump("static-process-terminal-thread-state-ready");
+        code.bind("static-process-legacy-thread-release")?;
+        code.bytes(&[0x48, 0x85, 0xff]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0xa0, 0, 0, 0]);
+        code.bytes(&[0x48, 0x3d, 0xe0, 0x76, 0x5f, 0x00]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x81, 0x38, 0xe0, 0x76, 0x5f, 0x00]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x83, 0x78, 0x08, 0xe0]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x48, 0x83, 0x78, 0x10, 0]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0xa0, 0, 0, 0, 0, 0, 0, 0]);
+        code.bytes(&[0x65, 0x48, 0x8b, 0x04, 0x25, 0x98, 0, 0, 0]);
+        code.bytes(&[0x48, 0x3d, 0xd0, 0x76, 0x5f, 0x00]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0xc7, 0x00, 0, 0, 0, 0, 0x83, 0x38, 0]);
+        code.jump_if(0x85, "fatal");
+        code.bytes(&[0x65, 0x48, 0xc7, 0x04, 0x25, 0x98, 0, 0, 0, 0, 0, 0, 0]);
+        code.bind("static-process-terminal-thread-state-ready")?;
+    }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&896_u32.to_le_bytes());
     code.bytes(&[0]);

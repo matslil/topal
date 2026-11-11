@@ -76,12 +76,18 @@ pub(super) fn brk(
     e.0.jump_if(0x85, "frame-mm-brk-sysret");
     e.0.bytes(&[0x65, 0xc6, 0x04, 0x25, 104, 0, 0, 0, 1]);
     e.0.jump("frame-mm-brk-sysret");
-    for (next, label) in [
-        (2_u8, "frame-mm-started"),
-        (7, "frame-mm-grown"),
-        (8, "frame-mm-aligned"),
+    for (next, label, witness) in [
+        (2_u8, "frame-mm-started", 0x5f7d80),
+        (7, "frame-mm-grown", 0x618d80),
+        (8, "frame-mm-aligned", 0x619000),
     ] {
         e.0.bind(label)?;
+        if e.0.owned_user_extents {
+            // An ordinary resize during startup does not consume a different
+            // historical observation. It remains a legal MM request above.
+            e.cmp(R10, witness);
+            e.0.jump_if(0x85, "frame-mm-brk-sysret");
+        }
         e.0.bytes(&[0x65, 0xc6, 0x04, 0x25, 104, 0, 0, 0, next]);
         e.0.jump("frame-mm-brk-sysret");
     }

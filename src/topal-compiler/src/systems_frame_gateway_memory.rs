@@ -4,7 +4,11 @@ use super::*;
 pub(super) const STATE: &str = "topal_x86_frame_mm_state_v1";
 const EPOCH: &str = "topal_x86_frame_mm_epoch_v1";
 
-pub(super) fn entry(code: &mut Code, user_extents: bool) -> Result<(), CompileError> {
+pub(super) fn entry(
+    code: &mut Code,
+    user_extents: bool,
+    owned_callers: bool,
+) -> Result<(), CompileError> {
     let mut e = E(&mut code.encoder);
     address(&mut e, &mut code.references, R11, "topal_bootstrap_storage");
     e.add(R11, 512);
@@ -116,13 +120,13 @@ pub(super) fn entry(code: &mut Code, user_extents: bool) -> Result<(), CompileEr
     e.0.bind("mm_entry_checked")?;
     if user_extents {
         e.0.jump("mm_extent_entry_done");
-        extent_entry(code)?;
+        extent_entry(code, owned_callers)?;
         code.encoder.bind("mm_extent_entry_done")?;
     }
     Ok(())
 }
 
-fn extent_entry(code: &mut Code) -> Result<(), CompileError> {
+fn extent_entry(code: &mut Code, owned_callers: bool) -> Result<(), CompileError> {
     let mut e = E(&mut code.encoder);
     e.0.bind("mm_extent_entry")?;
     e.cmp(R8, 0);
@@ -164,6 +168,46 @@ fn extent_entry(code: &mut Code) -> Result<(), CompileError> {
     );
     e.rr(0x39, A, R10);
     e.0.jump_if(0x85, "unsafe");
+    if owned_callers {
+        // Bind the register-preserving helper's exact frame and generated
+        // bridge-return site before lending either inner or outer storage.
+        e.mov(R10, _Bp);
+        e.rr(0x29, R10, _Sp);
+        e.cmp(R10, 64);
+        e.0.jump_if(0x84, "mm_extent_caller_shape");
+        e.cmp(R10, 72);
+        e.0.jump_if(0x85, "unsafe");
+        e.0.bind("mm_extent_caller_shape")?;
+        e.load(A, R11, 8);
+        e.mov(R10, _Bp);
+        e.add(R10, 16);
+        e.rr(0x39, A, R10);
+        e.0.jump_if(0x82, "unsafe");
+        e.load(A, _Sp, 16);
+        address(
+            &mut e,
+            &mut code.references,
+            R10,
+            "topal_x86_user_extent_readable_bridge_return_v1",
+        );
+        e.rr(0x39, A, R10);
+        e.0.jump_if(0x84, "mm_extent_readable_site");
+        address(
+            &mut e,
+            &mut code.references,
+            R10,
+            "topal_x86_user_extent_writable_bridge_return_v1",
+        );
+        e.rr(0x39, A, R10);
+        e.0.jump_if(0x85, "unsafe");
+        e.cmp(R8, 1);
+        e.0.jump_if(0x85, "unsafe");
+        e.0.jump("mm_extent_caller_ready");
+        e.0.bind("mm_extent_readable_site")?;
+        e.cmp(R8, 0);
+        e.0.jump_if(0x85, "unsafe");
+        e.0.bind("mm_extent_caller_ready")?;
+    }
     address(&mut e, &mut code.references, R10, EPOCH);
     e.load(A, R10, 0);
     e.cmp(A, 0);

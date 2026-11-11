@@ -1,3 +1,17 @@
+fn emit_owned_file_output(code: &mut X86FunctionEncoder, length: u64) {
+    if code.owned_user_extents {
+        // Witness validators may consume native argument registers. Admit the
+        // actual captured destination before any record staging is changed.
+        x86_function::E(code).gs(0x8b, x86_function::R::Si, 320);
+        process_runtime::emit_owned_user_output(
+            code,
+            x86_function::R::Si,
+            process_runtime::UserExtentLength::Bytes(length),
+            "owned-user-buffer-efault",
+        );
+    }
+}
+
 fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     code.bind("static-process-shell-console-fstat")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -22,9 +36,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x83, 0xff, 1]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_fba0_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_fba0_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.jump("static-process-shell-console-fstat-candidate-ready");
 
     code.bind("static-process-shell-pwd-console-fstat")?;
@@ -50,9 +66,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x48, 0x83, 0xff, 1]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_f240_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_f240_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     emit_static_process_command_buffer_validation(code);
     code.bind("static-process-shell-console-fstat-candidate-ready")?;
     emit_static_process_active_stack_validation(code);
@@ -62,6 +80,7 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
 
+    emit_owned_file_output(code, 144);
     // Build the complete native value in provider-private staging before the
     // exact checked user candidate is changed.
     for offset in (472_u32..616).step_by(8) {
@@ -165,9 +184,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x004a_6912_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x004a_6912_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x48, 0x83, 0xfa, 2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x4d, 0x85, 0xd2]);
@@ -178,6 +199,9 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 9);
+    }
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"/dev/tty").to_le_bytes());
     code.bytes(&[0x48, 0x39, 0x06]);
@@ -207,9 +231,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x81, 0xff, 0x9c, 0xff, 0xff, 0xff]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x004a_6938_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x004a_6938_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x48, 0x85, 0xd2]);
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x4d, 0x85, 0xd2]);
@@ -220,6 +246,9 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 13);
+    }
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"/etc/pro").to_le_bytes());
     code.bytes(&[0x48, 0x39, 0x06]);
@@ -265,28 +294,35 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x84, "static-process-shell-bin-busybox-open-clean");
     code.bytes(&[0x3c, 2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0060_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
-    emit_static_process_low_heap_validation(
-        code,
-        "static-process-shell-bin-busybox-open-low-heap",
-    )?;
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0060_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+        emit_static_process_low_heap_validation(
+            code,
+            "static-process-shell-bin-busybox-open-low-heap",
+        )?;
+    }
     code.jump("static-process-shell-bin-busybox-open-profile-ready");
     code.bind("static-process-shell-bin-busybox-open-clean")?;
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_9460_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_9460_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.bind("static-process-shell-bin-busybox-open-profile-ready")?;
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
-    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
-    code.bytes(&320_u32.to_le_bytes());
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 13);
+    } else {
+        x86_function::E(code).gs(0x8b, x86_function::R::Si, 320);
+    }
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"/bin/bus").to_le_bytes());
     code.bytes(&[0x48, 0x39, 0x06]);
@@ -338,32 +374,39 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&743_u32.to_le_bytes());
     code.bytes(&[4]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0060_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
-    emit_static_process_low_heap_validation(
-        code,
-        "static-process-shell-bin-busybox-reopen-low-heap",
-    )?;
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 13]);
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0060_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+        emit_static_process_low_heap_validation(
+            code,
+            "static-process-shell-bin-busybox-reopen-low-heap",
+        )?;
+    }
     code.jump("static-process-shell-bin-busybox-reopen-profile-ready");
     code.bind("static-process-shell-bin-busybox-reopen-clean")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&743_u32.to_le_bytes());
     code.bytes(&[5]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_9460_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_9460_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.bind("static-process-shell-bin-busybox-reopen-profile-ready")?;
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
-    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
-    code.bytes(&320_u32.to_le_bytes());
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 13);
+    } else {
+        x86_function::E(code).gs(0x8b, x86_function::R::Si, 320);
+    }
     code.bytes(&[0x48, 0xb8]);
     code.bytes(&u64::from_le_bytes(*b"/bin/bus").to_le_bytes());
     code.bytes(&[0x48, 0x39, 0x06]);
@@ -403,24 +446,30 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x4d, 0x85, 0xd2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 2]);
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0061_9000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 2]);
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0061_9000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     emit_static_process_active_stack_validation(code);
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
-    emit_static_process_heap_validation(
-        code,
-        "static-process-shell-root-glob-open-low-heap",
-        "static-process-shell-root-glob-open-high-heap",
-    )?;
-    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
-    code.bytes(&320_u32.to_le_bytes());
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 2);
+    } else {
+        emit_static_process_heap_validation(
+            code,
+            "static-process-shell-root-glob-open-low-heap",
+            "static-process-shell-root-glob-open-high-heap",
+        )?;
+        code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
+        code.bytes(&320_u32.to_le_bytes());
+    }
     code.bytes(&[0x66, 0x81, 0x3e]);
     code.bytes(&u16::from_le_bytes(*b"/\0").to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -454,24 +503,30 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.jump_if(0x85, "fatal");
     code.bytes(&[0x4d, 0x85, 0xd2]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 6]);
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0061_9000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x83, 0xc0, 6]);
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0061_9000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     emit_static_process_active_stack_validation(code);
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
-    emit_static_process_heap_validation(
-        code,
-        "static-process-shell-empty-bin-glob-open-low-heap",
-        "static-process-shell-empty-bin-glob-open-high-heap",
-    )?;
-    code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
-    code.bytes(&320_u32.to_le_bytes());
+    if code.owned_user_extents {
+        process_runtime::emit_owned_pathname(code, 6);
+    } else {
+        emit_static_process_heap_validation(
+            code,
+            "static-process-shell-empty-bin-glob-open-low-heap",
+            "static-process-shell-empty-bin-glob-open-high-heap",
+        )?;
+        code.bytes(&[0x65, 0x48, 0x8b, 0x34, 0x25]);
+        code.bytes(&320_u32.to_le_bytes());
+    }
     code.bytes(&[0x81, 0x3e]);
     code.bytes(&u32::from_le_bytes(*b"/bin").to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -500,18 +555,21 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bind("static-process-shell-root-glob-fstat-profile-ready")?;
     code.bytes(&[0x48, 0x83, 0xff, 3]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_e000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&144_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0080_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_e000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&144_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0080_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     emit_static_process_active_stack_validation(code);
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
+    emit_owned_file_output(code, 144);
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -587,18 +645,21 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bind("static-process-shell-empty-bin-glob-fstat-profile-ready")?;
     code.bytes(&[0x48, 0x83, 0xff, 3]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_e000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&144_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0080_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_e000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&144_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0080_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     emit_static_process_active_stack_validation(code);
     emit_static_process_command_buffer_validation(code);
     emit_static_process_child_disposition_validation(code);
+    emit_owned_file_output(code, 144);
     for offset in (744_u32..888).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -675,9 +736,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     }
     code.bytes(&[0x48, 0x83, 0xff, 3]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_fba0_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_fba0_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     emit_static_process_active_stack_validation(code);
     emit_static_process_child_disposition_validation(code);
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
@@ -685,6 +748,7 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
 
+    emit_owned_file_output(code, 144);
     // Derive the complete native regular-file value from the retained
     // description and stage it privately before changing user memory.
     for offset in (744_u32..888).step_by(8) {
@@ -767,9 +831,11 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     }
     code.bytes(&[0x48, 0x83, 0xff, 3]);
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_fba0_u32.to_le_bytes());
-    code.jump_if(0x85, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_fba0_u32.to_le_bytes());
+        code.jump_if(0x85, "fatal");
+    }
     code.bytes(&[0x48, 0x81, 0xfa]);
     code.bytes(&128_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
@@ -779,6 +845,15 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&417_u32.to_le_bytes());
     code.bytes(&[1]);
     code.jump_if(0x85, "fatal");
+    if code.owned_user_extents {
+        use x86_function::{E, R};
+        // The native read checks its numeric range before the file reports
+        // EOF. With a checked count of 128, this is equivalent to checking
+        // the nonwrapping sum against the four-level user address limit.
+        E(code).imm(R::A, (1_u64 << 47) - 4096 - 128);
+        E(code).rr(0x39, R::Si, R::A);
+        code.jump_if(0x87, "owned-user-buffer-efault");
+    }
     code.bytes(&[0x65, 0xc6, 0x04, 0x25]);
     code.bytes(&739_u32.to_le_bytes());
     code.bytes(&[1]);
@@ -828,34 +903,38 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&[0x48, 0x81, 0xfa]);
     code.bytes(&32_768_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&32_768_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0061_9000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
-    emit_static_process_heap_validation(
-        code,
-        "static-process-shell-root-glob-getdents-low-heap",
-        "static-process-shell-root-glob-getdents-high-heap",
-    )?;
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&32_768_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0061_9000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+        emit_static_process_heap_validation(
+            code,
+            "static-process-shell-root-glob-getdents-low-heap",
+            "static-process-shell-root-glob-getdents-high-heap",
+        )?;
+    }
     code.jump("static-process-shell-root-glob-getdents-candidate-ready");
     code.bind("static-process-shell-root-glob-getdents-clean")?;
     code.bytes(&[0x48, 0x81, 0xfa]);
     code.bytes(&512_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_e000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&512_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0080_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_e000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&512_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0080_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     code.bind("static-process-shell-root-glob-getdents-candidate-ready")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
@@ -872,6 +951,7 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     emit_static_process_sysret(code);
 
     code.bind("static-process-shell-root-glob-getdents-first")?;
+    emit_owned_file_output(code, 72);
     for offset in (744_u32..816).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());
@@ -957,34 +1037,38 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     code.bytes(&[0x48, 0x81, 0xfa]);
     code.bytes(&32_768_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x005f_7000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&32_768_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0061_9000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
-    emit_static_process_heap_validation(
-        code,
-        "static-process-shell-empty-bin-glob-getdents-low-heap",
-        "static-process-shell-empty-bin-glob-getdents-high-heap",
-    )?;
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x005f_7000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&32_768_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0061_9000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+        emit_static_process_heap_validation(
+            code,
+            "static-process-shell-empty-bin-glob-getdents-low-heap",
+            "static-process-shell-empty-bin-glob-getdents-high-heap",
+        )?;
+    }
     code.jump("static-process-shell-empty-bin-glob-getdents-candidate-ready");
     code.bind("static-process-shell-empty-bin-glob-getdents-clean")?;
     code.bytes(&[0x48, 0x81, 0xfa]);
     code.bytes(&512_u32.to_le_bytes());
     code.jump_if(0x85, "fatal");
-    code.bytes(&[0x48, 0x81, 0xfe]);
-    code.bytes(&0x007f_e000_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
-    code.bytes(&512_u32.to_le_bytes());
-    code.jump_if(0x82, "fatal");
-    code.bytes(&[0x48, 0x3d]);
-    code.bytes(&0x0080_0000_u32.to_le_bytes());
-    code.jump_if(0x87, "fatal");
+    if !code.owned_user_extents {
+        code.bytes(&[0x48, 0x81, 0xfe]);
+        code.bytes(&0x007f_e000_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x89, 0xf0, 0x48, 0x05]);
+        code.bytes(&512_u32.to_le_bytes());
+        code.jump_if(0x82, "fatal");
+        code.bytes(&[0x48, 0x3d]);
+        code.bytes(&0x0080_0000_u32.to_le_bytes());
+        code.jump_if(0x87, "fatal");
+    }
     code.bind("static-process-shell-empty-bin-glob-getdents-candidate-ready")?;
     code.bytes(&[0x65, 0x80, 0x3c, 0x25]);
     code.bytes(&888_u32.to_le_bytes());
@@ -1001,6 +1085,7 @@ fn emit_static_process_files(code: &mut X86FunctionEncoder) -> Result<(), Compil
     emit_static_process_sysret(code);
 
     code.bind("static-process-shell-empty-bin-glob-getdents-first")?;
+    emit_owned_file_output(code, 80);
     for offset in (744_u32..824).step_by(8) {
         code.bytes(&[0x65, 0x48, 0x83, 0x3c, 0x25]);
         code.bytes(&offset.to_le_bytes());

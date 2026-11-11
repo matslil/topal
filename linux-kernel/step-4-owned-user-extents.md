@@ -86,3 +86,40 @@ profile is unchanged. The [checkpoint notes](tools/user-memory/results/stage-2/R
 explain exact scope, earlier evidence and remaining gates. All-caller migration
 and production activation/qualification remain pending; initial Step 4 and the
 original kernel objective remain unfinished.
+
+## Stage 3 caller migration and ordinary-application checkpoint
+
+The experimental owned selection now routes the frame-profile startup, stat,
+pathname, file, shell and shared runtime user-buffer paths through current
+owned extents. The private command cursor and serial queue preserve short or
+refused transfers and are retired on exec/exit. These changes remain separate
+from default production publication.
+
+The ordinary first-image exit now follows the actual ownership transfer:
+descriptor initialization has imported the prelude signal dispositions into
+the process table and consumed the old slots. Terminal admission checks the
+active table and absence of a child, requires the consumed signal slots to be
+empty, then retires the current table and opaque thread registrations. It does
+not require obsolete prelude installation witnesses to remain live.
+
+The [selected application checkpoint](tools/user-memory/results/stage-3-application-checkpoint/README.md)
+passes one fresh-kernel interoperability test using unchanged pinned BusyBox,
+exact shell output and actual signal/command/table/heap retirement observations.
+Six post-check commands pass, including locked workspace/all-target checking
+and seventeen model tests. Fourteen object comparisons preserve the preceding
+component objects and both predecessor objects exactly. The complete caller
+stack bound remains 2248 bytes, with 4088 bytes of physical retirement layout
+within the existing 4096-byte reserve.
+
+Risk remains high around user-memory ownership, native caller liveness,
+translation lifetime and retirement. Review is single-agent self-review against
+the approved systems contract, supplemented by separate object comparisons and
+runtime before/after observations; no independent human review is claimed.
+The [agent guidance](../AGENTS.md#kernel-and-systems-validation) governs future
+validation. Historical binary-patched fixtures were not rerun for this
+checkpoint, and model checks do not stand in for missing native evidence.
+
+Stage 3 remains incomplete. Source-built native boundary/error fixtures,
+complete caller qualification, canonical production binding and committed cold
+reconstruction remain required. The default production profile and the full
+original kernel goal remain unchanged and unfinished.

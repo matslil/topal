@@ -224,7 +224,8 @@ except Exception:fail()
 
 
 def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=None,
-         process_command=None, input_scope='ABI fixture'):
+         process_command=None, input_scope='ABI fixture', guest_timeout_seconds=300):
+    assert isinstance(guest_timeout_seconds, int) and 0 < guest_timeout_seconds <= 3600
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('work', type=Path)
     args = parser.parse_args()
@@ -269,7 +270,7 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
             with (work / 'gdb.stdout.log').open('wb') as gout, (work / 'gdb.stderr.log').open('wb') as gerr:
                 debugger = subprocess.Popen(['gdb', '-nx', '-batch', '-x', str(script)],
                                             stdout=gout, stderr=gerr)
-                deadline = time.monotonic() + 300
+                deadline = time.monotonic() + guest_timeout_seconds
                 sent_read = sent_command = False
                 while True:
                     try:
@@ -285,7 +286,7 @@ def main(*, work_name='guest', program_prefix='', expect_backing=True, ram_mib=N
                     (work / 'serial.log').write_bytes(received)
                     if debugger.poll() is not None:
                         break
-                    assert time.monotonic() < deadline, 'full-root guest timed out (300s)'
+                    assert time.monotonic() < deadline, f'full-root guest timed out ({guest_timeout_seconds}s)'
                     time.sleep(.03)
             stdout = (work / 'gdb.stdout.log').read_bytes()
             stderr = (work / 'gdb.stderr.log').read_bytes()

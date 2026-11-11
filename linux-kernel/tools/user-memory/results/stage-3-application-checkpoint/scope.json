@@ -1,0 +1,25 @@
+{
+  "passed_selected_application": true,
+  "stage_complete": false,
+  "production_activation": false,
+  "full_workspace_execution": false,
+  "missing": [
+    "source-built native boundary/error cases",
+    "complete all-caller qualification",
+    "canonical production binding and cold reconstruction",
+    "full original kernel acceptance"
+  ],
+  "earlier_observer_failures": [
+    {
+      "record": "tk283-application-run-1794385944728768839",
+      "exit_code": 101,
+      "scope": "Observer stopped before terminal acceptance; does not qualify kernel success"
+    },
+    {
+      "record": "tk283-application-run-1794386013427979407",
+      "exit_code": 101,
+      "scope": "Observer stopped before terminal acceptance; does not qualify kernel success"
+    }
+  ],
+  "earlier_storage_failure": "A preceding fresh-image write failed with EDQUOT on quota-limited /tmp. This application test now creates artifacts under linux-kernel/.cache/x86_64; no quota or host memory settings changed."
+}

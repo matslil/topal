@@ -101,6 +101,27 @@ pub(crate) fn dispatch_llvm() -> Result<String, CompileError> {
     Ok(text)
 }
 
+#[cfg(test)]
+pub(crate) fn caller_target_llvm(
+    component: &crate::SystemsTailOwnerComponent,
+    owners: &Owners,
+) -> Result<String, CompileError> {
+    let text = target_llvm(component, owners)?;
+    let old = "%bottom = sub i64 %saved,4032";
+    if text.matches(old).count() != 1 {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-USER-EXTENT: missing exact caller window".into(),
+        ));
+    }
+    Ok(text.replace(
+        old,
+        &format!(
+            "%bottom = sub i64 %saved,{}",
+            crate::systems_provider_object::user_extent_bridge::CALLER_RETIRED_BYTES
+        ),
+    ))
+}
+
 /// The kernel target has a separate instruction profile from an ordinary
 /// source library. Admit only its exact register-observation sites, then apply
 /// the unchanged ordinary instruction check to everything else. This is not

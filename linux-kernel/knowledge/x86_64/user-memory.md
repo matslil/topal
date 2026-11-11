@@ -32,3 +32,11 @@ implementation and page-table layout need not be reproduced. General demand
 faults, concurrent mapping edits, signals/restart and syscall-specific partial
 results still require their own Linux-compatible contracts and tests. The model
 cannot establish hardware stability or grant a capability from numeric facts.
+
+For native `newfstatat`, filename acquisition and lookup precede metadata
+conversion and output copying. Lookup failure returns its error without using
+the metadata destination. The [exact pinned source record](newfstatat-research.json)
+binds these facts to `fs/stat.c` and the x86-64 ABI source. The owned profile
+therefore admits pathname input before its loads, and output only when the
+query proceeds to publication. This does not generalize the sealed pathname
+policies or qualify the complete stat family.

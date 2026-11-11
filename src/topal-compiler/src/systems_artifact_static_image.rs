@@ -104,6 +104,11 @@ struct StaticElfPagePlan {
 #[path = "systems_process_fixture.rs"]
 mod process_fixture;
 
+#[cfg(test)]
+pub(crate) fn static_time_fixture_entry() -> u32 {
+    process_fixture::time_checks::ENTRY
+}
+
 /// Construct deterministic clean-room bytes with the qualified static-ELF metadata shape.
 ///
 /// The payload is not an application and exists only for ABI qualification.

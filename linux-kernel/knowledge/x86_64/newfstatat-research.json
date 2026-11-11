@@ -1,0 +1,45 @@
+{
+  "schema": "topal-newfstatat-primary-research/1",
+  "decision": "TK-DEC-283",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "arch/x86/entry/syscalls/syscall_64.tbl": {
+      "sha256": "93e42d351de2002418bf499b9a538f189fd683e8ecd52b4adc8a0bbe59130455",
+      "archive_member": "linux-7.2.9/arch/x86/entry/syscalls/syscall_64.tbl",
+      "cached_bytes_match_pinned_archive": true
+    },
+    "arch/x86/include/uapi/asm/stat.h": {
+      "sha256": "5cca0ba1e1a55cfa1e853e326eaf4a69f48c1d0caf2d3724ee41917fff042ca6",
+      "archive_member": "linux-7.2.9/arch/x86/include/uapi/asm/stat.h",
+      "cached_bytes_match_pinned_archive": true
+    },
+    "fs/stat.c": {
+      "sha256": "d2adefa2b4f6fccb24a086eb994c9c1774e348c34bcc50ddfe4785c64c145724",
+      "archive_member": "linux-7.2.9/fs/stat.c",
+      "cached_bytes_match_pinned_archive": true
+    }
+  },
+  "observations": [
+    {
+      "id": "LK-X64-STAT-ORDER-001",
+      "symbol": "SYSCALL_DEFINE4(newfstatat)",
+      "line_start": 532,
+      "line_end": 543,
+      "fact": "Filename acquisition and lookup return their error before cp_new_stat is called; absent lookup does not use the metadata destination."
+    },
+    {
+      "id": "LK-X64-STAT-COPY-001",
+      "symbol": "cp_new_stat",
+      "line_start": 466,
+      "line_end": 503,
+      "fact": "Successful metadata is converted into a private native record and copied to the user destination only after lookup succeeds."
+    }
+  ],
+  "scope": "Pinned primary-source facts, not runtime application qualification or permission to change predecessor profiles."
+}

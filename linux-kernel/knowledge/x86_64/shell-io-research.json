@@ -1,0 +1,72 @@
+{
+  "schema": "topal-shell-io-primary-research/1",
+  "decision": "TK-DEC-283",
+  "architecture": "x86_64",
+  "linux_release": "7.2.9",
+  "archive": {
+    "url": "https://cdn.kernel.org/pub/linux/kernel/v7.x/linux-7.2.9.tar.xz",
+    "sha256": "b4c5dfbe51a364a6c7f03869200f88c8e1f77403539005f14b7fc6bc91b8d8ba",
+    "actual_digest_verified": true
+  },
+  "source_files": {
+    "arch/x86/include/uapi/asm/signal.h": {
+      "sha256": "4aa8e8c9dd54a2ad66b9f95aba04040bcfeb6046ae5566e13e0dfbd834d271f1",
+      "archive_member": "linux-7.2.9/arch/x86/include/uapi/asm/signal.h"
+    },
+    "fs/ioctl.c": {
+      "sha256": "39e65f609b2cb3d1d9963eb8c718e06aa1dcd21627578b49aef868374a354d75",
+      "archive_member": "linux-7.2.9/fs/ioctl.c"
+    },
+    "fs/open.c": {
+      "sha256": "760e4f46650c1ce710809097bee916a66daa7e8a9c761e43f420638eceeb5de0",
+      "archive_member": "linux-7.2.9/fs/open.c"
+    },
+    "fs/select.c": {
+      "sha256": "eaaf171b3549ca4df9a270b3cf2b09e295439ffb15dee77250d14f3a52ee5a95",
+      "archive_member": "linux-7.2.9/fs/select.c"
+    },
+    "include/linux/signal_types.h": {
+      "sha256": "cb4773aeeaf5521855e63b4449bc41a09d00f59650cf678868ac96755c2f5dba",
+      "archive_member": "linux-7.2.9/include/linux/signal_types.h"
+    },
+    "include/uapi/asm-generic/poll.h": {
+      "sha256": "800ec73ce21e427587fda77b35a804f522d9e4a18eef87d516e10d1b28fc8b90",
+      "archive_member": "linux-7.2.9/include/uapi/asm-generic/poll.h"
+    },
+    "kernel/signal.c": {
+      "sha256": "407e7e008ec86b646164fac270fb0b239557e4142d78ec9abb899347fa9e1587",
+      "archive_member": "linux-7.2.9/kernel/signal.c"
+    }
+  },
+  "observations": [
+    {
+      "id": "LK-X64-CHDIR-PATH-001",
+      "path": "fs/open.c",
+      "line_start": 550,
+      "line_end": 578,
+      "fact": "chdir obtains and resolves a user filename before checking directory permission and replacing cwd."
+    },
+    {
+      "id": "LK-X64-SIGACTION-COPY-001",
+      "path": "kernel/signal.c",
+      "line_start": 4710,
+      "line_end": 4733,
+      "fact": "rt_sigaction checks sigsetsize, copies an optional new action, applies the operation, and copies an optional old action. The bounded query and install paths use one direction each."
+    },
+    {
+      "id": "LK-X64-POLL-COPY-001",
+      "path": "fs/select.c",
+      "line_start": 994,
+      "line_end": 1028,
+      "fact": "The poll path reads native pollfd records, then copies the resulting revents fields to user memory."
+    },
+    {
+      "id": "LK-X64-IOCTL-UNUSED-001",
+      "path": "fs/ioctl.c",
+      "line_start": 44,
+      "line_end": 55,
+      "fact": "The VFS ioctl fallback returns ENOTTY without using the argument when the file has no ioctl operation. Other ioctl handlers have their own transfer rules."
+    }
+  ],
+  "scope": "Pinned Linux source evidence for pathname, signal-action, poll and terminal request transfers."
+}

@@ -22,6 +22,138 @@ fn user_extent_normal_guest_boot_and_memory_operations() {
 }
 
 #[test]
+fn user_extent_shared_callers_use_real_large_heap_buffers() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary syscalls through the migrated
+    // helper. Direct-caller migration and publication remain separate gates.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_callers();
+    let observations: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observations["passed"], true);
+    assert_eq!(
+        observations["shared_caller_registers_and_retirement_checked"],
+        true
+    );
+    assert_eq!(observations["startup_outputs_checked"], true);
+    assert_eq!(observations["shell_outputs_checked"], true);
+    assert_eq!(observations["stat_outputs_checked"], true);
+    assert_eq!(observations["statat_paths_checked"], true);
+    assert_eq!(
+        observations["write_fixture_cases_checked"],
+        serde_json::json!((0..20).collect::<Vec<_>>())
+    );
+    assert_eq!(
+        observations["file_fixture_cases_checked"],
+        serde_json::json!((0..11).collect::<Vec<_>>())
+    );
+    assert_eq!(
+        observations["shell_io_fixture_cases_checked"],
+        serde_json::json!((0..15).collect::<Vec<_>>())
+    );
+    assert_eq!(
+        observations["command_fixture_cases_checked"],
+        serde_json::json!([0, 1, 2, 3, 4])
+    );
+    assert_eq!(
+        observations["statat_fixture_cases_checked"],
+        serde_json::json!([0, 1, 2, 3, 4, 5])
+    );
+    assert_eq!(
+        observations["stat_fixture_cases_checked"],
+        serde_json::json!([0, 1, 2, 3])
+    );
+    assert_eq!(observations["process_cleanup_checked"], true);
+    assert!(observations["memory"].as_array().unwrap().len() >= 83);
+    assert!(observations["helper_calls"].as_array().unwrap().len() >= 4);
+}
+
+#[test]
+fn user_extent_direct_startup_outputs_use_grown_split_page_heap() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: real user-issued startup requests. This
+    // focused endpoint does not claim whole-process cleanup or publication.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_startup();
+    let observed: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observed["passed"], true);
+    assert_eq!(observed["startup_outputs_checked"], true);
+    assert_eq!(observed["process_cleanup_checked"], false);
+}
+
+#[test]
+fn user_extent_direct_shell_outputs_use_grown_split_page_heap() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: complete uname and initial root getcwd
+    // through ordinary user requests; later getcwd paths need the full run.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_shell();
+    let observed: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observed["passed"], true);
+    assert_eq!(observed["startup_outputs_checked"], true);
+    assert_eq!(observed["shell_outputs_checked"], true);
+    assert_eq!(observed["process_cleanup_checked"], false);
+}
+
+#[test]
+fn user_extent_shell_io_uses_actual_transfer_lengths() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: first-image calls through serial input.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_shell_io();
+    let observed: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observed["passed"], true);
+    assert_eq!(observed["process_cleanup_checked"], false);
+    assert_eq!(
+        observed["shell_io_fixture_cases_checked"],
+        serde_json::json!((0..15).collect::<Vec<_>>())
+    );
+    assert_eq!(
+        observed["command_fixture_cases_checked"],
+        serde_json::json!([0, 1, 2, 3, 4])
+    );
+}
+
+#[test]
+fn user_extent_direct_fstat_outputs_use_grown_split_page_heap() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary console fstat with full native
+    // record/padding and staging checks. Other descriptors need the full run.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_stat();
+    let observed: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observed["passed"], true);
+    assert_eq!(observed["stat_outputs_checked"], true);
+    assert_eq!(
+        observed["stat_fixture_cases_checked"],
+        serde_json::json!([0])
+    );
+    assert_eq!(observed["process_cleanup_checked"], false);
+}
+
+#[test]
+fn user_extent_direct_newfstatat_paths_preserve_lookup_error_order() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary pathname read/refusal and an
+    // absent lookup with unused unmapped output. Positive paths need full run.
+    let work = crate::systems_frame_target::root_tests::execute_user_extent_statat();
+    let observed: serde_json::Value = serde_json::from_slice(
+        &fs::read(work.join("user-extent-callers/observations.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(observed["passed"], true);
+    assert_eq!(observed["statat_paths_checked"], true);
+    assert_eq!(
+        observed["statat_fixture_cases_checked"],
+        serde_json::json!([0])
+    );
+    assert_eq!(observed["process_cleanup_checked"], false);
+}
+
+#[test]
 fn user_extent_owns_real_kernel_tables_and_dynamic_heap_in_qemu() {
     // TOPAL-SYSTEMS-USER-EXTENT-001: unpublished actual-root component. Full
     // production syscall-buffer migration/publication remain separate.

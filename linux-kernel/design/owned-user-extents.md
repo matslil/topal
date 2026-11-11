@@ -54,6 +54,53 @@ required wherever the stable-resident observation does not exclude faults.
 Unscoped faults and broken trusted ownership/context invariants remain fatal;
 they cannot silently become a successful extent or an ordinary allocation miss.
 
+Stat-family pathname queries admit every required input byte before reading it.
+An absent lookup does not use its metadata destination and therefore performs
+no output admission or access. Successful lookup admits the complete output
+before private staging changes. In the owned selection this replaces only the
+preceding stat adapters' fixed pathname placement and unconditional destination
+witnesses. Independent selector/flag/lifecycle rules and all predecessor
+selections retain their behavior. The [pinned primary-source record](../knowledge/x86_64/newfstatat-research.json)
+identifies Linux's lookup-before-copy ordering. This systems-only refinement
+introduces no general pathname resolver or core-language change.
+
+Bounded `openat` uses the same complete pathname admission before its first
+load. Bounded `getdents64` stages and copies only its selected record extent
+after checking descriptor state and count. An EOF result performs no output
+admission. The bounded profile-file `read` checks the requested numeric range
+before returning EOF. Its check does not consult mappings or grant access.
+See the [pinned directory and read source record](../knowledge/x86_64/file-transfer-research.json).
+
+Bounded shell `chdir` checks the complete root pathname before loading it.
+The selected `rt_sigaction` paths transfer one complete native action in the
+direction of the operation. A terminal request miss performs no transfer.
+The file-header read checks its one-byte output before staging or advancing
+position. Header poll checks the eight-byte record before reading and the
+two-byte `revents` field before writing. The independent shell phase, file
+description and signal-selector checks still apply. See the
+[pinned shell I/O source record](../knowledge/x86_64/shell-io-research.json).
+
+Bounded shell command reads use the current captured destination and count.
+Sealed inputs keep a private cursor until their last byte is delivered. Serial
+input may be received before the exact output extent is known. The adapter keeps
+that input in a bounded private queue, erases its consumed bytes, and leaves
+the shell phase unchanged on a refused copy or short delivery. The queue and
+completion facts live in the exec snapshot outside transient argument and
+environment staging. Accepted exec and terminal cleanup retire them. Earlier
+shell profiles keep their fixed-buffer checks.
+
+The bounded first-image exit validates the completed command and the live
+descriptor table after the serial adapter has transferred the old description
+into it. A sole-mm exit releases that table and clears its opaque clear-TID
+and robust-list registrations while retiring the entire address space.
+The first-image route checks that no child exists before relying on that
+property. Shared address spaces require their own thread-exit semantics.
+Descriptor initialization also transfers the validated signal dispositions into
+the process-owned table and clears their prelude slots. Terminal checking
+requires those consumed slots to remain empty and retires the current table,
+including subsequent signal-action changes. The old slots no longer own signal
+state after that transfer.
+
 The first runtime has one serialized process address space, synchronous entry
 and no competing mapping editor. Its proof must establish those facts over the
 whole check-and-copy interval, including asynchronous entry behavior. Disabled
@@ -122,6 +169,36 @@ Fixed ELF-entry and deliberately sealed startup assertions remain legitimate
 only for their stated qualification; they cannot constrain general syscall
 buffers. Frame-profile selection must reach every relevant emitter, including
 files and output, rather than silently using a predecessor helper.
+
+### Shared caller adapter
+
+The x86 shared helper keeps its existing R8 candidate, R9 length and carry-result
+convention. In addition to the ordinary six callee registers, its adapter
+preserves RDX, RSI, RDI, R8 and R9. A saved RBP supplies a stable debugger CFA
+while the actual call stack is aligned, so nested helper calls do not need to
+assume one particular entry alignment. Completed saved words, alignment and
+return storage are physically cleared before normal helper resumption.
+
+For the initial adapter, the helper return word, saved RBP, five volatile saves,
+maximum alignment and bridge words require 88 outer bytes. The gateway keeps
+its 48 saved-register bytes and derives the aligned inner retirement window as
+`(4096 - 48 - 88) & -16 = 3952`. Its complete physical footprint is therefore
+4088 bytes within the original 4096-byte reserve. This is one owning gateway,
+with no nested 4096-byte erasure. The native body/call path must separately fit
+that derived window. The predecessor keeps its existing 4032-byte inner window.
+
+Admission verifies the generated helper/bridge return sites, actual helper
+frame shape and owned continuation-stack extent before lending those outer
+bytes. After nonreturning inner cleanup, a generated terminal adapter restores
+the original enclosing RBP and clears only its own 80/88-byte outer frame.
+An unestablished outer layout cannot authorize that cleanup. These are private
+x86 layout choices; the portable operation still requires the same lifetime,
+preservation, complete-cost and cleanup evidence on other targets.
+
+Caller migration remains a private component selection until every direct and
+shared caller and the complete source/native/load/boot binding are qualified.
+Adding the shared adapter alone does not complete this migration or activate
+canonical production publication.
 
 ## Architecture comparison
 

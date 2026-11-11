@@ -117,6 +117,9 @@ fn emit_static_process_low_heap_validation(
 }
 
 fn emit_static_process_command_buffer_validation(code: &mut X86FunctionEncoder) {
+    if code.owned_user_extents {
+        return;
+    }
     // The bounded command extent lies wholly in the second anonymous heap leaf.
     // Revalidate its affine frame identity and writable/NX permissions.
     code.bytes(&[0x65, 0x48, 0x8b, 0x14, 0x25, 0x70, 0, 0, 0]);
@@ -204,6 +207,7 @@ fn static_image_process_enter(
         source_namespace,
         false,
         false,
+        false,
     )
 }
 
@@ -223,8 +227,17 @@ fn static_image_process_enter_selected(
     source_namespace: bool,
     frame_memory: bool,
     user_extent_probe: bool,
+    owned_user_extents: bool,
 ) -> Result<LinkableX86Function, CompileError> {
-    let mut code = X86FunctionEncoder::default();
+    if owned_user_extents && (!frame_memory || user_extent_probe) {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-USER-EXTENT: caller migration needs its own frame selection".into(),
+        ));
+    }
+    let mut code = X86FunctionEncoder {
+        owned_user_extents,
+        ..Default::default()
+    };
     emit_static_process_start(
         &mut code,
         source_bound,
@@ -277,7 +290,7 @@ fn static_image_process_enter_selected(
     } else {
         vec![]
     };
-    if user_extent_probe {
+    if user_extent_probe || owned_user_extents {
         for (symbol, label) in [
             (
                 "topal_x86_user_extent_wp_before_v1",

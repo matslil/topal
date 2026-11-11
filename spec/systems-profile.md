@@ -5101,6 +5101,12 @@ descriptor allocation, successful metadata publication, mutable filesystem,
 another process or thread, BusyBox redistribution, command output, shell, or a
 prompt.
 
+When the owned frame profile is selected, `TOPAL-SYSTEMS-USER-EXTENT-001`
+SHALL replace this rule's fixed pathname placement and unconditional writable
+destination witnesses. Required absence, selector/flag/lifecycle rules and
+nonpublication SHALL remain. The preceding sealed profile SHALL retain the
+qualification above.
+
 ### TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CREDENTIAL-TAIL-001 — Static-process credential normalization tail
 
 The bounded static-process entry MAY replace startup
@@ -10820,6 +10826,67 @@ invariants SHALL fail closed without ordinary successful resumption. Existing
 staging, interruption, partial-progress and generated recovery obligations SHALL
 remain in force.
 
+For stat-family pathname queries in the owned profile, the complete required
+pathname extent SHALL be admitted for reading before its first load. A lookup
+failure SHALL return without admitting, accessing or retaining the unused
+metadata destination. A query proceeding to metadata publication SHALL require
+complete writable-output admission after successful lookup and independent
+record-error decisions, before private record staging changes. These rules
+SHALL supersede predecessor stat-family fixed-placement and unconditional-output
+witnesses only in the owned selection. Independent operation, selector, flag,
+lookup and lifecycle rules SHALL remain; no general filesystem qualification
+SHALL follow from this refinement. Predecessor selections SHALL retain their
+exact rules.
+Prescribed pathname contents SHALL remain unchanged, but their storage MAY be
+any admitted readable extent held stable for the complete query; no immutable
+mapping or predecessor virtual placement SHALL be required in that selection.
+
+In the owned selection, bounded open SHALL admit the complete required
+pathname, including its terminator, before the first load. A bounded
+directory read SHALL apply its independent descriptor, count and position
+checks before admitting the exact complete record extent for writing. That
+admission SHALL precede staging and position changes. A directory EOF SHALL
+return zero without admitting, accessing or retaining a destination. The
+bounded profile-file read SHALL check the requested numeric address range
+before returning EOF without admitting, accessing or retaining a destination.
+The numeric check SHALL grant no usable address and SHALL require no mapping.
+These rules supersede the bounded adapters' predecessor placement and mapped
+capacity witnesses only in the owned selection. Operation, count and lifecycle
+requirements SHALL remain in force.
+
+The bounded root `chdir` SHALL admit the two-byte pathname for reading before
+the first load. The bounded `rt_sigaction` installs and queries SHALL admit the
+complete native action for the selected transfer direction before the first
+load or store and any disposition or phase update. A bounded terminal request
+miss SHALL return `ENOTTY` without admitting or accessing its unused argument.
+A bounded file-header read SHALL admit exactly one byte for writing before
+staging, publication or position change. A bounded header poll SHALL admit the
+complete eight-byte record for reading before its first load and admit the
+two-byte `revents` field for writing before publication or phase change. These
+rules SHALL replace the predecessor placement witnesses in the owned selection.
+
+An owned bounded shell command read SHALL copy the lesser of the requested
+count and the available command bytes. A zero count SHALL return zero without
+admitting a destination, consuming input or advancing the command. Each
+nonempty copy SHALL admit the exact destination before publication and SHALL
+consume bytes only after a successful copy. The serial adapter MAY receive up
+to the lesser of the requested count and 256 bytes, stopping at the next
+newline. If admission fails, it
+SHALL retain received bytes privately for retry without changing shell phase.
+It SHALL erase consumed serial bytes, keep the next command phase gated on
+complete delivery, and retire its private state at successful exec or exit.
+
+The owned first-image terminal route SHALL check the completed command and
+the transferred descriptor ownership. A qualified sole-mm exit SHALL release
+its live descriptor table and clear the retained thread registrations without
+accessing their user addresses. The first-image route SHALL establish that it
+has no child before using that retirement rule.
+After signal dispositions transfer into the process-owned table, the owned
+terminal route SHALL require the consumed prelude disposition slots to be empty.
+Terminal table teardown SHALL retire the current signal state, including
+subsequent changes through qualified signal-action operations; the old prelude
+slots SHALL NOT supply authority after that transfer.
+
 The initial x86-64 realization SHALL qualify ordinary four-level LA48 paging and
 4096-byte leaves with explicit actual paging/permission-control state and
 physical-access limits. Its kernel initialization SHALL enable CR0.WP before
@@ -10835,3 +10902,11 @@ frame-profile buffer admission. Existing roots SHALL retain their qualified
 profiles. Model/component evidence SHALL NOT grant all-caller integration,
 canonical publication or full kernel acceptance without their own complete
 source/native/context/resource/load/runtime proofs.
+
+Caller migration SHALL preserve the existing helper's input-register liveness,
+direction and result convention. Its complete caller proof SHALL include every
+outer return, saved-value and alignment word together with the inner native
+path and normal/terminal physical retirement. The backend SHALL derive its
+inner retirement window from that complete layout within the unchanged caller
+reserve. A migrated adapter SHALL NOT erase a still-live enclosing frame.
+Predecessor profiles SHALL retain their independently qualified layout.

@@ -1,0 +1,25 @@
+{
+  "roles": [
+    {
+      "count": 5,
+      "pins": 1,
+      "slot": 7
+    },
+    {
+      "count": 1,
+      "pins": 1,
+      "slot": 6
+    },
+    {
+      "count": 503,
+      "pins": 1,
+      "slot": 5
+    },
+    {
+      "count": 2,
+      "pins": 2,
+      "slot": 8
+    }
+  ],
+  "token_bytes": 336
+}

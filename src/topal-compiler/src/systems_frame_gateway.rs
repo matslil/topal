@@ -57,11 +57,11 @@ fn poison(code: &mut Code, syscalls: bool) {
         e.store(R11, 0, A);
     }
 }
-fn scratch(code: &mut Code, fail: &str) {
+fn scratch(code: &mut Code, fail: &str, retired: u64) {
     let mut e = E(&mut code.encoder);
     e.mov(R11, R12);
-    e.add(R11, -(RETIRED as i32));
-    erase(&mut e, R11, RETIRED, fail);
+    e.add(R11, -(retired as i32));
+    erase(&mut e, R11, retired, fail);
 }
 fn finish(code: &mut Code, normal: bool, fail: &str) {
     saved_rows(code, 7);
@@ -92,7 +92,32 @@ fn finish(code: &mut Code, normal: bool, fail: &str) {
         }
     }
 }
-fn late(code: &mut Code, syscalls: bool) -> Result<(), CompileError> {
+
+fn terminal_caller(code: &mut Code, retired: u64, label: &str) -> Result<(), CompileError> {
+    if retired == RETIRED {
+        return Ok(());
+    }
+    let mut e = E(&mut code.encoder);
+    e.load(A, _Sp, 0);
+    address(
+        &mut e,
+        &mut code.references,
+        R10,
+        "topal_x86_user_extent_return_v1",
+    );
+    e.rr(0x39, A, R10);
+    e.0.jump_if(0x85, label);
+    branch(
+        &mut e,
+        &mut code.references,
+        "topal_x86_user_extent_caller_abort_v1",
+        false,
+    );
+    e.0.bind(label)?;
+    clear_volatile(&mut e);
+    Ok(())
+}
+fn late(code: &mut Code, syscalls: bool, retired: u64) -> Result<(), CompileError> {
     code.encoder.bind("late_failure")?;
     poison(code, syscalls);
     // Original callee registers are already restored and their copies erased.
@@ -101,8 +126,8 @@ fn late(code: &mut Code, syscalls: bool) -> Result<(), CompileError> {
     {
         let mut e = E(&mut code.encoder);
         e.mov(R11, _Sp);
-        e.add(R11, -((RETIRED + 48) as i32));
-        erase(&mut e, R11, RETIRED + 48, "late_halt");
+        e.add(R11, -((retired + 48) as i32));
+        erase(&mut e, R11, retired + 48, "late_halt");
         address(&mut e, &mut code.references, R11, RECOVERY_GATE);
         e.imm(C, 0);
         for offset in (0..48).step_by(8) {
@@ -115,9 +140,14 @@ fn late(code: &mut Code, syscalls: bool) -> Result<(), CompileError> {
         }
         clear_volatile(&mut e);
     }
+    terminal_caller(code, retired, "late_caller_not_owned")?;
     halt(code, "late_halt")
 }
-fn call(syscalls: bool, user_extents: bool) -> Result<(Code, u64, u64), CompileError> {
+fn call(
+    syscalls: bool,
+    user_extents: bool,
+    retired: u64,
+) -> Result<(Code, u64, u64), CompileError> {
     let mut code = Code::default();
     {
         let mut e = E(&mut code.encoder);
@@ -146,7 +176,7 @@ fn call(syscalls: bool, user_extents: bool) -> Result<(Code, u64, u64), CompileE
         e.0.jump_if(0x85, "unsafe"); // IF=DF=0
     }
     if syscalls {
-        memory::entry(&mut code, user_extents)?;
+        memory::entry(&mut code, user_extents, retired != RETIRED)?;
     }
     {
         let mut e = E(&mut code.encoder);
@@ -233,11 +263,11 @@ fn call(syscalls: bool, user_extents: bool) -> Result<(Code, u64, u64), CompileE
         e.cmp(A, 2);
         e.0.jump_if(0x84, "failed");
     }
-    scratch(&mut code, "failed");
+    scratch(&mut code, "failed", retired);
     finish(&mut code, true, "late_failure");
     let normal = code.encoder.bytes.len() as u64;
     code.encoder.bytes(&[0xc3]);
-    late(&mut code, syscalls)?;
+    late(&mut code, syscalls, retired)?;
     code.encoder.bind("failed")?;
     saved_rows(&mut code, 12);
     branch(
@@ -251,7 +281,7 @@ fn call(syscalls: bool, user_extents: bool) -> Result<(Code, u64, u64), CompileE
     halt(&mut code, "unsafe")?;
     Ok((code, normal, refused))
 }
-fn abort(syscalls: bool) -> Result<(Code, u64), CompileError> {
+fn abort(syscalls: bool, retired: u64) -> Result<(Code, u64), CompileError> {
     let mut code = Code::default();
     row(&mut code, vec![0x07, 16]);
     {
@@ -279,36 +309,60 @@ fn abort(syscalls: bool) -> Result<(Code, u64), CompileError> {
         wipe(&mut code, name, bytes, &next);
         code.encoder.bind(&next)?;
     }
-    scratch(&mut code, "scratch_erased");
+    scratch(&mut code, "scratch_erased", retired);
     code.encoder.bind("scratch_erased")?;
     finish(&mut code, false, "late_failure");
+    terminal_caller(&mut code, retired, "fatal_caller_not_owned")?;
     let reclaimed = code.encoder.bytes.len() as u64;
     halt(&mut code, "reclaimed")?;
-    late(&mut code, syscalls)?;
+    late(&mut code, syscalls, retired)?;
     halt(&mut code, "unsafe")?;
     Ok((code, reclaimed))
 }
 pub(crate) fn component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, false, false)
+    component_selected(complete_body_bound, false, false, RETIRED)
 }
 pub(crate) fn memory_component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, true, false)
+    component_selected(complete_body_bound, true, false, RETIRED)
 }
 pub(crate) fn user_extent_component_object(
     complete_body_bound: u64,
 ) -> Result<Vec<u8>, CompileError> {
-    component_selected(complete_body_bound, true, true)
+    component_selected(complete_body_bound, true, true, RETIRED)
+}
+
+#[cfg(test)]
+pub(crate) fn owned_user_extent_component_object(
+    complete_body_bound: u64,
+) -> Result<Vec<u8>, CompileError> {
+    use crate::systems_provider_object::user_extent_bridge::{
+        CALLER_OUTER_BYTES, CALLER_RETIRED_BYTES,
+    };
+    if complete_body_bound
+        .checked_add(64 + CALLER_OUTER_BYTES)
+        .is_none_or(|n| n > 4096)
+        || CALLER_RETIRED_BYTES + 48 + CALLER_OUTER_BYTES > 4096
+    {
+        return Err(CompileError::Tool(
+            "E-SYSTEMS-USER-EXTENT: complete caller exceeds its reserve".into(),
+        ));
+    }
+    component_selected(complete_body_bound, true, true, CALLER_RETIRED_BYTES)
 }
 fn component_selected(
     complete_body_bound: u64,
     syscalls: bool,
     user_extents: bool,
+    retired: u64,
 ) -> Result<Vec<u8>, CompileError> {
-    if complete_body_bound == 0
+    if retired == 0
+        || retired % 16 != 0
+        || retired > RETIRED
+        || complete_body_bound == 0
         || complete_body_bound % 8 != 0
         || complete_body_bound
             .checked_add(16)
-            .is_none_or(|n| n > RETIRED)
+            .is_none_or(|n| n > retired)
         || complete_body_bound.checked_add(72).is_none_or(|n| n > 4096)
         || (syscalls && complete_body_bound.checked_add(80).is_none_or(|n| n > 4096))
     {
@@ -342,7 +396,7 @@ fn component_selected(
     });
     // Define the terminal function before the call gate references it. The
     // shared writer otherwise creates a redundant undefined forward symbol.
-    let (code, point) = abort(syscalls)?;
+    let (code, point) = abort(syscalls, retired)?;
     append_code(&mut object, text, frame, ABORT_GATE, code)?;
     let start = object
         .symbol(object.symbol_id(ABORT_GATE.as_bytes()).unwrap())
@@ -353,7 +407,7 @@ fn component_selected(
         "topal_x86_frame_gateway_fatal_reclaimed_v1",
         start + point,
     );
-    let (code, normal, refused) = call(syscalls, user_extents)?;
+    let (code, normal, refused) = call(syscalls, user_extents, retired)?;
     let checking = code.encoder.labels["recovery_cleared"] as u64;
     let late = code.encoder.labels["late_halt"] as u64;
     let dispatched = code.encoder.labels["dispatched"] as u64;

@@ -279,6 +279,9 @@ struct LinkableX86Function {
 
 #[derive(Default)]
 struct X86FunctionEncoder {
+    // Private emitter selection; no source value or serialized flag can enable
+    // the owned-buffer component's publication route.
+    owned_user_extents: bool,
     bytes: Vec<u8>,
     labels: BTreeMap<String, usize>,
     fixups: Vec<(usize, String)>,
@@ -317,6 +320,14 @@ impl X86FunctionEncoder {
     fn call(&mut self, label: &str) {
         self.bytes.push(0xe8);
         self.fixup(label);
+        if self.owned_user_extents
+            && matches!(label, "runtime-readable-extent" | "runtime-writable-extent")
+        {
+            // The return word belongs to the caller until RET completes. MOV
+            // erases its completed copy without changing the helper's CF.
+            self.bytes
+                .extend_from_slice(&[0x48, 0xc7, 0x44, 0x24, 0xf8, 0, 0, 0, 0]);
+        }
     }
 
     fn rip_lea(&mut self, opcode: &[u8], label: &str) {
@@ -332,6 +343,12 @@ impl X86FunctionEncoder {
 
     fn external_call(&mut self, symbol: &'static str) {
         self.bytes.push(0xe8);
+        self.external_calls.push((self.bytes.len() as u64, symbol));
+        self.bytes.extend_from_slice(&[0; 4]);
+    }
+
+    fn external_jump(&mut self, symbol: &'static str) {
+        self.bytes.push(0xe9);
         self.external_calls.push((self.bytes.len() as u64, symbol));
         self.bytes.extend_from_slice(&[0; 4]);
     }

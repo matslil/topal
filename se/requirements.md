@@ -732,7 +732,9 @@ encoding validation, metadata layout, syscall number, and register convention.
 Another path, directory selector, flag, incomplete destination, lifecycle
 phase, duplicate request, or success result shall fail closed. This requirement
 does not introduce a VFS, mount, inode, descriptor-allocation, pathname-
-resolution, or general metadata-query service.
+resolution, or general metadata-query service. The later owned frame profile
+uses `TOPAL-REQ-SYSTEMS-USER-EXTENT-001` for pathname admission and unused output
+on absence; the preceding sealed adapter retains the requirements above.
 
 The bounded startup-credential-tail adapter shall expose sealed real GID,
 effective UID, and effective GID observations after the optional configuration
@@ -1965,3 +1967,46 @@ production qualification. The new kernel profile shall initialize supervisor
 write protection before userspace entry, preserve other CR0 bits in that
 transition and keep protection enabled through transfers and subsequent kernel
 execution. See [TK-DEC-283](../linux-kernel/design/owned-user-extents.md).
+
+Caller migration shall preserve helper input-register liveness and its result
+convention. Account for outer return, save and alignment storage as well as the
+inner component within the existing caller reserve, including terminal cleanup.
+Derive the inner retirement window from that complete layout; preserve the
+predecessor's layout independently.
+
+For stat-family pathname queries, the owned profile shall admit every actual
+input byte before reading it, preserve lookup-error precedence, and admit output
+only after successful lookup and independent record-error decisions, before
+staging or publication. Absence shall
+not validate, access or retain an unused destination. This supersedes only the
+preceding profile's fixed-placement and unconditional-output witnesses; it does
+not grant general pathname or filesystem behavior.
+Prescribed pathname contents shall remain unchanged; their storage need only be
+an admitted readable extent held stable for the complete query.
+
+For the bounded open and directory-read adapters, the owned selection shall
+admit the complete pathname before its first load and the complete actual
+record output before staging. Directory EOF shall perform no destination
+admission or access. The profile-file read shall enforce the requested numeric
+address range before returning EOF without destination admission or access.
+Apply the existing selector, flag, count, position and lifetime checks.
+
+In the owned selection, bounded root `chdir` and signal-action installs shall
+admit their complete native input before reading it. Signal-action queries,
+header reads and header poll shall admit their actual output before changing
+the output or advancing operation state. Header poll shall admit its complete
+input record before reading it. Terminal request misses shall leave their
+unused argument untouched and require no mapping admission.
+
+Bounded shell input shall admit the actual output before copying it, preserve
+unread bytes across a short or refused transfer, and advance command state
+only after complete delivery. A zero count shall leave input and phase intact.
+The serial receive adapter shall retain undelivered bytes within the current
+owner. Completion and terminal witnesses shall use private state and shall be
+retired on successful image replacement or exit.
+
+The bounded first-image terminal path shall validate its current descriptor
+owner and lack of a child, release the initialized descriptor table, and clear
+its thread registrations as opaque values during sole-mm retirement.
+It shall require consumed prelude signal slots to be empty and retire the
+current signal state in the process-owned table, including subsequent changes.

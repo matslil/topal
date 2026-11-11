@@ -7,6 +7,8 @@ const ENV_COUNT: i32 = 336;
 const ENV_SIZE: i32 = 344;
 const ENV_OFFSETS: i32 = 352;
 const ENV_BYTES: i32 = 480;
+const MAX_ENV_BYTES: i32 = 1024;
+pub(super) const STAGING_END: i32 = ENV_BYTES + MAX_ENV_BYTES;
 
 pub(in super::super) fn emit_copy(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
     let mut e = E(code);
@@ -32,7 +34,7 @@ pub(in super::super) fn emit_copy(code: &mut X86FunctionEncoder) -> Result<(), C
     e.rr(0x01, Di, R12);
     e.store(Di, ENV_OFFSETS, R15);
     e.0.bind("runtime-environment-byte")?;
-    e.cmp(R15, 1024);
+    e.cmp(R15, MAX_ENV_BYTES);
     e.0.jump_if(0x83, "runtime-exec-e2big");
     e.mov(R8, B);
     e.imm(R9, 1);

@@ -1401,6 +1401,10 @@ evidence shall enforce exact dispatch, complete path and range validation,
 absence result, nonmutation, nonretention, header-bound terminal choice,
 rollback, and continuation. This realizes
 `TOPAL-SYSTEMS-STATIC-ELF-INITIAL-CONFIG-STAT-MISS-001` and `TK-DEC-196`.
+The later owned frame selection instead applies
+`TOPAL-COMP-SYSTEMS-USER-EXTENT-001`: admit the pathname and perform no output
+admission or access on an absent lookup. The preceding sealed selection retains
+the exact destination and placement witnesses above.
 
 The bounded static-ELF initial-credential-tail increment shall refine startup
 with service
@@ -12595,3 +12599,54 @@ qualified. Initialize and verify CR0.WP before the new profile's first userspace
 entry; preserve all other CR0 bits and keep WP enabled, including during copies.
 Retain exact generated transition sites for actual before/after observation.
 See [owned extents](../../linux-kernel/design/owned-user-extents.md).
+
+Preserve the shared helper's live input registers and carry/result convention
+through an adapter with actual unwind and alignment evidence. Include all outer
+return/save/alignment words in the unchanged 4096-byte caller reserve and derive
+the inner window accordingly. Both normal completion and nonreturning cleanup
+shall retire the adapter's own temporaries without erasing an enclosing frame.
+Keep predecessor object/layout equality separate from the new selection.
+
+For stat-family pathname queries, admit complete required input bytes before
+their first load and preserve lookup errors before output processing. Admit a
+complete output only after successful lookup and independent record-error
+decisions, before private staging changes or publication. An absent lookup shall
+neither admit nor access its unused output
+pointer. Preserve independent selector/flag/lifecycle rules and predecessor
+profiles, including when replacing their fixed pathname and destination bounds.
+Retain prescribed pathname contents while allowing any admitted readable,
+entry-stable storage for those bytes.
+
+For bounded open in the owned selection, admit all required pathname bytes
+including the terminator before a load. At a bounded directory read, preserve
+the independent capacity and position checks, then admit the actual complete
+record output before staging it. EOF paths perform no destination admission or
+access. For the bounded profile-file read, first validate the requested numeric
+address range without consulting its translations. Preserve predecessor bytes
+and verify each migrated path through its native syscall entry.
+
+For the bounded owned shell selection, qualify the complete two-byte root
+pathname, 32-byte native signal actions, one-byte header result and eight-byte
+poll record with a two-byte writable result field. Keep the operation and
+lifecycle checks. Failed admission shall precede output, disposition or phase
+changes. A terminal request that returns `ENOTTY` without a transfer shall
+perform no argument admission. Qualify through native entries and preserve
+the predecessor emitter bytes.
+
+For the bounded owned command reads, preserve each selected literal and the
+serial limit. Derive each copy length from the captured count and the unread
+extent. Validate that extent before publishing, retain received serial bytes
+over `EFAULT`, erase the consumed serial prefix, and retain no user pointer
+across calls. Keep the command cursor and received data separate from transient
+exec staging. Qualify short reads, zero counts, retries and exact output through
+native entries while preserving the predecessor emitter bytes.
+
+The owned first-image terminal path shall use the initialized descriptor
+table after serial delivery, check that no child is retained, and clear the
+thread-registration slots without reading or writing their user addresses.
+Preserve the zero-status condition and verify retirement through an ordinary
+first-image shell exit.
+Require the consumed prelude signal slots to be empty after transfer into the
+process-owned table. Terminal teardown shall retire that table's current signal
+state, including subsequent changes, rather than require the old installation
+witnesses to remain live.

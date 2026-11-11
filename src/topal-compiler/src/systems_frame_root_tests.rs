@@ -30,15 +30,61 @@ fn frame_root_replaces_real_allocation_release_and_mapping_lifetimes() {
     execute(false);
 }
 
+#[test]
+#[ignore = "requires TOPAL_PINNED_STATIC_USER_IMAGE, QEMU and GDB"]
+fn owned_first_image_exit_retires_transferred_signal_state() {
+    // TOPAL-SYSTEMS-USER-EXTENT-001: ordinary unmodified application execution.
+    execute_selected(true, true, true, Some(CallerFocus::Application));
+}
+
 pub(super) fn execute(memory: bool) -> std::path::PathBuf {
-    execute_selected(memory, false)
+    execute_selected(memory, false, false, None)
 }
 
 pub(crate) fn execute_user_extents() -> std::path::PathBuf {
-    execute_selected(true, true)
+    execute_selected(true, true, false, None)
 }
 
-fn execute_selected(memory: bool, user_extents: bool) -> std::path::PathBuf {
+pub(crate) fn execute_user_extent_callers() -> std::path::PathBuf {
+    execute_selected(true, true, true, None)
+}
+
+pub(crate) fn execute_user_extent_startup() -> std::path::PathBuf {
+    execute_selected(true, true, true, Some(CallerFocus::Startup))
+}
+
+pub(crate) fn execute_user_extent_shell() -> std::path::PathBuf {
+    execute_selected(true, true, true, Some(CallerFocus::Shell))
+}
+
+pub(crate) fn execute_user_extent_stat() -> std::path::PathBuf {
+    execute_selected(true, true, true, Some(CallerFocus::Stat))
+}
+
+pub(crate) fn execute_user_extent_statat() -> std::path::PathBuf {
+    execute_selected(true, true, true, Some(CallerFocus::StatAt))
+}
+
+pub(crate) fn execute_user_extent_shell_io() -> std::path::PathBuf {
+    execute_selected(true, true, true, Some(CallerFocus::ShellIo))
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CallerFocus {
+    Application,
+    Startup,
+    Shell,
+    Stat,
+    StatAt,
+    ShellIo,
+}
+
+fn execute_selected(
+    memory: bool,
+    user_extents: bool,
+    owned_callers: bool,
+    focus: Option<CallerFocus>,
+) -> std::path::PathBuf {
     // TOPAL-SYSTEMS-FRAME-POLICY-BINDING-001: complete existing boot IR, not
     // a smaller constant probe. Canonical publication remains unqualified.
     let root = root();
@@ -82,14 +128,36 @@ fn execute_selected(memory: bool, user_extents: bool) -> std::path::PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let prefix = if user_extents {
+    let prefix = if focus == Some(CallerFocus::Application) {
+        "user-extent-application"
+    } else if focus == Some(CallerFocus::ShellIo) {
+        "user-extent-shell-io"
+    } else if focus == Some(CallerFocus::StatAt) {
+        "user-extent-statat"
+    } else if focus == Some(CallerFocus::Stat) {
+        "user-extent-stat"
+    } else if focus == Some(CallerFocus::Shell) {
+        "user-extent-shell"
+    } else if focus == Some(CallerFocus::Startup) {
+        "user-extent-startup"
+    } else if owned_callers {
+        "user-extent-callers"
+    } else if user_extents {
         "user-extent-root"
     } else if memory {
         "frame-memory"
     } else {
         "frame-root"
     };
-    let work = std::env::temp_dir().join(format!("{prefix}-{}-{nonce}", std::process::id()));
+    let parent = if focus == Some(CallerFocus::Application) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../linux-kernel/.cache/x86_64");
+        fs::create_dir_all(&path).unwrap();
+        path
+    } else {
+        std::env::temp_dir()
+    };
+    let work = parent.join(format!("{prefix}-{}-{nonce}", std::process::id()));
     fs::create_dir(&work).unwrap();
     eprintln!("actual frame source root: {}", work.display());
     fs::write(work.join("root.t"), root).unwrap();
@@ -128,7 +196,11 @@ fn execute_selected(memory: bool, user_extents: bool) -> std::path::PathBuf {
             .arg(work.join("root.o")),
     );
     let target = if let Some(owners) = &owners {
-        crate::systems_user_extent::target_llvm(&checked.component, owners)
+        if owned_callers {
+            crate::systems_user_extent::caller_target_llvm(&checked.component, owners)
+        } else {
+            crate::systems_user_extent::target_llvm(&checked.component, owners)
+        }
     } else if memory {
         super::memory_llvm(&checked.component, tokens.size())
     } else {
@@ -143,7 +215,15 @@ fn execute_selected(memory: bool, user_extents: bool) -> std::path::PathBuf {
             .args(["-passes=verify", "-disable-output"])
             .arg(work.join("target.ll")),
     );
-    build_guest(&work, &checked, &tools, memory, user_extents);
+    build_guest(
+        &work,
+        &checked,
+        &tools,
+        memory,
+        user_extents,
+        owned_callers,
+        focus,
+    );
     work
 }
 
@@ -153,18 +233,53 @@ fn build_guest(
     tools: &crate::LlvmTools,
     memory: bool,
     user_extents: bool,
+    owned_callers: bool,
+    focus: Option<CallerFocus>,
 ) {
     use object::ObjectSegment;
     let fixture = work.join("static-elf-abi-fixture.elf");
-    fs::write(
-        &fixture,
-        if memory {
-            super::memory_tests::fixture()
-        } else {
-            crate::qualified_x86_64_static_user_image_fixture()
-        },
-    )
-    .unwrap();
+    let fixture_bytes = if focus == Some(CallerFocus::Application) {
+        use sha2::{Digest, Sha256};
+        let path = std::env::var_os("TOPAL_PINNED_STATIC_USER_IMAGE")
+            .expect("provide the pinned BusyBox ELF through TOPAL_PINNED_STATIC_USER_IMAGE");
+        let bytes = fs::read(path).unwrap();
+        assert_eq!(
+            format!("{:x}", Sha256::digest(&bytes)),
+            "7ae95c260622412ceba6eb9f45d68f616cdc091a1d71d6c0a08b5875bb2c31dd"
+        );
+        bytes
+    } else if owned_callers {
+        let fixture = super::memory_tests::caller_fixture();
+        fs::write(
+            work.join("caller-fixture-sites.json"),
+            serde_json::to_vec_pretty(&fixture.assertions).unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            work.join("caller-observation.json"),
+            serde_json::to_vec_pretty(&serde_json::json!({
+                    "startup_only":focus == Some(CallerFocus::Startup),
+                    "shell_only":focus == Some(CallerFocus::Shell),
+                    "stat_only":focus == Some(CallerFocus::Stat),
+                    "statat_only":focus == Some(CallerFocus::StatAt),
+                    "shell_io_only":focus == Some(CallerFocus::ShellIo),
+                    "startup_completion":fixture.startup_completed,
+                    "shell_completion":fixture.shell_completed,
+                    "stat_completion":fixture.stat_completed,"stat_pages":fixture.stat_pages,
+                    "statat_completion":fixture.statat_completed,"statat_pages":fixture.statat_pages,
+                    "write_pages":fixture.write_pages,"write_lengths":super::memory_tests::WRITE_LENGTHS,
+                    "file_cases":fixture.file_cases,"shell_io_cases":fixture.shell_io_cases,
+                    "command_cases":fixture.command_cases}))
+            .unwrap(),
+        )
+        .unwrap();
+        fixture.image
+    } else if memory {
+        super::memory_tests::fixture()
+    } else {
+        crate::qualified_x86_64_static_user_image_fixture()
+    };
+    fs::write(&fixture, fixture_bytes).unwrap();
     let baseline = crate::publish_systems_source(
         ROOT,
         &crate::CompileOptions {
@@ -221,21 +336,32 @@ fn build_guest(
     ];
     if user_extents {
         fs::write(work.join("extent.ll"), crate::systems_user_extent::llvm()).unwrap();
-        fs::write(
-            work.join("extent-probe.ll"),
-            format!(
-                "target datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n{}",
-                crate::X86_SYSTEMS_DATA_LAYOUT,
-                include_str!("../../../linux-kernel/labs/qemu/x86_64/user_extent_probe.ll")
-            ),
-        )
-        .unwrap();
+        if !owned_callers {
+            fs::write(
+                work.join("extent-probe.ll"),
+                format!(
+                    "target datalayout = \"{}\"\ntarget triple = \"x86_64-unknown-none\"\n{}",
+                    crate::X86_SYSTEMS_DATA_LAYOUT,
+                    include_str!("../../../linux-kernel/labs/qemu/x86_64/user_extent_probe.ll")
+                ),
+            )
+            .unwrap();
+        }
         fs::write(
             work.join("extent-bridge.o"),
             crate::systems_provider_object::user_extent_bridge::object().unwrap(),
         )
         .unwrap();
-        roles.extend(["extent", "extent-probe"]);
+        roles.push("extent");
+        if owned_callers {
+            fs::write(
+                work.join("extent-callers.o"),
+                crate::systems_provider_object::user_extent_bridge::caller_object().unwrap(),
+            )
+            .unwrap();
+        } else {
+            roles.push("extent-probe");
+        }
     }
     for role in roles {
         run(
@@ -295,7 +421,18 @@ fn build_guest(
             "return_and_adapter_bytes": 16,
             "caller_reserve_bytes": 4096,
         });
-        if user_extents {
+        if owned_callers {
+            use crate::systems_provider_object::user_extent_bridge::{
+                CALLER_OUTER_BYTES, CALLER_RETIRED_BYTES,
+            };
+            let complete = body + 64 + CALLER_OUTER_BYTES;
+            assert!(complete <= 4096 && CALLER_RETIRED_BYTES + 48 + CALLER_OUTER_BYTES <= 4096);
+            frame["syscall_adapter"]["physical_retirement_bytes"] =
+                serde_json::json!(CALLER_RETIRED_BYTES + 48);
+            frame["user_extent_callers"] = serde_json::json!({"complete_stack_bytes":complete,
+                "outer_bytes":CALLER_OUTER_BYTES,"inner_retirement_bytes":CALLER_RETIRED_BYTES,
+                "complete_physical_bytes":CALLER_RETIRED_BYTES+48+CALLER_OUTER_BYTES,"reserve_bytes":4096});
+        } else if user_extents {
             let bytes = fs::read(work.join("extent-probe.o")).unwrap();
             let file = object::File::parse(bytes.as_slice()).unwrap();
             let frames = crate::systems_library::stack_sizes(&file).unwrap();
@@ -315,7 +452,9 @@ fn build_guest(
     .unwrap();
     fs::write(
         work.join("gateway.o"),
-        (if user_extents {
+        (if owned_callers {
+            crate::systems_provider_object::tail_boundary::frame_gateway::owned_user_extent_component_object
+        } else if user_extents {
             crate::systems_provider_object::tail_boundary::frame_gateway::user_extent_component_object
         } else if memory {
             crate::systems_provider_object::tail_boundary::frame_gateway::memory_component_object
@@ -333,7 +472,9 @@ fn build_guest(
     dependencies.frame_allocator_library = None;
     fs::write(
         work.join("provider.o"),
-        (if user_extents {
+        (if owned_callers {
+            crate::systems_provider_object::generate_owned_user_extent_provider(checked)
+        } else if user_extents {
             crate::systems_provider_object::generate_user_extent_probe_provider(checked)
         } else if memory {
             crate::systems_provider_object::generate_frame_memory_provider(checked)
@@ -344,6 +485,21 @@ fn build_guest(
         .bytes,
     )
     .unwrap();
+    if owned_callers {
+        // Retain actual predecessor factories for separate byte comparison;
+        // the new component selection cannot qualify the old layout by itself.
+        fs::write(
+            work.join("predecessor-provider.o"),
+            crate::systems_provider_object::generate_user_extent_probe_provider(checked)
+                .unwrap()
+                .bytes,
+        )
+        .unwrap();
+        fs::write(work.join("predecessor-gateway.o"),
+            crate::systems_provider_object::tail_boundary::frame_gateway::user_extent_component_object(
+                frame["roots"]["topal_frame_kernel_dispatch_v1"].as_u64().unwrap())
+                .unwrap()).unwrap();
+    }
     let legacy = &baseline.directory;
     let objects = [
         "namespace-library.o",
@@ -392,7 +548,15 @@ fn build_guest(
             link.arg(work.join(format!("{name}.o")));
         }
         if user_extents {
-            for name in ["extent", "extent-probe", "extent-bridge"] {
+            for name in [
+                "extent",
+                if owned_callers {
+                    "extent-callers"
+                } else {
+                    "extent-probe"
+                },
+                "extent-bridge",
+            ] {
                 link.arg(work.join(format!("{name}.o")));
             }
         }
@@ -433,15 +597,19 @@ fn build_guest(
         work,
         "guest",
         Command::new("python3")
-            .arg(
-                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(if user_extents {
+            .arg(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+                if focus == Some(CallerFocus::Application) {
+                    "../../linux-kernel/labs/qemu/x86_64/user_extent_application_inspect.py"
+                } else if owned_callers {
+                    "../../linux-kernel/labs/qemu/x86_64/user_extent_callers_inspect.py"
+                } else if user_extents {
                     "../../linux-kernel/labs/qemu/x86_64/user_extent_inspect.py"
                 } else if memory {
                     "../../linux-kernel/labs/qemu/x86_64/frame_memory_inspect.py"
                 } else {
                     "../../linux-kernel/labs/qemu/x86_64/frame_root_inspect.py"
-                }),
-            )
+                },
+            ))
             .arg(work),
     );
 }

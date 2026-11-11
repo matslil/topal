@@ -45,8 +45,12 @@ pub(super) mod volatile_files;
 // Strings [0,256), pointer offsets [256,320), argc at 320, size at 328.
 const STAGING: i32 = 0x9800;
 const STAGING_SIZE: i32 = 0x800;
+const OWNED_STAGING_SIZE: i32 = shell_input::INPUT_OFFSET - STAGING;
 #[path = "systems_exec_environment.rs"]
 pub(super) mod environment;
+#[path = "systems_shell_input.rs"]
+pub(super) mod shell_input;
+const _: () = assert!(environment::STAGING_END <= OWNED_STAGING_SIZE);
 pub(super) const ENTRY: u64 = 0x007f_f800;
 pub(super) const ARGUMENT_BASE: u64 = 0x007f_fa20;
 pub(super) const ENVIRONMENT_BASE: u64 = 0x007f_fb20;
@@ -63,13 +67,18 @@ impl E<'_> {
         self.add(R12, STAGING);
     }
     fn wipe(&mut self) {
+        let size = if self.0.owned_user_extents {
+            OWNED_STAGING_SIZE
+        } else {
+            STAGING_SIZE
+        };
         self.staging();
         self.mov(Di, R12);
         self.imm(A, 0);
-        self.imm(C, STAGING_SIZE as u64 / 8);
+        self.imm(C, size as u64 / 8);
         self.0.bytes(&[0xfc, 0xf3, 0x48, 0xab]);
         self.mov(Di, R12);
-        self.imm(C, STAGING_SIZE as u64 / 8);
+        self.imm(C, size as u64 / 8);
         self.0.bytes(&[0xf3, 0x48, 0xaf]);
         self.0.jump_if(0x85, "fatal");
     }
@@ -79,6 +88,16 @@ impl E<'_> {
 /// and user bits. This also catches heap holes before/after brk publication.
 /// Preserves every register except RAX/RCX/R10/R11; CF reports failure.
 pub(super) fn emit_extent_subroutine(code: &mut X86FunctionEncoder) -> Result<(), CompileError> {
+    if code.owned_user_extents {
+        code.bind("runtime-readable-extent")?;
+        code.external_jump("topal_x86_user_extent_readable_v1");
+        code.bind("runtime-writable-extent")?;
+        code.external_jump("topal_x86_user_extent_writable_v1");
+        code.bind("owned-user-buffer-efault")?;
+        E(code).imm(A, (-14_i64) as u64);
+        emit_static_process_sysret(code);
+        return Ok(());
+    }
     let mut e = E(code);
     e.0.bind("runtime-readable-extent")?;
     e.imm(C, 5);
@@ -288,6 +307,85 @@ pub(super) fn emit_stack_output_extent(code: &mut X86FunctionEncoder, register_r
         e.rr(0x39, A, R8);
         e.0.jump_if(0x85, "fatal");
     }
+}
+
+pub(super) enum UserExtentLength {
+    Bytes(u64),
+    Register(R),
+}
+
+/// Direct startup adapters use the same owning boundary as runtime services.
+/// Clobbers RAX/RCX/R8/R9/R10/R11; the caller must retain/reload any live value
+/// in those registers. Adds no saved word outside the proved shared adapter.
+pub(super) fn emit_owned_user_output(
+    code: &mut X86FunctionEncoder,
+    candidate: R,
+    length: UserExtentLength,
+    failure: &str,
+) {
+    emit_owned_user_extent(code, candidate, length, failure, "runtime-writable-extent");
+}
+
+/// Read admission has the same liveness/retirement contract as output admission.
+pub(super) fn emit_owned_user_input(
+    code: &mut X86FunctionEncoder,
+    candidate: R,
+    length: UserExtentLength,
+    failure: &str,
+) {
+    emit_owned_user_extent(code, candidate, length, failure, "runtime-readable-extent");
+}
+
+fn emit_owned_user_extent(
+    code: &mut X86FunctionEncoder,
+    candidate: R,
+    length: UserExtentLength,
+    failure: &str,
+    helper: &str,
+) {
+    assert!(code.owned_user_extents);
+    let mut e = E(code);
+    match length {
+        UserExtentLength::Bytes(bytes) => {
+            e.mov(R8, candidate);
+            e.imm(R9, bytes);
+        }
+        UserExtentLength::Register(count) => {
+            // Materialize both operands without overwriting a live source if
+            // either one already occupies a helper argument register.
+            let temporary = [A, C, R10, R11]
+                .into_iter()
+                .find(|r| (*r as u8) != candidate as u8 && (*r as u8) != count as u8)
+                .unwrap();
+            e.mov(temporary, candidate);
+            e.mov(R9, count);
+            e.mov(R8, temporary);
+        }
+    }
+    e.0.call(helper);
+    e.0.jump_if(0x82, failure);
+}
+
+/// Keep the captured return witness available for the following legacy entry
+/// checks after read admission consumes its volatile registers.
+pub(super) fn emit_owned_pathname(code: &mut X86FunctionEncoder, length: u64) {
+    emit_owned_user_return_witness(code);
+    E(code).gs(0x8b, Si, 320);
+    emit_owned_user_input(
+        code,
+        Si,
+        UserExtentLength::Bytes(length),
+        "owned-user-buffer-efault",
+    );
+    E(code).gs(0x8b, C, 296);
+}
+
+pub(super) fn emit_owned_user_return_witness(code: &mut X86FunctionEncoder) {
+    let mut e = E(code);
+    e.cmp(C, 0x401000);
+    e.0.jump_if(0x82, "fatal");
+    e.cmp(C, 0x58c285);
+    e.0.jump_if(0x83, "fatal");
 }
 
 /// Select the base used by the existing credential readback offsets.

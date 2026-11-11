@@ -480,3 +480,14 @@ pub(in super::super) fn emit_exit_dispatch(
     e.0.bind("pair-exit-parent")?;
     Ok(())
 }
+
+pub(in super::super) fn emit_require_initial_sole_process(code: &mut X86FunctionEncoder) {
+    let mut e = E(code);
+    e.gs(0x8b, R11, TABLE_CONTEXT);
+    e.load(A, R11, 0);
+    e.cmp(A, 1);
+    e.0.jump_if(0x85, "fatal");
+    e.load(A, R11, HEADER);
+    e.cmp(A, 0);
+    e.0.jump_if(0x85, "fatal");
+}
