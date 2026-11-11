@@ -49,6 +49,19 @@ boot resource and console transcript are unchanged. The 70-input selected record
 does not establish a complete producer, all-kernel graph, pointer provenance,
 admission dominance, stable access lifetime or production qualification.
 
+The [source-controller boundary checkpoint](tools/user-memory/results/stage-3-callback-bindings/README.md)
+binds the six indirect-call sites to five actual root-supplied source entries,
+389 functions and every relocated byte of 357 allocated object sections. Its
+final ordinary storage cohort observes all six sites and 1168 ABI/private-state
+preserving returns alongside 208 source-issued syscalls. All five controllers'
+live sections match the linked image; a separate unchanged BusyBox exit observes
+77 dispatch returns. Supervisor execution is verified while supervisor write
+permission remains present, distinct from hardware read-only text. Nine offline
+binding counterexamples, six post-checks and exact archived binding replay pass.
+All 17 compared kernel artifacts and the application/boot/console baselines are
+unchanged. The 93-input selected record does not replace complete callee-effect,
+entry/ownership/lifetime, direct/shared-access or production qualification.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

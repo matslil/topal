@@ -730,6 +730,17 @@ fn build_guest(
                 .arg(work)
                 .arg(tools.tool_path("llvm-objdump")),
         );
+        run(
+            work,
+            "callback-bindings",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/inspect_callback_bindings.py"),
+                )
+                .arg(work)
+                .arg(tools.tool_path("llvm-objdump")),
+        );
     }
     fs::write(
         work.join("bzImage"),

@@ -1,0 +1,11 @@
+{
+  "name": "kernel_library-instruction",
+  "kernel_file_offset": 1296288,
+  "original_byte": 85,
+  "changed_byte": 84,
+  "corrected_outer_kernel_sha256": "41b48608aafafc24b8b2bd1fafb3566cdf989c8d3b0491bc83617f991a5950d2",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "linked allocated payload differs",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

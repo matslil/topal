@@ -7,6 +7,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+from user_extent_callback_observer import PROGRAM as CALLBACK_PROGRAM
+
 
 def linked_inventory(build):
     path = Path(__file__).resolve().parents[3] / 'tools/user-memory/inspect_call_inventory.py'
@@ -21,7 +23,17 @@ def linked_inventory(build):
     elf = reader.Elf(build / 'kernel.elf')
     assert elf.kind == 2
     symbol = reader.verify_calls(elf, inventory)
+    bindings = json.loads((build / 'callback-bindings.json').read_text())
+    assert bindings['passed'] and bindings['kernel_sha256'] == reader.digest(elf.data)
+    assert bindings['process_graph_sha256'] == reader.digest((build / 'process-access-inventory.json').read_bytes())
+    native_bindings = dict(bindings)
+    native_bindings['callbacks'] = [
+        {key: row[key] for key in ['gs_slot', 'argument', 'entry_stack_offset', 'native_export', 'target', 'sections']}
+        for row in bindings['callbacks']
+    ]
     return dict(function=inventory['function'], address=symbol['value'], calls=inventory['calls'],
+                callback_bindings=native_bindings,
+                callback_header_hex=(build / 'static-elf-abi-fixture.elf').read_bytes()[:64].hex(),
                 kernel_sha256=reader.digest(elf.data), inventory_sha256=inspection['inventory_sha256'])
 
 
@@ -45,6 +57,7 @@ class ExtentFirstReach(Checked):
 def extent_coverage_complete():
     if extent_inventory is None:
         return
+    callback_coverage_complete()
     calls = extent_inventory['calls']
     assert extent_first_reach and set(extent_first_reach) <= {row['offset'] for row in calls}
     observed['extent_call_coverage'] = dict(
@@ -57,7 +70,10 @@ def extent_coverage_complete():
 
 def install_extent_coverage():
     if extent_inventory is not None:
+        install_callback_observation()
         assert address(extent_inventory['function']) == extent_inventory['address']
         for row in extent_inventory['calls']:
             ExtentFirstReach(row)
 '''
+
+PROGRAM += CALLBACK_PROGRAM

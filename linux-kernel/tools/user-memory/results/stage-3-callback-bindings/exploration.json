@@ -1,0 +1,10 @@
+{
+  "scope": "Host-side development/readback corrections, separate from native results and AI safeguards",
+  "corrections": [
+    "The first offline relocation reader looked up anonymous section symbols by name; exact symbol-table indices now preserve their identity.",
+    "A host readback comparison now separately verifies each cohort baseline provenance digest: application inputs differ although selected root, kernel, libraries and controller bindings match.",
+    "A readback-only Python comparison required parentheses around a Boolean negation."
+  ],
+  "native_failures": 0,
+  "safeguard_denials": 0
+}

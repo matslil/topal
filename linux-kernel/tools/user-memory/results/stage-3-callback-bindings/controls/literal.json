@@ -1,0 +1,11 @@
+{
+  "name": "literal",
+  "kernel_file_offset": 23992,
+  "original_byte": 0,
+  "changed_byte": 1,
+  "corrected_outer_kernel_sha256": "a5df6237de183710d65865c94ac6a11f7eb6364eadf377b21aaf466d0b02df90",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "linked allocated payload differs",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

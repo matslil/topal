@@ -1,0 +1,11 @@
+{
+  "name": "process_identity_library-instruction",
+  "kernel_file_offset": 1276704,
+  "original_byte": 85,
+  "changed_byte": 84,
+  "corrected_outer_kernel_sha256": "3cf1dbbb8693197c7a170ec0ac5dd36dc1b1256712c6372f4e722902a74e1f5f",
+  "exit_code": 1,
+  "rejected": true,
+  "expected_gate": "linked allocated payload differs",
+  "scope": "Offline corrupted first-party ELF with corrected outer graph/kernel hash; never loaded into a VM, executed, or used to modify a pinned application"
+}

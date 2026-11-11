@@ -93,3 +93,18 @@ listed roots, call-return assumptions and 18 external/six indirect boundaries
 still require complete entry/callee contracts. Its 14584 potential-access
 instructions are a review inventory, not user-pointer classification or proof
 of admission dominance, transfer direction or stable mapping lifetime.
+
+The [callback binding and ordinary-execution record](results/stage-3-callback-bindings/README.md)
+now follows all five source-controller entries from actual bootstrap relocations
+and argument pushes through private context registration to the six indirect
+calls. All 357 allocated sections match their source objects after 978 relocation
+applications. The final ordinary storage cohort observes all six sites and 1168
+returns, checks the actual registered targets, supervisor execution and ABI/
+captured-argument/registry/full-process-table preservation, and compares all
+38541 live section bytes on first use of each controller. The separate unchanged
+BusyBox exit observes 77 dispatch calls. Hardware supervisor write permission
+remains present; this is not hardware read-only code qualification. Recorded
+source/runtime call certificates, complete callee effects, alternate entries,
+pointer authority, admission dominance and stable lifetime retain their own
+obligations. No metadata association grants new kernel authority or closes a
+fallback gate.

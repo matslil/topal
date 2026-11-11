@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/inspect_callback_bindings.py", line 192, in <module>
+    inspect(Path(sys.argv[1]).resolve(),Path(sys.argv[2]).resolve())
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mats/git/topal/linux-kernel/tools/user-memory/inspect_callback_bindings.py", line 117, in inspect
+    assert actual == payload, ('linked allocated payload differs',stem,section_record['marker'])
+           ^^^^^^^^^^^^^^^^^
+AssertionError: ('linked allocated payload differs', 'time-library', 'topal.policy-inputs.time-library.40')

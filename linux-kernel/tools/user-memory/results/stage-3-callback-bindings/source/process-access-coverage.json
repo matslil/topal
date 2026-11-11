@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "native_reached_calls": 81,
+  "kernel_sha256": "04f4f0b01552e5d724187ae841bec2844d00d113eee2ee940adb8304997433c6",
+  "observation_sha256": "9e0fd34d861eeab5d7c441279899ef9f9578b14b95ff56621f319e135c6ba656",
+  "graph_sha256": "afdacb7c3705041ec40dac4f9f6ab45fb58a62a64afe468c4c71d91768a4da32",
+  "scope": "Selected observed helper calls must belong to the listed direct-control graph; not native instruction/access coverage or proof of complete roots/callees"
+}
