@@ -120,3 +120,16 @@ diagnostic context; ownership/lifetime, true pointer origins and admission
 dominance still need evidence for each semantic class. Neither a register name
 nor source placement is a safety classification. Existing root/callee/fallback
 and canonical-production obligations are unchanged.
+
+The [conditional scalar check](results/stage-3-fixed-transfers/README.md) now
+binds 27 actual scalar accesses in nine local transfer regions to their extent
+success edges, candidate aliases, direction and complete byte bounds. It
+recomputes the listed graph's direct edges/actual roots, requires nonvacuous
+reachability and rejects alternate local entries. Separate GNU decoding and
+backward predecessor review agree on all selected operands. This includes
+local exec-reset/missing-path reasoning without claiming those fallbacks were
+natively exercised. The named-condition fallback remains outside the graph.
+The shared helper's soundness/preservation, stable owner lifetime, complete
+entry/callee/exception contracts, all other semantic access regions and full
+syscall effect/error ordering remain separate requirements. The fresh pinned
+exit preserves every compared native artifact and does not close those gates.

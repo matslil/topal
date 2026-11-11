@@ -73,6 +73,21 @@ console transcript and original 91-call census are unchanged. The 114-input
 selected record supports source review, not a new claim of pointer authority,
 admission dominance, stable lifetime or complete production qualification.
 
+The [conditional scalar admission checkpoint](tools/user-memory/results/stage-3-fixed-transfers/README.md)
+connects 27 actual read/write instructions in nine local transfer regions to
+their successful extent checks, exact candidate aliases, direction and byte
+bounds. It verifies the listed direct graph's edges/roots before nonvacuous
+success-edge dominance, with separate GNU decoding and backward predecessor
+checks. Five malformed-metadata controls and five algorithm/operand controls
+pass. A fresh unchanged pinned exit, all 22 model/reader tests and six other
+post-checks pass; all 17 compared native artifacts and console bytes remain
+identical. The 116 selected inputs explicitly inherit 113 unchanged preceding
+snapshots; exact Python-only source-join/scalar replay passes. This evidence is
+conditional on helper, entry/callee/exception and stable owned-mapping contracts;
+it does not establish native execution of every selected transfer, whole-syscall
+effects, other access regions or production qualification. The three fallback
+obligations and complete Stage-3/Step-4 acceptance remain open.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,
