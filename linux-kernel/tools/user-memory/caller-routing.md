@@ -133,3 +133,17 @@ The shared helper's soundness/preservation, stable owner lifetime, complete
 entry/callee/exception contracts, all other semantic access regions and full
 syscall effect/error ordering remain separate requirements. The fresh pinned
 exit preserves every compared native artifact and does not close those gates.
+
+The [REP checkpoint](results/stage-3-copy-transfers/README.md) adds raw
+candidate/count/DF dataflow for fifteen admission paths to fourteen copy
+instructions. Clock time and resolution share a copy, so their success edges
+are checked as one complete admission group; the intervening sampler's actual
+register effects preserve the buffer/staging registers. Ordinary storage now
+completes all fifteen selected paths with 166 copies and 118 refusals; poll and
+unchanged pinned exit provide separate matching-kernel observations. The
+observer checks actual helper preservation, complete byte transport and
+translation/control observations at copy boundaries. It exposes counterpart
+expressions without granting ownership; neither boundary equality nor distinct
+expressions proves continuous lifetime or nonaliasing in general. Other access
+regions, complete owner/helper/entry/callee/exception contracts, all fallback
+and production obligations remain required. Canonical selection is unchanged.

@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "selected_inputs": 119,
+  "exact_source_join_equal": true,
+  "exact_copy_transfer_report_equal": true,
+  "admission_paths": 15,
+  "copy_instructions": 14,
+  "scope": "Frozen first-party artifact/source replay only; no compiler rebuild, LLVM/GNU/GDB/VM execution, complete owner/lifetime or production qualification"
+}

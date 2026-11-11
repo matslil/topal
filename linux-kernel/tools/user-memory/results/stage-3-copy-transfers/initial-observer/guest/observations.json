@@ -1,0 +1,4 @@
+{
+  "passed": false,
+  "observer_failure": "Traceback (most recent call last):\n  File \"<string>\", line 25, in stop\n  File \"<string>\", line 308, in observe\nAssertionError\n"
+}

@@ -88,6 +88,23 @@ it does not establish native execution of every selected transfer, whole-syscall
 effects, other access regions or production qualification. The three fallback
 obligations and complete Stage-3/Step-4 acceptance remain open.
 
+The [REP admission and execution checkpoint](tools/user-memory/results/stage-3-copy-transfers/README.md)
+checks fifteen candidate/count paths to fourteen repeated copies, including
+the shared clock output's two admission edges and intervening sampler effects.
+Fresh ordinary storage completes all fifteen paths (166 copies, 118 refusals);
+ordinary process/poll completes fourteen (170 copies, 118 refusals), and unchanged
+pinned BusyBox completes five command copies. Native observations check helper
+register preservation, exact copied bytes, pointer/count/DF and translation/
+control state at copy boundaries. Separate GNU/backward checks, six offline
+controls, all 28 model/reader tests and six other post-checks pass. All seventeen
+compared native artifacts and console bytes remain unchanged. Two observer
+failures, an explicitly stopped diagnostic run and a readback path-selection
+failure retain their original statuses. The 119 selected inputs and exact
+archived replay do not qualify a complete producer, continuous lifetime,
+counterpart/table/backing ownership, every other access class or production
+reconstruction. Canonical activation and complete Stage-3/Step-4 acceptance
+remain blocked on those existing obligations.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

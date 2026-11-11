@@ -1,0 +1,8 @@
+0x000000000000fff0 in ?? ()
+SOURCE_POLL_CASES_PASS 1 16
+SOURCE_POLL_CASES_PASS 2 16
+SOURCE_POLL_CASES_PASS 3 16
+SOURCE_POLL_CASES_PASS 4 16
+
+Thread 1 hit Breakpoint -55, 0x0000000002bb1aec in topal_x86_systems_static_image_process_enter ()
+[Inferior 1 (process 1) detached]

@@ -1,0 +1,6 @@
+{
+  "passed": false,
+  "cause": "REP start breakpoint was revisited between iterations while a copy was active",
+  "correction": "Disable the start breakpoint after the initial snapshot and re-enable it at completion; no guest code/state or deadline change",
+  "scope": "Observer failure, not kernel/resource failure or an AI safeguard notice; original source hashes, failed result and guest output retained"
+}

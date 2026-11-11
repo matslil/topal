@@ -1,0 +1,15 @@
+{
+  "cohorts": [
+    {"label":"application","build":"linux-kernel/.cache/x86_64/user-extent-application-2292920-1794410085965780657","run":"linux-kernel/.cache/x86_64/tk283-application-run-1794410084945534008","readback":"linux-kernel/.cache/x86_64/copy-transfer-application-final-readback"},
+    {"label":"poll","build":"linux-kernel/.cache/x86_64/user-extent-source-poll-2292547-1794409820975678369","run":"linux-kernel/.cache/x86_64/tk283-source-poll-run-1794409819988605159","readback":"linux-kernel/.cache/x86_64/copy-transfer-poll-readback-final"},
+    {"label":"storage","build":"linux-kernel/.cache/x86_64/user-extent-source-storage-2293256-1794410177170585188","run":"linux-kernel/.cache/x86_64/tk283-source-storage-run-1794410176174889188","readback":"linux-kernel/.cache/x86_64/copy-transfer-storage-readback"}
+  ],
+  "post":"linux-kernel/.cache/x86_64/tk283-copy-transfers-post-1794410405751420958",
+  "controls":"linux-kernel/.cache/x86_64/copy-transfer-controls",
+  "failed":{"build":"linux-kernel/.cache/x86_64/user-extent-application-2291064-1794409250205719377","run":"linux-kernel/.cache/x86_64/tk283-application-run-1794409244381510994"},
+  "history":[
+    {"label":"application-v2","application":true,"status":"passed","reason":"Passing five-copy observation before completion breakpoints were made conditional on copy start; not final observer source qualification","build":"linux-kernel/.cache/x86_64/user-extent-application-2291512-1794409382015406343","run":"linux-kernel/.cache/x86_64/tk283-application-run-1794409381019975745"},
+    {"label":"poll-v2","application":false,"status":"failed","reason":"A valid null-input signal path reaches the post-copy address without executing REP; an always-enabled completion breakpoint incorrectly required an active copy","build":"linux-kernel/.cache/x86_64/user-extent-source-poll-2291796-1794409506881702951","run":"linux-kernel/.cache/x86_64/tk283-source-poll-run-1794409505890398385"},
+    {"label":"storage-v2","application":false,"status":"stopped","process_exit_code":241,"reason":"Explicitly stopped the confirmed own bounded scope topal-bounded-2292167-5cf581d9.scope after diagnosing the same observer lifecycle defect; no result or resource-completion record exists and no pass is claimed","build":"linux-kernel/.cache/x86_64/user-extent-source-storage-2292205-1794409701583390915","run":"linux-kernel/.cache/x86_64/tk283-source-storage-run-1794409700572809320"}
+  ]
+}
