@@ -1,0 +1,55 @@
+   Compiling topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 5.47s
+     Running unittests src/lib.rs (target/debug/deps/topal_compiler-8da684f50190f1b7)
+
+running 1 test
+test systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries ... actual frame source root: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2251062-1794390452924062340
+
+thread 'systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries' (2251063) panicked at src/topal-compiler/src/systems_tail_nat_owner_tests.rs:20:5:
+guest: /home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-source-2251062-1794390452924062340
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-2251062-1794390452924062340/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Traceback (most recent call last):
+  File "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py", line 291, in <module>
+    harness.main(
+    ~~~~~~~~~~~~^
+        work_name='source-user-extents',
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        guest_timeout_seconds=300,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/mats/git/topal/linux-kernel/labs/qemu/x86_64/frame_root_inspect.py", line 293, in main
+    assert debugger.returncode == 0, stdout.decode(errors='replace') + stderr.decode(errors='replace')
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0x000000000000fff0 in ?? ()
+SOURCE_STARTUP_CASES_PASS 1 302 9
+SOURCE_STARTUP_CASES_PASS 2 318 12
+SOURCE_STARTUP_CASES_PASS 3 318 12
+SOURCE_STARTUP_CASES_PASS 4 157 9
+SOURCE_STARTUP_CASES_PASS 5 262 8
+SOURCE_USER_CASES_PASS 1 14
+
+Thread 1 hit Breakpoint -2, 0x00000000005703c0 in ?? ()
+[Inferior 1 (process 1) detached]
+warning: Section .debug_names in /home/mats/git/topal/linux-kernel/.cache/x86_64/user-extent-source-2251062-1794390452924062340/kernel.elf length 1500 does not match section length 18764, ignoring .debug_names.
+Traceback (most recent call last):
+  File "<string>", line 31, in stop
+  File "<string>", line 194, in observe
+AssertionError
+Traceback (most recent call last):
+  File "<string>", line 264, in <module>
+AssertionError
+
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+FAILED
+
+failures:
+
+failures:
+    systems_frame_target::root_tests::owned_source_fixture_checks_native_user_buffer_boundaries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 381 filtered out; finished in 60.30s
+
+error: test failed, to rerun pass `-p topal-compiler --lib`

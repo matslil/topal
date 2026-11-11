@@ -118,13 +118,37 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
 }
 
 #[cfg(test)]
-pub(crate) fn source_built_static_user_image_fixture(entry: u32, text: &[u8]) -> Vec<u8> {
+pub(crate) fn source_built_static_user_image_fixture(
+    entry: u32,
+    startup: u32,
+    text: &[u8],
+) -> Vec<u8> {
     assert!(!text.is_empty() && text.len() <= 0x10000);
     assert!((0x570000..0x570000 + text.len() as u32).contains(&entry));
-    static_user_image_fixture_with_source(Some((entry, text)))
+    assert!((0x570000..0x570000 + text.len() as u32).contains(&startup));
+    static_user_image_fixture_with_source(Some((entry, startup, text)))
 }
 
-fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec<u8> {
+fn static_user_image_fixture_with_source(component: Option<(u32, u32, &[u8])>) -> Vec<u8> {
+    fn startup_call(code: &mut Vec<u8>, entry: Option<u32>) {
+        if let Some(entry) = entry {
+            // Emit an ordinary call while constructing the fixture. The linked
+            // backend adapter preserves the syscall's non-result registers.
+            // The startup vector remains live above this disjoint scratch area.
+            code.extend_from_slice(&[0x48, 0x81, 0xec, 0x00, 0x04, 0, 0]);
+            let next = 0x004a_6100 + code.len() as i64 + 5;
+            code.push(0xe8);
+            code.extend_from_slice(
+                &i32::try_from(i64::from(entry) - next)
+                    .unwrap()
+                    .to_le_bytes(),
+            );
+            code.extend_from_slice(&[0x48, 0x81, 0xc4, 0x00, 0x04, 0, 0]);
+        } else {
+            code.extend_from_slice(&[0x0f, 0x05]);
+        }
+    }
+    let startup = component.map(|(_, entry, _)| entry);
     fn emit_store_qword(code: &mut Vec<u8>, address: u32, value: [u8; 8]) {
         code.extend_from_slice(&[0x48, 0xb8]);
         code.extend_from_slice(&value);
@@ -225,7 +249,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         put_program_header(&mut image, index, row);
     }
     let entry_offset = 0x0a_6100;
-    let entry_code = [
+    let mut entry_code = vec![
         0xb8, 0x0c, 0, 0, 0, // brk
         0x31, 0xff, // request = 0
         0x0f, 0x05, // syscall
@@ -277,7 +301,9 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0x31, 0xd2, // no new limit
         0x49, 0x89, 0xe2, // old limit = temporary pair
         0xb8, 0x2e, 0x01, 0, 0, // prlimit64
-        0x0f, 0x05, // syscall
+    ];
+    startup_call(&mut entry_code, startup);
+    entry_code.extend_from_slice(&[
         0x48, 0x85, 0xc0, // exact zero result
         0x75, 0xfe, // fail closed on rejection
         0x48, 0x81, 0x3c, 0x24, 0x00, 0x00, 0x80, 0x00, // 8 MiB soft limit
@@ -299,7 +325,9 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0xbe, 0x08, 0, 0, 0, // eight requested bytes
         0xba, 0x01, 0, 0, 0, // GRND_NONBLOCK
         0xb8, 0x3e, 0x01, 0, 0, // getrandom
-        0x0f, 0x05, // syscall
+    ]);
+    startup_call(&mut entry_code, startup);
+    entry_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 0x08, // exact eight-byte result
         0x75, 0xfe, // fail closed on another result
         0x4c, 0x8b, 0x14, 0x25, 0x68, 0x5e, 0x5f, 0x00, // observe opaque result
@@ -308,7 +336,9 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0xbe, 0x08, 0, 0, 0, // eight requested bytes
         0xba, 0x01, 0, 0, 0, // GRND_NONBLOCK
         0xb8, 0x3e, 0x01, 0, 0, // getrandom
-        0x0f, 0x05, // syscall
+    ]);
+    startup_call(&mut entry_code, startup);
+    entry_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 0x08, // exact eight-byte result
         0x75, 0xfe, // fail closed on another result
         0x4c, 0x8b, 0x14, 0x25, 0x70, 0x5e, 0x5f, 0x00, // observe fresh opaque result
@@ -345,7 +375,9 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0xbf, 0x10, 0x00, 0x00, 0x00, // PR_GET_NAME
         0x48, 0x89, 0xe6, // exact output candidate
         0xb8, 0x9d, 0x00, 0x00, 0x00, // prctl
-        0x0f, 0x05, // syscall
+    ]);
+    startup_call(&mut entry_code, startup);
+    entry_code.extend_from_slice(&[
         0x48, 0x85, 0xc0, // exact zero result
         0x75, 0xfe, // fail closed on rejection
         0x48, 0xb8, 0x62, 0x75, 0x73, 0x79, 0x62, 0x6f, 0x78, 0x00, // "busybox\0"
@@ -364,7 +396,9 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0x48, 0x89, 0xe2, // complete native stat destination
         0x45, 0x31, 0xd2, // flags = 0
         0xb8, 0x06, 0x01, 0x00, 0x00, // newfstatat
-        0x0f, 0x05, // syscall
+    ]);
+    startup_call(&mut entry_code, startup);
+    entry_code.extend_from_slice(&[
         0x48, 0x83, 0xf8, 0xfe, // exact -ENOENT result
         0x75, 0xfe, // fail closed on another result
         0x48, 0x81, 0xc4, 0x20, 0x02, 0x00, 0x00, // restore initial stack pointer
@@ -404,9 +438,10 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         0x10, 0x48, 0x89, 0x44, 0x24, 0x18, 0x48, 0x81, 0xc4, 0x40, 0x02, 0x00, 0x00, // clear
         0xb8, 0x6e, 0, 0, 0, // getppid
         0x0f, 0x05, 0x48, 0x85, 0xc0, 0x75, 0xfe, // require no parent
-        0xe9, 0x7a, 0x0b, 0x00, 0x00, // sealed continuation island at 0x4a7000
-    ];
-    let mut entry_code = entry_code;
+    ]);
+    let continuation = 0x004a_7000_i64 - (0x004a_6100 + entry_code.len() as i64 + 5);
+    entry_code.push(0xe9);
+    entry_code.extend_from_slice(&i32::try_from(continuation).unwrap().to_le_bytes());
     let exit = entry_code
         .windows(11)
         .position(|bytes| bytes == [0x31, 0xff, 0xb8, 0xe7, 0, 0, 0, 0x0f, 0x05, 0x0f, 0x0b])
@@ -415,6 +450,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
     let displacement = i64::from(process_fixture::RUNTIME_ENTRY) - (0x004a_6100 + exit as i64 + 5);
     entry_code[exit + 1..exit + 5].copy_from_slice(&(displacement as i32).to_le_bytes());
     entry_code[exit + 5..exit + 11].fill(0x90);
+    assert!(entry_offset + entry_code.len() <= 0x0a_6580);
     image[entry_offset..entry_offset + entry_code.len()].copy_from_slice(&entry_code);
     image[0x0a_6580..0x0a_6585].copy_from_slice(&[
         0xe9, 0x7b, 0xfb, 0xff, 0xff, // ordinary fixture body at 0x4a6100
@@ -1108,7 +1144,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
         ),
         (
             process_fixture::time_checks::ENTRY,
-            process_fixture::time_checks::code_with_source(component.map(|(entry, _)| entry)),
+            process_fixture::time_checks::code_with_source(component.map(|(entry, _, _)| entry)),
         ),
         (
             process_fixture::child_checks::ENTRY,
@@ -1134,7 +1170,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, &[u8])>) -> Vec
     image[0x0a_6912..0x0a_691b].copy_from_slice(b"/dev/tty\0");
     image[0x0a_6920..0x0a_6935].copy_from_slice(b"/var/spool/mail/root\0");
     image[0x0a_6938..0x0a_6945].copy_from_slice(b"/etc/profile\0");
-    if let Some((_, text)) = component {
+    if let Some((_, _, text)) = component {
         let offset = 0x170000;
         assert!(
             image[offset..offset + text.len()]

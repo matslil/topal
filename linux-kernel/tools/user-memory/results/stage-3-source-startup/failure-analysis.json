@@ -1,0 +1,13 @@
+{
+  "classification": "guest test-harness stack overlap; not an AI denial or resource failure",
+  "observed_source_entry_stack": 8388440,
+  "actual_prologue": "4889f84881ec980000004883e0ef48895c2468",
+  "local_stack_subtraction": 152,
+  "actual_saved_rbx_offset": 104,
+  "actual_store_address": 8388392,
+  "live_credential_tag_expected": 12,
+  "overwritten_with": 48390144,
+  "evidence": "Recorded random-call entry RSP plus ELF-decoded C prologue writes saved RBX over live AT_EUID tag; later getuid halts in phase 10",
+  "correction": "Reserve disjoint startup scratch before CALL; verify actual credential vector and registers before/after every callback, including exec relocation",
+  "inference_boundary": "The failing run stopped at the common invariant halt; the exact taken getuid branch was not separately observed"
+}

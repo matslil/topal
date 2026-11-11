@@ -1,0 +1,4513 @@
+{
+  "passed": true,
+  "executions": [
+    {
+      "stack": 8387384,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "bdd854852472894e42ca8268485ea20bb765206cf7f06b24159944203b472f57",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8387400,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": 6393856,
+          "phase_after": 32
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": 6529024,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            6291448,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": 0,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            6524920,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": 0,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            6529023,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            18446744073709551615,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            4194304,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 63,
+          "args": [
+            8388608,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 32,
+          "result": 0,
+          "phase_after": 32
+        },
+        {
+          "number": 1,
+          "args": [
+            0,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 32,
+          "result": -9,
+          "phase_after": 32
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            257
+          ],
+          "phase_before": 32,
+          "result": -22,
+          "phase_after": 32
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            1
+          ],
+          "phase_before": 32,
+          "result": -14,
+          "phase_after": 32
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0
+          ],
+          "phase_before": 32,
+          "result": 6393856,
+          "phase_after": 32
+        }
+      ],
+      "snapshot": 44617728,
+      "command_before": "6e6fef2ff773a020d2dc4b916b533e94eb06e2eefcc6f6b574c59641d9659d36",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ]
+    },
+    {
+      "stack": 8386472,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8386480,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6529024,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6291448,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6524920,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529023,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            18446744073709551615,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            4194304,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            8388608,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            0,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": -9,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            257
+          ],
+          "phase_before": 15,
+          "result": -22,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            1
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        }
+      ],
+      "snapshot": 44617728,
+      "command_before": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ]
+    },
+    {
+      "stack": 8386472,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8386480,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6529024,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6291448,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6524920,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529023,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            18446744073709551615,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            4194304,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            8388608,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            0,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": -9,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            257
+          ],
+          "phase_before": 15,
+          "result": -22,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            1
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        }
+      ],
+      "snapshot": 44617728,
+      "command_before": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ]
+    },
+    {
+      "stack": 8386472,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8386480,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6529024,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6291448,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6524920,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529023,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            6529024,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            18446744073709551615,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            4194304,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 63,
+          "args": [
+            8388608,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": 0,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            0,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 15,
+          "result": -9,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            257
+          ],
+          "phase_before": 15,
+          "result": -22,
+          "phase_after": 15
+        },
+        {
+          "number": 1,
+          "args": [
+            1,
+            18446744073709551615,
+            1
+          ],
+          "phase_before": 15,
+          "result": -14,
+          "phase_after": 15
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0
+          ],
+          "phase_before": 15,
+          "result": 6393856,
+          "phase_after": 15
+        }
+      ],
+      "snapshot": 44617728,
+      "command_before": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ]
+    }
+  ],
+  "startup_executions": [
+    {
+      "number": 302,
+      "args": [
+        0,
+        3,
+        0,
+        8388192
+      ],
+      "stack": 8387096,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8387104,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6258048,
+          "phase_after": 5
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6529024,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529024
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            18446744073709551615
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            4194304
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            8388608
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529023
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6291448
+          ],
+          "phase_before": 5,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 8388192,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 5,
+      "table_active": false,
+      "credentials_pointer": 8388376,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "0000800000000000ffffffffffffffff",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250088,
+        8,
+        1,
+        4096
+      ],
+      "stack": 8387416,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8387424,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250088,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": false,
+      "credentials_pointer": 8388376,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "ddf447514d29c14b",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250096,
+        8,
+        1,
+        5458689635402642653
+      ],
+      "stack": 8387416,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8387424,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            5458689635402642653
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250096,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": false,
+      "credentials_pointer": 8388376,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "1e604b10d6e2aed0",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 157,
+      "args": [
+        16,
+        8388192,
+        1,
+        15037205614860918814
+      ],
+      "stack": 8387096,
+      "before": [
+        1,
+        6393856,
+        34,
+        48398336
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8387104,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6393856,
+          "phase_after": 9
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6529024,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529024,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            18446744073709551615,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            4194304,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            8388608,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529023,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6524920,
+            1,
+            15037205614860918814
+          ],
+          "phase_before": 9,
+          "result": 0,
+          "phase_after": 10
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 10,
+          "result": 6393856,
+          "phase_after": 10
+        }
+      ],
+      "destination": 8388192,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 9,
+      "table_active": false,
+      "credentials_pointer": 8388376,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "62757379626f78000000000000000000",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 10
+    },
+    {
+      "number": 262,
+      "args": [
+        4294967196,
+        4876544,
+        8387968,
+        0
+      ],
+      "stack": 8386872,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 8386880,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6529024,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529024,
+            8387968,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            18446744073709551615,
+            8387968,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            8388608,
+            8387968,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529023,
+            8387968,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6524920,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 11,
+          "result": -2,
+          "phase_after": 12
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 12,
+          "result": 6393856,
+          "phase_after": 12
+        }
+      ],
+      "destination": 8387968,
+      "output_before": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "phase_before": 11,
+      "table_active": false,
+      "credentials_pointer": 8388376,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 12
+    },
+    {
+      "number": 302,
+      "args": [
+        0,
+        3,
+        0,
+        8386240
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6258048,
+          "phase_after": 5
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6529024,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529024
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            18446744073709551615
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            4194304
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            8388608
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529023
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6291448
+          ],
+          "phase_before": 5,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 5,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "0000800000000000ffffffffffffffff",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250088,
+        8,
+        1,
+        4096
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250088,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "79fee6ab80c23035",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250096,
+        8,
+        1,
+        3832777140787936889
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            3832777140787936889
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250096,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "8885bd871212c83d",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 157,
+      "args": [
+        16,
+        8386240,
+        1,
+        4451828102451791240
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6393856,
+        34,
+        48398336
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6393856,
+          "phase_after": 9
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6529024,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529024,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            18446744073709551615,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            4194304,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            8388608,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529023,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6524920,
+            1,
+            4451828102451791240
+          ],
+          "phase_before": 9,
+          "result": 0,
+          "phase_after": 10
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 10,
+          "result": 6393856,
+          "phase_after": 10
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 9,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "62757379626f78000000000000000000",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 10
+    },
+    {
+      "number": 262,
+      "args": [
+        4294967196,
+        4876544,
+        8386016,
+        0
+      ],
+      "stack": 8384920,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8384928,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6529024,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529024,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            18446744073709551615,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            8388608,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529023,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6524920,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 11,
+          "result": -2,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        }
+      ],
+      "destination": 8386016,
+      "output_before": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "phase_before": 11,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 11
+    },
+    {
+      "number": 302,
+      "args": [
+        0,
+        3,
+        0,
+        8386240
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6258048,
+          "phase_after": 5
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6529024,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529024
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            18446744073709551615
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            4194304
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            8388608
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529023
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6291448
+          ],
+          "phase_before": 5,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 5,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "0000800000000000ffffffffffffffff",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250088,
+        8,
+        1,
+        4096
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250088,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "b6a337d5661aa7fa",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250096,
+        8,
+        1,
+        18061433859558843318
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            18061433859558843318
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250096,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "2e198a97efe09e73",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 157,
+      "args": [
+        16,
+        8386240,
+        1,
+        8331343680326211886
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6393856,
+        34,
+        48398336
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6393856,
+          "phase_after": 9
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6529024,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529024,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            18446744073709551615,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            4194304,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            8388608,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529023,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6524920,
+            1,
+            8331343680326211886
+          ],
+          "phase_before": 9,
+          "result": 0,
+          "phase_after": 10
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 10,
+          "result": 6393856,
+          "phase_after": 10
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 9,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "62757379626f78000000000000000000",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 10
+    },
+    {
+      "number": 262,
+      "args": [
+        4294967196,
+        4876544,
+        8386016,
+        0
+      ],
+      "stack": 8384920,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8384928,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6529024,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529024,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            18446744073709551615,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            8388608,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529023,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6524920,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 11,
+          "result": -2,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        }
+      ],
+      "destination": 8386016,
+      "output_before": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "phase_before": 11,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 11
+    },
+    {
+      "number": 302,
+      "args": [
+        0,
+        3,
+        0,
+        8386240
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6258048,
+          "phase_after": 5
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 5,
+          "result": 6529024,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529024
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            18446744073709551615
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            4194304
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            8388608
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6529023
+          ],
+          "phase_before": 5,
+          "result": -14,
+          "phase_after": 5
+        },
+        {
+          "number": 302,
+          "args": [
+            0,
+            3,
+            0,
+            6291448
+          ],
+          "phase_before": 5,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 5,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "0000800000000000ffffffffffffffff",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250088,
+        8,
+        1,
+        4096
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            4096
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250088,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "636bb85096da2050",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 318,
+      "args": [
+        6250096,
+        8,
+        1,
+        5773855061423188835
+      ],
+      "stack": 8385464,
+      "before": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "prefix_before": "3d09dfea1c6d29a6106cada1061625c7a0339c31a162306b5c4b48544c196768",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385472,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6529024,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            0,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": 0,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            8,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            17,
+            1,
+            0
+          ],
+          "phase_before": 6,
+          "result": -22,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529024,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            18446744073709551615,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            4194304,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            8388608,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6529023,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": -14,
+          "phase_after": 6
+        },
+        {
+          "number": 318,
+          "args": [
+            6524920,
+            8,
+            1,
+            5773855061423188835
+          ],
+          "phase_before": 6,
+          "result": 8,
+          "phase_after": 6
+        },
+        {
+          "number": 12,
+          "args": [
+            6258048,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 6,
+          "result": 6258048,
+          "phase_after": 6
+        }
+      ],
+      "destination": 6250096,
+      "output_before": "0000000000000000",
+      "phase_before": 6,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "afbbc85169a889cc",
+      "after": [
+        1,
+        6258048,
+        1,
+        48394240
+      ],
+      "phase_after": 6
+    },
+    {
+      "number": 157,
+      "args": [
+        16,
+        8386240,
+        1,
+        14738496425843801007
+      ],
+      "stack": 8385144,
+      "before": [
+        1,
+        6393856,
+        34,
+        48398336
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8385152,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6393856,
+          "phase_after": 9
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 9,
+          "result": 6529024,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529024,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            18446744073709551615,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            4194304,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            8388608,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6529023,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": -14,
+          "phase_after": 9
+        },
+        {
+          "number": 157,
+          "args": [
+            16,
+            6524920,
+            1,
+            14738496425843801007
+          ],
+          "phase_before": 9,
+          "result": 0,
+          "phase_after": 10
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 10,
+          "result": 6393856,
+          "phase_after": 10
+        }
+      ],
+      "destination": 8386240,
+      "output_before": "00000000000000000000000000000000",
+      "phase_before": 9,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "output_after": "62757379626f78000000000000000000",
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 10
+    },
+    {
+      "number": 262,
+      "args": [
+        4294967196,
+        4876544,
+        8386016,
+        0
+      ],
+      "stack": 8384920,
+      "before": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "prefix_before": "e32f38adb133d99e99f1e2d8b9d71ac2618ee8d4b6ac5a1df43ffce6a9a6e94e",
+      "callee": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 8384928,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0
+      },
+      "calls": [
+        {
+          "number": 12,
+          "args": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6529024,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6529024,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529024,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            18446744073709551615,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            8388608,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6529023,
+            8386016,
+            0
+          ],
+          "phase_before": 11,
+          "result": -14,
+          "phase_after": 11
+        },
+        {
+          "number": 262,
+          "args": [
+            4294967196,
+            6524920,
+            18446744073709551615,
+            0
+          ],
+          "phase_before": 11,
+          "result": -2,
+          "phase_after": 11
+        },
+        {
+          "number": 12,
+          "args": [
+            6393856,
+            0,
+            0,
+            0
+          ],
+          "phase_before": 11,
+          "result": 6393856,
+          "phase_after": 11
+        }
+      ],
+      "destination": 8386016,
+      "output_before": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "phase_before": 11,
+      "table_active": true,
+      "credentials_pointer": 8386872,
+      "credentials": [
+        11,
+        0,
+        12,
+        0,
+        13,
+        0,
+        14,
+        0
+      ],
+      "after": [
+        1,
+        6393856,
+        34,
+        48394240
+      ],
+      "phase_after": 11
+    }
+  ],
+  "bridge_returns": [
+    {
+      "stack": 8387160,
+      "return_site": 4874747,
+      "credentials_pointer": 8388376,
+      "registers": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 48361472,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704,
+        "rdi": 0,
+        "rsi": 3,
+        "rdx": 0,
+        "r10": 8388192,
+        "r8": 281569467498560,
+        "r9": 48390144
+      }
+    },
+    {
+      "stack": 8387480,
+      "return_site": 4874859,
+      "credentials_pointer": 8388376,
+      "registers": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 48361472,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704,
+        "rdi": 6250088,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 4096,
+        "r8": 281569467498560,
+        "r9": 48390144
+      }
+    },
+    {
+      "stack": 8387480,
+      "return_site": 4874924,
+      "credentials_pointer": 8388376,
+      "registers": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 48361472,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704,
+        "rdi": 6250096,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 5458689635402642653,
+        "r8": 281569467498560,
+        "r9": 48390144
+      }
+    },
+    {
+      "stack": 8387160,
+      "return_site": 4875109,
+      "credentials_pointer": 8388376,
+      "registers": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 48361472,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704,
+        "rdi": 16,
+        "rsi": 8388192,
+        "rdx": 1,
+        "r10": 15037205614860918814,
+        "r8": 281569467498560,
+        "r9": 48390144
+      }
+    },
+    {
+      "stack": 8386936,
+      "return_site": 4875221,
+      "credentials_pointer": 8388376,
+      "registers": {
+        "rbx": 48390144,
+        "rbp": 48365568,
+        "r12": 48361472,
+        "r13": 65536,
+        "r14": 46301184,
+        "r15": 46280704,
+        "rdi": 4294967196,
+        "rsi": 4876544,
+        "rdx": 8387968,
+        "r10": 0,
+        "r8": 281569467498560,
+        "r9": 48390144
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4874747,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 0,
+        "rsi": 3,
+        "rdx": 0,
+        "r10": 8386240,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874859,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250088,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 4096,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874924,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250096,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 3832777140787936889,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4875109,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 16,
+        "rsi": 8386240,
+        "rdx": 1,
+        "r10": 4451828102451791240,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8384984,
+      "return_site": 4875221,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 4294967196,
+        "rsi": 4876544,
+        "rdx": 8386016,
+        "r10": 0,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4874747,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 0,
+        "rsi": 3,
+        "rdx": 0,
+        "r10": 8386240,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874859,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250088,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 4096,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874924,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250096,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 18061433859558843318,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4875109,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 16,
+        "rsi": 8386240,
+        "rdx": 1,
+        "r10": 8331343680326211886,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8384984,
+      "return_site": 4875221,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 4294967196,
+        "rsi": 4876544,
+        "rdx": 8386016,
+        "r10": 0,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4874747,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 0,
+        "rsi": 3,
+        "rdx": 0,
+        "r10": 8386240,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874859,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250088,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 4096,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385528,
+      "return_site": 4874924,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 6250096,
+        "rsi": 8,
+        "rdx": 1,
+        "r10": 5773855061423188835,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8385208,
+      "return_site": 4875109,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 16,
+        "rsi": 8386240,
+        "rdx": 1,
+        "r10": 14738496425843801007,
+        "r8": 0,
+        "r9": 0
+      }
+    },
+    {
+      "stack": 8384984,
+      "return_site": 4875221,
+      "credentials_pointer": 8386872,
+      "registers": {
+        "rbx": 0,
+        "rbp": 0,
+        "r12": 0,
+        "r13": 0,
+        "r14": 0,
+        "r15": 0,
+        "rdi": 4294967196,
+        "rsi": 4876544,
+        "rdx": 8386016,
+        "r10": 0,
+        "r8": 0,
+        "r9": 0
+      }
+    }
+  ]
+}

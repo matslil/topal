@@ -616,9 +616,10 @@ Unverified native obligations remain acceptance blockers under
 ## Source-built user-buffer cases
 
 The source-built interoperability fixture compiles
-[`user_extent_source_cases.c`](user_extent_source_cases.c), links it with a
-backend System V/Linux syscall adapter, and constructs a fresh first-party ABI
-witness containing a normal call to that function. The default ABI constructor
+[`user_extent_source_cases.c`](user_extent_source_cases.c) and
+[`user_extent_startup_cases.c`](user_extent_startup_cases.c), links them with
+backend System V/Linux syscall and startup-call adapters, and constructs a fresh
+first-party ABI witness containing normal calls to those functions. The default ABI constructor
 retains its committed bytes. The source variant checks delivered command bytes
 without assuming padding beyond a read's result. No completed application
 binary is patched and no source-assembly language element is added.
@@ -634,12 +635,26 @@ This explicit native test needs a C compiler, QEMU and GDB. It writes its
 artifacts under ignored `linux-kernel/.cache/x86_64`, including source hashes,
 compiler identity, stack-usage output and the linked source component. The
 freestanding flags apply to the guest object. The observer independently checks
-fourteen calls per invocation, System V callee preservation, restored heap
-contents and terminal ownership retirement. A successful source-function return
+fourteen shared-runtime calls per invocation, the startup request/result matrix,
+System V callee and original syscall-register preservation, restored heap
+contents, live credential-vector preservation and terminal ownership retirement.
+A successful source-function return
 alone is insufficient for acceptance.
 
 Current source cases cover runtime `uname` output across page and directory
 boundaries, refused copies without a partial write, read-only/supervisor and
 unmapped candidates, console empty-transfer/error order, and heap restoration.
-Direct startup/stat/directory/command boundary cases and complete production
-qualification remain separate obligations under `TOPAL-SYSTEMS-USER-EXTENT-001`.
+Startup cases cover `prlimit64`, both initial `getrandom` calls, `PR_GET_NAME`
+and the optional-configuration `newfstatat` lookup. They exercise cross-page and
+cross-directory output beyond the preceding heap limit, refused complete copies,
+random zero-count/error order, split-page pathname input and absence without
+access to the unused output pointer. A disjoint 1024-byte startup scratch area
+protects the still-live initial vectors. The conservative complete source-call
+stack cost is 1832 bytes within the existing 2048-byte fixture bound; this is
+separate from the kernel caller reserve.
+
+The [startup checkpoint](../../../tools/user-memory/results/stage-3-source-startup/README.md)
+records four image startups, twenty source callbacks, 200 startup syscalls and
+56 shared-runtime syscalls, with exact kernel/boot-image and serial comparisons.
+Other direct stat/open/directory/signal/command boundary cases and complete
+production qualification remain obligations under `TOPAL-SYSTEMS-USER-EXTENT-001`.

@@ -1,0 +1,15 @@
+{
+  "base": 5701632,
+  "conservative_user_stack_bytes": 1832,
+  "entry": 5701888,
+  "image_sha256": "37c344dfeb3e6dde5e619360902bcd01bfd0e589f9bf8aaead884367e0ded989",
+  "linked_sha256": "d27072dac309a08205b4db681857ce778ca3768eb9e7abe2d92936c7b488db61",
+  "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
+  "source_sha256": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+  "startup": 5702592,
+  "startup_call": 5704336,
+  "startup_source_sha256": "6239a77bbe7cee03f0113517ae9e5bc855a8bc3d21bb81f9b20957ee22795259",
+  "syscall": 5704288,
+  "syscall4": 5704304,
+  "text_bytes": 2765
+}

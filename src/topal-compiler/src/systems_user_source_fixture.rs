@@ -37,44 +37,120 @@ fn syscall_adapter() -> Vec<u8> {
         section: SymbolSection::Section(section),
         flags: SymbolFlags::None,
     });
+    let fourth = object.add_section(
+        vec![],
+        b".text.topal_test_syscall4".to_vec(),
+        SectionKind::Text,
+    );
+    let mut four_code = vec![0x4d, 0x89, 0xc2]; // fourth argument -> Linux R10
+    four_code.extend_from_slice(&code);
+    object.append_section_data(fourth, &four_code, 16);
+    object.add_symbol(Symbol {
+        name: b"topal_test_syscall4".to_vec(),
+        value: 0,
+        size: four_code.len() as u64,
+        kind: SymbolKind::Text,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(fourth),
+        flags: SymbolFlags::None,
+    });
+    let startup = object.add_section(
+        vec![],
+        b".text.topal_test_startup_call".to_vec(),
+        SectionKind::Text,
+    );
+    let mut bridge = vec![
+        0x57, 0x56, 0x52, 0x41, 0x52, 0x41, 0x50, 0x41, 0x51, 0x41, 0x54, 0x49, 0x89, 0xe4, 0x48,
+        0x83, 0xe4, 0xf0, // save/alignment
+        0x48, 0x89, 0xc7, // original syscall number -> System V first arg
+        0x49, 0x8b, 0x74, 0x24, 48, 0x49, 0x8b, 0x54, 0x24, 40, 0x49, 0x8b, 0x4c, 0x24, 32, 0x4d,
+        0x8b, 0x44, 0x24, 24, 0xe8, 0, 0, 0,
+        0, // ordinary link relocation to the source function
+    ];
+    let call_offset = bridge.len() as u64 - 4;
+    bridge.extend_from_slice(&[
+        0x4c, 0x89, 0xe4, 0x41, 0x5c, 0x41, 0x59, 0x41, 0x58, 0x41, 0x5a, 0x5a, 0x5e, 0x5f, 0xc3,
+    ]);
+    object.append_section_data(startup, &bridge, 16);
+    object.add_symbol(Symbol {
+        name: b"topal_test_startup_call".to_vec(),
+        value: 0,
+        size: bridge.len() as u64,
+        kind: SymbolKind::Text,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Section(startup),
+        flags: SymbolFlags::None,
+    });
+    let target = object.add_symbol(Symbol {
+        name: b"topal_user_extent_startup_cases".to_vec(),
+        value: 0,
+        size: 0,
+        kind: SymbolKind::Text,
+        scope: SymbolScope::Linkage,
+        weak: false,
+        section: SymbolSection::Undefined,
+        flags: SymbolFlags::None,
+    });
+    object
+        .add_relocation(
+            startup,
+            object::write::Relocation {
+                offset: call_offset,
+                symbol: target,
+                addend: -4,
+                flags: object::RelocationFlags::Generic {
+                    kind: object::RelocationKind::Relative,
+                    encoding: object::RelocationEncoding::X86Branch,
+                    size: 32,
+                },
+            },
+        )
+        .unwrap();
     object.write().unwrap()
 }
 
 pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c");
-    fs::copy(&source, work.join("source-cases.c")).unwrap();
+    let lab = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/labs/qemu/x86_64");
+    let source = lab.join("user_extent_source_cases.c");
     run(
         work,
         "source-cc-version",
         Command::new("cc").arg("--version"),
     );
-    run(
-        work,
-        "source-compile",
-        Command::new("cc")
-            .args([
-                "-std=c11",
-                "-O2",
-                "-g",
-                "-ffreestanding",
-                "-fno-builtin",
-                "-fno-pie",
-                "-fno-stack-protector",
-                "-fno-asynchronous-unwind-tables",
-                "-fno-unwind-tables",
-                "-mgeneral-regs-only",
-                "-mno-red-zone",
-                "-fstack-usage",
-                "-Wall",
-                "-Wextra",
-                "-Werror",
-                "-c",
-            ])
-            .arg(work.join("source-cases.c"))
-            .arg("-o")
-            .arg(work.join("source-cases.o")),
-    );
+    for (input, stem) in [
+        ("user_extent_source_cases.c", "source-cases"),
+        ("user_extent_startup_cases.c", "startup-cases"),
+    ] {
+        fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
+        run(
+            work,
+            &format!("{stem}-compile"),
+            Command::new("cc")
+                .args([
+                    "-std=c11",
+                    "-O2",
+                    "-g",
+                    "-ffreestanding",
+                    "-fno-builtin",
+                    "-fno-pie",
+                    "-fno-stack-protector",
+                    "-fno-asynchronous-unwind-tables",
+                    "-fno-unwind-tables",
+                    "-mgeneral-regs-only",
+                    "-mno-red-zone",
+                    "-fstack-usage",
+                    "-Wall",
+                    "-Wextra",
+                    "-Werror",
+                    "-c",
+                ])
+                .arg(work.join(format!("{stem}.c")))
+                .arg("-o")
+                .arg(work.join(format!("{stem}.o"))),
+        );
+    }
     fs::write(work.join("source-syscall.o"), syscall_adapter()).unwrap();
     let script = "SECTIONS { . = 0x570000; .text : { *(.text .text.*) *(.rodata .rodata.*) } \
                   /DISCARD/ : { *(.eh_frame) *(.comment) *(.note*) } }\n";
@@ -99,6 +175,7 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
             ])
             .arg(work.join("source-user.ld"))
             .arg(work.join("source-cases.o"))
+            .arg(work.join("startup-cases.o"))
             .arg(work.join("source-syscall.o"))
             .arg("-o")
             .arg(work.join("source-user.elf")),
@@ -125,20 +202,29 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     }
     let syscall = elf.symbol_by_name("topal_test_syscall3").unwrap();
     assert_eq!(syscall.size(), 15);
-    let stack = fs::read_to_string(work.join("source-cases.su")).unwrap();
-    let mut user_stack = 32_u64; // outer alignment/save and call overhead
-    for line in stack.lines() {
-        let columns = line.split('\t').collect::<Vec<_>>();
-        assert_eq!(columns.len(), 3, "unexpected stack-usage row: {line}");
-        assert_eq!(columns[2], "static");
-        user_stack += columns[1].parse::<u64>().unwrap() + 8;
+    // Disjoint startup scratch plus both generated adapters/alignment/returns.
+    let mut user_stack = 1024 + 128_u64;
+    for stem in ["source-cases", "startup-cases"] {
+        let stack = fs::read_to_string(work.join(format!("{stem}.su"))).unwrap();
+        for line in stack.lines() {
+            let columns = line.split('\t').collect::<Vec<_>>();
+            assert_eq!(columns.len(), 3, "unexpected stack-usage row: {line}");
+            assert_eq!(columns[2], "static");
+            user_stack += columns[1].parse::<u64>().unwrap() + 8;
+        }
     }
     assert!(
         user_stack <= 2048,
         "source call must fit below the witness's live user stack"
     );
+    let startup = elf.symbol_by_name("topal_test_startup_call").unwrap();
+    let source_startup = elf
+        .symbol_by_name("topal_user_extent_startup_cases")
+        .unwrap();
+    let syscall4 = elf.symbol_by_name("topal_test_syscall4").unwrap();
     let image = crate::systems_artifact::source_built_static_user_image_fixture(
         u32::try_from(elf.entry()).unwrap(),
+        u32::try_from(startup.address()).unwrap(),
         bytes,
     );
     let report = serde_json::json!({
@@ -146,6 +232,9 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         "linked_sha256": format!("{:x}", Sha256::digest(&linked)),
         "image_sha256": format!("{:x}", Sha256::digest(&image)),
         "base": BASE, "entry": elf.entry(), "syscall": syscall.address(),
+        "startup": source_startup.address(), "startup_call": startup.address(),
+        "syscall4": syscall4.address(),
+        "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "text_bytes": bytes.len(), "conservative_user_stack_bytes": user_stack,
         "scope": "source-built ordinary syscall component in a freshly generated first-party ABI witness; not an arbitrary-program loader or production qualification",
     });

@@ -150,3 +150,37 @@ This source fixture covers shared runtime `uname`/console and memory paths.
 Direct startup/stat/directory/command native boundary cases and the other
 Stage 3/4 obligations remain required. The full original kernel objective is
 still unfinished.
+
+## Stage 3 source-built startup transfers
+
+The [startup checkpoint](tools/user-memory/results/stage-3-source-startup/README.md)
+extends the source-built fixture to stack-limit, initial random and process-name
+output, plus optional-configuration pathname admission. The backend emits normal
+calls during fixture construction; a linked adapter preserves the original
+syscall arguments and ordinary callee registers. Its separate startup scratch
+protects live credential vectors. The complete conservative user-call cost is
+1832 bytes within the unchanged 2048-byte fixture bound, independently of the
+kernel's existing caller reserve.
+
+Four initial/replacement image sequences pass twenty source callbacks with 200
+observed startup syscalls, in addition to the preceding 56 shared-runtime calls.
+The observer checks the actual relocated credential group before/after each
+call, refusal phase preservation, original heap contents, caller registers and
+terminal retirement. Initial configuration lookup takes the sealed fallback;
+after exec the active namespace owner takes the general lookup path without
+advancing that fallback phase. Both routes reject invalid input and preserve
+lookup-before-output order.
+
+Separate ELF readback verifies all 2765 linked code bytes, both syscall adapters,
+the startup bridge relocation and all five emitted calls with disjoint scratch.
+Seventeen exact object/image comparisons preserve the preceding kernel and boot
+image; all 7606 serial bytes remain identical. Two build-only tests and static
+post-checks pass. The original stack-overlap failure and two observer failures
+retain their original nonzero results and scope in the archive.
+
+Review remains single-agent self-review with independent artifact parsing and
+native observations, not independent human review. The default fixture's bytes
+and production selection remain unchanged. Other direct caller boundary cases,
+complete ownership/mode/stability qualification, canonical publication and cold
+reconstruction remain required. Stage 3, initial Step 4 and the full original
+kernel objective remain unfinished.

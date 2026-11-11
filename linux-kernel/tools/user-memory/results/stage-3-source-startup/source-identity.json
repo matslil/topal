@@ -1,0 +1,14 @@
+{
+  "base_commit": "3cd6635040eb9cb67b3dd4920fa9597fe33fcd24",
+  "selected_executable_inputs": {
+    "src/topal-compiler/src/systems_artifact_static_image.rs": "bfc4d0ee73e77df7ff76d0aeb841c380129b84c0bf9253b7975fc1bfaf7bcd1b",
+    "src/topal-compiler/src/systems_frame_root_tests.rs": "eb1df53b8a18daa2df95857a95263a542946ec993deae23dd49463f2623c637d",
+    "src/topal-compiler/src/systems_time_checks.rs": "02a366b2826cbc49c7f65adacc64765a4de161fe962b16f9c97cfac9104bfa6c",
+    "src/topal-compiler/src/systems_user_extent.rs": "4e489d9cf30c8b9f0b6c41d24fcc886120f5ba7c7caa2109f0e708d3b85a0c56",
+    "src/topal-compiler/src/systems_user_source_fixture.rs": "98331a1d3711ccc23aab099a6af766d82ab29d454c653426073d5905083c10f9",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_cases.c": "4350abed34fe56b3961d52ec3d73532a03de56320cf08f84d0cac5688538d70b",
+    "linux-kernel/labs/qemu/x86_64/user_extent_startup_cases.c": "6239a77bbe7cee03f0113517ae9e5bc855a8bc3d21bb81f9b20957ee22795259",
+    "linux-kernel/labs/qemu/x86_64/user_extent_source_inspect.py": "edb0411f7916de431f3ff219899abb25063c971df545045027be10ee9262b201"
+  },
+  "scope": "Eight selected executable/test inputs; not a complete producer census or clean-checkout execution; documentation and evidence recorded after execution"
+}
