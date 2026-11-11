@@ -23,6 +23,19 @@ census changes test metadata and observation only. Complete direct user-access
 inventory, admission/error/lifetime qualification and production reconstruction
 remain acceptance blockers. First reach alone discharges none of those gates.
 
+The [subsequent result-gate audit](tools/user-memory/results/stage-3-transfer-guards/README.md)
+checks all 91 immediate carry-refusal branches and the exact admitted bounds of
+seven static read instructions in the three fallback slices. A fresh unchanged
+BusyBox exit passes signal ownership/terminal retirement checks and reaches 38
+already observed sites; the union remains 88 of 91. All 17 compared kernel
+objects/images and the external console transcript are unchanged. Five offline
+first-party artifact controls and six post-check commands pass. The 62-input
+record and exact archived static-audit replay retain this limited evidence.
+The phase-four fallbacks cannot be dismissed using the phase-six table dispatch
+argument. Native fallback reach, the complete direct/shared-access inventory,
+global dominance and lifetime/mode/ownership qualification remain required;
+no production activation or full Stage-3 completion is claimed.
+
 The first stage records complete range, translation-permission, actual table
 and backing ownership, stable entry lifetime and no-touch empty-range laws.
 It identifies shared and independent buffer validators requiring migration,

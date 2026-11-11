@@ -1,0 +1,8 @@
+{
+  "name": "loop-bound",
+  "body_offset": 88277,
+  "replacement_hex": "0f",
+  "rejected": true,
+  "error": "",
+  "scope": "Offline compiler-owned object byte shape with rebound function digest; unchanged decoder listing; no native execution"
+}

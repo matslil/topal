@@ -580,7 +580,8 @@ fn build_guest(
     if matches!(
         focus,
         Some(
-            CallerFocus::SourcePoll
+            CallerFocus::Application
+                | CallerFocus::SourcePoll
                 | CallerFocus::SourcePipes
                 | CallerFocus::SourceStorage
                 | CallerFocus::SourceSerial
@@ -605,6 +606,16 @@ fn build_guest(
                 .arg(
                     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                         .join("../../linux-kernel/tools/user-memory/inspect_call_inventory.py"),
+                )
+                .arg(work),
+        );
+        run(
+            work,
+            "transfer-guard-audit",
+            Command::new("python3")
+                .arg(
+                    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                        .join("../../linux-kernel/tools/user-memory/audit_transfer_guards.py"),
                 )
                 .arg(work),
         );

@@ -1,0 +1,4 @@
+{
+  "exit_code": 1,
+  "scope": "Replay of retained initial offline checker, not the original attempt; wrong C7 assumption versus actual movabs -14 encoding; no guest execution"
+}

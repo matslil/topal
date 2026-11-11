@@ -1,0 +1,9 @@
+{
+  "argv": [
+    "/home/mats/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-objdump",
+    "-d",
+    "--no-show-raw-insn",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2276559-1794401643985043835/provider.o"
+  ],
+  "exit_code": 0
+}

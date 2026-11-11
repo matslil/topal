@@ -12,6 +12,7 @@ import sys
 
 import frame_root_inspect as harness
 import topal_gate
+from user_extent_call_coverage import PROGRAM as COVERAGE_PROGRAM, linked_inventory
 
 
 def invariant_halt(elf):
@@ -77,6 +78,10 @@ class CheckedBreakpoint(gdb.Breakpoint):
             with open(observation_path, 'w') as handle:
                 json.dump(observed, handle, indent=2)
             return True
+
+Checked = CheckedBreakpoint
+
+# EXTENT_COVERAGE
 
 def consumed_prelude():
     assert all(word(context + offset) == 0 for offset in [168, 176, 224, 232])
@@ -147,6 +152,7 @@ class Complete(CheckedBreakpoint):
         assert memory(context + 416, 8) == bytes(8)
         assert memory(address('topal_x86_frame_mm_state_v1'), 32) == bytes(32)
         assert memory(address('topal_x86_frame_mm_tokens_v1'), 48) == bytes(48)
+        extent_coverage_complete()
         observed['passed'] = True
         with open(observation_path, 'w') as handle:
             json.dump(observed, handle, indent=2)
@@ -165,6 +171,7 @@ class InvariantHalt(CheckedBreakpoint):
         return True
 
 try:
+    install_extent_coverage()
     SerialInput('*topal_x86_user_extent_writable_v1', internal=True)
     Complete('*topal_x86_systems_fatal', internal=True)
     InvariantHalt('*'+hex(native_sites['halt']), internal=True)
@@ -179,6 +186,9 @@ except Exception:
     gdb.execute('quit 1')
 '''
 
+assert PROGRAM.count('# EXTENT_COVERAGE') == 1
+PROGRAM = PROGRAM.replace('# EXTENT_COVERAGE', COVERAGE_PROGRAM)
+
 
 if __name__ == '__main__':
     build = Path(sys.argv[1]).resolve()
@@ -186,9 +196,11 @@ if __name__ == '__main__':
     assert hashlib.sha256(image).hexdigest() == topal_gate.PINNED_STATIC_BUSYBOX_SHA256
     archive = members((build / 'initramfs.cpio').read_bytes())
     assert set(archive) == {'init', 'static-user.elf'} and archive['static-user.elf'] == image
+    extent_inventory = linked_inventory(build)
     harness.GDB_PROGRAM = PROGRAM
     harness.main(work_name='first-image-exit', process_command=b'exit\n',
-                 program_prefix=f'native_sites={invariant_halt(build / "kernel.elf")!r}\n',
+                 program_prefix=(f'native_sites={invariant_halt(build / "kernel.elf")!r}\n'
+                                 f'extent_inventory={extent_inventory!r}\n'),
                  input_scope='unchanged pinned BusyBox first-image exit', guest_timeout_seconds=180)
     serial = (build / 'first-image-exit/serial.log').read_bytes()
     assert topal_gate.EXEC_COMMIT_MARKER not in serial

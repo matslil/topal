@@ -61,3 +61,22 @@ through the existing VM serial connection after ordinary application markers.
 The four matching-kernel cohorts now reach 88 of 91 sites in union. Three bounded
 fallback inputs remain unobserved; their dispatch/ownership classification and
 the complete direct-access/caller obligations still require explicit evidence.
+
+The [selected result-gate audit](results/stage-3-transfer-guards/README.md)
+checks immediate carry refusal after return-word erasure at all 91 calls and
+the exact local bounds of the three remaining fallback read slices:
+
+| Fallback | Selected emitted call offset / admitted bytes | Source lifecycle and local read boundary |
+| --- | --- | --- |
+| Named-root condition output | 88236 / 14 | [Output emitter](../../../src/topal-compiler/src/systems_process_entry_output.rs) requires context byte 418 to equal four, plus the preceding command/condition state. Its one-byte loop reads indices 0–13 before private content checks and serial publication. |
+| Exec signal reset | 94708 / 32 | [Completion emitter](../../../src/topal-compiler/src/systems_process_entry_completion.rs) selects the reset with context byte 418 equal to six. It reads eight-byte fields at offsets 0, 8, 16 and 24 after input admission. The earlier active-table routing reasoning remains separate from native execution or full reachability proof. |
+| Missing root pathname | 101802 / 9 | [Completion emitter](../../../src/topal-compiler/src/systems_process_entry_completion.rs) requires context byte 418 equal to four and pathname-query state. It reads eight bytes and the terminator at offset eight. An absent lookup has no metadata output admission or transfer. |
+
+The two phase-four paths precede the final command read's phase-six/table
+activation. Active-table interception therefore does not justify dismissing
+all three fallback paths as unreachable. The fresh unchanged BusyBox exit
+cohort reaches 38 sites already in the preceding union; the union remains 88
+of 91. No historical check is removed. The audit's direct-entry checks concern
+decoded branches into these local slices only; embedded data, unknown decoding,
+indirect/exception entry, complete access inventory and stable observation
+still need their own evidence.

@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/tools/user-memory/inspect_call_inventory.py",
+    "/home/mats/git/topal/src/topal-compiler/../../linux-kernel/.cache/x86_64/user-extent-application-2276559-1794401643985043835"
+  ],
+  "exit_code": 0
+}
