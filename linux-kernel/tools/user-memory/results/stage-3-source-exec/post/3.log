@@ -1,0 +1,92 @@
+    Checking topal-compiler v0.1.0 (/home/mats/git/topal/src/topal-compiler)
+warning: function `generate_frame_user_extent_root` is never used
+  --> src/topal-compiler/src/systems_artifact_root_object.rs:48:15
+   |
+48 | pub(crate) fn generate_frame_user_extent_root(
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `bootstrap_target` is never read
+  --> src/topal-compiler/src/systems_frame_policy_binding.rs:31:9
+   |
+26 | pub(crate) struct Checked {
+   |                   ------- field in this struct
+...
+31 |     pub bootstrap_target: String,
+   |         ^^^^^^^^^^^^^^^^
+
+warning: method `native_binding_required` is never used
+  --> src/topal-compiler/src/systems_frame_policy_binding.rs:41:19
+   |
+38 | impl Checked {
+   | ------------ method in this implementation
+...
+41 |     pub(crate) fn native_binding_required(&self) -> CompileError {
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_binding` is never used
+   --> src/topal-compiler/src/systems_frame_publication.rs:315:15
+    |
+315 | pub(crate) fn validate_binding(
+    |               ^^^^^^^^^^^^^^^^
+
+warning: function `inspect` is never used
+ --> src/topal-compiler/src/systems_frame_inspection.rs:6:15
+  |
+6 | pub(super) fn inspect(
+  |               ^^^^^^^
+
+warning: function `inspect_user_extents` is never used
+  --> src/topal-compiler/src/systems_frame_inspection.rs:21:15
+   |
+21 | pub(crate) fn inspect_user_extents(
+   |               ^^^^^^^^^^^^^^^^^^^^
+
+warning: method `validate` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:20:19
+   |
+19 | impl Owners {
+   | ----------- method in this implementation
+20 |     pub(crate) fn validate(&self) -> Result<(), CompileError> {
+   |                   ^^^^^^^^
+
+warning: function `llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:40:15
+   |
+40 | pub(crate) fn llvm() -> String {
+   |               ^^^^
+
+warning: function `target_llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:48:15
+   |
+48 | pub(crate) fn target_llvm(
+   |               ^^^^^^^^^^^
+
+warning: function `dispatch_llvm` is never used
+  --> src/topal-compiler/src/systems_user_extent.rs:91:15
+   |
+91 | pub(crate) fn dispatch_llvm() -> Result<String, CompileError> {
+   |               ^^^^^^^^^^^^^
+
+warning: function `inspect_target_instructions` is never used
+   --> src/topal-compiler/src/systems_user_extent.rs:129:15
+    |
+129 | pub(crate) fn inspect_target_instructions(text: &str) -> Result<(), CompileError> {
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `component_object` is never used
+   --> src/topal-compiler/src/systems_frame_gateway.rs:322:15
+    |
+322 | pub(crate) fn component_object(complete_body_bound: u64) -> Result<Vec<u8>, CompileError> {
+    |               ^^^^^^^^^^^^^^^^
+
+warning: function `user_extent_component_object` is never used
+   --> src/topal-compiler/src/systems_frame_gateway.rs:328:15
+    |
+328 | pub(crate) fn user_extent_component_object(
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: `topal-compiler` (lib) generated 13 warnings
+    Checking topal-kernel-toolchain-gate-builder v0.1.0 (/home/mats/git/topal/linux-kernel/tools/toolchain-gate-builder)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.89s

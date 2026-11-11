@@ -112,6 +112,14 @@ fn syscall_adapter() -> Vec<u8> {
 }
 
 pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, false)
+}
+
+pub(crate) fn build_exec(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
+    build_selected(work, tools, true)
+}
+
+fn build_selected(work: &Path, tools: &crate::LlvmTools, exec: bool) -> Vec<u8> {
     let lab = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../linux-kernel/labs/qemu/x86_64");
     let source = lab.join("user_extent_source_cases.c");
     run(
@@ -119,13 +127,17 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         "source-cc-version",
         Command::new("cc").arg("--version"),
     );
-    for (input, stem) in [
+    let mut inputs = vec![
         ("user_extent_source_cases.c", "source-cases"),
         ("user_extent_startup_cases.c", "startup-cases"),
         ("user_extent_file_cases.c", "file-cases"),
         ("user_extent_shell_cases.c", "shell-cases"),
         ("user_extent_command_cases.c", "command-cases"),
-    ] {
+    ];
+    if exec {
+        inputs.push(("user_extent_exec_cases.c", "exec-cases"));
+    }
+    for (input, stem) in &inputs {
         fs::copy(lab.join(input), work.join(format!("{stem}.c"))).unwrap();
         run(
             work,
@@ -171,7 +183,11 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
                 "--no-dynamic-linker",
                 "--build-id=none",
                 "--entry",
-                "topal_user_extent_source_cases",
+                if exec {
+                    "topal_user_extent_exec_cases"
+                } else {
+                    "topal_user_extent_source_cases"
+                },
                 "-z",
                 "noexecstack",
                 "-T",
@@ -182,6 +198,11 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
             .arg(work.join("file-cases.o"))
             .arg(work.join("shell-cases.o"))
             .arg(work.join("command-cases.o"))
+            .args(if exec {
+                vec![work.join("exec-cases.o")]
+            } else {
+                vec![]
+            })
             .arg(work.join("source-syscall.o"))
             .arg("-o")
             .arg(work.join("source-user.elf")),
@@ -210,13 +231,7 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     assert_eq!(syscall.size(), 15);
     // Disjoint startup scratch plus both generated adapters/alignment/returns.
     let mut frames = std::collections::BTreeMap::new();
-    for stem in [
-        "source-cases",
-        "startup-cases",
-        "file-cases",
-        "shell-cases",
-        "command-cases",
-    ] {
+    for (_, stem) in &inputs {
         let mut cost = 0_u64;
         let stack = fs::read_to_string(work.join(format!("{stem}.su"))).unwrap();
         for line in stack.lines() {
@@ -225,14 +240,19 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
             assert_eq!(columns[2], "static");
             cost += columns[1].parse::<u64>().unwrap() + 8;
         }
-        frames.insert(stem, cost);
+        frames.insert(*stem, cost);
     }
     // The runtime entry cannot call the startup entry; only the latter can
     // delegate to file cases. Sum every frame on either possible call path.
     let delegated = frames["file-cases"]
         .max(frames["shell-cases"])
         .max(frames["command-cases"]);
-    let user_stack = 1024 + 128 + frames["source-cases"].max(frames["startup-cases"] + delegated);
+    let source_stack = if exec {
+        frames["exec-cases"]
+    } else {
+        frames["source-cases"].max(frames["startup-cases"] + delegated)
+    };
+    let user_stack = 1024 + 128 + source_stack;
     assert!(
         user_stack <= 2048,
         "source call must fit below the witness's live user stack"
@@ -244,7 +264,11 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
     let syscall4 = elf.symbol_by_name("topal_test_syscall4").unwrap();
     let image = crate::systems_artifact::source_built_static_user_image_fixture(
         u32::try_from(elf.entry()).unwrap(),
-        u32::try_from(startup.address()).unwrap(),
+        if exec {
+            None
+        } else {
+            Some(u32::try_from(startup.address()).unwrap())
+        },
         bytes,
     );
     let report = serde_json::json!({
@@ -254,6 +278,8 @@ pub(crate) fn build(work: &Path, tools: &crate::LlvmTools) -> Vec<u8> {
         "base": BASE, "entry": elf.entry(), "syscall": syscall.address(),
         "startup": source_startup.address(), "startup_call": startup.address(),
         "syscall4": syscall4.address(),
+        "mode": if exec { "exec" } else { "transfers" },
+        "exec_source_sha256": if exec { Some(format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_exec_cases.c")).unwrap()))) } else { None },
         "startup_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_startup_cases.c")).unwrap())),
         "file_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_file_cases.c")).unwrap())),
         "shell_source_sha256": format!("{:x}", Sha256::digest(fs::read(lab.join("user_extent_shell_cases.c")).unwrap())),

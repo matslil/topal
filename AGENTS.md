@@ -116,6 +116,9 @@ For kernel, compiler systems features, and their validation:
   sandbox errors, and resource exhaustion. Use the reported notice and public
   provider guidance when available; distinguish confirmed reasons from hypotheses
   and do not infer a hidden safeguard decision from the code being edited.
+  Repository defects, resource failures and successful retries cannot establish
+  why a model or service safeguard intervened. Preserve the exact notice and
+  proposed operation when available; label any inferred explanation as such.
 - Respect explicit safeguard denials. Do not disguise, obfuscate, or indirectly
   execute the same denied operation. Continue independent permitted work and use
   a materially safer approach consistent with the stated reason when possible;

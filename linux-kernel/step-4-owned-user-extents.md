@@ -260,3 +260,40 @@ vector-output cases and complete caller/native ownership/mode/stability
 qualification remain required. Canonical production binding, exact production
 qualification and cold reconstruction remain pending. Stage 3, initial Step 4
 and the full original kernel goal remain unfinished.
+
+## Stage 3 source-built exec vector transfers
+
+The [exec checkpoint](tools/user-memory/results/stage-3-source-exec/README.md)
+adds a separate source-built cohort for pathname, argv and environment admission.
+Four invocations pass 116 ordinary exec refusals and twelve heap calls. These
+requests cover unaligned page/directory crossings beyond page 34, readable
+read-only vectors, nested string faults, inaccessible terminators and argument/
+environment count and aggregate-byte limits. The enclosing application completes
+its existing successful replacements and final retirement.
+
+Every refusal preserves the complete process table, signal/thread registrations,
+shell/file controls and private command bytes, and clears all 1536 private exec
+staging bytes. Native observations also check callee registers, heap restoration
+and terminal retirement. Separate ELF/request readback verifies the source code,
+read-only inputs, normal call and conservative 1304-of-2048-byte source stack
+bound. It does not claim a transcript of every nested user-memory load.
+
+Seventeen comparisons preserve the preceding kernel and boot-image bytes; all
+7606 serial bytes match. A fresh build preserves the preceding combined-transfer
+fixture image exactly, and both build-only tests and six post-check commands
+pass. The bounded native command peaks at 1131925504 bytes with no limit/OOM/kill
+events or swap. A readback byte-count correction is retained separately from
+the passing native run. Review remains single-agent self-review with separate
+artifact parsing and observations, not independent human review.
+
+The agent guidance now explicitly says that repository defects, resource failures
+and successful retries cannot establish the reason for an AI safeguard action.
+The notice and proposed operation must be retained when available, and inferred
+explanations labeled. No safeguard denial occurred in this cohort.
+
+Header-poll needs the sectioned profile's actual startup/lifecycle, not just its
+ELF tuple. The pinned external digest remains a separate compatibility gate.
+Specialized signal/reset and vector-output cases, complete caller and native
+ownership/mode/stability qualification, canonical production binding and cold
+reconstruction remain required. Stage 3, initial Step 4 and the full original
+kernel objective remain unfinished.

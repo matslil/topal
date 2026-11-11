@@ -10,6 +10,7 @@ import sys
 
 import frame_root_inspect as harness
 from user_extent_shell_observer import PROGRAM as SHELL_PROGRAM
+from user_extent_exec_observer import PROGRAM as EXEC_PROGRAM
 from user_extent_application_inspect import invariant_halt, members
 
 
@@ -66,6 +67,8 @@ class SourceReturned(Checked):
         assert prefix(after[2]) == current['prefix_before']
         assert word(context+904) == current['snapshot']
         assert hashlib.sha256(memory(current['snapshot']+0x9e00,512)).hexdigest() == current['command_before']
+        if component.get('mode') == 'exec':
+            return exec_returned(current,after)
         calls = current['calls']
         assert [row['number'] for row in calls] == [12,12,63,63,63,63,63,63,63,1,1,1,1,12], calls
         original = current['before'][1]
@@ -113,6 +116,8 @@ class SyscallReturned(Checked):
         assert (current or startup_current) and pending and reg('cs') & 3 == 3
         pending['result'] = signed(reg('rax'))
         pending['phase_after'] = memory(context+104,1)[0]
+        if current and component.get('mode') == 'exec' and pending['number'] == 59:
+            observe_exec_result(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
             observe_shell_result(pending)
         if startup_current and startup_current.get('kind') == 'file':
@@ -140,6 +145,8 @@ class SyscallEntered(Checked):
         pending = dict(number=reg('rdi'),
                        args=[reg(name) for name in ['rsi','rdx','rcx','r8'][:self.count]],
                        phase_before=memory(context+104,1)[0])
+        if current and component.get('mode') == 'exec' and pending['number'] == 59:
+            observe_exec_request(pending)
         if startup_current and startup_current.get('kind') in ['shell','command']:
             observe_shell_request(pending)
         if startup_current and startup_current.get('kind') == 'file':
@@ -361,16 +368,24 @@ def file_returned(row):
 
 # SHELL_OBSERVER
 
+# EXEC_OBSERVER
+
 class Complete(Checked):
     def observe(self):
         assert current is startup_current is pending is bridge_current is None and observed['executions']
         numbers = [row['number'] for row in observed['startup_executions']]
-        assert numbers and len(numbers) % 5 == 0
+        if component.get('mode') == 'exec':
+            assert len(observed['executions']) == 4
+            assert all(not observed[key] for key in [
+                'startup_executions','file_executions','shell_executions','command_executions','bridge_returns'])
+        else:
+            assert numbers and len(numbers) % 5 == 0
         assert numbers == [302,318,318,157,262]*(len(numbers)//5)
-        assert [row['number'] for row in observed['file_executions']] == [
+        assert [row['number'] for row in observed['file_executions']] == ([] if component.get('mode') == 'exec' else [
             5,257,262,257,5,0,257,5,217,217,262,257,5,217,217,262,262,262,257,257]
-        assert len(observed['command_executions']) == 5
-        assert len(observed['shell_executions']) == 38
+        )
+        assert len(observed['command_executions']) == (0 if component.get('mode') == 'exec' else 5)
+        assert len(observed['shell_executions']) == (0 if component.get('mode') == 'exec' else 38)
         assert len(observed['bridge_returns']) == len(numbers)+len(observed['file_executions'])+len(observed['shell_executions'])+len(observed['command_executions'])
         assert state() == [0,0,0,0]
         assert memory(address('topal_x86_frame_mm_tokens_v1'), 48) == bytes(48)
@@ -411,6 +426,8 @@ except Exception:
 
 assert PROGRAM.count('# SHELL_OBSERVER') == 1
 PROGRAM = PROGRAM.replace('# SHELL_OBSERVER', SHELL_PROGRAM)
+assert PROGRAM.count('# EXEC_OBSERVER') == 1
+PROGRAM = PROGRAM.replace('# EXEC_OBSERVER', EXEC_PROGRAM)
 
 
 if __name__ == '__main__':

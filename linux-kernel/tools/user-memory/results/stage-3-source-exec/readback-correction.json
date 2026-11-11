@@ -1,0 +1,9 @@
+{
+  "original_exit_code": 1,
+  "original_step": "runtime-call byte comparison",
+  "reason": "The initial readback requested 42 bytes for a 41-byte expected call sequence.",
+  "correction": "Derive the read size from the complete separately constructed expected sequence.",
+  "final_exit_code": 0,
+  "native_rerun": false,
+  "scope": "Post-run verifier correction recorded from observed tool output; not a native failure or AI safety denial"
+}

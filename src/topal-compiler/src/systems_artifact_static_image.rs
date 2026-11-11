@@ -120,16 +120,18 @@ pub fn qualified_x86_64_static_user_image_fixture() -> Vec<u8> {
 #[cfg(test)]
 pub(crate) fn source_built_static_user_image_fixture(
     entry: u32,
-    startup: u32,
+    startup: Option<u32>,
     text: &[u8],
 ) -> Vec<u8> {
     assert!(!text.is_empty() && text.len() <= 0x10000);
     assert!((0x570000..0x570000 + text.len() as u32).contains(&entry));
-    assert!((0x570000..0x570000 + text.len() as u32).contains(&startup));
+    if let Some(startup) = startup {
+        assert!((0x570000..0x570000 + text.len() as u32).contains(&startup));
+    }
     static_user_image_fixture_with_source(Some((entry, startup, text)))
 }
 
-fn static_user_image_fixture_with_source(component: Option<(u32, u32, &[u8])>) -> Vec<u8> {
+fn static_user_image_fixture_with_source(component: Option<(u32, Option<u32>, &[u8])>) -> Vec<u8> {
     fn source_call(code: &mut Vec<u8>, entry: Option<u32>, base: u32) {
         if let Some(entry) = entry {
             // Emit an ordinary call while constructing the fixture. The linked
@@ -148,7 +150,7 @@ fn static_user_image_fixture_with_source(component: Option<(u32, u32, &[u8])>) -
             code.extend_from_slice(&[0x0f, 0x05]);
         }
     }
-    let startup = component.map(|(_, entry, _)| entry);
+    let startup = component.and_then(|(_, entry, _)| entry);
     fn emit_store_qword(code: &mut Vec<u8>, address: u32, value: [u8; 8]) {
         code.extend_from_slice(&[0x48, 0xb8]);
         code.extend_from_slice(&value);

@@ -685,3 +685,33 @@ physical erasure of consumed serial bytes.
 Header-poll negative cases, specialized signal/reset and vector-output paths,
 complete caller coverage and complete production qualification remain obligations
 under `TOPAL-SYSTEMS-USER-EXTENT-001`.
+
+## Source-built exec vector cases
+
+The separate [`user_extent_exec_cases.c`](user_extent_exec_cases.c) cohort
+uses normal `execve` requests for pathname, argv and environment admission.
+It is linked before construction of the first-party witness. It runs in place
+of the shared-runtime source cases and leaves startup/file/shell callbacks
+unselected, keeping this coverage separate from the preceding combined cohort.
+
+```console
+rtk proxy env RUST_MIN_STACK=16777216 scripts/run_bounded.py -- \
+  cargo test -p topal-compiler --lib --locked -j1 \
+  systems_frame_target::root_tests::owned_source_fixture_checks_exec_vector_boundaries \
+  -- --ignored --exact --test-threads=1 --nocapture
+```
+
+The [checkpoint](../../../tools/user-memory/results/stage-3-source-exec/README.md)
+records four invocations, 116 rejected exec requests and twelve heap calls,
+followed by the enclosing application's existing replacement and retirement
+checks. Vectors and strings cross pages/directories beyond page 34; failures
+include partial mappings, nested strings, missing terminators and count/byte
+limits. Code-resident input exercises readable read-only storage. The observer
+compares process and command state before/after every refusal and requires
+complete private staging erasure. The conservative source stack bound is 1304
+of 2048 bytes. Kernel/boot bytes, host protections and resource limits remain.
+
+Selected input-prefix observations and separate ELF parsing are not a full
+nested-load transcript or complete production qualification. Header-poll,
+specialized signal/reset, vector-output and other remaining native obligations
+are still required.
