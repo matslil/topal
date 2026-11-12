@@ -148,6 +148,21 @@ the byte-identical kernel. Remaining caller/loan/mapping, identity-width/fatal,
 continuous lifetime and public activation work still blocks initial Step 4 and
 the original full Linux/distribution/container/VM-host objective.
 
+The subsequent [process-publication matrix](step-4-process-memory-ownership.md#process-publication-and-retirement-observations)
+passes all seven selected tests / **21 VMs** and complete source-bound readers.
+It records **279 publications**, **26,191 invalidation states**,
+**45 equal-size process publications** and **166 retired
+extents / 46,915,584 erased bytes**, with 252 new saved-data controls.
+The kernel remains byte-identical to the application-corpus kernel. Fresh
+workspace/all-target and 203/59 model checks pass; seven LLVM modules verify per
+build and thirteen predecessor contributions remain unchanged. Frozen replay
+repeats the new records and identified previous 51 application, nine interface
+and twenty process histories. Prepared-token cancellation, every caller/loan/
+mapping writer, continuous/AP/DMA/asynchronous lifetime, fatal/identity/resource
+and cold public reconstruction remain open. This completes the local observation
+component, not initial Step 4 or the complete Linux/distribution/container/VM-host
+objective.
+
 The [repeated-source milestone](step-4-repeated-source-tail-traversal.md) now has
 a source-only tail-plan inspector and an ordinary byte-traversal source.
 All 636 frontend and 295 compiler tests pass. Carried-value/storage-reuse proofs,

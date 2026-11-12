@@ -803,43 +803,84 @@ obligations still apply. This qualifies the unchanged application-corpus
 component, not initial Step 4 or the full Linux/distribution/container/VM-host
 objective.
 
-## Process publication and retirement observations in progress
+## Process publication and retirement observations
 
 `TOPAL-SYSTEMS-PROCESS-MM-001` and `TOPAL-SYSTEMS-USER-EXTENT-001` require
 completed publication/invalidation before releasing an old heap. The optional
 `TOPAL_TEST_PROCESS_MM_PUBLICATION=1` observer adds stops at the complete
 149-byte publisher, actual unpin/erase/release boundaries and terminal root
-handoff. It records fresh owner/table metadata and raw per-CPU post-INVLPG
-states. The kernel remains byte-identical to the application-corpus kernel;
-this component changes observation and saved-record validation only.
+handoff. Fresh owner/table metadata and raw per-CPU post-INVLPG states bind
+equal-size and empty process transitions as well as resize/exec. This component
+changes observation and saved-record validation; the native kernel remains
+byte-identical to the preceding application corpus.
 
-The reader binds the complete observer program, linked publisher and caller
-instructions, all six hierarchy pages, surrounding MM boundaries, raw CPU-log
-slices and every observed heap retirement. It supports equal-size process
-publications, including empty heaps. Twelve saved-data controls exercise missing
-CPU states, owner/span/root/call mismatches, barrier and mapping changes, early
-unpin, failed unpin, dirty release and retained authority. These controls are
-distinct from native execution and from the original cohort's assertions.
+All **seven selected native tests / 21 VMs** and their complete source-bound
+readers pass: owner handoff, child exec, physical allocation refusal, both
+maximum fork/clone geometries, four blocked-reader cancellations, four
+blocked-writer cancellations and eight runnable/zombie relationships. They
+record **279 publications**, **26,191
+invalidation states**, **45 equal-size
+process publications** and **166 retired extents /
+46,915,584 erased bytes**, with 21 terminal root
+handoffs. All 252 new saved-data controls reject their changed records,
+in addition to 403 original cohort controls. The raw traces retain
+22 explicitly cancelled/retried CPU blocks; these are
+validated trace records, not silently discarded missing states or TLB dumps.
 
-The first matrix attempt completed the owner, child-exec and small-RAM
-allocation-refusal native tests. Owner and child-exec acceptance readbacks
-passed. The allocation readback then rejected its intentionally retained source
-case: that ordinary fixture terminates through exec/exit instead of its case
-return marker. The original allocation reader already requires that state and
-checks replacement startup, actual terminal retirement and final authority.
-The publication reader now distinguishes returning and terminal source cases
-while requiring no pending memory request or refusal in either. The unchanged
-allocation records pass the corrected reader. Five new completion controls
-bring the process-memory suite to **59 passing tests**.
+The reader binds the complete observer program, linked publisher/caller bytes,
+all six hierarchy pages, surrounding MM boundaries, every raw CPU-log header
+and every observed active/inactive heap retirement. Twelve controls per VM
+exercise missing CPU states, owner/span/root/call mismatches, barrier and mapping
+changes, early/failed unpin, dirty release and retained authority. These
+saved-data checks remain distinct from native execution and continuous lifetime.
 
-Exact watched inputs and the failed matrix result are retained before this
-reader correction. All three native tests passed; the failure was in the host
-readback. The matrix had unchanged source hashes, zero swap and zero memory
-events. Neither this failure nor its correction explains an AI safeguard.
-The complete seven-test, **21-VM** matrix, final archive, frozen replay and
-publication review remain pending. No continuous lifetime, other mapping writer,
-AP/DMA/asynchronous invalidation, fatal cleanup or public activation is qualified
-by these local observations.
+The [archive](tools/process-memory/results/stage-3-process-publication/report.json)
+freezes actual commands, inputs, kernel/boot artifacts, raw logs and historical
+attempts. Seven LLVM modules verify per build; thirteen predecessor
+contributions remain unchanged. Complete stack/physical bounds remain
+**2,280/4,096** and **4,088/4,096 bytes**. Fresh locked workspace/all-target
+checking, **203 user-memory tests**, **59 process-memory tests**, the default ABI
+generator fixture, formatting and the Rust file-size ceiling pass. The native
+matrix completes in **2,515.59 seconds**, with unchanged
+hashes for all 649 watched inputs. Its
+cumulative cgroup sample records **1,653,047,296 /
+3,353,309,184 bytes**, zero swap and zero memory events. This
+does not measure independent per-VM peaks or an unseen final instant.
+
+The collector rechecks the identified previous **51 application, nine interface
+and twenty process histories** on the byte-identical kernel using their original
+boot-resource facts. They are historical native executions, not new VMs or full
+historical rebuilds. The [frozen replay](tools/process-memory/replay_publication.py)
+repeats all new and retained record comparisons and the frozen 203/59 model
+suites without executing a VM or rebuilding a kernel. Its overall success marker
+is written only after both model suites pass. A separate
+[replay receipt](tools/process-memory/results/stage-3-process-publication-replay.json)
+binds the archive manifest and complete bounded follow-up result.
+
+The first observer pilot wrongly required every retained root-slot allocation
+to have one pin. Actual root/low translation owners had one pin; a distinct
+retained allocation legitimately had two. The corrected model binds the actual
+translation-storage pins and preserves heap-owner checks; a separate pin-count
+control covers that distinction. Later transport changes coalesce fresh metadata
+reads and checkpoint complete histories, retaining every native assertion.
+Historical method pilots do not qualify the revised observer; the fresh matrix
+above supplies that evidence.
+
+The first matrix's three native tests passed, then its allocation reader rejected
+an intentionally retained source-case marker. That fixture terminates through
+exec/exit instead of returning through its original marker. The corrected reader
+distinguishes returning and terminal cases while requiring no pending memory
+request or refusal; original terminal cleanup remains mandatory. Five completion
+controls and the fresh allocation run pass. Original failure/pilot records and
+exact or explicitly reconstructed historical source identities remain preserved.
+An older manifest's hash-record format has an explicit SHA-only projection;
+its original bytes and per-file metadata remain archived. These repository and
+observer results establish no reason for an AI model or service safeguard.
+
+This qualifies the experimental local publisher/retirement observation component.
+It does not complete initial Step 4. Other callers, private loans, mapping writers,
+continuous lifetime, AP/DMA/asynchronous access, fatal cleanup and public
+activation retain the acceptance work below.
 
 ### Review of the publication evidence boundary
 

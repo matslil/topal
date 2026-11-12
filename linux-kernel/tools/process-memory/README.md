@@ -370,7 +370,7 @@ the new publication/retirement checks separately from native execution.
 rtk proxy env RUST_MIN_STACK=16777216 PYTHONDONTWRITEBYTECODE=1 scripts/run_bounded.py -- python3 linux-kernel/tools/process-memory/readback_publication.py linux-kernel/.cache/x86_64/BUILD
 ```
 
-[archive_publication.py](archive_publication.py) is intended for the completed
+[archive_publication.py](archive_publication.py) freezes the completed
 seven-test matrix. It requires 21 distinct builds, exact source/command/artifact
 bindings, unchanged predecessor contributions, LLVM/bounds checks and fresh
 validation. It preserves raw CPU logs and the earlier failed/pilot attempts
@@ -388,6 +388,12 @@ failed in that invocation; a later successful readback does not rewrite its
 failure or imply another native execution. Historical source manifests identify
 their captured or explicitly reconstructed input bytes separately.
 
-The full matrix/archive/replay qualification is still in progress. All remaining
-caller/loan/writer, continuous lifetime, AP/DMA/asynchronous, fatal and public
-activation gates remain acceptance obligations.
+The complete seven-test/**21-VM** matrix passes, with 279 publications,
+26,191 invalidation states, 166 retired extents and 252 new
+saved-data controls. The [archive](results/stage-3-process-publication/report.json)
+binds its sources/artifacts and separately scoped historical evidence. Frozen
+replay passes the new and retained records plus the 203/59 model suites; its
+[companion receipt](results/stage-3-process-publication-replay.json) binds the archive manifest. This qualifies the local observer
+component. All remaining caller/loan/writer, continuous lifetime,
+AP/DMA/asynchronous, fatal and public activation gates remain acceptance
+obligations.
